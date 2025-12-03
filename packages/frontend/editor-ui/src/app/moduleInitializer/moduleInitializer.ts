@@ -3,7 +3,7 @@ import { VIEWS } from '@/app/constants';
 import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
 import { registerResource } from '@/app/moduleInitializer/resourceRegistry';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { InsightsModule } from '@/features/execution/insights/module.descriptor';
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';

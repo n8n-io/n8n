@@ -2,7 +2,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useTelemetry } from './useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';
 import { N8N_PRICING_PAGE_URL } from '@/app/constants';
 

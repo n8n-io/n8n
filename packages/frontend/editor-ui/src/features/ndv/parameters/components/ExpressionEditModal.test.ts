@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import { setActivePinia, type Pinia } from 'pinia';
 import { defaultSettings } from '@/__tests__/defaults';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 
 vi.mock('vue-router', () => {

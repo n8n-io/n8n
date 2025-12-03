@@ -10,7 +10,7 @@ import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';

@@ -10,7 +10,7 @@ import { mfaEventBus } from '../auth.eventBus';
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------

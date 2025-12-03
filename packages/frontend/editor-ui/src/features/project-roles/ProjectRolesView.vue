@@ -6,7 +6,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import {
 	N8nActionBox,
 	N8nActionToggle,

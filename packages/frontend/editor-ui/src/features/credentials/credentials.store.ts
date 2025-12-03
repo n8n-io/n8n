@@ -29,7 +29,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';

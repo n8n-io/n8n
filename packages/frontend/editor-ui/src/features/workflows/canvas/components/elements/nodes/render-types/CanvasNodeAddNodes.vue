@@ -11,7 +11,7 @@ import {
 	trackTemplatesClick,
 } from '@/experiments/utils';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';

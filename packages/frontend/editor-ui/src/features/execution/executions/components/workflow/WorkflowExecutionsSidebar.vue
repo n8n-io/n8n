@@ -14,7 +14,7 @@ import type { ExecutionFilterType } from '../../executions.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';

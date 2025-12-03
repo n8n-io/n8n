@@ -2,7 +2,7 @@
 import { fireEvent, screen } from '@testing-library/vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';

@@ -1,5 +1,5 @@
 import type { WorkflowTitleStatus } from '@/Interface';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import type { Ref } from 'vue';
 
 const DEFAULT_TITLE = 'n8n';

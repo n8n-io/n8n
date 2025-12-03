@@ -28,7 +28,7 @@ import * as mfaApi from '@n8n/rest-api-client/api/mfa';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as invitationsApi from './invitation.api';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import * as onboardingApi from '@/app/api/workflow-webhooks';
 import * as promptsApi from '@n8n/rest-api-client/api/prompts';
 

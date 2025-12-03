@@ -379,13 +379,6 @@ export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
 }
 
-export const enum UserManagementAuthenticationMethod {
-	Email = 'email',
-	Ldap = 'ldap',
-	Saml = 'saml',
-	Oidc = 'oidc',
-}
-
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: Role[];

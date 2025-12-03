@@ -12,7 +12,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/app/constants';
 import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_AI_TEMPLATES_STARTER_COLLECTION_CALL_OUT_DISMISSED';
 

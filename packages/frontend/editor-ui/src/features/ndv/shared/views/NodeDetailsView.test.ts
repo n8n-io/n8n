@@ -3,7 +3,7 @@ import { waitFor, fireEvent } from '@testing-library/vue';
 
 import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
 import { VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';

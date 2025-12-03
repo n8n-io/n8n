@@ -4,7 +4,7 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { TEMPLATES_URLS, VIEWS, EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';

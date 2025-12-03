@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';

@@ -3,7 +3,7 @@ import AuthView from './AuthView.vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, ref } from 'vue';
 

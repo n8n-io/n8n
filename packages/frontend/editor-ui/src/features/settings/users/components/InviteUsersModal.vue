@@ -9,7 +9,7 @@ import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '../users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/app/composables/useClipboard';

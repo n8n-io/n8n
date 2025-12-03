@@ -8,7 +8,7 @@ import { SET_NODE_TYPE } from '@/app/constants';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { defaultSettings } from '@/__tests__/defaults';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import VirtualSchemaHeader from '@/features/ndv/runData/components/VirtualSchemaHeader.vue';
 
 describe('VirtualSchemaHeader.vue', () => {

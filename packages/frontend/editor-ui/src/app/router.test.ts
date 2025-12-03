@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import router from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';

@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';

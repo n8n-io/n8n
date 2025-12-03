@@ -11,7 +11,7 @@ import { ProjectTypes } from '../projects.types';
 import { VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';

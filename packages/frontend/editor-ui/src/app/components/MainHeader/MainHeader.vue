@@ -13,7 +13,7 @@ import {
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

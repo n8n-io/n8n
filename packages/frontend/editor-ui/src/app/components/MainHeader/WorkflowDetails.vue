@@ -45,7 +45,7 @@ import { useRoute, useRouter } from 'vue-router';
 import WorkflowDescriptionPopover from './WorkflowDescriptionPopover.vue';
 
 import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';

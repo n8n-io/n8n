@@ -39,7 +39,7 @@ import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';

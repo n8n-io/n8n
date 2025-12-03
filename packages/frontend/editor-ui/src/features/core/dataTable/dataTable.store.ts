@@ -26,7 +26,7 @@ import type {
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { getResourcePermissions } from '@n8n/permissions';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {

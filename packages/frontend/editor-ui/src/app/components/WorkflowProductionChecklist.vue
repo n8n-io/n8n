@@ -26,7 +26,7 @@ import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mc
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 

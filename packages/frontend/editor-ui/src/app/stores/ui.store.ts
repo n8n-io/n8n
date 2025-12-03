@@ -80,7 +80,7 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';

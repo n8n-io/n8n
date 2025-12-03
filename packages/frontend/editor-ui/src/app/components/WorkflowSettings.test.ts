@@ -9,7 +9,7 @@ import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/uti
 import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', async () => ({

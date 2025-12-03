@@ -6,7 +6,7 @@ import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@/Interface';

@@ -70,6 +70,7 @@ catalogs:
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
+    bowser: 2.11.0
     element-plus: 2.4.3
     highlight.js: 11.8.0
     pinia: ^2.2.4

@@ -17,7 +17,7 @@ import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '../users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';

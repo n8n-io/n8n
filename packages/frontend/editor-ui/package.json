@@ -62,7 +62,6 @@
     "ag-grid-vue3": "^34.1.1",
     "array.prototype.tosorted": "1.1.4",
     "axios": "catalog:",
-    "bowser": "2.11.0",
     "change-case": "^5.4.4",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",

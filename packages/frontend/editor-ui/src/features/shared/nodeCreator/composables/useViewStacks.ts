@@ -44,7 +44,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 export type CommunityNodeDetails = {
 	key: string;

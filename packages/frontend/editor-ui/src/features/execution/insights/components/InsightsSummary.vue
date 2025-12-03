@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,

@@ -15,7 +15,7 @@ import {
 } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import type {

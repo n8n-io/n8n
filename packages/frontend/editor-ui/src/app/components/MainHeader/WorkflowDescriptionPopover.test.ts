@@ -6,7 +6,7 @@ import { nextTick } from 'vue';
 import WorkflowDescriptionPopover from '@/app/components/MainHeader/WorkflowDescriptionPopover.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { STORES } from '@n8n/stores';

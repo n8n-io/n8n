@@ -4,7 +4,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import type { UserManagementAuthenticationMethod } from '@/Interface';
+import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleModals,
 	registerModuleProjectTabs,
@@ -17,7 +17,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -70,8 +70,7 @@ export async function initializeCore() {
 	}
 
 	ssoStore.initialize({
-		authenticationMethod: settingsStore.userManagement
-			.authenticationMethod as UserManagementAuthenticationMethod,
+		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
 		config: settingsStore.settings.sso,
 		features: {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],

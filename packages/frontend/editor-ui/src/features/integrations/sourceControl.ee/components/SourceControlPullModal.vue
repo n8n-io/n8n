@@ -6,7 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
 import { sourceControlEventBus } from '../sourceControl.eventBus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import {

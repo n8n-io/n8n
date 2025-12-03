@@ -12,7 +12,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';

@@ -1,10 +1,9 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/init';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -134,14 +133,14 @@ describe('Init', () => {
 			const ldap = { loginEnabled: false, loginLabel: '' };
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
-			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
+			settingsStore.userManagement.authenticationMethod = 'saml';
 			settingsStore.settings.sso = { saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
-				authenticationMethod: UserManagementAuthenticationMethod.Saml,
+				authenticationMethod: 'saml',
 				config: { saml, ldap, oidc },
 				features: {
 					saml: true,

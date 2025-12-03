@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import ForgotMyPasswordView from './ForgotMyPasswordView.vue';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();

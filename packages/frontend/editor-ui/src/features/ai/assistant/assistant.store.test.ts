@@ -13,7 +13,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';

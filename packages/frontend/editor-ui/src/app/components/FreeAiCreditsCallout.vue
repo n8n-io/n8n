@@ -5,7 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, ref } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';

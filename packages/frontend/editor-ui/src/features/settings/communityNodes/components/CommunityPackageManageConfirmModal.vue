@@ -12,7 +12,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import semver from 'semver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

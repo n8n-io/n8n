@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDebugInfo } from './useDebugInfo';
 import type { RootStoreState } from '@n8n/stores/useRootStore';
-import type { useSettingsStore as useSettingsStoreType } from '@/app/stores/settings.store';
+import type { useSettingsStore as useSettingsStoreType } from '@n8n/stores';
 import type { RecursivePartial } from '@/app/types/utils';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
