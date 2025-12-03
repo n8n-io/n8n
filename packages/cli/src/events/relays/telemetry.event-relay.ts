@@ -103,6 +103,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-retrieved-execution': (event) => this.userRetrievedExecution(event),
 			'user-retrieved-all-executions': (event) => this.userRetrievedAllExecutions(event),
 			'user-retrieved-workflow': (event) => this.userRetrievedWorkflow(event),
+			'user-retrieved-workflow-version': (event) => this.userRetrievedWorkflowVersion(event),
 			'user-retrieved-all-workflows': (event) => this.userRetrievedAllWorkflows(event),
 			'user-updated': (event) => this.userUpdated(event),
 			'user-deleted': (event) => this.userDeleted(event),
@@ -540,7 +541,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectsAdded,
 		userId,
 	}: RelayEventMap['sso-user-project-access-updated']) {
-		this.telemetry.track('Sso user project acess update', {
+		this.telemetry.track('Sso user project access update', {
 			user_id: userId,
 			projects_removed: projectsRemoved,
 			projects_added: projectsAdded,
@@ -1009,6 +1010,16 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userRetrievedWorkflow({ userId, publicApi }: RelayEventMap['user-retrieved-workflow']) {
 		this.telemetry.track('User retrieved workflow', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedWorkflowVersion({
+		userId,
+		publicApi,
+	}: RelayEventMap['user-retrieved-workflow-version']) {
+		this.telemetry.track('User retrieved workflow version', {
 			user_id: userId,
 			public_api: publicApi,
 		});

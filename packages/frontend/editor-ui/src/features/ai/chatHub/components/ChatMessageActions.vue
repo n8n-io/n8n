@@ -85,11 +85,15 @@ function handleReadAloud() {
 				text
 				@click="handleReadAloud"
 			/>
-			<template #content>{{ isSpeaking ? 'Stop reading' : 'Read aloud' }}</template>
+			<template #content>{{
+				isSpeaking
+					? i18n.baseText('chatHub.message.actions.stopReading')
+					: i18n.baseText('chatHub.message.actions.readAloud')
+			}}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
-			<template #content>Edit</template>
+			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
 			<N8nIconButton
@@ -99,12 +103,12 @@ function handleReadAloud() {
 				text
 				@click="handleRegenerate"
 			/>
-			<template #content>Regenerate</template>
+			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="executionUrl && message.executionId" placement="bottom" :show-after="300">
 			<N8nIconButton icon="info" type="tertiary" size="medium" text />
 			<template #content>
-				Execution ID:
+				{{ i18n.baseText('chatHub.message.actions.executionId') }}:
 				<N8nLink :to="executionUrl" :new-window="true">
 					{{ message.executionId }}
 				</N8nLink>

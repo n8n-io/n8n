@@ -1,7 +1,5 @@
 ARG NODE_VERSION=22.21.0
 ARG N8N_VERSION=snapshot
-ARG LAUNCHER_VERSION=1.4.1
-ARG TARGETPLATFORM
 
 # ==============================================================================
 # STAGE 1: System Dependencies & Base Setup
@@ -16,29 +14,7 @@ FROM alpine:3.22.2 AS app-artifact-processor
 COPY ./compiled /app/
 
 # ==============================================================================
-# STAGE 3: Task Runner Launcher
-# ==============================================================================
-FROM alpine:3.22.2 AS launcher-downloader
-ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION
-
-RUN set -e; \
-    case "$TARGETPLATFORM" in \
-        "linux/amd64") ARCH_NAME="amd64" ;; \
-        "linux/arm64") ARCH_NAME="arm64" ;; \
-        *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
-    esac; \
-    mkdir /launcher-temp && cd /launcher-temp; \
-    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz"; \
-    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256"; \
-    echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256; \
-    sha256sum -c checksum.sha256; \
-    mkdir -p /launcher-bin; \
-    tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
-    cd / && rm -rf /launcher-temp
-
-# ==============================================================================
-# STAGE 4: Final Runtime Image
+# STAGE 3: Final Runtime Image
 # ==============================================================================
 FROM system-deps AS runtime
 
@@ -52,9 +28,7 @@ ENV SHELL=/bin/sh
 WORKDIR /home/node
 
 COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
-COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY docker/images/n8n/docker-entrypoint.sh /
-COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
 
 RUN cd /usr/local/lib/node_modules/n8n && \
 		npm rebuild sqlite3 && \
