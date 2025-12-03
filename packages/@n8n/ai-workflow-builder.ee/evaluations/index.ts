@@ -36,8 +36,15 @@ async function main(): Promise<void> {
 		: 1;
 	const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
 
+	// Parse --notion-id argument for pairwise evaluation filtering
+	const notionId = getFlagValue('--notion-id');
+
+	// Parse --judges argument for pairwise evaluation (default: 3)
+	const numJudgesArg = getFlagValue('--judges');
+	const numJudges = numJudgesArg ? parseInt(numJudgesArg, 10) : 3;
+
 	if (usePairwiseEval) {
-		await runPairwiseLangsmithEvaluation(repetitions);
+		await runPairwiseLangsmithEvaluation(repetitions, notionId, numJudges);
 	} else if (useLangsmith) {
 		await runLangsmithEvaluation(repetitions);
 	} else {

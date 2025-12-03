@@ -32,7 +32,12 @@ const pairwiseEvaluationLLMResultSchema = z.object({
 });
 
 export type PairwiseEvaluationResult = z.infer<typeof pairwiseEvaluationLLMResultSchema> & {
+	/** @deprecated Use primaryPass and diagnosticScore instead */
 	score: number;
+	/** True only if ALL criteria passed (no violations) */
+	primaryPass: boolean;
+	/** Ratio of passed criteria to total criteria (0-1) */
+	diagnosticScore: number;
 };
 
 const EVALUATOR_SYSTEM_PROMPT = `You are an expert n8n workflow auditor. Your task is to strictly evaluate a candidate workflow against a provided set of requirements.
@@ -96,10 +101,13 @@ export async function evaluateWorkflowPairwise(
 	});
 
 	const totalRules = result.passes.length + result.violations.length;
-	const score = totalRules > 0 ? result.passes.length / totalRules : 0;
+	const diagnosticScore = totalRules > 0 ? result.passes.length / totalRules : 0;
+	const primaryPass = result.violations.length === 0;
 
 	return {
 		...result,
-		score,
+		score: diagnosticScore, // Keep for backwards compatibility
+		primaryPass,
+		diagnosticScore,
 	};
 }
