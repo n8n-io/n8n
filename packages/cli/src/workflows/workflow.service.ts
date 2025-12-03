@@ -24,10 +24,9 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import isEqual from 'lodash/isEqual';
-import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-import { NodeApiError, PROJECT_ROOT, assert } from 'n8n-workflow';
+import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -225,9 +224,11 @@ export class WorkflowService {
 			forceSave?: boolean;
 			publicApi?: boolean;
 			publishIfActive?: boolean;
+			expectedChecksum?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
+			expectedChecksum,
 			tagIds,
 			parentFolderId,
 			forceSave = false,
@@ -251,26 +252,17 @@ export class WorkflowService {
 			);
 		}
 
-		if (
-			!forceSave &&
-			workflowUpdateData.versionId !== '' &&
-			workflowUpdateData.versionId !== workflow.versionId
-		) {
-			throw new BadRequestError(
-				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
-			);
+		if (!forceSave && expectedChecksum) {
+			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
-		if (
-			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
-				.length > 0
-		) {
-			// Update the workflow's version when changing properties such as
-			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
-			// This is necessary for collaboration to work properly - even when only name or settings
-			// change, we need to update the version to detect conflicts when multiple users are editing.
+		// Update the workflow's version when changing nodes or connections
+		const saveNewVersion =
+			('nodes' in workflowUpdateData && !isEqual(workflowUpdateData.nodes, workflow.nodes)) ||
+			('connections' in workflowUpdateData &&
+				!isEqual(workflowUpdateData.connections, workflow.connections));
 
+		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -279,15 +271,13 @@ export class WorkflowService {
 					newVersionId: workflowUpdateData.versionId,
 				},
 			);
-		}
 
-		const versionChanged =
-			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
-
-		if (versionChanged) {
 			// To save a version, we need both nodes and connections
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
+		} else {
+			// Do not let users change versionId directly
+			workflowUpdateData.versionId = workflow.versionId;
 		}
 
 		// check credentials for old format
@@ -357,7 +347,7 @@ export class WorkflowService {
 		);
 
 		// Save the workflow to history first, so we can retrieve the complete version object for the update
-		if (versionChanged) {
+		if (saveNewVersion) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
@@ -504,7 +494,12 @@ export class WorkflowService {
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		options?: { versionId?: string; name?: string; description?: string },
+		options?: {
+			versionId?: string;
+			name?: string;
+			description?: string;
+			expectedChecksum?: string;
+		},
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -536,6 +531,10 @@ export class WorkflowService {
 				throw new NotFoundError('Version not found');
 			}
 			throw error;
+		}
+
+		if (options?.expectedChecksum) {
+			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
 		if (wasActive) {
@@ -879,5 +878,16 @@ export class WorkflowService {
 
 			return { resourceType: 'workflow', ...workflow, ...(includeNodes ? { nodes } : {}) };
 		});
+	}
+
+	async _detectConflicts(dbWorkflow: WorkflowEntity, expectedChecksum: string) {
+		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
+
+		if (expectedChecksum !== currentChecksum) {
+			throw new BadRequestError(
+				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
+				100,
+			);
+		}
 	}
 }
