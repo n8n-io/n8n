@@ -202,6 +202,7 @@ const menu = computed(() => {
 							title: agent.name,
 							disabled: false,
 						}))
+						.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
 				: error
 					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
 					: [];
