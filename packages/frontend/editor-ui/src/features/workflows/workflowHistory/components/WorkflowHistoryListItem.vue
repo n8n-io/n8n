@@ -293,6 +293,8 @@ onMounted(() => {
 }
 
 .tooltipContent {
+	// Set min width to keep the date on the same line
+	min-width: 200px;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
