@@ -79,18 +79,26 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
-			<N8nActionBox
-				v-if="props.clients.length === 0"
-				data-test-id="empty-oauth-clients-list-box"
-				:heading="i18n.baseText('settings.mcp.oAuthClients.table.empty.title')"
-			/>
 			<N8nDataTableServer
-				v-else
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
 				:items="props.clients"
 				:items-length="props.clients.length"
 			>
+				<template v-if="props.clients.length === 0" #cover>
+					<div :class="$style['empty-state']">
+						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
+							{{ i18n.baseText('settings.mcp.oauth.table.empty.title') }}
+						</N8nText>
+						<N8nText
+							data-test-id="mcp-workflow-table-empty-state-description"
+							size="small"
+							color="text-tint-1"
+						>
+							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
+						</N8nText>
+					</div>
+				</template>
 				<template #[`item.createdAt`]="{ item }">
 					<N8nText data-test-id="mcp-client-created-at">
 						<TimeAgo :date="String(item.createdAt)" />
@@ -115,5 +123,15 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg) 0;
+	min-height: 250px;
 }
 </style>

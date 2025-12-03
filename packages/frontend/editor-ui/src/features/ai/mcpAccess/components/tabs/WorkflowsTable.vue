@@ -4,7 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
-	N8nActionBox,
 	N8nActionToggle,
 	N8nDataTableServer,
 	N8nIcon,
@@ -102,20 +101,27 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
-			<N8nActionBox
-				v-if="props.workflows.length === 0"
-				data-test-id="empty-workflow-list-box"
-				:heading="i18n.baseText('settings.mcp.empty.title')"
-				:description="i18n.baseText('settings.mcp.empty.description')"
-			/>
 			<N8nDataTableServer
-				v-else
 				:class="$style['workflow-table']"
 				data-test-id="mcp-workflow-table"
 				:headers="tableHeaders"
 				:items="props.workflows"
 				:items-length="props.workflows.length"
 			>
+				<template v-if="props.workflows.length === 0" #cover>
+					<div :class="$style['empty-state']">
+						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
+							{{ i18n.baseText('settings.mcp.workflows.table.empty.title') }}
+						</N8nText>
+						<N8nText
+							data-test-id="mcp-workflow-table-empty-state-description"
+							size="small"
+							color="text-tint-1"
+						>
+							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
+						</N8nText>
+					</div>
+				</template>
 				<template #[`item.workflow`]="{ item }">
 					<div :class="$style['workflow-cell']" data-test-id="mcp-workflow-cell">
 						<N8nLink
@@ -251,6 +257,16 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	}
 }
 
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg) 0;
+	min-height: 250px;
+}
+
 .workflow-cell {
 	display: flex;
 	.separator,
@@ -268,10 +284,11 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 
 .ellipsis {
 	padding-right: var(--spacing--4xs);
-	color: var(--color--text--tint-1);
 }
 
+.ellipsis,
 .separator {
+	user-select: none;
 	color: var(--color--text--tint-1);
 }
 
