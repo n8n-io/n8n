@@ -9,6 +9,7 @@ import {
 	MODAL_CONFIRM,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	VIEWS,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -45,7 +46,6 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
-
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -142,13 +142,17 @@ export function useWorkflowSaving({
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
+		if (IS_DRAFT_PUBLISH_ENABLED) {
+			return undefined;
+		}
+
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
 
 		if (missingActivatableTriggerNode) {
 			// Automatically deactivate if all activatable triggers are removed
 			return {
-				title: i18n.baseText('workflows.deactivated'),
+				title: i18n.baseText('workflows.autodeactivated'),
 				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
 				type: 'info',
 			};

@@ -104,7 +104,11 @@ export function useAccessSettingsCsvExport() {
 				for (const project of user.projectRelations) {
 					const projectName = escapeCsvValue(project.name ?? '');
 					const projectId = escapeCsvValue(project.id ?? '');
-					const projectRole = escapeCsvValue(project.role ?? '');
+					// In our backend, project roles are stored like this: project:viewer
+					// But to make the configuration of project role provisioning easier,
+					// we omit this part of the role value in the SSO config.
+					const roleValueForProvisioning = project.role.split(':')[1] ?? project.role;
+					const projectRole = escapeCsvValue(roleValueForProvisioning);
 					csvRows.push(`${email},${projectName},${projectId},${projectRole}`);
 				}
 			}

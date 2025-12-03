@@ -57,10 +57,12 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 		programmaticEvaluationResult: {
 			overallScore: 0,
 			connections: { violations: [], score: 0 },
+			nodes: { violations: [], score: 0 },
 			trigger: { violations: [], score: 0 },
 			agentPrompt: { violations: [], score: 0 },
 			tools: { violations: [], score: 0 },
 			fromAi: { violations: [], score: 0 },
+			similarity: null,
 		},
 		generationTime: 0,
 		error: errorMessage,
@@ -107,10 +109,11 @@ export async function runSingleTest(
 			userPrompt: testCase.prompt,
 			generatedWorkflow,
 			referenceWorkflow: testCase.referenceWorkflow,
+			referenceWorkflows: testCase.referenceWorkflows,
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
-		const programmaticEvaluationResult = programmaticEvaluation(evaluationInput, nodeTypes);
+		const programmaticEvaluationResult = await programmaticEvaluation(evaluationInput, nodeTypes);
 
 		return {
 			testCase,

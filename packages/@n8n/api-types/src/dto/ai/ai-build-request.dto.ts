@@ -57,5 +57,10 @@ export class AiBuilderChatRequestDto extends Z.class({
 				})
 				.optional(),
 		}),
+		featureFlags: z
+			.object({
+				templateExamples: z.boolean().optional(),
+			})
+			.optional(),
 	}),
 }) {}

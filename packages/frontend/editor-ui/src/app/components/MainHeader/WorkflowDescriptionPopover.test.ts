@@ -9,7 +9,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 
 vi.mock('@/app/composables/useToast', () => {
@@ -540,7 +539,7 @@ describe('WorkflowDescriptionPopover', () => {
 		});
 	});
 
-	describe('MCP and webhook tooltips', () => {
+	describe('MCP tooltips', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
 			// Ensure MCP is disabled
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
@@ -558,8 +557,8 @@ describe('WorkflowDescriptionPopover', () => {
 			// The tooltip text appears as placeholder in the textarea
 			const textarea = getByTestId('workflow-description-input');
 			const placeholder = textarea.getAttribute('placeholder');
+
 			expect(placeholder).toContain('Edit workflow description');
-			// When MCP is disabled, should not contain MCP-specific text
 			expect(placeholder).not.toContain('MCP clients');
 		});
 
@@ -580,106 +579,8 @@ describe('WorkflowDescriptionPopover', () => {
 			const textarea = getByTestId('workflow-description-input');
 			const placeholder = textarea.getAttribute('placeholder');
 
-			// When MCP is enabled, the placeholder includes both base tooltip and MCP-specific text
-			expect(placeholder).toContain('Edit workflow description');
 			expect(placeholder).toContain('MCP clients');
-			// Should not include webhook notice when no webhooks
-			expect(placeholder).not.toContain('webhook');
-		});
-
-		it('should show webhook notice when workflow has webhooks and MCP is enabled', async () => {
-			// Enable MCP module
-			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
-
-			// Set up workflow with an enabled webhook node
-			workflowsStore.workflow = {
-				id: 'test-workflow-id',
-				name: 'Test Workflow',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				versionId: '1',
-				nodes: [
-					{
-						id: 'webhook-1',
-						name: 'Webhook',
-						type: WEBHOOK_NODE_TYPE,
-						disabled: false,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			};
-
-			const { getByTestId } = renderComponent({
-				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
-				},
-			});
-
-			await userEvent.click(getByTestId('workflow-description-button'));
-
-			const textarea = getByTestId('workflow-description-input');
-			const placeholder = textarea.getAttribute('placeholder');
-
-			// When MCP is enabled and webhook is present, the placeholder includes all three parts
-			expect(placeholder).toContain('Edit workflow description');
-			expect(placeholder).toContain('MCP clients');
-			expect(placeholder).toContain('webhook inputs');
-			expect(placeholder).toContain('payload format');
-		});
-
-		it('should not show webhook notice for disabled webhook nodes', async () => {
-			// Enable MCP module
-			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-
-			// Set up workflow with a disabled webhook node
-			workflowsStore.workflow = {
-				id: 'test-workflow-id',
-				name: 'Test Workflow',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				versionId: '1',
-				nodes: [
-					{
-						id: 'webhook-1',
-						name: 'Webhook',
-						type: WEBHOOK_NODE_TYPE,
-						disabled: true,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			};
-
-			const { getByTestId } = renderComponent({
-				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
-				},
-			});
-
-			await userEvent.click(getByTestId('workflow-description-button'));
-
-			const textarea = getByTestId('workflow-description-input');
-			const placeholder = textarea.getAttribute('placeholder');
-
-			// Should show MCP text but not webhook notice for disabled webhooks
-			expect(placeholder).toContain('Edit workflow description');
-			expect(placeholder).toContain('MCP clients');
-			expect(placeholder).not.toContain('webhook inputs');
-			expect(placeholder).not.toContain('payload format');
+			expect(placeholder).not.toContain('Edit workflow description');
 		});
 	});
 

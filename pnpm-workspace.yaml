@@ -6,10 +6,10 @@ packages:
   - packages/testing/**
 
 catalog:
-  '@langchain/anthropic': 0.3.26
-  '@langchain/community': 0.3.50
-  '@langchain/core': 0.3.68
-  '@langchain/openai': 0.6.16
+  '@langchain/anthropic': 1.1.3
+  '@langchain/community': 1.0.5
+  '@langchain/core': 1.1.0
+  '@langchain/openai': 1.1.3
   '@n8n/typeorm': 0.3.20-15
   '@n8n_io/ai-assistant-sdk': 1.17.0
   '@sentry/node': ^9.42.1
@@ -34,6 +34,7 @@ catalog:
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
   js-base64: 3.7.2
+  jsonrepair: 3.13.1
   jsonwebtoken: 9.0.2
   lodash: 4.17.21
   luxon: 3.4.4
@@ -79,3 +80,17 @@ catalogs:
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
 
+minimumReleaseAge: 4320
+
+minimumReleaseAgeExclude:
+  - '@n8n/*'
+  - '@n8n_io/*'
+  - 'tsdown@0.16.5'
+  - eslint-plugin-storybook
+  - '@langchain/*'
+  - 'langchain'
+  - '@anthropic-ai/sdk'
+  - '@google/generative-ai'
+  - '@google/genai'
+  - body-parser
+  - node-forge

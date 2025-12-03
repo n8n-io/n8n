@@ -36,6 +36,7 @@ const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const trackedCategorizations = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
@@ -94,6 +95,9 @@ async function onUserMessage(content: string) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
 
+	// Reset tidy up flag for each new message exchange
+	shouldTidyUp.value = false;
+
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
@@ -106,6 +110,7 @@ function onNewWorkflow() {
 	trackedTools.value.clear();
 	trackedCategorizations.value.clear();
 	workflowUpdated.value = undefined;
+	shouldTidyUp.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -257,10 +262,14 @@ watch(
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
+						// Only tidy up if new nodes are added per user message
+						const hasNewNodes = Boolean(result.newNodeIds && result.newNodeIds.length > 0);
+						shouldTidyUp.value = shouldTidyUp.value || hasNewNodes;
+
 						// Import the updated workflow
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
-							tidyUp: true,
+							tidyUp: shouldTidyUp.value,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,

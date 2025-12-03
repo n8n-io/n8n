@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
-	globalIgnores(['jest.config*.js']),
+	globalIgnores(['jest.config*.js', 'evaluations/programmatic/python/.venv/**']),
 	nodeConfig,
 	{
 	rules: {

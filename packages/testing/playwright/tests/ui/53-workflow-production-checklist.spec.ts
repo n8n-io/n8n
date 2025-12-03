@@ -7,7 +7,7 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.start.fromBlankCanvas();
 	});
 
-	test('should show suggested actions automatically when workflow is first activated', async ({
+	test('should show suggested actions automatically when workflow is first published', async ({
 		n8n,
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
@@ -15,14 +15,12 @@ test.describe('Workflow Production Checklist', () => {
 
 		await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
 
-		await n8n.canvas.activateWorkflow();
-
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 
 		await expect(n8n.canvas.getProductionChecklistButton()).toBeVisible();
 		await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-		await expect(n8n.canvas.getProductionChecklistActionItem()).toHaveCount(2);
 		await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
@@ -38,12 +36,11 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.canvas.nodeDisableButton('Message a model').click();
 
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 
 		await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-		await expect(n8n.canvas.getProductionChecklistActionItem()).toHaveCount(3);
 
 		await expect(n8n.canvas.getEvaluationsActionItem()).toBeVisible();
 		await n8n.canvas.getEvaluationsActionItem().click();
@@ -56,7 +53,7 @@ test.describe('Workflow Production Checklist', () => {
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 
@@ -73,7 +70,7 @@ test.describe('Workflow Production Checklist', () => {
 	test('should open workflow settings modal when time saved action is clicked', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 
@@ -89,7 +86,7 @@ test.describe('Workflow Production Checklist', () => {
 	test('should allow ignoring individual actions', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 
@@ -109,7 +106,7 @@ test.describe('Workflow Production Checklist', () => {
 	test('should show completed state for configured actions', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 
@@ -134,7 +131,7 @@ test.describe('Workflow Production Checklist', () => {
 	test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 		await n8n.workflowActivationModal.close();
 

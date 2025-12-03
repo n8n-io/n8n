@@ -5,6 +5,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import {
+	createRunExecutionData,
 	NodeConnectionTypes,
 	type IConnections,
 	type INodeExecutionData,
@@ -83,9 +84,9 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			status: 'success',
 			startedAt: new Date(),
 			createdAt: new Date(),
-			data: {
+			data: createRunExecutionData({
 				resultData: { runData },
-			},
+			}),
 		});
 	}
 

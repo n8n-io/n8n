@@ -70,7 +70,7 @@ describe('ScalingService', () => {
 		QUEUE_NAME,
 		{
 			prefix: globalConfig.queue.bull.prefix,
-			settings: globalConfig.queue.bull.settings,
+			settings: { ...globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: expect.any(Function),
 		},
 	];
