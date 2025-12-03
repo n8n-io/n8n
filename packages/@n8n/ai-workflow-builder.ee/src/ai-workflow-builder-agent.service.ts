@@ -211,7 +211,7 @@ export class AiWorkflowBuilderService {
 		// After the stream completes, track telemetry
 		if (this.onTelemetryEvent && userId) {
 			try {
-				await this.trackBuilderReplyTelemetry(agent, workflowId, userId);
+				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id);
 			} catch (error) {
 				this.logger?.error('Failed to track builder reply telemetry', { error });
 			}
@@ -222,6 +222,7 @@ export class AiWorkflowBuilderService {
 		agent: WorkflowBuilderAgent,
 		workflowId: string | undefined,
 		userId: string,
+		userMessageId: string,
 	): Promise<void> {
 		if (!this.onTelemetryEvent) return;
 
@@ -262,6 +263,7 @@ export class AiWorkflowBuilderService {
 			...(state.values.templateIds.length > 0 && {
 				templates_selected: state.values.templateIds,
 			}),
+			user_message_id: userMessageId,
 		};
 
 		this.onTelemetryEvent('Builder replied to user message', properties);
