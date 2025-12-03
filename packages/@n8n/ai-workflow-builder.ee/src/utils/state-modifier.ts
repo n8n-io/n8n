@@ -106,7 +106,10 @@ export async function handleCompactMessages(
 	messages: BaseMessage[];
 	coordinationLog: CoordinationLogEntry[];
 }> {
-	const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
+	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage);
+	if (!lastHumanMessage) {
+		throw new Error('Cannot compact messages: no HumanMessage found');
+	}
 
 	const compactedMessages = await conversationCompactChain(llm, messages, previousSummary);
 

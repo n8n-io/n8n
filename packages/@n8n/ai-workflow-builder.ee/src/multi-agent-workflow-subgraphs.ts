@@ -27,7 +27,6 @@ import {
 	handleCompactMessages,
 	handleCreateWorkflowName,
 	handleDeleteMessages,
-	type StateModificationAction,
 } from './utils/state-modifier';
 
 /**
@@ -244,8 +243,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state
 			.addConditionalEdges('check_state', (state) => {
-				const action = state.nextPhase as StateModificationAction;
-				const routes: Record<StateModificationAction, string> = {
+				const routes: Record<string, string> = {
 					cleanup_dangling: 'cleanup_dangling',
 					compact_messages: 'compact_messages',
 					delete_messages: 'delete_messages',
@@ -253,7 +251,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					auto_compact_messages: 'compact_messages', // Reuse same node
 					continue: 'supervisor',
 				};
-				return routes[action] ?? 'supervisor';
+				return routes[state.nextPhase] ?? 'supervisor';
 			})
 			// Route after state modification nodes
 			.addEdge('cleanup_dangling', 'check_state') // Re-check after cleanup

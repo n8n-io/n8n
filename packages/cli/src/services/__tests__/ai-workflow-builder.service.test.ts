@@ -121,6 +121,7 @@ describe('WorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id', // instanceId
 				'https://instance.test.com', // instanceUrl
+				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
 			);
@@ -160,6 +161,7 @@ describe('WorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id', // instanceId
 				'https://instance.test.com', // instanceUrl
+				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
 			);
@@ -279,7 +281,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const callback = args[5]; // onCreditsUpdated is the 6th parameter
+				const callback = args[6]; // onCreditsUpdated is the 7th parameter (after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
@@ -327,7 +329,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const callback = args[5]; // onCreditsUpdated is the 6th parameter
+				const callback = args[6]; // onCreditsUpdated is the 7th parameter (after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
@@ -387,7 +389,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[6]; // onTelemetryEvent is the 7th parameter
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -433,7 +435,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[6]; // onTelemetryEvent is the 7th parameter
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -477,7 +479,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[6]; // onTelemetryEvent is the 7th parameter
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;

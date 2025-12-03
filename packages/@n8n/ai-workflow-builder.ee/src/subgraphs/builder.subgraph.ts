@@ -127,6 +127,7 @@ WHEN TO SET hasOutputParser: true on AI Agent:
 - AI output will be formatted/displayed (HTML emails, reports with specific sections)
 - AI output will be stored in database/data tables with specific fields
 - AI is classifying, scoring, or extracting specific data fields
+</structured_output_parser_guidance>
 
 <node_connections_understanding>
 n8n connections flow from SOURCE (output) to TARGET (input).
