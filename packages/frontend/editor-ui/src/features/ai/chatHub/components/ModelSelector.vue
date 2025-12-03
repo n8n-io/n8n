@@ -40,6 +40,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { truncateBeforeLast } from '@n8n/utils';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
+const MAX_AGENT_NAME_CHARS = 30;
+const MAX_AGENT_NAME_CHARS_MENU = 45;
 
 const {
 	selectedAgent,
@@ -100,7 +102,7 @@ const menu = computed(() => {
 			? []
 			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => ({
 					id: stringifyModel(agent.model),
-					title: agent.name,
+					title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 					disabled: false,
 				}));
 
@@ -199,7 +201,7 @@ const menu = computed(() => {
 						)
 						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
 							id: stringifyModel(agent.model),
-							title: agent.name,
+							title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 							disabled: false,
 						}))
 						.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
@@ -341,7 +343,13 @@ defineExpose({
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" teleport @select="onSelect">
+	<N8nNavigationDropdown
+		ref="dropdownRef"
+		:submenu-class="$style.component"
+		:menu="menu"
+		teleport
+		@select="onSelect"
+	>
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
@@ -366,10 +374,10 @@ defineExpose({
 			/>
 			<div :class="$style.selected">
 				<div>
-					{{ truncateBeforeLast(selectedLabel, 30) }}
+					{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
 				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ truncateBeforeLast(credentialsName, 30) }}
+					{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
 				</N8nText>
 				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
 					<N8nIcon
@@ -386,6 +394,13 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+.component {
+	& :global(.el-popper) {
+		/* Enforce via text truncation instead */
+		max-width: unset !important;
+	}
+}
+
 .dropdownButton {
 	display: flex;
 	align-items: center;
