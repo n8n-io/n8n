@@ -276,7 +276,8 @@ export function useBuilderMessages() {
 		let shouldClearThinking = false;
 
 		newMessages.forEach((msg, index) => {
-			// Generate unique ID for each message in the batch
+			// Generate unique ID for each message in the batch, based on original user message id.
+			// Used in telemetry to track events related to a specific user message
 			const messageId = `${baseId}-${index}`;
 			const clearThinking = processSingleMessage(mutableMessages, msg, messageId, retry);
 			shouldClearThinking = shouldClearThinking || clearThinking;

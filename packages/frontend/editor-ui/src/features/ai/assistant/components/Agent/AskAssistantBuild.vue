@@ -130,71 +130,6 @@ function onFeedback(feedback: RatingFeedback) {
 	}
 }
 
-function dedupeToolNames(toolNames: string[]): string[] {
-	return [...new Set(toolNames)];
-}
-
-function isCategorizationData(
-	data: unknown,
-): data is { techniques: string[]; confidence?: number } {
-	return (
-		typeof data === 'object' &&
-		data !== null &&
-		'techniques' in data &&
-		Array.isArray(data.techniques) &&
-		data.techniques.every((t) => typeof t === 'string')
-	);
-}
-
-function trackWorkflowCategorization() {
-	// Track categorization telemetry
-	builderStore.toolMessages.forEach((toolMsg) => {
-		if (toolMsg.toolName !== 'categorize_prompt') return;
-		if (toolMsg.status !== 'completed') return;
-		if (!toolMsg.toolCallId) return;
-		if (trackedCategorizations.value.has(toolMsg.toolCallId)) return;
-
-		const outputUpdate = toolMsg.updates.find((u) => u.type === 'output');
-		const categorizationData = outputUpdate?.data?.categorization;
-
-		if (!isCategorizationData(categorizationData)) return;
-
-		trackedCategorizations.value.add(toolMsg.toolCallId);
-
-		telemetry.track('Classifier labels user prompt', {
-			user_id: usersStore.currentUserId ?? undefined,
-			workflow_id: workflowsStore.workflowId,
-			classifier_labels: categorizationData.techniques,
-			confidence: categorizationData.confidence,
-			session_id: builderStore.trackingSessionId,
-			timestamp: new Date().toISOString(),
-		});
-	});
-}
-
-function trackWorkflowModifications() {
-	if (workflowUpdated.value) {
-		// Track tool usage for telemetry
-		const newToolMessages = builderStore.toolMessages.filter(
-			(toolMsg) =>
-				toolMsg.status !== 'running' &&
-				toolMsg.toolCallId &&
-				!trackedTools.value.has(toolMsg.toolCallId),
-		);
-
-		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-		telemetry.track('Workflow modified by builder', {
-			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
-			session_id: builderStore.trackingSessionId,
-			start_workflow_json: workflowUpdated.value.start,
-			end_workflow_json: workflowUpdated.value.end,
-			workflow_id: workflowsStore.workflowId,
-		});
-
-		workflowUpdated.value = undefined;
-	}
-}
-
 function onWorkflowExecuted() {
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
@@ -291,11 +226,6 @@ watch(
 watch(
 	() => builderStore.streaming,
 	async (isStreaming) => {
-		if (!isStreaming) {
-			trackWorkflowModifications();
-			trackWorkflowCategorization();
-		}
-
 		if (
 			builderStore.initialGeneration &&
 			!isStreaming &&
