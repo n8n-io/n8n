@@ -24,6 +24,7 @@ const i18n = useI18n();
 <template>
 	<div :class="$style.container" data-test-id="mcp-empty-state-container">
 		<N8nActionBox
+			:icon="{ type: 'icon', value: 'mcp' }"
 			:heading="i18n.baseText('settings.mcp.actionBox.heading')"
 			:description="i18n.baseText('settings.mcp.toggle.disabled.notice')"
 			:button-text="i18n.baseText('settings.mcp.actionBox.button.label')"
@@ -39,13 +40,15 @@ const i18n = useI18n();
 					{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}
 				</span>
 			</template>
+			<template #additionalContent>
+				<N8nText color="text-light" size="small">
+					{{ i18n.baseText('settings.mcp.emptyState.docs.part1') }}
+					<a :href="MCP_DOCS_PAGE_URL" :class="$style['docs-link']" target="_blank">
+						{{ i18n.baseText('generic.learnMore').toLowerCase() }}
+					</a>
+				</N8nText>
+			</template>
 		</N8nActionBox>
-		<N8nText color="text-light">
-			{{ i18n.baseText('settings.mcp.emptyState.docs.part1') }}
-			<a :href="MCP_DOCS_PAGE_URL" :class="$style['docs-link']" target="_blank">
-				{{ i18n.baseText('generic.learnMore').toLowerCase() }}
-			</a>
-		</N8nText>
 	</div>
 </template>
 
@@ -54,6 +57,10 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+
+	button {
+		margin-bottom: var(--spacing--2xs);
+	}
 }
 
 .docs-link {
