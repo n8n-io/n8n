@@ -1,7 +1,7 @@
 import { nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { within, waitFor } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -10,7 +10,7 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+// import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('vue-router', async () => ({
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
-let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+// let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
 let searchWorkflowsSpy: MockInstance<(typeof workflowsStore)['searchWorkflows']>;
@@ -48,7 +48,7 @@ describe('WorkflowSettingsVue', () => {
 		pinia = createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		settingsStore = mockedStore(useSettingsStore);
-		sourceControlStore = mockedStore(useSourceControlStore);
+		// sourceControlStore = mockedStore(useSourceControlStore);
 
 		settingsStore.settings = {
 			enterprise: {},
