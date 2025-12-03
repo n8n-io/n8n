@@ -37,7 +37,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
@@ -57,8 +57,7 @@ const usersStore = useUsersStore();
 const chatStore = useChatStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
 const i18n = useI18n();
 

@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
@@ -12,8 +11,7 @@ import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const options = computed(() => {

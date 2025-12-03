@@ -5,8 +5,7 @@ import {
 } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { useToast } from '@/app/composables/useToast';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
@@ -32,8 +31,7 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const toast = useToast();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();

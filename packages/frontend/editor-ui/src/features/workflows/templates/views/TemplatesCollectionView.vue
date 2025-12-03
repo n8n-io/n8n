@@ -12,8 +12,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isFullTemplatesCollection } from '@/features/workflows/templates/utils/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nHeading, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';
@@ -25,8 +24,7 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 
 const loading = ref(true);
 const notFoundError = ref(false);

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/app/constants';
@@ -26,7 +26,7 @@ const cloudPlanStore = useCloudPlanStore();
 
 const { showError, showMessage } = useToast();
 const { confirm } = useMessage();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();

@@ -12,7 +12,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '../components/EventDestinationCard.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -27,7 +27,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 
 const pageRedirectHelper = usePageRedirectionHelper();

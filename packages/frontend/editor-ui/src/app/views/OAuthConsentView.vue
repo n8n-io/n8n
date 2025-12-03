@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useConsentStore } from '@/app/stores/consent.store';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, computed, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
@@ -16,7 +16,7 @@ const consentStore = useConsentStore();
 const settingsStore = useSettingsStore();
 
 const i18n = useI18n();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const toast = useToast();
 
 // Success state:

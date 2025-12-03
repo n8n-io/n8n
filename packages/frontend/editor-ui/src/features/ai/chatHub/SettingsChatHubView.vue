@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
@@ -20,8 +20,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const i18n = useI18n();
 const toast = useToast();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 
 const chatStore = useChatStore();
 const usersStore = useUsersStore();

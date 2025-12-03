@@ -12,7 +12,7 @@ import {
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,8 +32,7 @@ const route = useRoute();
 const router = useRouter();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const toast = useToast();
 
 const dataTableStore = useDataTableStore();

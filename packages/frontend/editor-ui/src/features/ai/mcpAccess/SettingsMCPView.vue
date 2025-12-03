@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import type { WorkflowListItem } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -19,8 +19,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
 const toast = useToast();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const mcp = useMcp();
 
 const workflowsStore = useWorkflowsStore();

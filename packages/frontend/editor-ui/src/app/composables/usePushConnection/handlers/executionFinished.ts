@@ -36,7 +36,7 @@ import {
 } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/app/composables/useWorkflowState';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -278,7 +278,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	}
 
 	// Workflow did start but had been put to wait
-	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).setDocumentTitle(workflowObject.name as string, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowObject.name as string, 'IDLE');
 }
 
 /**
@@ -292,8 +292,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
-	const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
 	const workflowObject = workflowsStore.workflowObject;
 
@@ -368,9 +367,8 @@ function handleExecutionFinishedSuccessfully(
 	workflowState: WorkflowState,
 ) {
 	const toast = useToast();
-	const settingsStore = useSettingsStore();
 
-	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).setDocumentTitle(workflowName, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 	workflowState.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: message,
@@ -389,11 +387,10 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const toast = useToast();
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
-	const settingsStore = useSettingsStore();
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
 
-	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).setDocumentTitle(workflowName, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {

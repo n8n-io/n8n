@@ -15,7 +15,7 @@ import {
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -92,7 +92,7 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
 
 const isTagsEditEnabled = ref(false);

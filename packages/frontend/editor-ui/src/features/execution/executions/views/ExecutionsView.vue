@@ -2,7 +2,7 @@
 import type { ExecutionFilterType } from '../executions.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import GlobalExecutionsList from '../components/global/GlobalExecutionsList.vue';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -24,8 +24,7 @@ const externalHooks = useExternalHooks();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const toast = useToast();
 const overview = useProjectPages();
 

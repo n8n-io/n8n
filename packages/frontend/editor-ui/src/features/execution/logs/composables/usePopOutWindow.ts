@@ -1,7 +1,6 @@
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { PopOutWindowKey } from '@/app/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	computed,
 	type ComputedRef,
@@ -96,8 +95,7 @@ export function usePopOutWindow({
 			syncStyleMutations(popOutWindow.value, mutations);
 		}
 	});
-	const settingsStore = useSettingsStore();
-	const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel, windowRef: popOutWindow });
+	const documentTitle = useDocumentTitle(popOutWindow);
 
 	// Copy over dynamic styles to child window to support lazily imported modules
 	observer.observe(document.head, { childList: true, subtree: true });

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
 import { useOrchestrationStore } from '../orchestration.store';
-import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -26,8 +26,7 @@ withDefaults(
 const router = useRouter();
 const i18n = useI18n();
 const pushConnection = usePushConnection({ router });
-const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const documentTitle = useDocumentTitle();
 const telemetry = useTelemetry();
 
 const orchestrationManagerStore = useOrchestrationStore();
