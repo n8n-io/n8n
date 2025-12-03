@@ -2846,7 +2846,8 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({});
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('versionId is required');
+		expect(response.body.path).toContain('versionId');
+		expect(response.body.message).toContain('Required');
 	});
 
 	test('should return 404 when workflow does not exist', async () => {
@@ -2983,6 +2984,51 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 		expect(updatedVersion?.name).toBeNull();
 		expect(updatedVersion?.description).toBeNull();
+	});
+
+	test('should return 400 when version name exceeds max length', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const longName = 'a'.repeat(129); // Max is 128
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
+			versionId: workflow.versionId,
+			name: longName,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when version description exceeds max length', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const longDescription = 'a'.repeat(2049); // Max is 2048
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
+			versionId: workflow.versionId,
+			description: longDescription,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should accept version name and description at max length', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const maxName = 'a'.repeat(128);
+		const maxDescription = 'b'.repeat(1000);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
+			versionId: workflow.versionId,
+			name: maxName,
+			description: maxDescription,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.versionId },
+		});
+
+		expect(historyVersion?.name).toBe(maxName);
+		expect(historyVersion?.description).toBe(maxDescription);
 	});
 
 	test('should deactivate workflow when activation fails', async () => {
