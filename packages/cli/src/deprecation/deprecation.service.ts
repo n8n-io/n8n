@@ -56,14 +56,6 @@ export class DeprecationService {
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
 		},
 		{
-			envVar: 'N8N_RUNNERS_ENABLED',
-			message:
-				'Running n8n without task runners is deprecated. Task runners will be turned on by default in a future version. Please set `N8N_RUNNERS_ENABLED=true` to enable task runners now and avoid potential issues in the future. Learn more: https://docs.n8n.io/hosting/configuration/task-runners/',
-			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
-			warnIfMissing: true,
-			disableIf: () => this.globalConfig.nodes.exclude.includes('n8n-nodes-base.code'),
-		},
-		{
 			envVar: 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS',
 			message:
 				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manual executions to workers and avoid potential issues in the future. Consider increasing memory available to workers and reducing memory available to main.',
