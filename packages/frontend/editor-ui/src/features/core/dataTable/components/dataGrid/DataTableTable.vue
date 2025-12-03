@@ -232,7 +232,7 @@ defineExpose({
 	--ag-font-size: var(--font-size--xs);
 	--ag-font-color: var(--color--text);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-	--ag-header-background-color: var(--color--background--light-1);
+	--ag-header-background-color: var(--color--foreground--tint-1);
 	--ag-header-font-size: var(--font-size--xs);
 	--ag-header-font-weight: var(--font-weight--medium);
 	--ag-header-foreground-color: var(--color--text--shade-1);
