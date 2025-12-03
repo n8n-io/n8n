@@ -1,8 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`N8NActionBox > should render correctly 1`] = `
+exports[`N8NActionBox > should render correctly with emoji 1`] = `
 "<div class="n8n-action-box container" data-test-id="action-box">
-  <div class="emoji">😿</div>
+  <div class="icon"><span>😿</span></div>
   <div class="heading">
     <n8n-heading-stub align="center" tag="span" bold="false" size="xlarge"></n8n-heading-stub>
   </div>
@@ -12,6 +12,26 @@ exports[`N8NActionBox > should render correctly 1`] = `
   <n8n-button-stub block="false" element="button" label="Do something" square="false" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="primary" role="button" class="el-tooltip__trigger"></n8n-button-stub>
   <!--teleport start-->
   <!--teleport end-->
+  <!--v-if-->
+  <!--v-if-->
+</div>"
+`;
+
+exports[`N8NActionBox > should render correctly with icon 1`] = `
+"<div class="n8n-action-box container" data-test-id="action-box">
+  <div class="icon">
+    <n8n-icon-stub icon="plus" strokewidth="1.5" size="40" spin="false" color="foreground-xdark"></n8n-icon-stub>
+  </div>
+  <div class="heading">
+    <n8n-heading-stub align="center" tag="span" bold="false" size="xlarge"></n8n-heading-stub>
+  </div>
+  <div class="description">
+    <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
+  </div>
+  <n8n-button-stub block="false" element="button" label="Add Item" square="false" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="primary" role="button" class="el-tooltip__trigger"></n8n-button-stub>
+  <!--teleport start-->
+  <!--teleport end-->
+  <!--v-if-->
   <!--v-if-->
 </div>"
 `;

@@ -110,8 +110,14 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
+const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
 	nodeViewEventBus: {
+		emit: nodeViewEventBusEmitMock,
+	},
+	dataPinningEventBus: {
+		on: vi.fn(),
+		off: vi.fn(),
 		emit: vi.fn(),
 	},
 }));
@@ -1588,6 +1594,343 @@ describe('AskAssistantBuild', () => {
 			// first-tool is ignored, because it was tracked in first run (same tool call id)
 			tools_called: ['second-tool', 'third-tool'],
 			workflow_id: 'abc123',
+		});
+	});
+
+	describe('shouldTidyUp logic', () => {
+		it('should set tidyUp to true when new nodes are added', async () => {
+			const originalWorkflow = { nodes: [], connections: {} };
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(originalWorkflow));
+			builderStore.applyWorkflowUpdate.mockReturnValue({
+				success: true,
+				workflowData: newWorkflow,
+				newNodeIds: ['new-node-1'],
+				oldNodeIds: [],
+			});
+
+			workflowsStore.$patch({ workflow: originalWorkflow });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Trigger workflow update with new nodes
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+
+			await flushPromises();
+
+			// Verify importWorkflowData was called with tidyUp: true
+			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
+				data: newWorkflow,
+				tidyUp: true,
+				nodesIdsToTidyUp: ['new-node-1'],
+				regenerateIds: false,
+				trackEvents: false,
+			});
+		});
+
+		it('should set tidyUp to false when no new nodes are added (only parameter updates)', async () => {
+			const existingWorkflow = {
+				nodes: [
+					{
+						id: 'existing-node',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: { url: 'http://old.com' },
+					},
+				],
+				connections: {},
+			};
+			const updatedWorkflow = {
+				nodes: [
+					{
+						id: 'existing-node',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: { url: 'http://new.com' },
+					},
+				],
+				connections: {},
+			};
+
+			builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(existingWorkflow));
+			builderStore.applyWorkflowUpdate.mockReturnValue({
+				success: true,
+				workflowData: updatedWorkflow,
+				newNodeIds: [], // No new nodes, just parameter update
+				oldNodeIds: ['existing-node'],
+			});
+
+			workflowsStore.$patch({ workflow: existingWorkflow });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Trigger workflow update without new nodes
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(updatedWorkflow),
+				},
+			];
+
+			await flushPromises();
+
+			// Verify importWorkflowData was called with tidyUp: false
+			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
+				data: updatedWorkflow,
+				tidyUp: false,
+				nodesIdsToTidyUp: [],
+				regenerateIds: false,
+				trackEvents: false,
+			});
+		});
+
+		it('should keep tidyUp true once set within the same user message exchange', async () => {
+			const workflow1 = { nodes: [], connections: {} };
+			const workflow2 = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+			const workflow3 = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: { updated: true },
+					},
+				],
+				connections: {},
+			};
+
+			builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(workflow1));
+
+			// First update adds new nodes
+			builderStore.applyWorkflowUpdate
+				.mockReturnValueOnce({
+					success: true,
+					workflowData: workflow2,
+					newNodeIds: ['node-1'],
+					oldNodeIds: [],
+				})
+				// Second update has no new nodes (just parameter change)
+				.mockReturnValueOnce({
+					success: true,
+					workflowData: workflow3,
+					newNodeIds: [],
+					oldNodeIds: ['node-1'],
+				});
+
+			workflowsStore.$patch({ workflow: workflow1 });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			const msgId1 = faker.string.uuid();
+			const msgId2 = faker.string.uuid();
+
+			// First workflow update (adds new nodes)
+			builderStore.workflowMessages = [
+				{
+					id: msgId1,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(workflow2),
+				},
+			];
+
+			await flushPromises();
+
+			// First call should have tidyUp: true
+			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
+				data: workflow2,
+				tidyUp: true,
+				nodesIdsToTidyUp: ['node-1'],
+				regenerateIds: false,
+				trackEvents: false,
+			});
+
+			nodeViewEventBusEmitMock.mockClear();
+
+			// Second workflow update (no new nodes, just parameter update)
+			builderStore.workflowMessages = [
+				{
+					id: msgId1,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(workflow2),
+				},
+				{
+					id: msgId2,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(workflow3),
+				},
+			];
+
+			await flushPromises();
+
+			// Second call should still have tidyUp: true because it was set earlier
+			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
+				data: workflow3,
+				tidyUp: true,
+				nodesIdsToTidyUp: [],
+				regenerateIds: false,
+				trackEvents: false,
+			});
+		});
+
+		it('should reset shouldTidyUp flag on new user message', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.isNewWorkflow = false;
+
+			const { container } = renderComponent();
+
+			const workflow1 = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			builderStore.getWorkflowSnapshot.mockReturnValue('{}');
+			builderStore.applyWorkflowUpdate.mockReturnValue({
+				success: true,
+				workflowData: workflow1,
+				newNodeIds: ['node-1'],
+				oldNodeIds: [],
+			});
+
+			// First message exchange - adds nodes
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(workflow1),
+				},
+			];
+
+			await flushPromises();
+
+			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
+				data: workflow1,
+				tidyUp: true,
+				nodesIdsToTidyUp: ['node-1'],
+				regenerateIds: false,
+				trackEvents: false,
+			});
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			nodeViewEventBusEmitMock.mockClear();
+
+			// Second message - user sends new message, which should reset shouldTidyUp
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage('Update parameters');
+			}
+			await flushPromises();
+
+			// Now simulate a workflow update with no new nodes
+			const workflow2 = {
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: { updated: true },
+					},
+				],
+				connections: {},
+			};
+
+			builderStore.applyWorkflowUpdate.mockReturnValue({
+				success: true,
+				workflowData: workflow2,
+				newNodeIds: [], // No new nodes this time
+				oldNodeIds: ['node-1'],
+			});
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(workflow2),
+				},
+			];
+
+			await flushPromises();
+
+			// shouldTidyUp should be reset, so tidyUp should be false
+			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
+				data: workflow2,
+				tidyUp: false,
+				nodesIdsToTidyUp: [],
+				regenerateIds: false,
+				trackEvents: false,
+			});
 		});
 	});
 });

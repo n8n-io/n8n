@@ -53,6 +53,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
+vi.mock('../provisioning/composables/userRoleProvisioning.store', () => ({
+	useUserRoleProvisioningStore: vi.fn(() => ({
+		provisioningConfig: undefined,
+		getProvisioningConfig: vi.fn().mockResolvedValue({}),
+		saveProvisioningConfig: vi.fn().mockResolvedValue({}),
+	})),
+}));
+
 // Mock window.open to avoid JSDOM "Not implemented" error
 Object.defineProperty(window, 'open', {
 	writable: true,

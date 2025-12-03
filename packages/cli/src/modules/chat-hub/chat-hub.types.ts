@@ -30,6 +30,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	previousMessageId: ChatMessageId | null;
 	attachments: ChatAttachment[];
 	tools: INode[];
+	agentName: string;
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
 	retryId: ChatMessageId;
@@ -56,6 +57,7 @@ export const validChatTriggerParamsShape = z.object({
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),
+			allowedFilesMimeTypes: z.string().optional(),
 		})
 		.optional(),
 });
