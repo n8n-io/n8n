@@ -28,13 +28,6 @@ const usersStore = useUsersStore();
 const rootStore = useRootStore();
 
 const mcpStatusLoading = ref(false);
-const workflowsLoading = ref(false);
-const mcpKeyLoading = ref(false);
-const oAuthClientsLoading = ref(false);
-
-const availableWorkflows = ref<WorkflowListItem[]>([]);
-const apiKey = computed(() => mcpStore.currentUserMCPKey);
-const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
@@ -70,6 +63,20 @@ const onRemoveMCPAccess = async (workflow: WorkflowListItem) => {
 	}
 };
 
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.mcp'));
+	if (!mcpStore.mcpAccessEnabled) {
+		return;
+	}
+	await fetchAvailableWorkflows();
+	await fetchApiKey();
+	await fetchoAuthCLients();
+});
+
+// TODO: Move these to workflows tab
+const workflowsLoading = ref(false);
+const availableWorkflows = ref<WorkflowListItem[]>([]);
+
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
 	try {
@@ -83,6 +90,14 @@ const fetchAvailableWorkflows = async () => {
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
 };
+
+const onRefreshWorkflows = async () => {
+	await fetchAvailableWorkflows();
+};
+
+// TODO: Move this to popover
+const mcpKeyLoading = ref(false);
+const apiKey = computed(() => mcpStore.currentUserMCPKey);
 
 const fetchApiKey = async () => {
 	try {
@@ -109,6 +124,10 @@ const rotateKey = async () => {
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
 };
+
+// TODO: Move this OAuth tab
+const oAuthClientsLoading = ref(false);
+const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const fetchoAuthCLients = async () => {
 	try {
@@ -143,20 +162,6 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 const onRefreshOAuthClients = async () => {
 	await fetchoAuthCLients();
 };
-
-const onRefreshWorkflows = async () => {
-	await fetchAvailableWorkflows();
-};
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.mcp'));
-	if (!mcpStore.mcpAccessEnabled) {
-		return;
-	}
-	await fetchAvailableWorkflows();
-	await fetchApiKey();
-	await fetchoAuthCLients();
-});
 </script>
 <template>
 	<div :class="$style.container">
