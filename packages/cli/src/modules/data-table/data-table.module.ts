@@ -2,6 +2,8 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { EventTriggerManager } from '@/workflows/event-trigger-manager';
+
 @BackendModule({ name: 'data-table' })
 export class DataTableModule implements ModuleInterface {
 	async init() {
@@ -41,6 +43,9 @@ export class DataTableModule implements ModuleInterface {
 	async context() {
 		const { DataTableProxyService } = await import('./data-table-proxy.service');
 
-		return { dataTableProxyProvider: Container.get(DataTableProxyService) };
+		return {
+			dataTableProxyProvider: Container.get(DataTableProxyService),
+			eventTriggerManager: Container.get(EventTriggerManager),
+		};
 	}
 }

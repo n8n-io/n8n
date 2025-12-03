@@ -44,6 +44,7 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
 import { RoleService } from '@/services/role.service';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class DataTableService {
@@ -57,6 +58,7 @@ export class DataTableService {
 		private readonly roleService: RoleService,
 		private readonly csvParserService: CsvParserService,
 		private readonly fileCleanupService: DataTableFileCleanupService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -259,6 +261,15 @@ export class DataTableService {
 				trx,
 			);
 		});
+
+		if (Array.isArray(result)) {
+			// this does not work for UI triggers yet since returnType makes it only return the id
+			this.eventService.emit('data-table-rows-added', {
+				dataTableId,
+				operation: 'insert',
+				rows: result as never,
+			});
+		}
 
 		this.dataTableSizeValidator.reset();
 

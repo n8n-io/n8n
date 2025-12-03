@@ -960,12 +960,29 @@ export type DataTableProxyProvider = {
 		projectId?: string,
 	): Promise<IDataTableProjectService>;
 };
-
-export type DataTableProxyFunctions = {
-	// These are optional to account for situations where the data-table module is disabled
-	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
-	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
+export type EventTriggerManager = {
+	registerTrigger<K extends keyof Record<string, any>>(
+		workflowId: string,
+		event: K,
+		onEvent: (payload: Record<string, any>[K]) => void,
+	): void;
+	deregisterTriggers(workflowId: string): void;
 };
+
+export type EventTriggerManagerProxy = {
+	registerTrigger<K extends keyof Record<string, any>>(
+		event: K,
+		onEvent: (payload: Record<string, any>[K]) => void,
+	): void;
+	// deregisterTriggers(workflowId: string): void;
+};
+
+export type DataTableProxyFunctions = Partial<{
+	// These are optional to account for situations where the data-table module is disabled
+	getDataTableAggregateProxy(): Promise<IDataTableProjectAggregateService>;
+	getDataTableProxy(dataTableId: string): Promise<IDataTableProjectService>;
+	eventTriggerManager: EventTriggerManagerProxy;
+}>;
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
@@ -1173,7 +1190,8 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		DataTableProxyFunctions;
 }
 
 export interface IHookFunctions
