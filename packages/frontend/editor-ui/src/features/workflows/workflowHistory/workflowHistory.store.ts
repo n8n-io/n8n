@@ -11,7 +11,7 @@ import type {
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getNewWorkflow } from '@/app/api/workflows';
 

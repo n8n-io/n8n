@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useSourceControlStore } from '../sourceControl.store';
 import SettingsSourceControl from './SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';

@@ -9,7 +9,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 
 import {

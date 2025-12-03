@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 

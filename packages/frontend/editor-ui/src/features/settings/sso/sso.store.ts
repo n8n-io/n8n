@@ -1,4 +1,4 @@
-import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
+import type { AuthenticationMethod, OidcConfigDto, SamlPreferences } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -7,7 +7,6 @@ import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso'
 import * as ldapApi from '@n8n/rest-api-client/api/ldap';
 import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import type { IDataObject } from 'n8n-workflow';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 
 export const SupportedProtocols = {
 	SAML: 'saml',
@@ -19,7 +18,7 @@ export type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof Sup
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 
-	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
+	const authenticationMethod = ref<AuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
 
 	const showSsoLoginButton = computed(
@@ -36,7 +35,7 @@ export const useSSOStore = defineStore('sso', () => {
 		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
 
 	const initialize = (options: {
-		authenticationMethod: UserManagementAuthenticationMethod;
+		authenticationMethod: AuthenticationMethod;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
@@ -93,9 +92,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const isEnterpriseSamlEnabled = ref(false);
 
-	const isDefaultAuthenticationSaml = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
-	);
+	const isDefaultAuthenticationSaml = computed(() => authenticationMethod.value === 'saml');
 
 	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
 
@@ -150,9 +147,7 @@ export const useSSOStore = defineStore('sso', () => {
 		},
 	});
 
-	const isDefaultAuthenticationOidc = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Oidc,
-	);
+	const isDefaultAuthenticationOidc = computed(() => authenticationMethod.value === 'oidc');
 
 	/**
 	 * LDAP Configuration

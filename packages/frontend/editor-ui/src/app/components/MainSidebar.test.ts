@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/app/components/MainSidebar.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/app/stores/versions.store';

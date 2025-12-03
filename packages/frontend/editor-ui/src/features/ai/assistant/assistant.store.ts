@@ -11,7 +11,7 @@ import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { assert } from '@n8n/utils/assert';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';

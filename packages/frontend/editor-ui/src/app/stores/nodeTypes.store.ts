@@ -33,7 +33,7 @@ import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTrans
 import { computed, ref } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 

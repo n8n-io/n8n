@@ -1,4 +1,4 @@
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { VIEWS, EnterpriseEditionFeature } from '@/app/constants';
 import { enterpriseMiddleware } from '@/app/utils/rbac/middleware/enterprise';
 import { type RouteLocationNormalized } from 'vue-router';

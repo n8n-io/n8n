@@ -32,7 +32,7 @@ import {
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();

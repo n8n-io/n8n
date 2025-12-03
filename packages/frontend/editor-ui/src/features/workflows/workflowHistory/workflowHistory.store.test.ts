@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { FrontendSettings } from '@n8n/api-types';
 import { useWorkflowHistoryStore } from './workflowHistory.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 describe('Workflow history store', () => {
 	beforeEach(() => {

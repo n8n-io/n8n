@@ -14,7 +14,7 @@ import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../exec
 import type { PermissionsRecord } from '@n8n/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useExecutionsStore } from '../../executions.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionRetryMessage } from '../../executions.utils';
 import { useIntersectionObserver } from '@vueuse/core';

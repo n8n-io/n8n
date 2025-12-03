@@ -32,7 +32,7 @@ import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',

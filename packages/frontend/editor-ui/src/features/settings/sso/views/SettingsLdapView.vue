@@ -13,7 +13,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import humanizeDuration from 'humanize-duration';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@n8n/i18n';

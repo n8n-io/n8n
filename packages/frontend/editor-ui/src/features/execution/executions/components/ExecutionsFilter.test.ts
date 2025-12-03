@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import type { FrontendSettings } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';

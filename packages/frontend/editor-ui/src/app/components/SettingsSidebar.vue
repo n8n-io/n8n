@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useUserHelpers } from '@/app/composables/useUserHelpers';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useI18n } from '@n8n/i18n';

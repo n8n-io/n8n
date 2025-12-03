@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useSSOStore, SupportedProtocols } from '@/features/settings/sso/sso.store';
-import type { UserManagementAuthenticationMethod } from '@/Interface';
+import type { AuthenticationMethod } from '@n8n/api-types';
 
 let ssoStore: ReturnType<typeof useSSOStore>;
 
@@ -20,7 +20,7 @@ describe('SSO store', () => {
 		'should check SSO login button availability when authenticationMethod is %s and enterprise feature is %s and sso login is set to %s',
 		(authenticationMethod, saml, loginEnabled, expectation) => {
 			ssoStore.initialize({
-				authenticationMethod: authenticationMethod as UserManagementAuthenticationMethod,
+				authenticationMethod: authenticationMethod as AuthenticationMethod,
 				config: {
 					saml: {
 						loginEnabled,
@@ -46,7 +46,7 @@ describe('SSO store', () => {
 		it('should initialize selectedAuthProtocol to OIDC when default authentication is OIDC', () => {
 			// Initialize with OIDC as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'oidc' as AuthenticationMethod,
 				config: {
 					oidc: { loginEnabled: true },
 				},
@@ -70,7 +70,7 @@ describe('SSO store', () => {
 		it('should initialize selectedAuthProtocol to SAML when default authentication is SAML', () => {
 			// Initialize with SAML as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'saml' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'saml' as AuthenticationMethod,
 				config: {
 					saml: { loginEnabled: true },
 				},
@@ -94,7 +94,7 @@ describe('SSO store', () => {
 		it('should initialize selectedAuthProtocol to SAML when default authentication is email', () => {
 			// Initialize with email as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'email' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'email' as AuthenticationMethod,
 				config: {},
 				features: {
 					saml: true,
@@ -116,7 +116,7 @@ describe('SSO store', () => {
 		it('should not reinitialize selectedAuthProtocol if already set', () => {
 			// Initialize with SAML as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'saml' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'saml' as AuthenticationMethod,
 				config: {
 					saml: { loginEnabled: true },
 				},

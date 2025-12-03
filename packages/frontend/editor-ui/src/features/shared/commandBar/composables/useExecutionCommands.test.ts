@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { getResourcePermissions } from '@n8n/permissions';
 import { setActivePinia } from 'pinia';

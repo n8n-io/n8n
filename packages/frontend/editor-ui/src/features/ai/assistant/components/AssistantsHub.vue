@@ -2,7 +2,7 @@
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import SlideTransition from '@/app/components/transitions/SlideTransition.vue';

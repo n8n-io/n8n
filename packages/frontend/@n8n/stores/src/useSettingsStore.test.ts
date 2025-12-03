@@ -1,7 +1,8 @@
 import type { FrontendSettings } from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { useSettingsStore } from './settings.store';
+import { useSettingsStore } from './useSettingsStore';
 
 const mockRootStore = {
 	restApiContext: {},
@@ -43,14 +44,8 @@ vi.mock('@n8n/rest-api-client/api/events', () => ({
 	sessionStarted,
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
+vi.mock('./useRootStore', () => ({
 	useRootStore,
-}));
-
-vi.mock('@/app/stores/versions.store', () => ({
-	useVersionsStore: vi.fn(() => ({
-		initialize: vi.fn(),
-	})),
 }));
 
 vi.mock('@vueuse/core', async () => {
@@ -77,7 +72,7 @@ const mockSettings = mock<FrontendSettings>({
 	},
 });
 
-describe('settings.store', () => {
+describe('useSettingsStore', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());

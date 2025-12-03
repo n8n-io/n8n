@@ -6,7 +6,7 @@ import { defineStore } from 'pinia';
 import batch1TemplateIds from '../data/batch1TemplateIds.json';
 import batch2TemplateIds from '../data/batch2TemplateIds.json';
 import batch3TemplateIds from '../data/batch3TemplateIds.json';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 

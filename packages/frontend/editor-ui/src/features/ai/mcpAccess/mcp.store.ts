@@ -12,7 +12,7 @@ import {
 	deleteOAuthClient,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
 

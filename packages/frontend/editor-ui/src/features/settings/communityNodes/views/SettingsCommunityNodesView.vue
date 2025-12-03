@@ -17,7 +17,7 @@ import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 
 import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;

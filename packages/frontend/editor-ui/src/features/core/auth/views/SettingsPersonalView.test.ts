@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { createPinia } from 'pinia';
 import { waitAllPromises } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -10,7 +10,6 @@ import { ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -54,7 +53,7 @@ describe('SettingsPersonalView', () => {
 
 		await settingsStore.getSettings();
 		ssoStore.initialize({
-			authenticationMethod: UserManagementAuthenticationMethod.Email,
+			authenticationMethod: 'email',
 			config: settingsStore.settings.sso,
 			features: {
 				saml: true,

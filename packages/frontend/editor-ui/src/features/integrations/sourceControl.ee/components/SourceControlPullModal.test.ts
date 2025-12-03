@@ -7,7 +7,7 @@ import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { defaultSettings } from '@/__tests__/defaults';
 import type { SourceControlledFile } from '@n8n/api-types';
 

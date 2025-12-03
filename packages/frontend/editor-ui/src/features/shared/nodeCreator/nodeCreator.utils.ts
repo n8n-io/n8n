@@ -37,7 +37,7 @@ import { i18n } from '@n8n/i18n';
 import sortBy from 'lodash/sortBy';
 import * as changeCase from 'change-case';
 
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';

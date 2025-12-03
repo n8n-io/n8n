@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { useChatStore } from './chat.store';
