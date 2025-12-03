@@ -483,7 +483,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// All other database drivers should update executions and execution-data atomically
 
 		let executionTableAffectedRows = 0;
-		await this.manager.transaction(async (tx) => {
+		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
 				if (requireStatus) whereCondition.status = requireStatus;
@@ -491,25 +491,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				executionTableAffectedRows = result.affected ?? 0;
 
-				// If requireStatus was set and the update failed, don't update executionData
-				// This prevents modifying data for an execution another process is handling
+				// If requireStatus was set and the update failed, abort the
+				// transaction early and return false.
 				if (requireStatus && executionTableAffectedRows === 0) {
-					return;
+					return false;
 				}
 			}
 
 			if (Object.keys(executionData).length > 0) {
 				await tx.update(ExecutionData, { executionId }, executionData);
 			}
+
+			// Updates succeeded
+			return true;
 		});
-
-		// When requireStatus is set, only return true if the execution table update succeeded
-		if (requireStatus) {
-			return executionTableAffectedRows > 0;
-		}
-
-		// When no status requirement, any update counts as success (backward compatibility)
-		return true;
 	}
 
 	async deleteExecutionsByFilter(
