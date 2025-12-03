@@ -115,8 +115,8 @@ import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-A
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
+import { AddWorkflowVersionIdToExecutionData1764578434978 } from '../common/1764578434978-AddWorkflowVersionIdToExecutionData';
 import type { Migration } from '../migration-types';
-
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
@@ -235,6 +235,7 @@ const sqliteMigrations: Migration[] = [
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
+	AddWorkflowVersionIdToExecutionData1764578434978,
 ];
 
 export { sqliteMigrations };
