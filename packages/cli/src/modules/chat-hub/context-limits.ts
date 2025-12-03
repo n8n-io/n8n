@@ -148,6 +148,7 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 	deepSeek: {},
 	cohere: {},
 	mistralCloud: {},
+	burnCloud: {},
 };
 
 export const getMaxContextWindowTokens = (
