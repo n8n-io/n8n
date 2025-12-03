@@ -7,7 +7,6 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
