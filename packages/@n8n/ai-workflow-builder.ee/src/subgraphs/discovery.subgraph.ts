@@ -15,16 +15,20 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType,
 } from '@/types/categorization';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
+import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
+import type { NodeConfigurationsMap } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
+import { appendArrayReducer, nodeConfigurationsReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -189,29 +193,77 @@ const discoveryOutputSchema = z.object({
 		.describe('List of n8n nodes identified as necessary for the workflow'),
 });
 
+interface DiscoveryPromptOptions {
+	includeExamples: boolean;
+}
+
+/**
+ * Generate the process steps with proper numbering
+ */
+function generateProcessSteps(options: DiscoveryPromptOptions): string {
+	const { includeExamples } = options;
+
+	const steps: string[] = [
+		'**Analyze user prompt** - Extract services, models, and technologies mentioned',
+		'**Call get_best_practices** with identified techniques (internal context)',
+	];
+
+	if (includeExamples) {
+		steps.push('**Call get_workflow_examples** with search queries for mentioned services/models');
+	}
+
+	const examplesContext = includeExamples ? ', and examples' : '';
+	steps.push(
+		`**Identify workflow components** from user request, best practices${examplesContext}`,
+		'**Call search_nodes IN PARALLEL** for all components (e.g., "Gmail", "OpenAI", "Schedule")',
+		'**Call get_node_details IN PARALLEL** for ALL promising nodes (batch multiple calls)',
+		`**Extract node information** from each node_details response:
+   - Node name from <name> tag
+   - Version number from <version> tag (required - extract the number)
+   - Connection-changing parameters from <connections> section`,
+		'**Call submit_discovery_results** with complete nodesFound array',
+	);
+
+	return steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
+}
+
+/**
+ * Generate available tools list based on feature flags
+ */
+function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
+	const { includeExamples } = options;
+
+	const tools = [
+		'- get_best_practices: Retrieve best practices (internal context)',
+		'- search_nodes: Find n8n nodes by keyword',
+		'- get_node_details: Get complete node information including <connections>',
+	];
+
+	if (includeExamples) {
+		tools.push('- get_workflow_examples: Search for workflow examples as reference');
+	}
+
+	tools.push('- submit_discovery_results: Submit final results');
+
+	return tools.join('\n');
+}
+
 /**
  * Discovery Agent Prompt
  */
-const DISCOVERY_PROMPT = `You are a Discovery Agent for n8n AI Workflow Builder.
+function generateDiscoveryPrompt(options: DiscoveryPromptOptions): string {
+	const availableTools = generateAvailableToolsList(options);
+	const processSteps = generateProcessSteps(options);
+
+	return `You are a Discovery Agent for n8n AI Workflow Builder.
 
 YOUR ROLE: Identify relevant n8n nodes and their connection-changing parameters.
 
 AVAILABLE TOOLS:
-- get_best_practices: Retrieve best practices (internal context)
-- search_nodes: Find n8n nodes by keyword
-- get_node_details: Get complete node information including <connections>
-- submit_discovery_results: Submit final results
+${availableTools}
 
 PROCESS:
-1. **Call get_best_practices** with identified techniques (internal context)
-2. **Identify workflow components** from user request and best practices
-3. **Call search_nodes IN PARALLEL** for all components (e.g., "Gmail", "OpenAI", "Schedule")
-4. **Call get_node_details IN PARALLEL** for ALL promising nodes (batch multiple calls)
-5. **Extract node information** from each node_details response:
-   - Node name from <name> tag
-   - Version number from <version> tag (required - extract the number)
-   - Connection-changing parameters from <connections> section
-6. **Call submit_discovery_results** with complete nodesFound array
+${processSteps}
 
 TECHNIQUE CATEGORIZATION:
 When calling get_best_practices, select techniques that match the user's workflow intent.
@@ -297,6 +349,7 @@ DO NOT:
 - Flag parameters that don't affect connections
 - Stop without calling submit_discovery_results
 `;
+}
 
 /**
  * Discovery Subgraph State
@@ -334,12 +387,26 @@ export const DiscoverySubgraphState = Annotation.Root({
 	bestPractices: Annotation<string | undefined>({
 		reducer: (x, y) => y ?? x,
 	}),
+
+	// Output: Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: appendArrayReducer,
+		default: () => [],
+	}),
+
+	// Output: Node configurations collected from workflow examples
+	// Used to provide example parameter configurations when get_node_details is called
+	nodeConfigurations: Annotation<NodeConfigurationsMap>({
+		reducer: nodeConfigurationsReducer,
+		default: () => ({}),
+	}),
 });
 
 export interface DiscoverySubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
 	logger?: Logger;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export class DiscoverySubgraph extends BaseSubgraph<
@@ -357,12 +424,21 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 
-		// Create tools
-		const tools = [
+		// Check if template examples are enabled
+		const includeExamples = config.featureFlags?.templateExamples === true;
+
+		// Create base tools
+		const baseTools = [
 			createGetBestPracticesTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes),
 		];
+
+		// Conditionally add workflow examples tool if feature flag is enabled
+		const tools = includeExamples
+			? [...baseTools, createGetWorkflowExamplesTool(config.logger)]
+			: baseTools;
+
 		this.toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));
 
 		// Define output tool
@@ -372,6 +448,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			schema: discoveryOutputSchema,
 		});
 
+		// Generate prompt based on feature flags
+		const discoveryPrompt = generateDiscoveryPrompt({ includeExamples });
+
 		// Create agent with tools bound (including submit tool)
 		const systemPrompt = ChatPromptTemplate.fromMessages([
 			[
@@ -379,7 +458,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: DISCOVERY_PROMPT,
+						text: discoveryPrompt,
 						cache_control: { type: 'ephemeral' },
 					},
 				],
@@ -458,16 +537,20 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			this.logger?.error('[Discovery] No submit tool call found in last message');
 			return {
 				nodesFound: [],
+				templateIds: [],
 			};
 		}
 
 		const bestPracticesTool = state.messages.find(
 			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
 		);
-		// Return raw output without hydration
+
+		// Return raw output without hydration, including templateIds and nodeConfigurations from workflow examples
 		return {
 			nodesFound: output.nodesFound,
 			bestPractices: bestPracticesTool?.text,
+			templateIds: state.templateIds ?? [],
+			nodeConfigurations: state.nodeConfigurations ?? {},
 		};
 	}
 
@@ -533,9 +616,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		_parentState: typeof ParentGraphState.State,
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
+		const templateIds = subgraphOutput.templateIds || [];
+		const nodeConfigurations = subgraphOutput.nodeConfigurations || {};
 		const discoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
+			nodeConfigurations,
 		};
 
 		// Create coordination log entry (not a message)
@@ -554,6 +640,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			discoveryContext,
 			coordinationLog: [logEntry],
+			// Pass template IDs for telemetry
+			templateIds,
+			// Pass node configurations for example parameters in node details
+			nodeConfigurations,
 		};
 	}
 }
