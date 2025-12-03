@@ -205,10 +205,8 @@ function processToolChunk(chunk: unknown): StreamOutput | null {
 
 /** Process a single chunk from updates stream mode */
 function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
-	// Guard against null/undefined chunks
 	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
 
-	// State modification nodes (v2): skip - responder handles the user-facing message
 	if (nodeUpdate.delete_messages || nodeUpdate.compact_messages) {
 		return null;
 	}

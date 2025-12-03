@@ -14,7 +14,6 @@ import type { ChatPayload } from './workflow-builder-agent';
  */
 export const ParentGraphState = Annotation.Root({
 	// Shared: User's conversation history (for responder)
-	// Uses messagesStateReducer to properly handle RemoveMessage instances
 	messages: Annotation<BaseMessage[]>({
 		reducer: messagesStateReducer,
 		default: () => [],

@@ -66,7 +66,6 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				// In v2, delete_messages routes to responder which generates the user message
 				expect(result).toBeNull();
 			});
 
@@ -83,7 +82,6 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				// In v2, compact_messages routes to responder which generates the user message
 				expect(result).toBeNull();
 			});
 
@@ -280,7 +278,6 @@ describe('stream-processor', () => {
 			async function* mockStream(): AsyncGenerator<[string, unknown], void, unknown> {
 				yield ['updates', { agent: { messages: [{ content: 'Message 1' }] } }];
 				yield ['custom', { type: 'tool', toolName: 'test_tool' } as ToolProgressChunk];
-				// delete_messages is skipped in v2 (responder handles user message)
 				yield ['updates', { delete_messages: { messages: [{ content: 'deleted' }] } }];
 			}
 
@@ -291,7 +288,6 @@ describe('stream-processor', () => {
 				results.push(output);
 			}
 
-			// Only 2 results - delete_messages is skipped in v2
 			expect(results).toHaveLength(2);
 			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Message 1');
 			expect((results[1].messages[0] as ToolProgressChunk).toolName).toBe('test_tool');
