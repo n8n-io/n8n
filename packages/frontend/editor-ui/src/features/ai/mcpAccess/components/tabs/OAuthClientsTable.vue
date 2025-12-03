@@ -5,12 +5,9 @@ import type { UserAction } from '@/Interface';
 import {
 	N8nActionBox,
 	N8nActionToggle,
-	N8nButton,
 	N8nDataTableServer,
-	N8nHeading,
 	N8nLoading,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import { ref } from 'vue';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -82,21 +79,6 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
-			<div :class="[$style.header, 'mb-s']">
-				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.mcp.oAuthClients.heading') }} ({{ props.clients.length }})
-				</N8nHeading>
-				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
-					<N8nButton
-						data-test-id="mcp-oauth-clients-refresh-button"
-						size="small"
-						type="tertiary"
-						icon="refresh-cw"
-						:square="true"
-						@click="$emit('refresh')"
-					/>
-				</N8nTooltip>
-			</div>
 			<N8nActionBox
 				v-if="props.clients.length === 0"
 				data-test-id="empty-oauth-clients-list-box"
