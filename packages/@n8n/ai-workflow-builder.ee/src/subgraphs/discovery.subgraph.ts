@@ -28,6 +28,7 @@ import { createDiscoveryMetadata } from '../types/coordination';
 import type { NodeConfigurationsMap } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
+import { appendArrayReducer, nodeConfigurationsReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -389,27 +390,14 @@ export const DiscoverySubgraphState = Annotation.Root({
 
 	// Output: Template IDs fetched from workflow examples for telemetry
 	templateIds: Annotation<number[]>({
-		reducer: (current, update) => (update && update.length > 0 ? [...current, ...update] : current),
+		reducer: appendArrayReducer,
 		default: () => [],
 	}),
 
 	// Output: Node configurations collected from workflow examples
 	// Used to provide example parameter configurations when get_node_details is called
 	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: (current, update) => {
-			if (!update || Object.keys(update).length === 0) {
-				return current;
-			}
-			// Merge configurations by node type, appending new configs to existing ones
-			const merged = { ...current };
-			for (const [nodeType, configs] of Object.entries(update)) {
-				if (!merged[nodeType]) {
-					merged[nodeType] = [];
-				}
-				merged[nodeType] = [...merged[nodeType], ...configs];
-			}
-			return merged;
-		},
+		reducer: nodeConfigurationsReducer,
 		default: () => ({}),
 	}),
 });

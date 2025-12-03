@@ -3,6 +3,7 @@ import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages
 import type { StructuredTool } from '@langchain/core/tools';
 import { isCommand, END } from '@langchain/langgraph';
 
+import { mergeNodeConfigurations } from './state-reducers';
 import { isBaseMessage } from '../types/langchain';
 import type { NodeConfigurationsMap } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
@@ -125,13 +126,7 @@ export async function executeSubgraphTools(
 					templateIds.push(...result.update.templateIds);
 				}
 				if (result.update.nodeConfigurations) {
-					// Merge node configurations
-					for (const [nodeType, configs] of Object.entries(result.update.nodeConfigurations)) {
-						if (!nodeConfigurations[nodeType]) {
-							nodeConfigurations[nodeType] = [];
-						}
-						nodeConfigurations[nodeType].push(...configs);
-					}
+					mergeNodeConfigurations(nodeConfigurations, result.update.nodeConfigurations);
 				}
 			}
 		} else if (isBaseMessage(result)) {

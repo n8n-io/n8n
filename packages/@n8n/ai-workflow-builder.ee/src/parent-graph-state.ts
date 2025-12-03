@@ -5,6 +5,7 @@ import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
 import type { NodeConfigurationsMap } from './types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import { appendArrayReducer, nodeConfigurationsReducer } from './utils/state-reducers';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -57,27 +58,14 @@ export const ParentGraphState = Annotation.Root({
 
 	// Template IDs fetched from workflow examples for telemetry
 	templateIds: Annotation<number[]>({
-		reducer: (current, update) => (update && update.length > 0 ? [...current, ...update] : current),
+		reducer: appendArrayReducer,
 		default: () => [],
 	}),
 
 	// Node configurations collected from workflow examples
 	// Used to provide example parameter configurations when calling tools
 	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: (current, update) => {
-			if (!update || Object.keys(update).length === 0) {
-				return current;
-			}
-			// Merge configurations by node type, appending new configs to existing ones
-			const merged = { ...current };
-			for (const [nodeType, configs] of Object.entries(update)) {
-				if (!merged[nodeType]) {
-					merged[nodeType] = [];
-				}
-				merged[nodeType] = [...merged[nodeType], ...configs];
-			}
-			return merged;
-		},
+		reducer: nodeConfigurationsReducer,
 		default: () => ({}),
 	}),
 });
