@@ -1379,7 +1379,7 @@ export class ChatHubService {
 			},
 		};
 
-		const tools: INode[] = [];
+		const { tools } = agent;
 
 		return await this.prepareBaseChatWorkflow(
 			user,
@@ -1450,11 +1450,9 @@ export class ChatHubService {
 		});
 
 		const workflowData: IWorkflowBase = {
-			...workflowEntity.activeVersion,
-			id: workflowEntity.id,
-			active: true,
-			isArchived: workflowEntity.isArchived,
-			activeVersionId: workflowEntity.activeVersionId,
+			...workflowEntity,
+			nodes: workflowEntity.activeVersion.nodes,
+			connections: workflowEntity.activeVersion.connections,
 		};
 
 		return {
