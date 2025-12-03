@@ -279,6 +279,10 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 
 export function getChatPayload(message: string, id: string): ChatPayload {
 	return {
+		featureFlags: {
+			multiAgent: true,
+			templateExamples: false,
+		},
 		message,
 		workflowContext: {
 			currentWorkflow: { id, nodes: [], connections: {} },
