@@ -45,7 +45,7 @@ withDefaults(defineProps<BadgeProps>(), {
 	color: var(--color--text--tint-1);
 
 	&.border {
-		border-color: var(--color--text--tint-1);
+		border-color: var(--color--foreground);
 	}
 }
 
