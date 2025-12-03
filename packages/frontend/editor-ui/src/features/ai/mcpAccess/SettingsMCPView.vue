@@ -12,6 +12,7 @@ import MCPConnectionInstructions from '@/features/ai/mcpAccess/components/MCPCon
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/WorkflowsTable.vue';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
+import MCpHeaderActions from '@/features/ai/mcpAccess/components/MCPHeaderActions.vue';
 import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
@@ -40,11 +41,10 @@ const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
 
-const onToggleMCPAccess = async () => {
+const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
 		mcpStatusLoading.value = true;
-		const newState = !mcpStore.mcpAccessEnabled;
-		const updated = await mcpStore.setMcpAccessEnabled(newState);
+		const updated = await mcpStore.setMcpAccessEnabled(enabled);
 		if (updated) {
 			await fetchAvailableWorkflows();
 			await fetchApiKey();
@@ -52,7 +52,7 @@ const onToggleMCPAccess = async () => {
 		} else {
 			workflowsLoading.value = false;
 		}
-		mcp.trackUserToggledMcpAccess(newState);
+		mcp.trackUserToggledMcpAccess(enabled);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
@@ -160,12 +160,20 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+		<header :class="$style.header" data-test-id="mcp-settings-header">
+			<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+			<MCpHeaderActions
+				v-if="mcpStore.mcpAccessEnabled"
+				:toggle-disabled="!canToggleMCP"
+				:loading="mcpStatusLoading"
+				@disable-mcp-access="onToggleMCPAccess(false)"
+			/>
+		</header>
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
-			@toggle-mcp-access="onToggleMCPAccess"
+			@turn-on-mcp="onToggleMCPAccess(true)"
 		/>
 		<div
 			v-if="mcpStore.mcpAccessEnabled"
@@ -199,5 +207,10 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
 }
 </style>

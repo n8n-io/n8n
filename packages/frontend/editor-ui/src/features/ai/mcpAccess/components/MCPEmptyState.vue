@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	toggleMcpAccess: [];
+	turnOnMcp: [];
 }>();
 
 const i18n = useI18n();
@@ -24,14 +24,14 @@ const i18n = useI18n();
 <template>
 	<div :class="$style.container" data-test-id="mcp-empty-state-container">
 		<N8nActionBox
-			:heading="i18n.baseText('settings.mcp.toggle.label')"
+			:heading="i18n.baseText('settings.mcp.actionBox.heading')"
 			:description="i18n.baseText('settings.mcp.toggle.disabled.notice')"
 			:button-text="i18n.baseText('settings.mcp.actionBox.button.label')"
 			:button-disabled="props.disabled || props.loading"
 			emoji="🤖"
 			button-variant="primary"
 			data-test-id="enable-mcp-access-button"
-			@click="emit('toggleMcpAccess')"
+			@click:button="emit('turnOnMcp')"
 		>
 			<template #disabledButtonTooltip>
 				<span v-if="props.loading">{{ i18n.baseText('generic.loading') }}...</span>
