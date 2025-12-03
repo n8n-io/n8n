@@ -1,6 +1,5 @@
 import {
 	ADD_FORM_NOTICE,
-	type FeatureCondition,
 	type INodePropertyOptions,
 	NodeConnectionTypes,
 	type INodeProperties,
@@ -8,6 +7,7 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
+	type NodeFeatures,
 } from 'n8n-workflow';
 
 import {
@@ -209,21 +209,24 @@ export class FormTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
 
 	/**
-	 * Feature definitions - declarative version conditions for each feature.
+	 * Defines feature flags for a given node version.
 	 * This is the SINGLE source of truth for all version checks.
+	 * Can access version and implement any logic needed to determine features.
 	 */
-	features: Record<string, FeatureCondition | boolean> = {
-		requireAuth: { gte: 2 }, // v2+ always requires auth
-		defaultUseWorkflowTimezone: { gt: 2 }, // v2.1+ defaults to true
-		allowRespondToWebhook: { lte: 2.1 }, // v2.2+ doesn't allow
-		useFieldName: { gte: 2.4 }, // v2.4+ uses fieldName
-		useFieldLabel: { lt: 2.4 }, // v2.3 and below uses fieldLabel
-		showWebhookPath: { lte: 2.1 }, // Show in main properties for v2.1 and below
-		showWebhookPathInOptions: { gte: 2.2 }, // Show in options for v2.2+
-		hideResponseNodeOption: { gte: 2.2 }, // Hide 'responseNode' option for v2.2+
-		useWorkflowTimezoneV2Only: { eq: 2 }, // Show useWorkflowTimezone with default false only for v2
-		showMultiselect: { lt: 2.3 }, // Show multiselect option for v2.2 and below
-	};
+	defineFeatures(version: number): NodeFeatures {
+		return {
+			requireAuth: version >= 2, // v2+ always requires auth
+			defaultUseWorkflowTimezone: version > 2, // v2.1+ defaults to true
+			allowRespondToWebhook: version <= 2.1, // v2.2+ doesn't allow
+			useFieldName: version >= 2.4, // v2.4+ uses fieldName
+			useFieldLabel: version < 2.4, // v2.3 and below uses fieldLabel
+			showWebhookPath: version <= 2.1, // Show in main properties for v2.1 and below
+			showWebhookPathInOptions: version >= 2.2, // Show in options for v2.2+
+			hideResponseNodeOption: version >= 2.2, // Hide 'responseNode' option for v2.2+
+			useWorkflowTimezoneV2Only: version === 2, // Show useWorkflowTimezone with default false only for v2
+			showMultiselect: version < 2.3, // Show multiselect option for v2.2 and below
+		};
+	}
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {

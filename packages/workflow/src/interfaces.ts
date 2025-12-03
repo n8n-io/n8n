@@ -1546,6 +1546,12 @@ export type FeatureCondition =
 	| { lte: number }
 	| { between: { from: number; to: number } };
 
+/**
+ * Type for node feature flags.
+ * Maps feature names to boolean values indicating if features are enabled.
+ */
+export type NodeFeatures = Record<string, boolean>;
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
@@ -1777,18 +1783,11 @@ export interface INodeType {
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
 	/**
-	 * Optional method to get node-specific configuration.
-	 * Used by versioned nodes to provide version-specific feature flags.
-	 * @param version - The node version (from node.typeVersion)
-	 * @returns Configuration object or undefined if not implemented
+	 * Optional function to define feature flags for a given node version.
+	 * This function receives the node version and returns a record of feature names to boolean values.
+	 * Allows flexible feature definitions based on version or other logic.
 	 */
-	getConfig?(version: number): IDataObject | undefined;
-	/**
-	 * Optional declarative feature definitions.
-	 * Maps feature names to FeatureCondition objects that define when features are enabled.
-	 * Used by isNodeFeatureEnabled() to evaluate feature availability based on node version.
-	 */
-	features?: Record<string, FeatureCondition | boolean>;
+	defineFeatures?(version: number): NodeFeatures;
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;

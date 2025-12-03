@@ -1,11 +1,11 @@
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeConnectionTypes,
-	type FeatureCondition,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
+	type NodeFeatures,
 } from 'n8n-workflow';
 
 import {
@@ -87,23 +87,24 @@ export class FormTriggerV1 implements INodeType {
 	description: INodeTypeDescription;
 
 	/**
-	 * Feature definitions - declarative version conditions for each feature.
+	 * Defines feature flags for a given node version.
 	 * Version 1 has all features disabled or set to defaults.
-	 * Note: These conditions define when features are ENABLED (true).
-	 * For v1, most features are disabled, so we use conditions that evaluate to false for v1.
+	 * Can access version and implement any logic needed to determine features.
 	 */
-	features: Record<string, FeatureCondition | boolean> = {
-		requireAuth: false, // v1 doesn't require auth
-		defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
-		allowRespondToWebhook: true, // v1 allows respond to webhook
-		useFieldName: false, // v1 uses fieldLabel
-		useFieldLabel: true, // v1 uses fieldLabel
-		showWebhookPath: { lte: 2.1 }, // v1 and v2.1 show in main (true for v1)
-		showWebhookPathInOptions: { gte: 2.2 }, // v2.2+ shows in options (false for v1)
-		hideResponseNodeOption: false, // v1 doesn't hide responseNode option
-		useWorkflowTimezoneV2Only: false, // v1 is not v2
-		showMultiselect: true, // v1 shows multiselect
-	};
+	defineFeatures(version: number): NodeFeatures {
+		return {
+			requireAuth: false, // v1 doesn't require auth
+			defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
+			allowRespondToWebhook: true, // v1 allows respond to webhook
+			useFieldName: false, // v1 uses fieldLabel
+			useFieldLabel: true, // v1 uses fieldLabel
+			showWebhookPath: version <= 2.1, // v1 and v2.1 show in main (true for v1)
+			showWebhookPathInOptions: version >= 2.2, // v2.2+ shows in options (false for v1)
+			hideResponseNodeOption: false, // v1 doesn't hide responseNode option
+			useWorkflowTimezoneV2Only: false, // v1 is not v2
+			showMultiselect: true, // v1 shows multiselect
+		};
+	}
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {

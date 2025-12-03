@@ -3,7 +3,6 @@ import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import type {
-	FeatureCondition,
 	FunctionsBase,
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
@@ -170,75 +169,29 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	/**
+	 * Gets the feature flags for the current node version.
+	 * Caches the result to avoid calling defineFeatures multiple times.
+	 * @private
+	 */
+	@Memoized
+	private get nodeFeatures(): Record<string, boolean> {
+		const nodeType = this.nodeType;
+		if (!nodeType?.defineFeatures) {
+			return {};
+		}
+
+		return nodeType.defineFeatures(this.node.typeVersion);
+	}
+
+	/**
 	 * Checks if a feature is enabled for the current node version.
-	 * Uses the node type's features property to evaluate declarative feature conditions.
+	 * Uses the node type's defineFeatures() function to get feature flags.
 	 * Reads the node type and version from the current context.
 	 * @param featureName - The name of the feature to check
 	 * @returns true if the feature is enabled, false otherwise
 	 */
 	isNodeFeatureEnabled(featureName: string): boolean {
-		const nodeType = this.nodeType;
-		if (!nodeType?.features) {
-			return false;
-		}
-
-		return this._evaluateFeatureCondition(nodeType.features, featureName, this.node.typeVersion);
-	}
-
-	/**
-	 * Evaluates a feature condition against a version.
-	 * @private
-	 */
-	private _evaluateFeatureCondition(
-		features: Record<string, FeatureCondition | boolean>,
-		featureName: string,
-		version: number,
-	): boolean {
-		if (!(featureName in features)) {
-			return false;
-		}
-
-		const condition = features[featureName];
-
-		// Direct boolean value
-		if (typeof condition === 'boolean') {
-			return condition;
-		}
-
-		// FeatureCondition format: { gte: 2 }
-		if (condition && typeof condition === 'object') {
-			const entries: Array<[string, unknown]> = Object.entries(condition);
-			if (entries.length === 0) {
-				return false;
-			}
-			const firstEntry = entries[0];
-			if (!firstEntry) {
-				return false;
-			}
-			const [key, targetValue] = firstEntry;
-
-			if (key === 'eq') {
-				return version === targetValue;
-			}
-			if (key === 'gte') {
-				return version >= (targetValue as number);
-			}
-			if (key === 'lte') {
-				return version <= (targetValue as number);
-			}
-			if (key === 'gt') {
-				return version > (targetValue as number);
-			}
-			if (key === 'lt') {
-				return version < (targetValue as number);
-			}
-			if (key === 'between') {
-				const { from, to } = targetValue as { from: number; to: number };
-				return version >= from && version <= to;
-			}
-		}
-
-		return false;
+		return this.nodeFeatures[featureName] ?? false;
 	}
 
 	@Memoized

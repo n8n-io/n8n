@@ -254,58 +254,17 @@ export function isSubNodeType(
 }
 
 /**
- * Evaluates if a feature is enabled for a given version.
+ * Gets feature flags for a node type and version.
+ * Calls the node type's defineFeatures() function if available.
  */
-function isFeatureEnabledForVersion(
-	features: Record<string, FeatureCondition | boolean>,
-	featureName: string,
+function getNodeFeatures(
+	nodeType: INodeType | null | undefined,
 	version: number,
-): boolean {
-	if (!(featureName in features)) {
-		return false;
+): Record<string, boolean> {
+	if (!nodeType?.defineFeatures) {
+		return {};
 	}
-
-	const condition = features[featureName];
-
-	// Direct boolean value
-	if (typeof condition === 'boolean') {
-		return condition;
-	}
-
-	// FeatureCondition format: { gte: 2 }
-	if (condition && typeof condition === 'object') {
-		const entries: Array<[string, unknown]> = Object.entries(condition);
-		if (entries.length === 0) {
-			return false;
-		}
-		const firstEntry = entries[0];
-		if (!firstEntry) {
-			return false;
-		}
-		const [key, targetValue] = firstEntry;
-
-		if (key === 'eq') {
-			return version === targetValue;
-		}
-		if (key === 'gte') {
-			return version >= (targetValue as number);
-		}
-		if (key === 'lte') {
-			return version <= (targetValue as number);
-		}
-		if (key === 'gt') {
-			return version > (targetValue as number);
-		}
-		if (key === 'lt') {
-			return version < (targetValue as number);
-		}
-		if (key === 'between') {
-			const { from, to } = targetValue as { from: number; to: number };
-			return version >= from && version <= to;
-		}
-	}
-
-	return false;
+	return nodeType.defineFeatures(version);
 }
 
 /**
@@ -316,11 +275,12 @@ function areAllFeaturesEnabled(
 	node: Pick<INode, 'typeVersion' | 'type'> | null,
 	featureNames: string[],
 ): boolean {
-	if (!nodeType?.features || !node?.typeVersion) {
+	if (!node?.typeVersion) {
 		return false;
 	}
+	const features = getNodeFeatures(nodeType, node.typeVersion);
 	for (const featureName of featureNames) {
-		if (!isFeatureEnabledForVersion(nodeType.features, featureName, node.typeVersion)) {
+		if (!features[featureName]) {
 			return false;
 		}
 	}
