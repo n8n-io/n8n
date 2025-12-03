@@ -325,11 +325,38 @@ A parameter is connection-changing ONLY IF it appears in <input> or <output> exp
 - Merge: numberInputs (appears in <input> expression)
 - Webhook: responseMode (appears in <output> expression)
 
+<dynamic_output_nodes>
+Some nodes have DYNAMIC outputs that depend on parameter values:
+
+**Switch Node** (n8n-nodes-base.switch):
+- When mode is "rules", the number of outputs equals the number of routing rules
+- Connection parameter: mode: "rules" - CRITICAL for enabling rule-based routing
+- Each rule in rules.values[] creates one output
+- The rules parameter uses the same filter structure as IF node conditions
+- ALWAYS flag mode as connection-changing with possibleValues: ["rules", "expression"]
+
+**Merge Node** (n8n-nodes-base.merge):
+- numberInputs parameter controls how many inputs the node accepts
+
+When you find these nodes, ALWAYS flag mode/numberInputs as connection-changing parameters with possibleValues.
+</dynamic_output_nodes>
+
 SUB-NODES SEARCHES:
 When searching for AI nodes, ALSO search for their required sub-nodes:
 - "AI Agent" → also search for "Chat Model", "Memory", "Output Parser"
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"
+
+STRUCTURED OUTPUT PARSER - WHEN TO INCLUDE:
+Search for "Structured Output Parser" (@n8n/n8n-nodes-langchain.outputParserStructured) when:
+- AI output will be used programmatically (conditions, formatting, database storage, API calls)
+- AI needs to extract specific fields (e.g., score, category, priority, action items)
+- AI needs to classify/categorize data into defined categories
+- Downstream nodes need to access specific fields from AI response (e.g., $json.score, $json.category)
+- Output will be displayed in a formatted way (e.g., HTML email with specific sections)
+- Data needs validation against a schema before processing
+
+
 - Always use search_nodes to find the exact node names and versions - NEVER guess versions
 
 CRITICAL RULES:
