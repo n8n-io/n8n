@@ -28,6 +28,7 @@ import {
 	handleCreateWorkflowName,
 	handleDeleteMessages,
 } from './utils/state-modifier';
+import type { BuilderFeatureFlags } from './workflow-builder-agent';
 
 /**
  * Maps routing decisions to graph node names.
@@ -52,6 +53,7 @@ export interface MultiAgentSubgraphConfig {
 	checkpointer?: MemorySaver;
 	/** Token threshold for auto-compaction. Defaults to DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS */
 	autoCompactThresholdTokens?: number;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 /**
@@ -122,6 +124,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		instanceUrl,
 		checkpointer,
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
+		featureFlags,
 	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
@@ -137,6 +140,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		parsedNodeTypes,
 		llm: llmComplexTask,
 		logger,
+		featureFlags,
 	});
 	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
 	const compiledConfigurator = configuratorSubgraph.create({

@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('ADO-2230 NDV Pagination Reset', () => {
 	test('should reset pagination if data size changes to less than current page', async ({
