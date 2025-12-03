@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import ExternalLink from '@n8n/design-system/components/N8nExternalLink/ExternalLink.vue';
-import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/MCPAccessToggle.vue';
+import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/McpAccessToggle.vue';
 import McpConnectPopover from '@/features/ai/mcpAccess/components/header/connectPopover/McpConnectPopover.vue';
 import { useI18n } from '@n8n/i18n';
 
