@@ -103,13 +103,30 @@ const connection = computed<Connection>(() => ({
 	targetHandle: props.targetHandleId,
 }));
 
-const edgeLightness = calculateEdgeLightness(delayedHovered);
+const edgeColor = computed(() => {
+	if (status.value === 'success') {
+		return 'var(--color--success)';
+	} else if (status.value === 'pinned') {
+		return 'var(--color--secondary)';
+	}
+	return undefined;
+});
+
+// For colored edges (success/pinned), don't apply hover effect
+const hasColoredStatus = computed(() => status.value === 'success' || status.value === 'pinned');
+const hoveredForLightness = computed(() => (hasColoredStatus.value ? false : delayedHovered.value));
+
+const edgeLightness = calculateEdgeLightness(hoveredForLightness);
 
 const edgeStyles = computed(() => {
-	return {
+	const styles: Record<string, string> = {
 		'--canvas-edge--color--lightness--light': edgeLightness.value.light,
 		'--canvas-edge--color--lightness--dark': edgeLightness.value.dark,
 	};
+	if (edgeColor.value) {
+		styles['--canvas-edge--color'] = edgeColor.value;
+	}
+	return styles;
 });
 
 function onAdd() {

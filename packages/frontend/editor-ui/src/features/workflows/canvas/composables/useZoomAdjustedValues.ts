@@ -44,7 +44,7 @@ export function useZoomAdjustedValues(viewport: Ref<ViewportTransform>) {
 
 			if (hovered.value) {
 				lightnessLight = Math.max(0, lightnessLight - 0.3); // Darken by 30%
-				lightnessDark = Math.min(1, lightnessDark + 0.1); // Lighten by 10%
+				lightnessDark = Math.min(1, lightnessDark + 0.2); // Lighten by 20%
 			}
 
 			return {

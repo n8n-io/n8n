@@ -345,10 +345,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.waiting {
-		--canvas-node--border-color: var(
-			--color-canvas-node-waiting-border-color,
-			var(--color--secondary)
-		);
+		--canvas-node--border-color: transparent;
 	}
 }
 
