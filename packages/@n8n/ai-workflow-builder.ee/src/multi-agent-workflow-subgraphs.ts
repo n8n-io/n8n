@@ -20,6 +20,7 @@ import type { SubgraphPhase } from './types/coordination';
 import { createErrorMetadata } from './types/coordination';
 import { getNextPhaseFromLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
+import type { BuilderFeatureFlags } from './workflow-builder-agent';
 
 /**
  * Maps routing decisions to graph node names.
@@ -42,6 +43,7 @@ export interface MultiAgentSubgraphConfig {
 	logger?: Logger;
 	instanceUrl?: string;
 	checkpointer?: MemorySaver;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 /**
@@ -105,7 +107,8 @@ function createSubgraphNodeHandler<
  * Parent graph orchestrates between subgraphs with minimal shared state.
  */
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
-	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl, checkpointer } = config;
+	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl, checkpointer, featureFlags } =
+		config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
 	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
@@ -120,6 +123,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		parsedNodeTypes,
 		llm: llmComplexTask,
 		logger,
+		featureFlags,
 	});
 	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
 	const compiledConfigurator = configuratorSubgraph.create({
