@@ -276,6 +276,148 @@ describe('Member', () => {
 	});
 });
 
+describe('Chat User', () => {
+	let member: User;
+	let authMemberAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		member = await createUser({
+			password: memberPassword,
+			role: { slug: 'global:chatUser' },
+		});
+		authMemberAgent = testServer.authAgentFor(member);
+		await utils.setInstanceOwnerSetUp(true);
+	});
+
+	test('PATCH /me should succeed with valid inputs', async () => {
+		for (const validPayload of getValidPatchMePayloads('chatUser')) {
+			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
+
+			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
+				response.body.data;
+
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBe(validPayload.email.toLowerCase());
+			expect(firstName).toBe(validPayload.firstName);
+			expect(lastName).toBe(validPayload.lastName);
+			expect(personalizationAnswers).toBeNull();
+			expect(password).toBeUndefined();
+			expect(isPending).toBe(false);
+			expect(role).toBe('global:chatUser');
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
+
+			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
+			expect(storedMember.firstName).toBe(validPayload.firstName);
+			expect(storedMember.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject =
+				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(id);
+
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
+		}
+	});
+
+	test('PATCH /me should fail with invalid inputs', async () => {
+		for (const invalidPayload of getInvalidPatchMePayloads('chatUser')) {
+			const response = await authMemberAgent.patch('/me').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+			expect(storedMember.email).toBe(member.email);
+			expect(storedMember.firstName).toBe(member.firstName);
+			expect(storedMember.lastName).toBe(member.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedMember.id);
+
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
+		}
+	});
+
+	test('PATCH /me should fail when changing email without currentPassword', async () => {
+		const payloadWithoutPassword = {
+			email: randomEmail(),
+			firstName: randomName(),
+			lastName: randomName(),
+		};
+
+		const response = await authMemberAgent.patch('/me').send(payloadWithoutPassword);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Current password is required to change email');
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.email).toBe(member.email);
+	});
+
+	test('PATCH /me should fail when changing email with wrong currentPassword', async () => {
+		const payloadWithWrongPassword = {
+			email: randomEmail(),
+			firstName: randomName(),
+			lastName: randomName(),
+			currentPassword: 'WrongPassword123',
+		};
+
+		const response = await authMemberAgent.patch('/me').send(payloadWithWrongPassword);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain(
+			'Unable to update profile. Please check your credentials and try again.',
+		);
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.email).toBe(member.email);
+	});
+
+	test('PATCH /me/password should succeed with valid inputs', async () => {
+		const validPayload = {
+			currentPassword: memberPassword,
+			newPassword: randomValidPassword(),
+		};
+
+		const response = await authMemberAgent.patch('/me/password').send(validPayload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.password).not.toBe(member.password);
+		expect(storedMember.password).not.toBe(validPayload.newPassword);
+	});
+
+	test('PATCH /me/password should fail with invalid inputs', async () => {
+		for (const payload of INVALID_PASSWORD_PAYLOADS) {
+			const response = await authMemberAgent.patch('/me/password').send(payload);
+			expect([400, 500].includes(response.statusCode)).toBe(true);
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+
+			if (payload.newPassword) {
+				expect(storedMember.password).not.toBe(payload.newPassword);
+			}
+			if (payload.currentPassword) {
+				expect(storedMember.password).not.toBe(payload.currentPassword);
+			}
+		}
+	});
+
+	test('POST /me/survey should succeed with valid inputs', async () => {
+		const validPayloads = [SURVEY, EMPTY_SURVEY];
+
+		for (const validPayload of validPayloads) {
+			const response = await authMemberAgent.post('/me/survey').send(validPayload);
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+
+			const { personalizationAnswers: storedAnswers } = await Container.get(
+				UserRepository,
+			).findOneByOrFail({});
+
+			expect(storedAnswers).toEqual(validPayload);
+		}
+	});
+});
+
 describe('Owner', () => {
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const owner = await createUser({
@@ -352,7 +494,7 @@ const EMPTY_SURVEY: IPersonalizationSurveyAnswersV4 = {
 	personalization_survey_n8n_version: '1.0.0',
 };
 
-function getValidPatchMePayloads(userType: 'owner' | 'member') {
+function getValidPatchMePayloads(userType: 'owner' | 'member' | 'chatUser') {
 	return VALID_PATCH_ME_PAYLOADS.map((payload) => {
 		if (userType === 'owner') {
 			return { ...payload, currentPassword: ownerPassword };
@@ -361,7 +503,7 @@ function getValidPatchMePayloads(userType: 'owner' | 'member') {
 	});
 }
 
-function getInvalidPatchMePayloads(userType: 'owner' | 'member') {
+function getInvalidPatchMePayloads(userType: 'owner' | 'member' | 'chatUser') {
 	return INVALID_PATCH_ME_PAYLOADS.map((payload) => {
 		if (userType === 'owner') {
 			return { ...payload, currentPassword: ownerPassword };

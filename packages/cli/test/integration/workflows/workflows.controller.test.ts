@@ -43,7 +43,7 @@ import { createFolder } from '@test-integration/db/folders';
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import { createChatUser, createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -55,7 +55,6 @@ let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
@@ -255,7 +254,7 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should create workflow as active when active: true is provided in POST body', async () => {
+	test('should create workflow as inactive even when active: true is provided in POST body', async () => {
 		const payload = {
 			name: 'active workflow',
 			nodes: [
@@ -284,21 +283,12 @@ describe('POST /workflows', () => {
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
-		expect(activeVersionId).toBe(versionId); // Should be set to current version
-		expect(active).toBe(true);
+		expect(activeVersionId).toBeNull();
+		expect(active).toBe(false);
 
 		// Verify in database
 		const workflow = await workflowRepository.findOneBy({ id });
-		expect(workflow?.activeVersionId).toBe(versionId);
-
-		// Verify history was created
-		const historyVersion = await workflowHistoryRepository.findOne({
-			where: {
-				workflowId: id,
-				versionId,
-			},
-		});
-		expect(historyVersion).not.toBeNull();
+		expect(workflow?.activeVersionId).toBeNull();
 	});
 
 	test('create workflow in personal project by default', async () => {
@@ -445,6 +435,29 @@ describe('POST /workflows', () => {
 			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
+	});
+
+	test('does not create the workflow in a personal project if the user is chat user', async () => {
+		//
+		// ARRANGE
+		//
+		const chatUser = await createChatUser();
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		await testServer
+			.authAgentFor(chatUser)
+			.post('/workflows')
+			.send({ ...workflow })
 			//
 			// ASSERT
 			//

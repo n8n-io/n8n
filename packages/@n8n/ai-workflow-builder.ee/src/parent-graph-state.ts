@@ -1,9 +1,11 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { Annotation } from '@langchain/langgraph';
+import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
+import type { NodeConfigurationsMap } from './types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import { appendArrayReducer, nodeConfigurationsReducer } from './utils/state-reducers';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -15,7 +17,7 @@ import type { ChatPayload } from './workflow-builder-agent';
 export const ParentGraphState = Annotation.Root({
 	// Shared: User's conversation history (for responder)
 	messages: Annotation<BaseMessage[]>({
-		reducer: (x, y) => x.concat(y),
+		reducer: messagesStateReducer,
 		default: () => [],
 	}),
 
@@ -52,5 +54,24 @@ export const ParentGraphState = Annotation.Root({
 	coordinationLog: Annotation<CoordinationLogEntry[]>({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
+	}),
+
+	// For conversation compaction - stores summarized history
+	previousSummary: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
+
+	// Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: appendArrayReducer,
+		default: () => [],
+	}),
+
+	// Node configurations collected from workflow examples
+	// Used to provide example parameter configurations when calling tools
+	nodeConfigurations: Annotation<NodeConfigurationsMap>({
+		reducer: nodeConfigurationsReducer,
+		default: () => ({}),
 	}),
 });
