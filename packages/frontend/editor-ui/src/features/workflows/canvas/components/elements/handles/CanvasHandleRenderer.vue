@@ -180,6 +180,10 @@ provide(CanvasNodeHandleKey, {
 	z-index: 1;
 	background: transparent;
 	border-radius: 0;
+
+	&.inputs.main {
+		cursor: default;
+	}
 }
 
 .renderType {
