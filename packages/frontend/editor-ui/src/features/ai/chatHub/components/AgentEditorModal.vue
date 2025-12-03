@@ -374,6 +374,7 @@ function onSelectTools() {
 .row {
 	display: flex;
 	flex-direction: row;
+	gap: var(--spacing--sm);
 }
 
 .footer {
