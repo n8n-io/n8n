@@ -54,14 +54,14 @@ export class WooCommerceApi implements ICredentialType {
 				requestOptions.qs = {};
 			}
 			Object.assign(requestOptions.qs, {
-				consumer_key: credentials.consumerKey,
-				consumer_secret: credentials.consumerSecret,
+				consumer_key: String(credentials.consumerKey || ''),
+				consumer_secret: String(credentials.consumerSecret || ''),
 			});
 		} else {
 			// Use HTTP Basic Auth
 			requestOptions.auth = {
-				user: credentials.consumerKey as string,
-				password: credentials.consumerSecret as string,
+				user: String(credentials.consumerKey || ''),
+				password: String(credentials.consumerSecret || ''),
 			};
 		}
 		return requestOptions;
