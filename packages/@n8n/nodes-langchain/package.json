@@ -158,7 +158,8 @@
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js",
-      "dist/nodes/Guardrails/Guardrails.node.js"
+      "dist/nodes/Guardrails/Guardrails.node.js",
+      "dist/nodes/memory/CommunityPostgresMemory/CommunityPostgresMemory.node.js"
     ]
   },
   "devDependencies": {
@@ -207,6 +208,7 @@
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
+    "@n8n/ai-tools": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",

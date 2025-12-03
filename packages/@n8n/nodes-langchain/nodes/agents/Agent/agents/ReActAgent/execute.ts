@@ -13,7 +13,7 @@ import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';
-import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
+import { N8nChatModelToLangChain } from '@n8n/ai-tools';
 import { isN8nChatModel } from 'n8n-workflow';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';

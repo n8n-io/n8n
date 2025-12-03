@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
-import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
+import { N8nChatModelToLangChain } from '@n8n/ai-tools';
 import { isN8nChatModel } from 'n8n-workflow';
 
 /* -----------------------------------------------------------

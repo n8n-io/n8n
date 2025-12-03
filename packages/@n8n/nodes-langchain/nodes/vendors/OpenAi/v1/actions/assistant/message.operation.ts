@@ -2,7 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
-import type { BufferWindowMemory } from '@langchain/classic/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
@@ -10,12 +10,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
@@ -25,6 +20,7 @@ import { getTracingConfig } from '@utils/tracing';
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { getOptionalMemory } from '../../../../../agents/Agent/agents/ToolsAgent/common';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -228,11 +224,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const useMemoryConnector =
 		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
 	const memory =
-		useMemoryConnector || nodeVersion < 1.6
-			? ((await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-					| BufferWindowMemory
-					| undefined)
-			: undefined;
+		useMemoryConnector || nodeVersion < 1.6 ? await getOptionalMemory(this) : undefined;
 
 	const threadId =
 		nodeVersion >= 1.6 && !useMemoryConnector
@@ -246,6 +238,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 	let thread: OpenAIClient.Beta.Threads.Thread;
 	if (memory) {
+		if (!(memory instanceof BufferWindowMemory)) {
+			throw new NodeOperationError(this.getNode(), 'Memory must be a BufferWindowMemory');
+		}
 		const chatMessages = await getChatMessages(memory);
 
 		// Construct a new thread from the chat history to map the memory

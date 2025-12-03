@@ -5,5 +5,4 @@
  * n8n's framework-agnostic interfaces to community developers.
  */
 
-export * from './langchain-to-n8n';
 export * from './n8n-to-langchain';

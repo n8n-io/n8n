@@ -23,6 +23,8 @@ export enum N8nAiMessageRole {
  * Represents a single message in an AI conversation
  */
 export interface IN8nAiMessage {
+	id?: string;
+	tool_call_id?: string;
 	/** Role of the message sender */
 	role: N8nAiMessageRole;
 	/** Content of the message */
@@ -337,60 +339,6 @@ export interface IN8nTool {
 }
 
 /**
- * Memory Interface
- *
- * Implement this interface to create a custom memory/history store.
- * Memory allows AI agents to maintain conversation context.
- *
- * @example
- * ```typescript
- * class MyCustomMemory implements IN8nMemory {
- *   private history: IN8nAiMessage[] = [];
- *
- *   async loadMemory(): Promise<IN8nAiMessage[]> {
- *     return [...this.history];
- *   }
- *
- *   async saveContext(input: string, output: string): Promise<void> {
- *     this.history.push(
- *       { role: N8nAiMessageRole.Human, content: input },
- *       { role: N8nAiMessageRole.AI, content: output }
- *     );
- *   }
- *
- *   async clear(): Promise<void> {
- *     this.history = [];
- *   }
- * }
- * ```
- */
-export interface IN8nMemory {
-	/**
-	 * Load conversation history
-	 * @returns Array of historical messages
-	 */
-	loadMemory(): Promise<IN8nAiMessage[]>;
-
-	/**
-	 * Save a conversation turn (input + output)
-	 * @param input - User input
-	 * @param output - AI output
-	 */
-	saveContext(input: string, output: string): Promise<void>;
-
-	/**
-	 * Clear all conversation history
-	 */
-	clear(): Promise<void>;
-
-	/**
-	 * Get memory as variables for prompt injection (optional)
-	 * @returns Object with memory variables
-	 */
-	loadMemoryVariables?(): Promise<IDataObject>;
-}
-
-/**
  * Output Parser Interface
  *
  * Implement this interface to create a custom output parser.
@@ -432,7 +380,7 @@ export interface IN8nOutputParser<T = unknown> {
  *
  * Used for type checking and routing in n8n workflows
  */
-export enum N8nAiNodeType {
+export const enum N8nAiNodeType {
 	LanguageModel = 'languageModel',
 	ChatModel = 'chatModel',
 	Embeddings = 'embeddings',

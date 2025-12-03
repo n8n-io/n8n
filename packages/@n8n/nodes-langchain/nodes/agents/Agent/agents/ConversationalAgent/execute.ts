@@ -1,16 +1,15 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { PromptTemplate } from '@langchain/core/prompts';
 import { initializeAgentExecutorWithOptions } from '@langchain/classic/agents';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { N8nChatModelToLangChain } from '@n8n/ai-tools';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, isN8nChatModel } from 'n8n-workflow';
 
-import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';
-import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
-import { isN8nChatModel } from 'n8n-workflow';
 
+import { getOptionalMemory } from '../ToolsAgent/common';
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(
@@ -29,9 +28,7 @@ export async function conversationalAgentExecute(
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = await getOptionalMemory(this);
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 	const outputParser = await getOptionalOutputParser(this);
