@@ -53,6 +53,8 @@ const wfHasAnyChanges = computed(() => {
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
+const nodesWithIssuesCount = computed(() => workflowsStore.nodesWithIssuesCount);
+
 const inputsDisabled = computed(() => {
 	return !wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value;
 });
@@ -235,7 +237,10 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					<strong>
 						{{
-							i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title')
+							i18n.baseText(
+								'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
+								{ interpolate: { count: nodesWithIssuesCount } },
+							)
 						}}
 					</strong>
 					<br />
