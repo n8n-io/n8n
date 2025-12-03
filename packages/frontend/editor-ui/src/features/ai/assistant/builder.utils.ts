@@ -2,6 +2,7 @@ import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export function generateMessageId(): string {
 	return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -48,11 +49,23 @@ export function createBuilderPayload(
 		);
 	}
 
+	// add active node as context
+	const { activeNode } = useNDVStore();
+	const context: ChatRequest.UserContext = {};
+	if (activeNode) {
+		context.activeNodeInfo = {
+			node: activeNode,
+			nodeIssues: activeNode.issues,
+		};
+	}
+	console.log('active node?', context, activeNode);
+
 	return {
 		role: 'user',
 		type: 'message',
 		text,
 		quickReplyType: options.quickReplyType,
+		context,
 		workflowContext,
 	};
 }

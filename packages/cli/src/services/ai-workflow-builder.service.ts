@@ -88,6 +88,7 @@ export class WorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
+		console.log('called chat with payload', JSON.stringify(payload));
 		const service = await this.getService();
 		yield* service.chat(payload, user, abortSignal);
 	}

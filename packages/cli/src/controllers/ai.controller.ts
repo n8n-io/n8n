@@ -59,6 +59,7 @@ export class AiController {
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					message: text,
+					context: payload.payload.context,
 					workflowContext: {
 						currentWorkflow: workflowContext.currentWorkflow,
 						executionData: workflowContext.executionData,

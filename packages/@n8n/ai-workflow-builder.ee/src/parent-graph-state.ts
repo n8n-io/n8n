@@ -30,6 +30,12 @@ export const ParentGraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 	}),
 
+	// Input: context (currently selected node)
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+	context: Annotation<ChatPayload['context'] | undefined>({
+		reducer: (x, y) => y ?? x,
+	}),
+
 	// Routing: Next phase to execute
 	nextPhase: Annotation<string>({
 		reducer: (x, y) => y ?? x,

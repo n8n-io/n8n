@@ -153,6 +153,7 @@ export interface ExpressionValue {
 
 export interface ChatPayload {
 	message: string;
+	context: unknown;
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: Partial<IWorkflowBase>;
@@ -514,6 +515,7 @@ export class WorkflowBuilderAgent {
 				workflowJSON: this.getDefaultWorkflowJSON(payload),
 				workflowOperations: [],
 				workflowContext: payload.workflowContext,
+				context: payload.context,
 			},
 			streamConfig,
 		);

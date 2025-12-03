@@ -13,6 +13,7 @@ export class AiBuilderChatRequestDto extends Z.class({
 		role: z.literal('user'),
 		type: z.literal('message'),
 		text: z.string(),
+		context: z.any(),
 		workflowContext: z.object({
 			currentWorkflow: z
 				.custom<Partial<IWorkflowBase>>((val: Partial<IWorkflowBase>) => {
