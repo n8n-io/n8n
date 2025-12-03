@@ -16,7 +16,7 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),

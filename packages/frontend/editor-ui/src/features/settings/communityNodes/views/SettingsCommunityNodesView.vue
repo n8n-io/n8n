@@ -5,7 +5,8 @@ import {
 } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { useToast } from '@/app/composables/useToast';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
@@ -31,11 +32,11 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
-const settingsStore = useSettingsStore();
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {

@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { useConsentStore } from '@/app/stores/consent.store';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, computed, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
 const LOVABLE_CLIENTS = ['lovable'];
 
 const consentStore = useConsentStore();
+const settingsStore = useSettingsStore();
 
 const i18n = useI18n();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const toast = useToast();
 
 // Success state:

@@ -23,7 +23,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
@@ -49,7 +49,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const ssoStore = useSSOStore();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 

@@ -5,7 +5,8 @@ import { capitalizeFirstLetter } from '@/app/utils/htmlUtils';
 import { convertToDisplayDate } from '@/app/utils/typesUtils';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { IFormInput, IFormInputs } from '@/Interface';
 import type { LdapConfig, LdapSyncData, LdapSyncTable } from '@n8n/rest-api-client/api/ldap';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -64,10 +65,9 @@ type CellClassStyleMethodParams<T> = {
 const toast = useToast();
 const i18n = useI18n();
 const message = useMessage();
-const documentTitle = useDocumentTitle();
-const pageRedirectionHelper = usePageRedirectionHelper();
-
 const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
+const pageRedirectionHelper = usePageRedirectionHelper();
 const ssoStore = useSSOStore();
 
 const dataTable = ref<LdapSyncTable[]>([]);

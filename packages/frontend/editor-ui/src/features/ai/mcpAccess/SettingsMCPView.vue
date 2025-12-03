@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import type { WorkflowListItem } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -15,10 +15,12 @@ import McpAccessToggle from '@/features/ai/mcpAccess/components/McpAccessToggle.
 import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const mcp = useMcp();
 
 const workflowsStore = useWorkflowsStore();

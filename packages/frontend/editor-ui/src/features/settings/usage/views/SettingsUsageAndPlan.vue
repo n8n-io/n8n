@@ -7,7 +7,8 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -34,7 +35,8 @@ const router = useRouter();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const queryParamCallback = ref<string>(

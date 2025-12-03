@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -36,7 +37,8 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();
 
 onMounted(() => {
-	useDocumentTitle().set(i18n.baseText('settings.projectRoles'));
+	const settingsStore = useSettingsStore();
+	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).set(i18n.baseText('settings.projectRoles'));
 });
 
 const headers = ref<Array<TableHeader<Role>>>([

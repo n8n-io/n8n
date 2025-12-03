@@ -12,7 +12,8 @@ import {
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
@@ -31,7 +32,8 @@ const route = useRoute();
 const router = useRouter();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const toast = useToast();
 
 const dataTableStore = useDataTableStore();

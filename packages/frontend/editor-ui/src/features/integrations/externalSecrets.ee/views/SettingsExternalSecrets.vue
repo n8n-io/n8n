@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '../components/ExternalSecretsProviderCard.ee.vue';
@@ -13,7 +14,8 @@ import { N8nActionBox, N8nCallout, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const sortedProviders = computed(() => {

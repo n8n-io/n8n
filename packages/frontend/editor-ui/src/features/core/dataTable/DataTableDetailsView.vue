@@ -11,7 +11,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { DATA_TABLE_VIEW, MIN_LOADING_TIME } from '@/features/core/dataTable/constants';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
 import { useDebounce } from '@/app/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
@@ -35,7 +36,8 @@ const props = defineProps<Props>();
 const toast = useToast();
 const i18n = useI18n();
 const router = useRouter();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 
 const dataTableStore = useDataTableStore();
 
