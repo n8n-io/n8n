@@ -156,6 +156,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	color: var(--color--text);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+	max-width: calc(100% - 40px);
 }
 
 .renderedContent {

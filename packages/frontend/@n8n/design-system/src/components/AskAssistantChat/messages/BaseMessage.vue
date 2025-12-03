@@ -40,7 +40,7 @@ function onRate(rating: RatingFeedback) {
 
 <style lang="scss" module>
 .message {
-	margin-bottom: var(--spacing--2xs);
+	margin-bottom: var(--spacing--sm);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }

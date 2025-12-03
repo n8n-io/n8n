@@ -81,6 +81,7 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 
 function groupToolMessagesIntoThinking(
 	messages: ChatUI.AssistantMessage[],
+	options: { streaming?: boolean; loadingMessage?: string } = {},
 ): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
@@ -104,36 +105,81 @@ function groupToolMessagesIntoThinking(
 			j++;
 		}
 
-		// Determine the latest status text
-		const lastRunning = toolGroup.filter((m) => m.status === 'running').pop();
-		const lastMessage = toolGroup[toolGroup.length - 1];
-		const latestStatus =
-			lastRunning?.customDisplayTitle ||
-			lastRunning?.displayTitle ||
-			lastMessage?.customDisplayTitle ||
-			lastMessage?.displayTitle ||
-			lastMessage?.toolName
-				.split('_')
-				.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-				.join(' ') ||
-			'Processing...';
+		// Deduplicate tool messages by toolCallId, keeping the latest status for each unique tool
+		// Tool messages come in multiple times as they progress through stages (running -> completed)
+		// Priority: toolCallId > toolName (for tools without IDs)
+		const uniqueToolsMap = new Map<string, ChatUI.ToolMessage>();
+		for (const tool of toolGroup) {
+			// Use toolCallId if available, otherwise fall back to toolName
+			// Don't use tool.id as it's a unique message ID that differs per update
+			const key = tool.toolCallId || `toolname-${tool.toolName}`;
+			// Later messages in the array have the most recent status, so they overwrite earlier ones
+			uniqueToolsMap.set(key, tool);
+		}
+		const uniqueTools = Array.from(uniqueToolsMap.values());
 
-		// Create a ThinkingGroup message
+		// Check if this is the last group of tools in the messages
+		const isLastToolGroup = j >= messages.length;
+		const allToolsCompleted = uniqueTools.every((m) => m.status === 'completed');
+		const hasRunningTool = uniqueTools.some((m) => m.status === 'running');
+
+		// Build the items array
+		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => ({
+			id: m.toolCallId || m.id || `tool-${m.toolName}`,
+			displayTitle:
+				m.customDisplayTitle ||
+				m.displayTitle ||
+				m.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' '),
+			status: m.status,
+		}));
+
+		// If this is the last group, all tools completed, and we're still streaming,
+		// add a "Thinking..." item to show the AI is processing
+		if (isLastToolGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
+			items.push({
+				id: 'thinking-item',
+				displayTitle: options.loadingMessage,
+				status: 'running',
+			});
+		}
+
+		// Determine the latest status text - prioritize running tools, then thinking state, then completed
+		const runningTool = uniqueTools.find((m) => m.status === 'running');
+		let latestStatus: string;
+
+		if (hasRunningTool) {
+			latestStatus =
+				runningTool?.customDisplayTitle ||
+				runningTool?.displayTitle ||
+				runningTool?.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ') ||
+				'Processing...';
+		} else if (
+			isLastToolGroup &&
+			allToolsCompleted &&
+			options.streaming &&
+			options.loadingMessage
+		) {
+			// Still streaming after tools completed - show thinking message
+			latestStatus = options.loadingMessage;
+		} else if (allToolsCompleted) {
+			// All tools completed and not streaming - show "Workflow generated"
+			latestStatus = 'Workflow generated';
+		} else {
+			latestStatus = 'Processing...';
+		}
+
+		// Create a ThinkingGroup message with deduplicated items
 		const thinkingGroup: ChatUI.ThinkingGroupMessage = {
 			id: `thinking-${toolGroup[0].id || i}`,
 			role: 'assistant',
 			type: 'thinking-group',
-			items: toolGroup.map((m, idx) => ({
-				id: m.id || `tool-${i}-${idx}`,
-				displayTitle:
-					m.customDisplayTitle ||
-					m.displayTitle ||
-					m.toolName
-						.split('_')
-						.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-						.join(' '),
-				status: m.status,
-			})),
+			items,
 			latestStatusText: latestStatus,
 		};
 
@@ -147,7 +193,10 @@ function groupToolMessagesIntoThinking(
 // Ensure all messages have required id and read properties, and group tool messages into thinking blocks
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized));
+	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
+		streaming: props.streaming,
+		loadingMessage: props.loadingMessage,
+	});
 });
 
 // Get quickReplies from the last message in the original messages (before filtering)
@@ -181,6 +230,12 @@ const showPlaceholder = computed(() => {
 
 const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
+});
+
+// Check if we have any thinking group - hides the generic loading message when tool status is shown
+// The ThinkingMessage component handles displaying the current status with shimmer animation
+const hasAnyThinkingGroup = computed(() => {
+	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
 });
 
 const showBottomInput = computed(() => {
@@ -387,7 +442,7 @@ defineExpose({
 							<slot name="messagesFooter" />
 						</div>
 						<div
-							v-if="loadingMessage"
+							v-if="loadingMessage && !hasAnyThinkingGroup"
 							:class="{
 								[$style.message]: true,
 								[$style.loading]: normalizedMessages?.length,
