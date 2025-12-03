@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { getModelMetadata } from './chat-hub.constants';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -32,7 +33,7 @@ export class ChatHubAgentService {
 				},
 				createdAt: agent.createdAt.toISOString(),
 				updatedAt: agent.updatedAt.toISOString(),
-				allowFileUploads: true,
+				metadata: getModelMetadata(agent.provider, agent.model),
 			})),
 		};
 	}
