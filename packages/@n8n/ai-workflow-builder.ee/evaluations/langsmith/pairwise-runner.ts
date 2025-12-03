@@ -16,6 +16,10 @@ import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
 import { createLogger, type EvalLogger } from '../utils/logger';
 
+// ============================================================================
+// Types
+// ============================================================================
+
 interface PairwiseDatasetInput {
 	evals: {
 		dos: string;
@@ -43,6 +47,19 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 	return true;
 }
 
+// ============================================================================
+// Helpers
+// ============================================================================
+
+const DEFAULT_NUM_JUDGES = 3;
+const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
+
+/** Calculate minimum judges needed for majority (e.g., 2 for 3 judges, 3 for 5 judges) */
+function getMajorityThreshold(numJudges: number): number {
+	return Math.ceil(numJudges / 2);
+}
+
+/** Build LangSmith-compatible evaluation results from judge panel output */
 function buildLangsmithResults(
 	judgeResults: PairwiseEvaluationResult[],
 	numJudges: number,
@@ -88,9 +105,14 @@ function buildLangsmithResults(
 	];
 }
 
+// ============================================================================
+// Workflow Generator (for LangSmith)
+// ============================================================================
+
 // Counter to track generations across repetitions
 let generationCounter = 0;
 
+/** Creates a generator function that produces workflows and runs judge evaluation */
 function createPairwiseWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
@@ -155,7 +177,7 @@ function createPairwiseWorkflowGenerator(
 
 		// Aggregate across judges
 		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
-		const majorityPass = primaryPasses >= Math.ceil(numJudges / 2);
+		const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
 		const avgDiagnosticScore =
 			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
 
@@ -184,7 +206,9 @@ function createPairwiseWorkflowGenerator(
 	};
 }
 
-const DEFAULT_NUM_JUDGES = 3;
+// ============================================================================
+// LangSmith Evaluator
+// ============================================================================
 
 /**
  * Simple evaluator that extracts pre-computed results from the generator output.
@@ -210,6 +234,7 @@ function createPairwiseLangsmithEvaluator() {
 	};
 }
 
+/** Filter examples by notion_id or limit count */
 function filterExamples(
 	allExamples: Example[],
 	notionId: string | undefined,
@@ -244,6 +269,10 @@ function filterExamples(
 	return allExamples;
 }
 
+// ============================================================================
+// Public API
+// ============================================================================
+
 export interface PairwiseEvaluationOptions {
 	repetitions?: number;
 	notionId?: string;
@@ -252,8 +281,10 @@ export interface PairwiseEvaluationOptions {
 	experimentName?: string;
 }
 
-const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
-
+/**
+ * Runs pairwise evaluation using LangSmith.
+ * Generates workflows from dataset prompts and evaluates them against do/don't criteria.
+ */
 export async function runPairwiseLangsmithEvaluation(
 	options: PairwiseEvaluationOptions = {},
 ): Promise<void> {
@@ -371,6 +402,117 @@ export async function runPairwiseLangsmithEvaluation(
 	} catch (error) {
 		log.error(
 			`✗ Pairwise evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		process.exit(1);
+	}
+}
+
+export interface LocalPairwiseOptions {
+	prompt: string;
+	criteria: { dos: string; donts: string };
+	numJudges?: number;
+	verbose?: boolean;
+}
+
+/**
+ * Runs a single pairwise evaluation locally without LangSmith.
+ * Useful for testing prompts and criteria before running full dataset evaluation.
+ */
+export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions): Promise<void> {
+	const { prompt, criteria, numJudges = DEFAULT_NUM_JUDGES, verbose = false } = options;
+	const log = createLogger(verbose);
+
+	console.log(formatHeader('Local Pairwise Evaluation', 50));
+	log.info(`➔ Judges: ${numJudges}`);
+	log.verbose(`➔ Prompt: ${prompt.slice(0, 80)}${prompt.length > 80 ? '...' : ''}`);
+	log.verbose(`➔ Dos: ${criteria.dos.slice(0, 60)}${criteria.dos.length > 60 ? '...' : ''}`);
+	if (criteria.donts) {
+		log.verbose(
+			`➔ Donts: ${criteria.donts.slice(0, 60)}${criteria.donts.length > 60 ? '...' : ''}`,
+		);
+	}
+
+	const startTime = Date.now();
+
+	try {
+		const { parsedNodeTypes, llm } = await setupTestEnvironment();
+
+		// Generate workflow
+		log.info('➔ Generating workflow...');
+		const runId = generateRunId();
+		const agent = createAgent(parsedNodeTypes, llm);
+		await consumeGenerator(agent.chat(getChatPayload(prompt, runId), 'local-pairwise-user'));
+		const state = await agent.getState(runId, 'local-pairwise-user');
+
+		if (!state.values || !isWorkflowStateValues(state.values)) {
+			throw new Error('Invalid workflow state');
+		}
+
+		const workflow = state.values.workflowJSON;
+		const nodeCount = workflow?.nodes?.length ?? 0;
+		const genTime = (Date.now() - startTime) / 1000;
+		log.success(`✅ Workflow generated (${nodeCount} nodes) [${genTime.toFixed(1)}s]`);
+
+		// Run judges
+		const judgeStartTime = Date.now();
+		log.info(`➔ Running ${numJudges} judges...`);
+
+		const judgeResults = await Promise.all(
+			Array.from({ length: numJudges }, async (_, i) => {
+				const result = await evaluateWorkflowPairwise(llm, {
+					workflowJSON: workflow,
+					evalCriteria: criteria,
+				});
+				const totalCriteria = result.passes.length + result.violations.length;
+				log.verbose(
+					`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
+						`(${result.passes.length}/${totalCriteria}, ${(result.diagnosticScore * 100).toFixed(0)}%)`,
+				);
+				return result;
+			}),
+		);
+
+		const judgeTime = (Date.now() - judgeStartTime) / 1000;
+
+		// Aggregate results
+		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+		const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
+		const avgDiagnosticScore =
+			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+
+		const totalTime = (Date.now() - startTime) / 1000;
+
+		// Display result
+		console.log(
+			`\n📊 Result: ${primaryPasses}/${numJudges} judges → ` +
+				`${majorityPass ? pc.green('PASS') : pc.red('FAIL')} ` +
+				`(${(avgDiagnosticScore * 100).toFixed(0)}%)`,
+		);
+		log.dim(
+			`   Timing: gen ${genTime.toFixed(1)}s + judges ${judgeTime.toFixed(1)}s = ${totalTime.toFixed(1)}s`,
+		);
+
+		// Show violations if any
+		const allViolations = judgeResults.flatMap((r, i) =>
+			r.violations.map((v) => ({ judge: i + 1, rule: v.rule, justification: v.justification })),
+		);
+		if (allViolations.length > 0) {
+			console.log(pc.yellow('\nViolations:'));
+			for (const v of allViolations) {
+				console.log(pc.dim(`  [Judge ${v.judge}] ${v.rule}: ${v.justification}`));
+			}
+		}
+
+		// Show workflow summary
+		if (verbose && workflow.nodes) {
+			console.log(pc.dim('\nWorkflow nodes:'));
+			for (const node of workflow.nodes) {
+				console.log(pc.dim(`  - ${node.name} (${node.type})`));
+			}
+		}
+	} catch (error) {
+		log.error(
+			`✗ Local evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
 		);
 		process.exit(1);
 	}

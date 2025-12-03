@@ -1,12 +1,18 @@
 import { runCliEvaluation } from './cli/runner.js';
-import { runPairwiseLangsmithEvaluation } from './langsmith/pairwise-runner.js';
+import {
+	runLocalPairwiseEvaluation,
+	runPairwiseLangsmithEvaluation,
+} from './langsmith/pairwise-runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
 
 // Re-export for external use if needed
 export { runCliEvaluation } from './cli/runner.js';
 export { runLangsmithEvaluation } from './langsmith/runner.js';
-export { runPairwiseLangsmithEvaluation } from './langsmith/pairwise-runner.js';
+export {
+	runLocalPairwiseEvaluation,
+	runPairwiseLangsmithEvaluation,
+} from './langsmith/pairwise-runner.js';
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
 
@@ -49,14 +55,30 @@ async function main(): Promise<void> {
 	// Parse --name argument for custom experiment name
 	const experimentName = getFlagValue('--name');
 
+	// Parse local pairwise evaluation flags
+	const prompt = getFlagValue('--prompt');
+	const dos = getFlagValue('--dos');
+	const donts = getFlagValue('--donts');
+
 	if (usePairwiseEval) {
-		await runPairwiseLangsmithEvaluation({
-			repetitions,
-			notionId,
-			numJudges,
-			verbose,
-			experimentName,
-		});
+		if (prompt) {
+			// Local mode - run single evaluation without LangSmith
+			await runLocalPairwiseEvaluation({
+				prompt,
+				criteria: { dos: dos ?? '', donts: donts ?? '' },
+				numJudges,
+				verbose,
+			});
+		} else {
+			// LangSmith mode
+			await runPairwiseLangsmithEvaluation({
+				repetitions,
+				notionId,
+				numJudges,
+				verbose,
+				experimentName,
+			});
+		}
 	} else if (useLangsmith) {
 		await runLangsmithEvaluation(repetitions);
 	} else {
