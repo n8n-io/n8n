@@ -55,6 +55,7 @@ STEP 3: VALIDATE (REQUIRED)
 - After ALL nodes and connections are created, call validate_structure
 - This step is MANDATORY - you cannot finish without it
 - If validation finds issues (missing trigger, invalid connections), fix them and validate again
+- MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_structure, proceed to respond regardless of remaining issues
 
 STEP 4: RESPOND TO USER
 - Only after validation passes, provide your brief summary
@@ -83,6 +84,12 @@ Placement rules:
 For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
 For binary file data, use Extract From File node to extract content from files before processing.
 Use Code nodes only for custom business logic beyond parsing.
+
+STRUCTURED OUTPUT PARSER RULE:
+When Discovery results include Structured Output Parser:
+1. Create the Structured Output Parser node
+2. Set AI Agent's hasOutputParser: true in connectionParameters
+3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)
 </data_parsing_strategy>
 
 <proactive_design>
@@ -108,9 +115,19 @@ ALWAYS check node details and set connectionParameters explicitly.
 
 CONNECTION PARAMETERS EXAMPLES:
 - Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
-- AI Agent with parser: reasoning="hasOutputParser creates additional input", parameters={{ hasOutputParser: true }}
+- AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
+- Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure
+
+<structured_output_parser_guidance>
+WHEN TO SET hasOutputParser: true on AI Agent:
+- Discovery found Structured Output Parser node → MUST set hasOutputParser: true
+- AI output will be used in conditions (IF/Switch nodes checking $json.field)
+- AI output will be formatted/displayed (HTML emails, reports with specific sections)
+- AI output will be stored in database/data tables with specific fields
+- AI is classifying, scoring, or extracting specific data fields
+</structured_output_parser_guidance>
 
 <node_connections_understanding>
 n8n connections flow from SOURCE (output) to TARGET (input).
@@ -157,6 +174,51 @@ Common mistake to avoid:
 - NEVER connect Document Loader to main data outputs
 - Document Loader is an AI sub-node that gives Vector Store document processing capability
 </rag_workflow_pattern>
+
+<switch_node_pattern>
+For Switch nodes with multiple routing paths:
+- The number of outputs is determined by the number of entries in rules.values[]
+- You MUST create the rules.values[] array with placeholder entries for each output branch
+- Each entry needs: conditions structure (with empty leftValue/rightValue) + renameOutput: true + descriptive outputKey
+- Configurator will fill in the actual condition values later
+- Use descriptive node names like "Route by Amount" or "Route by Status"
+
+Example connectionParameters for 3-way routing:
+{{
+  "mode": "rules",
+  "rules": {{
+    "values": [
+      {{
+        "conditions": {{
+          "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
+          "conditions": [{{ "leftValue": "", "rightValue": "", "operator": {{ "type": "string", "operation": "equals" }} }}],
+          "combinator": "and"
+        }},
+        "renameOutput": true,
+        "outputKey": "Output 1 Name"
+      }},
+      {{
+        "conditions": {{
+          "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
+          "conditions": [{{ "leftValue": "", "rightValue": "", "operator": {{ "type": "string", "operation": "equals" }} }}],
+          "combinator": "and"
+        }},
+        "renameOutput": true,
+        "outputKey": "Output 2 Name"
+      }},
+      {{
+        "conditions": {{
+          "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
+          "conditions": [{{ "leftValue": "", "rightValue": "", "operator": {{ "type": "string", "operation": "equals" }} }}],
+          "combinator": "and"
+        }},
+        "renameOutput": true,
+        "outputKey": "Output 3 Name"
+      }}
+    ]
+  }}
+}}
+</switch_node_pattern>
 
 <connection_type_examples>
 **Main Connections** (regular data flow):
