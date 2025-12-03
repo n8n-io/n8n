@@ -13,6 +13,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
+import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
 
 type Props = {
@@ -204,7 +205,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 							item.description ||
 							i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip')
 						"
-						:show-after="100"
+						:show-after="MCP_TOOLTIP_DELAY"
 						:popper-class="$style['description-popper']"
 					>
 						<div :class="$style['description-cell']">
@@ -298,7 +299,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	-webkit-line-clamp: 3;
 	line-clamp: 3;
 	overflow: hidden;
-	font-style: italic;
+	color: var(--color--text);
 
 	span {
 		display: flex;

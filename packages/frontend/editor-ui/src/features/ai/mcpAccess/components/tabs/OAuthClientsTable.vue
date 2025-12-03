@@ -2,13 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { UserAction } from '@/Interface';
-import {
-	N8nActionBox,
-	N8nActionToggle,
-	N8nDataTableServer,
-	N8nLoading,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nActionToggle, N8nDataTableServer, N8nLoading, N8nText } from '@n8n/design-system';
 import { ref } from 'vue';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -33,8 +27,8 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 		key: 'name',
 		width: 250,
 		disableSort: true,
-		value(client: OAuthClientResponseDto) {
-			return client.name;
+		value() {
+			return;
 		},
 	},
 	{
@@ -99,8 +93,13 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 						</N8nText>
 					</div>
 				</template>
+				<template #[`item.name`]="{ item }">
+					<N8nText data-test-id="mcp-client-name" color="text-base">
+						{{ item.name }}
+					</N8nText>
+				</template>
 				<template #[`item.createdAt`]="{ item }">
-					<N8nText data-test-id="mcp-client-created-at">
+					<N8nText data-test-id="mcp-client-created-at" color="text-base">
 						<TimeAgo :date="String(item.createdAt)" />
 					</N8nText>
 				</template>

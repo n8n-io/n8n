@@ -4,7 +4,10 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
+import {
+	LOADING_INDICATOR_TIMEOUT,
+	MCP_TOOLTIP_DELAY,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
 
@@ -123,7 +126,7 @@ onMounted(async () => {
 			@copy="handleUrlCopy"
 		/>
 		<div v-if="loadingApiKey" :class="$style['loading-container']">
-			<N8nLoading :loading="loadingApiKey" variant="h1" />
+			<N8nLoading :loading="loadingApiKey" variant="h1" :class="$style['url-skeleton']" />
 			<N8nLoading :loading="loadingApiKey" variant="button" :class="$style['code-skeleton']" />
 		</div>
 		<div v-else-if="apiKey?.apiKey" :class="$style['parameters-container']">
@@ -131,12 +134,15 @@ onMounted(async () => {
 				id="access-token"
 				:value="apiKey.apiKey"
 				:label="i18n.baseText('settings.mcp.connectPopover.tab.accessToken')"
-				:max-width="400"
+				:max-width="450"
 				:allow-copy="!isKeyRedacted"
 				@copy="handleAccessTokenCopy"
 			>
 				<template #customActions>
-					<N8nTooltip :content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')">
+					<N8nTooltip
+						:content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')"
+						:show-after="MCP_TOOLTIP_DELAY"
+					>
 						<N8nButton type="tertiary" icon="refresh-cw" :square="true" @click="rotateKey" />
 					</N8nTooltip>
 				</template>
@@ -149,6 +155,7 @@ onMounted(async () => {
 				<N8nTooltip
 					:disabled="!isSupported"
 					:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+					:show-after="MCP_TOOLTIP_DELAY"
 				>
 					<N8nButton
 						v-if="isSupported && !loadingApiKey"
@@ -176,9 +183,16 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 }
 
+// Make skeletons same height as the actual content
+// so nothing moves when loading finishes
+.url-skeleton div {
+	width: 100%;
+	min-height: 40px;
+}
+
 .code-skeleton div {
 	width: 100%;
-	min-height: 200px;
+	min-height: 350px;
 }
 
 .parameters-container {
@@ -204,7 +218,9 @@ onMounted(async () => {
 	}
 
 	code {
+		color: var(--color--text) !important;
 		font-size: var(--font-size--2xs);
+		padding: var(--spacing--2xs) !important;
 		tab-size: 1;
 		background: none !important;
 		border: var(--border);
@@ -225,5 +241,11 @@ onMounted(async () => {
 	display: none;
 	border: none;
 	outline: none;
+
+	&:hover {
+		border: none;
+		outline: none;
+		background: none;
+	}
 }
 </style>

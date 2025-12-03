@@ -2,6 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
 	id: string;
@@ -46,7 +47,8 @@ const handleCopy = async (value: string) => {
 				<N8nTooltip
 					:disables="!isSupported"
 					:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
-					placement="right"
+					:show-after="MCP_TOOLTIP_DELAY"
+					placement="bottom"
 				>
 					<N8nButton
 						v-if="props.allowCopy && isSupported"
@@ -78,12 +80,21 @@ const handleCopy = async (value: string) => {
 	display: flex;
 	align-items: stretch;
 	justify-content: space-between;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
 	gap: var(--spacing--2xs);
-	background: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
-	font-size: var(--font-size--sm);
 	overflow: hidden;
+
+	code {
+		display: flex;
+		align-items: center;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		white-space: pre;
+		padding: var(--spacing--2xs);
+	}
 
 	button {
 		border: none;
@@ -102,13 +113,6 @@ const handleCopy = async (value: string) => {
 		word-wrap: break-word;
 		margin-top: var(--spacing--2xs);
 	}
-}
-
-code {
-	text-overflow: ellipsis;
-	overflow: hidden;
-	white-space: pre;
-	padding: var(--spacing--2xs) var(--spacing--3xs);
 }
 
 .copy-button-wrapper {

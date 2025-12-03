@@ -65,7 +65,7 @@ const trackCopyEvent = (payload: {
 			:popper-options="{ strategy: 'fixed' }"
 			:content-class="$style.popper"
 			:show-arrow="false"
-			width="400px"
+			width="450px"
 			@update:open="handlePopoverOpenChange"
 		>
 			<template #trigger>
