@@ -23,7 +23,6 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
@@ -45,10 +44,9 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
+	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
-	const bannersStore = useBannersStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -62,6 +60,7 @@ export async function initializeCore() {
 	try {
 		await settingsStore.initialize();
 	} catch (error) {
+		console.error('Failed to initialize settings store', error);
 		toast.showToast({
 			title: i18n.baseText('startupError'),
 			message: i18n.baseText('startupError.message'),
@@ -81,29 +80,13 @@ export async function initializeCore() {
 		},
 	});
 
-	const banners: BannerName[] = [];
-	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
-		banners.push('NON_PRODUCTION_LICENSE');
-	}
-	if (
-		!(settingsStore.settings.banners?.dismissed || []).includes('V1') &&
-		settingsStore.settings.versionCli.startsWith('1.')
-	) {
-		banners.push('V1');
-	}
-	bannersStore.loadStaticBanners({
-		banners,
-	});
-
 	versionsStore.initialize(settingsStore.settings.versionNotifications);
 
-	void useExternalHooks().run('app.mount');
-
 	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize({
-			quota: settingsStore.userManagement.quota,
-		});
+		await usersStore.initialize();
 	}
+
+	void useExternalHooks().run('app.mount');
 
 	state.initialized = true;
 }
@@ -137,6 +120,10 @@ export async function initializeAuthenticatedFeatures(
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
 
+	if (!settingsStore.isPreviewMode) {
+		usersStore.setUserQuota(settingsStore.userManagement.quota);
+	}
+
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
 			await sourceControlStore.getPreferences();
@@ -153,6 +140,18 @@ export async function initializeAuthenticatedFeatures(
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
+	}
+
+	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
+		bannersStore.pushBannerToStack('NON_PRODUCTION_LICENSE');
+	}
+
+	if (
+		settingsStore.settings.banners &&
+		!settingsStore.settings.banners.dismissed.includes('V1') &&
+		settingsStore.settings.versionCli.startsWith('1.')
+	) {
+		bannersStore.pushBannerToStack('V1');
 	}
 
 	if (settingsStore.isCloudDeployment) {

@@ -82,6 +82,7 @@ export const testCaseSchema = z.object({
 	name: z.string(),
 	prompt: z.string(),
 	referenceWorkflow: z.custom<SimpleWorkflow>().optional(),
+	referenceWorkflows: z.array(z.custom<SimpleWorkflow>()).optional(),
 });
 
 export type TestCase = z.infer<typeof testCaseSchema>;
@@ -91,6 +92,7 @@ export const evaluationInputSchema = z.object({
 	userPrompt: z.string(),
 	generatedWorkflow: z.custom<SimpleWorkflow>(),
 	referenceWorkflow: z.custom<SimpleWorkflow>().optional(),
+	referenceWorkflows: z.array(z.custom<SimpleWorkflow>()).optional(),
 });
 
 export type EvaluationInput = z.infer<typeof evaluationInputSchema>;

@@ -4,15 +4,24 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import type {
+	ChatHubBaseLLMModel,
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatModelDto,
+} from '@n8n/api-types';
+import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
+import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useUIStore } from '@/app/stores/ui.store';
+import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const props = defineProps<{
 	modalName: string;
@@ -28,19 +37,29 @@ const chatStore = useChatStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
+const uiStore = useUIStore();
+
 const modalBus = ref(createEventBus());
+const customAgent = useCustomAgent(props.data.agentId);
 
 const name = ref('');
 const description = ref('');
 const systemPrompt = ref('');
-const selectedModel = ref<ChatModelDto | null>(null);
+const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
 const tools = ref<INode[]>([]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
+const credentialIdForSelectedModelProvider = computed(
+	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
+);
+const selectedAgent = computed(
+	() => selectedModel.value && chatStore.getAgent(selectedModel.value, selectedModel.value.model),
+);
 
 const isEditMode = computed(() => !!props.data.agentId);
+const isLoadingAgent = computed(() => isEditMode.value && !customAgent.value);
 const title = computed(() =>
 	isEditMode.value
 		? i18n.baseText('chatHub.agent.editor.title.edit')
@@ -56,7 +75,8 @@ const isValid = computed(() => {
 	return (
 		name.value.trim().length > 0 &&
 		systemPrompt.value.trim().length > 0 &&
-		selectedModel.value !== null
+		selectedModel.value !== null &&
+		!!credentialIdForSelectedModelProvider.value
 	);
 });
 
@@ -67,36 +87,48 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 	};
 });
 
-function loadAgent() {
-	const customAgent = chatStore.currentEditingAgent;
+const canSelectTools = computed(
+	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
+);
 
-	if (!customAgent) return;
+// If the agent doesn't support tools anymore, reset tools
+watch(
+	selectedAgent,
+	(agent) => {
+		if (agent && !agent.metadata.capabilities.functionCalling) {
+			tools.value = [];
+		}
+	},
+	{ immediate: true },
+);
 
-	name.value = customAgent.name;
-	description.value = customAgent.description ?? '';
-	systemPrompt.value = customAgent.systemPrompt;
-	selectedModel.value = chatStore.getAgent(customAgent);
-	tools.value = customAgent.tools || [];
+watch(
+	customAgent,
+	(agent) => {
+		if (!agent) return;
 
-	if (customAgent.credentialId) {
-		agentSelectedCredentials.value[customAgent.provider] = customAgent.credentialId;
-	}
-}
+		name.value = agent.name;
+		description.value = agent.description ?? '';
+		systemPrompt.value = agent.systemPrompt;
+		selectedModel.value = { provider: agent.provider, model: agent.model };
+		tools.value = agent.tools || [];
 
-onMounted(() => {
-	if (props.data.agentId) {
-		loadAgent();
-	}
-});
+		if (agent.credentialId) {
+			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
+		}
+	},
+	{ immediate: true },
+);
 
-function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
+function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
 	agentSelectedCredentials.value = {
 		...agentSelectedCredentials.value,
 		[provider]: credentialId,
 	};
 }
 
-function onModelChange(model: ChatModelDto) {
+function onModelChange(model: ChatHubConversationModel) {
+	assert(isLlmProviderModel(model));
 	selectedModel.value = model;
 }
 
@@ -106,22 +138,14 @@ async function onSave() {
 	isSaving.value = true;
 	try {
 		assert(selectedModel.value);
-
-		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
-
-		assert(model);
-		assert(model.provider !== 'n8n' && model.provider !== 'custom-agent');
-
-		const credentialId = agentMergedCredentials.value[model.provider];
-
-		assert(credentialId);
+		assert(credentialIdForSelectedModelProvider.value);
 
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
-			...model,
-			credentialId,
+			...selectedModel.value,
+			credentialId: credentialIdForSelectedModelProvider.value,
 			tools: tools.value,
 		};
 
@@ -182,8 +206,16 @@ async function onDelete() {
 	}
 }
 
-function onSelectTools(newTools: INode[]) {
-	tools.value = newTools;
+function onSelectTools() {
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: tools.value,
+			onConfirm: (newTools: INode[]) => {
+				tools.value = newTools;
+			},
+		},
+	});
 }
 </script>
 
@@ -197,7 +229,17 @@ function onSelectTools(newTools: INode[]) {
 		min-height="400px"
 	>
 		<template #header>
-			<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+			<div :class="$style.header">
+				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+				<N8nButton
+					v-if="isEditMode"
+					type="secondary"
+					icon="trash-2"
+					:disabled="isDeleting"
+					:loading="isDeleting"
+					@click="onDelete"
+				/>
+			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
@@ -212,6 +254,7 @@ function onSelectTools(newTools: INode[]) {
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 						:maxlength="128"
 						:class="$style.input"
+						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -227,6 +270,7 @@ function onSelectTools(newTools: INode[]) {
 						:maxlength="512"
 						:rows="3"
 						:class="$style.input"
+						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -242,6 +286,7 @@ function onSelectTools(newTools: INode[]) {
 						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
 						:rows="6"
 						:class="$style.input"
+						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -253,9 +298,11 @@ function onSelectTools(newTools: INode[]) {
 						:required="true"
 					>
 						<ModelSelector
-							:selected-agent="selectedModel"
+							:selected-agent="selectedAgent"
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
+							:disabled="isLoadingAgent"
+							warn-missing-credentials
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
 						/>
@@ -268,33 +315,51 @@ function onSelectTools(newTools: INode[]) {
 						:required="false"
 					>
 						<div>
-							<ToolsSelector :disabled="false" :selected="tools" @select="onSelectTools" />
+							<ToolsSelector
+								:disabled="isLoadingAgent || !canSelectTools"
+								:disabled-tooltip="
+									isLoadingAgent || canSelectTools
+										? undefined
+										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+								"
+								:selected="tools"
+								@click="onSelectTools"
+							/>
 						</div>
 					</N8nInputLabel>
 				</div>
+				<N8nSpinner v-if="isLoadingAgent" :class="$style.spinner" size="xlarge" />
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<div :class="$style.footerRight">
-					<N8nButton
-						v-if="isEditMode"
-						type="secondary"
-						icon="trash-2"
-						:disabled="isDeleting"
-						:loading="isDeleting"
-						@click="onDelete"
-					/>
-					<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
-						{{ saveButtonLabel }}
-					</N8nButton>
-				</div>
+				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
+					i18n.baseText('chatHub.tools.editor.cancel')
+				}}</N8nButton>
+				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+					{{ saveButtonLabel }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style lang="scss" module>
+.spinner {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--s);
+	padding-right: var(--spacing--xl);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -315,11 +380,6 @@ function onSelectTools(newTools: INode[]) {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	width: 100%;
-}
-
-.footerRight {
-	display: flex;
 	gap: var(--spacing--2xs);
 }
 </style>

@@ -1,5 +1,6 @@
 import type {
 	ExecutionError,
+	IDestinationNode,
 	IExecuteContextData,
 	IExecuteData,
 	IExecutionContext,
@@ -19,14 +20,8 @@ export interface IRunExecutionDataV1 {
 	version: 1;
 	startData?: {
 		startNodes?: StartNodeData[];
-		destinationNode?: {
-			nodeName: string;
-			mode: 'inclusive' | 'exclusive';
-		};
-		originalDestinationNode?: {
-			nodeName: string;
-			mode: 'inclusive' | 'exclusive';
-		};
+		destinationNode?: IDestinationNode;
+		originalDestinationNode?: IDestinationNode;
 		runNodeFilter?: string[];
 	};
 	resultData: {

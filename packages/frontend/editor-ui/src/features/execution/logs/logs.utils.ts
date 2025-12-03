@@ -14,6 +14,8 @@ import {
 	parseErrorMetadata,
 	type RelatedExecution,
 	type INodeExecutionData,
+	createEmptyRunExecutionData,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import type {
 	LogEntry,
@@ -271,7 +273,7 @@ export function createLogTree(
 		executionId: response.id,
 		workflow,
 		workflows,
-		data: response.data ?? { resultData: { runData: {} } },
+		data: response.data ?? createEmptyRunExecutionData(),
 		subWorkflowData,
 		isSubExecution: false,
 	});
@@ -642,7 +644,7 @@ export function isPlaceholderLog(treeNode: LogEntry): boolean {
 export function copyExecutionData(executionData: IExecutionResponse): IExecutionResponse {
 	return {
 		...executionData,
-		data: {
+		data: createRunExecutionData({
 			...executionData.data,
 			resultData: {
 				...executionData.data?.resultData,
@@ -650,6 +652,6 @@ export function copyExecutionData(executionData: IExecutionResponse): IExecution
 					Object.entries(executionData.data?.resultData.runData ?? {}).map(([k, v]) => [k, [...v]]),
 				),
 			},
-		},
+		}),
 	};
 }

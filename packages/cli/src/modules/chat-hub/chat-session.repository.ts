@@ -2,9 +2,9 @@ import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import { ChatHubSession } from './chat-hub-session.entity';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export class ChatHubSessionRepository extends Repository<ChatHubSession> {

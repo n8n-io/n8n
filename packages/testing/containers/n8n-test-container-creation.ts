@@ -30,15 +30,16 @@ import {
 import { setupGitea } from './n8n-test-container-gitea';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // --- Constants ---
 
-const POSTGRES_IMAGE = 'postgres:16-alpine';
-const REDIS_IMAGE = 'redis:7-alpine';
-const CADDY_IMAGE = 'caddy:2-alpine';
-const N8N_E2E_IMAGE = 'n8nio/n8n:local';
-const MOCKSERVER_IMAGE = 'mockserver/mockserver:5.15.0';
-const GITEA_IMAGE = 'gitea/gitea:1.24.6';
+const POSTGRES_IMAGE = TEST_CONTAINER_IMAGES.postgres;
+const REDIS_IMAGE = TEST_CONTAINER_IMAGES.redis;
+const CADDY_IMAGE = TEST_CONTAINER_IMAGES.caddy;
+const N8N_E2E_IMAGE = TEST_CONTAINER_IMAGES.n8n;
+const MOCKSERVER_IMAGE = TEST_CONTAINER_IMAGES.mockserver;
+const GITEA_IMAGE = TEST_CONTAINER_IMAGES.gitea;
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
 const N8N_IMAGE = getDockerImageFromEnv(N8N_E2E_IMAGE);

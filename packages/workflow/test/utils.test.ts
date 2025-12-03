@@ -109,6 +109,136 @@ describe('jsonParse', () => {
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
 	});
+
+	describe('JSON repair', () => {
+		describe('Recovery edge cases', () => {
+			it('should handle simple object with single quotes', () => {
+				const result = jsonParse("{name: 'John', age: 30}", { repairJSON: true });
+				expect(result).toEqual({ name: 'John', age: 30 });
+			});
+
+			it('should handle nested objects with single quotes', () => {
+				const result = jsonParse("{user: {name: 'John', active: true},}", { repairJSON: true });
+				expect(result).toEqual({ user: { name: 'John', active: true } });
+			});
+
+			it('should handle empty string values', () => {
+				const result = jsonParse("{key: ''}", { repairJSON: true });
+				expect(result).toEqual({ key: '' });
+			});
+
+			it('should handle numeric string values', () => {
+				const result = jsonParse("{key: '123'}", { repairJSON: true });
+				expect(result).toEqual({ key: '123' });
+			});
+
+			it('should handle multiple keys with trailing comma', () => {
+				const result = jsonParse("{a: '1', b: '2', c: '3',}", { repairJSON: true });
+				expect(result).toEqual({ a: '1', b: '2', c: '3' });
+			});
+
+			it('should recover single quotes around strings', () => {
+				const result = jsonParse("{key: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should recover unquoted keys', () => {
+				const result = jsonParse("{myKey: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ myKey: 'value' });
+			});
+
+			it('should recover trailing commas in objects', () => {
+				const result = jsonParse("{key: 'value',}", { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should recover trailing commas in nested objects', () => {
+				const result = jsonParse("{outer: {inner: 'value',},}", { repairJSON: true });
+				expect(result).toEqual({ outer: { inner: 'value' } });
+			});
+
+			it('should recover multiple issues at once', () => {
+				const result = jsonParse("{key1: 'value1', key2: 'value2',}", { repairJSON: true });
+				expect(result).toEqual({ key1: 'value1', key2: 'value2' });
+			});
+
+			it('should recover numeric values with single quotes', () => {
+				const result = jsonParse("{key: '123'}", { repairJSON: true });
+				expect(result).toEqual({ key: '123' });
+			});
+
+			it('should recover boolean values with single quotes', () => {
+				const result = jsonParse("{key: 'true'}", { repairJSON: true });
+				expect(result).toEqual({ key: 'true' });
+			});
+
+			it('should handle urls', () => {
+				const result = jsonParse('{"key": "https://example.com",}', { repairJSON: true });
+				expect(result).toEqual({ key: 'https://example.com' });
+			});
+
+			it('should handle ipv6 addresses', () => {
+				const result = jsonParse('{"key": "2a01:c50e:3544:bd00:4df0:7609:251a:f6d0",}', {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ key: '2a01:c50e:3544:bd00:4df0:7609:251a:f6d0' });
+			});
+
+			it('should handle single quotes containing double quotes', () => {
+				const result = jsonParse('{key: \'value with "quotes" inside\'}', { repairJSON: true });
+				expect(result).toEqual({ key: 'value with "quotes" inside' });
+			});
+
+			it('should handle escaped single quotes', () => {
+				const result = jsonParse("{key: 'it\\'s escaped'}", { repairJSON: true });
+				expect(result).toEqual({ key: "it's escaped" });
+			});
+
+			it('should handle keys containing hyphens', () => {
+				const result = jsonParse("{key-with-dash: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ 'key-with-dash': 'value' });
+			});
+
+			it('should handle keys containing dots', () => {
+				const result = jsonParse("{key.name: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ 'key.name': 'value' });
+			});
+
+			it('should handle unquoted string values', () => {
+				const result = jsonParse('{key: value}', { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should handle unquoted multi-word values', () => {
+				const result = jsonParse('{key: some text}', { repairJSON: true });
+				expect(result).toEqual({ key: 'some text' });
+			});
+
+			it('should handle input with double quotes mixed with single quotes', () => {
+				const result = jsonParse('{key: "value with \'single\' quotes"}', { repairJSON: true });
+				expect(result).toEqual({ key: "value with 'single' quotes" });
+			});
+
+			it('should handle keys starting with numbers', () => {
+				const result = jsonParse("{123key: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ '123key': 'value' });
+			});
+
+			it('should handle nested objects containing quotes', () => {
+				const result = jsonParse("{outer: {inner: 'value with \"quotes\"', other: 'test'},}", {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ outer: { inner: 'value with "quotes"', other: 'test' } });
+			});
+
+			it('should handle complex nested quote conflicts', () => {
+				const result = jsonParse("{key: 'value with \"quotes\" inside', nested: {inner: 'test'}}", {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ key: 'value with "quotes" inside', nested: { inner: 'test' } });
+			});
+		});
+	});
 });
 
 describe('jsonStringify', () => {

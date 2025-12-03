@@ -10,7 +10,7 @@ The way to add third-party dependencies to the `n8nio/runners` image has changed
 
 ### When is action necessary?
 
-If you adding third-party dependencies to the `n8nio/runners` image using `package.json` and `extras.txt` and building the image yourself, please extend the image as instructed in the link above.
+If you are adding third-party dependencies to the `n8nio/runners` image using `package.json` and `extras.txt` and building the image yourself, please extend the image as instructed in the link above.
 
 # 1.113.0
 

@@ -4,6 +4,7 @@ import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import LogsViewRunData from './LogsViewRunData.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
+import { createRunExecutionData } from 'n8n-workflow';
 
 describe('LogViewRunData', () => {
 	let pinia: TestingPinia;
@@ -22,7 +23,7 @@ describe('LogViewRunData', () => {
 		runIndex: 0,
 		runData: runDataB,
 		workflow,
-		execution: { resultData: { runData: { B: [runDataB] } } },
+		execution: createRunExecutionData({ resultData: { runData: { B: [runDataB] } } }),
 	});
 
 	beforeEach(() => {

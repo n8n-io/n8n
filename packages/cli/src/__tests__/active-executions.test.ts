@@ -12,6 +12,7 @@ import type {
 	StructuredChunk,
 } from 'n8n-workflow';
 import {
+	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
 	randomInt,
 	sleep,
@@ -49,11 +50,7 @@ describe('ActiveExecutions', () => {
 	let postExecutePromise: Promise<IRun | undefined>;
 
 	const fullRunData: IRun = {
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 		mode: 'manual',
 		startedAt: new Date(),
 		status: 'new',

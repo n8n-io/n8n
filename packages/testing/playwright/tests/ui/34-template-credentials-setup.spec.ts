@@ -26,6 +26,9 @@ const ecommerceCollection = JSON.parse(
 
 function createTemplateRequirements(): TestRequirements {
 	return {
+		storage: {
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+		},
 		config: {
 			settings: {
 				templates: {
@@ -110,12 +113,18 @@ test.describe('Template credentials setup @db:reset', () => {
 
 		await expect(n8n.templateCredentialSetup.getContinueButton()).toBeDisabled();
 
-		await n8n.templatesComposer.fillDummyCredentialForApp('Shopify');
+		await n8n.templatesComposer.fillDummyCredentialForApp('Shopify', {
+			fields: { shopSubdomain: 'test-shop', apiKey: 'test-token', password: 'test-key' },
+		});
 
 		await expect(n8n.templateCredentialSetup.getContinueButton()).toBeEnabled();
 
-		await n8n.templatesComposer.fillDummyCredentialForAppWithConfirm('X (Formerly Twitter)');
-		await n8n.templatesComposer.fillDummyCredentialForApp('Telegram');
+		await n8n.templatesComposer.fillDummyCredentialForAppWithConfirm('X (Formerly Twitter)', {
+			fields: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
+		});
+		await n8n.templatesComposer.fillDummyCredentialForApp('Telegram', {
+			fields: { accessToken: 'bot-token' },
+		});
 
 		await n8n.notifications.quickCloseAll();
 
@@ -139,6 +148,9 @@ test.describe('Template credentials setup @db:reset', () => {
 		setupRequirements,
 	}) => {
 		await setupRequirements({
+			storage: {
+				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+			},
 			config: {
 				settings: {
 					templates: {
@@ -208,7 +220,9 @@ test.describe('Template credentials setup @db:reset', () => {
 			n8n,
 		}) => {
 			await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
-			await n8n.templatesComposer.fillDummyCredentialForApp('Shopify');
+			await n8n.templatesComposer.fillDummyCredentialForApp('Shopify', {
+				fields: { shopSubdomain: 'test-shop', apiKey: 'test-token', password: 'test-key' },
+			});
 
 			await n8n.notifications.quickCloseAll();
 
@@ -226,9 +240,15 @@ test.describe('Template credentials setup @db:reset', () => {
 			await n8n.canvas.getSetupWorkflowCredentialsButton().click();
 			await expect(n8n.workflowCredentialSetupModal.getModal()).toBeVisible();
 
-			await n8n.templatesComposer.fillDummyCredentialForApp('Shopify');
-			await n8n.templatesComposer.fillDummyCredentialForAppWithConfirm('X (Formerly Twitter)');
-			await n8n.templatesComposer.fillDummyCredentialForApp('Telegram');
+			await n8n.templatesComposer.fillDummyCredentialForApp('Shopify', {
+				fields: { shopSubdomain: 'test-shop', apiKey: 'test-token', password: 'test-key' },
+			});
+			await n8n.templatesComposer.fillDummyCredentialForAppWithConfirm('X (Formerly Twitter)', {
+				fields: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
+			});
+			await n8n.templatesComposer.fillDummyCredentialForApp('Telegram', {
+				fields: { accessToken: 'bot-token' },
+			});
 
 			await n8n.notifications.quickCloseAll();
 
