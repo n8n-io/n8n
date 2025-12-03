@@ -81,6 +81,10 @@ const attachments = computed(() =>
 	})),
 );
 
+const hideMessage = computed(() => {
+	return message.status === 'success' && message.content === '';
+});
+
 async function handleCopy() {
 	const text = message.content;
 	await clipboard.copy(text);
@@ -170,6 +174,7 @@ onBeforeMount(() => {
 
 <template>
 	<div
+		v-if="!hideMessage"
 		:class="[
 			$style.message,
 			message.type === 'human' ? $style.user : $style.assistant,
