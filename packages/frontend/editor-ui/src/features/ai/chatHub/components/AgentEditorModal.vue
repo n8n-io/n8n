@@ -125,6 +125,8 @@ watch(
 	[isLoadingAgent, nameInputRef],
 	async ([isLoading, name]) => {
 		if (!isLoading) {
+			// autofocus attribute doesn't work in modal
+			// https://github.com/element-plus/element-plus/issues/15250
 			await new Promise((r) => setTimeout(r, 0));
 			name?.focus();
 		}
