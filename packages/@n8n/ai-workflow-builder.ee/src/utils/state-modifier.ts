@@ -3,14 +3,13 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { Logger } from '@n8n/backend-common';
 
+import { cleanupDanglingToolCallMessages } from './cleanup-dangling-tool-call-messages';
+import { estimateTokenCountFromMessages } from './token-usage';
 import { conversationCompactChain } from '../chains/conversation-compact';
 import { workflowNameChain } from '../chains/workflow-name';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createStateManagementMetadata } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
-
-import { cleanupDanglingToolCallMessages } from './cleanup-dangling-tool-call-messages';
-import { estimateTokenCountFromMessages } from './token-usage';
 
 export type StateModificationAction =
 	| 'compact_messages'

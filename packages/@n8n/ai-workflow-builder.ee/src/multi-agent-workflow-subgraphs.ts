@@ -197,7 +197,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addNode('cleanup_dangling', (state) => handleCleanupDangling(state.messages, logger))
 			.addNode('compact_messages', async (state) => {
 				const isAutoCompact = state.messages[state.messages.length - 1]?.content !== '/compact';
-				return handleCompactMessages(
+				return await handleCompactMessages(
 					state.messages,
 					state.previousSummary ?? '',
 					llmComplexTask,
@@ -205,8 +205,15 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				);
 			})
 			.addNode('delete_messages', (state) => handleDeleteMessages(state.messages))
-			.addNode('create_workflow_name', async (state) =>
-				handleCreateWorkflowName(state.messages, state.workflowJSON, llmComplexTask, logger),
+			.addNode(
+				'create_workflow_name',
+				async (state) =>
+					await handleCreateWorkflowName(
+						state.messages,
+						state.workflowJSON,
+						llmComplexTask,
+						logger,
+					),
 			)
 			// Add Subgraph Nodes (using helper to reduce duplication)
 			.addNode(
