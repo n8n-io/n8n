@@ -1075,12 +1075,14 @@ function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);
+	nodeViewEventBus.on('publishWorkflow', onPublishWorkflow);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.off('openChat', onOpenChat);
+	nodeViewEventBus.off('publishWorkflow', onPublishWorkflow);
 }
 
 /**
@@ -2098,7 +2100,6 @@ onBeforeUnmount(() => {
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
 			@save:workflow="onSaveWorkflow"
-			@publish:workflow="onPublishWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
