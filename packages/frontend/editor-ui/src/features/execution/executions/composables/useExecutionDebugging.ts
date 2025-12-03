@@ -62,7 +62,7 @@ export const useExecutionDebugging = () => {
 				i18n.baseText('nodeView.confirmMessage.debug.message'),
 				h(
 					'ul',
-					{ class: 'mt-l ml-l' },
+					{ class: 'mt-xs ml-m' },
 					matchingPinnedNodeNames.map((name) => h('li', sanitizeHtml(name))),
 				),
 			]);
