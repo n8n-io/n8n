@@ -28,6 +28,8 @@ pre-commit:
         - rebase
     workspace_deps_check:
       glob: '**/package.json'
+      only:
+        - run: uname # linux/macos
       run: |
         if grep -l '"workspace:\^"' {staged_files} 2>/dev/null; then
           echo ""
@@ -40,6 +42,15 @@ pre-commit:
           echo ""
           exit 1
         fi
+      skip:
+        - merge
+        - rebase
+
+    workspace_deps_check_windows:
+      glob: '**/package.json'
+      only:
+        - run: cmd /c ver
+      run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-workspace-deps.ps1 {staged_files}
       skip:
         - merge
         - rebase
