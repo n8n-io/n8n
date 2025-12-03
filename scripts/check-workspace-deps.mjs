@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs';
 import { existsSync } from 'node:fs';
 
-const files = process.argv.slice(2).filter((file) => file && existsSync(file));
+const isPackageJson = (file) => file.endsWith('package.json');
+const files = process.argv.slice(2).filter((file) => file && isPackageJson(file) && existsSync(file));
 let foundError = false;
 
 for (const file of files) {
