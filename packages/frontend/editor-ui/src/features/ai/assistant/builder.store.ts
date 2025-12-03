@@ -304,7 +304,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...getCategorizationParametersToTrack(currentStreamingMessage.value),
 			...payload,
-			todos: getTodosToTrack(),
+			...getTodosToTrack(),
 		});
 	}
 
@@ -386,11 +386,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function getTodosToTrack() {
-		return workflowTodos.value.map((todo) => ({
-			type: todo.type,
-			node_type: workflowsStore.getNodeByName(todo.node)?.type,
-			label: todo.value,
-		}));
+		const credentials_todo_count = workflowsStore.workflowValidationIssues.filter(
+			(issue) => issue.type === 'credentials',
+		);
+		const placeholders_todo_count = placeholderIssues.value.length;
+		return {
+			credentials_todo_count,
+			placeholders_todo_count,
+			todos: workflowTodos.value.map((todo) => ({
+				type: todo.type,
+				node_type: workflowsStore.getNodeByName(todo.node)?.type,
+				label: todo.value,
+			})),
+		};
 	}
 
 	// Core API functions
@@ -449,8 +457,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			type,
 			prev_manual_exec_success: workflowsStore.manualExecutionsStats.success,
 			prev_manual_exec_error: workflowsStore.manualExecutionsStats.error,
-			todos: getTodosToTrack(),
 			user_message_id: userMessageId,
+			...getTodosToTrack(),
 		};
 
 		if (type === 'execution') {
