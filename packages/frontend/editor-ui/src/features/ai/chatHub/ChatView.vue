@@ -39,7 +39,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';

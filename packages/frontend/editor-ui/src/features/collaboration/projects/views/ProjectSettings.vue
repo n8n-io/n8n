@@ -17,7 +17,6 @@ import { useRolesStore } from '@/app/stores/roles.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import ProjectHeader from '../components/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';

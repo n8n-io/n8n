@@ -15,7 +15,6 @@ import McpAccessToggle from '@/features/ai/mcpAccess/components/McpAccessToggle.
 import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
 const toast = useToast();

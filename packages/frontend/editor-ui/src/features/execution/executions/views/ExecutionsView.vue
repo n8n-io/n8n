@@ -3,7 +3,6 @@ import type { ExecutionFilterType } from '../executions.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import GlobalExecutionsList from '../components/global/GlobalExecutionsList.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';

@@ -13,7 +13,6 @@ import {
 } from '@/features/core/dataTable/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';

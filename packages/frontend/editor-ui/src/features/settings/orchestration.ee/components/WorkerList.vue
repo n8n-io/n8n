@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useOrchestrationStore } from '../orchestration.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';

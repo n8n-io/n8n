@@ -21,6 +21,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
 
 const chatStore = useChatStore();
 const usersStore = useUsersStore();
