@@ -141,12 +141,6 @@ export interface WorkflowBuilderAgentConfig {
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
 	onGenerationSuccess?: () => Promise<void>;
-	/**
-	 * Enable multi-agent supervisor architecture (experimental)
-	 * When true, uses specialized agents (Discovery, Builder, Configurator) with a Supervisor
-	 * When false, uses the legacy single-agent architecture
-	 */
-	enableMultiAgent?: boolean;
 	/** Metadata to include in LangSmith traces */
 	runMetadata?: Record<string, unknown>;
 }
@@ -183,7 +177,6 @@ export class WorkflowBuilderAgent {
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
-	private enableMultiAgent: boolean;
 	private runMetadata?: Record<string, unknown>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
@@ -197,7 +190,6 @@ export class WorkflowBuilderAgent {
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
-		this.enableMultiAgent = config.enableMultiAgent ?? false;
 		this.runMetadata = config.runMetadata;
 	}
 
@@ -444,10 +436,10 @@ export class WorkflowBuilderAgent {
 
 	/**
 	 * Create the workflow graph based on configuration
-	 * Feature flag takes precedence over environment variable
+	 * Controlled by feature flag only
 	 */
 	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
-		const useMultiAgent = featureFlags?.multiAgent ?? this.enableMultiAgent;
+		const useMultiAgent = featureFlags?.multiAgent ?? false;
 
 		if (useMultiAgent) {
 			this.logger?.debug('Using multi-agent supervisor architecture');
@@ -524,7 +516,7 @@ export class WorkflowBuilderAgent {
 			callbacks: this.tracer ? [this.tracer] : undefined,
 			metadata: this.runMetadata,
 			// Enable subgraph streaming when using multi-agent architecture
-			subgraphs: this.enableMultiAgent,
+			subgraphs: payload.featureFlags?.multiAgent ?? false,
 		};
 
 		return { agent, threadConfig, streamConfig };
