@@ -181,15 +181,15 @@ function onClick(event: MouseEvent) {
 
 		&:hover {
 			cursor: pointer;
-			color: var(--color--neutral-white);
+			color: light-dark(var(--color--neutral-850), var(--color--neutral-150));
 
 			path {
-				fill: var(--color--primary);
+				fill: light-dark(var(--color--neutral-250), var(--color--neutral-800));
 			}
 
 			rect {
-				stroke: var(--color--primary);
-				fill: var(--color--primary);
+				stroke: light-dark(var(--color--neutral-250), var(--color--neutral-800));
+				fill: light-dark(var(--color--neutral-250), var(--color--neutral-800));
 			}
 		}
 	}
