@@ -125,12 +125,7 @@ jobs:
 
   e2e-checks:
     name: E2E - Checks
-    needs: [install-and-build, unit-test, typecheck, lint]
-    if: |
-      always() &&
-      needs.install-and-build.result == 'success' &&
-      needs.unit-test.result != 'failure' &&
-      needs.typecheck.result != 'failure' &&
-      needs.lint.result != 'failure'
+    needs: [install-and-build]
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
     uses: ./.github/workflows/playwright-test-ci.yml
     secrets: inherit

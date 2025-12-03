@@ -29,7 +29,7 @@ import {
 } from './n8n-test-container-dependencies';
 import { setupGitea } from './n8n-test-container-gitea';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
-import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // --- Constants ---
@@ -55,6 +55,7 @@ const BASE_ENV: Record<string, string> = {
 	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
+	N8N_LICENSE_CERT: process.env.N8N_LICENSE_CERT ?? '',
 	N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 };
 
@@ -122,11 +123,7 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const stackStartTime = Date.now();
-	const log = (message: string) => {
-		const elapsed = ((Date.now() - stackStartTime) / 1000).toFixed(2);
-		console.log(`[n8n-stack +${elapsed}s] ${message}`);
-	};
+	const log = createElapsedLogger('n8n-stack');
 
 	const {
 		postgres = false,
@@ -450,11 +447,7 @@ async function createN8NInstances({
 	resourceQuota,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
-	const instanceStartTime = Date.now();
-	const log = (message: string) => {
-		const elapsed = ((Date.now() - instanceStartTime) / 1000).toFixed(2);
-		console.log(`[n8n-instances +${elapsed}s] ${message}`);
-	};
+	const log = createElapsedLogger('n8n-instances');
 
 	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {

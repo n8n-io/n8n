@@ -3,10 +3,6 @@ name: E2E Tests for CI
 on:
   workflow_call:
 
-concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   multi-main-ui:

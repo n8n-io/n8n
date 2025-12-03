@@ -15,8 +15,7 @@ function getTaskRunnerImage(): string {
 	}
 
 	// Extract the tag from the n8n image and apply it to runners
-	const tagMatch = n8nImage.match(/:([^:]+)$/);
-	const tag = tagMatch?.[1] ?? 'local';
+	const tag = n8nImage.split(':').at(-1) ?? 'local';
 	return `n8nio/runners:${tag}`;
 }
 
