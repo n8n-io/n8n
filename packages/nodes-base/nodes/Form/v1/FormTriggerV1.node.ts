@@ -1,6 +1,7 @@
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeConnectionTypes,
+	type IDataObject,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
@@ -89,6 +90,22 @@ export class FormTriggerV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...descriptionV1,
+		};
+	}
+
+	/**
+	 * Gets the webhook configuration for version 1.
+	 * All version-specific logic for v1 is here.
+	 * This is the SINGLE source of truth for v1 config.
+	 */
+	getConfig(_version: number): IDataObject {
+		return {
+			requireAuth: false,
+			defaultUseWorkflowTimezone: false,
+			allowRespondToWebhook: true,
+			useFieldName: false,
+			showWebhookPath: true,
+			showWebhookPathInOptions: false,
 		};
 	}
 

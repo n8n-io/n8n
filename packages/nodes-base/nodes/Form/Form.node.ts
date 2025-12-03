@@ -378,11 +378,18 @@ export class Form extends Node {
 			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
-		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {
+		const config = context.getNodeConfig?.() ?? {};
+		if (useWorkflowTimezone === undefined && config.defaultUseWorkflowTimezone) {
 			useWorkflowTimezone = true;
 		}
 
-		const returnItem = await prepareFormReturnItem(context, fields, mode, useWorkflowTimezone);
+		const returnItem = await prepareFormReturnItem(
+			context,
+			fields,
+			mode,
+			useWorkflowTimezone,
+			config,
+		);
 
 		return {
 			webhookResponse: { status: 200 },

@@ -939,6 +939,13 @@ export interface FunctionsBase {
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
+
+	/**
+	 * Gets node-specific configuration if available.
+	 * Calls the node type's getConfig() method if implemented.
+	 * @returns Configuration object or undefined if not implemented
+	 */
+	getNodeConfig?(): IDataObject | undefined;
 }
 
 type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
@@ -1758,6 +1765,13 @@ export interface INodeType {
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
+	/**
+	 * Optional method to get node-specific configuration.
+	 * Used by versioned nodes to provide version-specific feature flags.
+	 * @param version - The node version (from node.typeVersion)
+	 * @returns Configuration object or undefined if not implemented
+	 */
+	getConfig?(version: number): IDataObject | undefined;
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;

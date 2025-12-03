@@ -168,6 +168,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.workflow.nodeTypes.getByNameAndVersion(type, typeVersion);
 	}
 
+	/**
+	 * Gets node-specific configuration if available.
+	 * Calls the node type's getConfig() method if implemented.
+	 */
+	getNodeConfig() {
+		return this.nodeType?.getConfig?.(this.node.typeVersion);
+	}
+
 	@Memoized
 	get nodeInputs() {
 		return NodeHelpers.getNodeInputs(this.workflow, this.node, this.nodeType.description).map(
