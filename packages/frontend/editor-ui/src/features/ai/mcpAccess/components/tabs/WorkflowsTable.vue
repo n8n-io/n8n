@@ -15,6 +15,7 @@ import {
 import { VIEWS } from '@/app/constants';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
+import { getResourcePermissions } from '@n8n/permissions';
 
 type Props = {
 	workflows: WorkflowListItem[];
@@ -70,12 +71,17 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	},
 ]);
 
-const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
-	{
-		label: i18n.baseText('settings.mcp.workflows.table.action.removeMCPAccess'),
-		value: 'removeFromMCP',
-	},
-]);
+const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<WorkflowListItem>> => {
+	const permissions = getResourcePermissions(workflow.scopes);
+
+	return [
+		{
+			label: i18n.baseText('settings.mcp.workflows.table.action.removeMCPAccess'),
+			value: 'removeFromMCP',
+			disabled: !permissions.workflow.update,
+		},
+	];
+};
 
 const getProjectName = (workflow: WorkflowListItem): string => {
 	if (workflow.homeProject?.type === 'personal') {
@@ -227,9 +233,10 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle
+						:class="$style['action-toggle']"
 						data-test-id="mcp-workflow-action-toggle"
 						placement="bottom"
-						:actions="tableActions"
+						:actions="getAvailableActions(item)"
 						theme="dark"
 						@action="onWorkflowAction($event, item)"
 					/>

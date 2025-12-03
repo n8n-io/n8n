@@ -2346,6 +2346,7 @@
 	"settings.mcp.tabs.oauth": "OAuth connections",
 	"settings.mcp.connection.info.heading": "How to connect",
 	"settings.mcp.workflows.table.action.removeMCPAccess": "Remove Access",
+	"settings.mcp.workflows.table.action.editDescription": "Edit Description",
 	"settings.mcp.workflows.table.column.name": "Name",
 	"settings.mcp.workflows.table.column.location": "Location",
 	"settings.mcp.workflows.table.column.description": "Description",
