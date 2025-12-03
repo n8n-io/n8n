@@ -797,6 +797,7 @@
       "dist/nodes/TravisCi/TravisCi.node.js",
       "dist/nodes/Trello/Trello.node.js",
       "dist/nodes/Trello/TrelloTrigger.node.js",
+      "dist/nodes/TimeSaved/TimeSaved.node.js",
       "dist/nodes/Twake/Twake.node.js",
       "dist/nodes/Twilio/Twilio.node.js",
       "dist/nodes/Twilio/TwilioTrigger.node.js",

@@ -9,7 +9,7 @@ import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	TIME_SAVED_NODE_EXPERIMENT,
+	// TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
@@ -132,7 +132,8 @@ const isEligibleForMcp = computed(() => {
 });
 
 const isTimeSavedNodeExperimentEnabled = computed(() => {
-	return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
+	return true;
+	// return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
 });
 
 const savedTimeNodes = computed(() => {
