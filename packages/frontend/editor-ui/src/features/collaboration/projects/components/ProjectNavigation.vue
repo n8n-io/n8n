@@ -10,7 +10,7 @@ import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
 import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 
-import { N8nButton, N8nHeading, N8nMenuItem, N8nTooltip } from '@n8n/design-system';
+import { N8nMenuItem, N8nText } from '@n8n/design-system';
 
 type Props = {
 	collapsed: boolean;
@@ -26,7 +26,6 @@ const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 const hasMultipleVerifiedUsers = computed(
@@ -75,10 +74,6 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
-const showAddFirstProject = computed(
-	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
-);
-
 const activeTabId = computed(() => {
 	return (
 		(Array.isArray(projectsStore.projectNavActiveId)
@@ -104,7 +99,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.projects">
-		<div class="home">
+		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
@@ -129,31 +124,18 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 		</div>
-		<N8nHeading
-			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
+		<N8nText
+			v-if="
+				!props.collapsed && projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0
+			"
 			:class="[$style.projectsLabel]"
-			bold
 			size="small"
+			bold
+			role="heading"
 			color="text-light"
-			tag="h3"
 		>
-			<span>{{ locale.baseText('projects.menu.title') }}</span>
-			<N8nTooltip
-				v-if="projectsStore.canCreateProjects"
-				placement="right"
-				:disabled="projectsStore.hasPermissionToCreateProjects"
-				:content="locale.baseText('projects.create.permissionDenied')"
-			>
-				<N8nButton
-					icon="plus"
-					text
-					data-test-id="project-plus-button"
-					:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
-					:class="$style.plusBtn"
-					@click="globalEntityCreation.createProject('add_icon')"
-				/>
-			</N8nTooltip>
-		</N8nHeading>
+			{{ locale.baseText('projects.menu.title') }}
+		</N8nText>
 		<div
 			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 			:class="$style.projectItems"
@@ -170,28 +152,6 @@ onBeforeUnmount(() => {
 				data-test-id="project-menu-item"
 			/>
 		</div>
-		<N8nTooltip
-			v-if="showAddFirstProject"
-			placement="right"
-			:disabled="projectsStore.hasPermissionToCreateProjects"
-			:content="locale.baseText('projects.create.permissionDenied')"
-		>
-			<N8nButton
-				:class="[
-					$style.addFirstProjectBtn,
-					{
-						[$style.collapsed]: props.collapsed,
-					},
-				]"
-				:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
-				type="secondary"
-				icon="plus"
-				data-test-id="add-first-project-button"
-				@click="globalEntityCreation.createProject('add_first_project_button')"
-			>
-				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
-			</N8nButton>
-		</N8nTooltip>
 	</div>
 </template>
 
@@ -208,7 +168,7 @@ onBeforeUnmount(() => {
 }
 
 .projectItems {
-	padding: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--3xs);
 }
 
 .upgradeLink {
@@ -222,8 +182,8 @@ onBeforeUnmount(() => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
-	padding: 0 var(--spacing--sm);
-	margin-top: var(--spacing--md);
+	padding: 0 var(--spacing--xs);
+	margin-top: var(--spacing--2xs);
 
 	&.collapsed {
 		padding: 0;
@@ -241,20 +201,19 @@ onBeforeUnmount(() => {
 
 .addFirstProjectBtn {
 	font-size: var(--font-size--xs);
-	margin: 0 var(--spacing--sm);
-	width: calc(100% - var(--spacing--sm) * 2);
+	margin: 0 var(--spacing--xs);
+	width: calc(100% - var(--spacing--xs) * 2);
 
 	&.collapsed {
-		> span:last-child {
-			display: none;
-			margin: 0 var(--spacing--sm) var(--spacing--md);
-		}
+		display: none;
 	}
 }
-</style>
 
-<style lang="scss" scoped>
 .home {
-	padding: 0 var(--spacing--xs);
+	padding: 0 var(--spacing--3xs) var(--spacing--2xs);
+
+	&.collapsed {
+		border-bottom: var(--border);
+	}
 }
 </style>
