@@ -304,6 +304,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...getCategorizationParametersToTrack(currentStreamingMessage.value),
 			...payload,
+			todos: getTodosToTrack(),
 		});
 	}
 
@@ -384,6 +385,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
+	function getTodosToTrack() {
+		return workflowTodos.value.map((todo) => ({
+			type: todo.type,
+			node_type: workflowsStore.getNodeByName(todo.node)?.type,
+			label: todo.value,
+		}));
+	}
+
 	// Core API functions
 	/**
 	 * Sends a message to the AI builder service and handles the streaming response.
@@ -424,26 +433,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			initialGeneration.value = options.initialGeneration;
 		}
 		const userMessageId = generateMessageId();
+		const currentWorkflowJson = getWorkflowSnapshot();
 
 		currentStreamingMessage.value = {
 			userMessageId,
-			startWorkflowJson: getWorkflowSnapshot(),
+			startWorkflowJson: currentWorkflowJson,
 		};
-
-		const currentWorkflowJson = getWorkflowSnapshot();
-		const todosToTrack = workflowTodos.value.map((todo) => ({
-			type: todo.type,
-			node_type: workflowsStore.getNodeByName(todo.node)?.type,
-			label: todo.value,
-		}));
-
-		const credentialIssuesToTrack = workflowsStore.workflowValidationIssues
-			.filter((issue) => ['credentials', 'parameters'].includes(issue.type))
-			.map((issue) => ({
-				type: issue.type,
-				node_type: workflowsStore.getNodeByName(issue.node)?.type,
-				label: Array.isArray(issue.value) ? issue.value[0] : issue.value,
-			}));
 
 		const trackingPayload: Record<string, string | number | object[]> = {
 			source,
@@ -454,7 +449,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			type,
 			prev_manual_exec_success: workflowsStore.manualExecutionsStats.success,
 			prev_manual_exec_error: workflowsStore.manualExecutionsStats.error,
-			placeholders: [...credentialIssuesToTrack, ...todosToTrack],
+			todos: getTodosToTrack(),
 			user_message_id: userMessageId,
 		};
 
