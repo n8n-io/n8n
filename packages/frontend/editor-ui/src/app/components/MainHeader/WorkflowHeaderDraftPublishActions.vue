@@ -17,6 +17,7 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
 import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
+import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -110,6 +111,7 @@ defineExpose({
 
 <template>
 	<div :class="$style.container">
+		<CollaborationPane v-if="!isNewWorkflow" />
 		<div
 			v-if="activeVersion"
 			:class="$style.activeVersionIndicator"
