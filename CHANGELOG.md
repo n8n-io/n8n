@@ -1,3 +1,13 @@
+## [1.123.1](https://github.com/n8n-io/n8n/compare/n8n@1.123.0...n8n@1.123.1) (2025-12-03)
+
+
+### Bug Fixes
+
+* **core:** Prevent execution data from being overwritten on manual workflow resume ([#22665](https://github.com/n8n-io/n8n/issues/22665)) ([e1ab229](https://github.com/n8n-io/n8n/commit/e1ab2295efef976b7ed91debd95a5c8f77d339eb))
+* **MCP Client Node:** Make "Use Dynamic Client Registration" toggle not required ([#22645](https://github.com/n8n-io/n8n/issues/22645)) ([a60eba3](https://github.com/n8n-io/n8n/commit/a60eba35ebc0b328961ddb713f260dc9d01ad334))
+
+
+
 # [1.123.0](https://github.com/n8n-io/n8n/compare/n8n@1.122.0...n8n@1.123.0) (2025-12-01)
 
 
