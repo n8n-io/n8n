@@ -1111,11 +1111,16 @@ export class ChatHubService {
 		// Generate title for the session on receiving the first human message.
 		// This could be moved on a separate API call perhaps, maybe triggered after the first message is sent?
 		if (previousMessageId === null) {
-			await this.generateSessionTitle(user, sessionId, message, credentials, model).catch(
-				(error) => {
-					this.logger.error(`Title generation failed: ${error}`);
-				},
-			);
+			await this.generateSessionTitle(
+				user,
+				sessionId,
+				message,
+				processedAttachments,
+				credentials,
+				model,
+			).catch((error) => {
+				this.logger.error(`Title generation failed: ${error}`);
+			});
 		}
 	}
 
@@ -1736,6 +1741,7 @@ export class ChatHubService {
 		user: User,
 		sessionId: ChatSessionId,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 	) {
@@ -1743,6 +1749,7 @@ export class ChatHubService {
 			user,
 			sessionId,
 			humanMessage,
+			attachments,
 			credentials,
 			model,
 		);
@@ -1766,6 +1773,7 @@ export class ChatHubService {
 		user: User,
 		sessionId: ChatSessionId,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		incomingCredentials: INodeCredentials,
 		incomingModel: ChatHubConversationModel,
 	) {
@@ -1791,6 +1799,7 @@ export class ChatHubService {
 				sessionId,
 				credential.projectId,
 				humanMessage,
+				attachments,
 				resolvedCredentials,
 				resolvedModel,
 				trx,
