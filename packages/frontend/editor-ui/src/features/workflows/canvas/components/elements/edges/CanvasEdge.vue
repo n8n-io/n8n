@@ -106,17 +106,6 @@ const connection = computed<Connection>(() => ({
 const edgeLightness = calculateEdgeLightness(delayedHovered);
 
 const edgeStyles = computed(() => {
-	console.log(
-		'Edge lightness - Light:',
-		edgeLightness.value.light,
-		'Dark:',
-		edgeLightness.value.dark,
-		'Hovered:',
-		delayedHovered.value,
-		'Zoom:',
-		viewport.value.zoom.toFixed(3),
-	);
-
 	return {
 		'--canvas-edge--color--lightness--light': edgeLightness.value.light,
 		'--canvas-edge--color--lightness--dark': edgeLightness.value.dark,
