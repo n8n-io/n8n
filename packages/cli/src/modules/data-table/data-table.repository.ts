@@ -41,7 +41,7 @@ export class DataTableRepository extends Repository<DataTable> {
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
 		}).catch((error) => {
-			this.logger.debug('Failed to update DataTable timestamp', { dataTableId, error });
+			this.logger.warn('Failed to update DataTable timestamp', { dataTableId, error });
 		});
 	}
 
