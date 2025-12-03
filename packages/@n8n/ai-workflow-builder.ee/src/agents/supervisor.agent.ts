@@ -94,6 +94,8 @@ export interface SupervisorContext {
 	workflowJSON: SimpleWorkflow;
 	/** Coordination log tracking subgraph completion */
 	coordinationLog: CoordinationLogEntry[];
+	/** Summary of previous conversation (from compaction) */
+	previousSummary?: string;
 }
 
 /**
@@ -115,14 +117,21 @@ export class SupervisorAgent {
 	private buildContextMessage(context: SupervisorContext): HumanMessage | null {
 		const contextParts: string[] = [];
 
-		// 1. Workflow summary (node count and names only)
+		// 1. Previous conversation summary (from compaction)
+		if (context.previousSummary) {
+			contextParts.push('<previous_conversation_summary>');
+			contextParts.push(context.previousSummary);
+			contextParts.push('</previous_conversation_summary>');
+		}
+
+		// 2. Workflow summary (node count and names only)
 		if (context.workflowJSON.nodes.length > 0) {
 			contextParts.push('<workflow_summary>');
 			contextParts.push(buildWorkflowSummary(context.workflowJSON));
 			contextParts.push('</workflow_summary>');
 		}
 
-		// 2. Coordination log summary (what phases completed)
+		// 3. Coordination log summary (what phases completed)
 		if (context.coordinationLog.length > 0) {
 			contextParts.push('<completed_phases>');
 			contextParts.push(summarizeCoordinationLog(context.coordinationLog));
