@@ -102,8 +102,8 @@ describe(useZoomAdjustedValues, () => {
 
 			// Light mode: 0.84 - 0.3 = 0.54
 			expect(lightness.value.light).toBe('0.540');
-			// Dark mode: 0.42 + 0.1 = 0.52
-			expect(lightness.value.dark).toBe('0.520');
+			// Dark mode: 0.42 + 0.2 = 0.62
+			expect(lightness.value.dark).toBe('0.620');
 		});
 
 		it('should clamp hover adjustments to valid range', () => {
