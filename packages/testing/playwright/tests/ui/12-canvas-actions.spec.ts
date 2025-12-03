@@ -199,6 +199,8 @@ test.describe('Canvas Actions', () => {
 			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 
+			await n8n.canvas.clickZoomToFitButton();
+
 			// Move code node far to the right to create space
 			await n8n.canvas.dragNodeToRelativePosition(CODE_NODE_DISPLAY_NAME, 400, 0);
 
@@ -226,6 +228,8 @@ test.describe('Canvas Actions', () => {
 			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 
+			await n8n.canvas.clickZoomToFitButton();
+
 			// Get code node position before insertion
 			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
 
@@ -250,6 +254,8 @@ test.describe('Canvas Actions', () => {
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 			await n8n.canvas.nodeByName(CODE_NODE_DISPLAY_NAME).click();
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
+
+			await n8n.canvas.clickZoomToFitButton();
 
 			// Get positions before insertion
 			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
