@@ -276,7 +276,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	const allowRespondToWebhook = context.isNodeFeatureEnabled('allowRespondToWebhook') ?? false;
+	const allowRespondToWebhook = context.isNodeFeatureEnabled('allowRespondToWebhook');
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
 		throw new NodeOperationError(
