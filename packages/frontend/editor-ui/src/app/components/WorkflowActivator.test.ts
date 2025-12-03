@@ -11,6 +11,18 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE } fro
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useToast } from '@/app/composables/useToast';
 
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+	}),
+	useRoute: () => ({
+		query: {},
+		params: {},
+	}),
+	RouterLink: vi.fn(),
+}));
+
 const renderComponent = createComponentRenderer(WorkflowActivator);
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 let mockCredentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;

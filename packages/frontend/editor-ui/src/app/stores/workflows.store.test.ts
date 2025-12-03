@@ -292,6 +292,15 @@ describe('useWorkflowsStore', () => {
 
 		it('should return false for an existing workflow', () => {
 			useWorkflowState().setWorkflowId('123');
+			// Add the workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow({
+				id: '123',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+				versionId: '1',
+			} as IWorkflowDb);
 			expect(workflowsStore.isNewWorkflow).toBe(false);
 		});
 	});
@@ -2205,10 +2214,14 @@ describe('useWorkflowsStore', () => {
 				status: 'success',
 			});
 
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
@@ -2230,10 +2243,14 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should handle null response from API', async () => {
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
@@ -2250,10 +2267,14 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not throw error when API call fails', async () => {
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
