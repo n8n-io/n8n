@@ -112,6 +112,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				name,
 				workflowId,
 				isRootExecution,
+				workflowData.name,
 			);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {

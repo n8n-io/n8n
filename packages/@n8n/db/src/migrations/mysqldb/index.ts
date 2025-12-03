@@ -50,6 +50,7 @@ import { DropUnusedChatHubColumns1760965142113 } from './1760965142113-DropUnuse
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
 import { AddToolsColumnToChatHubTables1761830340990 } from './1761830340990-AddToolsColumnToChatHubTables';
+import { ChangeWorkflowStatisticsFKToNoAction1764669632000 } from './1764669632000-ChangeWorkflowStatisticsFKToNoAction';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -243,4 +244,5 @@ export const mysqlMigrations: Migration[] = [
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
+	ChangeWorkflowStatisticsFKToNoAction1764669632000,
 ];
