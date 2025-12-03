@@ -1,9 +1,8 @@
 import { ref } from 'vue';
-import type { ViewportTransform } from '@vue-flow/core';
 import { useZoomAdjustedValues } from './useZoomAdjustedValues';
 
 describe(useZoomAdjustedValues, () => {
-	const createViewport = (zoom: number): { value: ViewportTransform } => ref({ x: 0, y: 0, zoom });
+	const createViewport = (zoom: number) => ref({ x: 0, y: 0, zoom });
 
 	describe('calculateZoomAdjustedValue', () => {
 		it('should return baseValue when zoom >= 1.0', () => {
