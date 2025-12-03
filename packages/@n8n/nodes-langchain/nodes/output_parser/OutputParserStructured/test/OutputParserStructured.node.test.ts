@@ -635,6 +635,44 @@ describe('OutputParserStructured', () => {
 						"Model output doesn't fit required format",
 					);
 				});
+
+				it('should surface Zod error message when validation fails', async () => {
+					const jsonExample = `{
+            "name": "Alice",
+            "address": {
+              "line1": "123 Main St",
+              "city": "New York"
+            }
+          }`;
+					thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('fromJson');
+					thisArg.getNodeParameter
+						.calledWith('jsonSchemaExample', 0)
+						.mockReturnValueOnce(jsonExample);
+
+					const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+						response: N8nStructuredOutputParser;
+					};
+
+					const invalidOutput = {
+						output: {
+							name: null,
+							address: {
+								line1: null,
+								city: 'New York',
+							},
+						},
+					};
+
+					await expect(
+						response.parse(
+							`Here's the invalid output:
+              \`\`\`json
+              ${JSON.stringify(invalidOutput)}
+              \`\`\`
+            `,
+						),
+					).rejects.toThrow('Expected string, received null');
+				});
 			});
 
 			describe('manual schema mode', () => {
