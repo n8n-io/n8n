@@ -104,21 +104,29 @@ The Langsmith integration provides two key components:
 
 #### 6. Pairwise Evaluation
 
-Pairwise evaluation provides a simpler, criteria-based approach to workflow evaluation. Instead of using the complex multi-metric evaluation system, it evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset.
+Pairwise evaluation provides a criteria-based approach to workflow evaluation with hierarchical scoring and multi-judge consensus. It evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset.
 
 **Evaluator (`chains/pairwise-evaluator.ts`):**
 - Evaluates workflows against a checklist of criteria (dos and don'ts)
 - Uses an LLM to determine if each criterion passes or fails
 - Requires evidence-based justification for each decision
-- Calculates a simple pass/fail score (passes / total rules)
+- Returns `primaryPass` (true only if ALL criteria pass) and `diagnosticScore` (ratio of passes)
 
 **Runner (`langsmith/pairwise-runner.ts`):**
 - Generates workflows from prompts in the dataset
-- Applies pairwise evaluation to each generated workflow
-- Reports three metrics to Langsmith:
-  - `pairwise_score`: Overall score (0-1)
-  - `pairwise_passed_count`: Number of criteria passed
-  - `pairwise_failed_count`: Number of criteria violated
+- Runs multiple LLM judges in parallel for each evaluation (configurable via `--judges`)
+- Aggregates judge results using majority vote
+- Supports filtering by `notion_id` metadata for single-example runs
+- Reports five metrics to Langsmith:
+  - `pairwise_primary`: Majority vote result (0 or 1)
+  - `pairwise_diagnostic`: Average diagnostic score across judges
+  - `pairwise_judges_passed`: Count of judges that passed
+  - `pairwise_total_violations`: Sum of all violations
+  - `pairwise_total_passes`: Sum of all passes
+
+**Logger (`utils/logger.ts`):**
+- Simple evaluation logger with verbose mode support
+- Controls output verbosity via `--verbose` flag
 
 **Dataset Format:**
 The pairwise evaluation expects a Langsmith dataset with examples containing:
@@ -233,7 +241,19 @@ pnpm eval:langsmith
 
 ### Pairwise Evaluation
 
-Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt.
+Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt. It implements a hierarchical scoring system with multiple LLM judges per evaluation.
+
+#### CLI Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
+| `--repetitions <n>` | Number of workflow generations per prompt | 1 |
+| `--judges <n>` | Number of LLM judges per evaluation | 3 |
+| `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
+| `--verbose`, `-v` | Enable verbose logging (shows judge details, criteria, etc.) | false |
+
+#### Examples
 
 ```bash
 # Set required environment variables
@@ -242,15 +262,32 @@ export LANGSMITH_API_KEY=your_api_key
 # Run pairwise evaluation (uses default dataset: notion-pairwise-workflows)
 pnpm eval:pairwise
 
+# Run a single example by notion_id
+pnpm eval:pairwise --notion-id 30d29454-b397-4a35-8e0b-74a2302fa81a
+
+# Run with 3 repetitions and 5 judges, custom experiment name
+pnpm eval:pairwise --repetitions 3 --judges 5 --name "my-experiment"
+
+# Enable verbose logging to see all judge details
+pnpm eval:pairwise --notion-id abc123 --verbose
+
 # Use a custom dataset
 LANGSMITH_DATASET_NAME=my-pairwise-dataset pnpm eval:pairwise
 
 # Limit to specific number of examples (useful for testing)
 EVAL_MAX_EXAMPLES=2 pnpm eval:pairwise
-
-# Run with multiple repetitions
-pnpm eval:pairwise --repetitions 3
 ```
+
+#### Hierarchical Scoring System
+
+The pairwise evaluation uses a multi-level scoring hierarchy:
+
+1. **Individual Criterion**: Binary pass/fail for each do/don't rule
+2. **Single Judge**: `primaryPass` (true only if ALL criteria pass) + `diagnosticScore` (ratio of passes)
+3. **Multiple Judges**: Majority vote across judges (e.g., 2/3 judges pass → PASS)
+4. **Multiple Repetitions**: LangSmith aggregates across all generations
+
+This approach reduces variance from LLM non-determinism by using multiple judges and repetitions.
 
 ## Configuration
 
@@ -304,14 +341,17 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 ### Pairwise Evaluation Output
 
 - Results are stored in Langsmith dashboard
-- Experiment name format: `pairwise-evals-[uuid]`
+- Experiment name format: `<name>-[uuid]` (default: `pairwise-evals-[uuid]`)
 - Metrics reported:
-  - `pairwise_score`: Overall pass rate (0-1)
-  - `pairwise_passed_count`: Number of criteria that passed
-  - `pairwise_failed_count`: Number of criteria that were violated
+  - `pairwise_primary`: Binary pass/fail based on majority vote (0 or 1)
+  - `pairwise_diagnostic`: Average diagnostic score across judges (0-1)
+  - `pairwise_judges_passed`: Number of judges that returned primaryPass=true
+  - `pairwise_total_violations`: Sum of violations across all judges
+  - `pairwise_total_passes`: Sum of passes across all judges
 - Each result includes detailed comments with:
-  - List of violations with justifications
-  - List of passes with justifications
+  - Majority vote summary
+  - List of violations with justifications (per judge)
+  - List of passes (per judge)
 
 ## Adding New Test Cases
 

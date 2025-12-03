@@ -43,8 +43,20 @@ async function main(): Promise<void> {
 	const numJudgesArg = getFlagValue('--judges');
 	const numJudges = numJudgesArg ? parseInt(numJudgesArg, 10) : 3;
 
+	// Parse --verbose flag for detailed logging
+	const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
+
+	// Parse --name argument for custom experiment name
+	const experimentName = getFlagValue('--name');
+
 	if (usePairwiseEval) {
-		await runPairwiseLangsmithEvaluation(repetitions, notionId, numJudges);
+		await runPairwiseLangsmithEvaluation({
+			repetitions,
+			notionId,
+			numJudges,
+			verbose,
+			experimentName,
+		});
 	} else if (useLangsmith) {
 		await runLangsmithEvaluation(repetitions);
 	} else {

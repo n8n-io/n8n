@@ -11,6 +11,7 @@ import { evaluateWorkflowPairwise } from '../chains/pairwise-evaluator';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
+import { createLogger, type EvalLogger } from '../utils/logger';
 
 interface PairwiseDatasetInput {
 	evals: {
@@ -37,12 +38,24 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 	return true;
 }
 
+// Counter to track generations across repetitions
+let generationCounter = 0;
+
 function createPairwiseWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
+	log: EvalLogger,
 	tracer?: LangChainTracer,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
+		generationCounter++;
+		const currentGeneration = generationCounter;
+		const promptPreview = inputs.prompt.slice(0, 60).replace(/\n/g, ' ');
+
+		log.verbose(
+			`🔄 [Gen #${currentGeneration}] "${promptPreview}${inputs.prompt.length > 60 ? '...' : ''}"`,
+		);
+
 		const runId = generateRunId();
 
 		// Create agent for this run
@@ -60,6 +73,9 @@ function createPairwiseWorkflowGenerator(
 			throw new Error('Invalid workflow state');
 		}
 
+		const nodeCount = state.values.workflowJSON?.nodes?.length ?? 0;
+		log.verbose(`✅ [Gen #${currentGeneration}] Done (${nodeCount} nodes)`);
+
 		return {
 			workflow: state.values.workflowJSON,
 			evalCriteria: inputs.evals,
@@ -70,12 +86,20 @@ function createPairwiseWorkflowGenerator(
 
 const DEFAULT_NUM_JUDGES = 3;
 
-function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number) {
+// Counter to track evaluations
+let evaluationCounter = 0;
+
+function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number, log: EvalLogger) {
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
+		evaluationCounter++;
+		const currentEvaluation = evaluationCounter;
+
+		log.verbose(`⚖️  [Eval #${currentEvaluation}] Starting with ${numJudges} judges...`);
+
 		const outputs = rootRun.outputs;
 
 		if (!isPairwiseGeneratorOutput(outputs)) {
-			console.log(pc.red('  ❌ Invalid generator output - missing workflow/criteria'));
+			log.error(`  ❌ [Eval #${currentEvaluation}] Invalid output - missing workflow/criteria`);
 			return [
 				{ key: 'pairwise_primary', score: 0, comment: 'Invalid output' },
 				{ key: 'pairwise_diagnostic', score: 0 },
@@ -90,8 +114,7 @@ function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number)
 			? outputs.evalCriteria.donts.split('\n').filter((l) => l.trim()).length
 			: 0;
 
-		console.log(pc.dim(`\n  📋 Evaluating workflow with ${numJudges} judges...`));
-		console.log(pc.dim(`     Criteria: ${dosCount} DOs, ${dontsCount} DON'Ts`));
+		log.verbose(`     Criteria: ${dosCount} DOs, ${dontsCount} DON'Ts`);
 
 		// Run multiple judges in PARALLEL
 		const judgeResults = await Promise.all(
@@ -102,12 +125,10 @@ function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number)
 				});
 				// Log each judge's result
 				const totalCriteria = result.passes.length + result.violations.length;
-				console.log(
-					pc.dim(
-						`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
-							`(${result.passes.length}/${totalCriteria} criteria, ` +
-							`diagnostic=${(result.diagnosticScore * 100).toFixed(1)}%)`,
-					),
+				log.verbose(
+					`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
+						`(${result.passes.length}/${totalCriteria} criteria, ` +
+						`diagnostic=${(result.diagnosticScore * 100).toFixed(1)}%)`,
 				);
 				return result;
 			}),
@@ -120,11 +141,11 @@ function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number)
 		const avgDiagnosticScore =
 			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
 
-		// Log aggregation
+		// Log aggregation - always show this as it's the main result
 		console.log(
-			pc.blue(
-				`  📊 Aggregate: ${primaryPasses}/${numJudges} judges passed → ` +
-					`Primary=${majorityPass ? 'PASS' : 'FAIL'}, Diagnostic=${(avgDiagnosticScore * 100).toFixed(1)}%`,
+			pc.dim(
+				`  📊 [Eval #${currentEvaluation}] ${primaryPasses}/${numJudges} judges → ` +
+					`${majorityPass ? pc.green('PASS') : pc.red('FAIL')} (${(avgDiagnosticScore * 100).toFixed(0)}%)`,
 			),
 		);
 
@@ -172,24 +193,44 @@ function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number)
 	};
 }
 
+export interface PairwiseEvaluationOptions {
+	repetitions?: number;
+	notionId?: string;
+	numJudges?: number;
+	verbose?: boolean;
+	experimentName?: string;
+}
+
+const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
+
 export async function runPairwiseLangsmithEvaluation(
-	repetitions: number = 1,
-	notionId?: string,
-	numJudges: number = DEFAULT_NUM_JUDGES,
+	options: PairwiseEvaluationOptions = {},
 ): Promise<void> {
+	const {
+		repetitions = 1,
+		notionId,
+		numJudges = DEFAULT_NUM_JUDGES,
+		verbose = false,
+		experimentName = DEFAULT_EXPERIMENT_NAME,
+	} = options;
+	const log = createLogger(verbose);
+
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
 
 	// Log configuration
-	console.log(pc.blue('➔ Configuration:'));
-	console.log(pc.dim(`   - Judges per generation: ${numJudges}`));
-	console.log(pc.dim(`   - Generations per prompt: ${repetitions}`));
-	console.log(pc.dim('   - Primary scoring: ALL criteria must pass → majority vote across judges'));
-	console.log(pc.dim('   - Secondary scoring: Average diagnostic score'));
+	log.info(`➔ Experiment: ${experimentName}`);
+	log.info(`➔ Config: ${numJudges} judges × ${repetitions} reps${verbose ? ' (verbose)' : ''}`);
+	log.verbose('   Primary: ALL criteria must pass → majority vote');
+	log.verbose('   Secondary: Average diagnostic score');
 
 	if (!process.env.LANGSMITH_API_KEY) {
-		console.error(pc.red('✗ LANGSMITH_API_KEY environment variable not set'));
+		log.error('✗ LANGSMITH_API_KEY environment variable not set');
 		process.exit(1);
 	}
+
+	// Reset counters for this run
+	generationCounter = 0;
+	evaluationCounter = 0;
 
 	try {
 		const { parsedNodeTypes, llm, tracer, lsClient } = await setupTestEnvironment();
@@ -199,7 +240,7 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'notion-pairwise-workflows';
-		console.log(pc.blue(`➔ Using dataset: ${datasetName}`));
+		log.info(`➔ Dataset: ${datasetName}`);
 
 		// Verify dataset exists and get dataset info
 		let datasetId: string;
@@ -207,33 +248,31 @@ export async function runPairwiseLangsmithEvaluation(
 			const dataset = await lsClient.readDataset({ datasetName });
 			datasetId = dataset.id;
 		} catch (error) {
-			console.error(pc.red(`✗ Dataset "${datasetName}" not found`));
+			log.error(`✗ Dataset "${datasetName}" not found`);
 			process.exit(1);
 		}
 
 		// Fetch all examples from dataset for filtering/inspection
 		const allExamples: Example[] = [];
-		console.log(pc.blue('➔ Fetching examples from dataset...'));
+		log.verbose('➔ Fetching examples from dataset...');
 		for await (const example of lsClient.listExamples({ datasetId })) {
-			// Log first example structure for debugging
+			// Log first example structure for debugging (verbose only)
 			if (allExamples.length === 0) {
-				console.log(
-					pc.dim('📊 First example structure:'),
-					JSON.stringify(
+				log.verbose(
+					`📊 First example: ${JSON.stringify(
 						{
 							id: example.id,
-							dataset_id: example.dataset_id,
 							metadata: example.metadata,
 							inputsKeys: Object.keys(example.inputs ?? {}),
 						},
 						null,
 						2,
-					),
+					)}`,
 				);
 			}
 			allExamples.push(example);
 		}
-		console.log(pc.blue(`📊 Total examples in dataset: ${allExamples.length}`));
+		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
 		// Check if we should limit examples
 		const maxExamplesEnv = process.env.EVAL_MAX_EXAMPLES;
@@ -242,52 +281,62 @@ export async function runPairwiseLangsmithEvaluation(
 		// Filter examples based on notionId or maxExamples
 		let data: Example[];
 		if (notionId) {
-			console.log(pc.yellow(`🔍 Searching for example with notion_id: ${notionId}`));
+			log.warn(`🔍 Filtering by notion_id: ${notionId}`);
 			const filtered = allExamples.filter(
 				(e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id === notionId,
 			);
 
 			if (filtered.length === 0) {
-				console.error(pc.red(`❌ No example found with notion_id: ${notionId}`));
+				log.error(`❌ No example found with notion_id: ${notionId}`);
 				const availableIds = allExamples
 					.map((e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id)
 					.filter(Boolean);
-				console.log(pc.dim('Available notion_ids:'), availableIds);
+				log.dim(`Available: ${availableIds.join(', ')}`);
 				process.exit(1);
 			}
 
-			console.log(pc.green(`✅ Found ${filtered.length} example(s) with notion_id: ${notionId}`));
-			console.log(
-				pc.dim('Matched example metadata:'),
-				JSON.stringify(filtered[0].metadata, null, 2),
-			);
+			log.success(`✅ Found ${filtered.length} example(s)`);
+			log.verbose(`Metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
 			data = filtered;
 		} else if (maxExamples && maxExamples > 0) {
-			console.log(pc.yellow(`➔ Limiting to ${maxExamples} example(s)`));
+			log.warn(`➔ Limiting to ${maxExamples} example(s)`);
 			data = allExamples.slice(0, maxExamples);
 		} else {
 			data = allExamples;
 		}
 
-		const generateWorkflow = createPairwiseWorkflowGenerator(parsedNodeTypes, llm, tracer);
-		const evaluator = createPairwiseLangsmithEvaluator(llm, numJudges);
+		const generateWorkflow = createPairwiseWorkflowGenerator(parsedNodeTypes, llm, log, tracer);
+		const evaluator = createPairwiseLangsmithEvaluator(llm, numJudges, log);
+
+		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
+		// (it only works with dataset names). We manually duplicate examples to work around this.
+		const repeatedData: Example[] = [];
+		for (let i = 0; i < repetitions; i++) {
+			repeatedData.push(...data);
+		}
+
+		log.info(`➔ Running ${data.length} × ${repetitions} = ${repeatedData.length} generations`);
 
 		await evaluate(generateWorkflow, {
-			data,
+			data: repeatedData,
 			evaluators: [evaluator],
 			maxConcurrency: 5,
-			experimentPrefix: 'pairwise-evals',
-			numRepetitions: repetitions,
+			experimentPrefix: experimentName,
+			// numRepetitions not used - we manually duplicate examples above
 			metadata: {
 				numJudges,
+				repetitions,
 				scoringMethod: 'hierarchical',
 			},
 		});
 
-		console.log(pc.green('\n✓ Pairwise evaluation completed'));
-		console.log(pc.dim('   View aggregated results in LangSmith dashboard'));
+		log.success('\n✓ Pairwise evaluation completed');
+		log.dim(
+			`   Generations: ${generationCounter} | Evaluations: ${evaluationCounter} | Judge calls: ${evaluationCounter * numJudges}`,
+		);
+		log.dim('   View results in LangSmith dashboard');
 	} catch (error) {
-		console.error(pc.red('✗ Pairwise evaluation failed:'), error);
+		log.error(`✗ Pairwise evaluation failed: ${error}`);
 		process.exit(1);
 	}
 }
