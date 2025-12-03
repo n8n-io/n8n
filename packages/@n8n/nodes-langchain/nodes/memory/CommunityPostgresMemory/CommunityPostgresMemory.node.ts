@@ -1,4 +1,4 @@
-import { logWrapper } from '@n8n/ai-tools';
+import { wrapN8nMemory, logWrapper } from '@n8n/ai-tools';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
@@ -14,7 +14,6 @@ import type pg from 'pg';
 import { getSessionId } from '@utils/helpers';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { wrapN8nMemory } from '@utils/translators';
 import {
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,

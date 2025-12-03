@@ -1,18 +1,16 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { PromptTemplate } from '@langchain/core/prompts';
 import { initializeAgentExecutorWithOptions } from '@langchain/classic/agents';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { N8nChatModelToLangChain } from '@n8n/ai-tools';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, isN8nChatModel } from 'n8n-workflow';
 
-import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';
-import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
-import { isN8nChatModel } from 'n8n-workflow';
 
-import { checkForStructuredTools, extractParsedOutput } from '../utils';
 import { getOptionalMemory } from '../ToolsAgent/common';
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,

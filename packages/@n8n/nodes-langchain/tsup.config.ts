@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-	entry: ['{credentials,nodes,test,types,utils,community}/**/*.ts', '!**/*.d.ts', '!**/*.test.ts'],
+	entry: ['{credentials,nodes,test,types,utils}/**/*.ts', '!**/*.d.ts', '!**/*.test.ts'],
 	format: ['cjs'],
 	clean: true,
 	dts: false,

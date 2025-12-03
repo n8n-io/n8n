@@ -9,10 +9,10 @@ import type {
 	IN8nEmbeddings,
 	IN8nVectorStore,
 	IN8nTool,
-	IN8nMemory,
 	IN8nOutputParser,
 	IN8nAiMessage,
 } from './interfaces';
+import type { N8nMemory, N8nSimpleMemory } from './memory';
 import { N8nAiMessageRole } from './interfaces';
 
 /**
@@ -86,24 +86,6 @@ export function isN8nTool(obj: unknown): obj is IN8nTool {
 }
 
 /**
- * Type guard to check if an object implements IN8nMemory
- * @param obj - Object to check
- * @returns True if obj is a valid memory store
- */
-export function isN8nMemory(obj: unknown): obj is IN8nMemory {
-	return (
-		typeof obj === 'object' &&
-		obj !== null &&
-		'loadMemory' in obj &&
-		typeof (obj as IN8nMemory).loadMemory === 'function' &&
-		'saveContext' in obj &&
-		typeof (obj as IN8nMemory).saveContext === 'function' &&
-		'clear' in obj &&
-		typeof (obj as IN8nMemory).clear === 'function'
-	);
-}
-
-/**
  * Type guard to check if an object implements IN8nOutputParser
  * @param obj - Object to check
  * @returns True if obj is a valid output parser
@@ -119,6 +101,26 @@ export function isN8nOutputParser(obj: unknown): obj is IN8nOutputParser {
 	);
 }
 
+export function isN8nMemory(obj: unknown): obj is N8nMemory {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'loadMemoryVariables' in obj &&
+		typeof (obj as N8nMemory).loadMemoryVariables === 'function'
+	);
+}
+
+export function isN8nSimpleMemory(obj: unknown): obj is N8nSimpleMemory {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'type' in obj &&
+		typeof obj.type === 'string' &&
+		'chatHistory' in obj &&
+		typeof obj.chatHistory === 'object' &&
+		!('loadMemoryVariables' in obj)
+	);
+}
 /**
  * Type guard to check if an object is a valid AI message
  * @param obj - Object to check
