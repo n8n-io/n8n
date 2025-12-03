@@ -256,7 +256,7 @@ describe('TestWebhooks', () => {
 		test('should handle destinationNode parameter correctly', async () => {
 			// ARRANGE
 			const workflow = mock<Workflow>();
-			const destinationNode = 'DestinationNode';
+			const destinationNodeObj = { nodeName: 'DestinationNode', mode: 'inclusive' as const };
 			webhook.webhookDescription = { restartWebhook: false };
 
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
@@ -265,13 +265,13 @@ describe('TestWebhooks', () => {
 			// ACT
 			await testWebhooks.needsWebhook({
 				...args,
-				destinationNode: { nodeName: destinationNode, mode: 'inclusive' },
+				destinationNode: destinationNodeObj,
 			});
 
 			// ASSERT
-			// The registration should store only the destinationNode name (not the full object)
+			// The registration should store the full destinationNode object
 			expect(registrations.register).toHaveBeenCalled();
-			expect(registrations.register.mock.calls[0][0].destinationNode).toBe(destinationNode);
+			expect(registrations.register.mock.calls[0][0].destinationNode).toEqual(destinationNodeObj);
 		});
 	});
 
