@@ -147,6 +147,152 @@ describe('WaitTracker', () => {
 		});
 
 		describe('parent execution with waiting sub-workflow', () => {
+			const setupParentExecutionTest = (shouldResume: boolean | undefined) => {
+				const parentExecution = mock<IExecutionResponse>({
+					id: 'parent_execution_id',
+					finished: false,
+				});
+				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+				execution.data.parentExecution = {
+					executionId: parentExecution.id,
+					workflowId: parentExecution.workflowData.id,
+					shouldResume,
+				};
+
+				// Setup child execution's result
+				const finalNodeName = 'Final Node';
+				const taskData: ITaskData = {
+					startTime: new Date().getTime(),
+					executionTime: 5,
+					executionIndex: 0,
+					source: [{ previousNode: 'Wait Node' }],
+					data: {
+						main: [[{ json: { data: 'Child final output after wait' }, pairedItem: { item: 0 } }]],
+					},
+				};
+
+				const subworkflowResults: IRun = {
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+					data: createRunExecutionData({
+						resultData: {
+							runData: { [finalNodeName]: [taskData] },
+							lastNodeExecuted: finalNodeName,
+						},
+					}),
+				};
+
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				const postExecutePromise = createDeferredPromise<IRun | undefined>();
+				activeExecutions.getPostExecutePromise
+					.calledWith(execution.id)
+					.mockReturnValue(postExecutePromise.promise);
+
+				return { parentExecution, subworkflowResults, postExecutePromise };
+			};
+
+			it('should resume parent execution once sub-workflow finishes by default', async () => {
+				// ARRANGE
+				const { parentExecution, postExecutePromise, subworkflowResults } =
+					setupParentExecutionTest(undefined);
+
+				// ACT 1
+				await waitTracker.startExecution(execution.id);
+
+				// ASSERT 1
+				expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					1,
+					{
+						executionMode: execution.mode,
+						executionData: execution.data,
+						workflowData: execution.workflowData,
+						projectId: project.id,
+						pushRef: execution.data.pushRef,
+					},
+					false,
+					false,
+					execution.id,
+				);
+
+				// ACT 1
+				postExecutePromise.resolve(subworkflowResults);
+				await jest.advanceTimersToNextTimerAsync();
+
+				// ASSERT 1
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					{
+						executionMode: parentExecution.mode,
+						executionData: parentExecution.data,
+						workflowData: parentExecution.workflowData,
+						projectId: project.id,
+						pushRef: parentExecution.data.pushRef,
+						startedAt: parentExecution.startedAt,
+					},
+					false,
+					false,
+					parentExecution.id,
+				);
+			});
+
+			it('should not resume parent execution when shouldResume is false', async () => {
+				// ARRANGE
+				const { postExecutePromise, subworkflowResults } = setupParentExecutionTest(false);
+
+				// ACT 1
+				await waitTracker.startExecution(execution.id);
+
+				// ASSERT 1
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				// ACT 2
+				postExecutePromise.resolve(subworkflowResults);
+				await jest.advanceTimersToNextTimerAsync();
+
+				// ASSERT 2
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+
+			it('should resume parent execution when shouldResume is true', async () => {
+				// ARRANGE
+				const { parentExecution, postExecutePromise, subworkflowResults } =
+					setupParentExecutionTest(true);
+
+				// ACT 1
+				await waitTracker.startExecution(execution.id);
+
+				// ASSERT 1
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				// ACT 2
+				postExecutePromise.resolve(subworkflowResults);
+				await jest.advanceTimersByTimeAsync(100);
+
+				// ASSERT 2
+
+				// Parent execution SHOULD be started
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({
+						executionMode: parentExecution.mode,
+						projectId: project.id,
+					}),
+					false,
+					false,
+					parentExecution.id,
+				);
+			});
+
 			it('should update parent nodeExecutionStack with child final output and resume parent', async () => {
 				// ARRANGE
 
