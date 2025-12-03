@@ -944,8 +944,6 @@ export interface FunctionsBase {
 	 * Checks if a feature is enabled for the current node version.
 	 * Uses the node type's features property to evaluate declarative feature conditions.
 	 * Reads the node type and version from the current context.
-	 * @param featureName - The name of the feature to check
-	 * @returns true if the feature is enabled, false otherwise
 	 */
 	isNodeFeatureEnabled(featureName: string): boolean;
 }
