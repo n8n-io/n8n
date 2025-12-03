@@ -457,7 +457,7 @@ watch(
 	align-items: center;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
-	margin-left: var(--spacing--2xs);
+	margin-left: auto;
 
 	&:hover {
 		color: var(--color--primary);
