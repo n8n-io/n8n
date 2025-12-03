@@ -31,9 +31,17 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { WorkflowValidationIssue } from '@/Interface';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
+const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
+const PLACEHOLDER_SUFFIX = '__>';
+
+interface PlaceholderDetail {
+	path: string[];
+	label: string;
+}
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
@@ -111,6 +119,91 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const hasNoCreditsRemaining = computed(() => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
+
+	function extractPlaceholderLabel(value: unknown): string | null {
+		if (typeof value !== 'string') return null;
+		if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) return null;
+
+		const label = value
+			.slice(PLACEHOLDER_PREFIX.length, value.length - PLACEHOLDER_SUFFIX.length)
+			.trim();
+		return label.length > 0 ? label : null;
+	}
+
+	function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
+		const label = extractPlaceholderLabel(value);
+		if (label) return [{ path, label }];
+
+		if (Array.isArray(value)) {
+			return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
+		}
+
+		if (value !== null && typeof value === 'object') {
+			return Object.entries(value).flatMap(([key, nested]) =>
+				findPlaceholderDetails(nested, [...path, key]),
+			);
+		}
+
+		return [];
+	}
+
+	function formatPlaceholderPath(path: string[]): string {
+		if (path.length === 0) return 'parameters';
+
+		return path
+			.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
+			.join('');
+	}
+
+	// Workflow validation from store
+	const baseWorkflowIssues = computed(() =>
+		workflowsStore.workflowValidationIssues.filter((issue) =>
+			['credentials', 'parameters'].includes(issue.type),
+		),
+	);
+
+	const placeholderIssues = computed(() => {
+		const issues: WorkflowValidationIssue[] = [];
+		const seen = new Set<string>();
+
+		for (const node of workflowsStore.workflow.nodes) {
+			if (!node?.parameters) continue;
+
+			const placeholders = findPlaceholderDetails(node.parameters);
+			if (placeholders.length === 0) continue;
+
+			const existingParameterIssues = node.issues?.parameters ?? {};
+
+			for (const placeholder of placeholders) {
+				const path = formatPlaceholderPath(placeholder.path);
+				const message = locale.baseText('aiAssistant.builder.executeMessage.fillParameter', {
+					interpolate: { label: placeholder.label },
+				});
+				const rawMessages = existingParameterIssues[path];
+				const existingMessages = rawMessages
+					? Array.isArray(rawMessages)
+						? rawMessages
+						: [rawMessages]
+					: [];
+
+				if (existingMessages.includes(message)) continue;
+
+				const key = `${node.name}|${path}|${placeholder.label}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+
+				issues.push({
+					node: node.name,
+					type: 'parameters',
+					value: message,
+				});
+			}
+		}
+
+		return issues;
+	});
+
+	const workflowTodos = computed(() => [...baseWorkflowIssues.value, ...placeholderIssues.value]);
 
 	// Chat management functions
 	/**
@@ -245,13 +338,30 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
-		const trackingPayload: Record<string, string> = {
+		const todosToTrack = workflowTodos.value.map((todo) => ({
+			type: todo.type,
+			node_type: workflowsStore.getNodeByName(todo.node)?.type,
+			label: todo.value,
+		}));
+
+		const credentialIssuesToTrack = workflowsStore.workflowValidationIssues
+			.filter((issue) => ['credentials', 'parameters'].includes(issue.type))
+			.map((issue) => ({
+				type: issue.type,
+				node_type: workflowsStore.getNodeByName(issue.node)?.type,
+				label: Array.isArray(issue.value) ? issue.value[0] : issue.value,
+			}));
+
+		const trackingPayload: Record<string, string | number | object[]> = {
 			source,
 			message: text,
 			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 			type,
+			prev_manual_exec_success: workflowsStore.manualExecutionsStats.success,
+			prev_manual_exec_error: workflowsStore.manualExecutionsStats.error,
+			placeholders: [...credentialIssuesToTrack, ...todosToTrack],
 		};
 
 		if (type === 'execution') {
@@ -573,6 +683,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsRemaining,
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
+		workflowTodos,
 
 		// Methods
 		stopStreaming,

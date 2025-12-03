@@ -28,7 +28,13 @@ import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
 import { parse } from 'flatted';
-import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	ExpressionError,
+	IDataObject,
+	IRunExecutionData,
+	IWorkflowBase,
+} from 'n8n-workflow';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	TelemetryHelpers,
@@ -115,7 +121,11 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, successToastAlreadyShown);
+		handleExecutionFinishedWithSuccessOrOther(
+			options.workflowState,
+			data.status,
+			successToastAlreadyShown,
+		);
 		successToastAlreadyShown = true;
 	}
 
@@ -140,7 +150,11 @@ export async function executionFinished(
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, successToastAlreadyShown);
+		handleExecutionFinishedWithSuccessOrOther(
+			options.workflowState,
+			execution.status,
+			successToastAlreadyShown,
+		);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
@@ -351,6 +365,8 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 		});
 
 		toast.showMessage({ title, message, type: 'error', duration: 0 });
+
+		workflowsStore.incrementManualExecutionStats('error');
 	}
 }
 
@@ -381,6 +397,7 @@ function handleExecutionFinishedSuccessfully(
  */
 export function handleExecutionFinishedWithSuccessOrOther(
 	workflowState: WorkflowState,
+	executionStatus: ExecutionStatus,
 	successToastAlreadyShown: boolean,
 ) {
 	const workflowsStore = useWorkflowsStore();
@@ -426,6 +443,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 			workflowState,
 		);
+	}
+
+	// Execution finished is triggered multiple times
+	// use "successToastAlreadyShown" flag to avoid double counting executions
+	if (executionStatus === 'success' && !successToastAlreadyShown) {
+		workflowsStore.incrementManualExecutionStats('success');
 	}
 }
 

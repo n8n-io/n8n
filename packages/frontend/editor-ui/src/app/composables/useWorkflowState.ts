@@ -233,6 +233,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
+		ws.resetManualExecutionStats();
 	}
 
 	////
