@@ -4,6 +4,8 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
+	id: string;
+	label: string;
 	value: string;
 	allowCopy?: boolean;
 	maxWidth?: number;
@@ -32,29 +34,47 @@ const handleCopy = async (value: string) => {
 		:class="$style.container"
 		:style="{ maxWidth: props.maxWidth ? props.maxWidth + 'px' : 'none' }"
 	>
-		<code>{{ props.value }}</code>
-		<div :class="$style['copy-button-wrapper']">
-			<slot name="customActions" />
-			<N8nTooltip
-				:disables="!isSupported"
-				:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
-				placement="right"
-			>
-				<N8nButton
-					v-if="props.allowCopy && isSupported"
-					type="tertiary"
-					:icon="copied ? 'clipboard-check' : 'clipboard'"
-					:square="true"
-					:class="$style['copy-button']"
-					@click="handleCopy(props.value)"
-				/>
-			</N8nTooltip>
+		<label :class="$style.label" :for="`connection-parameter-${props.id}`">{{ props.label }}</label>
+		<div
+			:id="`connection-parameter-${props.id}`"
+			:class="$style['parameter-value']"
+			data-test-id="connection-parameter-value"
+		>
+			<code>{{ props.value }}</code>
+			<div :class="$style['copy-button-wrapper']">
+				<slot name="customActions" />
+				<N8nTooltip
+					:disables="!isSupported"
+					:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+					placement="right"
+				>
+					<N8nButton
+						v-if="props.allowCopy && isSupported"
+						type="tertiary"
+						:icon="copied ? 'clipboard-check' : 'clipboard'"
+						:square="true"
+						:class="$style['copy-button']"
+						@click="handleCopy(props.value)"
+					/>
+				</N8nTooltip>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.label {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--shade-1);
+}
+
+.parameter-value {
 	display: flex;
 	align-items: stretch;
 	gap: var(--spacing--2xs);

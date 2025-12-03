@@ -2,10 +2,17 @@
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { N8nButton, N8nPopoverReka, N8nRadioButtons } from '@n8n/design-system';
+import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 
 const popoverOpen = ref(false);
+
+const MCP_ENDPOINT = 'mcp-server/http';
 
 const TABS = {
 	ACCESS_TOKEN: 'accessToken',
@@ -17,6 +24,8 @@ const tabItems = ref([
 	{ value: TABS.ACCESS_TOKEN, label: i18n.baseText('settings.mcp.connectPopover.tab.accessToken') },
 ]);
 
+const serverUrl = ref(`${rootStore.baseUrl}${MCP_ENDPOINT}`);
+
 const activeTab = ref(tabItems.value[0].value);
 
 const handlePopoverOpenChange = (isOpen: boolean) => {
@@ -25,6 +34,16 @@ const handlePopoverOpenChange = (isOpen: boolean) => {
 
 const handleTabChange = (newTab: string) => {
 	activeTab.value = newTab;
+};
+
+const trackCopyEvent = (payload: {
+	item: 'server-url' | 'access-token' | 'mcp-json';
+	source: 'oauth-tab' | 'token-tab';
+}) => {
+	telemetry.track('User copied MCP connection parameter', {
+		parameter: payload.item,
+		source: payload.source,
+	});
 };
 </script>
 
@@ -36,7 +55,7 @@ const handleTabChange = (newTab: string) => {
 			:popper-options="{ strategy: 'fixed' }"
 			:content-class="$style.popper"
 			:show-arrow="false"
-			width="350px"
+			width="400px"
 			@update:open="handlePopoverOpenChange"
 		>
 			<template #trigger>
@@ -46,11 +65,20 @@ const handleTabChange = (newTab: string) => {
 			</template>
 			<template #content>
 				<div :class="$style['popper-content']" data-test-id="mcp-connect-popover-content">
-					<N8nRadioButtons
-						:model-value="activeTab"
-						:options="tabItems"
-						@update:model-value="handleTabChange"
-					/>
+					<header>
+						<N8nRadioButtons
+							:model-value="activeTab"
+							:options="tabItems"
+							@update:model-value="handleTabChange"
+						/>
+					</header>
+					<main>
+						<MCPOAuthPopoverTab
+							v-if="activeTab === TABS.OAUTH"
+							:server-url="serverUrl"
+							@copy="trackCopyEvent({ item: 'server-url', source: 'oauth-tab' })"
+						/>
+					</main>
 				</div>
 			</template>
 		</N8nPopoverReka>
@@ -63,6 +91,9 @@ const handleTabChange = (newTab: string) => {
 }
 
 .popper-content {
-	padding: var(--spacing--md);
+	padding: var(--spacing--xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 </style>
