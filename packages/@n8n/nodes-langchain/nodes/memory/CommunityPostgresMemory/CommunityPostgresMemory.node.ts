@@ -14,7 +14,6 @@ import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { createN8NMemory } from '../../community/types';
 import {
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
@@ -22,6 +21,7 @@ import {
 	sessionKeyProperty,
 } from '../descriptions';
 import { PostgresChatMessageHistory } from './messageHistory';
+import { wrapN8nMemory } from '@utils/translators';
 
 export class CommunityPostgresMemory implements INodeType {
 	description: INodeTypeDescription = {
@@ -105,7 +105,7 @@ export class CommunityPostgresMemory implements INodeType {
 				? {}
 				: { k: this.getNodeParameter('contextWindowLength', itemIndex) as number };
 
-		const memory = createN8NMemory({
+		const memory = wrapN8nMemory({
 			type: 'bufferWindow',
 			memoryKey: 'chat_history',
 			chatHistory: pgChatHistory,

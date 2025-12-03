@@ -1,6 +1,5 @@
+import type { IN8nAiMessage, N8NBaseChatMessageHistory } from 'n8n-workflow';
 import pg from 'pg';
-
-import { N8NBaseChatMessageHistory, type N8NStoredMessage } from '../../community/types';
 
 /**
  * Type definition for the input parameters required when instantiating a
@@ -34,15 +33,6 @@ export type PostgresChatMessageHistoryInput = {
 	escapeTableName?: boolean;
 };
 
-export interface StoredPostgresMessageData {
-	name: string | undefined;
-	role: string | undefined;
-	content: string;
-	additional_kwargs?: Record<string, unknown>;
-	type: string;
-	tool_call_id: string | undefined;
-}
-
 /**
  * Class for managing chat message history using a Postgres Database as a
  * storage backend. Extends the BaseListChatMessageHistory class.
@@ -61,7 +51,7 @@ export interface StoredPostgresMessageData {
  * });
  * ```
  */
-export class PostgresChatMessageHistory extends N8NBaseChatMessageHistory {
+export class PostgresChatMessageHistory implements N8NBaseChatMessageHistory {
 	lc_namespace = ['langchain', 'stores', 'message', 'postgres'];
 
 	pool: pg.Pool;
@@ -83,7 +73,6 @@ export class PostgresChatMessageHistory extends N8NBaseChatMessageHistory {
 	 * @throws If neither `pool` nor `poolConfig` is provided.
 	 */
 	constructor(fields: PostgresChatMessageHistoryInput) {
-		super();
 		const { tableName, sessionId, pool, poolConfig, escapeTableName } = fields;
 		// Ensure that either a client or config is provided
 		if (!pool && !poolConfig) {
@@ -126,35 +115,28 @@ export class PostgresChatMessageHistory extends N8NBaseChatMessageHistory {
 		this.initialized = true;
 	}
 
-	async addMessage(message: N8NStoredMessage): Promise<void> {
+	async addMessage(message: IN8nAiMessage): Promise<void> {
 		await this.ensureTable();
-		const { data, type } = message;
 
 		const query = `INSERT INTO ${this.tableName} (session_id, message) VALUES ($1, $2)`;
 
-		await this.pool.query(query, [this.sessionId, { ...data, type }]);
+		await this.pool.query(query, [this.sessionId, message]);
 	}
 
-	async addMessages(messages: N8NStoredMessage[]): Promise<void> {
+	async addMessages(messages: IN8nAiMessage[]): Promise<void> {
 		for (const msg of messages) {
 			await this.addMessage(msg);
 		}
 	}
 
-	async getMessages(): Promise<N8NStoredMessage[]> {
+	async getMessages(): Promise<IN8nAiMessage[]> {
 		await this.ensureTable();
 
 		const query = `SELECT message FROM ${this.tableName} WHERE session_id = $1 ORDER BY id`;
 
 		const res = await this.pool.query(query, [this.sessionId]);
 
-		const storedMessages: N8NStoredMessage[] = res.rows.map(
-			(row: { message: StoredPostgresMessageData }) => {
-				const { type, ...data } = row.message;
-				return { type, data };
-			},
-		);
-		return storedMessages;
+		return res.rows.map((r) => r.message);
 	}
 
 	async clear(): Promise<void> {
