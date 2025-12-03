@@ -50,6 +50,10 @@ export const formFields: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 		sortable: true,
+		fixedCollection: {
+			itemTitle:
+				'={{ $collection.item.properties.find(p => p.name === "fieldType").options.find(o => o.value === $collection.item.value.fieldType).name }}',
+		},
 	},
 	options: [
 		{
@@ -132,7 +136,7 @@ export const formFields: INodeProperties = {
 							value: 'radio',
 						},
 						{
-							name: 'Text',
+							name: 'Text Input',
 							value: 'text',
 						},
 						{

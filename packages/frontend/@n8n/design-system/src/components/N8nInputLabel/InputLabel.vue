@@ -132,6 +132,8 @@ const addTargetBlank = (html: string) =>
 
 .main-content {
 	display: flex;
+	min-width: 0;
+	flex: 1;
 	&:hover {
 		.infoIcon {
 			opacity: 1;
@@ -150,6 +152,7 @@ const addTargetBlank = (html: string) =>
 .trailing-content {
 	display: flex;
 	gap: var(--spacing--3xs);
+	flex-shrink: 0;
 
 	* {
 		align-self: center;
