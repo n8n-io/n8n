@@ -357,7 +357,11 @@ watch(
 							{{ i18n.baseText('workflows.item.archived') }}
 						</N8nBadge>
 					</span>
-					<slot name="item-badge" :item="result"></slot>
+					<slot
+						name="item-badge"
+						:item="result"
+						:is-hovered="showHoverUrl && hoverIndex === i + 1"
+					></slot>
 				</div>
 			</div>
 			<div v-if="props.loading && !props.errorView">

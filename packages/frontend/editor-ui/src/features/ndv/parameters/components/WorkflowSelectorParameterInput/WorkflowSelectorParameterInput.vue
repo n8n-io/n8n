@@ -353,9 +353,9 @@ const onAddResourceClicked = async () => {
 					</N8nText>
 				</div>
 			</template>
-			<template #item-badge="{ item }">
+			<template #item-badge="{ item, isHovered }">
 				<N8nTooltip
-					v-if="!item.active"
+					v-if="!item.active && isHovered"
 					:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
 					placement="top"
 				>
@@ -492,8 +492,6 @@ const onAddResourceClicked = async () => {
 	display: inline-flex;
 	align-items: center;
 	color: var(--color--warning);
-	opacity: 0;
-	transition: opacity 0.2s ease;
 }
 
 .inactiveBadgeAlone {
@@ -502,10 +500,5 @@ const onAddResourceClicked = async () => {
 
 .inactiveBadgeWithArchived {
 	margin-left: var(--spacing--3xs);
-}
-
-// Show badge when hovering over the list item
-:global(.hovering) .inactiveBadge {
-	opacity: 1;
 }
 </style>
