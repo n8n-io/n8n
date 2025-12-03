@@ -247,13 +247,40 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--prompt <text>` | Run local evaluation with this prompt (no LangSmith required) | - |
+| `--dos <rules>` | Newline-separated "do" rules for local evaluation | - |
+| `--donts <rules>` | Newline-separated "don't" rules for local evaluation | - |
 | `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
 | `--repetitions <n>` | Number of workflow generations per prompt | 1 |
 | `--judges <n>` | Number of LLM judges per evaluation | 3 |
 | `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
 | `--verbose`, `-v` | Enable verbose logging (shows judge details, criteria, etc.) | false |
 
-#### Examples
+#### Local Mode (No LangSmith Required)
+
+Run a single pairwise evaluation locally without needing a LangSmith account:
+
+```bash
+# Basic local evaluation
+pnpm eval:pairwise --prompt "Create a workflow that sends Slack messages" --dos "Use Slack node"
+
+# With don'ts and multiple judges
+pnpm eval:pairwise \
+  --prompt "Create a workflow that fetches data from an API" \
+  --dos "Use HTTP Request node\nHandle errors" \
+  --donts "Don't hardcode URLs" \
+  --judges 5 \
+  --verbose
+```
+
+Local mode is useful for:
+- Testing prompts before adding them to a dataset
+- Quick iteration on evaluation criteria
+- Running evaluations without LangSmith setup
+
+#### LangSmith Mode
+
+For dataset-based evaluation with experiment tracking:
 
 ```bash
 # Set required environment variables
