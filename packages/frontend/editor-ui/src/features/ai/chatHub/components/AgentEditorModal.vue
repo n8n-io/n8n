@@ -14,7 +14,7 @@ import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
@@ -49,6 +49,7 @@ const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
 const tools = ref<INode[]>([]);
+const nameInputRef = useTemplateRef('nameInput');
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -118,6 +119,17 @@ watch(
 		}
 	},
 	{ immediate: true },
+);
+
+watch(
+	[isLoadingAgent, nameInputRef],
+	async ([isLoading, name]) => {
+		if (!isLoading) {
+			await new Promise((r) => setTimeout(r, 0));
+			name?.focus();
+		}
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
@@ -249,6 +261,7 @@ function onSelectTools() {
 					:required="true"
 				>
 					<N8nInput
+						ref="nameInput"
 						id="agent-name"
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
