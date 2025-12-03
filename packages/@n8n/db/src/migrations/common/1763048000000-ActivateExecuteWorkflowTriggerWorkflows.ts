@@ -35,7 +35,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 			for (const workflow of workflows) {
 				const nodes = parseJson(workflow.nodes);
 
-				// Check if workflow contains executeWorkflowTrigger node with at least one parameter
+				// Check if workflow contains executeWorkflowTrigger node
 				const executeWorkflowTriggerNode = nodes.find(
 					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
@@ -48,18 +48,30 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 					continue;
 				}
 
-				// For executeWorkflowTrigger, check if the node has at least one parameter defined in workflowInputs.values
+				// For executeWorkflowTrigger, check if it should be activated based on inputSource mode
 				if (executeWorkflowTriggerNode) {
-					const workflowInputs = executeWorkflowTriggerNode.parameters?.workflowInputs;
-					const hasParameters =
-						workflowInputs &&
-						typeof workflowInputs === 'object' &&
-						'values' in workflowInputs &&
-						Array.isArray(workflowInputs.values) &&
-						workflowInputs.values.length > 0 &&
-						this.hasValidWorkflowInputs(workflowInputs.values);
+					const inputSource = executeWorkflowTriggerNode.parameters?.inputSource;
 
-					if (!hasParameters) {
+					// Activate if inputSource is 'passthrough' or 'jsonExample'
+					const shouldActivateByInputSource =
+						inputSource === 'passthrough' || inputSource === 'jsonExample';
+
+					// For legacy nodes (no inputSource), check if they have parameters defined
+					let hasLegacyParameters = false;
+					if (!inputSource) {
+						const workflowInputs = executeWorkflowTriggerNode.parameters?.workflowInputs;
+						hasLegacyParameters = Boolean(
+							workflowInputs &&
+								typeof workflowInputs === 'object' &&
+								'values' in workflowInputs &&
+								Array.isArray(workflowInputs.values) &&
+								workflowInputs.values.length > 0 &&
+								this.hasValidWorkflowInputs(workflowInputs.values),
+						);
+					}
+
+					// Skip if none of the conditions are met
+					if (!shouldActivateByInputSource && !hasLegacyParameters) {
 						continue;
 					}
 				}
