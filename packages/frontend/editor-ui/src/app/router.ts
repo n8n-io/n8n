@@ -389,10 +389,15 @@ export const routes: RouteRecordRaw[] = [
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
-		beforeEnter: () => {
+		beforeEnter: (to) => {
 			// Generate a unique workflow ID using nanoid and redirect to it
+			// Preserve existing query params (e.g., templateId, projectId) and add new=true
 			const newWorkflowId = nanoid();
-			return { name: VIEWS.WORKFLOW, params: { name: newWorkflowId }, query: { new: 'true' } };
+			return {
+				name: VIEWS.WORKFLOW,
+				params: { name: newWorkflowId },
+				query: { ...to.query, new: 'true' },
+			};
 		},
 	},
 	{

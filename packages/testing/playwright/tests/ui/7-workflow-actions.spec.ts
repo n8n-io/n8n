@@ -27,8 +27,9 @@ test.describe('Workflow Actions', () => {
 		const tagName = await saveButton.evaluate((el) => el.tagName);
 		expect(tagName).toBe('SPAN');
 
-		await expect(n8n.page).not.toHaveURL(/\/workflow\/new$/);
-		await expect(n8n.page).toHaveURL(/\/workflow\/[a-zA-Z0-9]+$/);
+		// After saving, ?new=true query param should be removed
+		await expect(n8n.page).not.toHaveURL(/\?new=true/);
+		await expect(n8n.page).toHaveURL(/\/workflow\/[a-zA-Z0-9_-]+$/);
 	});
 
 	test('should save workflow on keyboard shortcut', async ({ n8n }) => {
