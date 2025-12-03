@@ -12,7 +12,7 @@ import {
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -310,7 +310,7 @@ export class UserService {
 							},
 						});
 						if (adminCount === 0) {
-							throw new UnexpectedError(
+							throw new UserError(
 								`Cannot downgrade user as they are the only project admin in project "${relation.projectId}".`,
 							);
 						}

@@ -6,6 +6,7 @@ import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import type {
+	ChatHubConversationModel,
 	ChatHubLLMProvider,
 	ChatHubProvider,
 	ChatModelDto,
@@ -23,7 +24,7 @@ const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	selectModel: [ChatModelDto];
+	selectModel: [ChatHubConversationModel];
 	renameConversation: [id: ChatSessionId, title: string];
 	editCustomAgent: [agentId: string];
 	createCustomAgent: [];
@@ -49,7 +50,7 @@ function onOpenWorkflow() {
 	}
 }
 
-function onModelChange(selection: ChatModelDto) {
+function onModelChange(selection: ChatHubConversationModel) {
 	emit('selectModel', selection);
 }
 
