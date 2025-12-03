@@ -7,7 +7,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import { evaluateWorkflowPairwise } from '../chains/pairwise-evaluator';
+import {
+	evaluateWorkflowPairwise,
+	type PairwiseEvaluationResult,
+} from '../chains/pairwise-evaluator';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
@@ -25,6 +28,7 @@ interface PairwiseGeneratorOutput {
 	workflow: SimpleWorkflow;
 	evalCriteria: PairwiseDatasetInput['evals'];
 	prompt: string;
+	evaluationResults: LangsmithEvaluationResult[];
 }
 
 function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGeneratorOutput {
@@ -34,8 +38,54 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 
 	if (!obj.workflow || typeof obj.workflow !== 'object') return false;
 	if (!obj.evalCriteria || typeof obj.evalCriteria !== 'object') return false;
+	if (!obj.evaluationResults || !Array.isArray(obj.evaluationResults)) return false;
 
 	return true;
+}
+
+function buildLangsmithResults(
+	judgeResults: PairwiseEvaluationResult[],
+	numJudges: number,
+	primaryPasses: number,
+	majorityPass: boolean,
+	avgDiagnosticScore: number,
+): LangsmithEvaluationResult[] {
+	const allViolations = judgeResults.flatMap((r, i) =>
+		r.violations.map((v) => `[Judge ${i + 1}] ${v.rule}: ${v.justification}`),
+	);
+	const allPasses = judgeResults.flatMap((r, i) =>
+		r.passes.map((p) => `[Judge ${i + 1}] ${p.rule}`),
+	);
+
+	const comment = [
+		`Majority vote: ${primaryPasses}/${numJudges} judges passed`,
+		allViolations.length > 0 ? `\nViolations:\n${allViolations.join('\n')}` : '',
+		allPasses.length > 0 ? `\nPasses:\n${allPasses.join('\n')}` : '',
+	]
+		.filter(Boolean)
+		.join('');
+
+	return [
+		{ key: 'pairwise_primary', score: majorityPass ? 1 : 0, comment },
+		{
+			key: 'pairwise_diagnostic',
+			score: avgDiagnosticScore,
+			comment: `Average diagnostic score across ${numJudges} judges`,
+		},
+		{
+			key: 'pairwise_judges_passed',
+			score: primaryPasses,
+			comment: `${primaryPasses} of ${numJudges} judges returned primaryPass=true`,
+		},
+		{
+			key: 'pairwise_total_violations',
+			score: judgeResults.reduce((sum, r) => sum + r.violations.length, 0),
+		},
+		{
+			key: 'pairwise_total_passes',
+			score: judgeResults.reduce((sum, r) => sum + r.passes.length, 0),
+		},
+	];
 }
 
 // Counter to track generations across repetitions
@@ -44,16 +94,18 @@ let generationCounter = 0;
 function createPairwiseWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
+	numJudges: number,
 	log: EvalLogger,
 	tracer?: LangChainTracer,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
+		const startTime = Date.now();
 		generationCounter++;
 		const currentGeneration = generationCounter;
 		const promptPreview = inputs.prompt.slice(0, 60).replace(/\n/g, ' ');
 
 		log.verbose(
-			`🔄 [Gen #${currentGeneration}] "${promptPreview}${inputs.prompt.length > 60 ? '...' : ''}"`,
+			`🔄 [#${currentGeneration}] "${promptPreview}${inputs.prompt.length > 60 ? '...' : ''}"`,
 		);
 
 		const runId = generateRunId();
@@ -73,124 +125,123 @@ function createPairwiseWorkflowGenerator(
 			throw new Error('Invalid workflow state');
 		}
 
-		const nodeCount = state.values.workflowJSON?.nodes?.length ?? 0;
-		log.verbose(`✅ [Gen #${currentGeneration}] Done (${nodeCount} nodes)`);
+		const workflow = state.values.workflowJSON;
+		const nodeCount = workflow?.nodes?.length ?? 0;
+		const genTime = (Date.now() - startTime) / 1000;
+		log.verbose(
+			`✅ [#${currentGeneration}] Workflow done (${nodeCount} nodes) [${genTime.toFixed(1)}s]`,
+		);
+
+		// Run judges immediately (combined pipeline)
+		const judgeStartTime = Date.now();
+		log.verbose(`⚖️  [#${currentGeneration}] Running ${numJudges} judges...`);
+
+		const judgeResults = await Promise.all(
+			Array.from({ length: numJudges }, async (_, i) => {
+				const result = await evaluateWorkflowPairwise(llm, {
+					workflowJSON: workflow,
+					evalCriteria: inputs.evals,
+				});
+				const totalCriteria = result.passes.length + result.violations.length;
+				log.verbose(
+					`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
+						`(${result.passes.length}/${totalCriteria}, ${(result.diagnosticScore * 100).toFixed(0)}%)`,
+				);
+				return result;
+			}),
+		);
+
+		const judgeTime = (Date.now() - judgeStartTime) / 1000;
+
+		// Aggregate across judges
+		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+		const majorityPass = primaryPasses >= Math.ceil(numJudges / 2);
+		const avgDiagnosticScore =
+			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+
+		// Log result with timing
+		const totalTime = (Date.now() - startTime) / 1000;
+		console.log(
+			pc.dim(
+				`  📊 [#${currentGeneration}] ${primaryPasses}/${numJudges} → ` +
+					`${majorityPass ? pc.green('PASS') : pc.red('FAIL')} (${(avgDiagnosticScore * 100).toFixed(0)}%) ` +
+					`[${genTime.toFixed(1)}s + ${judgeTime.toFixed(1)}s = ${totalTime.toFixed(1)}s]`,
+			),
+		);
 
 		return {
-			workflow: state.values.workflowJSON,
+			workflow,
 			evalCriteria: inputs.evals,
 			prompt: inputs.prompt,
+			evaluationResults: buildLangsmithResults(
+				judgeResults,
+				numJudges,
+				primaryPasses,
+				majorityPass,
+				avgDiagnosticScore,
+			),
 		};
 	};
 }
 
 const DEFAULT_NUM_JUDGES = 3;
 
-// Counter to track evaluations
-let evaluationCounter = 0;
-
-function createPairwiseLangsmithEvaluator(llm: BaseChatModel, numJudges: number, log: EvalLogger) {
+/**
+ * Simple evaluator that extracts pre-computed results from the generator output.
+ * The actual judge evaluation is done in createPairwiseWorkflowGenerator for better parallelism.
+ */
+function createPairwiseLangsmithEvaluator() {
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
-		evaluationCounter++;
-		const currentEvaluation = evaluationCounter;
-
-		log.verbose(`⚖️  [Eval #${currentEvaluation}] Starting with ${numJudges} judges...`);
-
 		const outputs = rootRun.outputs;
 
 		if (!isPairwiseGeneratorOutput(outputs)) {
-			log.error(`  ❌ [Eval #${currentEvaluation}] Invalid output - missing workflow/criteria`);
 			return [
-				{ key: 'pairwise_primary', score: 0, comment: 'Invalid output' },
+				{
+					key: 'pairwise_primary',
+					score: 0,
+					comment: 'Invalid output - missing evaluation results',
+				},
 				{ key: 'pairwise_diagnostic', score: 0 },
 			];
 		}
 
-		// Count criteria for logging
-		const dosCount = outputs.evalCriteria.dos
-			? outputs.evalCriteria.dos.split('\n').filter((l) => l.trim()).length
-			: 0;
-		const dontsCount = outputs.evalCriteria.donts
-			? outputs.evalCriteria.donts.split('\n').filter((l) => l.trim()).length
-			: 0;
-
-		log.verbose(`     Criteria: ${dosCount} DOs, ${dontsCount} DON'Ts`);
-
-		// Run multiple judges in PARALLEL
-		const judgeResults = await Promise.all(
-			Array.from({ length: numJudges }, async (_, i) => {
-				const result = await evaluateWorkflowPairwise(llm, {
-					workflowJSON: outputs.workflow,
-					evalCriteria: outputs.evalCriteria,
-				});
-				// Log each judge's result
-				const totalCriteria = result.passes.length + result.violations.length;
-				log.verbose(
-					`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
-						`(${result.passes.length}/${totalCriteria} criteria, ` +
-						`diagnostic=${(result.diagnosticScore * 100).toFixed(1)}%)`,
-				);
-				return result;
-			}),
-		);
-
-		// Level 3: Aggregate across judges
-		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
-		const majorityPass = primaryPasses >= Math.ceil(numJudges / 2);
-		const primaryScore = majorityPass ? 1 : 0;
-		const avgDiagnosticScore =
-			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
-
-		// Log aggregation - always show this as it's the main result
-		console.log(
-			pc.dim(
-				`  📊 [Eval #${currentEvaluation}] ${primaryPasses}/${numJudges} judges → ` +
-					`${majorityPass ? pc.green('PASS') : pc.red('FAIL')} (${(avgDiagnosticScore * 100).toFixed(0)}%)`,
-			),
-		);
-
-		// Collect all violations for comment
-		const allViolations = judgeResults.flatMap((r, i) =>
-			r.violations.map((v) => `[Judge ${i + 1}] ${v.rule}: ${v.justification}`),
-		);
-		const allPasses = judgeResults.flatMap((r, i) =>
-			r.passes.map((p) => `[Judge ${i + 1}] ${p.rule}`),
-		);
-
-		const comment = [
-			`Majority vote: ${primaryPasses}/${numJudges} judges passed`,
-			allViolations.length > 0 ? `\nViolations:\n${allViolations.join('\n')}` : '',
-			allPasses.length > 0 ? `\nPasses:\n${allPasses.join('\n')}` : '',
-		]
-			.filter(Boolean)
-			.join('');
-
-		return [
-			{
-				key: 'pairwise_primary',
-				score: primaryScore,
-				comment,
-			},
-			{
-				key: 'pairwise_diagnostic',
-				score: avgDiagnosticScore,
-				comment: `Average diagnostic score across ${numJudges} judges`,
-			},
-			{
-				key: 'pairwise_judges_passed',
-				score: primaryPasses,
-				comment: `${primaryPasses} of ${numJudges} judges returned primaryPass=true`,
-			},
-			{
-				key: 'pairwise_total_violations',
-				score: judgeResults.reduce((sum, r) => sum + r.violations.length, 0),
-			},
-			{
-				key: 'pairwise_total_passes',
-				score: judgeResults.reduce((sum, r) => sum + r.passes.length, 0),
-			},
-		];
+		// Just pass through the pre-computed results from the generator
+		return outputs.evaluationResults;
 	};
+}
+
+function filterExamples(
+	allExamples: Example[],
+	notionId: string | undefined,
+	maxExamples: number | undefined,
+	log: EvalLogger,
+): Example[] {
+	if (notionId) {
+		log.warn(`🔍 Filtering by notion_id: ${notionId}`);
+		const filtered = allExamples.filter(
+			(e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id === notionId,
+		);
+
+		if (filtered.length === 0) {
+			log.error(`❌ No example found with notion_id: ${notionId}`);
+			const availableIds = allExamples
+				.map((e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id)
+				.filter(Boolean);
+			log.dim(`Available: ${availableIds.join(', ')}`);
+			process.exit(1);
+		}
+
+		log.success(`✅ Found ${filtered.length} example(s)`);
+		log.verbose(`Metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
+		return filtered;
+	}
+
+	if (maxExamples && maxExamples > 0) {
+		log.warn(`➔ Limiting to ${maxExamples} example(s)`);
+		return allExamples.slice(0, maxExamples);
+	}
+
+	return allExamples;
 }
 
 export interface PairwiseEvaluationOptions {
@@ -228,9 +279,8 @@ export async function runPairwiseLangsmithEvaluation(
 		process.exit(1);
 	}
 
-	// Reset counters for this run
+	// Reset counter for this run
 	generationCounter = 0;
-	evaluationCounter = 0;
 
 	try {
 		const { parsedNodeTypes, llm, tracer, lsClient } = await setupTestEnvironment();
@@ -274,39 +324,19 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		// Check if we should limit examples
+		// Filter examples based on notionId or maxExamples env var
 		const maxExamplesEnv = process.env.EVAL_MAX_EXAMPLES;
 		const maxExamples = maxExamplesEnv ? parseInt(maxExamplesEnv, 10) : undefined;
+		const data = filterExamples(allExamples, notionId, maxExamples, log);
 
-		// Filter examples based on notionId or maxExamples
-		let data: Example[];
-		if (notionId) {
-			log.warn(`🔍 Filtering by notion_id: ${notionId}`);
-			const filtered = allExamples.filter(
-				(e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id === notionId,
-			);
-
-			if (filtered.length === 0) {
-				log.error(`❌ No example found with notion_id: ${notionId}`);
-				const availableIds = allExamples
-					.map((e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id)
-					.filter(Boolean);
-				log.dim(`Available: ${availableIds.join(', ')}`);
-				process.exit(1);
-			}
-
-			log.success(`✅ Found ${filtered.length} example(s)`);
-			log.verbose(`Metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
-			data = filtered;
-		} else if (maxExamples && maxExamples > 0) {
-			log.warn(`➔ Limiting to ${maxExamples} example(s)`);
-			data = allExamples.slice(0, maxExamples);
-		} else {
-			data = allExamples;
-		}
-
-		const generateWorkflow = createPairwiseWorkflowGenerator(parsedNodeTypes, llm, log, tracer);
-		const evaluator = createPairwiseLangsmithEvaluator(llm, numJudges, log);
+		const generateWorkflow = createPairwiseWorkflowGenerator(
+			parsedNodeTypes,
+			llm,
+			numJudges,
+			log,
+			tracer,
+		);
+		const evaluator = createPairwiseLangsmithEvaluator();
 
 		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
 		// (it only works with dataset names). We manually duplicate examples to work around this.
@@ -316,6 +346,8 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 
 		log.info(`➔ Running ${data.length} × ${repetitions} = ${repeatedData.length} generations`);
+
+		const evalStartTime = Date.now();
 
 		await evaluate(generateWorkflow, {
 			data: repeatedData,
@@ -330,13 +362,16 @@ export async function runPairwiseLangsmithEvaluation(
 			},
 		});
 
+		const totalEvalTime = Date.now() - evalStartTime;
+
 		log.success('\n✓ Pairwise evaluation completed');
-		log.dim(
-			`   Generations: ${generationCounter} | Evaluations: ${evaluationCounter} | Judge calls: ${evaluationCounter * numJudges}`,
-		);
+		log.dim(`   Generations: ${generationCounter} | Judge calls: ${generationCounter * numJudges}`);
+		log.dim(`   Total time: ${(totalEvalTime / 1000).toFixed(1)}s`);
 		log.dim('   View results in LangSmith dashboard');
 	} catch (error) {
-		log.error(`✗ Pairwise evaluation failed: ${error}`);
+		log.error(
+			`✗ Pairwise evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
 		process.exit(1);
 	}
 }
