@@ -60,6 +60,11 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'gpt-5-pro-2025-10-06': 196000,
 		'gpt-5-search-api': 0,
 		'gpt-5-search-api-2025-10-14': 0,
+		'gpt-5.1': 400000,
+		'gpt-5.1-2025-11-13': 400000,
+		'gpt-5.1-chat-latest': 128000,
+		'gpt-5.1-codex': 400000,
+		'gpt-5.1-codex-mini': 400000,
 		'gpt-audio': 0,
 		'gpt-audio-2025-08-28': 0,
 		'gpt-audio-mini': 0,
@@ -82,6 +87,7 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'o4-mini-deep-research-2025-06-26': 0,
 	},
 	anthropic: {
+		'claude-opus-4-5-20251101': 200000,
 		'claude-haiku-4-5-20251001': 200000,
 		'claude-sonnet-4-5-20250929': 200000,
 		'claude-opus-4-1-20250805': 200000,
@@ -120,6 +126,8 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'models/gemini-2.5-pro-preview-05-06': 1048576,
 		'models/gemini-2.5-pro-preview-06-05': 1048576,
 		'models/gemini-2.5-pro-preview-tts': 8000,
+		'models/gemini-3-pro-preview': 1048576,
+		'models/gemini-3-pro-image-preview': 65536,
 		'models/gemini-exp-1206': 2000000,
 		'models/gemini-flash-latest': 1048576,
 		'models/gemini-flash-lite-latest': 1048576,
@@ -142,13 +150,58 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 	ollama: {},
 	awsBedrock: {},
 	vercelAiGateway: {},
-	xAiGrok: {},
-	groq: {},
+	xAiGrok: {
+		'grok-2-1212': 32768,
+		'grok-2-vision-1212': 32768,
+		'grok-3': 131072,
+		'grok-3-mini': 131072,
+		'grok-4-0709': 256000,
+		'grok-4-1-fast-non-reasoning': 2000000,
+		'grok-4-1-fast-reasoning': 2000000,
+		'grok-4-fast-non-reasoning': 2000000,
+		'grok-4-fast-reasoning': 2000000,
+		'grok-code-fast-1': 256000,
+	},
+	groq: {
+		'qwen/qwen3-32b': 131072,
+		'llama-3.3-70b-versatile': 131072,
+		'llama-3.1-8b-instant': 131072,
+		'playai-tts': 8192,
+		'playai-tts-arabic': 8192,
+		'openai/gpt-oss-safeguard-20b': 131072,
+		'openai/gpt-oss-120b': 131072,
+		'openai/gpt-oss-20b': 131072,
+		'meta-llama/llama-prompt-guard-2-86m': 512,
+		'meta-llama/llama-prompt-guard-2-22m': 512,
+		'meta-llama/llama-guard-4-12b': 131072,
+		'meta-llama/llama-4-scout-17b-16e-instruct': 131072,
+		'meta-llama/llama-4-maverick-17b-128e-instruct': 131072,
+		'moonshotai/kimi-k2-instruct-0905': 262144,
+		'moonshotai/kimi-k2-instruct': 262144,
+		'groq/compound': 131072,
+		'groq/compound-mini': 131072,
+	},
 	openRouter: {},
-	deepSeek: {},
+	deepSeek: {
+		'deepseek-chat': 128000,
+		'deepseek-reasoner': 128000,
+	},
 	cohere: {},
-	mistralCloud: {},
+	mistralCloud: {
+		'mistral-large-2411': 256000,
+		'mistral-large-2512': 256000,
+		'mistral-large-latest': 256000,
+		'mistral-large-pixtral-2411': 256000,
+		'mistral-medium': 128000,
+		'mistral-medium-2505': 128000,
+		'mistral-medium-2508': 128000,
+		'mistral-medium-latest': 128000,
+		'mistral-small-2506': 128000,
+		'mistral-small-latest': 128000,
+	},
 };
+
+const CONTEXT_WINDOW_SAFETY_FACTOR = 0.95;
 
 export const getMaxContextWindowTokens = (
 	provider: ChatHubLLMProvider,
@@ -159,5 +212,5 @@ export const getMaxContextWindowTokens = (
 		return undefined;
 	}
 
-	return limit;
+	return Math.floor(limit * CONTEXT_WINDOW_SAFETY_FACTOR);
 };
