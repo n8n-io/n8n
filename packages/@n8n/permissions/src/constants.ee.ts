@@ -2,6 +2,7 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 
 export const RESOURCES = {
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
+	apiKey: ['create'] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
@@ -40,6 +41,7 @@ export const RESOURCES = {
 } as const;
 
 export const API_KEY_RESOURCES = {
+	apiKey: ['create'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,

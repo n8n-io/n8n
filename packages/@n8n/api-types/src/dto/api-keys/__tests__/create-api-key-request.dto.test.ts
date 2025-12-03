@@ -5,16 +5,18 @@ describe('CreateApiKeyRequestDto', () => {
 		test.each([
 			{
 				name: 'expiresAt in the future',
-				expiresAt: Date.now() / 1000 + 1000,
-				scopes: ['user:create'],
+				payload: { label: 'valid', expiresAt: Date.now() / 1000 + 1000, scopes: ['user:create'] },
 			},
 			{
 				name: 'expiresAt null',
-				expiresAt: null,
-				scopes: ['user:create'],
+				payload: { label: 'valid', expiresAt: null, scopes: ['user:create'] },
 			},
-		])('should succeed validation for $name', ({ expiresAt, scopes }) => {
-			const result = CreateApiKeyRequestDto.safeParse({ label: 'valid', expiresAt, scopes });
+			{
+				name: 'expiresAt omitted',
+				payload: { label: 'valid', scopes: ['user:create'] },
+			},
+		])('should succeed validation for $name', ({ payload }) => {
+			const result = CreateApiKeyRequestDto.safeParse(payload);
 
 			expect(result.success).toBe(true);
 		});

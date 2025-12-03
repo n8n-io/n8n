@@ -509,3 +509,148 @@ describe('Member', () => {
 		expect(scopes.sort()).toEqual(scopesForRole.sort());
 	});
 });
+
+describe('POST /api-keys/user - Create API key for another user', () => {
+	let owner: User;
+	let admin: User;
+	let member: User;
+
+	beforeEach(async () => {
+		owner = await createOwnerWithApiKey();
+		admin = await createUser({ role: 'global:admin' });
+		member = await createUser({ role: 'global:member' });
+	});
+
+	test('should allow owner to create API key for another user', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.post('/api-keys/user')
+			.send({
+				userId: member.id,
+				label: 'API Key for Member',
+				expiresAt: null,
+				scopes: ['workflow:read'],
+			})
+			.expect(200);
+
+		const newApiKey = response.body.data as ApiKeyWithRawValue;
+
+		expect(newApiKey).toBeDefined();
+		expect(newApiKey.rawApiKey).toBeDefined();
+		expect(newApiKey.label).toBe('API Key for Member');
+
+		// Verify the API key was created for the member
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			userId: member.id,
+			label: 'API Key for Member',
+		});
+
+		expect(storedApiKey).toBeDefined();
+		expect(storedApiKey.apiKey).toBe(newApiKey.rawApiKey);
+		expect(storedApiKey.scopes).toEqual(['workflow:read']);
+	});
+
+	test('should allow admin to create API key for another user', async () => {
+		const response = await testServer
+			.authAgentFor(admin)
+			.post('/api-keys/user')
+			.send({
+				userId: member.id,
+				label: 'Admin Created Key',
+				expiresAt: null,
+				scopes: ['workflow:list'],
+			})
+			.expect(200);
+
+		const newApiKey = response.body.data as ApiKeyWithRawValue;
+
+		expect(newApiKey).toBeDefined();
+		expect(newApiKey.rawApiKey).toBeDefined();
+	});
+
+	test('should reject member trying to create API key for another user', async () => {
+		await testServer
+			.authAgentFor(member)
+			.post('/api-keys/user')
+			.send({
+				userId: owner.id,
+				label: 'Unauthorized Key',
+				expiresAt: null,
+				scopes: ['workflow:read'],
+			})
+			.expect(403);
+	});
+
+	test('should reject if target user does not exist', async () => {
+		const fakeUserId = '00000000-0000-0000-0000-000000000000';
+
+		await testServer
+			.authAgentFor(owner)
+			.post('/api-keys/user')
+			.send({
+				userId: fakeUserId,
+				label: 'Key for Non-existent User',
+				expiresAt: null,
+				scopes: ['workflow:read'],
+			})
+			.expect(404);
+	});
+
+	test('should reject if scopes are invalid for target user role', async () => {
+		// Try to give member a scope they shouldn't have
+		await testServer
+			.authAgentFor(owner)
+			.post('/api-keys/user')
+			.send({
+				userId: member.id,
+				label: 'Invalid Scope Key',
+				expiresAt: null,
+				scopes: ['user:delete'], // Members shouldn't have this scope
+			})
+			.expect(400);
+	});
+
+	test('should create API key with expiration', async () => {
+		const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.post('/api-keys/user')
+			.send({
+				userId: member.id,
+				label: 'Expiring Key',
+				expiresAt,
+				scopes: ['workflow:read'],
+			})
+			.expect(200);
+
+		const newApiKey = response.body.data as ApiKeyWithRawValue;
+
+		expect(newApiKey.expiresAt).toBe(expiresAt);
+	});
+
+	test('should reject if userId is missing', async () => {
+		await testServer
+			.authAgentFor(owner)
+			.post('/api-keys/user')
+			.send({
+				label: 'Missing User ID',
+				expiresAt: null,
+				scopes: ['workflow:read'],
+			})
+			.expect(400);
+	});
+
+	test('should reject if userId is not a valid UUID', async () => {
+		await testServer
+			.authAgentFor(owner)
+			.post('/api-keys/user')
+			.send({
+				userId: 'invalid-uuid',
+				label: 'Invalid UUID',
+				expiresAt: null,
+				scopes: ['workflow:read'],
+			})
+			.expect(400);
+	});
+});
