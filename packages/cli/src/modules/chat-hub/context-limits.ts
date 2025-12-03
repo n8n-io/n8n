@@ -201,6 +201,8 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 	},
 };
 
+const CONTEXT_WINDOW_SAFETY_FACTOR = 0.95;
+
 export const getMaxContextWindowTokens = (
 	provider: ChatHubLLMProvider,
 	model: string,
@@ -210,5 +212,5 @@ export const getMaxContextWindowTokens = (
 		return undefined;
 	}
 
-	return limit;
+	return Math.floor(limit * CONTEXT_WINDOW_SAFETY_FACTOR);
 };
