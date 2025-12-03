@@ -366,7 +366,7 @@ describe('v2/components/Popover', () => {
 
 	describe('teleported prop', () => {
 		it('should teleport to body by default', async () => {
-			render(Popover, {
+			const { container } = render(Popover, {
 				props: {
 					visible: true,
 				},
@@ -379,11 +379,13 @@ describe('v2/components/Popover', () => {
 			await waitFor(() => {
 				const popoverContent = document.querySelector('[data-dismissable-layer]');
 				expect(popoverContent).toBeInTheDocument();
+				// Verify popover is NOT inside the component container (teleported to body)
+				expect(container.querySelector('[data-dismissable-layer]')).toBeNull();
 			});
 		});
 
 		it('should not teleport when teleported is false', async () => {
-			render(Popover, {
+			const { container } = render(Popover, {
 				props: {
 					visible: true,
 					teleported: false,
@@ -397,6 +399,8 @@ describe('v2/components/Popover', () => {
 			await waitFor(() => {
 				const popoverContent = document.querySelector('[data-dismissable-layer]');
 				expect(popoverContent).toBeInTheDocument();
+				// Verify popover IS inside the component container (not teleported)
+				expect(container.querySelector('[data-dismissable-layer]')).not.toBeNull();
 			});
 		});
 	});

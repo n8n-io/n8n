@@ -27,8 +27,8 @@ type Align = 'start' | 'end' | 'center';
 const VALID_SIDES: Side[] = ['top', 'bottom', 'left', 'right'];
 const VALID_ALIGNS: Align[] = ['start', 'end', 'center'];
 
-const isSide = (value: string): value is Side => VALID_SIDES.includes(value as Side);
-const isAlign = (value: string): value is Align => VALID_ALIGNS.includes(value as Align);
+const isSide = (value: string): value is Side => VALID_SIDES.some((side) => side === value);
+const isAlign = (value: string): value is Align => VALID_ALIGNS.some((align) => align === value);
 
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
