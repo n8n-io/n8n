@@ -1379,7 +1379,7 @@ export class ChatHubService {
 			},
 		};
 
-		const tools: INode[] = [];
+		const { tools } = agent;
 
 		return await this.prepareBaseChatWorkflow(
 			user,
