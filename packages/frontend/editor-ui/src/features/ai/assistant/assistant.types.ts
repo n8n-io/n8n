@@ -101,6 +101,7 @@ export namespace ChatRequest {
 		role: 'user';
 		type: 'message';
 		text: string;
+		id: string;
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;

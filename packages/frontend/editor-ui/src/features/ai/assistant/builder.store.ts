@@ -237,7 +237,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * The retry function, if provided, will remove the error message before retrying.
 	 * Tracks error telemetry
 	 */
-	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
+	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
 		stopStreaming();
@@ -256,7 +256,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
-			id,
+			userMessageId,
 			retry,
 		);
 
@@ -266,6 +266,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			error: e.message,
 			session_id: trackingSessionId.value,
 			workflow_id: workflowsStore.workflowId,
+			user_message_id: userMessageId,
 		});
 	}
 
@@ -335,7 +336,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (options.initialGeneration !== undefined) {
 			initialGeneration.value = options.initialGeneration;
 		}
-		const messageId = generateMessageId();
+		const userMessageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
 		const todosToTrack = workflowTodos.value.map((todo) => ({
@@ -362,6 +363,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			prev_manual_exec_success: workflowsStore.manualExecutionsStats.success,
 			prev_manual_exec_error: workflowsStore.manualExecutionsStats.error,
 			placeholders: [...credentialIssuesToTrack, ...todosToTrack],
+			user_message_id: userMessageId,
 		};
 
 		if (type === 'execution') {
@@ -386,17 +388,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		telemetry.track('User submitted builder message', trackingPayload);
 
-		prepareForStreaming(text, messageId);
+		prepareForStreaming(text, userMessageId);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
-		const payload = createBuilderPayload(text, {
+		const payload = createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
-		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
+		const retry = createRetryHandler(userMessageId, async () => sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
@@ -412,7 +414,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
-						generateMessageId(),
+						userMessageId,
 						retry,
 					);
 					chatMessages.value = result.messages;
@@ -425,11 +427,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					}
 				},
 				() => stopStreaming(),
-				(e) => handleServiceError(e, messageId, retry),
+				(e) => handleServiceError(e, userMessageId, retry),
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
-			handleServiceError(e, messageId, retry);
+			handleServiceError(e, userMessageId, retry);
 		}
 	}
 

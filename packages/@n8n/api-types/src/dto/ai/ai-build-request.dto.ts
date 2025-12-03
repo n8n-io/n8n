@@ -10,6 +10,7 @@ export interface ExpressionValue {
 
 export class AiBuilderChatRequestDto extends Z.class({
 	payload: z.object({
+		id: z.string(),
 		role: z.literal('user'),
 		type: z.literal('message'),
 		text: z.string(),

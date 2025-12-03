@@ -11,6 +11,7 @@ export function generateMessageId(): string {
 
 export function createBuilderPayload(
 	text: string,
+	id: string,
 	options: {
 		quickReplyType?: string;
 		executionData?: IRunExecutionData['resultData'];
@@ -61,6 +62,7 @@ export function createBuilderPayload(
 	return {
 		role: 'user',
 		type: 'message',
+		id,
 		text,
 		quickReplyType: options.quickReplyType,
 		workflowContext,
