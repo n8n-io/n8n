@@ -6,14 +6,12 @@ import {
 	createActiveWorkflow,
 	setActiveVersion,
 	createWorkflowWithHistory,
-	createWorkflowWithTriggerAndHistory,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
 	randomCredentialPayload,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
@@ -74,7 +72,6 @@ let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
 let workflowHistoryRepository: WorkflowHistoryRepository;
 let eventService: EventService;
-let globalConfig: GlobalConfig;
 let folderListMissingRole: Role;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
@@ -94,7 +91,6 @@ beforeEach(async () => {
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 	eventService = Container.get(EventService);
-	globalConfig = Container.get(GlobalConfig);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
@@ -107,9 +103,6 @@ beforeEach(async () => {
 		displayName: 'Workflow Read-Only',
 		description: 'Can only read and list workflows',
 	});
-
-	// Default: draft/publish feature disabled
-	globalConfig.workflows.draftPublishEnabled = false;
 });
 
 afterEach(() => {
@@ -1514,7 +1507,10 @@ describe('GET /workflows', () => {
 		});
 
 		test('should handle skip with take parameter', async () => {
-			const response = await authOwnerAgent.get('/workflows').query('skip=2&take=2').expect(200);
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('skip=2&take=2&sortBy=name:asc')
+				.expect(200);
 
 			const body = response.body as { data: WorkflowEntity[]; count: number };
 			expect(body.count).toBe(5);
@@ -2372,7 +2368,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		test('should handle skip with take parameter', async () => {
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('skip=2&take=4&includeFolders=true');
+				.query('skip=2&take=4&includeFolders=true&sortBy=name:asc');
 
 			const body = response.body as { data: WorkflowEntity[]; count: number };
 			expect(body.count).toBe(6);
@@ -2519,180 +2515,27 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versionCounter).toBe(workflow.versionCounter + 1);
 	});
 
-	test('should activate workflow without changing version ID', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-
-		const workflow = await createWorkflowWithHistory({}, owner);
-		const payload = {
-			versionId: workflow.versionId,
-			active: true,
-		};
-
-		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalled();
-
-		const {
-			data: { id, versionId, active, activeVersionId },
-		} = response.body;
-
-		expect(id).toBe(workflow.id);
-		expect(versionId).toBe(workflow.versionId);
-		expect(active).toBe(true);
-		expect(activeVersionId).toBe(workflow.versionId);
-		expect(addRecordSpy).toBeCalledWith({
-			event: 'activated',
-			userId: owner.id,
-			versionId: workflow.versionId,
-			workflowId: workflow.id,
-		});
-	});
-
-	test('should deactivate workflow without changing version ID', async () => {
+	test('should update workflow without updating its active version', async () => {
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
 		const payload = {
+			name: 'Updated Workflow',
 			versionId: workflow.versionId,
-			active: false,
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.remove).not.toBeCalled();
 		expect(activeWorkflowManagerLike.add).not.toBeCalled();
-		expect(activeWorkflowManagerLike.remove).toBeCalled();
+		expect(addRecordSpy).not.toBeCalled();
 
-		const {
-			data: { id, versionId, active, activeVersionId },
-		} = response.body;
-
-		expect(id).toBe(workflow.id);
-		expect(versionId).toBe(workflow.versionId);
-		expect(active).toBe(false);
-		expect(activeVersionId).toBeNull();
-		expect(addRecordSpy).toBeCalledWith({
-			event: 'deactivated',
-			userId: owner.id,
-			versionId: workflow.versionId,
-			workflowId: workflow.id,
-		});
-	});
-
-	test('should set activeVersionId when activating via PATCH', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
-
-		const payload = {
-			versionId: workflow.versionId,
-			active: true,
-		};
-
-		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalled();
-
-		const {
-			data: { id, activeVersionId },
-		} = response.body;
-
-		expect(id).toBe(workflow.id);
-		expect(activeVersionId).toBe(workflow.versionId);
-
-		// Verify activeVersion is set
-		const updatedWorkflow = await workflowRepository.findOne({
-			where: { id: workflow.id },
-			relations: ['activeVersion'],
-		});
-
-		expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
-		expect(updatedWorkflow?.activeVersion).not.toBeNull();
-		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
-		expect(updatedWorkflow?.activeVersion?.nodes).toEqual(workflow.nodes);
-		expect(updatedWorkflow?.activeVersion?.connections).toEqual(workflow.connections);
-	});
-
-	test('should clear activeVersionId when deactivating via PATCH', async () => {
-		const workflow = await createActiveWorkflow({}, owner);
-
-		await setActiveVersion(workflow.id, workflow.versionId);
-
-		const payload = {
-			versionId: workflow.versionId,
-			active: false,
-		};
-
-		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.remove).toBeCalled();
-
-		const {
-			data: { id, activeVersionId },
-		} = response.body;
-
-		expect(id).toBe(workflow.id);
-		expect(activeVersionId).toBeNull();
-
-		// Verify activeVersion is cleared
-		const updatedWorkflow = await workflowRepository.findOne({
-			where: { id: workflow.id },
-		});
-
-		expect(updatedWorkflow?.activeVersionId).toBeNull();
-	});
-
-	test('should update activeVersionId when updating an active workflow', async () => {
-		const workflow = await createActiveWorkflow({}, owner);
-
-		await setActiveVersion(workflow.id, workflow.versionId);
-
-		// Verify initial state
-		const initialWorkflow = await workflowRepository.findOne({
-			where: { id: workflow.id },
-			relations: ['activeVersion'],
-		});
-		expect(initialWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
-
-		// Update workflow nodes
-		const updatedNodes: INode[] = [
-			{
-				id: 'uuid-updated',
-				parameters: { triggerTimes: { item: [{ mode: 'everyHour' }] } },
-				name: 'Cron Updated',
-				type: 'n8n-nodes-base.cron',
-				typeVersion: 1,
-				position: [500, 400],
-			},
-		];
-
-		const payload = {
-			versionId: workflow.versionId,
-			nodes: updatedNodes,
-			connections: {},
-		};
-
-		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-		expect(response.statusCode).toBe(200);
-
-		const {
-			data: { id, versionId: newVersionId },
-		} = response.body;
-
-		expect(id).toBe(workflow.id);
-		expect(newVersionId).not.toBe(workflow.versionId);
-
-		// Verify activeVersion points to the new version
-		const updatedWorkflow = await workflowRepository.findOne({
-			where: { id: workflow.id },
-			relations: ['activeVersion'],
-		});
-
-		expect(updatedWorkflow?.active).toBe(true);
-		expect(updatedWorkflow?.activeVersionId).not.toBeNull();
-		expect(updatedWorkflow?.activeVersion?.versionId).toBe(newVersionId);
-		expect(updatedWorkflow?.activeVersion?.nodes).toEqual(updatedNodes);
+		const { data } = response.body;
+		expect(data.name).toBe('Updated Workflow');
+		expect(data.versionId).not.toBe(workflow.versionId); // New version created
+		expect(data.activeVersionId).toBe(workflow.versionId); // Should remain active
 	});
 
 	test('should update workflow meta', async () => {
@@ -2791,127 +2634,106 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(response.statusCode).toBe(500);
 	});
 
-	describe('with draft/publish feature enabled', () => {
-		beforeEach(() => {
-			globalConfig.workflows.draftPublishEnabled = true;
+	test('should not activate when updating with active: true', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			active: true,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.add).not.toBeCalled();
+
+		const { data } = response.body;
+		expect(data.active).toBe(false);
+		expect(data.activeVersionId).toBeNull();
+	});
+
+	test('should not deactivate workflow when updating with active: false', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const payload = {
+			versionId: workflow.versionId,
+			active: false,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.remove).not.toBeCalled();
+		expect(addRecordSpy).not.toBeCalled();
+
+		const { data } = response.body;
+		expect(data.active).toBe(true);
+		expect(data.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('should not modify activeVersionId when explicitly provided', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			activeVersionId: workflow.versionId,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.add).not.toBeCalled();
+
+		const { data } = response.body;
+		expect(data.activeVersionId).toBeNull(); // Should not be activated
+	});
+
+	test('should reactivate workflow when settings change', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: {
+				timezone: 'America/New_York',
+			},
 		});
 
-		afterEach(() => {
-			globalConfig.workflows.draftPublishEnabled = false;
+		expect(response.statusCode).toBe(200);
+
+		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update');
+	});
+
+	test('should not reactivate when settings unchanged', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			name: 'New Name',
 		});
 
-		test('should not update activeVersionId when updating with active: true', async () => {
-			const workflow = await createWorkflow({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: true,
-			};
+		expect(response.statusCode).toBe(200);
 
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+		expect(activeWorkflowManagerLike.remove).not.toHaveBeenCalled();
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+	});
 
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).not.toBeCalled();
+	test('should not reactivate inactive workflow even when settings change', async () => {
+		const workflow = await createWorkflow({}, owner);
 
-			const { data } = response.body;
-			expect(data.activeVersionId).toBeNull();
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: {
+				timezone: 'America/New_York',
+			},
 		});
 
-		test('should not deactivate workflow when updating with active: false', async () => {
-			const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-			const workflow = await createActiveWorkflow({}, owner);
-			await setActiveVersion(workflow.id, workflow.versionId);
+		expect(response.statusCode).toBe(200);
 
-			const payload = {
-				versionId: workflow.versionId,
-				active: false,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.remove).not.toBeCalled();
-
-			const { data } = response.body;
-			expect(data.activeVersionId).toBe(workflow.versionId);
-			expect(addRecordSpy).not.toBeCalled();
-		});
-
-		test('should NOT write "active" field to database when updating with active: true', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: true,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-
-			const updatedWorkflow = await workflowRepository.findOne({
-				where: { id: workflow.id },
-			});
-
-			expect(updatedWorkflow?.active).toBe(false);
-			expect(updatedWorkflow?.activeVersionId).toBeNull();
-		});
-
-		test('should NOT write "active" field to database when updating with active: false', async () => {
-			const workflow = await createActiveWorkflow({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: false,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-
-			const updatedWorkflow = await workflowRepository.findOne({
-				where: { id: workflow.id },
-			});
-
-			expect(updatedWorkflow?.active).toBe(true);
-			expect(updatedWorkflow?.activeVersionId).toBe(workflow.activeVersionId);
-		});
-
-		test('should not modify activeVersionId when explicitly provided', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				activeVersionId: workflow.versionId,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).not.toBeCalled();
-
-			const { data } = response.body;
-			expect(data.activeVersionId).toBeNull(); // Should not be activated
-		});
-
-		test('should allow updating active workflow without updating its active version', async () => {
-			const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-			const workflow = await createActiveWorkflow({}, owner);
-			await setActiveVersion(workflow.id, workflow.versionId);
-
-			const payload = {
-				name: 'Updated Active Workflow',
-				versionId: workflow.versionId,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.remove).not.toBeCalled();
-			expect(activeWorkflowManagerLike.add).not.toBeCalled();
-
-			const { data } = response.body;
-			expect(data.name).toBe('Updated Active Workflow');
-			expect(data.versionId).not.toBe(workflow.versionId); // New version created
-			expect(data.activeVersionId).toBe(workflow.versionId); // Should remain active
-			expect(addRecordSpy).not.toBeCalled();
-		});
+		expect(activeWorkflowManagerLike.remove).not.toHaveBeenCalled();
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
 	});
 });
 
@@ -2919,22 +2741,25 @@ describe('POST /workflows/:workflowId/activate', () => {
 	test('should activate workflow with provided versionId', async () => {
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
-			.send({ versionId: workflow.versionId });
+			.send({ versionId: newVersionId });
 
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
-		expect(data.activeVersionId).toBe(workflow.versionId);
-		expect(data.activeVersion.versionId).toBe(workflow.versionId);
+		expect(data.activeVersionId).toBe(newVersionId);
+		expect(data.activeVersion.versionId).toBe(newVersionId);
+
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
 			userId: owner.id,
-			versionId: workflow.versionId,
+			versionId: newVersionId,
 			workflowId: workflow.id,
 		});
 	});
@@ -2967,6 +2792,19 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should return 404 if version does not exist', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionId = uuid();
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Version not found');
+		expect(activeWorkflowManagerLike.add).not.toBeCalled();
+	});
+
 	test('should return 403 when user does not have update permission', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -2994,175 +2832,16 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
 	});
 
-	describe('with draft/publish feature enabled', () => {
-		beforeEach(() => {
-			globalConfig.workflows.draftPublishEnabled = true;
-		});
-
-		afterEach(() => {
-			globalConfig.workflows.draftPublishEnabled = false;
-		});
-
-		test('should activate workflow with provided versionId', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const newVersionId = uuid();
-			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
-
-			const response = await authOwnerAgent
-				.post(`/workflows/${workflow.id}/activate`)
-				.send({ versionId: newVersionId });
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
-
-			const { data } = response.body;
-			expect(data.id).toBe(workflow.id);
-			expect(data.activeVersionId).toBe(newVersionId);
-			expect(data.activeVersion.versionId).toBe(newVersionId);
-		});
-
-		test('should update version name when provided during activation', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const newVersionName = 'Production Version';
-
-			const response = await authOwnerAgent
-				.post(`/workflows/${workflow.id}/activate`)
-				.send({ versionId: workflow.versionId, name: newVersionName });
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
-
-			const { data } = response.body;
-			expect(data.activeVersionId).toBe(workflow.versionId);
-
-			const historyVersion = await workflowHistoryRepository.findOne({
-				where: { workflowId: workflow.id, versionId: workflow.versionId },
-			});
-
-			expect(historyVersion?.name).toBe(newVersionName);
-		});
-
-		test('should update version description when provided during activation', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const newDescription = 'This is the stable production release';
-
-			const response = await authOwnerAgent
-				.post(`/workflows/${workflow.id}/activate`)
-				.send({ versionId: workflow.versionId, description: newDescription });
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
-
-			const { data } = response.body;
-			expect(data.activeVersionId).toBe(workflow.versionId);
-
-			const historyVersion = await workflowHistoryRepository.findOne({
-				where: { workflowId: workflow.id, versionId: workflow.versionId },
-			});
-
-			expect(historyVersion?.description).toBe(newDescription);
-		});
-
-		test('should update both version name and description when provided during activation', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const newVersionName = 'Production Version';
-			const newDescription = 'Major update with new features';
-
-			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
-				versionId: workflow.versionId,
-				name: newVersionName,
-				description: newDescription,
-			});
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
-
-			const { data } = response.body;
-			expect(data.activeVersionId).toBe(workflow.versionId);
-
-			const historyVersion = await workflowHistoryRepository.findOne({
-				where: { workflowId: workflow.id, versionId: workflow.versionId },
-			});
-
-			expect(historyVersion?.name).toBe(newVersionName);
-			expect(historyVersion?.description).toBe(newDescription);
-		});
-
-		test('should not update version name and description when activation fails', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const newVersionName = 'Production Version';
-			const newDescription = 'Major update with new features';
-
-			activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
-
-			await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
-				versionId: workflow.versionId,
-				name: newVersionName,
-				description: newDescription,
-			});
-
-			const updatedVersion = await workflowHistoryRepository.findOne({
-				where: { versionId: workflow.versionId },
-			});
-
-			expect(updatedVersion?.name).toBeNull();
-			expect(updatedVersion?.description).toBeNull();
-		});
-
-		test('should preserve current active version when activation fails', async () => {
-			const workflow = await createActiveWorkflow({}, owner);
-
-			const newVersionId = uuid();
-			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
-
-			const emitSpy = jest.spyOn(eventService, 'emit');
-
-			activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
-
-			const response = await authOwnerAgent
-				.post(`/workflows/${workflow.id}/activate`)
-				.send({ versionId: newVersionId });
-
-			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe('Validation failed');
-
-			const updatedWorkflow = await workflowRepository.findOne({
-				where: { id: workflow.id },
-				relations: ['activeVersion'],
-			});
-
-			expect(updatedWorkflow?.active).toBe(true);
-			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
-			expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
-
-			expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
-		});
-
-		test('should call active workflow manager with update mode if workflow is active', async () => {
-			const workflow = await createActiveWorkflow({}, owner);
-
-			const newVersionId = uuid();
-			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
-
-			await authOwnerAgent
-				.post(`/workflows/${workflow.id}/activate`)
-				.send({ versionId: newVersionId });
-
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
-		});
-	});
-
-	test('should ignore version id, name and description', async () => {
+	test('should update version name when provided during activation', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
-		const newVersionId = uuid();
 		const newVersionName = 'Production Version';
-		const newDescription = 'Major update with new features';
 
-		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
-			versionId: newVersionId,
-			name: newVersionName,
-			description: newDescription,
-		});
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId, name: newVersionName });
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -3171,8 +2850,123 @@ describe('POST /workflows/:workflowId/activate', () => {
 			where: { workflowId: workflow.id, versionId: workflow.versionId },
 		});
 
-		expect(historyVersion?.name).toBeNull();
-		expect(historyVersion?.description).toBeNull();
+		expect(historyVersion?.name).toBe(newVersionName);
+	});
+
+	test('should update version description when provided during activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newDescription = 'This is the stable production release';
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId, description: newDescription });
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+
+		const { data } = response.body;
+		expect(data.activeVersionId).toBe(workflow.versionId);
+
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.versionId },
+		});
+
+		expect(historyVersion?.description).toBe(newDescription);
+	});
+
+	test('should update both version name and description when provided during activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionName = 'Production Version';
+		const newDescription = 'Major update with new features';
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
+			versionId: workflow.versionId,
+			name: newVersionName,
+			description: newDescription,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+
+		const { data } = response.body;
+		expect(data.activeVersionId).toBe(workflow.versionId);
+
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.versionId },
+		});
+
+		expect(historyVersion?.name).toBe(newVersionName);
+		expect(historyVersion?.description).toBe(newDescription);
+	});
+
+	test('should not update version name and description when activation fails', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionName = 'Production Version';
+		const newDescription = 'Major update with new features';
+
+		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
+			versionId: workflow.versionId,
+			name: newVersionName,
+			description: newDescription,
+		});
+
+		const updatedVersion = await workflowHistoryRepository.findOne({
+			where: { versionId: workflow.versionId },
+		});
+
+		expect(updatedVersion?.name).toBeNull();
+		expect(updatedVersion?.description).toBeNull();
+	});
+
+	test('should deactivate workflow when activation fails', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Validation failed');
+
+		const updatedWorkflow = await workflowRepository.findOne({
+			where: { id: workflow.id },
+			relations: ['activeVersion'],
+		});
+
+		// Workflow should be deactivated after failed activation
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersionId).toBeNull();
+
+		// Should emit deactivation event
+		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+
+		// Verify workflow was removed once (no re-add)
+		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalledTimes(1);
+	});
+
+	test('should call active workflow manager with update mode if workflow is active', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		// First remove active version
+		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
@@ -3183,6 +2977,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
 
+		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
@@ -3569,8 +3364,8 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		const { data: unarchivedWorkflow } = unarchiveResponse.body;
 
 		const activateResponse = await authOwnerAgent
-			.patch(`/workflows/${workflow.id}`)
-			.send({ active: true, versionId: unarchivedWorkflow.versionId })
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: unarchivedWorkflow.versionId })
 			.expect(200);
 
 		expect(activateResponse.body.data.active).toBe(true);
