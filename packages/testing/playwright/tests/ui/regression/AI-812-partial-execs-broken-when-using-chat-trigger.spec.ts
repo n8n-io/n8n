@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('AI-812-partial-execs-broken-when-using-chat-trigger', () => {
 	test.beforeEach(async ({ n8n }) => {

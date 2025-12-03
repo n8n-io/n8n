@@ -2,6 +2,7 @@ import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
 
+import { isThinkingBlock, isRedactedThinkingBlock, isGeminiThoughtSignatureBlock } from './types';
 import type { RequestResponseMetadata, ToolCallRequest } from './types';
 
 /**
@@ -29,34 +30,50 @@ export async function createEngineRequests(
 
 			if (!foundTool) return undefined;
 
-			const nodeName = foundTool.metadata?.sourceNodeName as string | undefined;
+			const nodeName = foundTool.metadata?.sourceNodeName;
 
-			// Ensure nodeName is defined
-			if (!nodeName) return undefined;
+			// Ensure nodeName is defined and is a string
+			if (typeof nodeName !== 'string') return undefined;
 
 			// For toolkit tools, include the tool name so the node knows which tool to execute
-			const input = foundTool.metadata?.isFromToolkit
-				? { ...toolCall.toolInput, tool: toolCall.tool }
-				: toolCall.toolInput;
+			const input: IDataObject = foundTool.metadata?.isFromToolkit
+				? ({ ...toolCall.toolInput, tool: toolCall.tool } as IDataObject)
+				: (toolCall.toolInput as IDataObject);
 
 			// Extract thought_signature from the AIMessage in messageLog (for Gemini 3)
 			let thoughtSignature: string | undefined;
+			// Extract thinking blocks from the AIMessage in messageLog (for Anthropic)
+			let thinkingContent: string | undefined;
+			let thinkingType: 'thinking' | 'redacted_thinking' | undefined;
+			let thinkingSignature: string | undefined;
+
 			if (toolCall.messageLog && Array.isArray(toolCall.messageLog)) {
 				for (const message of toolCall.messageLog) {
-					// Check if message has content that could contain thought_signature
+					// Check if message has content that could contain thought_signature or thinking blocks
 					if (message && typeof message === 'object' && 'content' in message) {
 						const content = message.content;
 						// Content can be string or array of content blocks
 						if (Array.isArray(content)) {
-							// Look for thought_signature in content blocks
+							// Look for thought_signature in content blocks (Gemini)
+							// and thinking/redacted_thinking blocks (Anthropic)
 							for (const block of content) {
-								if (block && typeof block === 'object' && 'thoughtSignature' in block) {
-									thoughtSignature = block.thoughtSignature as string;
-									break;
+								// Gemini thought_signature
+								if (isGeminiThoughtSignatureBlock(block)) {
+									thoughtSignature = block.thoughtSignature;
+								}
+
+								// Anthropic thinking blocks
+								if (isThinkingBlock(block)) {
+									thinkingContent = block.thinking;
+									thinkingType = 'thinking';
+									thinkingSignature = block.signature;
+								} else if (isRedactedThinkingBlock(block)) {
+									thinkingContent = block.data;
+									thinkingType = 'redacted_thinking';
 								}
 							}
 						}
-						if (thoughtSignature) break;
+						if (thoughtSignature || thinkingContent) break;
 					}
 				}
 			}
@@ -64,12 +81,23 @@ export async function createEngineRequests(
 			return {
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName,
-				input: input as IDataObject,
+				input,
 				type: NodeConnectionTypes.AiTool,
 				id: toolCall.toolCallId,
 				metadata: {
 					itemIndex,
-					...(thoughtSignature && { thoughtSignature }),
+					...(thoughtSignature && {
+						google: {
+							thoughtSignature,
+						},
+					}),
+					...(thinkingContent && {
+						anthropic: {
+							thinkingContent,
+							thinkingType,
+							thinkingSignature,
+						},
+					}),
 				},
 			};
 		})

@@ -9,9 +9,11 @@ import { TOOL_NODE_EXAMPLES } from './examples/advanced/tool-node-examples';
 import { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
 import { SET_NODE_EXAMPLES } from './examples/basic/set-node-examples';
 import { SIMPLE_UPDATE_EXAMPLES } from './examples/basic/simple-updates';
+import { SWITCH_NODE_EXAMPLES } from './examples/basic/switch-node-examples';
 import { HTTP_REQUEST_GUIDE } from './node-types/http-request';
 import { IF_NODE_GUIDE } from './node-types/if-node';
 import { SET_NODE_GUIDE } from './node-types/set-node';
+import { SWITCH_NODE_GUIDE } from './node-types/switch-node';
 import { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
 import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
 import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
@@ -42,6 +44,8 @@ export class ParameterUpdatePromptBuilder {
 			sections.push(SET_NODE_GUIDE);
 		} else if (this.isIfNode(context.nodeType)) {
 			sections.push(IF_NODE_GUIDE);
+		} else if (this.isSwitchNode(context.nodeType)) {
+			sections.push(SWITCH_NODE_GUIDE);
 		} else if (this.isHttpRequestNode(context.nodeType)) {
 			sections.push(HTTP_REQUEST_GUIDE);
 		}
@@ -131,6 +135,14 @@ export class ParameterUpdatePromptBuilder {
 	}
 
 	/**
+	 * Checks if node is a Switch node
+	 */
+	private static isSwitchNode(nodeType: string): boolean {
+		const category = getNodeTypeCategory(nodeType);
+		return category === 'switch';
+	}
+
+	/**
 	 * Checks if node is an HTTP Request node
 	 */
 	private static isHttpRequestNode(nodeType: string): boolean {
@@ -179,6 +191,8 @@ export class ParameterUpdatePromptBuilder {
 			examples.push(SET_NODE_EXAMPLES);
 		} else if (this.isIfNode(context.nodeType)) {
 			examples.push(IF_NODE_EXAMPLES);
+		} else if (this.isSwitchNode(context.nodeType)) {
+			examples.push(SWITCH_NODE_EXAMPLES);
 		}
 		// Add resource locator examples if needed
 		if (context.hasResourceLocatorParams) {

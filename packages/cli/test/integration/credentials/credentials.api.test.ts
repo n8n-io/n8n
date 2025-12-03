@@ -30,7 +30,13 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
@@ -47,6 +53,7 @@ let secondMember: User;
 
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
+let teamProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -128,6 +135,28 @@ describe('GET /credentials', () => {
 		validateMainCredentialData(member1Credential);
 		expect(member1Credential.data).toBeUndefined();
 		expect(member1Credential.id).toBe(savedCredential1.id);
+	});
+
+	test('should return only own creds for chat user', async () => {
+		const [chatUser1, chatUser2] = await createManyUsers(2, {
+			role: { slug: 'global:chatUser' },
+		});
+
+		const [savedCredential1] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: chatUser1, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: chatUser2, role: 'credential:owner' }),
+		]);
+
+		const response = await testServer.authAgentFor(chatUser1).get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1); // member retrieved only own cred
+
+		const [chatUser1Credential] = response.body.data;
+
+		validateMainCredentialData(chatUser1Credential);
+		expect(chatUser1Credential.data).toBeUndefined();
+		expect(chatUser1Credential.id).toBe(savedCredential1.id);
 	});
 
 	test('should return scopes when ?includeScopes=true', async () => {
@@ -936,6 +965,49 @@ describe('POST /credentials', () => {
 			});
 	});
 
+	test('should fail when viewer user tries to create credential in team project', async () => {
+		const viewer = await createMember();
+		teamProject = await createTeamProject(undefined, admin);
+		await linkUserToProject(viewer, teamProject, 'project:viewer');
+
+		const response = await testServer
+			.authAgentFor(viewer)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
+	test('should allow viewer user to create credential in their personal project', async () => {
+		const viewer = await createMember();
+		teamProject = await createTeamProject(undefined, admin);
+		await linkUserToProject(viewer, teamProject, 'project:viewer');
+
+		const response = await testServer
+			.authAgentFor(viewer)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload() });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail when chat user tries to create credential in their personal project', async () => {
+		const chatUser = await createChatUser();
+
+		const response = await testServer
+			.authAgentFor(chatUser)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload() });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
 	test('should fail when member tries to create credential with isGlobal=true', async () => {
 		const response = await authMemberAgent
 			.post('/credentials')
@@ -973,6 +1045,19 @@ describe('POST /credentials', () => {
 		expect(credential.isGlobal).toBe(false);
 	});
 
+	test('should not allow chat user to create credential with isGlobal=false', async () => {
+		const chatUser = await createChatUser();
+		const response = await testServer
+			.authAgentFor(chatUser)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
 	test('should allow member to create credential without passing isGlobal', async () => {
 		const payload = randomCredentialPayload();
 		delete payload.isGlobal;
@@ -985,6 +1070,18 @@ describe('POST /credentials', () => {
 			id: response.body.data.id,
 		});
 		expect(credential.isGlobal).toBe(false);
+	});
+
+	test('should not allow chat user to create credential without passing isGlobal', async () => {
+		const chatUser = await createChatUser();
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
 	});
 });
 

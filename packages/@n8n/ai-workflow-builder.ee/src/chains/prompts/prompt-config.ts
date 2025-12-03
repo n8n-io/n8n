@@ -4,6 +4,7 @@ export const DEFAULT_PROMPT_CONFIG: NodePromptConfig = {
 	nodeTypePatterns: {
 		set: ['n8n-nodes-base.set', 'set'],
 		if: ['n8n-nodes-base.if', 'if', 'filter'],
+		switch: ['n8n-nodes-base.switch', 'switch'],
 		httpRequest: ['n8n-nodes-base.httpRequest', 'httprequest', 'webhook', 'n8n-nodes-base.webhook'],
 		tool: ['Tool', '.tool'],
 	},
