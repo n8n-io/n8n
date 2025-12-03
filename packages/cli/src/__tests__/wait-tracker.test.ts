@@ -1,17 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { Project, IExecutionResponse } from '@n8n/db';
-import type { ExecutionRepository } from '@n8n/db';
+import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock, captor } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type {
-	IWorkflowBase,
-	IRun,
-	INode,
-	IRunExecutionData,
-	IExecuteData,
-	ITaskData,
-} from 'n8n-workflow';
+import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-workflow';
 import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -237,8 +229,7 @@ describe('WaitTracker', () => {
 
 				// ACT 2
 				subExecutionPromise.resolve(subworkflowResults);
-				// TODO: remove when delay is removed
-				await jest.advanceTimersByTimeAsync(10000); // Need longer timeout due to random delay in updateParentExecutionWithChildResults
+				await jest.advanceTimersToNextTimerAsync();
 
 				// ASSERT 2
 
@@ -280,8 +271,6 @@ describe('WaitTracker', () => {
 				);
 			});
 
-			// TODO: AI generated test, check it before merging
-			// Check if redundant, also tests code we didn't add or change
 			it('should not resume parent execution if it has already finished', async () => {
 				// ARRANGE
 				const parentExecution: IExecutionResponse = {
@@ -296,19 +285,7 @@ describe('WaitTracker', () => {
 					stoppedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
-					data: {
-						resultData: {
-							runData: {},
-							lastNodeExecuted: 'Execute Workflow',
-						},
-						executionData: {
-							contextData: {},
-							nodeExecutionStack: [],
-							metadata: {},
-							waitingExecution: {},
-							waitingExecutionSource: {},
-						},
-					} as unknown as IRunExecutionData,
+					data: createRunExecutionData(),
 				};
 
 				executionRepository.findSingleExecution
@@ -325,38 +302,12 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).not.toHaveBeenCalled();
 			});
 
-			// TODO: AI generated test, check it before merging
 			it('should not attempt to update parent if child has no parent execution', async () => {
 				// ARRANGE
 
 				// Setup child execution with NO parent
-				const childExecution: IExecutionResponse = {
-					id: 'child_execution_id',
-					finished: false,
-					status: 'waiting',
-					waitTill: new Date(Date.now() + 1000),
-					workflowData: mock<IWorkflowBase>({ id: 'child_workflow_id' }),
-					customData: {},
-					annotation: { tags: [] },
-					createdAt: new Date(),
-					startedAt: new Date(),
-					mode: 'manual',
-					workflowId: 'child_workflow_id',
-					data: {
-						resultData: {
-							runData: {},
-							lastNodeExecuted: 'Wait',
-						},
-						executionData: {
-							contextData: {},
-							nodeExecutionStack: [],
-							metadata: {},
-							waitingExecution: {},
-							waitingExecutionSource: {},
-						},
-						parentExecution: undefined, // NO parent
-					} as unknown as IRunExecutionData,
-				};
+				const childExecution: IExecutionResponse = execution;
+				childExecution.data.parentExecution = undefined;
 
 				executionRepository.findSingleExecution
 					.calledWith(childExecution.id)
@@ -372,9 +323,8 @@ describe('WaitTracker', () => {
 				await waitTracker.startExecution(childExecution.id);
 
 				// Child completes
-				// NOTE: test succeeds without that
-				// postExecutePromise.resolve(undefined);
-				// await jest.advanceTimersByTimeAsync(100);
+				postExecutePromise.resolve(undefined);
+				await jest.advanceTimersToNextTimerAsync();
 
 				// ASSERT
 
