@@ -46,7 +46,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 		return { executeWorkflowTriggerNode, errorTriggerNode };
 	}
 
-	async up({ escape, runQuery, runInBatches, parseJson }: MigrationContext) {
+	async up({ escape, runQuery, runInBatches, parseJson, isPostgres }: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
 		const historyTableName = escape.tableName('workflow_history');
 		const idColumn = escape.columnName('id');
@@ -60,7 +60,9 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 		const createdAtColumn = escape.columnName('createdAt');
 		const updatedAtColumn = escape.columnName('updatedAt');
 
-		const inactiveWorkflows = `SELECT ${idColumn}, ${nodesColumn}, ${connectionsColumn}, ${versionIdColumn}, ${activeVersionIdColumn} FROM ${tableName} WHERE ${activeColumn} = false AND (${nodesColumn} LIKE '%n8n-nodes-base.executeWorkflowTrigger%' OR ${nodesColumn} LIKE '%n8n-nodes-base.errorTrigger%')`;
+		const nodesColumnForLike = isPostgres ? `${nodesColumn}::text` : nodesColumn;
+
+		const inactiveWorkflows = `SELECT ${idColumn}, ${nodesColumn}, ${connectionsColumn}, ${versionIdColumn}, ${activeVersionIdColumn} FROM ${tableName} WHERE ${activeColumn} = false AND (${nodesColumnForLike} LIKE '%n8n-nodes-base.executeWorkflowTrigger%' OR ${nodesColumnForLike} LIKE '%n8n-nodes-base.errorTrigger%')`;
 
 		await runInBatches<Workflow>(inactiveWorkflows, async (workflows) => {
 			for (const workflow of workflows) {
