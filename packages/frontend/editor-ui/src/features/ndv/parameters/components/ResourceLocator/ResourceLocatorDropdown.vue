@@ -24,6 +24,7 @@ type Props = {
 	width?: number;
 	allowNewResources?: { label?: string };
 	eventBus?: EventBus;
+	disableInactiveItems?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
 	filterRequired: false,
 	width: undefined,
 	allowNewResources: () => ({}),
+	disableInactiveItems: false,
 	eventBus: () => createEventBus(),
 });
 
@@ -178,7 +180,7 @@ function onKeyDown(e: KeyboardEvent) {
 
 		// Selected resource can be empty when loading or empty results
 		if (selected && typeof selected !== 'boolean') {
-			if (item && 'active' in item && item.active === false) {
+			if (props.disableInactiveItems && item && 'active' in item && item.active === false) {
 				return;
 			}
 
@@ -197,7 +199,7 @@ function onItemClick(selected: string | number | boolean, item?: IResourceLocato
 	}
 
 	// Prevent selection of inactive items
-	if (item && 'active' in item && item.active === false) {
+	if (props.disableInactiveItems && item && 'active' in item && item.active === false) {
 		return;
 	}
 
@@ -340,7 +342,8 @@ watch(
 					[$style.resourceItem]: true,
 					[$style.selected]: result.value === props.modelValue?.value,
 					[$style.hovering]: hoverIndex === i + 1,
-					[$style.disabled]: 'active' in result && result.active === false,
+					[$style.disabled]:
+						props.disableInactiveItems && 'active' in result && result.active === false,
 				}"
 				data-test-id="rlc-item"
 				@click="() => onItemClick(result.value, result)"
