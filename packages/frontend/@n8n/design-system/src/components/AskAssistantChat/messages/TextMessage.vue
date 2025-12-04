@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
@@ -20,7 +20,7 @@ interface Props {
 	color?: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
@@ -31,6 +31,37 @@ const { t } = useI18n();
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
 });
+
+// User message expand/collapse functionality
+const isExpanded = ref(false);
+const userContentRef = ref<HTMLElement | null>(null);
+const isOverflowing = ref(false);
+const MAX_HEIGHT = 200;
+
+function checkOverflow() {
+	if (userContentRef.value) {
+		isOverflowing.value = userContentRef.value.scrollHeight > MAX_HEIGHT;
+	}
+}
+
+function toggleExpanded() {
+	isExpanded.value = !isExpanded.value;
+}
+
+onMounted(() => {
+	void nextTick(() => {
+		checkOverflow();
+	});
+});
+
+watch(
+	() => props.message.content,
+	() => {
+		void nextTick(() => {
+			checkOverflow();
+		});
+	},
+);
 
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
@@ -52,7 +83,20 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
-				<span v-n8n-html="renderMarkdown(message.content)" :class="$style.renderedContent"></span>
+				<div
+					ref="userContentRef"
+					:class="[$style.userContent, { [$style.collapsed]: !isExpanded && isOverflowing }]"
+				>
+					<span v-n8n-html="renderMarkdown(message.content)" :class="$style.renderedContent"></span>
+				</div>
+				<button
+					v-if="isOverflowing"
+					:class="$style.showMoreButton"
+					type="button"
+					@click="toggleExpanded"
+				>
+					{{ isExpanded ? t('assistantChat.showLess') : t('assistantChat.showMore') }}
+				</button>
 			</div>
 			<!-- Assistant message - simple text without container -->
 			<div
@@ -110,6 +154,29 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	color: var(--assistant--color--text--user-bubble);
 	max-width: calc(100% - 40px);
+}
+
+.userContent {
+	&.collapsed {
+		max-height: 200px;
+		overflow: hidden;
+	}
+}
+
+.showMoreButton {
+	background: none;
+	border: none;
+	padding: 0;
+	margin-top: var(--spacing--2xs);
+	color: var(--assistant--color--text--subtle);
+	font-size: var(--font-size--sm);
+	font-weight: 500;
+	cursor: pointer;
+	text-align: left;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .codeSnippet {

@@ -69,6 +69,8 @@ export default {
 	'assistantChat.blankStateInputPlaceholder': 'What would you like to automate?',
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
+	'assistantChat.showMore': 'Show more',
+	'assistantChat.showLess': 'Show less',
 	'assistantChat.characterLimit': "You've reached the {limit} character limit",
 	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'aiAssistant.builder.streamAbortedMessage': 'Task aborted',
