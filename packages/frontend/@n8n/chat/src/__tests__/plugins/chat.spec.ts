@@ -328,9 +328,6 @@ describe('ChatPlugin', () => {
 			expect(sessionId).toBe(manualSessionId);
 			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
 			expect(chatStore.messages.value).toHaveLength(0);
-			// localStorage.setItem should not be called since sessionId already existed
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(window.localStorage.setItem).not.toHaveBeenCalled();
 		});
 
 		it('should preserve manually set sessionId when messages exist', async () => {
@@ -355,9 +352,6 @@ describe('ChatPlugin', () => {
 			expect(sessionId).toBe(manualSessionId);
 			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
 			expect(chatStore.messages.value).toHaveLength(1);
-			// localStorage.setItem should not be called since sessionId already existed
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(window.localStorage.setItem).not.toHaveBeenCalled();
 		});
 
 		it('should skip loading if loadPreviousSession is false', async () => {

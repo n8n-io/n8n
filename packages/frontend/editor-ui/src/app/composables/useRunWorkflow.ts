@@ -135,6 +135,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
+		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
 		if (workflowsStore.activeExecutionId) {
 			return;
@@ -204,7 +205,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
-				options.source !== 'RunData.ManualChatMessage'
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger'
 			) {
 				const startNode = workflowObject.value.getStartNode(options.destinationNode.nodeName);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
@@ -226,27 +228,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			const triggers = workflowData.nodes.filter(
 				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
 			);
-
-			//if no destination node is specified
-			//and execution is not triggered from chat
-			//and there are other triggers in the workflow
-			//disable chat trigger node to avoid modal opening and webhook creation
-			if (
-				!options.destinationNode &&
-				options.source !== 'RunData.ManualChatMessage' &&
-				workflowData.nodes.some((node) => node.type === CHAT_TRIGGER_NODE_TYPE)
-			) {
-				const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
-
-				if (otherTriggers.length) {
-					const chatTriggerNode = workflowData.nodes.find(
-						(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-					);
-					if (chatTriggerNode) {
-						chatTriggerNode.disabled = true;
-					}
-				}
-			}
 
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
@@ -319,6 +300,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
+				chatSessionId: options.sessionId,
 			};
 
 			if ('destinationNode' in options) {

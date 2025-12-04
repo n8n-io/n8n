@@ -35,7 +35,7 @@ export declare namespace WorkflowRequest {
 	type FullManualExecutionFromKnownTriggerPayload = {
 		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
-
+		chatSessionId?: string;
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom: { name: string; data?: ITaskData };
 	};

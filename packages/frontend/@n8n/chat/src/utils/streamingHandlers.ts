@@ -2,7 +2,7 @@ import { nextTick } from 'vue';
 import type { Ref } from 'vue';
 
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types';
 
 import type { StreamingMessageManager } from './streaming';
 import { createBotMessage, updateMessageInArray } from './streaming';
@@ -74,13 +74,27 @@ export function handleNodeStart(
 	}
 }
 
-export function handleNodeComplete(
+export async function handleNodeComplete(
 	nodeId: string,
 	streamingManager: StreamingMessageManager,
-	runIndex?: number,
-): void {
+	runIndex: number | undefined,
+	userMessage: string,
+	options: ChatOptions,
+): Promise<void> {
 	try {
+		// Get the completed message before marking it complete
+		const completedMessage = streamingManager.getRunMessage(nodeId, runIndex);
+
+		// Mark the run as complete
 		streamingManager.removeRunFromActive(nodeId, runIndex);
+
+		// Call afterMessageSent hook if provided and we have a message
+		if (options.afterMessageSent && completedMessage) {
+			await options.afterMessageSent(userMessage, {
+				message: completedMessage,
+				hasReceivedChunks: true,
+			});
+		}
 	} catch (error) {
 		console.error('Error handling node complete:', error);
 	}
