@@ -1,3 +1,18 @@
+## [1.122.5](https://github.com/n8n-io/n8n/compare/n8n@1.122.4...n8n@1.122.5) (2025-12-04)
+
+
+### Bug Fixes
+
+* **core:** Do not prevent credential save if property has default value ([#22720](https://github.com/n8n-io/n8n/issues/22720)) ([eaa9119](https://github.com/n8n-io/n8n/commit/eaa9119bb7c860240abb40d725314d417181271b))
+* **core:** Fix html header check ([#22713](https://github.com/n8n-io/n8n/issues/22713)) ([80c0ab4](https://github.com/n8n-io/n8n/commit/80c0ab4cfd26ae9513c784c5f2679c1ea5d33530))
+
+
+### Features
+
+* **core:** Add toolCode nodes to the pyodide check for v2 migration ([#22659](https://github.com/n8n-io/n8n/issues/22659)) ([01074c4](https://github.com/n8n-io/n8n/commit/01074c4929c44fb31c9e652eceb92584b43f1b9f))
+
+
+
 ## [1.122.4](https://github.com/n8n-io/n8n/compare/n8n@1.122.3...n8n@1.122.4) (2025-11-28)
 
 
