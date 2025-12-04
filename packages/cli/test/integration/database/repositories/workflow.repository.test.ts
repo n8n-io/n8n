@@ -6,6 +6,7 @@ import {
 	createWorkflow,
 	testDb,
 	getWorkflowById,
+	setActiveVersion,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
@@ -259,6 +260,25 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(count).toBe(2);
+		});
+	});
+
+	describe('isActive()', () => {
+		it('should return `true` for active workflow in storage', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			const workflow = await createWorkflowWithHistory();
+			await setActiveVersion(workflow.id, workflow.versionId);
+
+			await expect(workflowRepository.isActive(workflow.id)).resolves.toBe(true);
+		});
+
+		it('should return `false` for inactive workflow in storage', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			const workflow = await createWorkflowWithHistory();
+
+			await expect(workflowRepository.isActive(workflow.id)).resolves.toBe(false);
 		});
 	});
 
