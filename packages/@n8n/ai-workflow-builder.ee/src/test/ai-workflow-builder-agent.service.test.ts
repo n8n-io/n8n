@@ -209,6 +209,7 @@ describe('AiWorkflowBuilderService', () => {
 			mockLogger,
 			'test-instance-id',
 			'https://n8n.example.com',
+			'1.0.0',
 			mockOnCreditsUpdated,
 		);
 	});
@@ -221,6 +222,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id',
 				'https://test.com',
+				'1.0.0',
 				mockOnCreditsUpdated,
 			);
 
@@ -247,6 +249,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id',
 				'https://test.com',
+				'1.0.0',
 				mockOnCreditsUpdated,
 			);
 
@@ -271,6 +274,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 				'test-instance-id',
 				'https://test.com',
+				'1.0.0',
 				mockOnCreditsUpdated,
 			);
 

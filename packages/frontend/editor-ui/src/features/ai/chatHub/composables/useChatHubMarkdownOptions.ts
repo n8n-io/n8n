@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 import { type HLJSApi } from 'highlight.js';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import type MarkdownIt from 'markdown-it';
+import markdownLink from 'markdown-it-link-attributes';
 
 let hljsInstance: HLJSApi | undefined;
 let asyncImport:
@@ -11,10 +13,11 @@ let asyncImport:
 	| { status: 'uninitialized' }
 	| { status: 'done' } = { status: 'uninitialized' };
 
-export function useChatHubMarkdownOptions() {
+export function useChatHubMarkdownOptions(codeBlockActionsClassName: string) {
 	const forceReRenderKey = ref(0);
+	const codeBlockContents = ref<Map<string, string>>();
 
-	const markdownOptions = {
+	const options = {
 		highlight(str: string, lang: string) {
 			if (!lang) {
 				return ''; // use external default escaping
@@ -65,5 +68,40 @@ export function useChatHubMarkdownOptions() {
 		}
 	}
 
-	return { markdownOptions, forceReRenderKey };
+	const plugins = computed(() => {
+		const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+			vueMarkdownItInstance.use(markdownLink, {
+				attrs: {
+					target: '_blank',
+					rel: 'noopener',
+				},
+			});
+		};
+
+		const codeBlockPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+			const defaultFenceRenderer = vueMarkdownItInstance.renderer.rules.fence;
+
+			codeBlockContents.value = new Map();
+
+			vueMarkdownItInstance.renderer.rules.fence = (tokens, idx, options, env, self) => {
+				const defaultRendered =
+					defaultFenceRenderer?.(tokens, idx, options, env, self) ??
+					self.renderToken(tokens, idx, options);
+
+				const content = tokens[idx]?.content.trim();
+
+				if (content) {
+					codeBlockContents.value?.set(String(idx), content);
+				}
+
+				return defaultRendered.replace(
+					'</pre>',
+					`<div data-markdown-token-idx="${idx}" class="${codeBlockActionsClassName}"></div></pre>`,
+				);
+			};
+		};
+		return [linksNewTabPlugin, codeBlockPlugin];
+	});
+
+	return { options, forceReRenderKey, plugins, codeBlockContents };
 }

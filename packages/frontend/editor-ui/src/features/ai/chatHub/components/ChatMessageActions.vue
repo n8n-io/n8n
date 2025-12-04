@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 import type { ChatMessageId } from '@n8n/api-types';
 import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -10,8 +11,7 @@ import { useRouter } from 'vue-router';
 const i18n = useI18n();
 const router = useRouter();
 
-const { justCopied, message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
-	justCopied: boolean;
+const { message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
 	message: ChatMessage;
 	alternatives: ChatMessageId[];
 	isSpeechSynthesisAvailable: boolean;
@@ -19,16 +19,11 @@ const { justCopied, message, alternatives, isSpeaking, isSpeechSynthesisAvailabl
 }>();
 
 const emit = defineEmits<{
-	copy: [];
 	edit: [];
 	regenerate: [];
 	switchAlternative: [messageId: ChatMessageId];
 	readAloud: [];
 }>();
-
-const copyTooltip = computed(() => {
-	return justCopied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy');
-});
 
 const currentAlternativeIndex = computed(() => {
 	return alternatives.findIndex((id) => id === message.id);
@@ -43,10 +38,6 @@ const executionUrl = computed(() => {
 	}
 	return undefined;
 });
-
-function handleCopy() {
-	emit('copy');
-}
 
 function handleEdit() {
 	emit('edit');
@@ -63,16 +54,7 @@ function handleReadAloud() {
 
 <template>
 	<div :class="$style.actions">
-		<N8nTooltip placement="bottom" :show-after="300">
-			<N8nIconButton
-				:icon="justCopied ? 'check' : 'copy'"
-				type="tertiary"
-				size="medium"
-				text
-				@click="handleCopy"
-			/>
-			<template #content>{{ copyTooltip }}</template>
-		</N8nTooltip>
+		<CopyButton :content="message.content" />
 		<N8nTooltip
 			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"
