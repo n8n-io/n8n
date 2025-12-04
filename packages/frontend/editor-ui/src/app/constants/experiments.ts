@@ -16,12 +16,6 @@ export const COMMAND_BAR_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const NDV_UI_OVERHAUL_EXPERIMENT = {
-	name: '029_ndv_ui_overhaul',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
 	control: 'control',
@@ -102,7 +96,6 @@ export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
-	NDV_UI_OVERHAUL_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
