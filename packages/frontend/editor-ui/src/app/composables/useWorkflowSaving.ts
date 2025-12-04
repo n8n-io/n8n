@@ -440,8 +440,8 @@ export function useWorkflowSaving({
 
 			if (redirect) {
 				await router.replace({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
+					name: route.name,
+					params: { ...route.params },
 					query: { ...route.query, new: undefined },
 				});
 			}
