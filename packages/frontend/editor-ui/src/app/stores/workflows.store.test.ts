@@ -293,14 +293,14 @@ describe('useWorkflowsStore', () => {
 		it('should return false for an existing workflow', () => {
 			useWorkflowState().setWorkflowId('123');
 			// Add the workflow to workflowsById to simulate it being loaded from backend
-			workflowsStore.addWorkflow({
-				id: '123',
-				name: 'Test Workflow',
-				nodes: [],
-				connections: {},
-				active: false,
-				versionId: '1',
-			} as IWorkflowDb);
+			workflowsStore.addWorkflow(
+				createTestWorkflow({
+					id: '123',
+					name: 'Test Workflow',
+					active: false,
+					versionId: '1',
+				}),
+			);
 			expect(workflowsStore.isNewWorkflow).toBe(false);
 		});
 	});

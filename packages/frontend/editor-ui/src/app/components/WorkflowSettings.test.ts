@@ -5,6 +5,7 @@ import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
@@ -55,33 +56,16 @@ describe('WorkflowSettingsVue', () => {
 		} as FrontendSettings;
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
-		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([
-			{
-				id: '1',
-				name: 'Test Workflow',
-				active: true,
-				activeVersionId: 'v1',
-				isArchived: false,
-				nodes: [],
-				connections: {},
-				createdAt: 1,
-				updatedAt: 1,
-				versionId: '123',
-			},
-		]);
-		workflowsStore.getWorkflowById.mockImplementation(() => ({
+		// Populate workflowsById to mark workflow as existing (not new)
+		const testWorkflow = createTestWorkflow({
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
-			activeVersionId: 'v1',
-			isArchived: false,
-			nodes: [],
-			connections: {},
-			createdAt: 1,
-			updatedAt: 1,
-			versionId: '123',
 			scopes: ['workflow:update'],
-		}));
+		});
+		workflowsStore.workflowsById = { '1': testWorkflow };
+		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([testWorkflow]);
+		workflowsStore.getWorkflowById.mockImplementation(() => testWorkflow);
 	});
 
 	afterEach(() => {
@@ -277,19 +261,14 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should disable save time saved per execution if user has no permission to update workflow', async () => {
-		workflowsStore.getWorkflowById.mockImplementation(() => ({
+		const readOnlyWorkflow = createTestWorkflow({
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
-			activeVersionId: 'v1',
-			isArchived: false,
-			nodes: [],
-			connections: {},
-			createdAt: 1,
-			updatedAt: 1,
-			versionId: '123',
 			scopes: ['workflow:read'],
-		}));
+		});
+		workflowsStore.workflowsById = { '1': readOnlyWorkflow };
+		workflowsStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
 
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();

@@ -97,6 +97,8 @@ describe('useWorkflowCommands', () => {
 		updateWorkflowActivationMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
+		// Mark workflow as existing by adding it to workflowsById
+		mockWorkflowsStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
 			value: { workflowSaving: false } as unknown as typeof mockUIStore.isActionActive,
@@ -493,7 +495,8 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should allow actions for new workflows regardless of permissions', () => {
-			mockWorkflowsStore.workflow.id = '';
+			// For new workflows, remove from workflowsById so isNewWorkflow returns true
+			mockWorkflowsStore.workflowsById = {};
 			mockWorkflowsStore.workflow.scopes = ['workflow:read'];
 
 			const { commands } = useWorkflowCommands();
