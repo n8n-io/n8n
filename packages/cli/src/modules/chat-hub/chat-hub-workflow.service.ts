@@ -478,10 +478,6 @@ When you need to reference “now”, use this date and time.`;
 	}
 
 	private getBaseSystemMessage(timeZone: string) {
-		const now = DateTime.now().setZone(timeZone).toISO({
-			includeOffset: true,
-		});
-
 		return 'You are a helpful assistant.\n' + this.getSystemMessageMetadata(timeZone);
 	}
 
