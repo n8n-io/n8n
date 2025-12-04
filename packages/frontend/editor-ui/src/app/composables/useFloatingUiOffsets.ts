@@ -1,4 +1,3 @@
-import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/app/constants';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -13,12 +12,7 @@ export function useFloatingUiOffsets() {
 	const posthogStore = usePostHog();
 	const logsStore = useLogsStore();
 
-	const isNDVV2 = computed(() =>
-		posthogStore.isVariantEnabled(
-			NDV_UI_OVERHAUL_EXPERIMENT.name,
-			NDV_UI_OVERHAUL_EXPERIMENT.variant,
-		),
-	);
+	const isNDVV2 = true;
 	const askAiOffset = computed(() => (ndvStore.isNDVOpen && !isNDVV2.value ? 48 : 16));
 
 	return {

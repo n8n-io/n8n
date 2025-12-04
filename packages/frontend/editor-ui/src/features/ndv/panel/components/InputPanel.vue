@@ -5,7 +5,6 @@ import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	START_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -257,12 +256,7 @@ const waitingMessage = computed(() => {
 	);
 });
 
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = true;
 
 const nodeNameToExecute = computed(
 	() => (isActiveNodeConfig.value ? rootNode.value : activeNode.value?.name) ?? '',
