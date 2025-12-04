@@ -323,7 +323,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	const contentTypeHeader = curlJson?.headers?.[CONTENT_TYPE_KEY];
-	const contentType = contentTypeHeader?.split(';')[0].trim() as ContentTypes;
+	const contentType = contentTypeHeader?.split(';')[0].trim();
 
 	if (isBinaryRequest(curlJson)) {
 		return Object.assign(httpNodeParameters, {
