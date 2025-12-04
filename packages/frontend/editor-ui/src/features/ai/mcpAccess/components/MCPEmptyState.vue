@@ -29,7 +29,6 @@ const i18n = useI18n();
 			:description="i18n.baseText('settings.mcp.toggle.disabled.notice')"
 			:button-text="i18n.baseText('settings.mcp.actionBox.button.label')"
 			:button-disabled="props.disabled || props.loading"
-			emoji="🤖"
 			button-variant="primary"
 			data-test-id="enable-mcp-access-button"
 			@click:button="emit('turnOnMcp')"
