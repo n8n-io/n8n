@@ -709,8 +709,6 @@
 	@include theme;
 }
 
-/* Bind color-scheme to n8n's theme setting so light-dark() CSS function
-   resolves correctly regardless of OS preference */
 body[data-theme='light'] {
 	color-scheme: light;
 }
@@ -719,7 +717,6 @@ body[data-theme='dark'] {
 	color-scheme: dark;
 }
 
-/* Auto/default - follow OS preference */
 body:not([data-theme]) {
 	color-scheme: light dark;
 }
