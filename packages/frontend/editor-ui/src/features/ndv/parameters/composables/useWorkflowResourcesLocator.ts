@@ -75,7 +75,10 @@ export function useWorkflowResourcesLocator(router: Router) {
 			currentPage.value,
 			PAGE_SIZE,
 			'updatedAt:desc',
-			searchFilter.value ? { query: searchFilter.value } : undefined,
+			{
+				...(searchFilter.value ? { query: searchFilter.value } : {}),
+				triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger',
+			},
 		);
 		totalCount.value = workflowsStore.totalWorkflowCount;
 

@@ -444,6 +444,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
+		this.applyTriggerNodeTypeFilter(qb, options.filter?.triggerNodeType as string | undefined);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -494,6 +495,27 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			} else if (dbType === 'sqlite') {
 				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
 					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
+				});
+			}
+		}
+	}
+
+	private applyTriggerNodeTypeFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		triggerNodeType?: string,
+	): void {
+		if (triggerNodeType) {
+			const dbType = this.globalConfig.database.type;
+
+			// In PostgreSQL, cast JSON column to text for LIKE operator
+			if (['postgresdb'].includes(dbType)) {
+				qb.andWhere('workflow.nodes::text LIKE :triggerNodeType', {
+					triggerNodeType: `%${triggerNodeType}%`,
+				});
+			} else {
+				// SQLite and MySQL store nodes as text
+				qb.andWhere('workflow.nodes LIKE :triggerNodeType', {
+					triggerNodeType: `%${triggerNodeType}%`,
 				});
 			}
 		}
