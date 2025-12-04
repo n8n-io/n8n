@@ -380,7 +380,7 @@ export class Form extends Node {
 
 		if (
 			useWorkflowTimezone === undefined &&
-			context.isNodeFeatureEnabled('defaultUseWorkflowTimezone')
+			context.isFeatureEnabled('defaultUseWorkflowTimezone')
 		) {
 			useWorkflowTimezone = true;
 		}

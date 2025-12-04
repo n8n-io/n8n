@@ -187,7 +187,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	 * @param featureName - The name of the feature to check
 	 * @returns true if the feature is enabled, false otherwise
 	 */
-	isNodeFeatureEnabled(featureName: string): boolean {
+	isFeatureEnabled(featureName: string): boolean {
 		return this.nodeFeatures[featureName] ?? false;
 	}
 

@@ -945,7 +945,7 @@ export interface FunctionsBase {
 	 * Uses the node type's features property to evaluate declarative feature conditions.
 	 * Reads the node type and version from the current context.
 	 */
-	isNodeFeatureEnabled(featureName: string): boolean;
+	isFeatureEnabled(featureName: string): boolean;
 }
 
 type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {

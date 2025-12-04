@@ -142,7 +142,7 @@ function getFieldIdentifier(
 	field: FormFieldsParameter[number],
 	context: IWebhookFunctions,
 ): string {
-	const useFieldName = context.isNodeFeatureEnabled('useFieldName');
+	const useFieldName = context.isFeatureEnabled('useFieldName');
 	if (useFieldName && field.fieldName) {
 		return field.fieldName;
 	}
@@ -276,7 +276,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	const allowRespondToWebhook = context.isNodeFeatureEnabled('allowRespondToWebhook');
+	const allowRespondToWebhook = context.isFeatureEnabled('allowRespondToWebhook');
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
 		throw new NodeOperationError(
@@ -548,7 +548,7 @@ export async function formWebhook(
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (context.isNodeFeatureEnabled('requireAuth')) {
+		if (context.isFeatureEnabled('requireAuth')) {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -631,10 +631,7 @@ export async function formWebhook(
 
 	let { useWorkflowTimezone } = options;
 
-	if (
-		useWorkflowTimezone === undefined &&
-		context.isNodeFeatureEnabled('defaultUseWorkflowTimezone')
-	) {
+	if (useWorkflowTimezone === undefined && context.isFeatureEnabled('defaultUseWorkflowTimezone')) {
 		useWorkflowTimezone = true;
 	}
 
