@@ -1,5 +1,6 @@
 import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
@@ -9,6 +10,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -39,6 +41,7 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async createChatWorkflow(
@@ -463,6 +466,17 @@ export class ChatHubWorkflowService {
 		};
 	}
 
+	private getBaseSystemMessage() {
+		const timeZone = this.globalConfig.generic.timezone;
+		const now = DateTime.now().setZone(timeZone).toISO({
+			includeOffset: true,
+		});
+
+		return `You are a helpful assistant.
+The user's current local date and time is: ${now} (timezone: ${timeZone}).
+When you need to reference “now”, use this date and time.`;
+	}
+
 	private buildToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
 		return {
 			parameters: {
@@ -474,7 +488,7 @@ export class ChatHubWorkflowService {
 						model.provider !== 'n8n' && model.provider !== 'custom-agent'
 							? getMaxContextWindowTokens(model.provider, model.model)
 							: undefined,
-					systemMessage,
+					systemMessage: systemMessage ?? this.getBaseSystemMessage(),
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
