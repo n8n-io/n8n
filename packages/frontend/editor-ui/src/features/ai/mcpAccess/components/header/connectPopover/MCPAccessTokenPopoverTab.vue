@@ -151,7 +151,7 @@ onMounted(async () => {
 				</template>
 			</ConnectionParameter>
 			<N8nNotice>
-				Make sure to copy your access token, you won't be able to see it again
+				{{ i18n.baseText('settings.mcp.access.token.notice') }}
 			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
 				<label :class="$style.label" for="mcp-json">

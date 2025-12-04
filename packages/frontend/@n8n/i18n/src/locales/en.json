@@ -2350,6 +2350,7 @@
 	"settings.mcp.toggle.disabled.notice": "Let MCP clients like Claude, Lovable, and other AI tools discover and execute your n8n workflows.",
 	"settings.mcp.tabs.workflows": "Workflows",
 	"settings.mcp.tabs.oauth": "Connected clients",
+	"settings.mcp.access.token.notice": "Make sure to copy your access token, you won't be able to see it again",
 	"settings.mcp.workflows.table.action.removeMCPAccess": "Remove Access",
 	"settings.mcp.workflows.table.column.name": "Name",
 	"settings.mcp.workflows.table.column.location": "Location",
