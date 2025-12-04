@@ -1,5 +1,5 @@
-import { EDIT_FIELDS_SET_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import { EDIT_FIELDS_SET_NODE_NAME } from '../../../config/constants';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Routing', () => {
 	test('should ask to save unsaved changes before leaving route', async ({ n8n }) => {
