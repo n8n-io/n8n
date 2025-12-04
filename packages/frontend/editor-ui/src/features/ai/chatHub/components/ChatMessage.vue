@@ -240,7 +240,7 @@ onBeforeMount(() => {
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
 						v-else
-						:key="markdown.forceReRenderKey"
+						:key="markdown.forceReRenderKey.value"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
