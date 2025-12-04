@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../fixtures/base';
 
 const DESTINATION_NAMES = {
 	FIRST: 'Destination 0',

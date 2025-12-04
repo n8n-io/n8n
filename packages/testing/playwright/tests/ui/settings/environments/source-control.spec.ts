@@ -1,7 +1,7 @@
 import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
 
-import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
+import { test, expect } from '../../../../fixtures/base';
+import type { n8nPage } from '../../../../pages/n8nPage';
 
 test.use({
 	addContainerCapability: {

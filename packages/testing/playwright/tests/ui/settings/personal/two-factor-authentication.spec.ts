@@ -1,7 +1,7 @@
 import { authenticator } from 'otplib';
 
-import { INSTANCE_OWNER_CREDENTIALS } from '../../config/test-users';
-import { test, expect } from '../../fixtures/base';
+import { INSTANCE_OWNER_CREDENTIALS } from '../../../../config/test-users';
+import { test, expect } from '../../../../fixtures/base';
 
 const TEST_DATA = {
 	NEW_EMAIL: 'newemail@test.com',
