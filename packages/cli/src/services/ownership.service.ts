@@ -15,7 +15,6 @@ import { Logger } from '@n8n/backend-common';
 import { CacheService } from '@/services/cache/cache.service';
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { validateEntity } from '@/generic-helpers';
 import { EventService } from '@/events/event.service';
 import { PasswordUtility } from './password.utility';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
