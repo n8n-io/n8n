@@ -1,5 +1,7 @@
 import type { INodeTypeDescription, INodeProperties } from 'n8n-workflow';
 
+import type { PromptBuilderContext } from '@/types/config';
+
 import { COMMON_PATTERNS } from './base/common-patterns';
 import { CORE_INSTRUCTIONS } from './base/core-instructions';
 import { EXPRESSION_RULES } from './base/expression-rules';
@@ -23,7 +25,6 @@ import {
 	getNodeTypeCategory,
 	mentionsResourceKeywords,
 } from './prompt-config';
-import type { PromptBuilderContext } from '../../types/config';
 
 export class ParameterUpdatePromptBuilder {
 	/**
