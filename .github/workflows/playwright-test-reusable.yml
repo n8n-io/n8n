@@ -57,8 +57,7 @@ env:
   NODE_OPTIONS: --max-old-space-size=3072
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
-  PLAYWRIGHT_WORKERS: ${{ inputs.workers || '3' }} # Configurable workers, defaults to 3 for optimal orchestration performance
-  N8N_BASE_URL: http://localhost:5680
+  PLAYWRIGHT_WORKERS: ${{ inputs.workers || '3' }}
   # Must match CI's COVERAGE_ENABLED to ensure Turbo cache hits (it's a globalEnv in turbo.json)
   COVERAGE_ENABLED: 'true'
 
@@ -105,10 +104,8 @@ jobs:
       - name: Run Tests
         run: |
           if echo "${{ inputs.test-command }}" | grep -q "multi-main"; then
-            # Use orchestration for multi-main tests
             pnpm --filter=n8n-playwright exec npx pwc-p -- --project=multi-main:ui --project=multi-main:ui:isolated --workers=${{ env.PLAYWRIGHT_WORKERS }}
           else
-            # Use normal sharding for other tests
             ${{ inputs.test-command }} \
               --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
               --workers=${{ env.PLAYWRIGHT_WORKERS }}
