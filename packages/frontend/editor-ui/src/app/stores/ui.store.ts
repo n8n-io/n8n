@@ -401,7 +401,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		const items: IMenuItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
-				items.push(...moduleItems.map((item) => ({ ...item, available: true })));
+				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
 			}
 		});
 		return items;

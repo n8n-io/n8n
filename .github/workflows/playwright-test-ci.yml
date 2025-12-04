@@ -1,0 +1,52 @@
+name: E2E Tests for CI
+
+on:
+  workflow_call:
+
+jobs:
+  # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
+  multi-main-ui:
+    name: 'Multi-Main: UI'
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:ui
+      shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      workers: '1'
+    secrets: inherit
+
+  multi-main-isolated:
+    name: 'Multi-Main: Isolated'
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
+      shards: '[1]'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      workers: '1'
+    secrets: inherit
+
+  # Standard: Single n8n instance with SQLite
+  # TODO: Enable after confirmed costs with currents/blacksmith
+  # standard-ui:
+  #   name: 'Standard: UI'
+  #   uses: ./.github/workflows/playwright-test-reusable.yml
+  #   with:
+  #     test-mode: docker-build
+  #     test-command: pnpm --filter=n8n-playwright test:container:standard:ui
+  #     shards: '[1, 2, 3, 4, 5]'
+  #     runner: blacksmith-2vcpu-ubuntu-2204
+  #     workers: '2'
+  #   secrets: inherit
+
+  # standard-isolated:
+  #   name: 'Standard: Isolated'
+  #   uses: ./.github/workflows/playwright-test-reusable.yml
+  #   with:
+  #     test-mode: docker-build
+  #     test-command: pnpm --filter=n8n-playwright test:container:standard:isolated
+  #     shards: '[1]'
+  #     runner: blacksmith-2vcpu-ubuntu-2204
+  #     workers: '1'
+  #   secrets: inherit

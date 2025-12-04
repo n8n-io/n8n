@@ -352,10 +352,10 @@ export class WorkflowService {
 			// do not update active fields
 		];
 
-		const updatePayload: QueryDeepPartialEntity<WorkflowEntity> = pick(
+		const updatePayload = pick(
 			workflowUpdateData,
 			fieldsToUpdate,
-		);
+		) as QueryDeepPartialEntity<WorkflowEntity>;
 
 		// Save the workflow to history first, so we can retrieve the complete version object for the update
 		if (versionChanged) {
