@@ -763,6 +763,119 @@ describe('useWorkflowsStore', () => {
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toEqual(expectedData);
 		});
+
+		it('should return false when node has no children', () => {
+			workflowsStore.setNodes([{ name: 'Node1' }] as unknown as IWorkflowDb['nodes']);
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return true when direct child has issues', () => {
+			workflowsStore.setNodes([
+				{ name: 'Node1' },
+				{ name: 'Node2', issues: { parameters: { error: 'Missing parameter' } } },
+			] as unknown as IWorkflowDb['nodes']);
+
+			workflowsStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
+			});
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return true when grandchild has issues', () => {
+			workflowsStore.setNodes([
+				{ name: 'Node1' },
+				{ name: 'Node2' },
+				{ name: 'Node3', issues: { credentials: { error: 'Invalid credentials' } } },
+			] as unknown as IWorkflowDb['nodes']);
+
+			workflowsStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
+				Node2: { main: [[{ node: 'Node3', type: 'main', index: 0 } as IConnection]] },
+			});
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return false when child has issues but is disabled', () => {
+			workflowsStore.setNodes([
+				{ name: 'Node1' },
+				{ name: 'Node2', disabled: true, issues: { error: ['Error message'] } },
+			] as unknown as IWorkflowDb['nodes']);
+
+			workflowsStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
+			});
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return false when children have no issues', () => {
+			workflowsStore.setNodes([
+				{ name: 'Node1' },
+				{ name: 'Node2' },
+				{ name: 'Node3' },
+			] as unknown as IWorkflowDb['nodes']);
+
+			workflowsStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
+				Node2: { main: [[{ node: 'Node3', type: 'main', index: 0 } as IConnection]] },
+			});
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should handle multiple output branches', () => {
+			workflowsStore.setNodes([
+				{ name: 'Node1' },
+				{ name: 'Node2' },
+				{ name: 'Node3', issues: { input: { error: 'Missing input' } } },
+			] as unknown as IWorkflowDb['nodes']);
+
+			workflowsStore.setConnections({
+				Node1: {
+					main: [
+						[
+							{ node: 'Node2', type: 'main', index: 0 } as IConnection,
+							{ node: 'Node3', type: 'main', index: 0 } as IConnection,
+						],
+					],
+				},
+			});
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should handle circular references without infinite loop', () => {
+			workflowsStore.setNodes([
+				{ name: 'Node1' },
+				{ name: 'Node2' },
+				{ name: 'Node3' },
+			] as unknown as IWorkflowDb['nodes']);
+
+			workflowsStore.setConnections({
+				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
+				Node2: { main: [[{ node: 'Node3', type: 'main', index: 0 } as IConnection]] },
+				Node3: { main: [[{ node: 'Node1', type: 'main', index: 0 } as IConnection]] },
+			});
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return false for non-existent node', () => {
+			workflowsStore.setNodes([{ name: 'Node1' }] as unknown as IWorkflowDb['nodes']);
+
+			const hasIssues = workflowsStore.nodeHasIssuesDownstream('NonExistent');
+			expect(hasIssues).toBe(false);
+		});
 	});
 
 	describe('isNodeInOutgoingNodeConnections()', () => {
@@ -2645,121 +2758,6 @@ describe('useWorkflowsStore', () => {
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('nodeHasIssuesDownstream', () => {
-		it('should return false when node has no children', () => {
-			workflowsStore.setNodes([{ name: 'Node1' }] as unknown as IWorkflowDb['nodes']);
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return true when direct child has issues', () => {
-			workflowsStore.setNodes([
-				{ name: 'Node1' },
-				{ name: 'Node2', issues: { parameters: { error: 'Missing parameter' } } },
-			] as unknown as IWorkflowDb['nodes']);
-
-			workflowsStore.setConnections({
-				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
-			});
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(true);
-		});
-
-		it('should return true when grandchild has issues', () => {
-			workflowsStore.setNodes([
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-				{ name: 'Node3', issues: { credentials: { error: 'Invalid credentials' } } },
-			] as unknown as IWorkflowDb['nodes']);
-
-			workflowsStore.setConnections({
-				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
-				Node2: { main: [[{ node: 'Node3', type: 'main', index: 0 } as IConnection]] },
-			});
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(true);
-		});
-
-		it('should return false when child has issues but is disabled', () => {
-			workflowsStore.setNodes([
-				{ name: 'Node1' },
-				{ name: 'Node2', disabled: true, issues: { error: ['Error message'] } },
-			] as unknown as IWorkflowDb['nodes']);
-
-			workflowsStore.setConnections({
-				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
-			});
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when children have no issues', () => {
-			workflowsStore.setNodes([
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-				{ name: 'Node3' },
-			] as unknown as IWorkflowDb['nodes']);
-
-			workflowsStore.setConnections({
-				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
-				Node2: { main: [[{ node: 'Node3', type: 'main', index: 0 } as IConnection]] },
-			});
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should handle multiple output branches', () => {
-			workflowsStore.setNodes([
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-				{ name: 'Node3', issues: { input: { error: 'Missing input' } } },
-			] as unknown as IWorkflowDb['nodes']);
-
-			workflowsStore.setConnections({
-				Node1: {
-					main: [
-						[
-							{ node: 'Node2', type: 'main', index: 0 } as IConnection,
-							{ node: 'Node3', type: 'main', index: 0 } as IConnection,
-						],
-					],
-				},
-			});
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(true);
-		});
-
-		it('should handle circular references without infinite loop', () => {
-			workflowsStore.setNodes([
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-				{ name: 'Node3' },
-			] as unknown as IWorkflowDb['nodes']);
-
-			workflowsStore.setConnections({
-				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 } as IConnection]] },
-				Node2: { main: [[{ node: 'Node3', type: 'main', index: 0 } as IConnection]] },
-				Node3: { main: [[{ node: 'Node1', type: 'main', index: 0 } as IConnection]] },
-			});
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('Node1');
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false for non-existent node', () => {
-			workflowsStore.setNodes([{ name: 'Node1' }] as unknown as IWorkflowDb['nodes']);
-
-			const hasIssues = workflowsStore.nodeHasIssuesDownstream('NonExistent');
-			expect(hasIssues).toBe(false);
 		});
 	});
 });
