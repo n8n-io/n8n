@@ -18,7 +18,6 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
-	refresh: [];
 }>();
 
 const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
