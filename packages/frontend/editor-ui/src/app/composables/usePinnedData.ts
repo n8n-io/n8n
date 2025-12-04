@@ -17,7 +17,6 @@ import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeType } from '@/app/composables/useNodeType';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useDataSchema } from './useDataSchema';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -46,7 +45,6 @@ export function usePinnedData(
 ) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const usersStore = useUsersStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();

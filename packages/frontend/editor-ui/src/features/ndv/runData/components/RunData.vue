@@ -57,7 +57,6 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
@@ -232,7 +231,6 @@ const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
-const usersStore = useUsersStore();
 
 const toast = useToast();
 const route = useRoute();
