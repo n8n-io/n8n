@@ -302,7 +302,7 @@ test.describe('Workflow Actions', () => {
 		await n8n.workflowSettingsModal.getErrorWorkflowField().click();
 		const optionCount = await n8n.page.getByRole('option').count();
 		expect(optionCount).toBeGreaterThanOrEqual(totalWorkflows + 2);
-		await n8n.page.getByRole('option').last().click();
+		await n8n.page.getByRole('option', { disabled: false }).nth(1).click();
 
 		await n8n.workflowSettingsModal.getTimezoneField().click();
 		await expect(n8n.page.getByRole('option').first()).toBeVisible();
