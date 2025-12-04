@@ -42,12 +42,12 @@ const i18n = useI18n();
 	gap: var(--spacing--md);
 	align-items: center;
 
-	// Link doesn't have outline when not hovered
+	// Docs link doesn't have outline when not hovered
 	// so we pull it closer to the rest of the elements
 	// to make horizontal alignment visually balanced
 	a {
 		font-size: var(--font-size--2xs);
-		margin-right: calc(-1 * var(--spacing--4xs));
+		margin-right: calc(-1 * var(--spacing--2xs));
 	}
 }
 </style>

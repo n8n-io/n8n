@@ -6,14 +6,13 @@ import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connec
 import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { MCP_ENDPOINT, MCP_CONNECT_POPOVER_WIDTH } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
 const popoverOpen = ref(false);
-
-const MCP_ENDPOINT = 'mcp-server/http';
 
 const TABS = {
 	ACCESS_TOKEN: 'accessToken',
@@ -65,7 +64,7 @@ const trackCopyEvent = (payload: {
 			:popper-options="{ strategy: 'fixed' }"
 			:content-class="$style.popper"
 			:show-arrow="false"
-			width="450px"
+			:width="`${MCP_CONNECT_POPOVER_WIDTH}px`"
 			@update:open="handlePopoverOpenChange"
 		>
 			<template #trigger>

@@ -7,6 +7,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
 	MCP_TOOLTIP_DELAY,
+	MCP_CONNECT_POPOVER_WIDTH,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
@@ -135,7 +136,7 @@ onMounted(async () => {
 				:value="apiKey.apiKey"
 				:label="i18n.baseText('settings.mcp.connectPopover.tab.accessToken')"
 				:info-tip="i18n.baseText('settings.mcp.instructions.apiKey.tip')"
-				:max-width="450"
+				:max-width="MCP_CONNECT_POPOVER_WIDTH"
 				:allow-copy="!isKeyRedacted"
 				@copy="handleAccessTokenCopy"
 			>
