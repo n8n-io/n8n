@@ -33,6 +33,7 @@ const uiStore = useUIStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const workflowHelpers = useWorkflowHelpers();
+const publishing = ref(false);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
 
@@ -53,8 +54,12 @@ const wfHasAnyChanges = computed(() => {
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
+const nodesWithIssuesCount = computed(() => workflowsStore.nodesWithIssuesCount);
+
 const inputsDisabled = computed(() => {
-	return !wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value;
+	return (
+		!wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value || publishing.value
+	);
 });
 
 const isPublishDisabled = computed(() => {
@@ -162,6 +167,8 @@ async function handlePublish() {
 		return;
 	}
 
+	publishing.value = true;
+
 	// Check for conflicting webhooks before activating
 	const conflictData = await workflowHelpers.checkConflictingWebhooks(workflowsStore.workflow.id);
 
@@ -178,6 +185,7 @@ async function handlePublish() {
 			},
 		});
 
+		publishing.value = false;
 		return;
 	}
 
@@ -212,6 +220,8 @@ async function handlePublish() {
 		// Display activation error if it fails
 		await displayActivationError();
 	}
+
+	publishing.value = false;
 }
 </script>
 
@@ -235,7 +245,10 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					<strong>
 						{{
-							i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title')
+							i18n.baseText(
+								'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
+								{ interpolate: { count: nodesWithIssuesCount } },
+							)
 						}}
 					</strong>
 					<br />
@@ -257,6 +270,7 @@ async function handlePublish() {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
+						:disabled="publishing"
 						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-publish-cancel-button"
@@ -264,6 +278,7 @@ async function handlePublish() {
 					/>
 					<N8nButton
 						:disabled="isPublishDisabled"
+						:loading="publishing"
 						:label="i18n.baseText('workflows.publish')"
 						data-test-id="workflow-publish-button"
 						@click="handlePublish"

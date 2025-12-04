@@ -1,11 +1,11 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
-
-import { createExecution } from '@test-integration/db/executions';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;
@@ -68,73 +68,75 @@ describe('UserRepository', () => {
 	});
 
 	describe('updateExistingExecution with requireStatus', () => {
-		test('should return true and update when status matches requirement', async () => {
-			const workflow = await createWorkflow();
-			const execution = await createExecution({ status: 'waiting' }, workflow);
+		test.each([
+			{
+				statusInDB: 'waiting',
+				statusUpdate: 'running',
+				requireStatus: 'waiting',
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'success',
+				statusUpdate: 'running',
+				requireStatus: 'waiting',
+				updateExpected: false,
+			},
+			{
+				statusInDB: 'running',
+				statusUpdate: 'success',
+				updateExpected: true,
+			},
+		] satisfies Array<{
+			statusInDB: ExecutionStatus;
+			statusUpdate: ExecutionStatus;
+			requireStatus?: ExecutionStatus;
+			updateExpected: boolean;
+		}>)(
+			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and required status: "$requireStatus"',
+			async ({ statusInDB, statusUpdate, requireStatus, updateExpected }) => {
+				// ARRANGE
 
-			const result = await executionRepository.updateExistingExecution(
-				execution.id,
-				{ id: execution.id, status: 'running' },
-				// Require current status to be 'waiting'
-				'waiting',
-			);
+				const workflow = await createWorkflow();
+				const executionData = createEmptyRunExecutionData();
+				const execution = await createExecution(
+					{ status: statusInDB, data: stringify(executionData) },
+					workflow,
+				);
 
-			expect(result).toBe(true);
+				const updatedExecutionData = createRunExecutionData({
+					resultData: { lastNodeExecuted: 'foobar' },
+				});
 
-			// Verify execution was actually updated
-			const updated = await executionRepository.findOneBy({ id: execution.id });
-			expect(updated?.status).toBe('running');
-		});
+				// ACT
+				const result = await executionRepository.updateExistingExecution(
+					execution.id,
+					{ status: statusUpdate, data: updatedExecutionData },
+					// Require current status to be 'waiting'
+					requireStatus,
+				);
 
-		test('should return false and not update when status does not match requirement', async () => {
-			const workflow = await createWorkflow();
-			const execution = await createExecution(
-				// Currently running
-				{ status: 'running', data: stringify(createEmptyRunExecutionData()) },
-				workflow,
-			);
+				// ASSERT
+				expect(result).toBe(updateExpected);
 
-			const result = await executionRepository.updateExistingExecution(
-				execution.id,
-				{
-					id: execution.id,
-					status: 'success',
-					// data should not be set, because updating the status already fails
-					data: createRunExecutionData({ resultData: { lastNodeExecuted: 'foobar' } }),
-				},
-				// Require status to be 'waiting', but it's 'running'
-				'waiting',
-			);
+				const row = await executionRepository.findOne({
+					where: { id: execution.id },
+					relations: { executionData: true },
+				});
+				expect(row?.status).toBe(updateExpected ? statusUpdate : statusInDB);
+				expect(parse(row!.executionData.data)).toEqual(
+					updateExpected ? updatedExecutionData : executionData,
+				);
+			},
+		);
+
+		test('returns false if no execution was found', async () => {
+			const result = await executionRepository.updateExistingExecution('1', { status: 'success' });
 
 			expect(result).toBe(false);
 
-			// Verify execution was NOT updated
-			const notUpdated = await executionRepository.findOne({
-				where: { id: execution.id },
-				relations: { executionData: true },
-			});
-			expect(notUpdated!.status).toBe('running'); // Still 'running', not 'success'
-			expect(parse(notUpdated!.executionData.data)).toEqual(createEmptyRunExecutionData()); // Still 'running', not 'success'
-		});
-
-		test('should always return true when no status requirement (backward compatibility)', async () => {
-			const workflow = await createWorkflow();
-			const execution = await createExecution({ status: 'running' }, workflow);
-
-			const result = await executionRepository.updateExistingExecution(
-				execution.id,
-				{
-					id: execution.id,
-					status: 'success',
-				},
-				// No requireStatus parameter - should always update
-			);
-
-			expect(result).toBe(true);
-
 			// Verify execution was updated regardless of previous status
-			const updated = await executionRepository.findOneBy({ id: execution.id });
-			expect(updated?.status).toBe('success');
+			const rowCount = await executionRepository.count();
+			expect(rowCount).toBe(0);
 		});
 	});
 });

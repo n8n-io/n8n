@@ -429,7 +429,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param requireStatus - Optional status requirement. If provided, update only succeeds if execution has this status
-	 * @returns true if update succeeded, false if requireStatus condition was not met
+	 * @returns true if update succeeded, false if no execution was found or requireStatus condition was not met
 	 */
 	async updateExistingExecution(
 		executionId: string,
@@ -493,7 +493,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 				// If requireStatus was set and the update failed, abort the
 				// transaction early and return false.
-				if (requireStatus && executionTableAffectedRows === 0) {
+				if (executionTableAffectedRows === 0) {
 					return false;
 				}
 			}

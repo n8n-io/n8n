@@ -193,7 +193,6 @@ watch(
 }
 
 $descriptionBoxMaxWidth: 330px;
-$descriptionBoxMinWidth: 228px;
 
 .card {
 	padding: var(--spacing--sm) var(--spacing--lg) 0;
@@ -203,7 +202,6 @@ $descriptionBoxMinWidth: 228px;
 	.descriptionBox {
 		display: flex;
 		flex-direction: column;
-		min-width: $descriptionBoxMinWidth;
 		max-width: $descriptionBoxMaxWidth;
 		gap: var(--spacing--3xs);
 		margin-top: var(--spacing--3xs);
