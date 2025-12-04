@@ -44,6 +44,10 @@ const showOpenWorkflow = computed(() => {
 	);
 });
 
+const isNewSession = computed(() => {
+	return router.currentRoute.value.name === CHAT_VIEW && !router.currentRoute.value.params.id;
+});
+
 function onOpenWorkflow() {
 	if (selectedModel?.model.provider === 'n8n') {
 		emit('openWorkflow', selectedModel.model.workflowId);
@@ -79,6 +83,7 @@ defineExpose({
 				text
 				icon-size="large"
 				:aria-label="i18n.baseText('chatHub.chat.header.button.newChat')"
+				:disabled="isNewSession"
 				@click="onNewChat"
 			/>
 			<ModelSelector
