@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Credentials', () => {
 	test.beforeEach(async ({ n8n }) => {
