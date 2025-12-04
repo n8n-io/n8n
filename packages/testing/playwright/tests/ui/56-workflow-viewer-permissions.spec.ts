@@ -31,6 +31,7 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await n8n.navigate.toHome();
 	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
 	await n8n.workflows.cards.getWorkflows().first().click();
+	await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 	await expect(n8n.canvas.getLoadingMask()).not.toBeAttached();
 }
 
