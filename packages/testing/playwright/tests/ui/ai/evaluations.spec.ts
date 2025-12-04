@@ -1,4 +1,4 @@
-import { expect, test } from '../../fixtures/base';
+import { expect, test } from '../../../fixtures/base';
 
 test.use({
 	addContainerCapability: {

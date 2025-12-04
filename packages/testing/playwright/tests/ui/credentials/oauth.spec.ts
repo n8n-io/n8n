@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('OAuth Credentials', () => {
 	test('should create and connect with Google OAuth2', async ({ n8n }) => {
