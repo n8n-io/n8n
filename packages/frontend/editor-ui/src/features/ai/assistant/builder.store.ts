@@ -229,41 +229,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = message;
 	}
 
-	function isCategorizationData(
-		data: unknown,
-	): data is { techniques: string[]; confidence?: number } {
-		return (
-			typeof data === 'object' &&
-			data !== null &&
-			'techniques' in data &&
-			Array.isArray(data.techniques) &&
-			data.techniques.every((t) => typeof t === 'string')
-		);
-	}
-
-	// todo this breaks with multi agent?
-	// todo necessary if we have this on backend already?
-	function getCategorizationParametersToTrack({ userMessageId }: EndOfStreamingTrackingPayload) {
-		// Track categorization telemetry
-		for (const toolMsg of toolMessages.value) {
-			if (!toolMsg.id || toolMsg.id.startsWith(userMessageId)) return;
-			if (toolMsg.toolName !== 'categorize_prompt') return;
-			if (toolMsg.status !== 'completed') return;
-			if (!toolMsg.toolCallId) return;
-
-			const outputUpdate = toolMsg.updates.find((u) => u.type === 'output');
-			const categorizationData = outputUpdate?.data?.categorization;
-
-			if (!isCategorizationData(categorizationData)) return;
-
-			return {
-				classifier_labels: categorizationData.techniques,
-				confidence: categorizationData.confidence,
-			};
-		}
-		return undefined;
-	}
-
 	function dedupeToolNames(toolNames: string[]): string[] {
 		return [...new Set(toolNames)];
 	}
@@ -302,7 +267,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
 			...getWorkflowModifications(currentStreamingMessage.value),
-			...getCategorizationParametersToTrack(currentStreamingMessage.value),
 			...payload,
 			...getTodosToTrack(),
 		});
