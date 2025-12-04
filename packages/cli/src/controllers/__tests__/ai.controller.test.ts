@@ -118,6 +118,7 @@ describe('AiController', () => {
 	describe('build', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
+				id: '12345',
 				text: 'Create a workflow',
 				type: 'message',
 				role: 'user',
