@@ -257,7 +257,12 @@ describe('TestWebhooks', () => {
 			// ARRANGE
 			const workflow = mock<Workflow>();
 			const destinationNodeObj = { nodeName: 'DestinationNode', mode: 'inclusive' as const };
-			webhook.webhookDescription = { restartWebhook: false };
+			webhook.webhookDescription = {
+				restartWebhook: false,
+				httpMethod,
+				name: 'default',
+				path,
+			};
 
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
