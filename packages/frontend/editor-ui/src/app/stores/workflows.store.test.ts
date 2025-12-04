@@ -2184,6 +2184,63 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('incrementManualExecutionStats', () => {
+		it('should increment success count', () => {
+			expect(workflowsStore.manualExecutionsStats.success).toBe(0);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(0);
+
+			workflowsStore.incrementManualExecutionStats('success');
+
+			expect(workflowsStore.manualExecutionsStats.success).toBe(1);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(0);
+		});
+
+		it('should increment error count', () => {
+			expect(workflowsStore.manualExecutionsStats.success).toBe(0);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(0);
+
+			workflowsStore.incrementManualExecutionStats('error');
+
+			expect(workflowsStore.manualExecutionsStats.success).toBe(0);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(1);
+		});
+
+		it('should increment counts multiple times', () => {
+			workflowsStore.incrementManualExecutionStats('success');
+			workflowsStore.incrementManualExecutionStats('success');
+			workflowsStore.incrementManualExecutionStats('error');
+
+			expect(workflowsStore.manualExecutionsStats.success).toBe(2);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(1);
+		});
+	});
+
+	describe('resetManualExecutionStats', () => {
+		it('should reset stats to zero', () => {
+			workflowsStore.incrementManualExecutionStats('success');
+			workflowsStore.incrementManualExecutionStats('success');
+			workflowsStore.incrementManualExecutionStats('error');
+
+			expect(workflowsStore.manualExecutionsStats.success).toBe(2);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(1);
+
+			workflowsStore.resetManualExecutionStats();
+
+			expect(workflowsStore.manualExecutionsStats.success).toBe(0);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(0);
+		});
+
+		it('should have no effect when stats are already zero', () => {
+			expect(workflowsStore.manualExecutionsStats.success).toBe(0);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(0);
+
+			workflowsStore.resetManualExecutionStats();
+
+			expect(workflowsStore.manualExecutionsStats.success).toBe(0);
+			expect(workflowsStore.manualExecutionsStats.error).toBe(0);
+		});
+	});
+
 	describe('fetchLastSuccessfulExecution', () => {
 		beforeEach(() => {
 			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
