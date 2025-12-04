@@ -27,6 +27,7 @@ import {
 import { NextFunction, Response } from 'express';
 import { DataTableRowReturn } from 'n8n-workflow';
 
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -57,6 +58,9 @@ export class DataTableController {
 		}
 		if (e instanceof DataTableValidationError) {
 			throw new BadRequestError(e.message);
+		}
+		if (e instanceof ResponseError) {
+			throw e;
 		}
 		if (e instanceof Error) {
 			throw new InternalServerError(e.message, e);
