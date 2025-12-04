@@ -622,9 +622,8 @@ export class DataTableService {
 	}
 
 	private async validateDataTableSize() {
-		await this.dataTableSizeValidator.validateSize(
-			async () => await this.dataTableRepository.findDataTablesSize(),
-		);
+		// DISABLED: Data table size validation removed
+		return;
 	}
 
 	async getDataTablesSize(user: User): Promise<DataTablesSizeResult> {
