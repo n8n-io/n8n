@@ -20,44 +20,27 @@ import {
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
-import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+import {
+	AbstractOAuthController,
+	OauthVersion,
+	skipAuthOnOAuthCallback,
+} from './abstract-oauth.controller';
 import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
 } from './oauth2-dynamic-client-registration.schema';
 
-import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
-	override oauthVersion = 2;
-
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
-		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
-
-		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
-		// Delete scope before applying defaults to make sure new scopes are present on reconnect
-		// Generic Oauth2 API is an exception because it needs to save the scope
-
-		if (
-			decryptedDataOriginal?.scope &&
-			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
-		) {
-			delete decryptedDataOriginal.scope;
-		}
-
-		const oauthCredentials = await this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
-			credential,
-			decryptedDataOriginal,
-			additionalData,
-		);
+		const oauthCredentials: OAuth2CredentialData =
+			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
@@ -102,7 +85,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				authentication,
 			);
 			const registerPayload = {
-				redirect_uris: [`${this.baseUrl}/callback`],
+				redirect_uris: [`${this.getBaseUrl(OauthVersion.V2)}/callback`],
 				token_endpoint_auth_method,
 				grant_types,
 				response_types: ['code'],
@@ -135,10 +118,10 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState(
-			credential.id,
-			skipAuthOnOAuthCallback ? undefined : req.user.id,
-		);
+		const [csrfSecret, state] = this.createCsrfState({
+			cid: credential.id,
+			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
+		});
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -257,7 +240,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			accessTokenUri: credential.accessTokenUrl ?? '',
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
-			redirectUri: `${this.baseUrl}/callback`,
+			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,

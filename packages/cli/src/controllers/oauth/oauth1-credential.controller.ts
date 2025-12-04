@@ -9,7 +9,11 @@ import clientOAuth1 from 'oauth-1.0a';
 
 import { OAuthRequest } from '@/requests';
 
-import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+import {
+	AbstractOAuthController,
+	OauthVersion,
+	skipAuthOnOAuthCallback,
+} from './abstract-oauth.controller';
 
 interface OAuth1CredentialData {
 	signatureMethod: 'HMAC-SHA256' | 'HMAC-SHA512' | 'HMAC-SHA1';
@@ -28,23 +32,16 @@ const algorithmMap = {
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController extends AbstractOAuthController {
-	override oauthVersion = 1;
-
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
-		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
-		const oauthCredentials = await this.applyDefaultsAndOverwrites<OAuth1CredentialData>(
-			credential,
-			decryptedDataOriginal,
-			additionalData,
-		);
-		const [csrfSecret, state] = this.createCsrfState(
-			credential.id,
-			skipAuthOnOAuthCallback ? undefined : req.user.id,
-		);
+		const oauthCredentials = await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+
+		const [csrfSecret, state] = this.createCsrfState({
+			cid: credential.id,
+			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
+		});
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -62,7 +59,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 		};
 
 		const oauthRequestData = {
-			oauth_callback: `${this.baseUrl}/callback?state=${state}`,
+			oauth_callback: `${this.getBaseUrl(OauthVersion.V1)}/callback?state=${state}`,
 		};
 
 		await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
