@@ -96,6 +96,18 @@ export class WorkflowsController {
 		// mess with relations of other workflows
 		delete req.body.shared;
 
+		// @ts-expect-error: We shouldn't accept this, this will be set when activating
+		if (req.body.activeVersionId || req.body.active) {
+			this.logger.warn(
+				'Creating a workflow as active is not supported. The workflow will be created as inactive.',
+				{ userId: req.user.id },
+			);
+
+			// @ts-expect-error: We shouldn't accept this
+			req.body.activeVersionId = undefined;
+			req.body.active = false;
+		}
+
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, req.body);
@@ -138,28 +150,32 @@ export class WorkflowsController {
 
 		const { manager: dbManager } = this.projectRepository;
 
-		let project: Project | null;
+		let project: Project | null = null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const { projectId, parentFolderId } = req.body;
-			project =
-				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
-					: await this.projectService.getProjectWithScope(
-							req.user,
-							projectId,
-							['workflow:create'],
-							transactionManager,
-						);
+			const { parentFolderId } = req.body;
+			let { projectId } = req.body;
 
-			if (typeof projectId === 'string' && project === null) {
+			if (projectId === undefined) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					req.user.id,
+					transactionManager,
+				);
+				// Chat users are not allowed to create workflows even within their personal project,
+				// so even though we found the project ensure it gets found via expected scope too.
+				projectId = personalProject.id;
+			}
+
+			project = await this.projectService.getProjectWithScope(
+				req.user,
+				projectId,
+				['workflow:create'],
+				transactionManager,
+			);
+
+			if (project === null) {
 				throw new BadRequestError(
 					"You don't have the permissions to save the workflow in this project.",
 				);
-			}
-
-			// Safe guard in case the personal project does not exist for whatever reason.
-			if (project === null) {
-				throw new UnexpectedError('No personal project found');
 			}
 
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
@@ -405,6 +421,15 @@ export class WorkflowsController {
 
 		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, ...rest } = req.body;
+
+		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
+		if (
+			rest.settings?.timeSavedMode !== undefined &&
+			!['fixed', 'dynamic'].includes(rest.settings.timeSavedMode)
+		) {
+			throw new BadRequestError('Invalid timeSavedMode');
+		}
+
 		Object.assign(updateData, rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -416,14 +441,11 @@ export class WorkflowsController {
 			);
 		}
 
-		const updatedWorkflow = await this.workflowService.update(
-			req.user,
-			updateData,
-			workflowId,
-			tags,
+		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
+			tagIds: tags,
 			parentFolderId,
-			isSharingEnabled ? forceSave : true,
-		);
+			forceSave: isSharingEnabled ? forceSave : true,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
@@ -499,16 +521,11 @@ export class WorkflowsController {
 			throw new BadRequestError('versionId is required');
 		}
 
-		const options: { name?: string; description?: string } = {};
-		if (name !== undefined) options.name = name;
-		if (description !== undefined) options.description = description;
-
-		const workflow = await this.workflowService.activateWorkflow(
-			req.user,
-			workflowId,
+		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
 			versionId,
-			Object.keys(options).length > 0 ? options : undefined,
-		);
+			name,
+			description,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 

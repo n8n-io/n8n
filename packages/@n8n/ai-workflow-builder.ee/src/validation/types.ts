@@ -12,6 +12,7 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'non-tool-node-uses-fromai',
 	'workflow-has-no-nodes',
 	'workflow-has-no-trigger',
+	'workflow-exceeds-max-nodes-limit',
 	'node-missing-required-input',
 	'node-unsupported-connection-input',
 	'node-merge-single-input',
@@ -47,6 +48,7 @@ export interface SingleEvaluatorResult {
 
 export interface ProgrammaticChecksResult {
 	connections: ProgrammaticViolation[];
+	nodes: ProgrammaticViolation[];
 	trigger: ProgrammaticViolation[];
 	agentPrompt: ProgrammaticViolation[];
 	tools: ProgrammaticViolation[];
@@ -56,6 +58,7 @@ export interface ProgrammaticChecksResult {
 export interface ProgrammaticEvaluationResult {
 	overallScore: number;
 	connections: SingleEvaluatorResult;
+	nodes: SingleEvaluatorResult;
 	trigger: SingleEvaluatorResult;
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;

@@ -52,6 +52,7 @@ export class TimeSaved implements INodeType {
 				name: 'minutesSaved',
 				type: 'number',
 				default: 0,
+				noDataExpression: true,
 				typeOptions: {
 					minValue: 0,
 				},
