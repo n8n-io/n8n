@@ -64,7 +64,6 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
@@ -296,12 +295,7 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = true;
 
 const isCanvasReadOnly = computed(() => {
 	return (
