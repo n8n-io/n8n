@@ -204,7 +204,6 @@ export class ComputerUse implements INodeType {
 		defaults: {
 			name: 'Computer Use',
 		},
-		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
