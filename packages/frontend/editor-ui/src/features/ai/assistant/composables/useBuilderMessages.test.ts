@@ -72,7 +72,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages).toHaveLength(1);
 			const toolMessage = result.messages[0] as ChatUI.ToolMessage;
 			expect(toolMessage).toMatchObject({
-				id: 'call-123', // Should use toolCallId as ID
+				id: 'test-id-0-call-123', // Format is messageId-toolCallId
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'add_nodes',
@@ -164,7 +164,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0', // Should fall back to generated ID
+				id: 'test-id-0-undefined', // Format is messageId-toolCallId (undefined when missing)
 				type: 'tool',
 				toolName: 'some_tool',
 			});
@@ -264,7 +264,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages[0].type).toBe('text');
 			expect(result.messages[0].id).toBe('batch-id-0');
 			expect(result.messages[1].type).toBe('tool');
-			expect(result.messages[1].id).toBe('call-123'); // Uses toolCallId
+			expect(result.messages[1].id).toBe('batch-id-1-call-123'); // Format is messageId-toolCallId
 			expect(result.messages[2].type).toBe('workflow-updated');
 			expect(result.messages[2].id).toBe('batch-id-2');
 		});
@@ -988,7 +988,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0].id).toBe('test-id-0');
+			expect(result.messages[0].id).toBe('test-id-0-undefined'); // Format is messageId-toolCallId (undefined when missing)
 		});
 
 		it('should handle workflow-updated messages with invalid JSON', () => {
