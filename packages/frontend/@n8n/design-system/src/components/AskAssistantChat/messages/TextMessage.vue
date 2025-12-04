@@ -105,10 +105,10 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 // User message container styles per Figma
 .userMessageContainer {
-	background-color: var(--color--foreground--tint-1);
+	background-color: var(--assistant--color--background--user-bubble);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--color--text--shade-1);
+	color: var(--assistant--color--text--user-bubble);
 	max-width: calc(100% - 40px);
 }
 
@@ -153,7 +153,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
-	color: var(--color--text);
+	color: var(--assistant--color--text);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	max-width: calc(100% - 40px);

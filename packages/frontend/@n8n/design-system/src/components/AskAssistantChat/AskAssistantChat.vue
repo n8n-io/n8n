@@ -345,13 +345,10 @@ onUnmounted(() => {
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
 	const $style = useCssModule();
 	const isToolOrThinking = message.type === 'tool' || message.type === 'thinking-group';
-	const prevMsg = normalizedMessages.value[messageCount - 1];
 	const nextMsg = normalizedMessages.value[messageCount + 1];
-	const prevIsToolOrThinking = prevMsg?.type === 'tool' || prevMsg?.type === 'thinking-group';
 	const nextIsToolOrThinking = nextMsg?.type === 'tool' || nextMsg?.type === 'thinking-group';
 
 	return {
-		[$style.firstToolMessage]: isToolOrThinking && (messageCount === 0 || !prevIsToolOrThinking),
 		[$style.lastToolMessage]:
 			isToolOrThinking &&
 			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
@@ -465,10 +462,6 @@ defineExpose({
 							:class="{
 								[$style.message]: true,
 								[$style.loading]: normalizedMessages?.length,
-								[$style.firstToolMessage]:
-									normalizedMessages?.length === 0 ||
-									(normalizedMessages[normalizedMessages.length - 1].type !== 'tool' &&
-										normalizedMessages[normalizedMessages.length - 1].type !== 'thinking-group'),
 								[$style.lastToolMessage]: true,
 							}"
 						>
@@ -638,16 +631,12 @@ defineExpose({
 
 .message {
 	margin-bottom: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
 
-.firstToolMessage {
-	margin-top: var(--spacing--md);
-}
-
 .lastToolMessage {
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .chatTitle {

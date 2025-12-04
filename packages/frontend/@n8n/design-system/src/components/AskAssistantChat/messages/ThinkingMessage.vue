@@ -18,7 +18,7 @@ const isExpanded = ref(false);
 
 const hasRunningItem = computed(() => props.items.some((item) => item.status === 'running'));
 
-const shouldShowShimmer = computed(() => hasRunningItem.value && !isExpanded.value);
+const shouldShowShimmer = computed(() => hasRunningItem.value);
 
 const toggleExpanded = () => {
 	isExpanded.value = !isExpanded.value;
@@ -42,14 +42,10 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 	<div :class="$style.thinkingContainer">
 		<!-- Collapsed header with shimmer -->
 		<button :class="$style.header" type="button" @click="toggleExpanded">
-			<N8nIcon
-				:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-				:class="$style.chevron"
-				size="small"
-			/>
 			<span :class="[$style.statusText, { [$style.shimmer]: shouldShowShimmer }]">
 				{{ latestStatusText }}
 			</span>
+			<N8nIcon :icon="isExpanded ? 'chevron-down' : 'chevron-right'" :class="$style.chevron" />
 		</button>
 
 		<!-- Expanded item list -->
@@ -80,7 +76,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--2xs) 0;
 	background: transparent;
 	border: none;
@@ -94,13 +90,20 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 }
 
 .chevron {
-	color: var(--color--text--tint-1);
+	color: var(--assistant--color--text--subtle);
 	flex-shrink: 0;
-	transition: transform 0.2s ease;
+	width: var(--font-size--lg);
+	height: var(--font-size--lg);
+	padding-top: 1px;
+
+	svg {
+		width: var(--font-size--lg);
+		height: var(--font-size--lg);
+	}
 }
 
 .statusText {
-	color: var(--color--text--tint-1);
+	color: var(--assistant--color--text--subtle);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--xl);
@@ -111,7 +114,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 }
 
 .itemList {
-	padding-left: var(--spacing--md);
+	padding-left: var(--spacing--4xs);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -126,18 +129,18 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 
 .itemIcon {
 	flex-shrink: 0;
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	color: var(--color--text--tint-1);
+	width: var(--font-size--md);
+	height: var(--font-size--md);
+	color: var(--assistant--icon-color--subtle);
 
 	svg {
-		width: var(--spacing--sm);
-		height: var(--spacing--sm);
+		width: var(--font-size--md);
+		height: var(--font-size--md);
 	}
 }
 
 .itemText {
-	color: var(--color--text--tint-1);
+	color: var(--assistant--color--text--subtle);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
