@@ -22,9 +22,9 @@ export const workflowOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Activate',
+				name: 'Publish',
 				value: 'activate',
-				action: 'Activate a workflow',
+				action: 'Publish a workflow',
 			},
 			{
 				name: 'Create',
@@ -38,9 +38,9 @@ export const workflowOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Deactivate',
+				name: 'Unpublish',
 				value: 'deactivate',
-				action: 'Deactivate a workflow',
+				action: 'Unpublish a workflow',
 			},
 			{
 				name: 'Delete',
@@ -140,7 +140,7 @@ const activateOperation: INodeProperties[] = [
 						property: 'name',
 					},
 				},
-				description: 'The name of the workflow',
+				description: 'Published version name (will be overwritten)',
 			},
 			{
 				displayName: 'Description',
@@ -156,7 +156,7 @@ const activateOperation: INodeProperties[] = [
 						property: 'description',
 					},
 				},
-				description: 'The description of the workflow',
+				description: 'Published version description (will be overwritten)',
 			},
 		],
 	},
