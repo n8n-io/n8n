@@ -57,7 +57,7 @@ describe('stream-processor', () => {
 				expect(message.text).toBe('Part 1\nPart 2');
 			});
 
-			it('should handle delete_messages with refresh message', () => {
+			it('should skip delete_messages (responder handles user message)', () => {
 				const chunk = {
 					delete_messages: {
 						messages: [{ content: 'Some deleted message' }],
@@ -66,13 +66,10 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				expect(result).toBeDefined();
-				expect(result?.messages).toHaveLength(1);
-				const message = result?.messages[0] as AgentMessageChunk;
-				expect(message.text).toBe('Deleted, refresh?');
+				expect(result).toBeNull();
 			});
 
-			it('should handle compact_messages returning last message', () => {
+			it('should skip compact_messages (responder handles user message)', () => {
 				const chunk = {
 					compact_messages: {
 						messages: [
@@ -85,10 +82,7 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				expect(result).toBeDefined();
-				expect(result?.messages).toHaveLength(1);
-				const message = result?.messages[0] as AgentMessageChunk;
-				expect(message.text).toBe('Last message to display');
+				expect(result).toBeNull();
 			});
 
 			it('should handle compact_messages with empty content', () => {
@@ -294,10 +288,9 @@ describe('stream-processor', () => {
 				results.push(output);
 			}
 
-			expect(results).toHaveLength(3);
+			expect(results).toHaveLength(2);
 			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Message 1');
 			expect((results[1].messages[0] as ToolProgressChunk).toolName).toBe('test_tool');
-			expect((results[2].messages[0] as AgentMessageChunk).text).toBe('Deleted, refresh?');
 		});
 
 		it('should handle empty stream', async () => {
