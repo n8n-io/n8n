@@ -16,7 +16,6 @@ const props = defineProps<{
 		provider: ChatHubLLMProvider;
 		initialValue: string | null;
 		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
-		onCreateNew: (provider: ChatHubLLMProvider) => void;
 	};
 }>();
 
