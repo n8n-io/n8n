@@ -75,7 +75,9 @@ const getContentTypeHeader = (headers: JSONOutput['headers']): string | undefine
 };
 
 const isContentType = (headers: JSONOutput['headers'], contentType: ContentTypes): boolean => {
-	return getContentTypeHeader(headers) === contentType;
+	const header = getContentTypeHeader(headers);
+	if (!header) return false;
+	return header.split(';')[0].trim() === contentType;
 };
 
 const isJsonRequest = (curlJson: JSONOutput): boolean => {
@@ -320,7 +322,8 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		httpNodeParameters.options.response.response.responseFormat = 'autodetect';
 	}
 
-	const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
+	const contentTypeHeader = curlJson?.headers?.[CONTENT_TYPE_KEY];
+	const contentType = contentTypeHeader?.split(';')[0].trim() as ContentTypes;
 
 	if (isBinaryRequest(curlJson)) {
 		return Object.assign(httpNodeParameters, {
@@ -333,7 +336,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		return Object.assign(httpNodeParameters, {
 			sendBody: true,
 			contentType: 'raw',
-			rawContentType: contentType,
+			rawContentType: contentTypeHeader,
 			body: Object.keys(curlJson?.data ?? {})[0],
 		});
 	}
