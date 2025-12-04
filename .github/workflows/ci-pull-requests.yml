@@ -130,13 +130,18 @@ jobs:
     uses: ./.github/workflows/playwright-test-ci.yml
     secrets: inherit
 
+  # This job is required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  # If you add/remove jobs that should block merging, update the 'needs' array below.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-test]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Fail if any required job failed or was skipped unexpectedly
+        # The non_python_changed check allows jobs to be skipped for python-only changes,
+        # since those jobs don't run when only python files are modified.
         if: |
           contains(needs.*.result, 'failure') ||
           (needs.install-and-build.outputs.non_python_changed == 'true' && contains(needs.*.result, 'skipped'))
