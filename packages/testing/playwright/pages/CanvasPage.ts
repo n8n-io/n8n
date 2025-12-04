@@ -525,6 +525,12 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistActionItem(actionText).click();
 	}
 
+	async closeProductionChecklistIfVisible(): Promise<void> {
+		if (await this.getProductionChecklistPopover().isVisible()) {
+			await this.clickProductionChecklistButton();
+		}
+	}
+
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByTestId('context-menu').getByText('Duplicate').click();

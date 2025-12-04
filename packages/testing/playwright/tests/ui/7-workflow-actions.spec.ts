@@ -114,6 +114,7 @@ test.describe('Workflow Actions', () => {
 
 		await n8n.canvas.publishWorkflow();
 		await n8n.workflowActivationModal.closeIfVisible();
+		await n8n.canvas.closeProductionChecklistIfVisible();
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 	});
@@ -149,6 +150,7 @@ test.describe('Workflow Actions', () => {
 
 		await n8n.canvas.publishWorkflow();
 		await n8n.workflowActivationModal.closeIfVisible();
+		await n8n.canvas.closeProductionChecklistIfVisible();
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 	});
