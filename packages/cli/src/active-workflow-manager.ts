@@ -145,12 +145,7 @@ export class ActiveWorkflowManager {
 	 * which checks if the workflow is active in memory.
 	 */
 	async isActive(workflowId: WorkflowId) {
-		const workflow = await this.workflowRepository.findOne({
-			select: ['activeVersionId'],
-			where: { id: workflowId },
-		});
-
-		return !!workflow?.activeVersionId;
+		return await this.workflowRepository.isActive(workflowId);
 	}
 
 	/**
