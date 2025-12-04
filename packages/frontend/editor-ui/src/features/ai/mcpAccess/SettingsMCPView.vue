@@ -159,10 +159,10 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
 			<MCpHeaderActions
-				v-if="mcpStore.mcpAccessEnabled"
+				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
 				:loading="mcpStatusLoading"
-				@disable-mcp-access="onToggleMCPAccess(false)"
+				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
 		<MCPEmptyState

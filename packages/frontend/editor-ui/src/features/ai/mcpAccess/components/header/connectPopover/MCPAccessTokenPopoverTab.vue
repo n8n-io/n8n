@@ -9,7 +9,7 @@ import {
 	MCP_TOOLTIP_DELAY,
 	MCP_CONNECT_POPOVER_WIDTH,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown } from '@n8n/design-system';
+import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown, N8nNotice } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
 
 type Props = {
@@ -130,6 +130,7 @@ onMounted(async () => {
 			<N8nLoading :loading="loadingApiKey" variant="h1" :class="$style['url-skeleton']" />
 			<N8nLoading :loading="loadingApiKey" variant="button" :class="$style['code-skeleton']" />
 		</div>
+
 		<div v-else-if="apiKey?.apiKey" :class="$style['parameters-container']">
 			<ConnectionParameter
 				id="access-token"
@@ -149,6 +150,9 @@ onMounted(async () => {
 					</N8nTooltip>
 				</template>
 			</ConnectionParameter>
+			<N8nNotice>
+				Make sure to copy your access token, you won't be able to see it again
+			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
 				<label :class="$style.label" for="mcp-json">
 					{{ i18n.baseText('settings.mcp.connectPopover.jsonConfig') }}
@@ -201,7 +205,7 @@ onMounted(async () => {
 .parameters-container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+
 	padding-top: var(--spacing--sm);
 }
 
