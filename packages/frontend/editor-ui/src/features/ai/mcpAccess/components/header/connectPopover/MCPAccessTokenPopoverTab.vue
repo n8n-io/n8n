@@ -119,7 +119,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="mcp-oauth-popover-tab">
+	<div :class="$style.container" data-test-id="mcp-access-token-popover-tab">
 		<ConnectionParameter
 			id="oauth-server-url"
 			:label="i18n.baseText('settings.mcp.connectPopover.serverUrl')"

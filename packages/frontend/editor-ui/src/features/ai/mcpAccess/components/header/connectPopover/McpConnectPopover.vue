@@ -76,6 +76,7 @@ const trackCopyEvent = (payload: {
 				<div :class="$style['popper-content']" data-test-id="mcp-connect-popover-content">
 					<header>
 						<N8nRadioButtons
+							data-test-id="mcp-connect-popover-tabs"
 							:model-value="activeTab"
 							:options="tabItems"
 							@update:model-value="handleTabChange"

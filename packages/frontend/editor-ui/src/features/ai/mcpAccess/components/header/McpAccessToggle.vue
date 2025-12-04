@@ -3,10 +3,6 @@ import { ElSwitch } from 'element-plus';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-// TODO:
-// - Rename to MCPAccesHeaderToggle.vue
-// - Cleanup (if needed)
-
 type Props = {
 	modelValue: boolean;
 	disabled?: boolean;
