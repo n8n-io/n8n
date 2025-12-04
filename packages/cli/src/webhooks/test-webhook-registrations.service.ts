@@ -1,16 +1,34 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWebhookData, IWorkflowBase } from 'n8n-workflow';
+import type { IWebhookData, IWorkflowBase, IDestinationNode } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
+import { isObjectLiteral } from '@n8n/backend-common';
+
+const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
 
 export type TestWebhookRegistration = {
+	// A simple versioning to be safe. If you make a breaking change in the type, bump the version.
+	// Any old records in the cache will just be ignored.
+	version: typeof TEST_WEBHOOK_REGISTRATION_VERSION;
 	pushRef?: string;
 	workflowEntity: IWorkflowBase;
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	webhook: IWebhookData;
 };
+
+// Type guard for TestWebhookRegistration.
+// NOTE: we could have a more robust validation, but this is probably good enough for now.
+function isTestWebhookRegistration(obj: unknown): obj is TestWebhookRegistration {
+	if (!isObjectLiteral(obj)) {
+		return false;
+	}
+
+	if (!('version' in obj)) return false;
+
+	return obj.version === TEST_WEBHOOK_REGISTRATION_VERSION;
+}
 
 @Service()
 export class TestWebhookRegistrationsService {
@@ -51,8 +69,9 @@ export class TestWebhookRegistrationsService {
 		}
 	}
 
-	async get(key: string) {
-		return await this.cacheService.getHashValue<TestWebhookRegistration>(this.cacheKey, key);
+	async get(key: string): Promise<TestWebhookRegistration | undefined> {
+		const val = await this.cacheService.getHashValue(this.cacheKey, key);
+		return isTestWebhookRegistration(val) ? val : undefined;
 	}
 
 	async getAllKeys() {
@@ -68,11 +87,17 @@ export class TestWebhookRegistrationsService {
 
 		if (!hash) return [];
 
-		return Object.values(hash);
+		return Object.values(hash).filter(isTestWebhookRegistration);
 	}
 
 	async getRegistrationsHash() {
-		return await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
+		const val = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
+		for (const key in val) {
+			if (!isTestWebhookRegistration(val[key])) {
+				delete val[key];
+			}
+		}
+		return val;
 	}
 
 	async deregisterAll() {

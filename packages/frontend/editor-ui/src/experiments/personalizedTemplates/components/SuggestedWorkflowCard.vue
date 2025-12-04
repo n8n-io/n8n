@@ -66,9 +66,9 @@ const onTryTemplate = () => {
 
 <style lang="scss" module>
 .suggested-workflow-callout {
-	margin-top: var(--spacing-xs);
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-m);
+	margin-top: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--md);
 	border-style: dashed;
 
 	.callout-content {
@@ -79,13 +79,13 @@ const onTryTemplate = () => {
 	.callout-trailing-content {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-m);
+		gap: var(--spacing--md);
 	}
 
 	a {
 		span {
 			span {
-				color: var(--color-callout-secondary-font);
+				color: var(--callout--color--text--secondary);
 			}
 		}
 	}

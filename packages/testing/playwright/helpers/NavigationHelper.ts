@@ -56,6 +56,11 @@ export class NavigationHelper {
 		await this.page.goto(url);
 	}
 
+	async toDatatables(projectId?: string): Promise<void> {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
+		await this.page.goto(url);
+	}
+
 	/**
 	 * Navigate to variables page (global only)
 	 * URL: /variables
@@ -240,11 +245,11 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to source control settings
-	 * URL: /settings/source-control
+	 * Navigate to environments settings
+	 * URL: /settings/environments
 	 */
-	async toSourceControl(): Promise<void> {
-		await this.page.goto('/settings/source-control');
+	async toEnvironments(): Promise<void> {
+		await this.page.goto('/settings/environments');
 	}
 
 	/**

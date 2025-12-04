@@ -60,6 +60,14 @@ export function isOidcCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'oidc';
 }
 
+export function isSsoCurrentAuthenticationMethod(): boolean {
+	return (
+		isSamlCurrentAuthenticationMethod() ||
+		isLdapCurrentAuthenticationMethod() ||
+		isOidcCurrentAuthenticationMethod()
+	);
+}
+
 export function isEmailCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'email';
 }

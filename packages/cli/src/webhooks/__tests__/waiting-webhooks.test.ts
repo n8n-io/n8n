@@ -3,11 +3,18 @@ import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
+
+class TestWaitingWebhooks extends WaitingWebhooks {
+	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
+		return this.createWorkflow(workflowData);
+	}
+}
 
 describe('WaitingWebhooks', () => {
 	const SIGNING_SECRET = 'test-secret';
@@ -15,7 +22,7 @@ describe('WaitingWebhooks', () => {
 	const mockInstanceSettings = mock<InstanceSettings>({
 		hmacSignatureSecret: SIGNING_SECRET,
 	});
-	const waitingWebhooks = new WaitingWebhooks(
+	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
 		executionRepository,
@@ -195,6 +202,90 @@ describe('WaitingWebhooks', () => {
 
 			/* Assert */
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('createWorkflow', () => {
+		it('should handle old executions with missing activeVersionId field when active=true', () => {
+			const workflowData = {
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				activeVersionId: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+				settings: {},
+				staticData: {},
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			// @ts-expect-error: createWorkflow typing is incorrect, will be fixed later
+			const workflow = waitingWebhooks.exposeCreateWorkflow(workflowData);
+
+			expect(workflow.active).toBe(true);
+		});
+
+		it('should handle old executions with missing activeVersionId field when active=false', () => {
+			const workflowData = {
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+				activeVersionId: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+				settings: {},
+				staticData: {},
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			// @ts-expect-error: createWorkflow typing is incorrect, will be fixed later
+			const workflow = waitingWebhooks.exposeCreateWorkflow(workflowData);
+
+			expect(workflow.active).toBe(false);
+		});
+
+		it('should set active to true when activeVersionId exists', () => {
+			const workflowData: IWorkflowBase = {
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				activeVersionId: 'version-123',
+				settings: {},
+				staticData: {},
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const workflow = waitingWebhooks.exposeCreateWorkflow(workflowData);
+
+			expect(workflow.active).toBe(true);
+		});
+
+		it('should set active to false when activeVersionId is null', () => {
+			const workflowData: IWorkflowBase = {
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				settings: {},
+				staticData: {},
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const workflow = waitingWebhooks.exposeCreateWorkflow(workflowData);
+
+			expect(workflow.active).toBe(false);
 		});
 	});
 });

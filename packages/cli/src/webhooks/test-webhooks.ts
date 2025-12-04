@@ -1,3 +1,4 @@
+import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -9,9 +10,19 @@ import type {
 	IHttpRequestMethods,
 	IRunData,
 	IWorkflowBase,
+	IDestinationNode,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
+import { authAllowlistedNodes } from './constants';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { WebhookService } from './webhook.service';
+import type {
+	IWebhookResponseCallbackData,
+	IWebhookManager,
+	WebhookAccessControlOptions,
+	WebhookRequest,
+} from './webhook.types';
+
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
@@ -24,16 +35,6 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-
-import { authAllowlistedNodes } from './constants';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
-import { WebhookService } from './webhook.service';
-import type {
-	IWebhookResponseCallbackData,
-	IWebhookManager,
-	WebhookAccessControlOptions,
-	WebhookRequest,
-} from './webhook.types';
 
 /**
  * Service for handling the execution of webhooks of manual executions
@@ -104,7 +105,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, pushRef, workflowEntity, webhook: testWebhook } = registration;
+		const { pushRef, workflowEntity, webhook: testWebhook, destinationNode } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -269,8 +270,8 @@ export class TestWebhooks implements IWebhookManager {
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
-		destinationNode?: string;
-		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
+		destinationNode?: IDestinationNode;
+		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
 	}) {
 		const {
 			userId,
@@ -345,6 +346,7 @@ export class TestWebhooks implements IWebhookManager {
 			cacheableWebhook.userId = userId;
 
 			const registration: TestWebhookRegistration = {
+				version: 1,
 				pushRef,
 				workflowEntity,
 				destinationNode,
@@ -468,7 +470,10 @@ export class TestWebhooks implements IWebhookManager {
 			const { userId, staticData } = webhook;
 
 			if (userId) {
-				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					workflowId: workflow.id,
+				});
 			}
 
 			if (staticData) workflow.staticData = staticData;

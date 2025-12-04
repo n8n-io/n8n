@@ -15,6 +15,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
+	IExecutionContext,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -138,6 +139,7 @@ export interface IWorkflowErrorData {
 		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
+		executionContext?: IExecutionContext;
 	};
 	trigger?: {
 		error: ExecutionError;
@@ -162,6 +164,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	success: boolean;
 	error_node_type?: string;
 	is_manual: boolean;
+	crashed?: boolean;
 }
 
 // ----------------------------------

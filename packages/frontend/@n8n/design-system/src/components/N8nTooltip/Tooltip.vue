@@ -71,7 +71,7 @@ const appendTo = useInjectTooltipAppendTo();
 .buttons {
 	display: flex;
 	align-items: center;
-	margin-top: var(--spacing-s);
-	gap: var(--spacing-2xs);
+	margin-top: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 }
 </style>

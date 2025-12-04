@@ -75,6 +75,12 @@ export class Redis implements INodeType {
 						action: 'Return all keys matching a pattern',
 					},
 					{
+						name: 'List Length',
+						value: 'llen',
+						description: 'Returns the length of a list',
+						action: 'Return the length of a list',
+					},
+					{
 						name: 'Pop',
 						value: 'pop',
 						description: 'Pop data from a redis list',
@@ -285,6 +291,35 @@ export class Redis implements INodeType {
 				},
 				default: true,
 				description: 'Whether to get the value of matching keys',
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['llen'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list in Redis',
+			},
+			// ----------------------------------
+			//         llen
+			// ----------------------------------
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['llen'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list in Redis',
 			},
 			// ----------------------------------
 			//         set
@@ -539,7 +574,9 @@ export class Redis implements INodeType {
 					}
 				}
 			} else if (
-				['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
+				['delete', 'get', 'keys', 'llen', 'set', 'incr', 'publish', 'push', 'pop'].includes(
+					operation,
+				)
 			) {
 				const items = this.getInputData();
 
@@ -583,6 +620,11 @@ export class Redis implements INodeType {
 							for (const keyName of keys) {
 								item.json[keyName] = await getValue(client, keyName);
 							}
+							returnItems.push(item);
+						} else if (operation === 'llen') {
+							const redisList = this.getNodeParameter('list', itemIndex) as string;
+							const length = await client.lLen(redisList);
+							item.json = { [redisList]: length };
 							returnItems.push(item);
 						} else if (operation === 'set') {
 							const keySet = this.getNodeParameter('key', itemIndex) as string;

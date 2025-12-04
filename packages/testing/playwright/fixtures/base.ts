@@ -26,6 +26,7 @@ type WorkerFixtures = {
 	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
 	containerConfig: ContainerConfig;
+	addContainerCapability: ContainerConfig;
 };
 
 interface ContainerConfig {
@@ -37,6 +38,12 @@ interface ContainerConfig {
 	env?: Record<string, string>;
 	proxyServerEnabled?: boolean;
 	taskRunner?: boolean;
+	sourceControl?: boolean;
+	email?: boolean;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 /**
@@ -51,20 +58,36 @@ export const test = base.extend<
 	...currentsFixtures.baseFixtures,
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
+
+	// Add a container capability to the test e.g proxy server, task runner, etc
+	addContainerCapability: [
+		async ({}, use) => {
+			await use({});
+		},
+		{ scope: 'worker', box: true },
+	],
+
 	// Container configuration from the project use options
 	containerConfig: [
-		async ({}, use, workerInfo) => {
-			const config =
-				(workerInfo.project.use as unknown as { containerConfig?: ContainerConfig })
-					?.containerConfig ?? {};
-			config.env = {
-				...config.env,
-				E2E_TESTS: 'true',
+		async ({ addContainerCapability }, use, workerInfo) => {
+			const projectConfig = workerInfo.project.use as { containerConfig?: ContainerConfig };
+			const baseConfig = projectConfig?.containerConfig ?? {};
+
+			// Build merged configuration
+			const merged: ContainerConfig = {
+				...baseConfig,
+				...addContainerCapability,
+				env: {
+					...baseConfig.env,
+					...addContainerCapability.env,
+					E2E_TESTS: 'true',
+					N8N_RESTRICT_FILE_ACCESS_TO: '',
+				},
 			};
 
-			await use(config);
+			await use(merged);
 		},
-		{ scope: 'worker' },
+		{ scope: 'worker', box: true },
 	],
 
 	// Create a new n8n container if N8N_BASE_URL is not set, otherwise use the existing n8n instance
@@ -85,7 +108,7 @@ export const test = base.extend<
 			await use(container);
 			await container.stop();
 		},
-		{ scope: 'worker' },
+		{ scope: 'worker', box: true },
 	],
 
 	// Set the n8n URL for based on the N8N_BASE_URL environment variable or the n8n container

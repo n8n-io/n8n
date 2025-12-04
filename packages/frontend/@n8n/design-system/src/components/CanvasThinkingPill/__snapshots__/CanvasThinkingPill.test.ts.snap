@@ -29,15 +29,15 @@ exports[`N8nCanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
             y2="9.82667"
           >
             <stop
-              stop-color="var(--color-assistant-highlight-1)"
+              stop-color="var(--assistant--color--highlight-1)"
             />
             <stop
               offset="0.495"
-              stop-color="var(--color-assistant-highlight-2)"
+              stop-color="var(--assistant--color--highlight-2)"
             />
             <stop
               offset="1"
-              stop-color="var(--color-assistant-highlight-3)"
+              stop-color="var(--assistant--color--highlight-3)"
             />
           </lineargradient>
         </defs>

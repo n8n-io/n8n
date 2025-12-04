@@ -622,7 +622,7 @@ describe('Test Github Node', () => {
 		it('should fetch open issues by default (user:getIssues)', async () => {
 			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
 				if (parameterName === 'resource') return 'user';
-				if (parameterName === 'operation') return 'getIssues';
+				if (parameterName === 'operation') return 'getUserIssues';
 				if (parameterName === 'getUserIssuesFilters') return {};
 				if (parameterName === 'returnAll') return true;
 				if (parameterName === 'authentication') return 'accessToken';
@@ -650,7 +650,7 @@ describe('Test Github Node', () => {
 		it('should fetch closed issues when state filter is set to closed (user:getIssues)', async () => {
 			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
 				if (parameterName === 'resource') return 'user';
-				if (parameterName === 'operation') return 'getIssues';
+				if (parameterName === 'operation') return 'getUserIssues';
 				if (parameterName === 'getUserIssuesFilters') return { state: 'closed' };
 				if (parameterName === 'returnAll') return true;
 				if (parameterName === 'authentication') return 'accessToken';
@@ -676,7 +676,7 @@ describe('Test Github Node', () => {
 		it('should fetch issues with a specific label (user:getIssues)', async () => {
 			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
 				if (parameterName === 'resource') return 'user';
-				if (parameterName === 'operation') return 'getIssues';
+				if (parameterName === 'operation') return 'getUserIssues';
 				if (parameterName === 'getUserIssuesFilters') return { labels: 'bug' };
 				if (parameterName === 'returnAll') return true;
 				if (parameterName === 'authentication') return 'accessToken';

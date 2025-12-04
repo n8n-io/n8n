@@ -1,5 +1,7 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { TSESTree } from '@typescript-eslint/types';
 import type { TSESLint } from '@typescript-eslint/utils';
+
+import { createRule } from '../utils/index.js';
 
 const restrictedGlobals = [
 	'clearInterval',
@@ -15,7 +17,8 @@ const restrictedGlobals = [
 	'__filename',
 ];
 
-export const NoRestrictedGlobalsRule = ESLintUtils.RuleCreator.withoutDocs({
+export const NoRestrictedGlobalsRule = createRule({
+	name: 'no-restricted-globals',
 	meta: {
 		type: 'problem',
 		docs: {
@@ -33,7 +36,7 @@ export const NoRestrictedGlobalsRule = ESLintUtils.RuleCreator.withoutDocs({
 
 			// Skip property access (like console.process - we want process.exit but not obj.process)
 			if (
-				parent?.type === 'MemberExpression' &&
+				parent?.type === TSESTree.AST_NODE_TYPES.MemberExpression &&
 				parent.property === ref.identifier &&
 				!parent.computed
 			) {

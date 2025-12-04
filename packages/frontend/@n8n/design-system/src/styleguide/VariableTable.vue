@@ -71,7 +71,7 @@ onUnmounted(() => {
 <style lang="scss" module>
 .table {
 	text-align: center;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .row {

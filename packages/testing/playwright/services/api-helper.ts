@@ -11,6 +11,8 @@ import {
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { RoleApiHelper } from './role-api-helper';
+import { TagApiHelper } from './tag-api-helper';
 import { UserApiHelper } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
@@ -41,6 +43,8 @@ export class ApiHelpers {
 	credentials: CredentialApiHelper;
 	variables: VariablesApiHelper;
 	users: UserApiHelper;
+	tags: TagApiHelper;
+	roles: RoleApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
@@ -49,6 +53,8 @@ export class ApiHelpers {
 		this.credentials = new CredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.users = new UserApiHelper(this);
+		this.tags = new TagApiHelper(this);
+		this.roles = new RoleApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -214,9 +220,19 @@ export class ApiHelpers {
 
 	async get(path: string, params?: URLSearchParams) {
 		const response = await this.request.get(path, { params });
-
 		const { data } = await response.json();
 		return data;
+	}
+
+	/**
+	 * Check if n8n is healthy
+	 * @returns True if n8n is healthy, false otherwise
+	 */
+	async isHealthy(probe: 'liveness' | 'readiness' = 'liveness'): Promise<boolean> {
+		const url = probe === 'liveness' ? '/healthz' : '/healthz/readiness';
+		const response = await this.request.get(url);
+		const data = await response.json();
+		return data.status === 'ok';
 	}
 
 	// ===== PRIVATE METHODS =====

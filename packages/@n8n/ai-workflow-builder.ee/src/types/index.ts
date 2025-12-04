@@ -8,3 +8,8 @@ export type * from './streaming';
 export type * from './nodes';
 export type * from './config';
 export type * from './utils';
+export type * from './categorization';
+export type * from './best-practices';
+
+// Re-export web/templates (includes both types and runtime values)
+export * from './web/templates';

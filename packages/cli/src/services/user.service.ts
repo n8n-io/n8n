@@ -1,11 +1,18 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
-import { User, UserRepository } from '@n8n/db';
+import { ProjectRelation, User, UserRepository, ProjectRepository, Not, In } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
+import {
+	getGlobalScopes,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+	type AssignableGlobalRole,
+} from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -23,11 +30,13 @@ export class UserService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
 		private readonly roleService: RoleService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -82,7 +91,14 @@ export class UserService {
 			throw new UnexpectedError('Inviter ID is required to generate invite URL');
 		}
 
-		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {
+		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
+
+		if (
+			!inviteLinksEmailOnly &&
+			options?.withInviteUrl &&
+			options?.inviterId &&
+			publicUser.isPending
+		) {
 			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
@@ -135,6 +151,8 @@ export class UserService {
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
+		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
+
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
 				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
@@ -142,7 +160,6 @@ export class UserService {
 					user: {
 						id,
 						email,
-						inviteAcceptUrl,
 						emailSent: false,
 						role,
 					},
@@ -156,13 +173,19 @@ export class UserService {
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
-						delete invitedUser.user?.inviteAcceptUrl;
 
 						this.eventService.emit('user-transactional-email-sent', {
 							userId: id,
 							messageType: 'New user invite',
 							publicApi: false,
 						});
+					}
+
+					// Only include the invite URL in the response if
+					// the users configuration allows it
+					// and the email was not sent (to allow manual copy-paste)
+					if (!inviteLinksEmailOnly && !result.emailSent) {
+						invitedUser.user.inviteAcceptUrl = inviteAcceptUrl;
 					}
 
 					this.eventService.emit('user-invited', {
@@ -253,20 +276,90 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
 		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
+			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
-			const adminDowngradedToMember =
-				user.role.slug === 'global:owner' &&
-				targetUser.role.slug === 'global:admin' &&
-				newRole.newRoleName === 'global:member';
+			const isAdminRole = (roleName: string) => {
+				return roleName === 'global:admin' || roleName === 'global:owner';
+			};
 
-			if (adminDowngradedToMember) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+			const isDowngradedToChatUser =
+				user.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
+			const isUpgradedChatUser =
+				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
+
+			if (isDowngradedToChatUser) {
+				// Revoke user's project roles in any shared projects they have access to.
+				const projectRelations = await trx.find(ProjectRelation, {
+					where: { userId: user.id, role: { slug: Not(PROJECT_OWNER_ROLE_SLUG) } },
+					relations: ['role'],
+				});
+				for (const relation of projectRelations) {
+					if (relation.role.slug === PROJECT_ADMIN_ROLE_SLUG) {
+						// Ensure there is at least one other admin in the project
+						const adminCount = await trx.count(ProjectRelation, {
+							where: {
+								projectId: relation.projectId,
+								role: { slug: In([PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG]) },
+								userId: Not(user.id),
+							},
+						});
+						if (adminCount === 0) {
+							throw new UserError(
+								`Cannot downgrade user as they are the only project admin in project "${relation.projectId}".`,
+							);
+						}
+					}
+
+					await trx.delete(ProjectRelation, {
+						userId: user.id,
+						projectId: relation.projectId,
+					});
+				}
+
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke 'project:personalOwner' role on their personal project
+				// and grant 'project:viewer' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+				);
+
+				// Revoke all API keys from chat users
+				await this.publicApiKeyService.deleteAllApiKeysForUser(user, trx);
+			} else if (isDowngradedAdmin) {
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
+			} else if (isUpgradedChatUser) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke previous 'project:viewer' role on their personal project
+				// and grant 'project:personalOwner' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_VIEWER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+				);
 			}
 		});
 	}

@@ -1,10 +1,11 @@
 import type { DataRequestResponse, BrokerMessage } from '@n8n/task-runner';
-import type {
-	EnvProviderState,
-	IPinData,
-	IRunData,
-	IRunExecutionData,
-	ITaskDataConnections,
+import {
+	createRunExecutionData,
+	type EnvProviderState,
+	type IPinData,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskDataConnections,
 } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
@@ -44,7 +45,7 @@ export class DataRequestResponseStripper {
 			return runExecutionData;
 		}
 
-		return {
+		return createRunExecutionData({
 			startData: runExecutionData.startData,
 			resultData: {
 				error: runExecutionData.resultData.error,
@@ -56,7 +57,7 @@ export class DataRequestResponseStripper {
 			// TODO: We could send `runExecutionData.contextData` only if requested,
 			// since it's only needed if $input.context or $("node").context is used.
 			executionData: runExecutionData.executionData,
-		};
+		});
 	}
 
 	private stripRunData(runData: IRunData): IRunData {

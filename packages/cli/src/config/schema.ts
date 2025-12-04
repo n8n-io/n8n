@@ -1,16 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
+/**
+ * @deprecated Do not add new environment variables to this file. Please use the `@n8n/config` package instead.
+ */
 export const schema = {
-	executions: {
-		mode: {
-			doc: 'If it should run executions directly or via queue',
-			format: ['regular', 'queue'] as const,
-			default: 'regular',
-			env: 'EXECUTIONS_MODE',
-		},
-	},
-
 	userManagement: {
 		/**
 		 * @important Do not remove until after cloud hooks are updated to stop using convict config.
@@ -22,6 +16,9 @@ export const schema = {
 			default: false,
 		},
 
+		/**
+		 * @techdebt Refactor this to stop using the legacy config schema for internal state.
+		 */
 		authenticationMethod: {
 			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
 			format: ['email', 'ldap', 'saml'] as const,

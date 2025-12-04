@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
-import alasql from 'alasql';
-import type { Database } from 'alasql';
+import alasqlImport from 'alasql';
 import { ErrorReporter } from 'n8n-core';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,11 +11,58 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
+
+type AlaSQLBase = typeof alasqlImport;
+type AlaSQLExtended = AlaSQLBase & {
+	// Access `engines` internal structure to override file access engines
+	engines?: AlaSQLBase['fn'];
+	// Fix Database constructor typing
+	Database: AlaSQLBase['Database'] & { new (databaseId: string): AlaSQLBase['Database'] };
+};
+
+const alasql = alasqlImport as AlaSQLExtended;
+
+function disableAlasqlFileAccess() {
+	const disabledFunction = () => {
+		throw new Error('File access operations are disabled for security reasons');
+	};
+
+	// Disable file reading functions that could be used to access the file system
+	if (alasql.fn) {
+		alasql.fn.FILE = disabledFunction;
+		alasql.fn.JSON = disabledFunction;
+		alasql.fn.TXT = disabledFunction;
+		alasql.fn.CSV = disabledFunction;
+		alasql.fn.XLSX = disabledFunction;
+		alasql.fn.XLS = disabledFunction;
+		alasql.fn.LOAD = disabledFunction;
+		alasql.fn.SAVE = disabledFunction;
+	}
+
+	// Also disable the FROM handlers which are used for file operations
+	if (alasql.from) {
+		alasql.from.FILE = disabledFunction;
+		alasql.from.JSON = disabledFunction;
+		alasql.from.TXT = disabledFunction;
+		alasql.from.CSV = disabledFunction;
+		alasql.from.XLSX = disabledFunction;
+		alasql.from.XLS = disabledFunction;
+	}
+
+	// Override the engines that handle file operations
+	if (alasql.engines) {
+		alasql.engines.FILE = disabledFunction;
+		alasql.engines.JSON = disabledFunction;
+		alasql.engines.TXT = disabledFunction;
+		alasql.engines.CSV = disabledFunction;
+		alasql.engines.XLSX = disabledFunction;
+		alasql.engines.XLS = disabledFunction;
+	}
+}
 
 type OperationOptions = {
 	emptyQueryResult: 'success' | 'empty';
@@ -100,7 +147,7 @@ async function executeSelectWithMappedPairedItems(
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const db: typeof Database = new (alasql as any).Database(node.id);
+	const db = new alasql.Database(node.id);
 
 	try {
 		for (let i = 0; i < inputsData.length; i++) {
@@ -121,7 +168,7 @@ async function executeSelectWithMappedPairedItems(
 	}
 
 	try {
-		const result: IDataObject[] = db.exec(modifySelectQuery(query, inputsData.length));
+		const result = db.exec(modifySelectQuery(query, inputsData.length)) as IDataObject[];
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
@@ -147,6 +194,8 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
+	disableAlasqlFileAccess();
+
 	const node = this.getNode();
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
@@ -182,7 +231,7 @@ export async function execute(
 		}
 	}
 
-	const db: typeof Database = new (alasql as any).Database(node.id);
+	const db = new alasql.Database(node.id);
 
 	try {
 		for (let i = 0; i < inputsData.length; i++) {

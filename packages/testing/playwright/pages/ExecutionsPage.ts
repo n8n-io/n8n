@@ -81,4 +81,9 @@ export class ExecutionsPage extends BasePage {
 	getFirstExecutionItem(): Locator {
 		return this.getExecutionItems().first();
 	}
+
+	async deleteExecutionInPreview(): Promise<void> {
+		await this.page.getByTestId('execution-preview-delete-button').click();
+		await this.page.locator('button.btn--confirm').click();
+	}
 }

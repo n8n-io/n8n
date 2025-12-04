@@ -12,11 +12,13 @@ import {
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
 	FROM_AI_AUTO_GENERATED_MARKER,
+	GUARDRAILS_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
+	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -239,6 +241,11 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType?.description?.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
+		}
+
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
 			nodeItem.runs = runs.length;
@@ -437,6 +444,15 @@ export function generateNodesGraph(
 						: language === 'pythonNative'
 							? 'pythonNative'
 							: 'unknown';
+		} else if (node.type === GUARDRAILS_NODE_TYPE) {
+			nodeItem.operation = node.parameters.operation as string;
+			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});
+			nodeItem.used_guardrails = usedGuardrails;
+		} else if (node.type === OPENAI_CHAT_LANGCHAIN_NODE_TYPE) {
+			const enabledDefault = node.typeVersion >= 1.3 ? true : false;
+			// For 1.3+ node version by default it is true and isn't stored in parameters
+			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
+				enabledDefault) as boolean;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -559,7 +575,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 

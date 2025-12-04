@@ -1,4 +1,5 @@
-import type { AuthenticatedRequest, SharedCredentialsRepository } from '@n8n/db';
+import type { AuthenticatedRequest, SharedCredentialsRepository, CredentialsEntity } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
@@ -7,11 +8,14 @@ import type { EventService } from '@/events/event.service';
 import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
 import { CredentialsController } from '../credentials.controller';
 import type { CredentialsService } from '../credentials.service';
+import type { CredentialsFinderService } from '../credentials-finder.service';
+import type { CredentialRequest } from '@/requests';
 
 describe('CredentialsController', () => {
 	const eventService = mock<EventService>();
 	const credentialsService = mock<CredentialsService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -24,13 +28,17 @@ describe('CredentialsController', () => {
 		sharedCredentialsRepository,
 		mock(),
 		eventService,
-		mock(),
+		credentialsFinderService,
 	);
 
 	let req: AuthenticatedRequest;
 	const res = mock<Response>();
 	beforeAll(() => {
 		req = { user: { id: '123' } } as AuthenticatedRequest;
+	});
+
+	beforeEach(() => {
+		jest.resetAllMocks();
 	});
 
 	describe('createCredentials', () => {
@@ -84,6 +92,193 @@ describe('CredentialsController', () => {
 			});
 
 			expect(newApiKey).toEqual(createdCredentials);
+		});
+	});
+
+	describe('updateCredentials', () => {
+		const credentialId = 'cred-123';
+		const existingCredential = mock<CredentialsEntity>({
+			id: credentialId,
+			name: 'Test Credential',
+			type: 'apiKey',
+			isGlobal: false,
+			isManaged: false,
+		});
+
+		beforeEach(() => {
+			credentialsService.decrypt.mockReturnValue({ apiKey: 'test-key' });
+			credentialsService.prepareUpdateData.mockResolvedValue({
+				name: 'Updated Credential',
+				type: 'apiKey',
+				data: { apiKey: 'updated-key' },
+			} as any);
+			credentialsService.createEncryptedData.mockReturnValue({
+				name: 'Updated Credential',
+				type: 'apiKey',
+				data: 'encrypted-data',
+				id: 'cred-123',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			} as any);
+			credentialsService.getCredentialScopes.mockResolvedValue([
+				'credential:read',
+				'credential:update',
+			] as any);
+		});
+
+		it('should allow owner to set isGlobal to true', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isGlobal: true,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			credentialsService.update.mockResolvedValue({
+				...existingCredential,
+				name: 'Updated Credential',
+				isGlobal: true,
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				credentialId,
+				expect.objectContaining({
+					isGlobal: true,
+				}),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
+				user: ownerReq.user,
+				credentialType: existingCredential.type,
+				credentialId: existingCredential.id,
+			});
+		});
+
+		it('should allow owner to set isGlobal to false', async () => {
+			// ARRANGE
+			const globalCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isGlobal: true,
+			});
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isGlobal: false,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(globalCredential);
+			credentialsService.update.mockResolvedValue({
+				...globalCredential,
+				isGlobal: false,
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				credentialId,
+				expect.objectContaining({
+					isGlobal: false,
+				}),
+			);
+		});
+
+		it('should prevent non-owner from changing isGlobal', async () => {
+			// ARRANGE
+			const memberReq = {
+				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isGlobal: true,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+
+			// ACT
+			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
+				'You do not have permission to change global sharing for credentials',
+			);
+
+			// ASSERT
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it('should prevent non-owner from changing isGlobal to true', async () => {
+			// ARRANGE
+			const memberReq = {
+				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isGlobal: false,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue({
+				...existingCredential,
+				isGlobal: true,
+			});
+
+			// ACT
+			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
+				'You do not have permission to change global sharing for credentials',
+			);
+
+			// ASSERT
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it('should update credential without changing isGlobal when not provided', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					// isGlobal not provided
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			credentialsService.update.mockResolvedValue({
+				...existingCredential,
+				name: 'Updated Credential',
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			// Should not include isGlobal in update when not provided
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				credentialId,
+				expect.not.objectContaining({
+					isGlobal: expect.anything(),
+				}),
+			);
 		});
 	});
 });

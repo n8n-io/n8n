@@ -5,13 +5,14 @@ import type { InstanceType } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
-
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
-	const globalConfig = mockInstance(GlobalConfig, { nodes: { exclude: [] } });
+	const globalConfig = mockInstance(GlobalConfig, {
+		nodes: { exclude: [] },
+		executions: { mode: 'regular' },
+	});
 	const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 
@@ -83,33 +84,6 @@ describe('DeprecationService', () => {
 		toTest('DB_TYPE', dbType, mustWarn);
 	});
 
-	describe('N8N_RUNNERS_ENABLED', () => {
-		const envVar = 'N8N_RUNNERS_ENABLED';
-
-		test.each([
-			['false', true],
-			['', true],
-			['true', false],
-			[undefined /* warnIfMissing */, true],
-		])('should handle value: %s', (value, mustWarn) => {
-			toTest(envVar, value, mustWarn);
-		});
-
-		test('should not warn when Code node is excluded', () => {
-			process.env[envVar] = 'false';
-
-			const globalConfig = mockInstance(GlobalConfig, {
-				nodes: {
-					exclude: ['n8n-nodes-base.code'],
-				},
-			});
-
-			new DeprecationService(logger, globalConfig, instanceSettings).warn();
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
@@ -119,21 +93,12 @@ describe('DeprecationService', () => {
 				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
 				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 			};
-
-			jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-				if (key === 'executions.mode') return 'queue';
-				return undefined;
-			});
 		});
 
 		describe('when executions.mode is not queue', () => {
 			test.each([['main'], ['worker'], ['webhook']])(
 				'should not warn for instanceType %s',
 				(instanceType: InstanceType) => {
-					jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-						if (key === 'executions.mode') return 'regular';
-						return;
-					});
 					process.env[envVar] = 'false';
 					const service = new DeprecationService(
 						logger,
@@ -147,6 +112,11 @@ describe('DeprecationService', () => {
 		});
 
 		describe('when executions.mode is queue', () => {
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: { exclude: [] },
+				executions: { mode: 'queue' },
+			});
+
 			describe('when instanceType is worker', () => {
 				test.each([
 					['false', 'false'],

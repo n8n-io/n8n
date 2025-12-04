@@ -22,8 +22,7 @@ export class TestEntryComposer {
 	 * Start UI test from a blank canvas (assumes already on canvas)
 	 */
 	async fromBlankCanvas() {
-		await this.n8n.goHome();
-		await this.n8n.workflows.addResource.workflow();
+		await this.n8n.navigate.toWorkflow('new');
 		// Verify we're on canvas
 		await this.n8n.canvas.canvasPane().isVisible();
 	}
@@ -58,7 +57,7 @@ export class TestEntryComposer {
 	 * Returns the workflow import result for use in the test
 	 */
 	async fromImportedWorkflow(workflowFile: string) {
-		const workflowImportResult = await this.n8n.api.workflows.importWorkflow(workflowFile);
+		const workflowImportResult = await this.n8n.api.workflows.importWorkflowFromFile(workflowFile);
 		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
 		return workflowImportResult;
 	}

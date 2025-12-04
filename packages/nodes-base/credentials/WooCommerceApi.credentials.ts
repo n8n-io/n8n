@@ -11,7 +11,7 @@ export class WooCommerceApi implements ICredentialType {
 
 	displayName = 'WooCommerce API';
 
-	documentationUrl = 'wooCommerce';
+	documentationUrl = 'woocommerce';
 
 	properties: INodeProperties[] = [
 		{

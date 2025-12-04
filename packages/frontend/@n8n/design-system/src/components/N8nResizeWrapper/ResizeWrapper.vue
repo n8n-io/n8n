@@ -186,8 +186,8 @@ const resizerMove = (event: MouseEvent) => {
 <style lang="scss" module>
 .resize {
 	--resizer--size: 4px;
-	--resizer--side-offset: -2px;
-	--resizer--corner-offset: -3px;
+	--resizer--spacing--side: -2px;
+	--resizer--spacing--corner: -3px;
 
 	position: relative;
 	width: 100%;
@@ -203,69 +203,69 @@ const resizerMove = (event: MouseEvent) => {
 .right {
 	width: var(--resizer--size);
 	height: 100%;
-	top: var(--resizer--side-offset);
-	right: var(--resizer--side-offset);
+	top: var(--resizer--spacing--side);
+	right: var(--resizer--spacing--side);
 	cursor: ew-resize;
 }
 
 .top {
 	width: 100%;
 	height: var(--resizer--size);
-	top: var(--resizer--side-offset);
-	left: var(--resizer--side-offset);
+	top: var(--resizer--spacing--side);
+	left: var(--resizer--spacing--side);
 	cursor: ns-resize;
 }
 
 .bottom {
 	width: 100%;
 	height: var(--resizer--size);
-	bottom: var(--resizer--side-offset);
-	left: var(--resizer--side-offset);
+	bottom: var(--resizer--spacing--side);
+	left: var(--resizer--spacing--side);
 	cursor: ns-resize;
 }
 
 .left {
 	width: var(--resizer--size);
 	height: 100%;
-	top: var(--resizer--side-offset);
-	left: var(--resizer--side-offset);
+	top: var(--resizer--spacing--side);
+	left: var(--resizer--spacing--side);
 	cursor: ew-resize;
 }
 
 .topLeft {
 	width: var(--resizer--size);
 	height: var(--resizer--size);
-	top: var(--resizer--corner-offset);
-	left: var(--resizer--corner-offset);
+	top: var(--resizer--spacing--corner);
+	left: var(--resizer--spacing--corner);
 	cursor: nw-resize;
 }
 
 .topRight {
 	width: var(--resizer--size);
 	height: var(--resizer--size);
-	top: var(--resizer--corner-offset);
-	right: var(--resizer--corner-offset);
+	top: var(--resizer--spacing--corner);
+	right: var(--resizer--spacing--corner);
 	cursor: ne-resize;
 }
 
 .bottomLeft {
 	width: var(--resizer--size);
 	height: var(--resizer--size);
-	bottom: var(--resizer--corner-offset);
-	left: var(--resizer--corner-offset);
+	bottom: var(--resizer--spacing--corner);
+	left: var(--resizer--spacing--corner);
 	cursor: sw-resize;
 }
 
 .bottomRight {
 	width: var(--resizer--size);
 	height: var(--resizer--size);
-	bottom: var(--resizer--corner-offset);
-	right: var(--resizer--corner-offset);
+	bottom: var(--resizer--spacing--corner);
+	right: var(--resizer--spacing--corner);
 	cursor: se-resize;
 }
 
 .outset {
-	--resizer--side-offset: calc(-1 * var(--resizer--size) + 2px);
-	--resizer--corner-offset: calc(-1 * var(--resizer--size) + 3px);
+	--resizer--spacing--side: calc(-1 * var(--resizer--size) + 2px);
+	--resizer--spacing--corner: calc(-1 * var(--resizer--size) + 3px);
 }
 </style>

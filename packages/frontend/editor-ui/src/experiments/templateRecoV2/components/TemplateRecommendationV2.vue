@@ -31,7 +31,7 @@ const locale = useI18n();
 .nodeCardsContainer {
 	display: flex;
 	justify-content: center;
-	gap: var(--spacing-s);
-	margin-top: var(--spacing-xl);
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--xl);
 }
 </style>

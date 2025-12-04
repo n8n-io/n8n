@@ -3,10 +3,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import { programmaticEvaluation } from '../programmatic/programmatic';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
 import type { EvaluationInput, TestCase } from '../types/evaluation';
-import { isWorkflowStateValues } from '../types/langsmith';
+import { isWorkflowStateValues, safeExtractUsage } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
+import { calculateCacheStats } from '../utils/cache-analyzer';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
 /**
@@ -45,16 +46,23 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 				workflowOrganization: 0,
 				modularity: 0,
 			},
+			bestPractices: {
+				score: 0,
+				violations: [],
+				techniques: [],
+			},
 			structuralSimilarity: { score: 0, violations: [], applicable: false },
 			summary: `Evaluation failed: ${errorMessage}`,
 		},
 		programmaticEvaluationResult: {
 			overallScore: 0,
 			connections: { violations: [], score: 0 },
+			nodes: { violations: [], score: 0 },
 			trigger: { violations: [], score: 0 },
 			agentPrompt: { violations: [], score: 0 },
 			tools: { violations: [], score: 0 },
 			fromAi: { violations: [], score: 0 },
+			similarity: null,
 		},
 		generationTime: 0,
 		error: errorMessage,
@@ -92,11 +100,16 @@ export async function runSingleTest(
 
 		const generatedWorkflow = state.values.workflowJSON;
 
+		// Extract cache statistics from messages
+		const usage = safeExtractUsage(state.values.messages);
+		const cacheStats = calculateCacheStats(usage);
+
 		// Evaluate
 		const evaluationInput: EvaluationInput = {
 			userPrompt: testCase.prompt,
 			generatedWorkflow,
 			referenceWorkflow: testCase.referenceWorkflow,
+			referenceWorkflows: testCase.referenceWorkflows,
 		};
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
@@ -108,6 +121,7 @@ export async function runSingleTest(
 			evaluationResult,
 			programmaticEvaluationResult,
 			generationTime,
+			cacheStats,
 		};
 	} catch (error) {
 		return createErrorResult(testCase, error);
