@@ -342,19 +342,7 @@ describe('WorkflowExecutionService', () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const testWebhooks = mock<TestWebhooks>();
-			const service = new WorkflowExecutionService(
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				nodeTypes,
-				testWebhooks,
-				workflowRunner,
-				mock(),
-				mock(),
-				mock(),
-			);
-
+			const workflowRepositoryMock = mock<WorkflowRepository>();
 			const telegramTrigger: INode = {
 				id: '1',
 				typeVersion: 1,
@@ -363,19 +351,34 @@ describe('WorkflowExecutionService', () => {
 				name: 'Telegram Trigger',
 				type: 'n8n-nodes-base.telegramTrigger',
 			};
+			const activeWorkflowData = {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'version-123',
+				isArchived: false,
+				nodes: [telegramTrigger],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+			const workflowDefinition = mock<WorkflowEntity>(activeWorkflowData);
+			workflowRepositoryMock.findOne.mockResolvedValue(workflowDefinition);
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				testWebhooks,
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
-				workflowData: {
-					id: 'workflow-id',
-					name: 'Test Workflow',
-					active: true,
-					activeVersionId: 'version-123',
-					isArchived: false,
-					nodes: [telegramTrigger],
-					connections: {},
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
+				workflowData: activeWorkflowData,
 				triggerToStartFrom: { name: telegramTrigger.name },
 			};
 

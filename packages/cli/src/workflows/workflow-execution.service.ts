@@ -17,6 +17,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	WorkflowId,
 } from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
@@ -101,11 +102,8 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
-		// Store workflow active state before clearing it for manual execution
-		const workflowIsActive =
-			payload.workflowData.active ||
-			(typeof payload.workflowData.activeVersionId === 'string' &&
-				payload.workflowData.activeVersionId.length > 0);
+		// Check whether this workflow is active.
+		const workflowIsActive = await this.isWorkflowActive(payload.workflowData.id);
 
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
@@ -249,6 +247,20 @@ export class WorkflowExecutionService {
 		throw new UnexpectedError('`executeManually` was called with an unexpected payload', {
 			extra: { payload },
 		});
+	}
+
+	// NOTE: this is borrowed from ActiveWorkflowManager. We duplicate it to avoid taking the whole dependency
+	// on ActiveWorkflowManager just for this method. We could consider moving it into the WorkflowRepository later.
+	private async isWorkflowActive(workflowId: WorkflowId) {
+		console.log(`checking if workflow ${workflowId} is active`);
+		const workflow = await this.workflowRepository.findOne({
+			select: ['activeVersionId'],
+			where: { id: workflowId },
+		});
+
+		console.log(workflow);
+
+		return !!workflow?.activeVersionId;
 	}
 
 	async executeChatWorkflow(
