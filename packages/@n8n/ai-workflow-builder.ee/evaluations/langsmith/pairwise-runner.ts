@@ -28,11 +28,34 @@ interface PairwiseDatasetInput {
 	prompt: string;
 }
 
+interface GenerationResult {
+	workflow: SimpleWorkflow;
+	judgeResults: PairwiseEvaluationResult[];
+	primaryPasses: number;
+	majorityPass: boolean;
+	avgDiagnosticScore: number;
+}
+
+interface MultiGenerationAggregation {
+	/** Generation correctness: (# passing generations) / total generations */
+	generationCorrectness: number;
+	/** Average diagnostic score across all generations */
+	aggregatedDiagnosticScore: number;
+	/** Number of generations that passed majority vote */
+	passingGenerations: number;
+	/** Total number of generations run */
+	totalGenerations: number;
+	/** Detailed results for each generation */
+	generationDetails: GenerationResult[];
+}
+
 interface PairwiseGeneratorOutput {
 	workflow: SimpleWorkflow;
 	evalCriteria: PairwiseDatasetInput['evals'];
 	prompt: string;
 	evaluationResults: LangsmithEvaluationResult[];
+	/** Multi-generation aggregation data (present when numGenerations > 1) */
+	multiGenerationAggregation?: MultiGenerationAggregation;
 }
 
 function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGeneratorOutput {
@@ -52,6 +75,7 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 // ============================================================================
 
 const DEFAULT_NUM_JUDGES = 3;
+const DEFAULT_NUM_GENERATIONS = 1;
 const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
 
 /** Calculate minimum judges needed for majority (e.g., 2 for 3 judges, 3 for 5 judges) */
@@ -114,6 +138,142 @@ function buildLangsmithResults(
 	];
 }
 
+/** Build LangSmith-compatible evaluation results for multi-generation aggregation */
+function buildMultiGenerationLangsmithResults(
+	aggregation: MultiGenerationAggregation,
+	numJudges: number,
+): LangsmithEvaluationResult[] {
+	const { generationCorrectness, aggregatedDiagnosticScore, passingGenerations, totalGenerations } =
+		aggregation;
+
+	// Build detailed comment with per-generation breakdown
+	const genBreakdown = aggregation.generationDetails
+		.map(
+			(g, i) =>
+				`Gen ${i + 1}: ${g.majorityPass ? 'PASS' : 'FAIL'} (${g.primaryPasses}/${numJudges} judges, ${(g.avgDiagnosticScore * 100).toFixed(0)}%)`,
+		)
+		.join('\n');
+
+	const comment = [
+		`Generation Correctness: ${passingGenerations}/${totalGenerations} generations passed`,
+		`\nPer-generation breakdown:\n${genBreakdown}`,
+	].join('');
+
+	// Use first generation for backward-compatible metrics
+	const firstGen = aggregation.generationDetails[0];
+
+	return [
+		// Primary aggregated metrics (new)
+		{
+			key: 'pairwise_generation_correctness',
+			score: generationCorrectness,
+			comment: `${passingGenerations} of ${totalGenerations} generations passed majority vote`,
+		},
+		{
+			key: 'pairwise_aggregated_diagnostic',
+			score: aggregatedDiagnosticScore,
+			comment: `Average diagnostic score across ${totalGenerations} generations`,
+		},
+		// Legacy metrics (backward compat, use first generation)
+		{
+			key: 'pairwise_primary',
+			score: firstGen.majorityPass ? 1 : 0,
+			comment: `First generation: ${firstGen.primaryPasses}/${numJudges} judges passed`,
+		},
+		{
+			key: 'pairwise_diagnostic',
+			score: firstGen.avgDiagnosticScore,
+			comment: 'First generation diagnostic score',
+		},
+		// Summary metrics
+		{
+			key: 'pairwise_generations_passed',
+			score: passingGenerations,
+			comment,
+		},
+		{
+			key: 'pairwise_total_judge_calls',
+			score: totalGenerations * numJudges,
+			comment: `${totalGenerations} generations x ${numJudges} judges`,
+		},
+	];
+}
+
+/** Run a single generation and its judge panel */
+async function runSingleGeneration(
+	parsedNodeTypes: INodeTypeDescription[],
+	llm: BaseChatModel,
+	numJudges: number,
+	inputs: PairwiseDatasetInput,
+	generationIndex: number,
+	log: EvalLogger,
+	tracer?: LangChainTracer,
+): Promise<GenerationResult> {
+	const startTime = Date.now();
+	const runId = generateRunId();
+
+	// Create dedicated agent for this generation
+	const agent = createAgent(parsedNodeTypes, llm, tracer);
+
+	// Generate workflow
+	await consumeGenerator(
+		agent.chat(getChatPayload(inputs.prompt, runId), `pairwise-gen-${generationIndex}`),
+	);
+
+	const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
+
+	if (!state.values || !isWorkflowStateValues(state.values)) {
+		throw new Error(`Invalid workflow state for generation ${generationIndex + 1}`);
+	}
+
+	const workflow = state.values.workflowJSON;
+	const genTime = (Date.now() - startTime) / 1000;
+
+	log.verbose(
+		`  Gen ${generationIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
+	);
+
+	// Run judges for this generation in parallel
+	const judgeResults = await Promise.all(
+		Array.from({ length: numJudges }, async () => {
+			return await evaluateWorkflowPairwise(llm, {
+				workflowJSON: workflow,
+				evalCriteria: inputs.evals,
+			});
+		}),
+	);
+
+	// Aggregate judge results for this generation
+	const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+	const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
+	const avgDiagnosticScore =
+		judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+
+	// Log per-generation judge results
+	log.verbose(
+		`  Gen ${generationIndex + 1}: ${primaryPasses}/${numJudges} judges → ` +
+			`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%)`,
+	);
+
+	// Log violations per judge (verbose only)
+	for (let i = 0; i < judgeResults.length; i++) {
+		const result = judgeResults[i];
+		if (result.violations.length > 0) {
+			for (const v of result.violations) {
+				log.verbose(`    [Judge ${i + 1}] ✗ ${v.rule}: ${v.justification}`);
+			}
+		}
+	}
+
+	return {
+		workflow,
+		judgeResults,
+		primaryPasses,
+		majorityPass,
+		avgDiagnosticScore,
+	};
+}
+
 // ============================================================================
 // Workflow Generator (for LangSmith)
 // ============================================================================
@@ -126,91 +286,73 @@ function createPairwiseWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	numJudges: number,
+	numGenerations: number,
 	log: EvalLogger,
 	tracer?: LangChainTracer,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
 		const startTime = Date.now();
 		generationCounter++;
-		const currentGeneration = generationCounter;
+		const currentEvalNumber = generationCounter;
 		const promptPreview = inputs.prompt.slice(0, 60).replace(/\n/g, ' ');
 
 		log.verbose(
-			`🔄 [#${currentGeneration}] "${promptPreview}${inputs.prompt.length > 60 ? '...' : ''}"`,
+			`\n🔄 [#${currentEvalNumber}] "${promptPreview}${inputs.prompt.length > 60 ? '...' : ''}"`,
 		);
+		log.verbose(`   Running ${numGenerations} generation(s) x ${numJudges} judges...`);
 
-		const runId = generateRunId();
-
-		// Create agent for this run
-		const agent = createAgent(parsedNodeTypes, llm, tracer);
-
-		// Use the prompt from the dataset
-		await consumeGenerator(
-			agent.chat(getChatPayload(inputs.prompt, runId), 'langsmith-pairwise-eval-user'),
-		);
-
-		// Get generated workflow
-		const state = await agent.getState(runId, 'langsmith-pairwise-eval-user');
-
-		if (!state.values || !isWorkflowStateValues(state.values)) {
-			throw new Error('Invalid workflow state');
-		}
-
-		const workflow = state.values.workflowJSON;
-		const nodeCount = workflow?.nodes?.length ?? 0;
-		const genTime = (Date.now() - startTime) / 1000;
-		log.verbose(
-			`✅ [#${currentGeneration}] Workflow done (${nodeCount} nodes) [${genTime.toFixed(1)}s]`,
-		);
-
-		// Run judges immediately (combined pipeline)
-		const judgeStartTime = Date.now();
-		log.verbose(`⚖️  [#${currentGeneration}] Running ${numJudges} judges...`);
-
-		const judgeResults = await Promise.all(
-			Array.from({ length: numJudges }, async (_, i) => {
-				const result = await evaluateWorkflowPairwise(llm, {
-					workflowJSON: workflow,
-					evalCriteria: inputs.evals,
-				});
-				const totalCriteria = result.passes.length + result.violations.length;
-				log.verbose(
-					`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
-						`(${result.passes.length}/${totalCriteria}, ${(result.diagnosticScore * 100).toFixed(0)}%)`,
-				);
-				return result;
+		// Run all generations in parallel
+		const generationResults = await Promise.all(
+			Array.from({ length: numGenerations }, async (_, i) => {
+				return await runSingleGeneration(parsedNodeTypes, llm, numJudges, inputs, i, log, tracer);
 			}),
 		);
 
-		const judgeTime = (Date.now() - judgeStartTime) / 1000;
+		// Aggregate across generations
+		const passingGenerations = generationResults.filter((g) => g.majorityPass).length;
+		const generationCorrectness = passingGenerations / numGenerations;
+		const aggregatedDiagnosticScore =
+			generationResults.reduce((sum, g) => sum + g.avgDiagnosticScore, 0) / numGenerations;
 
-		// Aggregate across judges
-		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
-		const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
-		const avgDiagnosticScore =
-			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
-
-		// Log result with timing
 		const totalTime = (Date.now() - startTime) / 1000;
+
+		// Log aggregated result
 		console.log(
 			pc.dim(
-				`  📊 [#${currentGeneration}] ${primaryPasses}/${numJudges} → ` +
-					`${majorityPass ? pc.green('PASS') : pc.red('FAIL')} (${(avgDiagnosticScore * 100).toFixed(0)}%) ` +
-					`[${genTime.toFixed(1)}s + ${judgeTime.toFixed(1)}s = ${totalTime.toFixed(1)}s]`,
+				`  📊 [#${currentEvalNumber}] ${passingGenerations}/${numGenerations} gens → ` +
+					`${generationCorrectness >= 0.5 ? pc.green('PASS') : pc.red('FAIL')} ` +
+					`(gen_corr=${generationCorrectness.toFixed(2)}, diag=${(aggregatedDiagnosticScore * 100).toFixed(0)}%) ` +
+					`[${totalTime.toFixed(1)}s]`,
 			),
 		);
 
+		// Build aggregation object
+		const multiGenerationAggregation: MultiGenerationAggregation = {
+			generationCorrectness,
+			aggregatedDiagnosticScore,
+			passingGenerations,
+			totalGenerations: numGenerations,
+			generationDetails: generationResults,
+		};
+
+		// Choose appropriate results builder based on numGenerations
+		const evaluationResults =
+			numGenerations > 1
+				? buildMultiGenerationLangsmithResults(multiGenerationAggregation, numJudges)
+				: buildLangsmithResults(
+						generationResults[0].judgeResults,
+						numJudges,
+						generationResults[0].primaryPasses,
+						generationResults[0].majorityPass,
+						generationResults[0].avgDiagnosticScore,
+					);
+
 		return {
-			workflow,
+			workflow: generationResults[0].workflow,
 			evalCriteria: inputs.evals,
 			prompt: inputs.prompt,
-			evaluationResults: buildLangsmithResults(
-				judgeResults,
-				numJudges,
-				primaryPasses,
-				majorityPass,
-				avgDiagnosticScore,
-			),
+			evaluationResults,
+			multiGenerationAggregation: numGenerations > 1 ? multiGenerationAggregation : undefined,
 		};
 	};
 }
@@ -282,8 +424,31 @@ export interface PairwiseEvaluationOptions {
 	repetitions?: number;
 	notionId?: string;
 	numJudges?: number;
+	numGenerations?: number;
 	verbose?: boolean;
 	experimentName?: string;
+}
+
+/** Log configuration for pairwise evaluation */
+function logPairwiseConfig(
+	log: EvalLogger,
+	experimentName: string,
+	numGenerations: number,
+	numJudges: number,
+	repetitions: number,
+	verbose: boolean,
+): void {
+	log.info(`➔ Experiment: ${experimentName}`);
+	log.info(
+		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps${verbose ? ' (verbose)' : ''}`,
+	);
+	if (numGenerations > 1) {
+		log.verbose('   Generation Correctness: (# passing gens) / total gens');
+		log.verbose('   Aggregated Diagnostic: average across all generations');
+	} else {
+		log.verbose('   Primary: ALL criteria must pass → majority vote');
+		log.verbose('   Secondary: Average diagnostic score');
+	}
 }
 
 /**
@@ -297,18 +462,14 @@ export async function runPairwiseLangsmithEvaluation(
 		repetitions = 1,
 		notionId,
 		numJudges = DEFAULT_NUM_JUDGES,
+		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
 		experimentName = DEFAULT_EXPERIMENT_NAME,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
-
-	// Log configuration
-	log.info(`➔ Experiment: ${experimentName}`);
-	log.info(`➔ Config: ${numJudges} judges × ${repetitions} reps${verbose ? ' (verbose)' : ''}`);
-	log.verbose('   Primary: ALL criteria must pass → majority vote');
-	log.verbose('   Secondary: Average diagnostic score');
+	logPairwiseConfig(log, experimentName, numGenerations, numJudges, repetitions, verbose);
 
 	if (!process.env.LANGSMITH_API_KEY) {
 		log.error('✗ LANGSMITH_API_KEY environment variable not set');
@@ -369,6 +530,7 @@ export async function runPairwiseLangsmithEvaluation(
 			parsedNodeTypes,
 			llm,
 			numJudges,
+			numGenerations,
 			log,
 			tracer,
 		);
@@ -393,15 +555,20 @@ export async function runPairwiseLangsmithEvaluation(
 			// numRepetitions not used - we manually duplicate examples above
 			metadata: {
 				numJudges,
+				numGenerations,
 				repetitions,
-				scoringMethod: 'hierarchical',
+				scoringMethod: numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
 			},
 		});
 
 		const totalEvalTime = Date.now() - evalStartTime;
 
 		log.success('\n✓ Pairwise evaluation completed');
-		log.dim(`   Generations: ${generationCounter} | Judge calls: ${generationCounter * numJudges}`);
+		log.dim(
+			`   Prompts evaluated: ${generationCounter} | ` +
+				`Total workflow generations: ${generationCounter * numGenerations} | ` +
+				`Judge calls: ${generationCounter * numGenerations * numJudges}`,
+		);
 		log.dim(`   Total time: ${(totalEvalTime / 1000).toFixed(1)}s`);
 		log.dim('   View results in LangSmith dashboard');
 	} catch (error) {
@@ -416,6 +583,7 @@ export interface LocalPairwiseOptions {
 	prompt: string;
 	criteria: { dos: string; donts: string };
 	numJudges?: number;
+	numGenerations?: number;
 	verbose?: boolean;
 }
 
@@ -424,11 +592,17 @@ export interface LocalPairwiseOptions {
  * Useful for testing prompts and criteria before running full dataset evaluation.
  */
 export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions): Promise<void> {
-	const { prompt, criteria, numJudges = DEFAULT_NUM_JUDGES, verbose = false } = options;
+	const {
+		prompt,
+		criteria,
+		numJudges = DEFAULT_NUM_JUDGES,
+		numGenerations = DEFAULT_NUM_GENERATIONS,
+		verbose = false,
+	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('Local Pairwise Evaluation', 50));
-	log.info(`➔ Judges: ${numJudges}`);
+	log.info(`➔ Generations: ${numGenerations}, Judges: ${numJudges}`);
 	log.verbose(`➔ Prompt: ${prompt.slice(0, 80)}${prompt.length > 80 ? '...' : ''}`);
 	log.verbose(`➔ Dos: ${criteria.dos.slice(0, 60)}${criteria.dos.length > 60 ? '...' : ''}`);
 	if (criteria.donts) {
@@ -442,76 +616,105 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	try {
 		const { parsedNodeTypes, llm } = await setupTestEnvironment();
 
-		// Generate workflow
-		log.info('➔ Generating workflow...');
-		const runId = generateRunId();
-		const agent = createAgent(parsedNodeTypes, llm);
-		await consumeGenerator(agent.chat(getChatPayload(prompt, runId), 'local-pairwise-user'));
-		const state = await agent.getState(runId, 'local-pairwise-user');
+		log.info(`➔ Running ${numGenerations} generation(s)...`);
 
-		if (!state.values || !isWorkflowStateValues(state.values)) {
-			throw new Error('Invalid workflow state');
-		}
+		// Run all generations in parallel
+		const generationResults = await Promise.all(
+			Array.from({ length: numGenerations }, async (_, genIndex) => {
+				const genStartTime = Date.now();
+				const runId = generateRunId();
+				const agent = createAgent(parsedNodeTypes, llm);
+				await consumeGenerator(agent.chat(getChatPayload(prompt, runId), `local-gen-${genIndex}`));
+				const state = await agent.getState(runId, `local-gen-${genIndex}`);
 
-		const workflow = state.values.workflowJSON;
-		const nodeCount = workflow?.nodes?.length ?? 0;
-		const genTime = (Date.now() - startTime) / 1000;
-		log.success(`✅ Workflow generated (${nodeCount} nodes) [${genTime.toFixed(1)}s]`);
+				if (!state.values || !isWorkflowStateValues(state.values)) {
+					throw new Error(`Invalid workflow state for generation ${genIndex + 1}`);
+				}
 
-		// Run judges
-		const judgeStartTime = Date.now();
-		log.info(`➔ Running ${numJudges} judges...`);
+				const workflow = state.values.workflowJSON;
+				const genTime = (Date.now() - genStartTime) / 1000;
 
-		const judgeResults = await Promise.all(
-			Array.from({ length: numJudges }, async (_, i) => {
-				const result = await evaluateWorkflowPairwise(llm, {
-					workflowJSON: workflow,
-					evalCriteria: criteria,
-				});
-				const totalCriteria = result.passes.length + result.violations.length;
 				log.verbose(
-					`     Judge ${i + 1}: ${result.primaryPass ? '✓ PASS' : '✗ FAIL'} ` +
-						`(${result.passes.length}/${totalCriteria}, ${(result.diagnosticScore * 100).toFixed(0)}%)`,
+					`  Gen ${genIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
 				);
-				return result;
+
+				// Run judges for this generation
+				const judgeResults = await Promise.all(
+					Array.from({ length: numJudges }, async () => {
+						return await evaluateWorkflowPairwise(llm, {
+							workflowJSON: workflow,
+							evalCriteria: criteria,
+						});
+					}),
+				);
+
+				const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+				const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
+				const avgDiagnosticScore =
+					judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+
+				log.verbose(
+					`  Gen ${genIndex + 1}: ${majorityPass ? '✓ PASS' : '✗ FAIL'} (${primaryPasses}/${numJudges} judges, ${(avgDiagnosticScore * 100).toFixed(0)}%)`,
+				);
+
+				return { workflow, judgeResults, primaryPasses, majorityPass, avgDiagnosticScore };
 			}),
 		);
 
-		const judgeTime = (Date.now() - judgeStartTime) / 1000;
-
-		// Aggregate results
-		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
-		const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
-		const avgDiagnosticScore =
-			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+		// Aggregate across generations
+		const passingGenerations = generationResults.filter((g) => g.majorityPass).length;
+		const generationCorrectness = passingGenerations / numGenerations;
+		const aggregatedDiagnosticScore =
+			generationResults.reduce((sum, g) => sum + g.avgDiagnosticScore, 0) / numGenerations;
 
 		const totalTime = (Date.now() - startTime) / 1000;
 
-		// Display result
-		console.log(
-			`\n📊 Result: ${primaryPasses}/${numJudges} judges → ` +
-				`${majorityPass ? pc.green('PASS') : pc.red('FAIL')} ` +
-				`(${(avgDiagnosticScore * 100).toFixed(0)}%)`,
-		);
-		log.dim(
-			`   Timing: gen ${genTime.toFixed(1)}s + judges ${judgeTime.toFixed(1)}s = ${totalTime.toFixed(1)}s`,
-		);
+		// Display aggregated result
+		if (numGenerations > 1) {
+			console.log(
+				`\n📊 Generation Correctness: ${passingGenerations}/${numGenerations} → ` +
+					`${generationCorrectness >= 0.5 ? pc.green(generationCorrectness.toFixed(2)) : pc.red(generationCorrectness.toFixed(2))}`,
+			);
+			console.log(`   Aggregated Diagnostic: ${(aggregatedDiagnosticScore * 100).toFixed(0)}%`);
+		} else {
+			// Single generation - show original format
+			const firstGen = generationResults[0];
+			console.log(
+				`\n📊 Result: ${firstGen.primaryPasses}/${numJudges} judges → ` +
+					`${firstGen.majorityPass ? pc.green('PASS') : pc.red('FAIL')} ` +
+					`(${(firstGen.avgDiagnosticScore * 100).toFixed(0)}%)`,
+			);
+		}
+		log.dim(`   Timing: ${totalTime.toFixed(1)}s total`);
 
-		// Show violations if any
-		const allViolations = judgeResults.flatMap((r, i) =>
+		// Per-generation breakdown (verbose or multi-gen)
+		if (verbose && numGenerations > 1) {
+			console.log(pc.dim('\nPer-generation breakdown:'));
+			generationResults.forEach((g, i) => {
+				console.log(
+					pc.dim(
+						`  Gen ${i + 1}: ${g.majorityPass ? 'PASS' : 'FAIL'} ` +
+							`(${g.primaryPasses}/${numJudges} judges, ${(g.avgDiagnosticScore * 100).toFixed(0)}%)`,
+					),
+				);
+			});
+		}
+
+		// Show violations if any (from first generation for simplicity)
+		const allViolations = generationResults[0].judgeResults.flatMap((r, i) =>
 			r.violations.map((v) => ({ judge: i + 1, rule: v.rule, justification: v.justification })),
 		);
 		if (allViolations.length > 0) {
-			console.log(pc.yellow('\nViolations:'));
+			console.log(pc.yellow('\nViolations (Gen 1):'));
 			for (const v of allViolations) {
 				console.log(pc.dim(`  [Judge ${v.judge}] ${v.rule}: ${v.justification}`));
 			}
 		}
 
 		// Show workflow summary
-		if (verbose && workflow.nodes) {
-			console.log(pc.dim('\nWorkflow nodes:'));
-			for (const node of workflow.nodes) {
+		if (verbose && generationResults[0].workflow.nodes) {
+			console.log(pc.dim('\nWorkflow nodes (Gen 1):'));
+			for (const node of generationResults[0].workflow.nodes) {
 				console.log(pc.dim(`  - ${node.name} (${node.type})`));
 			}
 		}

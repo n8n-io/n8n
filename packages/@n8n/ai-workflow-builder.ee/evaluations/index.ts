@@ -50,6 +50,14 @@ async function main(): Promise<void> {
 	const numJudgesParsed = numJudgesArg ? parseInt(numJudgesArg, 10) : 3;
 	const numJudges = Number.isNaN(numJudgesParsed) ? 3 : numJudgesParsed;
 
+	// Parse --generations argument for multi-generation pairwise evaluation (default: 1, max: 10)
+	const numGenerationsArg = getFlagValue('--generations');
+	const numGenerationsParsed = numGenerationsArg ? parseInt(numGenerationsArg, 10) : 1;
+	const numGenerations =
+		Number.isNaN(numGenerationsParsed) || numGenerationsParsed < 1
+			? 1
+			: Math.min(numGenerationsParsed, 10);
+
 	// Parse --verbose flag for detailed logging
 	const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
 
@@ -68,6 +76,7 @@ async function main(): Promise<void> {
 				prompt,
 				criteria: { dos: dos ?? '', donts: donts ?? '' },
 				numJudges,
+				numGenerations,
 				verbose,
 			});
 		} else {
@@ -76,6 +85,7 @@ async function main(): Promise<void> {
 				repetitions,
 				notionId,
 				numJudges,
+				numGenerations,
 				verbose,
 				experimentName,
 			});
