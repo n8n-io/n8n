@@ -5,9 +5,8 @@ import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
-import { averageWorkerLoadFromLoads, memAsGb } from '../orchestration.utils';
+import { averageWorkerLoadFromLoads } from '../orchestration.utils';
 import { useI18n } from '@n8n/i18n';
-import { worker } from '@/features/shared/editors/plugins/codemirror/typescript/worker/typescript.worker';
 
 const props = defineProps<{
 	workerId: string;

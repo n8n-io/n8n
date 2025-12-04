@@ -71,12 +71,12 @@ onBeforeUnmount(() => {
 			>
 				Name: {{ worker.senderId }} ({{ worker.hostname }}) <br />
 				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free memory:
-				{{ memAsGb(worker.process.memory.available) }}Gb /
+				{{ memAsGb(worker.process.memory.available) }}GB /
 				{{
 					memAsGb(
 						worker.isInContainer ? worker.process.memory.constraint : worker.host.memory.total,
 					)
-				}}Gb
+				}}GB
 				{{ stale ? ' (stale)' : '' }}
 			</N8nHeading>
 		</template>

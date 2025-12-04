@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { WorkerStatus } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.vue';
-import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
 import { memAsGb, memAsMb } from '@/features/settings/orchestration.ee/orchestration.utils';
 
 const props = defineProps<{
@@ -25,11 +23,11 @@ const i18n = useI18n();
 					<tbody>
 						<tr>
 							<th>Total (os.totalmem)</th>
-							<td>{{ memAsGb(worker.host.memory.total) }}Gb</td>
+							<td>{{ memAsGb(worker.host.memory.total) }}GB</td>
 						</tr>
 						<tr>
 							<th>Free (os.freemem)</th>
-							<td>{{ memAsGb(worker.host.memory.free) }}Gb</td>
+							<td>{{ memAsGb(worker.host.memory.free) }}GB</td>
 						</tr>
 					</tbody>
 				</table>
@@ -39,23 +37,23 @@ const i18n = useI18n();
 					<tbody>
 						<tr v-if="worker.isInContainer">
 							<th>Constraint: (process.constrainedMemory)</th>
-							<td>{{ memAsMb(worker.process.memory.constraint) }}Mb</td>
+							<td>{{ memAsMb(worker.process.memory.constraint) }}MB</td>
 						</tr>
 						<tr>
 							<th>Available: (process.availableMemory)</th>
-							<td>{{ memAsMb(worker.process.memory.available) }}Mb</td>
+							<td>{{ memAsMb(worker.process.memory.available) }}MB</td>
 						</tr>
 						<tr>
 							<th>RSS: (process.memoryUsage().rss)</th>
-							<td>{{ memAsMb(worker.process.memory.rss) }}Mb</td>
+							<td>{{ memAsMb(worker.process.memory.rss) }}MB</td>
 						</tr>
 						<tr>
 							<th>Heap total: (process.memoryUsage().heapTotal)</th>
-							<td>{{ memAsMb(worker.process.memory.heapTotal) }}Mb</td>
+							<td>{{ memAsMb(worker.process.memory.heapTotal) }}MB</td>
 						</tr>
 						<tr>
 							<th>Heap used: (process.memoryUsage().heapUsed)</th>
-							<td>{{ memAsMb(worker.process.memory.heapUsed) }}Mb</td>
+							<td>{{ memAsMb(worker.process.memory.heapUsed) }}MB</td>
 						</tr>
 					</tbody>
 				</table>
