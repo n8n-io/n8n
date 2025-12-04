@@ -251,7 +251,7 @@ const parameterOptions = computed(() => {
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
 	// temporary until native Python runner is GA
-	if (props.parameter.name === 'language') {
+	if (props.parameter.name === 'language' && node.value?.type === 'n8n-nodes-base.code') {
 		if (settingsStore.isNativePythonRunnerEnabled) {
 			return safeOptions.filter((o) => o.value !== 'python');
 		} else {

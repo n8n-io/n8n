@@ -10,7 +10,7 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '../users.types';
@@ -42,8 +42,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useMessage } from '@/app/composables/useMessage';
+
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
+const message = useMessage();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -289,26 +292,50 @@ const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 };
 
 async function onRoleChange(user: User, newRoleName: Role) {
+	if (newRoleName === user.role) return;
+
+	const name =
+		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
+	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
+
+	if (newRoleName === ROLE.ChatUser) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
+				interpolate: {
+					role,
+				},
+			}),
+			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
+				interpolate: {
+					user: name,
+				},
+			}),
+			{
+				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
+				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
+			},
+		);
+
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
 	try {
 		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
-
-		const role = userRoles.value.find(({ value }) => value === newRoleName)?.label || newRoleName;
 
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.users.userRoleUpdated'),
 			message: i18n.baseText('settings.users.userRoleUpdated.message', {
 				interpolate: {
-					user:
-						user.firstName && user.lastName
-							? `${user.firstName} ${user.lastName}`
-							: (user.email ?? ''),
+					user: name,
 					role,
 				},
 			}),
 		});
 	} catch (e) {
-		showError(e, i18n.baseText('settings.users.userReinviteError'));
+		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
 	}
 }
 

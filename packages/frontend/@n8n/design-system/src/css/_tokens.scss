@@ -68,7 +68,7 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--warning--shade-1: var(--color-warning-shade-1, var(--color--gold-500));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning: var(--color-warning, var(--color--gold-400));
+	--color--warning: var(--color-warning, var(--color--gold-600));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--warning--tint-1: var(--color-warning-tint-1, var(--color--gold-200));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -167,20 +167,13 @@
 	--lm-chat--user--color: var(--color--text--tint-3);
 
 	// Canvas
-	--canvas--color--background: var(--color--neutral-50);
-	--canvas--color--background--h: 220;
-	--canvas--color--background--s: 47%;
-	--canvas--color--background--l: 99%;
+	--canvas--color--background: var(--color--neutral-125);
 	--canvas--dot--color: var(--color--neutral-500);
 	--canvas--read-only-line--color: var(--color--neutral-100);
 	--canvas--color--selected: var(--color--neutral-150);
 	--canvas--color--selected-transparent: hsla(220, 47%, 30%, 0.1);
-	--canvas--label--color--background: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	--canvas--label--color: var(--color--neutral-600);
+	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
 	--node--color--background: var(--color--background--light-3);
@@ -209,7 +202,7 @@
 	--sticky--border-color--variant-5: var(--color--blue-200);
 	--sticky--color--background--variant-6: var(--color--purple-200);
 	--sticky--border-color--variant-6: var(--color--purple-300);
-	--sticky--color--background--variant-7: var(--color--neutral-50);
+	--sticky--color--background--variant-7: var(--color--neutral-100);
 	--sticky--border-color--variant-7: var(--color--neutral-200);
 
 	// AI Assistant
@@ -256,7 +249,7 @@
 
 	// NodeIcon
 	--node--icon--color--neutral: var(--color--neutral-400);
-	--node--icon--color--black: var(--color--neutral-900);
+	--node--icon--color--black: var(--color--neutral-800);
 	--node--icon--color--blue: #3a42e9;
 	--node--icon--color--light-blue: #5fabf7;
 	--node--icon--color--dark-blue: #353f6e;
@@ -464,7 +457,7 @@
 	// Dialogs and overlays
 	--dialog--color--background: var(--color--neutral-white);
 	--dialog--overlay--color--background: var(--color--white-alpha-800);
-	--dialog--overlay--color--background--dark: var(--color--slate-alpha-700);
+	--dialog--overlay--color--background--dark: var(--color--black-alpha-600);
 	--block-ui--overlay--color: var(--color--neutral-950);
 
 	// Avatar
@@ -713,5 +706,6 @@
 }
 
 :root {
+	color-scheme: light dark;
 	@include theme;
 }

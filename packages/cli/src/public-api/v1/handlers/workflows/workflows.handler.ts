@@ -143,6 +143,7 @@ export = {
 					req.user,
 					workflowId,
 					versionId,
+					{ includePublishHistory: false },
 				);
 
 				Container.get(EventService).emit('user-retrieved-workflow-version', {
@@ -308,6 +309,7 @@ export = {
 					{
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
+						publishIfActive: true,
 					},
 				);
 
