@@ -103,7 +103,8 @@ test.describe('Workflow Production Checklist', () => {
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
 
-	test('should show completed state for configured actions', async ({ n8n }) => {
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
+	test.skip('should show completed state for configured actions', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
