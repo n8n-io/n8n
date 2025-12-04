@@ -255,7 +255,7 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should create workflow as active when active: true is provided in POST body', async () => {
+	test('should create workflow as inactive even when active: true is provided in POST body', async () => {
 		const payload = {
 			name: 'active workflow',
 			nodes: [
@@ -284,21 +284,12 @@ describe('POST /workflows', () => {
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
-		expect(activeVersionId).toBe(versionId); // Should be set to current version
-		expect(active).toBe(true);
+		expect(activeVersionId).toBeNull();
+		expect(active).toBe(false);
 
 		// Verify in database
 		const workflow = await workflowRepository.findOneBy({ id });
-		expect(workflow?.activeVersionId).toBe(versionId);
-
-		// Verify history was created
-		const historyVersion = await workflowHistoryRepository.findOne({
-			where: {
-				workflowId: id,
-				versionId,
-			},
-		});
-		expect(historyVersion).not.toBeNull();
+		expect(workflow?.activeVersionId).toBeNull();
 	});
 
 	test('create workflow in personal project by default', async () => {

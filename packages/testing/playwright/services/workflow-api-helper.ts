@@ -188,6 +188,7 @@ export class WorkflowApiHelper {
 		return result;
 	}
 
+	// TODO: workflowId is being ignored
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);

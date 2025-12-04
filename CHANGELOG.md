@@ -1,3 +1,13 @@
+# [2.0.0-rc.0](https://github.com/n8n-io/n8n/compare/n8n@1.122.0...n8n@2.0.0-rc.0) (2025-12-02)
+
+
+### Bug Fixes
+
+
+### Features
+
+
+
 # [1.122.0](https://github.com/n8n-io/n8n/compare/n8n@1.121.0...n8n@1.122.0) (2025-11-24)
 
 
