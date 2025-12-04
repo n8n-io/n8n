@@ -95,6 +95,7 @@ import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimen
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
@@ -165,6 +166,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
+const builderStore = useBuilderStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -801,6 +803,18 @@ function selectInput() {
 	}
 }
 
+function trackBuilderPlaceholders() {
+	if (
+		node.value &&
+		builderStore.isPlaceholderValue(props.modelValue) &&
+		builderStore.isAIBuilderEnabled
+	) {
+		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
+			node_type: node.value.type,
+		});
+	}
+}
+
 async function setFocus() {
 	if (['json'].includes(props.parameter.type) && getTypeOption('alwaysOpenEditWindow')) {
 		displayEditDialog();
@@ -830,6 +844,7 @@ async function setFocus() {
 	}
 
 	emit('focus');
+	trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {

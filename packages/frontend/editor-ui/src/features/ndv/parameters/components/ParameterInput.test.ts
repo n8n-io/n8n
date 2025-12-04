@@ -61,6 +61,9 @@ beforeEach(() => {
 	mockNdvState = getNdvStateMock();
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
+	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
+	mockBuilderState.isPlaceholderValue.mockClear();
+	mockBuilderState.isAIBuilderEnabled = true;
 });
 
 vi.mock('@/features/ndv/shared/ndv.store', () => {
@@ -92,6 +95,18 @@ vi.mock('vue-router', () => {
 		}),
 		useRoute: () => ({}),
 		RouterLink: vi.fn(),
+	};
+});
+
+const mockBuilderState = {
+	trackWorkflowBuilderJourney: vi.fn(),
+	isPlaceholderValue: vi.fn(),
+	isAIBuilderEnabled: true,
+};
+
+vi.mock('@/features/ai/assistant/builder.store', () => {
+	return {
+		useBuilderStore: vi.fn(() => mockBuilderState),
 	};
 });
 
@@ -756,6 +771,96 @@ describe('ParameterInput.vue', () => {
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('placeholder tracking', () => {
+		it('tracks field_focus_placeholder_in_ndv when focusing placeholder value', async () => {
+			mockBuilderState.isPlaceholderValue.mockReturnValue(true);
+			mockNdvState.activeNode = {
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: {},
+				position: [0, 0],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+			};
+
+			const rendered = renderComponent({
+				props: {
+					path: 'url',
+					parameter: createTestNodeProperties({ name: 'url', type: 'string' }),
+					modelValue: '<__PLACEHOLDER_VALUE__API URL__>',
+				},
+			});
+
+			await nextTick();
+			const input = rendered.container.querySelector('input');
+			if (input) {
+				await fireEvent.focus(input);
+			}
+
+			expect(mockBuilderState.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+				'field_focus_placeholder_in_ndv',
+				{ node_type: 'n8n-nodes-base.httpRequest' },
+			);
+		});
+
+		it('does not track when value is not a placeholder', async () => {
+			mockBuilderState.isPlaceholderValue.mockReturnValue(false);
+			mockNdvState.activeNode = {
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: {},
+				position: [0, 0],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+			};
+
+			const rendered = renderComponent({
+				props: {
+					path: 'url',
+					parameter: createTestNodeProperties({ name: 'url', type: 'string' }),
+					modelValue: 'https://api.example.com',
+				},
+			});
+
+			await nextTick();
+			const input = rendered.container.querySelector('input');
+			if (input) {
+				await fireEvent.focus(input);
+			}
+
+			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
+		});
+
+		it('does not track when AI builder is disabled', async () => {
+			mockBuilderState.isPlaceholderValue.mockReturnValue(true);
+			mockBuilderState.isAIBuilderEnabled = false;
+			mockNdvState.activeNode = {
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: {},
+				position: [0, 0],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+			};
+
+			const rendered = renderComponent({
+				props: {
+					path: 'url',
+					parameter: createTestNodeProperties({ name: 'url', type: 'string' }),
+					modelValue: '<__PLACEHOLDER_VALUE__API URL__>',
+				},
+			});
+
+			await nextTick();
+			const input = rendered.container.querySelector('input');
+			if (input) {
+				await fireEvent.focus(input);
+			}
+
+			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
 		});
 	});
 });

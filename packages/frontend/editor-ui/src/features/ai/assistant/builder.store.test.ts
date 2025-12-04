@@ -1708,4 +1708,93 @@ describe('AI Builder store', () => {
 			expect(builderStore.creditsRemaining).toBe(80);
 		});
 	});
+
+	describe('trackWorkflowBuilderJourney', () => {
+		it('tracks event with workflow_id, session_id, and event_type', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
+
+			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+			});
+		});
+
+		it('includes event_properties when provided', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+				node_type: 'n8n-nodes-base.httpRequest',
+				type: 'parameters',
+			});
+
+			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+				event_properties: {
+					node_type: 'n8n-nodes-base.httpRequest',
+					type: 'parameters',
+				},
+			});
+		});
+
+		it('omits event_properties when empty object provided', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {});
+
+			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'field_focus_placeholder_in_ndv',
+			});
+		});
+
+		it('omits event_properties when not provided', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('no_placeholder_values_left');
+
+			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'no_placeholder_values_left',
+			});
+		});
+	});
+
+	describe('isPlaceholderValue', () => {
+		it('returns true for placeholder values', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE__API endpoint URL__>')).toBe(
+				true,
+			);
+			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE__label__>')).toBe(true);
+			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE____>')).toBe(true);
+		});
+
+		it('returns false for non-placeholder strings', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.isPlaceholderValue('regular string')).toBe(false);
+			expect(builderStore.isPlaceholderValue('')).toBe(false);
+			expect(builderStore.isPlaceholderValue('https://api.example.com')).toBe(false);
+			expect(builderStore.isPlaceholderValue('={{ $json.field }}')).toBe(false);
+		});
+
+		it('returns false for non-string values', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.isPlaceholderValue(123)).toBe(false);
+			expect(builderStore.isPlaceholderValue(null)).toBe(false);
+			expect(builderStore.isPlaceholderValue(undefined)).toBe(false);
+			expect(builderStore.isPlaceholderValue({ key: 'value' })).toBe(false);
+			expect(builderStore.isPlaceholderValue(['array'])).toBe(false);
+			expect(builderStore.isPlaceholderValue(true)).toBe(false);
+		});
+	});
 });

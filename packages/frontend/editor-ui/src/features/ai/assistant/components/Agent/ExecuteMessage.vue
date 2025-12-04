@@ -16,6 +16,7 @@ import { useToast } from '@/app/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { WorkflowValidationIssue } from '@/Interface';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
@@ -141,6 +142,13 @@ function scrollIntoView() {
 	});
 }
 
+function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
+	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+		node_type: workflowsStore.getNodeByName(issue.node)?.type,
+		type: issue.type,
+	});
+}
+
 onMounted(scrollIntoView);
 
 onBeforeUnmount(() => {
@@ -173,6 +181,7 @@ onBeforeUnmount(() => {
 					:issue="issue"
 					:get-node-type="getNodeTypeByName"
 					:format-issue-message="formatIssueMessage"
+					@click="() => trackBuilderPlaceholders(issue)"
 				/>
 			</TransitionGroup>
 		</template>

@@ -23,7 +23,7 @@ import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { type INodeExecutionData, jsonParse } from 'n8n-workflow';
+import { type INodeExecutionData, type ITelemetryTrackProperties, jsonParse } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -37,6 +37,26 @@ const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
 const PLACEHOLDER_SUFFIX = '__>';
+
+/**
+ * Event types for the workflow_builder_journey telemetry event
+ */
+export type WorkflowBuilderJourneyEventType =
+	| 'user_clicked_todo'
+	| 'field_focus_placeholder_in_ndv'
+	| 'no_placeholder_values_left';
+
+interface WorkflowBuilderJourneyEventProperties {
+	node_type?: string;
+	type?: string;
+}
+
+interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
+	workflow_id: string;
+	session_id: string;
+	event_type: WorkflowBuilderJourneyEventType;
+	event_properties?: WorkflowBuilderJourneyEventProperties;
+}
 
 interface PlaceholderDetail {
 	path: string[];
@@ -58,6 +78,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const hasMessages = ref<boolean>(false);
+
+	// Track the first time todos are cleared (no_placeholder_values_left)
+	const hadTodosTracked = ref(false);
 
 	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
 
@@ -762,6 +785,51 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		},
 	);
 
+	/**
+	 * Tracks workflow builder journey events for telemetry
+	 * @param eventType - The type of event being tracked
+	 * @param eventProperties - Optional event-specific attributes
+	 */
+	function trackWorkflowBuilderJourney(
+		eventType: WorkflowBuilderJourneyEventType,
+		eventProperties?: WorkflowBuilderJourneyEventProperties,
+	) {
+		const payload: WorkflowBuilderJourneyPayload = {
+			workflow_id: workflowsStore.workflowId,
+			session_id: trackingSessionId.value,
+			event_type: eventType,
+		};
+
+		if (eventProperties && Object.keys(eventProperties).length > 0) {
+			payload.event_properties = eventProperties;
+		}
+
+		telemetry.track('workflow_builder_journey', payload);
+	}
+
+	watch(
+		workflowTodos,
+		(newTodos, oldTodos) => {
+			// Only track if we had todos before and now we don't
+			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0 && hadTodosTracked.value) {
+				trackWorkflowBuilderJourney('no_placeholder_values_left');
+			}
+			// Mark that we've seen todos (for tracking purposes)
+			if (newTodos.length > 0) {
+				hadTodosTracked.value = true;
+			}
+		},
+		{ deep: true },
+	);
+
+	/**
+	 * Checks if a value is a placeholder value
+	 */
+	function isPlaceholderValue(value: unknown): boolean {
+		if (typeof value !== 'string') return false;
+		return value.startsWith(PLACEHOLDER_PREFIX);
+	}
+
 	// Public API
 	return {
 		// State
@@ -794,5 +862,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		updateBuilderCredits,
 		getRunningTools,
 		fetchSessionsMetadata,
+		trackWorkflowBuilderJourney,
+		isPlaceholderValue,
 	};
 });
