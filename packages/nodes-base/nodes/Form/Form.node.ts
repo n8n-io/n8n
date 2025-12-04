@@ -18,7 +18,6 @@ import {
 } from 'n8n-workflow';
 
 import { cssVariables } from './cssVariables';
-import { FEATURES } from './interfaces';
 import { renderFormCompletion } from './utils/formCompletionUtils';
 import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
 import { prepareFormReturnItem, resolveRawData } from './utils/utils';
@@ -381,7 +380,7 @@ export class Form extends Node {
 
 		if (
 			useWorkflowTimezone === undefined &&
-			context.isNodeFeatureEnabled(FEATURES.defaultUseWorkflowTimezone)
+			context.isNodeFeatureEnabled('defaultUseWorkflowTimezone')
 		) {
 			useWorkflowTimezone = true;
 		}

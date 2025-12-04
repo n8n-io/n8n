@@ -20,7 +20,7 @@ import {
 	webhookPath,
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
-import { FEATURES, FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
@@ -110,20 +110,20 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		{ ...webhookPath, displayOptions: { show: { '@feature': [FEATURES.useWebhookPath] } } },
+		{ ...webhookPath, displayOptions: { show: { '@feature': ['useWebhookPath'] } } },
 		formTitle,
 		formDescription,
 		formFields,
 		{
 			...formRespondMode,
-			displayOptions: { show: { '@feature': [FEATURES.useWebhookPath] } },
+			displayOptions: { show: { '@feature': ['useWebhookPath'] } },
 		},
 		{
 			...formRespondMode,
 			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
 				(option) => option.value !== 'responseNode',
 			),
-			displayOptions: { show: { '@feature': [FEATURES.useResponseNodeOption] } },
+			displayOptions: { show: { '@feature': ['useResponseNodeOption'] } },
 		},
 		{
 			displayName:
@@ -160,7 +160,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...webhookPath,
 					required: false,
-					displayOptions: { show: { '@feature': [FEATURES.useWebhookPathInOptions] } },
+					displayOptions: { show: { '@feature': ['useWebhookPathInOptions'] } },
 				},
 				{
 					...respondWithOptions,
@@ -183,7 +183,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': [FEATURES.useWorkflowTimezone],
+							'@feature': ['useWorkflowTimezone'],
 						},
 					},
 				},
@@ -193,7 +193,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': [FEATURES.defaultUseWorkflowTimezone],
+							'@feature': ['defaultUseWorkflowTimezone'],
 						},
 					},
 				},
@@ -207,7 +207,7 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					displayOptions: {
 						show: {
-							'@feature': [FEATURES.defaultUseWorkflowTimezone],
+							'@feature': ['defaultUseWorkflowTimezone'],
 						},
 					},
 					default: cssVariables.trim(),

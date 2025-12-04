@@ -1,18 +1,5 @@
 import type { GenericValue } from 'n8n-workflow';
 
-export const FEATURES = {
-	requireAuth: 'requireAuth',
-	defaultUseWorkflowTimezone: 'defaultUseWorkflowTimezone',
-	allowRespondToWebhook: 'allowRespondToWebhook',
-	useFieldName: 'useFieldName',
-	useFieldLabel: 'useFieldLabel',
-	useWebhookPath: 'useWebhookPath',
-	useWebhookPathInOptions: 'useWebhookPathInOptions',
-	useResponseNodeOption: 'useResponseNodeOption',
-	useWorkflowTimezone: 'useWorkflowTimezone',
-	useLegacyMultiselect: 'useLegacyMultiselect',
-} as const;
-
 export type FormField = {
 	id: string;
 	errorId: string;

@@ -23,7 +23,7 @@ import sanitize from 'sanitize-html';
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import { validateWebhookAuthentication } from '../../Webhook/utils';
-import { FORM_TRIGGER_AUTHENTICATION_PROPERTY, FEATURES } from '../interfaces';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
 
 export function sanitizeHtml(text: string) {
@@ -142,7 +142,7 @@ function getFieldIdentifier(
 	field: FormFieldsParameter[number],
 	context: IWebhookFunctions,
 ): string {
-	const useFieldName = context.isNodeFeatureEnabled(FEATURES.useFieldName);
+	const useFieldName = context.isNodeFeatureEnabled('useFieldName');
 	if (useFieldName && field.fieldName) {
 		return field.fieldName;
 	}
@@ -276,7 +276,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	const allowRespondToWebhook = context.isNodeFeatureEnabled(FEATURES.allowRespondToWebhook);
+	const allowRespondToWebhook = context.isNodeFeatureEnabled('allowRespondToWebhook');
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
 		throw new NodeOperationError(
@@ -548,7 +548,7 @@ export async function formWebhook(
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (context.isNodeFeatureEnabled(FEATURES.requireAuth)) {
+		if (context.isNodeFeatureEnabled('requireAuth')) {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -633,7 +633,7 @@ export async function formWebhook(
 
 	if (
 		useWorkflowTimezone === undefined &&
-		context.isNodeFeatureEnabled(FEATURES.defaultUseWorkflowTimezone)
+		context.isNodeFeatureEnabled('defaultUseWorkflowTimezone')
 	) {
 		useWorkflowTimezone = true;
 	}
