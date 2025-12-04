@@ -82,6 +82,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Track the first time todos are cleared (no_placeholder_values_left)
 	const hadTodosTracked = ref(false);
 
+	// Track whether AI Builder made edits since last save (resets after each save)
+	const aiBuilderMadeEdits = ref(false);
+
 	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
 
 	// Store dependencies
@@ -722,6 +725,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflowData.pinData = restoredPinData;
 		}
 
+		// Mark that AI Builder made edits (will be reset after save)
+		aiBuilderMadeEdits.value = true;
+
 		return {
 			success: true,
 			workflowData,
@@ -732,6 +738,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function getWorkflowSnapshot() {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+	}
+
+	/**
+	 * Returns true if AI Builder made edits since the last save, then resets the flag.
+	 * This should be called when saving the workflow to include in telemetry.
+	 */
+	function consumeAiBuilderMadeEdits(): boolean {
+		const value = aiBuilderMadeEdits.value;
+		aiBuilderMadeEdits.value = false;
+		return value;
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
@@ -864,5 +880,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchSessionsMetadata,
 		trackWorkflowBuilderJourney,
 		isPlaceholderValue,
+		consumeAiBuilderMadeEdits,
 	};
 });
