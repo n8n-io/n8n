@@ -74,6 +74,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 					continue;
 				}
 
+				let hasValidExecuteWorkflowTrigger = false;
 				if (executeWorkflowTriggerNode) {
 					const inputSource = executeWorkflowTriggerNode.parameters?.inputSource;
 
@@ -94,20 +95,29 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 						);
 					}
 
-					if (!shouldActivateByInputSource && !hasLegacyParameters) {
+					hasValidExecuteWorkflowTrigger = shouldActivateByInputSource || hasLegacyParameters;
+
+					if (!hasValidExecuteWorkflowTrigger && !errorTriggerNode) {
 						continue;
 					}
 				}
 
-				// Disable other trigger nodes
+				// Disable other trigger nodes (keep valid executeWorkflowTrigger and errorTrigger enabled)
 				let nodesModified = false;
 				nodes.forEach((node: Node) => {
-					// Check if node is a trigger (excluding executeWorkflowTrigger, and errorTrigger only when no valid executeWorkflowTrigger exists)
-					if (
-						node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
-						(node.type !== ERROR_TRIGGER_NODE_TYPE || executeWorkflowTriggerNode) &&
-						this.isTriggerNode(node.type)
-					) {
+					if (this.isTriggerNode(node.type)) {
+						// Keep valid Execute Workflow Trigger active
+						if (
+							node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
+							hasValidExecuteWorkflowTrigger
+						) {
+							return;
+						}
+						// Keep Error Trigger active
+						if (node.type === ERROR_TRIGGER_NODE_TYPE) {
+							return;
+						}
+						// Disable all other triggers (including invalid Execute Workflow Trigger)
 						if (!node.disabled) {
 							node.disabled = true;
 							nodesModified = true;
