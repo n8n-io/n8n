@@ -8,6 +8,7 @@ import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
+	type INode,
 	type INodeTypeDescription,
 	type IRunExecutionData,
 	type IWorkflowBase,
@@ -105,7 +106,7 @@ function getWorkflowContext(state: typeof WorkflowState.State) {
 	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 	const executionData = state.workflowContext?.executionData ?? {};
 	const executionSchema = state.workflowContext?.executionSchema ?? [];
-	const workflowContext = [
+	const workflowContextParts = [
 		'',
 		'<current_workflow_json>',
 		JSON.stringify(trimmedWorkflow),
@@ -122,9 +123,17 @@ function getWorkflowContext(state: typeof WorkflowState.State) {
 		'<current_execution_nodes_schemas>',
 		JSON.stringify(executionSchema),
 		'</current_execution_nodes_schemas>',
-	].join('\n');
+	];
 
-	return workflowContext;
+	if (state.context?.activeNodeInfo?.node?.id) {
+		workflowContextParts.push(
+			'<current_node_json>',
+			JSON.stringify(state.context?.activeNodeInfo?.node),
+			'</current_node_json>',
+		);
+	}
+
+	return workflowContextParts.join('\n');
 }
 
 export interface WorkflowBuilderAgentConfig {
@@ -153,7 +162,11 @@ export interface ExpressionValue {
 
 export interface ChatPayload {
 	message: string;
-	context: unknown;
+	context?: {
+		activeNodeInfo?: {
+			node?: INode;
+		};
+	};
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: Partial<IWorkflowBase>;
@@ -244,6 +257,7 @@ export class WorkflowBuilderAgent {
 				resolvedExpressions: state.workflowContext?.expressionValues,
 				instanceUrl: this.instanceUrl,
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
+				context: state.context,
 			});
 
 			const workflowContext = getWorkflowContext(state);
@@ -298,6 +312,7 @@ export class WorkflowBuilderAgent {
 			const stateUpdate: Partial<typeof WorkflowState.State> = {
 				workflowOperations: null,
 				workflowContext: {},
+				context: {},
 				messages: messages.map((m) => new RemoveMessage({ id: m.id! })) ?? [],
 				workflowJSON: {
 					nodes: [],

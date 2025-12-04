@@ -36,6 +36,7 @@ interface Props {
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
+	currentContext?: string;
 }
 
 const emit = defineEmits<{
@@ -404,6 +405,9 @@ defineExpose({
 						@suggestion-click="onSuggestionClick"
 					>
 						<template #prompt-input>
+							<div :v-if="currentContext" :class="$style.info">
+								Context: <strong>{{ currentContext }}</strong>
+							</div>
 							<N8nPromptInput
 								ref="promptInputRef"
 								v-model="textInputValue"
@@ -450,6 +454,9 @@ defineExpose({
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>
+			<div :v-if="currentContext" :class="[$style.info, $style.chat]">
+				Context: <strong>{{ currentContext }}</strong>
+			</div>
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
 				<slot name="inputPlaceholder" />
 			</div>
@@ -589,6 +596,10 @@ defineExpose({
 
 	button {
 		display: inline-flex;
+	}
+
+	&.chat {
+		margin-bottom: var(--spacing--sm);
 	}
 }
 

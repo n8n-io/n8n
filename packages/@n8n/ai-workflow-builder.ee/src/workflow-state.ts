@@ -80,6 +80,13 @@ export const WorkflowState = Annotation.Root({
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,
 	}),
+	// Input: context (currently selected node)
+	context: Annotation<ChatPayload['context'] | undefined>({
+		reducer: (x, y) => {
+			console.log('what?', x, y);
+			return y ?? x;
+		},
+	}),
 	// Results of last workflow validation
 	workflowValidation: Annotation<ProgrammaticEvaluationResult | null>({
 		reducer: (x, y) => (y === undefined ? x : y),

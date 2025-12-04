@@ -16,6 +16,7 @@ import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+import { useAssistantContext } from '../../assistant.context';
 
 const emit = defineEmits<{
 	close: [];
@@ -30,6 +31,7 @@ const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
+const currentContext = useAssistantContext();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
@@ -335,6 +337,7 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:current-context="currentContext"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"

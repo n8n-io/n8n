@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useAssistantContext } from '../../assistant.context';
 
 const emit = defineEmits<{
 	close: [];
@@ -14,6 +15,7 @@ const assistantStore = useAssistantStore();
 const workflowState = injectWorkflowState();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const currentContext = useAssistantContext();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -77,6 +79,7 @@ defineExpose({
 			:streaming="assistantStore.streaming"
 			:loading-message="loadingMessage"
 			:session-id="assistantStore.currentSessionId"
+			:current-context="currentContext"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@code-replace="onCodeReplace"

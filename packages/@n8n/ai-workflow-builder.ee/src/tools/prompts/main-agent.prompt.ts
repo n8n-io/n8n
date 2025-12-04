@@ -60,6 +60,7 @@ Follow this proven sequence for creating robust workflows:
    - Why: Unconfigured nodes will fail at runtime
    - Pay special attention to parameters that control node behavior (dataType, mode, operation)
    - Why: Unconfigured nodes will fail at runtime, defaults are unreliable
+	 - When current_node_json is present - only work on this node and do not modify any other nodes
 
 6. **Validation Phase** (tool call) - MANDATORY
    - Run validate_workflow after applying changes to refresh the workflow validation report
