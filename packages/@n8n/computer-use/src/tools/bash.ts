@@ -57,14 +57,16 @@ class BashSession {
 
 	async start(): Promise<void> {
 		return new Promise((resolve, reject) => {
-			// Start bash with process group for proper cleanup
-			this.process = spawn('/bin/bash', ['-i'], {
+			// Start bash in non-interactive mode to avoid signal handling issues
+			// Use --norc and --noprofile to avoid loading config files
+			this.process = spawn('/bin/bash', ['--norc', '--noprofile'], {
 				detached: false,
 				stdio: ['pipe', 'pipe', 'pipe'],
 				env: {
 					...process.env,
-					PS1: '', // Disable prompt
 					TERM: 'dumb', // Simple terminal
+					BASH_SILENCE_DEPRECATION_WARNING: '1', // Silence macOS bash warning
+					PS1: '', // Ensure no prompt even if bashrc is somehow loaded
 				},
 			});
 
@@ -86,13 +88,22 @@ class BashSession {
 				reject(new ToolError(`Bash process error: ${error.message}`));
 			});
 
-			// Give bash time to start
+			// Give bash time to start, then disable echo to prevent command echo-back
 			setTimeout(() => {
 				// Clear startup output
 				this.buffer = [];
 				this.errorBuffer = [];
-				resolve();
-			}, 500);
+				// Disable terminal echo to prevent commands from being echoed to stderr
+				if (this.process?.stdin) {
+					this.process.stdin.write('stty -echo 2>/dev/null || true\n');
+				}
+				setTimeout(() => {
+					// Clear the stty command output
+					this.buffer = [];
+					this.errorBuffer = [];
+					resolve();
+				}, 100);
+			}, 400);
 		});
 	}
 

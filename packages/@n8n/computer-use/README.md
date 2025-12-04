@@ -38,7 +38,7 @@ graph TB
         end
     end
 
-    LLM -->|MCP over HTTP :8080| Hono
+    LLM -->|MCP over HTTP :8765| Hono
     Hono --> MCP
     MCP --> Tools
 
@@ -93,7 +93,7 @@ sequenceDiagram
 ```bash
 cd packages/@n8n/computer-use
 docker build -t computer-use-api:latest .
-docker run -p 8080:8080 -p 5900:5900 -it computer-use-api:latest
+docker run -p 8765:8765 -p 5900:5900 -it computer-use-api:latest
 ```
 
 Or use Docker Compose:
@@ -127,6 +127,6 @@ vncviewer localhost:5900
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | 8080 | API server port |
+| `PORT` | 8765 | API server port |
 | `WIDTH` | 1280 | Screen width |
 | `HEIGHT` | 800 | Screen height |

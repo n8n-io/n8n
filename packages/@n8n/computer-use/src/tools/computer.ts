@@ -226,7 +226,8 @@ export class ComputerTool extends BaseTool {
 			throw new ToolError(`Failed to move mouse: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
-		return { output: `Moved mouse to (${x}, ${y})` };
+		await this.delay(this.screenshotDelay);
+		return this.captureScreenshot(`Moved mouse to (${x}, ${y})`);
 	}
 
 	private async click(

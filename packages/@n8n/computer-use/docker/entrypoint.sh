@@ -38,6 +38,6 @@ for i in {1..30}; do
 done
 
 # Start the API server in foreground
-echo "Starting API server on port 8080..."
+echo "Starting API server on port ${PORT:-8765}..."
 cd /home/computeruse/api
 exec node dist/server.js

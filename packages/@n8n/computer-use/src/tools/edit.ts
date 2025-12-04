@@ -3,8 +3,26 @@ import { EditAction, EditActionSchema, ToolResult } from '../types';
 import { promises as fs } from 'fs';
 import { stat, readdir } from 'fs/promises';
 import { join } from 'path';
+import { homedir } from 'os';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+/**
+ * Resolve a path to an absolute path.
+ * - Paths starting with ~ are relative to home directory
+ * - Paths starting with / are already absolute
+ * - Other paths are relative to home directory
+ */
+function resolvePath(path: string): string {
+	if (path.startsWith('/')) {
+		return path;
+	}
+	if (path.startsWith('~/')) {
+		return join(homedir(), path.slice(2));
+	}
+	// Treat relative paths as relative to home directory
+	return join(homedir(), path);
+}
 
 export class EditTool extends BaseTool {
 	name = 'str_replace_editor';
@@ -18,26 +36,24 @@ export class EditTool extends BaseTool {
 
 	private async handleAction(action: EditAction): Promise<ToolResult> {
 		try {
-			// Validate path is absolute
-			if (!action.path.startsWith('/')) {
-				throw new ToolError('Path must be absolute (start with /)');
-			}
+			// Resolve path (supports ~, relative, and absolute paths)
+			const resolvedPath = resolvePath(action.path);
 
 			switch (action.command) {
 				case 'view':
-					return await this.view(action.path, action.view_range);
+					return await this.view(resolvedPath, action.view_range);
 
 				case 'create':
-					return await this.create(action.path, action.file_text);
+					return await this.create(resolvedPath, action.file_text);
 
 				case 'str_replace':
-					return await this.strReplace(action.path, action.old_str, action.new_str);
+					return await this.strReplace(resolvedPath, action.old_str, action.new_str);
 
 				case 'insert':
-					return await this.insert(action.path, action.insert_line, action.new_str);
+					return await this.insert(resolvedPath, action.insert_line, action.new_str);
 
 				case 'undo_edit':
-					return await this.undoEdit(action.path);
+					return await this.undoEdit(resolvedPath);
 
 				default:
 					throw new ToolError(`Unknown command: ${(action as any).command}`);

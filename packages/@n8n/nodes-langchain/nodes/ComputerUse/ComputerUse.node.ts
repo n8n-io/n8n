@@ -1,3 +1,4 @@
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type {
@@ -9,9 +10,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { computerOperations, computerFields } from './ComputerDescription';
-import { bashOperations, bashFields } from './BashDescription';
-import { editorOperations, editorFields } from './EditorDescription';
+import { connectMcpClient, mapToNodeOperationError } from '../mcp/shared/utils';
+
+import { bashFields, bashOperations } from './BashDescription';
+import { computerFields, computerOperations } from './ComputerDescription';
+import { editorFields, editorOperations } from './EditorDescription';
 
 type ComputerOperation =
 	| 'screenshot'
@@ -43,31 +46,6 @@ const RESOURCE_TO_MCP_TOOL: Record<Resource, string> = {
 	bash: 'bash',
 	editor: 'str_replace_editor',
 };
-
-interface McpToolCallRequest {
-	jsonrpc: '2.0';
-	id: number;
-	method: 'tools/call';
-	params: {
-		name: string;
-		arguments: IDataObject;
-	};
-}
-
-interface McpToolCallResponse {
-	jsonrpc: '2.0';
-	id: number;
-	result?: {
-		content: Array<
-			{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
-		>;
-		isError?: boolean;
-	};
-	error?: {
-		code: number;
-		message: string;
-	};
-}
 
 function getComputerUseUrl(): string {
 	const globalConfig = Container.get(GlobalConfig);
@@ -284,93 +262,98 @@ export class ComputerUse implements INodeType {
 			);
 		}
 
+		// Ensure URL has /mcp suffix for MCP protocol
 		const mcpUrl = endpointUrl.endsWith('/mcp') ? endpointUrl : `${endpointUrl}/mcp`;
 
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const resource = this.getNodeParameter('resource', itemIndex) as Resource;
-			const operation = this.getNodeParameter('operation', itemIndex) as string;
+		const node = this.getNode();
 
-			const mcpToolName = RESOURCE_TO_MCP_TOOL[resource];
-			let args: IDataObject;
+		// Connect to the MCP server using the SDK
+		const client = await connectMcpClient({
+			serverTransport: 'httpStreamable',
+			endpointUrl: mcpUrl,
+			name: node.type,
+			version: node.typeVersion,
+		});
 
-			switch (resource) {
-				case 'computer':
-					args = buildComputerToolArgs(this, operation as ComputerOperation, itemIndex);
-					break;
-				case 'bash':
-					args = buildBashToolArgs(this, operation as BashOperation, itemIndex);
-					break;
-				case 'editor':
-					args = buildEditorToolArgs(this, operation as EditorOperation, itemIndex);
-					break;
-				default:
-					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, {
-						itemIndex,
-					});
-			}
+		if (!client.ok) {
+			throw mapToNodeOperationError(node, client.error);
+		}
 
-			// Make MCP JSON-RPC call
-			const request: McpToolCallRequest = {
-				jsonrpc: '2.0',
-				id: itemIndex + 1,
-				method: 'tools/call',
-				params: {
+		try {
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				const resource = this.getNodeParameter('resource', itemIndex) as Resource;
+				const operation = this.getNodeParameter('operation', itemIndex) as string;
+
+				const mcpToolName = RESOURCE_TO_MCP_TOOL[resource];
+				let args: IDataObject;
+
+				switch (resource) {
+					case 'computer':
+						args = buildComputerToolArgs(this, operation as ComputerOperation, itemIndex);
+						break;
+					case 'bash':
+						args = buildBashToolArgs(this, operation as BashOperation, itemIndex);
+						break;
+					case 'editor':
+						args = buildEditorToolArgs(this, operation as EditorOperation, itemIndex);
+						break;
+					default:
+						throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, {
+							itemIndex,
+						});
+				}
+
+				// Call the MCP tool using the SDK
+				const result = (await client.result.callTool({
 					name: mcpToolName,
 					arguments: args,
-				},
-			};
+				})) as CallToolResult;
 
-			const response = await this.helpers.httpRequest({
-				method: 'POST',
-				url: mcpUrl,
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: request,
-				json: true,
-			});
-
-			const mcpResponse = response as McpToolCallResponse;
-
-			if (mcpResponse.error) {
-				throw new NodeOperationError(this.getNode(), `MCP Error: ${mcpResponse.error.message}`, {
-					itemIndex,
-				});
-			}
-
-			// Process response content
-			const content = mcpResponse.result?.content ?? [];
-			const textContent: string[] = [];
-			let imageData: string | undefined;
-
-			for (const item of content) {
-				if (item.type === 'text') {
-					textContent.push(item.text);
-				} else if (item.type === 'image') {
-					imageData = item.data;
+				// Check for error in result
+				if (result.isError) {
+					const errorText = result.content
+						.filter((item): item is { type: 'text'; text: string } => item.type === 'text')
+						.map((item) => item.text)
+						.join('\n');
+					throw new NodeOperationError(this.getNode(), `MCP Error: ${errorText}`, {
+						itemIndex,
+					});
 				}
+
+				// Process response content
+				const textContent: string[] = [];
+				let imageData: string | undefined;
+
+				for (const contentItem of result.content) {
+					if (contentItem.type === 'text') {
+						textContent.push(contentItem.text);
+					} else if (contentItem.type === 'image') {
+						imageData = contentItem.data;
+					}
+				}
+
+				const outputItem: INodeExecutionData = {
+					json: {
+						output: textContent.join('\n'),
+					},
+					pairedItem: { item: itemIndex },
+				};
+
+				// If there's an image, add it as binary data
+				if (imageData) {
+					const binaryData = await this.helpers.prepareBinaryData(
+						Buffer.from(imageData, 'base64'),
+						'screenshot.png',
+						'image/png',
+					);
+					outputItem.binary = { screenshot: binaryData };
+				}
+
+				returnData.push(outputItem);
 			}
-
-			const outputItem: INodeExecutionData = {
-				json: {
-					resource,
-					operation,
-					output: textContent.join('\n'),
-				},
-				pairedItem: { item: itemIndex },
-			};
-
-			// If there's an image, add it as binary data
-			if (imageData) {
-				const binaryData = await this.helpers.prepareBinaryData(
-					Buffer.from(imageData, 'base64'),
-					'screenshot.png',
-					'image/png',
-				);
-				outputItem.binary = { screenshot: binaryData };
-			}
-
-			returnData.push(outputItem);
+		} finally {
+			// Clean up the MCP client connection
+			await client.result.close();
 		}
 
 		return [returnData];

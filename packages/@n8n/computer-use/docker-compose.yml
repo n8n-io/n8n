@@ -7,19 +7,19 @@ services:
       dockerfile: Dockerfile
     container_name: computer-use-api
     ports:
-      - '8080:8080' # API server
+      - '8765:8765' # API server
       - '5900:5900' # VNC server
       - '6080:6080' # noVNC
     environment:
       - DISPLAY=:1
       - WIDTH=1280
       - HEIGHT=800
-      - PORT=8080
+      - PORT=8765
       - HOST=0.0.0.0
       - LOG_LEVEL=info
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:8765/health']
       interval: 30s
       timeout: 10s
       retries: 3

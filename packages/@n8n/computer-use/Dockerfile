@@ -87,6 +87,6 @@ RUN chmod +x /home/computeruse/entrypoint.sh /home/computeruse/start_services.sh
 
 USER computeruse
 
-EXPOSE 8080 5900
+EXPOSE 8765 5900
 
 ENTRYPOINT ["/home/computeruse/entrypoint.sh"]

@@ -479,7 +479,6 @@
       "dist/nodes/CoinGecko/CoinGecko.node.js",
       "dist/nodes/CompareDatasets/CompareDatasets.node.js",
       "dist/nodes/Compression/Compression.node.js",
-      "dist/nodes/ComputerUse/ComputerUse.node.js",
       "dist/nodes/Contentful/Contentful.node.js",
       "dist/nodes/ConvertKit/ConvertKit.node.js",
       "dist/nodes/ConvertKit/ConvertKitTrigger.node.js",

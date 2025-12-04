@@ -55,8 +55,9 @@ export const editorFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		placeholder: '/absolute/path/to/file.txt',
-		description: 'The absolute path to the file',
+		placeholder: '~/projects/file.txt',
+		description:
+			'Path to the file. Supports absolute paths (/path/to/file), home-relative paths (~/file), or relative paths (file.txt - resolved from home directory).',
 		displayOptions: {
 			show: {
 				resource: ['editor'],

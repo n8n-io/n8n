@@ -5,7 +5,7 @@ import { logger } from 'hono/logger';
 import { ComputerTool, BashTool, EditTool } from './tools';
 import { createMcpServer, createMcpTransport } from './mcp/server';
 
-const PORT = parseInt(process.env.PORT || '8080', 10);
+const PORT = parseInt(process.env.PORT || '8765', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Initialize tools once at startup
