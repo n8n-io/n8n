@@ -10,19 +10,16 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 
-vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
-	return {
-		...actual,
-		useRouter: vi.fn(),
-		useRoute: vi.fn(() => ({
-			params: {},
-		})),
-		RouterLink: {
-			template: '<a><slot /></a>',
-		},
-	};
-});
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: vi.fn(),
+	useRoute: vi.fn(() => ({
+		params: {},
+	})),
+	RouterLink: {
+		template: '<a><slot /></a>',
+	},
+}));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
