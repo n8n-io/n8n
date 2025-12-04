@@ -79,6 +79,10 @@ const attachments = computed(() =>
 	})),
 );
 
+const hideMessage = computed(() => {
+	return message.status === 'success' && message.content === '';
+});
+
 const hoveredCodeBlockContent = computed(() => {
 	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
 
@@ -169,6 +173,7 @@ onBeforeMount(() => {
 
 <template>
 	<div
+		v-if="!hideMessage"
 		:class="[
 			$style.message,
 			message.type === 'human' ? $style.user : $style.assistant,
