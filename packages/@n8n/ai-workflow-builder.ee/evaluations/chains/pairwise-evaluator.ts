@@ -32,8 +32,6 @@ const pairwiseEvaluationLLMResultSchema = z.object({
 });
 
 export type PairwiseEvaluationResult = z.infer<typeof pairwiseEvaluationLLMResultSchema> & {
-	/** @deprecated Use primaryPass and diagnosticScore instead */
-	score: number;
 	/** True only if ALL criteria passed (no violations) */
 	primaryPass: boolean;
 	/** Ratio of passed criteria to total criteria (0-1) */
@@ -106,7 +104,6 @@ export async function evaluateWorkflowPairwise(
 
 	return {
 		...result,
-		score: diagnosticScore, // Keep for backwards compatibility
 		primaryPass,
 		diagnosticScore,
 	};
