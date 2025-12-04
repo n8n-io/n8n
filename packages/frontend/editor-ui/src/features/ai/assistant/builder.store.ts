@@ -388,7 +388,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function getTodosToTrack() {
 		const credentials_todo_count = workflowsStore.workflowValidationIssues.filter(
 			(issue) => issue.type === 'credentials',
-		);
+		).length;
 		const placeholders_todo_count = placeholderIssues.value.length;
 		return {
 			credentials_todo_count,
