@@ -5,7 +5,6 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
-	type NodeFeatures,
 } from 'n8n-workflow';
 
 import {
@@ -16,6 +15,7 @@ import {
 	formTriggerPanel,
 	webhookPath,
 } from '../common.descriptions';
+import type { FormNodeFeatures } from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
 const descriptionV1: INodeTypeDescription = {
@@ -91,7 +91,7 @@ export class FormTriggerV1 implements INodeType {
 	 * Version 1 has all features disabled or set to defaults.
 	 * Can access version and implement any logic needed to determine features.
 	 */
-	defineFeatures(_version: number): NodeFeatures {
+	defineFeatures(_version: number): FormNodeFeatures {
 		return {
 			requireAuth: false, // v1 doesn't require auth
 			defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone

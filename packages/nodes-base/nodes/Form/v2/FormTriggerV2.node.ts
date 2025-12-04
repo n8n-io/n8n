@@ -7,7 +7,6 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
-	type NodeFeatures,
 } from 'n8n-workflow';
 
 import {
@@ -21,7 +20,11 @@ import {
 	webhookPath,
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
-import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import {
+	FEATURES,
+	FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+	type FormNodeFeatures,
+} from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
@@ -100,17 +103,20 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		{ ...webhookPath, displayOptions: { show: { '@feature': ['useWebhookPath'] } } },
+		{ ...webhookPath, displayOptions: { show: { '@feature': [FEATURES.useWebhookPath] } } },
 		formTitle,
 		formDescription,
 		formFields,
-		{ ...formRespondMode, displayOptions: { show: { '@feature': ['useWebhookPath'] } } },
+		{
+			...formRespondMode,
+			displayOptions: { show: { '@feature': [FEATURES.useWebhookPath] } },
+		},
 		{
 			...formRespondMode,
 			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
 				(option) => option.value !== 'responseNode',
 			),
-			displayOptions: { show: { '@feature': ['useResponseNodeOption'] } },
+			displayOptions: { show: { '@feature': [FEATURES.useResponseNodeOption] } },
 		},
 		{
 			displayName:
@@ -147,7 +153,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...webhookPath,
 					required: false,
-					displayOptions: { show: { '@feature': ['useWebhookPathInOptions'] } },
+					displayOptions: { show: { '@feature': [FEATURES.useWebhookPathInOptions] } },
 				},
 				{
 					...respondWithOptions,
@@ -170,7 +176,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': ['useWorkflowTimezone'],
+							'@feature': [FEATURES.useWorkflowTimezone],
 						},
 					},
 				},
@@ -180,7 +186,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': ['defaultUseWorkflowTimezone'],
+							'@feature': [FEATURES.defaultUseWorkflowTimezone],
 						},
 					},
 				},
@@ -194,7 +200,7 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					displayOptions: {
 						show: {
-							'@feature': ['defaultUseWorkflowTimezone'],
+							'@feature': [FEATURES.defaultUseWorkflowTimezone],
 						},
 					},
 					default: cssVariables.trim(),
@@ -213,7 +219,7 @@ export class FormTriggerV2 implements INodeType {
 	 * This is the SINGLE source of truth for all version checks.
 	 * Can access version and implement any logic needed to determine features.
 	 */
-	defineFeatures(version: number): NodeFeatures {
+	defineFeatures(version: number): FormNodeFeatures {
 		return {
 			requireAuth: true, // v2+ always requires auth
 			defaultUseWorkflowTimezone: version > 2, // v2.1+ defaults to true

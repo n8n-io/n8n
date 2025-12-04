@@ -1,5 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { FEATURES } from './interfaces';
 import { appendAttributionOption } from '../../utils/descriptions';
 
 export const placeholder: string = `
@@ -69,7 +70,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['html'],
 						},
 						show: {
-							'@feature': ['useFieldName'],
+							'@feature': [FEATURES.useFieldName],
 						},
 					},
 				},
@@ -86,7 +87,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['hiddenField', 'html'],
 						},
 						show: {
-							'@feature': ['useFieldName'],
+							'@feature': [FEATURES.useFieldName],
 						},
 					},
 				},
@@ -103,7 +104,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['hiddenField', 'html'],
 						},
 						show: {
-							'@feature': ['useFieldLabel'],
+							'@feature': [FEATURES.useFieldLabel],
 						},
 					},
 				},
@@ -117,7 +118,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['hiddenField'],
-							'@feature': ['useFieldLabel'],
+							'@feature': [FEATURES.useFieldLabel],
 						},
 					},
 				},
@@ -377,7 +378,7 @@ export const formFields: INodeProperties = {
 						show: {
 							multiselect: [true],
 							fieldType: ['dropdown'],
-							'@feature': ['useLegacyMultiselect'],
+							'@feature': [FEATURES.useLegacyMultiselect],
 						},
 					},
 				},
@@ -391,7 +392,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
-							'@feature': ['useLegacyMultiselect'],
+							'@feature': [FEATURES.useLegacyMultiselect],
 						},
 					},
 				},
