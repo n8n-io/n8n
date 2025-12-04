@@ -5,6 +5,7 @@ import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
 
+import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
@@ -177,7 +178,7 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, backendUrl }, use, testInfo) => {
+	n8n: async ({ context, backendUrl, frontendUrl }, use, testInfo) => {
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 
@@ -187,6 +188,26 @@ export const test = base.extend<
 
 		const n8nInstance = new n8nPage(page, api);
 		await n8nInstance.api.setupFromTags(testInfo.tags);
+
+		// Transfer authentication cookies from API context (backend) to browser context (frontend)
+		// This is needed when backend and frontend are on different ports
+		const apiCookies = await apiContext.storageState();
+		const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+		if (authCookie) {
+			// Parse frontend URL to get domain
+			const frontendUrlParsed = new URL(frontendUrl);
+
+			// Add the auth cookie to the browser context with the frontend domain
+			await context.addCookies([
+				{
+					...authCookie,
+					domain: frontendUrlParsed.hostname,
+					// Remove sameSite if it causes issues across different ports
+					sameSite: 'Lax',
+				},
+			]);
+		}
+
 		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
 		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
