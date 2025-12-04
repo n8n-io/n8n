@@ -147,6 +147,8 @@ describe('AiController', () => {
 
 			expect(workflowBuilderService.chat).toHaveBeenCalledWith(
 				{
+					id: '12345',
+					featureFlags: undefined,
 					message: 'Create a workflow',
 					workflowContext: {
 						currentWorkflow: { id: 'workflow123' },
