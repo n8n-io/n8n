@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/base';
-import executionOutOfMemoryResponse from '../../fixtures/execution-out-of-memory-server-response.json';
+import { test, expect } from '../../../../fixtures/base';
+import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 
 const ERROR_MESSAGES = {
 	OUT_OF_MEMORY: 'Workflow did not finish, possible out-of-memory issue',
