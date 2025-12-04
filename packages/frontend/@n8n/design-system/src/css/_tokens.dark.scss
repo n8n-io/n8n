@@ -60,6 +60,13 @@
 		var(--assistant--color--highlight-1) 100%
 	);
 
+	// AI Chat text and icon colors
+	--assistant--color--text--subtle: var(--color--neutral-250);
+	--assistant--icon-color--subtle: var(--color--neutral-250);
+	--assistant--color--text: var(--color--neutral-white);
+	--assistant--color--text--user-bubble: #f0f3f9;
+	--assistant--color--background--user-bubble: var(--color--neutral-800);
+
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--neutral-950);
 	--lm-chat--bot--color--background: var(--color--neutral-850);
