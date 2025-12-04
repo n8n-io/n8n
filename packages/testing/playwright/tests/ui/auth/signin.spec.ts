@@ -1,5 +1,4 @@
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
-
 import { test, expect } from '../../../fixtures/base';
 
 test.describe('Sign In', () => {
