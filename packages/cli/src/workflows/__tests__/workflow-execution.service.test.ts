@@ -362,8 +362,7 @@ describe('WorkflowExecutionService', () => {
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
-			const workflowDefinition = mock<WorkflowEntity>(activeWorkflowData);
-			workflowRepositoryMock.findOne.mockResolvedValue(workflowDefinition);
+			workflowRepositoryMock.isActive.mockResolvedValue(true);
 			const service = new WorkflowExecutionService(
 				mock(),
 				mock(),
