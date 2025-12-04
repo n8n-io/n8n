@@ -52,7 +52,7 @@ const descriptionV2: INodeTypeDescription = {
 		useWebhookPath: { '@version': [{ _cnd: { lte: 2.1 } }] }, // Show in main properties for v2.1 and below
 		useWebhookPathInOptions: { '@version': [{ _cnd: { gte: 2.2 } }] }, // Show in options for v2.2+
 		useResponseNodeOption: { '@version': [{ _cnd: { gte: 2.2 } }] }, // Show 'responseNode' option for v2.2+
-		useWorkflowTimezone: { '@version': [{ _cnd: { eq: 2 } }] }, // Show useWorkflowTimezone with default false only for v2
+		useWorkflowTimezone: { '@version': [2] }, // Show useWorkflowTimezone with default false only for v2
 		useLegacyMultiselect: { '@version': [{ _cnd: { lt: 2.3 } }] }, // Show multiselect option for v2.2 and below
 	},
 	inputs: [],
