@@ -103,8 +103,8 @@ jobs:
 
       - name: Run Tests
         run: |
-          if echo "${{ inputs.test-command }}" | grep -q "multi-main"; then
-            pnpm --filter=n8n-playwright exec npx pwc-p -- --project=multi-main:ui --project=multi-main:ui:isolated --workers=${{ env.PLAYWRIGHT_WORKERS }}
+          if echo "${{ inputs.test-command }}" | grep -q "pwc-p"; then
+            ${{ inputs.test-command }}
           else
             ${{ inputs.test-command }} \
               --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
