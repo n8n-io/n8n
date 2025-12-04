@@ -43,7 +43,12 @@ const i18n = useI18n();
 			<template #additionalContent>
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('settings.mcp.emptyState.docs.part1') }}
-					<a :href="MCP_DOCS_PAGE_URL" :class="$style['docs-link']" target="_blank">
+					<a
+						:href="MCP_DOCS_PAGE_URL"
+						:class="$style['docs-link']"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
 						{{ i18n.baseText('generic.learnMore').toLowerCase() }}
 					</a>
 				</N8nText>

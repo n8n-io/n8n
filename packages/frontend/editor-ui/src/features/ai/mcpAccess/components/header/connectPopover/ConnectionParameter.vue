@@ -56,7 +56,7 @@ const handleCopy = async (value: string) => {
 			<div :class="$style['copy-button-wrapper']">
 				<slot name="customActions" />
 				<N8nTooltip
-					:disables="!isSupported"
+					:disabled="!isSupported"
 					:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 					:show-after="MCP_TOOLTIP_DELAY"
 					placement="bottom"

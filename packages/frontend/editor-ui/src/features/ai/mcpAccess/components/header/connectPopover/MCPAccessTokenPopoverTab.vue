@@ -53,7 +53,7 @@ const connectionString = computed(() => {
 });
 
 const isKeyRedacted = computed(() => {
-	return apiKey.value?.apiKey.includes('******');
+	return apiKey.value?.apiKey?.includes('******') ?? false;
 });
 
 // formatted code block for markdown component
