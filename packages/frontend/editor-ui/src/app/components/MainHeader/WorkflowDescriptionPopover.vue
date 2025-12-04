@@ -5,7 +5,7 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
-	N8nPopoverReka,
+	N8nPopover,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -142,7 +142,7 @@ watch(descriptionValue, (newValue) => {
 <template>
 	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('workflow.description.tooltip')">
 		<div :class="$style['description-popover-wrapper']" data-test-id="workflow-description-popover">
-			<N8nPopoverReka
+			<N8nPopover
 				id="workflow-description-popover"
 				:open="popoverOpen"
 				@update:open="handlePopoverOpenChange"
@@ -198,7 +198,7 @@ watch(descriptionValue, (newValue) => {
 						/>
 					</footer>
 				</template>
-			</N8nPopoverReka>
+			</N8nPopover>
 		</div>
 	</N8nTooltip>
 </template>

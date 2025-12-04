@@ -11,7 +11,7 @@ import {
 	N8nMenuItem,
 	isCustomMenuItem,
 	N8nLogo,
-	N8nPopoverReka,
+	N8nPopover,
 	N8nScrollArea,
 	N8nText,
 	N8nIcon,
@@ -548,7 +548,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
-							<N8nPopoverReka
+							<N8nPopover
 								v-if="item.children"
 								:key="item.id"
 								side="right"
@@ -577,7 +577,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 										@click="() => handleSelect(item.id)"
 									/>
 								</template>
-							</N8nPopoverReka>
+							</N8nPopover>
 							<N8nMenuItem
 								v-else
 								:item="item"

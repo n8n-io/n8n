@@ -17,21 +17,28 @@ const mockActions = [
 	},
 ];
 
-// Mock N8nPopoverReka to always render content when open
-const MockN8nPopoverReka = {
-	name: 'N8nPopoverReka',
-	props: ['open', 'width', 'maxHeight', 'align'],
-	emits: ['update:open'],
-	template: `
-		<div>
-			<div @click="$emit('update:open', !open)" data-test-id="popover-trigger">
-				<slot name="trigger" />
-			</div>
-			<div v-if="open" data-test-id="popover-content">
-				<slot name="content" />
-			</div>
-		</div>
-	`,
+// Stub Reka UI Popover components to render content inline (no teleportation)
+const rekaPopoverStubs = {
+	PopoverRoot: {
+		template: '<div @click="$emit(\'update:open\', !open)"><slot /></div>',
+		props: ['open'],
+		emits: ['update:open'],
+	},
+	PopoverTrigger: {
+		template: '<div><slot /></div>',
+		props: ['asChild'],
+	},
+	PopoverPortal: {
+		template: '<div><slot /></div>',
+		props: ['disabled'],
+	},
+	PopoverContent: {
+		template: '<div v-bind="$attrs"><slot /></div>',
+		props: ['side', 'sideOffset', 'align', 'class', 'style'],
+	},
+	PopoverArrow: {
+		template: '<div></div>',
+	},
 };
 
 const stubs = {
@@ -50,7 +57,7 @@ const stubs = {
 		props: ['theme'],
 		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
 	},
-	N8nPopoverReka: MockN8nPopoverReka,
+	...rekaPopoverStubs,
 };
 
 describe('N8nSuggestedActions', () => {

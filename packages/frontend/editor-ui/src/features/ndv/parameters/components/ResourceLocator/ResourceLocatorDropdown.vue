@@ -249,118 +249,121 @@ watch(
 
 <template>
 	<N8nPopover
-		placement="bottom"
-		:width="props.width"
-		:popper-class="$style.popover"
-		:visible="props.show"
+		side="bottom"
+		:width="props.width ? `${props.width}px` : undefined"
+		:content-class="$style.popover"
+		:open="props.show"
 		:teleported="false"
+		:enable-scrolling="false"
 		data-test-id="resource-locator-dropdown"
 	>
-		<div v-if="props.errorView" :class="$style.messageContainer">
-			<slot name="error"></slot>
-		</div>
-		<div
-			v-if="props.filterable && !props.errorView"
-			:class="$style.searchInput"
-			@keydown="onKeyDown"
-		>
-			<N8nInput
-				ref="searchRef"
-				:model-value="props.filter"
-				:clearable="true"
-				:placeholder="
-					props.allowNewResources.label
-						? i18n.baseText('resourceLocator.placeholder.searchOrCreate')
-						: i18n.baseText('resourceLocator.placeholder.search')
-				"
-				data-test-id="rlc-search"
-				@update:model-value="onFilterInput"
-			>
-				<template #prefix>
-					<N8nIcon :class="$style.searchIcon" icon="search" />
-				</template>
-			</N8nInput>
-		</div>
-		<div
-			v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
-			:class="$style.searchRequired"
-		>
-			{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
-		</div>
-		<div
-			v-else-if="
-				!props.errorView &&
-				!props.allowNewResources.label &&
-				sortedResources.length === 0 &&
-				!props.loading
-			"
-			:class="$style.messageContainer"
-		>
-			{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
-		</div>
-		<div
-			v-else-if="!props.errorView"
-			ref="resultsContainerRef"
-			:class="$style.container"
-			@scroll="onResultsEnd"
-		>
-			<div
-				v-if="props.allowNewResources.label"
-				key="addResourceKey"
-				ref="itemsRef"
-				data-test-id="rlc-item-add-resource"
-				:class="{
-					[$style.resourceItem]: true,
-					[$style.hovering]: hoverIndex === 0,
-				}"
-				@mouseenter="() => onItemHover(0)"
-				@mouseleave="() => onItemHoverLeave()"
-				@click="() => emit('addResourceClick')"
-			>
-				<div :class="$style.resourceNameContainer">
-					<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
-					<N8nIcon :class="$style.addResourceIcon" icon="plus" />
-				</div>
-			</div>
-			<div
-				v-for="(result, i) in sortedResources"
-				:key="result.value.toString()"
-				ref="itemsRef"
-				:class="{
-					[$style.resourceItem]: true,
-					[$style.selected]: result.value === props.modelValue?.value,
-					[$style.hovering]: hoverIndex === i + 1,
-				}"
-				data-test-id="rlc-item"
-				@click="() => onItemClick(result.value)"
-				@mouseenter="() => onItemHover(i + 1)"
-				@mouseleave="() => onItemHoverLeave()"
-			>
-				<div :class="$style.resourceNameContainer">
-					<span>{{ result.name }}</span>
-					<span v-if="result.isArchived">
-						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
-							{{ i18n.baseText('workflows.item.archived') }}
-						</N8nBadge>
-					</span>
-				</div>
-				<div :class="$style.urlLink">
-					<N8nIcon
-						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-						icon="external-link"
-						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
-						@click="openUrl($event, result.url)"
-					/>
-				</div>
-			</div>
-			<div v-if="props.loading && !props.errorView">
-				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
-					<N8nLoading :class="$style.loader" variant="p" :rows="1" />
-				</div>
-			</div>
-		</div>
-		<template #reference>
+		<template #trigger>
 			<slot />
+		</template>
+		<template #content>
+			<div v-if="props.errorView" :class="$style.messageContainer">
+				<slot name="error"></slot>
+			</div>
+			<div
+				v-if="props.filterable && !props.errorView"
+				:class="$style.searchInput"
+				@keydown="onKeyDown"
+			>
+				<N8nInput
+					ref="searchRef"
+					:model-value="props.filter"
+					:clearable="true"
+					:placeholder="
+						props.allowNewResources.label
+							? i18n.baseText('resourceLocator.placeholder.searchOrCreate')
+							: i18n.baseText('resourceLocator.placeholder.search')
+					"
+					data-test-id="rlc-search"
+					@update:model-value="onFilterInput"
+				>
+					<template #prefix>
+						<N8nIcon :class="$style.searchIcon" icon="search" />
+					</template>
+				</N8nInput>
+			</div>
+			<div
+				v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
+				:class="$style.searchRequired"
+			>
+				{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
+			</div>
+			<div
+				v-else-if="
+					!props.errorView &&
+					!props.allowNewResources.label &&
+					sortedResources.length === 0 &&
+					!props.loading
+				"
+				:class="$style.messageContainer"
+			>
+				{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
+			</div>
+			<div
+				v-else-if="!props.errorView"
+				ref="resultsContainerRef"
+				:class="$style.container"
+				@scroll="onResultsEnd"
+			>
+				<div
+					v-if="props.allowNewResources.label"
+					key="addResourceKey"
+					ref="itemsRef"
+					data-test-id="rlc-item-add-resource"
+					:class="{
+						[$style.resourceItem]: true,
+						[$style.hovering]: hoverIndex === 0,
+					}"
+					@mouseenter="() => onItemHover(0)"
+					@mouseleave="() => onItemHoverLeave()"
+					@click="() => emit('addResourceClick')"
+				>
+					<div :class="$style.resourceNameContainer">
+						<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
+						<N8nIcon :class="$style.addResourceIcon" icon="plus" />
+					</div>
+				</div>
+				<div
+					v-for="(result, i) in sortedResources"
+					:key="result.value.toString()"
+					ref="itemsRef"
+					:class="{
+						[$style.resourceItem]: true,
+						[$style.selected]: result.value === props.modelValue?.value,
+						[$style.hovering]: hoverIndex === i + 1,
+					}"
+					data-test-id="rlc-item"
+					@click="() => onItemClick(result.value)"
+					@mouseenter="() => onItemHover(i + 1)"
+					@mouseleave="() => onItemHoverLeave()"
+				>
+					<div :class="$style.resourceNameContainer">
+						<span>{{ result.name }}</span>
+						<span v-if="result.isArchived">
+							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+								{{ i18n.baseText('workflows.item.archived') }}
+							</N8nBadge>
+						</span>
+					</div>
+					<div :class="$style.urlLink">
+						<N8nIcon
+							v-if="showHoverUrl && result.url && hoverIndex === i + 1"
+							icon="external-link"
+							:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
+							@click="openUrl($event, result.url)"
+						/>
+					</div>
+				</div>
+				<div v-if="props.loading && !props.errorView">
+					<div v-for="i in 3" :key="i" :class="$style.loadingItem">
+						<N8nLoading :class="$style.loader" variant="p" :rows="1" />
+					</div>
+				</div>
+			</div>
 		</template>
 	</N8nPopover>
 </template>

@@ -57,17 +57,15 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nPopover
-		v-model:visible="isPopoverVisible"
-		effect="dark"
-		trigger="click"
-		placement="top"
-		:popper-class="$style.popover"
-		:popper-style="{ width: '208px' }"
-		:teleported="true"
+		v-model:open="isPopoverVisible"
+		side="top"
+		width="208px"
+		:content-class="$style.popover"
+		:enable-scrolling="false"
 		@before-enter="onMouseEnter"
 		@after-leave="onMouseLeave"
 	>
-		<template #reference>
+		<template #trigger>
 			<div
 				:class="$style.option"
 				data-test-id="change-sticky-color"
@@ -77,19 +75,21 @@ onBeforeUnmount(() => {
 				<N8nIcon size="small" icon="palette" />
 			</div>
 		</template>
-		<div :class="$style.content">
-			<div
-				v-for="color in colors"
-				:key="color"
-				data-test-id="color"
-				:class="[
-					$style.color,
-					$style[`sticky-color-${color}`],
-					renderOptions.color === color ? $style.selected : '',
-				]"
-				@click="changeColor(color)"
-			></div>
-		</div>
+		<template #content>
+			<div :class="$style.content">
+				<div
+					v-for="color in colors"
+					:key="color"
+					data-test-id="color"
+					:class="[
+						$style.color,
+						$style[`sticky-color-${color}`],
+						renderOptions.color === color ? $style.selected : '',
+					]"
+					@click="changeColor(color)"
+				></div>
+			</div>
+		</template>
 	</N8nPopover>
 </template>
 

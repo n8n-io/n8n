@@ -2,7 +2,7 @@ import { render } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
 
-import N8nPopoverReka from './N8nPopoverReka.vue';
+import N8nPopover from './Popover.vue';
 
 const defaultStubs = {
 	PopoverContent: {
@@ -23,9 +23,9 @@ const defaultStubs = {
 	},
 };
 
-describe('N8nPopoverReka', () => {
+describe('N8nPopover', () => {
 	it('should render correctly with default props', () => {
-		const wrapper = render(N8nPopoverReka, {
+		const wrapper = render(N8nPopover, {
 			props: {},
 			global: {
 				stubs: defaultStubs,
@@ -44,7 +44,7 @@ describe('N8nPopoverReka', () => {
 	it('should emit update:open with false when close function is called', () => {
 		let closeFunction: (() => void) | undefined;
 
-		const wrapper = render(N8nPopoverReka, {
+		const wrapper = render(N8nPopover, {
 			props: {},
 			global: {
 				stubs: {
@@ -83,7 +83,7 @@ describe('N8nPopoverReka', () => {
 	});
 
 	it('should apply maxHeight style when maxHeight prop is provided', () => {
-		const wrapper = mount(N8nPopoverReka, {
+		const wrapper = mount(N8nPopover, {
 			props: {
 				maxHeight: '200px',
 			},
@@ -100,7 +100,7 @@ describe('N8nPopoverReka', () => {
 	});
 
 	it('should not apply maxHeight style when maxHeight prop is not provided', () => {
-		const wrapper = mount(N8nPopoverReka, {
+		const wrapper = mount(N8nPopover, {
 			props: {},
 			global: {
 				stubs: defaultStubs,
@@ -116,7 +116,7 @@ describe('N8nPopoverReka', () => {
 
 	describe('auto-focus behavior', () => {
 		it('should focus an element in the content slot by default', async () => {
-			const wrapper = render(N8nPopoverReka, {
+			const wrapper = render(N8nPopover, {
 				props: { open: true },
 				slots: {
 					trigger: '<button />',
@@ -129,7 +129,7 @@ describe('N8nPopoverReka', () => {
 		});
 
 		it('should suppress auto-focus when suppressAutoFocus is true', async () => {
-			const wrapper = render(N8nPopoverReka, {
+			const wrapper = render(N8nPopover, {
 				props: { open: true, suppressAutoFocus: true },
 				slots: {
 					trigger: '<button />',
