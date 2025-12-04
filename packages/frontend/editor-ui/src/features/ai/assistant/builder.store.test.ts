@@ -2152,4 +2152,71 @@ describe('AI Builder store', () => {
 			);
 		});
 	});
+
+	describe('incrementManualExecutionStats', () => {
+		it('should increment success count', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+
+			builderStore.incrementManualExecutionStats('success');
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(1);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+		});
+
+		it('should increment error count', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+
+			builderStore.incrementManualExecutionStats('error');
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(1);
+		});
+
+		it('should increment counts multiple times', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('error');
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(2);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(1);
+		});
+	});
+
+	describe('resetManualExecutionStats', () => {
+		it('should reset stats to zero', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('error');
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(2);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(1);
+
+			builderStore.resetManualExecutionStats();
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+		});
+
+		it('should have no effect when stats are already zero', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+
+			builderStore.resetManualExecutionStats();
+
+			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+		});
+	});
 });

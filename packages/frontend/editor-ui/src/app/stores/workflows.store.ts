@@ -156,8 +156,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
 
-	const manualExecutionsStats = ref<{ success: number; error: number }>({ success: 0, error: 0 });
-
 	const workflowName = computed(() => workflow.value.name);
 
 	const workflowId = computed(() => workflow.value.id);
@@ -373,17 +371,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const previousExecutionId = ref<string | null | undefined>();
 	const readonlyActiveExecutionId = computed(() => activeExecutionId.value);
 	const readonlyPreviousExecutionId = computed(() => previousExecutionId.value);
-
-	function incrementManualExecutionStats(type: 'success' | 'error') {
-		manualExecutionsStats.value[type]++;
-	}
-
-	function resetManualExecutionStats() {
-		manualExecutionsStats.value = {
-			success: 0,
-			error: 0,
-		};
-	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
 		if (id) previousExecutionId.value = activeExecutionId.value;
@@ -1966,9 +1953,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPastChatMessages,
 		selectedTriggerNodeName: computed(() => selectedTriggerNodeName.value),
 		workflowExecutionTriggerNodeName,
-		manualExecutionsStats: computed(() => manualExecutionsStats.value),
-		incrementManualExecutionStats,
-		resetManualExecutionStats,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,

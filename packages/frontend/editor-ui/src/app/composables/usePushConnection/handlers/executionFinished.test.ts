@@ -19,6 +19,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 const opts = {
 	workflowState: mock<WorkflowState>(),
@@ -537,8 +538,8 @@ describe('manual execution stats tracking', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+			const builderStore = mockedStore(useBuilderStore);
+			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
 
@@ -549,8 +550,8 @@ describe('manual execution stats tracking', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+			const builderStore = mockedStore(useBuilderStore);
+			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
 
@@ -561,8 +562,8 @@ describe('manual execution stats tracking', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+			const builderStore = mockedStore(useBuilderStore);
+			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'error', false);
 
@@ -575,8 +576,8 @@ describe('manual execution stats tracking', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+			const builderStore = mockedStore(useBuilderStore);
+			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
 			const execution = mock<SimplifiedExecution>({
 				status: 'error',
@@ -599,8 +600,8 @@ describe('manual execution stats tracking', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+			const builderStore = mockedStore(useBuilderStore);
+			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
 			const execution = mock<SimplifiedExecution>({
 				status: 'canceled',

@@ -58,6 +58,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const hasMessages = ref<boolean>(false);
+	const execStatsInBetweenMessages = ref<{ success: number; error: number }>({
+		success: 0,
+		error: 0,
+	});
 
 	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
 
@@ -222,6 +226,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = clearMessages();
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
+	}
+
+	function incrementManualExecutionStats(type: 'success' | 'error') {
+		execStatsInBetweenMessages.value[type]++;
+	}
+
+	function resetManualExecutionStats() {
+		execStatsInBetweenMessages.value = {
+			success: 0,
+			error: 0,
+		};
 	}
 
 	// Message handling functions
@@ -419,8 +434,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 			type,
-			prev_manual_exec_success: workflowsStore.manualExecutionsStats.success,
-			prev_manual_exec_error: workflowsStore.manualExecutionsStats.error,
+			prev_manual_exec_success: execStatsInBetweenMessages.value.success,
+			prev_manual_exec_error: execStatsInBetweenMessages.value.error,
 			user_message_id: userMessageId,
 			...getTodosToTrack(),
 		};
@@ -446,6 +461,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		telemetry.track('User submitted builder message', trackingPayload);
+
+		resetManualExecutionStats();
 
 		prepareForStreaming(text, userMessageId);
 
@@ -745,6 +762,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
 		workflowTodos,
+		execStatsInBetweenMessages: computed(() => execStatsInBetweenMessages.value),
 
 		// Methods
 		abortStreaming,
@@ -757,5 +775,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		updateBuilderCredits,
 		getRunningTools,
 		fetchSessionsMetadata,
+		incrementManualExecutionStats,
+		resetManualExecutionStats,
 	};
 });
