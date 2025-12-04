@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -38,8 +38,6 @@ const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
-const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 // We're dropping the save button soon with the autosave so this will also be dropped
 const autoSaveForPublish = ref(false);
 
