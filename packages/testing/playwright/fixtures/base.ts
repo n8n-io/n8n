@@ -11,6 +11,7 @@ import { ApiHelpers } from '../services/api-helper';
 import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
+import { getBackendUrl, getFrontendUrl } from '../utils/url-helper';
 
 type TestFixtures = {
 	n8n: n8nPage;
@@ -22,6 +23,8 @@ type TestFixtures = {
 
 type WorkerFixtures = {
 	n8nUrl: string;
+	backendUrl: string;
+	frontendUrl: string;
 	dbSetup: undefined;
 	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
@@ -90,10 +93,10 @@ export const test = base.extend<
 		{ scope: 'worker', box: true },
 	],
 
-	// Create a new n8n container if N8N_BASE_URL is not set, otherwise use the existing n8n instance
+	// Create a new n8n container if backend URL is not set, otherwise use the existing n8n instance
 	n8nContainer: [
 		async ({ containerConfig }, use) => {
-			const envBaseURL = process.env.N8N_BASE_URL;
+			const envBaseURL = getBackendUrl();
 
 			if (envBaseURL) {
 				await use(null as unknown as N8NStack);
@@ -120,12 +123,32 @@ export const test = base.extend<
 		{ scope: 'worker' },
 	],
 
+	// Backend URL - used for API calls
+	// When N8N_BACKEND_URL is set, use it; otherwise fall back to n8nUrl
+	backendUrl: [
+		async ({ n8nContainer }, use) => {
+			const envBackendURL = getBackendUrl() ?? n8nContainer?.baseUrl;
+			await use(envBackendURL);
+		},
+		{ scope: 'worker' },
+	],
+
+	// Frontend URL - used for browser navigation
+	// When N8N_EDITOR_URL is set (dev mode), use it; otherwise fall back to n8nUrl
+	frontendUrl: [
+		async ({ n8nContainer }, use) => {
+			const envFrontendURL = getFrontendUrl() ?? n8nContainer?.baseUrl;
+			await use(envFrontendURL);
+		},
+		{ scope: 'worker' },
+	],
+
 	// Reset the database for the new container
 	dbSetup: [
-		async ({ n8nUrl, n8nContainer }, use) => {
+		async ({ backendUrl, n8nContainer }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: n8nUrl });
+				const apiContext = await request.newContext({ baseURL: backendUrl });
 				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
 				await apiContext.dispose();
@@ -138,9 +161,9 @@ export const test = base.extend<
 	// Create container test helpers for the n8n container.
 	chaos: [
 		async ({ n8nContainer }, use) => {
-			if (process.env.N8N_BASE_URL) {
+			if (getBackendUrl()) {
 				throw new TestError(
-					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
+					'Chaos testing is not supported when using an external n8n instance. Remove backend URL environment variables to use containerized testing.',
 				);
 			}
 			const helpers = new ContainerTestHelpers(n8nContainer.containers);
@@ -149,9 +172,9 @@ export const test = base.extend<
 		{ scope: 'worker' },
 	],
 
-	baseURL: async ({ n8nUrl, dbSetup }, use) => {
+	baseURL: async ({ frontendUrl, dbSetup }, use) => {
 		void dbSetup; // Ensure dbSetup runs first
-		await use(n8nUrl);
+		await use(frontendUrl);
 	},
 
 	n8n: async ({ context }, use, testInfo) => {
@@ -165,8 +188,8 @@ export const test = base.extend<
 	},
 
 	// This is a completely isolated API context for tests that don't need the browser
-	api: async ({ baseURL }, use, testInfo) => {
-		const context = await request.newContext({ baseURL });
+	api: async ({ backendUrl }, use, testInfo) => {
+		const context = await request.newContext({ baseURL: backendUrl });
 		const api = new ApiHelpers(context);
 		await api.setupFromTags(testInfo.tags);
 		await use(api);
@@ -185,7 +208,7 @@ export const test = base.extend<
 		// n8nContainer is "null" if running tests in "local" mode
 		if (!n8nContainer) {
 			throw new TestError(
-				'Testing with Proxy server is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
+				'Testing with Proxy server is not supported when using an external n8n instance. Remove backend URL environment variables to use containerized testing.',
 			);
 		}
 
