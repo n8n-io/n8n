@@ -50,13 +50,3 @@ jobs:
   #     runner: blacksmith-2vcpu-ubuntu-2204
   #     workers: '1'
   #   secrets: inherit
-
-  e2e-checks:
-    name: E2E - Checks
-    needs: [multi-main-ui, multi-main-isolated]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail if E2E tests failed
-        if: contains(needs.*.result, 'failure')
-        run: exit 1
