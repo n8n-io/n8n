@@ -172,7 +172,11 @@ export class DataTableService {
 	async addColumn(dataTableId: string, projectId: string, dto: AddDataTableColumnDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+		const result = await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
+		return result;
 	}
 
 	async moveColumn(
@@ -194,6 +198,8 @@ export class DataTableService {
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
 		return true;
 	}
@@ -275,6 +281,8 @@ export class DataTableService {
 
 		this.dataTableSizeValidator.reset();
 
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
 		return result;
 	}
 
@@ -349,6 +357,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -434,6 +444,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -492,6 +504,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;

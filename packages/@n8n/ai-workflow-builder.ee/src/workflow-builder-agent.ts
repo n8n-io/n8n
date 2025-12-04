@@ -141,12 +141,8 @@ export interface WorkflowBuilderAgentConfig {
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
 	onGenerationSuccess?: () => Promise<void>;
-	/**
-	 * Enable multi-agent supervisor architecture (experimental)
-	 * When true, uses specialized agents (Discovery, Builder, Configurator) with a Supervisor
-	 * When false, uses the legacy single-agent architecture
-	 */
-	enableMultiAgent?: boolean;
+	/** Metadata to include in LangSmith traces */
+	runMetadata?: Record<string, unknown>;
 }
 
 export interface ExpressionValue {
@@ -157,6 +153,7 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
+	multiAgent?: boolean;
 }
 
 export interface ChatPayload {
@@ -180,7 +177,7 @@ export class WorkflowBuilderAgent {
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
-	private enableMultiAgent: boolean;
+	private runMetadata?: Record<string, unknown>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -193,7 +190,7 @@ export class WorkflowBuilderAgent {
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
-		this.enableMultiAgent = config.enableMultiAgent ?? false;
+		this.runMetadata = config.runMetadata;
 	}
 
 	private getBuilderTools(featureFlags?: BuilderFeatureFlags): BuilderTool[] {
@@ -440,9 +437,12 @@ export class WorkflowBuilderAgent {
 
 	/**
 	 * Create the workflow graph based on configuration
+	 * Controlled by feature flag only
 	 */
 	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
-		if (this.enableMultiAgent) {
+		const useMultiAgent = featureFlags?.multiAgent ?? false;
+
+		if (useMultiAgent) {
 			this.logger?.debug('Using multi-agent supervisor architecture');
 			return this.createMultiAgentGraph(featureFlags);
 		}
@@ -515,8 +515,9 @@ export class WorkflowBuilderAgent {
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
+			metadata: this.runMetadata,
 			// Enable subgraph streaming when using multi-agent architecture
-			subgraphs: this.enableMultiAgent,
+			subgraphs: payload.featureFlags?.multiAgent ?? false,
 		};
 
 		return { agent, threadConfig, streamConfig };

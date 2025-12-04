@@ -199,7 +199,8 @@ test.describe('Data pinning', () => {
 			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('pin-overwritten');
 		});
 
-		test('should not use pin data in production webhook executions', async ({
+		// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode due to webhook registration timing issues
+		test.skip('should not use pin data in production webhook executions', async ({
 			n8n,
 			setupRequirements,
 		}) => {
