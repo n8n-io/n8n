@@ -58,7 +58,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const hasMessages = ref<boolean>(false);
-	const execStatsInBetweenMessages = ref<{ success: number; error: number }>({
+	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
 		success: 0,
 		error: 0,
 	});
@@ -229,11 +229,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
-		execStatsInBetweenMessages.value[type]++;
+		manualExecStatsInBetweenMessages.value[type]++;
 	}
 
 	function resetManualExecutionStats() {
-		execStatsInBetweenMessages.value = {
+		manualExecStatsInBetweenMessages.value = {
 			success: 0,
 			error: 0,
 		};
@@ -380,6 +380,68 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
+	// Telemetry functions
+	/**
+	 * Tracks when a user submits a message to the builder.
+	 * Captures workflow state, execution data, and todo counts for analytics.
+	 */
+	function trackUserSubmittedBuilderMessage(options: {
+		text: string;
+		source: 'chat' | 'canvas';
+		type: 'message' | 'execution';
+		userMessageId: string;
+		currentWorkflowJson: string;
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
+	}) {
+		const {
+			text,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		} = options;
+
+		const trackingPayload: Record<string, string | number | object[]> = {
+			source,
+			message: text,
+			session_id: trackingSessionId.value,
+			start_workflow_json: currentWorkflowJson,
+			workflow_id: workflowsStore.workflowId,
+			type,
+			prev_manual_exec_success: manualExecStatsInBetweenMessages.value.success,
+			prev_manual_exec_error: manualExecStatsInBetweenMessages.value.error,
+			user_message_id: userMessageId,
+			...getTodosToTrack(),
+		};
+
+		if (type === 'execution') {
+			let resultData = '{}';
+			let resultDataSizeKb = 0;
+
+			try {
+				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+			} catch (error) {
+				// Handle circular structure errors gracefully
+				console.warn('Failed to stringify execution data for telemetry:', error);
+			}
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
+			trackingPayload.execution_status = executionStatus ?? '';
+			if (executionStatus === 'error') {
+				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_node_type = errorNodeType ?? '';
+			}
+		}
+
+		telemetry.track('User submitted builder message', trackingPayload);
+	}
+
 	// Core API functions
 	/**
 	 * Sends a message to the AI builder service and handles the streaming response.
@@ -427,40 +489,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			startWorkflowJson: currentWorkflowJson,
 		};
 
-		const trackingPayload: Record<string, string | number | object[]> = {
+		trackUserSubmittedBuilderMessage({
+			text,
 			source,
-			message: text,
-			session_id: trackingSessionId.value,
-			start_workflow_json: currentWorkflowJson,
-			workflow_id: workflowsStore.workflowId,
 			type,
-			prev_manual_exec_success: execStatsInBetweenMessages.value.success,
-			prev_manual_exec_error: execStatsInBetweenMessages.value.error,
-			user_message_id: userMessageId,
-			...getTodosToTrack(),
-		};
-
-		if (type === 'execution') {
-			let resultData = '{}';
-			let resultDataSizeKb = 0;
-
-			try {
-				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
-				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
-			} catch (error) {
-				// Handle circular structure errors gracefully
-				console.warn('Failed to stringify execution data for telemetry:', error);
-			}
-
-			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
-			trackingPayload.execution_status = executionStatus ?? '';
-			if (executionStatus === 'error') {
-				trackingPayload.error_message = errorMessage ?? '';
-				trackingPayload.error_node_type = errorNodeType ?? '';
-			}
-		}
-
-		telemetry.track('User submitted builder message', trackingPayload);
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		});
 
 		resetManualExecutionStats();
 
@@ -762,7 +800,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
 		workflowTodos,
-		execStatsInBetweenMessages: computed(() => execStatsInBetweenMessages.value),
+		manualExecStatsInBetweenMessages: computed(() => manualExecStatsInBetweenMessages.value),
 
 		// Methods
 		abortStreaming,

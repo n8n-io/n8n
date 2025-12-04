@@ -2157,25 +2157,25 @@ describe('AI Builder store', () => {
 		it('should increment success count', () => {
 			const builderStore = useBuilderStore();
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
 
 			builderStore.incrementManualExecutionStats('success');
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(1);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(1);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
 		});
 
 		it('should increment error count', () => {
 			const builderStore = useBuilderStore();
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
 
 			builderStore.incrementManualExecutionStats('error');
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(1);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(1);
 		});
 
 		it('should increment counts multiple times', () => {
@@ -2185,8 +2185,8 @@ describe('AI Builder store', () => {
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(2);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(1);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(2);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(1);
 		});
 	});
 
@@ -2198,25 +2198,25 @@ describe('AI Builder store', () => {
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(2);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(1);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(2);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(1);
 
 			builderStore.resetManualExecutionStats();
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
 		});
 
 		it('should have no effect when stats are already zero', () => {
 			const builderStore = useBuilderStore();
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
 
 			builderStore.resetManualExecutionStats();
 
-			expect(builderStore.execStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.execStatsInBetweenMessages.error).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
+			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
 		});
 	});
 });
