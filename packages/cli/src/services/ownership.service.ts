@@ -233,9 +233,6 @@ export class OwnershipService {
 		shellUser.lastActiveAt = new Date();
 		shellUser.password = await this.passwordUtility.hash(password);
 
-		// TODO: move XSS validation out into the DTO class
-		await validateEntity(shellUser);
-
 		shellUser = await this.userRepository.save(shellUser, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
