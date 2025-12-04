@@ -340,4 +340,169 @@ describe('createEngineRequests', () => {
 			});
 		});
 	});
+
+	describe('Anthropic thinking blocks extraction', () => {
+		it('should extract thinking content from Anthropic message with thinking blocks', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'thinking',
+									thinking: 'I need to calculate 2+2 using the calculator tool.',
+									signature: 'test_signature_123',
+								},
+								{
+									type: 'tool_use',
+									id: 'call_123',
+									name: 'calculator',
+									input: { expression: '2+2' },
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
+				'I need to calculate 2+2 using the calculator tool.',
+			);
+			expect(result[0].metadata.anthropic?.thinkingType).toBe('thinking');
+			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('test_signature_123');
+		});
+
+		it('should extract redacted_thinking content from Anthropic message', async () => {
+			const tools = [createMockTool('search', { sourceNodeName: 'Search' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'search',
+					toolInput: { query: 'sensitive search' },
+					toolCallId: 'call_456',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'redacted_thinking',
+									data: 'This thinking was redacted by safety systems.',
+								},
+								{
+									type: 'tool_use',
+									id: 'call_456',
+									name: 'search',
+									input: { query: 'sensitive search' },
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
+				'This thinking was redacted by safety systems.',
+			);
+			expect(result[0].metadata.anthropic?.thinkingType).toBe('redacted_thinking');
+		});
+
+		it('should not extract thinking when content is string format', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: 'Simple string content',
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.anthropic).toBeUndefined();
+		});
+
+		it('should not extract thinking when no thinking blocks present', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'text',
+									text: 'Just some text',
+								},
+								{
+									type: 'tool_use',
+									id: 'call_123',
+									name: 'calculator',
+									input: { expression: '2+2' },
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.anthropic).toBeUndefined();
+		});
+
+		it('should work with both Gemini thoughtSignature and Anthropic thinking blocks', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'thinking',
+									thinking: 'Anthropic thinking content',
+									signature: 'anthropic_sig_456',
+								},
+								{
+									thoughtSignature: 'Gemini thought signature',
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google?.thoughtSignature).toBe('Gemini thought signature');
+			expect(result[0].metadata.anthropic?.thinkingContent).toBe('Anthropic thinking content');
+			expect(result[0].metadata.anthropic?.thinkingType).toBe('thinking');
+			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('anthropic_sig_456');
+		});
+	});
 });
