@@ -116,7 +116,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 				});
 
 				if (nodesModified) {
-					const newVersionId = crypto.randomUUID();
+					const newVersionId = randomUUID();
 
 					// Create workflow_history record with the modified nodes
 					await runQuery(
