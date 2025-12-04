@@ -17,16 +17,6 @@ N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the UI tests against the in
 
 When developing with separate backend and frontend servers (e.g., backend on port 5680, frontend on port 8080), you can use the following environment variables:
 
-```bash
-# Development mode with separate backend and frontend
-N8N_BASE_URL=http://localhost:5680 N8N_EDITOR_URL=http://localhost:8080 pnpm test:local
-
-# Or use the convenience command
-pnpm test:dev  # Automatically sets N8N_EDITOR_URL=http://localhost:8080
-```
-
-### Environment Variables
-
 - **`N8N_BASE_URL`**: Backend server URL (also used as frontend URL if `N8N_EDITOR_URL` is not set)
 - **`N8N_EDITOR_URL`**: Frontend server URL (when set, overrides frontend URL while backend uses `N8N_BASE_URL`)
 
@@ -38,34 +28,6 @@ This allows you to:
 - Test against a backend on port 5680 while the frontend dev server runs on port 8080
 - Use different URLs for API calls vs browser navigation
 - Maintain backward compatibility with single-URL setups
-
-### Using Backend and Frontend URLs in Tests
-
-Tests automatically receive the correct URLs through fixtures:
-
-```typescript
-import { test, expect } from '../fixtures/base';
-
-test('should handle separate backend and frontend URLs', async ({
-  n8n,      // Uses frontendUrl for browser navigation
-  api,      // Uses backendUrl for API calls
-  baseURL,  // Points to frontendUrl (for Playwright's page.goto)
-  backendUrl,  // Direct access to backend URL
-  frontendUrl  // Direct access to frontend URL
-}) => {
-  // Browser navigation uses frontend URL automatically
-  await n8n.workflows.createNew();
-
-  // API calls use backend URL automatically
-  const workflows = await api.getWorkflows();
-  expect(workflows.length).toBeGreaterThan(0);
-
-  // You can also access the URLs directly if needed
-  console.log(`Frontend: ${frontendUrl}, Backend: ${backendUrl}`);
-});
-```
-
-**Note:** When using containers (no environment URLs set), both `backendUrl` and `frontendUrl` point to the same container URL.
 
 ## Test Commands
 

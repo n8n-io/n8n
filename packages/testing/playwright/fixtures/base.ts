@@ -163,7 +163,7 @@ export const test = base.extend<
 		async ({ n8nContainer }, use) => {
 			if (getBackendUrl()) {
 				throw new TestError(
-					'Chaos testing is not supported when using an external n8n instance. Remove backend URL environment variables to use containerized testing.',
+					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
 				);
 			}
 			const helpers = new ContainerTestHelpers(n8nContainer.containers);
@@ -214,7 +214,7 @@ export const test = base.extend<
 		// n8nContainer is "null" if running tests in "local" mode
 		if (!n8nContainer) {
 			throw new TestError(
-				'Testing with Proxy server is not supported when using an external n8n instance. Remove backend URL environment variables to use containerized testing.',
+				'Testing with Proxy server is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
 			);
 		}
 
