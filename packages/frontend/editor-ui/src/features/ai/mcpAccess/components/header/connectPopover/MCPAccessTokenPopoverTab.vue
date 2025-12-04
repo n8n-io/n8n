@@ -165,6 +165,7 @@ onMounted(async () => {
 						:icon="copied ? 'check' : 'copy'"
 						:square="true"
 						:class="$style['copy-json-button']"
+						data-test-id="mcp-json-copy-button"
 						@click="handleConnectionStringCopy"
 					/>
 				</N8nTooltip>
