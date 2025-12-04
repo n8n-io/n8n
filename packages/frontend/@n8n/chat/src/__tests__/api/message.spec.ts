@@ -519,7 +519,7 @@ describe('sendMessageStreaming', () => {
 				headers: new Headers(),
 			} as Response;
 
-			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+			const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 			await sendMessageStreaming('Test message', [], 'test-session-id', optionsWithHook, {
 				onChunk: vi.fn(),
@@ -528,7 +528,7 @@ describe('sendMessageStreaming', () => {
 			});
 
 			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
-			expect(beforeMessageSent).toHaveBeenCalledBefore(fetch);
+			expect(beforeMessageSent).toHaveBeenCalledBefore(fetchSpy);
 		});
 
 		it('should call afterMessageSent after streaming completes', async () => {
@@ -714,12 +714,12 @@ describe('sendMessage', () => {
 			headers: new Headers(),
 		} as Response;
 
-		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
 
 		await sendMessage('Test message', [], 'test-session-id', optionsWithHook);
 
 		expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
-		expect(beforeMessageSent).toHaveBeenCalledBefore(fetch);
+		expect(beforeMessageSent).toHaveBeenCalledBefore(fetchSpy);
 	});
 
 	it('should call afterMessageSent hook after sending', async () => {
@@ -774,8 +774,12 @@ describe('sendMessage', () => {
 
 	it('should call hooks in correct order', async () => {
 		const callOrder: string[] = [];
-		const beforeMessageSent = vi.fn(() => callOrder.push('before'));
-		const afterMessageSent = vi.fn(() => callOrder.push('after'));
+		const beforeMessageSent = vi.fn(() => {
+			callOrder.push('before');
+		});
+		const afterMessageSent = vi.fn(() => {
+			callOrder.push('after');
+		});
 
 		const optionsWithHooks: ChatOptions = {
 			...mockOptions,

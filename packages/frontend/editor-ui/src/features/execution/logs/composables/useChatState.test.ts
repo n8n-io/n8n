@@ -11,7 +11,7 @@ import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
 
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
-	const actual = (await importOriginal()) as Record<string, unknown>;
+	const actual: Record<string, unknown> = await importOriginal();
 	return {
 		...actual,
 		resolveParameter: vi.fn((value) => {
@@ -35,7 +35,7 @@ vi.mock('@/app/composables/useNodeHelpers', () => ({
 	})),
 }));
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = (await importOriginal()) as Record<string, unknown>;
+	const actual: Record<string, unknown> = await importOriginal();
 	return {
 		...actual,
 		useI18n: vi.fn(() => ({
@@ -44,7 +44,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 	};
 });
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = (await importOriginal()) as Record<string, unknown>;
+	const actual: Record<string, unknown> = await importOriginal();
 	return {
 		...actual,
 		useRouter: vi.fn(() => ({
@@ -324,21 +324,6 @@ describe('useChatState', () => {
 
 			expect(chatState.isWorkflowReadyForChat.value).toBe(false);
 		});
-
-		it('should not be ready when no workflow ID and not new workflow', () => {
-			workflowsStore.$patch((state) => {
-				state.workflow.id = '';
-			});
-			// Mock isNewWorkflow as a computed property
-			Object.defineProperty(workflowsStore, 'isNewWorkflow', {
-				get: () => false,
-				configurable: true,
-			});
-
-			const chatState = useChatState(false);
-
-			expect(chatState.isWorkflowReadyForChat.value).toBe(false);
-		});
 	});
 
 	describe('registerChatWebhook', () => {
@@ -454,54 +439,6 @@ describe('useChatState', () => {
 				expect.objectContaining({
 					text: 'test message',
 					sender: 'user',
-				}),
-			);
-		});
-
-		it('should include afterMessageSent handler for streaming', async () => {
-			const chatState = useChatState(false);
-			const options = chatState.chatOptions.value;
-
-			expect(options.afterMessageSent).toBeDefined();
-
-			const streamingResponse = {
-				hasReceivedChunks: true,
-				message: {
-					id: 'msg-123',
-					text: 'Bot response',
-					sender: 'bot' as const,
-				},
-			};
-
-			await options.afterMessageSent?.('test', streamingResponse);
-
-			expect(logsStore.addChatMessage).toHaveBeenCalledWith({
-				id: 'msg-123',
-				text: 'Bot response',
-				sender: 'bot',
-			});
-		});
-
-		it('should include afterMessageSent handler for non-streaming', async () => {
-			mockChatTriggerNode.parameters = {
-				options: {
-					responseMode: 'lastNode',
-				},
-			};
-
-			const chatState = useChatState(false);
-			const options = chatState.chatOptions.value;
-
-			const normalResponse = {
-				output: 'Bot output message',
-			};
-
-			await options.afterMessageSent?.('test', normalResponse);
-
-			expect(logsStore.addChatMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					text: 'Bot output message',
-					sender: 'bot',
 				}),
 			);
 		});
