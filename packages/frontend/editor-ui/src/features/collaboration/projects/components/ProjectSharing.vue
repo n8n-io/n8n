@@ -265,7 +265,7 @@ watch(
 }
 
 .popper :global(.el-scrollbar__wrap) {
-	overflow: hidden;
+	scrollbar-width: none;
 }
 
 .emoji {
