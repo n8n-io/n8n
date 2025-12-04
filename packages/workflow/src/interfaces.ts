@@ -2239,7 +2239,6 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	/**
 	 * Declarative feature flag definitions.
 	 * Features are evaluated based on node version using comparison operators.
-	 * Example: { useFieldName: { '@version': { _cnd: { gte: 2.4 } } } }
 	 */
 	features?: NodeFeaturesDefinition;
 }
