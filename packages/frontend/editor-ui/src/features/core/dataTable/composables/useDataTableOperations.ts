@@ -163,17 +163,18 @@ export const useDataTableOperations = ({
 		setGridData({ colDefs: colDefs.value });
 
 		try {
+			toggleSave(true);
 			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
 
 			columnToRename.field = newName;
-			rowData.value = rowData.value.map((row) => {
-				const newRow: DataTableRow = { ...row };
-				if (oldField !== newName) {
+			if (oldField !== newName) {
+				rowData.value = rowData.value.map((row) => {
+					const newRow: DataTableRow = { ...row };
 					newRow[newName] = newRow[oldField];
 					delete newRow[oldField];
-				}
-				return newRow;
-			});
+					return newRow;
+				});
+			}
 			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 
 			telemetry.track('User renamed data table column', {
@@ -189,11 +190,13 @@ export const useDataTableOperations = ({
 			if (errorDetails.httpStatus === 409) {
 				toast.showError(
 					new Error(errorDetails.message),
-					i18n.baseText('dataTable.column.alreadyExistsError' as never),
+					i18n.baseText('dataTable.column.alreadyExistsError'),
 				);
 			} else {
-				toast.showError(error, i18n.baseText('dataTable.renameColumn.error' as never));
+				toast.showError(error, i18n.baseText('dataTable.renameColumn.error'));
 			}
+		} finally {
+			toggleSave(false);
 		}
 	}
 
