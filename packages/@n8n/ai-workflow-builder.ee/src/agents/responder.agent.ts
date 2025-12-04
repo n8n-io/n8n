@@ -45,7 +45,8 @@ FOR QUESTIONS/CONVERSATIONS:
 RESPONSE STYLE:
 - Keep responses focused and not overly long
 - Use markdown formatting for readability
-- Be conversational and helpful`;
+- Be conversational and helpful
+- Do not use emojis in your response`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
