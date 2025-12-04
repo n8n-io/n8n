@@ -159,18 +159,19 @@ function buildMessageContent(
  *
  * @param toolTaskData - The task data containing tool results
  * @param toolId - The tool call ID for creating unique keys
+ * @param toolName - The tool name for creating unique keys
  * @returns Record of binary data extracted from tool results
  */
-function getBinaryFromTaskData(toolTaskData: ITaskData, toolId: string) {
+function getBinaryFromTaskData(toolTaskData: ITaskData, toolName: string, toolId: string) {
 	const binaryData: IBinaryKeyData = {};
 
 	const toolExecutionData = toolTaskData?.data?.ai_tool?.[0];
 	if (!Array.isArray(toolExecutionData)) return binaryData;
 
-	toolExecutionData.forEach((item, itemIndex) => {
+	toolExecutionData.forEach((item) => {
 		if (item?.binary && typeof item.binary === 'object') {
 			Object.entries(item.binary).forEach(([binaryKey, binaryValue]) => {
-				const key = `tool_${toolId}_item_${itemIndex}_${binaryKey}`;
+				const key = `${toolName} | ${binaryKey} | ${toolId}`;
 
 				binaryData[key] = binaryValue;
 			});
@@ -300,8 +301,8 @@ export function extractToolResultsBinary(
 		if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
 		if (!tool.data) continue;
 
-		const toolId = typeof tool.action?.id === 'string' ? tool.action.id : 'unknown';
-		const binaryData = getBinaryFromTaskData(tool.data, toolId);
+		const { nodeName, id } = tool.action;
+		const binaryData = getBinaryFromTaskData(tool.data, nodeName, id);
 
 		Object.assign(allBinaryData, binaryData);
 	}
