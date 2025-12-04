@@ -1,6 +1,6 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Credential API Operations', () => {
 	test.describe('Basic CRUD Operations', () => {
