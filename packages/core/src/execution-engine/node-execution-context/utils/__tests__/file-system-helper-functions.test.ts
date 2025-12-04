@@ -244,6 +244,19 @@ describe('getFileSystemHelperFunctions', () => {
 		it('should create a read stream if file access is permitted', async () => {
 			const filePath = '/allowed/path';
 			(fsAccess as jest.Mock).mockResolvedValueOnce({});
+
+			// Mock createReadStream to return a proper stream-like object
+			const mockStream = {
+				once: jest.fn((event: string, callback: Function) => {
+					if (event === 'open') {
+						// Immediately call the open callback
+						setImmediate(() => callback());
+					}
+					return mockStream;
+				}),
+			};
+			(createReadStream as jest.Mock).mockReturnValueOnce(mockStream);
+
 			await helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath));
 			expect(createReadStream).toHaveBeenCalledWith(
 				filePath,
@@ -265,10 +278,17 @@ describe('getFileSystemHelperFunctions', () => {
 			// @ts-expect-error undefined property
 			eloopError.code = 'ELOOP';
 
-			// Mock createReadStream to throw ELOOP synchronously (which gets caught by try-catch)
-			(createReadStream as jest.Mock).mockImplementationOnce(() => {
-				throw eloopError;
-			});
+			// Mock createReadStream to return a stream that emits an error event
+			const mockStream = {
+				once: jest.fn((event: string, callback: Function) => {
+					if (event === 'error') {
+						// Emit the error asynchronously
+						setImmediate(() => callback(eloopError));
+					}
+					return mockStream;
+				}),
+			};
+			(createReadStream as jest.Mock).mockReturnValueOnce(mockStream);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
