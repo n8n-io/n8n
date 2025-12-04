@@ -52,8 +52,8 @@ function handleEditClick() {
 			{{ formatIssueMessage(issue.value) }}
 		</div>
 
-		<!-- Edit button -->
-		<N8nIcon size="large" icon="pencil" />
+		<!-- Navigate chevron -->
+		<N8nIcon :class="$style.chevron" icon="chevron-right" />
 	</li>
 </template>
 
@@ -81,9 +81,7 @@ function handleEditClick() {
 
 .nodeIcon {
 	margin-right: var(--spacing--2xs);
-	margin-top: var(--spacing--4xs);
 	flex-shrink: 0;
-	align-self: flex-start;
 }
 
 .nodeName {
@@ -97,10 +95,10 @@ function handleEditClick() {
 	line-height: var(--line-height--md);
 }
 
-.editButton {
-	--button--border-color: transparent;
-	margin-left: auto;
+.chevron {
+	width: 16px;
+	height: 16px;
 	flex-shrink: 0;
-	align-self: center;
+	color: var(--color--text);
 }
 </style>

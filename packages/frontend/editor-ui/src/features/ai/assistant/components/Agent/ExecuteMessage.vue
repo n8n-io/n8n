@@ -165,7 +165,26 @@ const placeholderIssues = computed(() => {
 
 const workflowIssues = computed(() => [...baseWorkflowIssues.value, ...placeholderIssues.value]);
 const hasValidationIssues = computed(() => workflowIssues.value.length > 0);
-const formatIssueMessage = workflowsStore.formatIssueMessage;
+
+/**
+ * Custom formatter for issue messages in the execute panel.
+ * Transforms verbose validation messages into user-friendly action prompts.
+ */
+function formatIssueMessage(issue: string | string[]): string {
+	const baseMessage = workflowsStore.formatIssueMessage(issue);
+
+	// Transform "Parameter "Model" is required" → "Choose model"
+	if (/Parameter\s+"Model"\s+is\s+required/i.test(baseMessage)) {
+		return i18n.baseText('aiAssistant.builder.executeMessage.chooseModel');
+	}
+
+	// Transform "Credentials for '...' are not set" → "Choose credentials"
+	if (/Credentials\s+for\s+.+\s+are\s+not\s+set/i.test(baseMessage)) {
+		return i18n.baseText('aiAssistant.builder.executeMessage.chooseCredentials');
+	}
+
+	return baseMessage;
+}
 
 const triggerNodes = computed(() =>
 	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
@@ -253,21 +272,23 @@ onBeforeUnmount(() => {
 			<p :class="$style.description">
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
 			</p>
-			<TransitionGroup
-				name="fade"
-				tag="ul"
-				:class="$style.issuesList"
-				role="list"
-				aria-label="Workflow validation issues"
-			>
-				<NodeIssueItem
-					v-for="issue in workflowIssues"
-					:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
-					:issue="issue"
-					:get-node-type="getNodeTypeByName"
-					:format-issue-message="formatIssueMessage"
-				/>
-			</TransitionGroup>
+			<div :class="$style.issuesBox">
+				<TransitionGroup
+					name="fade"
+					tag="ul"
+					:class="$style.issuesList"
+					role="list"
+					aria-label="Workflow validation issues"
+				>
+					<NodeIssueItem
+						v-for="issue in workflowIssues"
+						:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
+						:issue="issue"
+						:get-node-type="getNodeTypeByName"
+						:format-issue-message="formatIssueMessage"
+					/>
+				</TransitionGroup>
+			</div>
 		</template>
 
 		<!-- No Issues Section -->
@@ -315,14 +336,10 @@ onBeforeUnmount(() => {
 .container {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--xs);
 	gap: var(--spacing--xs);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
-	border-radius: var(--radius--lg);
 	line-height: var(--line-height--lg);
 	position: relative;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 }
 
 .description {
@@ -334,6 +351,13 @@ onBeforeUnmount(() => {
 .noIssuesMessage {
 	margin: 0;
 	color: var(--color--text--shade-1);
+}
+
+.issuesBox {
+	padding: var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--lg);
 }
 
 .issuesList {
