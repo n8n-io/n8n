@@ -85,7 +85,10 @@ orchestrationStore.$onAction(({ name, store }) => {
 			newDataJobs.labels?.push(new Date(item.timestamp).toLocaleTimeString());
 			newDataCPU.datasets[0].data.push(averageWorkerLoadFromLoads(item.data.loadAvg));
 
-			newDataCPU.labels = dataCPU.value.labels;
+			//	Map the x axis timestamps to the labels
+			newDataCPU.labels = newDataJobs.labels;
+			newDataMemoryUsage.labels = newDataJobs.labels;
+
 			const totalMem = item.data.isInContainer
 				? item.data.process.memory.constraint
 				: item.data.host.memory.total;
@@ -93,8 +96,8 @@ orchestrationStore.$onAction(({ name, store }) => {
 			const usedMem = totalMem - item.data.process.memory.available;
 
 			const usage = (usedMem / totalMem) * 100;
-			newDataMemoryUsage.labels = dataMemoryUsage.value.labels;
-			newDataMemoryUsage.datasets[0].data.push(usage.toFixed(2));
+			// newDataMemoryUsage.labels = dataMemoryUsage.value.labels;
+			newDataMemoryUsage.datasets[0].data.push(usage);
 		});
 		dataJobs.value = newDataJobs;
 		dataCPU.value = newDataCPU;
