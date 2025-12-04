@@ -548,6 +548,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				tools,
 				attachments,
 				agentName,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -618,6 +619,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				messageId: promptId,
 				message: content,
 				credentials,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -654,6 +656,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			{
 				model,
 				credentials,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,

@@ -5,3 +5,4 @@ self-hosted-runner:
     - blacksmith-2vcpu-ubuntu-2204-arm
     - blacksmith-4vcpu-ubuntu-2204-arm
     - blacksmith-8vcpu-ubuntu-2204
+    - ubuntu-slim
