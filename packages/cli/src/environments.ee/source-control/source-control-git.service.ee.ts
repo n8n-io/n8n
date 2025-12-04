@@ -323,6 +323,14 @@ export class SourceControlGitService {
 		};
 	}
 
+	async getHeadCommitHash(): Promise<string> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getHeadCommitHash)');
+		}
+		const log = await this.git.log({ maxCount: 1 });
+		return log.latest?.hash ?? 'unknown';
+	}
+
 	async diffRemote(): Promise<DiffResult | undefined> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (diffRemote)');

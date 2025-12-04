@@ -7,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
-import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
+import { ensureError, UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
@@ -372,11 +372,16 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
+		await this.logWorkflowsInDbBeforePull();
+		await this.logWorkflowsInGitBeforePull();
+
 		const statusResult = (await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
 		})) as SourceControlledFile[];
+
+		await this.logWorkflowsInGitAfterPull(statusResult);
 
 		if (options.force !== true) {
 			const possibleConflicts = statusResult.filter(
@@ -402,11 +407,30 @@ export class SourceControlService {
 		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
+		const workflowIdsToBeImported = workflowsToBeImported.map((w) => w.id);
+		this.logger.info('Pull operation: Workflows to be imported/updated in DB');
+		this.logger.info(
+			JSON.stringify({
+				workflowCount: workflowIdsToBeImported.length,
+				workflowIds: workflowIdsToBeImported,
+			}),
+		);
+
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
 			user.id,
 		);
+
 		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
+		const workflowIdsToBeDeleted = workflowsToBeDeleted.map((w) => w.id);
+		this.logger.info('Pull operation: Workflows to be deleted from DB');
+		this.logger.info(
+			JSON.stringify({
+				workflowCount: workflowIdsToBeDeleted.length,
+				workflowIds: workflowIdsToBeDeleted,
+			}),
+		);
+
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
 			user,
 			workflowsToBeDeleted,
@@ -454,6 +478,69 @@ export class SourceControlService {
 			statusCode: 200,
 			statusResult,
 		};
+	}
+
+	private async logWorkflowsInDbBeforePull(): Promise<string[]> {
+		try {
+			const workflowsInDbBeforePull =
+				await this.sourceControlImportService.getAllLocalVersionIdsFromDb();
+			const workflowIdsInDbBeforePull = workflowsInDbBeforePull.map((w) => w.id);
+			this.logger.info('Pull operation: Workflows in DB before pull');
+			this.logger.info(
+				JSON.stringify({
+					workflowCount: workflowIdsInDbBeforePull.length,
+					workflowIds: workflowIdsInDbBeforePull,
+				}),
+			);
+			return workflowIdsInDbBeforePull;
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.warn('Failed to get workflows from DB before pull', { error });
+			return [];
+		}
+	}
+
+	private async logWorkflowsInGitBeforePull(): Promise<void> {
+		try {
+			const workflowIds: string[] =
+				await this.sourceControlImportService.getWorkflowIdsFromGitDirectory();
+			this.logger.info('Pull operation: Workflows in .git directory before status check');
+			this.logger.info(
+				JSON.stringify({
+					workflowCount: workflowIds.length,
+					workflowIds,
+				}),
+			);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.warn('Failed to get workflows from .git directory before pull', { error });
+		}
+	}
+
+	private async logWorkflowsInGitAfterPull(files: SourceControlledFile[]): Promise<void> {
+		try {
+			const workflowIdsInGitAfterStatus =
+				await this.sourceControlImportService.getWorkflowIdsFromGitDirectory();
+
+			// Calculate difference
+			const addedWorkflows = getNonDeletedResources(files, 'workflow');
+			const removedWorkflows = getDeletedResources(files, 'workflow');
+
+			this.logger.info('Pull operation: Workflows in .git directory after pull');
+			this.logger.info(
+				JSON.stringify({
+					workflowCount: workflowIdsInGitAfterStatus.length,
+					workflowIds: workflowIdsInGitAfterStatus,
+					addedCount: addedWorkflows.length,
+					addedIds: addedWorkflows.map((wf) => wf.id),
+					removedCount: removedWorkflows.length,
+					removedIds: removedWorkflows.map((wf) => wf.id),
+				}),
+			);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.warn('Failed to get workflows from .git directory after pull', { error });
+		}
 	}
 
 	async getStatus(user: User, options: SourceControlGetStatus) {

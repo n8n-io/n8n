@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { FolderRepository, type TagEntity, TagRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { ensureError, UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -152,8 +152,12 @@ export class SourceControlStatusService {
 			throw new Error('Git service not initialized');
 		}
 		try {
+			await this.logHeadCommitHash('before reset and pull');
+
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
+
+			await this.logHeadCommitHash('after reset and pull');
 		} catch (error) {
 			this.logger.error(
 				`Failed to reset workfolder: ${error instanceof Error ? error.message : String(error)}`,
@@ -161,6 +165,15 @@ export class SourceControlStatusService {
 			throw new UserError(
 				`Unable to fetch updates from git - your folder might be out of sync. Try reconnecting from the Source Control settings page. Git error message: ${error instanceof Error ? error.message : String(error)}`,
 			);
+		}
+	}
+
+	private async logHeadCommitHash(stage: string): Promise<void> {
+		try {
+			const commitHash = await this.gitService.getHeadCommitHash();
+			this.logger.info(`Pull operation: Git state ${stage}. Head commit hash: ${commitHash}`);
+		} catch (e) {
+			this.logger.warn(`Failed to get commit hash ${stage}`, { error: ensureError(e) });
 		}
 	}
 

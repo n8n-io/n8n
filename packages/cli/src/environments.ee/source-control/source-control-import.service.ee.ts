@@ -204,6 +204,14 @@ export class SourceControlImportService {
 		return remoteWorkflowFilesParsed;
 	}
 
+	async getWorkflowIdsFromGitDirectory(): Promise<string[]> {
+		const workflowFiles = await glob('*.json', {
+			cwd: this.workflowExportFolder,
+			absolute: false,
+		});
+		return workflowFiles.map((file) => path.basename(file, '.json'));
+	}
+
 	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
 		const localWorkflows = await this.workflowRepository.find({
 			relations: ['parentFolder'],
