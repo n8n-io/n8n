@@ -215,13 +215,12 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
 }
 
 .main-header {
 	display: flex;
 	justify-content: space-between;
-	margin-bottom: var(--spacing--md);
+	margin-bottom: var(--spacing--lg);
 }
 
 .tabs-header {
