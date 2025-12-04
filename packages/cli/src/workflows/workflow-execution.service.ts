@@ -252,7 +252,6 @@ export class WorkflowExecutionService {
 	// NOTE: this is borrowed from ActiveWorkflowManager. We duplicate it to avoid taking the whole dependency
 	// on ActiveWorkflowManager just for this method. We could consider moving it into the WorkflowRepository later.
 	private async isWorkflowActive(workflowId: WorkflowId) {
-		console.log(`checking if workflow ${workflowId} is active`);
 		const workflow = await this.workflowRepository.findOne({
 			select: ['activeVersionId'],
 			where: { id: workflowId },
