@@ -247,24 +247,21 @@ export async function updateParentExecutionWithChildResults(
 		unflattenData: true,
 	});
 
-	if (!parent || parent.status !== 'waiting') {
+	if (parent?.status !== 'waiting') {
 		return;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
-	if (
-		!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
-		parentWithSubWorkflowResults.data.executionData.nodeExecutionStack.length === 0
-	) {
+	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
+	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
 		return;
 	}
 
 	// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 	// so that the Execute Workflow node returns the correct data when parent execution is resumed
 	// and the Execute Workflow node is executed again in disabled mode.
-	parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data =
-		lastExecutedNodeData.data;
+	nodeExecutionStack[0].data = lastExecutedNodeData.data;
 
 	await executionRepository.updateExistingExecution(
 		parentExecutionId,
