@@ -50,7 +50,10 @@ function createPairwiseWorkflowGenerator(
 
 		// Use the prompt from the dataset
 		await consumeGenerator(
-			agent.chat(getChatPayload(inputs.prompt, runId), 'langsmith-pairwise-eval-user'),
+			agent.chat(
+				getChatPayload('langsmith-pairwise', inputs.prompt, runId),
+				'langsmith-pairwise-eval-user',
+			),
 		);
 
 		// Get generated workflow

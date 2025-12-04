@@ -43,7 +43,7 @@ function createWorkflowGenerator(
 		// Create agent for this run
 		const agent = createAgent(parsedNodeTypes, llm, tracer);
 		await consumeGenerator(
-			agent.chat(getChatPayload(messageContent, runId), 'langsmith-eval-user'),
+			agent.chat(getChatPayload('langsmith-evals', messageContent, runId), 'langsmith-eval-user'),
 		);
 
 		// Get generated workflow with validation

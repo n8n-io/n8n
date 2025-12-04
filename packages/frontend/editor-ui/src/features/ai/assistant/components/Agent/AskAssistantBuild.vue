@@ -35,7 +35,6 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const trackedCategorizations = ref(new Set<string>());
-const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -109,7 +108,6 @@ function onNewWorkflow() {
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
 	trackedCategorizations.value.clear();
-	workflowUpdated.value = undefined;
 	shouldTidyUp.value = false;
 }
 
@@ -192,8 +190,6 @@ watch(
 				if (msg.id && isWorkflowUpdatedMessage(msg)) {
 					processedWorkflowUpdates.value.add(msg.id);
 
-					const originalWorkflowJson =
-						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
@@ -209,11 +205,6 @@ watch(
 							regenerateIds: false,
 							trackEvents: false,
 						});
-
-						workflowUpdated.value = {
-							start: originalWorkflowJson,
-							end: msg.codeSnippet,
-						};
 					}
 				}
 			});

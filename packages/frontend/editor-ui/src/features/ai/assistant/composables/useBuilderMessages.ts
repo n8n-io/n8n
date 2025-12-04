@@ -98,9 +98,6 @@ export function useBuilderMessages() {
 		msg: ChatRequest.ToolMessage,
 		messageId: string,
 	): void {
-		// Use toolCallId as the message ID for consistency across updates
-		const toolMessageId = msg.toolCallId ?? messageId;
-
 		// Check if we already have this tool message
 		const existingIndex = msg.toolCallId
 			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
@@ -111,6 +108,7 @@ export function useBuilderMessages() {
 			const existing = messages[existingIndex] as ChatUI.ToolMessage;
 			const toolMessage: ChatUI.ToolMessage = {
 				...existing,
+				id: `${messageId}-${msg.toolCallId}`,
 				status: msg.status,
 				updates: [...(existing.updates || []), ...(msg.updates || [])],
 			};
@@ -118,7 +116,7 @@ export function useBuilderMessages() {
 		} else {
 			// Add new tool message
 			const toolMessage: ChatUI.AssistantMessage = {
-				id: toolMessageId,
+				id: `${messageId}-${msg.toolCallId}`,
 				role: 'assistant',
 				type: 'tool',
 				toolName: msg.toolName,
