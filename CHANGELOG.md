@@ -1,3 +1,19 @@
+# [2.0.0-rc.1](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.0...n8n@2.0.0-rc.1) (2025-12-04)
+
+
+### Bug Fixes
+
+* **core:** Make sub-workflows with waits return correct data to parents ([#22611](https://github.com/n8n-io/n8n/issues/22611)) ([14205dc](https://github.com/n8n-io/n8n/commit/14205dc0c6ae15b1329e46584c6b472100fe0ad5))
+
+
+### Features
+
+* **core:** Block access to env in code and expressions by default ([#22643](https://github.com/n8n-io/n8n/issues/22643)) ([0ffd760](https://github.com/n8n-io/n8n/commit/0ffd76093c2e9b62098e14dc7e402f727e14e027))
+* **core:** Introduce native Python code tool for AI agent ([#22658](https://github.com/n8n-io/n8n/issues/22658)) ([b1bc778](https://github.com/n8n-io/n8n/commit/b1bc7786d860d0b9e02fbda3604a979ed8d39f3d))
+* **editor:** Sidebar redesign ([#22395](https://github.com/n8n-io/n8n/issues/22395)) ([0ba2043](https://github.com/n8n-io/n8n/commit/0ba2043047dadfdccf96b30f5653886430d7eb54))
+
+
+
 # [2.0.0-rc.0](https://github.com/n8n-io/n8n/compare/n8n@1.122.0...n8n@2.0.0-rc.0) (2025-12-02)
 
 

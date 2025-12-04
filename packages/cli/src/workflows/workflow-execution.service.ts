@@ -110,11 +110,12 @@ export class WorkflowExecutionService {
 			Reflect.deleteProperty(payload, 'runData');
 		}
 
+		let data: IWorkflowExecutionDataProcess | undefined;
+
 		// Case 1: Partial execution to a destination node, and we have enough runData to start the execution.
 		if (isPartialExecution(payload)) {
 			if (this.partialExecutionFulfilsPreconditions(payload)) {
-				// All we need to to do is run the workflow.
-				const executionId = await this.workflowRunner.run({
+				data = {
 					destinationNode: payload.destinationNode,
 					executionMode: 'manual',
 					runData: payload.runData,
@@ -124,11 +125,10 @@ export class WorkflowExecutionService {
 					userId: user.id,
 					dirtyNodeNames: payload.dirtyNodeNames,
 					agentRequest: payload.agentRequest,
-				});
-
-				return { executionId };
+				};
+			} else {
+				payload = upgradeToFullManualExecutionFromUnknownTrigger(payload);
 			}
-			payload = upgradeToFullManualExecutionFromUnknownTrigger(payload);
 		}
 
 		// Case 2: Full execution from a known trigger.
@@ -151,8 +151,7 @@ export class WorkflowExecutionService {
 				return { waitingForWebhook: true };
 			}
 
-			// We don't need a webhook, so we can just execute.
-			const executionId = await this.workflowRunner.run({
+			data = {
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
@@ -161,8 +160,7 @@ export class WorkflowExecutionService {
 				triggerToStartFrom: payload.triggerToStartFrom,
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
-			});
-			return { executionId };
+			};
 		}
 
 		// Case 3: Full execution from an unknown trigger.
@@ -189,7 +187,7 @@ export class WorkflowExecutionService {
 				return { waitingForWebhook: true };
 			}
 
-			const executionId = await this.workflowRunner.run({
+			data = {
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
@@ -198,7 +196,45 @@ export class WorkflowExecutionService {
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
-			});
+			};
+		}
+
+		if (data) {
+			const offloadingManualExecutionsInQueueMode =
+				this.globalConfig.executions.mode === 'queue' &&
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+
+			/**
+			 * Historically, manual executions in scaling mode ran in the main process,
+			 * so some execution details were never persisted in the database.
+			 *
+			 * Currently, manual executions in scaling mode are offloaded to workers,
+			 * so we persist all details to give workers full access to them.
+			 */
+			if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
+				data.executionData = createRunExecutionData({
+					startData: {
+						startNodes: data.startNodes,
+						destinationNode: data.destinationNode,
+					},
+					resultData: {
+						pinData: data.pinData,
+						// Set this to null so `createRunExecutionData` doesn't initialize it.
+						// Otherwise this would be treated as a partial execution.
+						runData: data.runData ?? null,
+					},
+					manualData: {
+						userId: data.userId,
+						dirtyNodeNames: data.dirtyNodeNames,
+						triggerToStartFrom: data.triggerToStartFrom,
+					},
+					// Set this to null so `createRunExecutionData` doesn't initialize it.
+					// Otherwise this would be treated as a resumed execution after waiting.
+					executionData: null,
+				});
+			}
+
+			const executionId = await this.workflowRunner.run(data);
 			return { executionId };
 		}
 
