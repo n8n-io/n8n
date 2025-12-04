@@ -1,6 +1,6 @@
-import { workflowBuilderEnabledRequirements } from '../../config/ai-builder-fixtures';
-import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
+import { workflowBuilderEnabledRequirements } from '../../../config/ai-builder-fixtures';
+import { test, expect } from '../../../fixtures/base';
+import type { n8nPage } from '../../../pages/n8nPage';
 
 // Helper to open workflow builder and click a specific suggestion pill
 async function openBuilderAndClickSuggestion(n8n: n8nPage, suggestionText: string) {

@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Chat session ID reset', () => {
 	test.beforeEach(async ({ n8n }) => {
