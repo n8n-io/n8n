@@ -150,9 +150,18 @@ describe('TestWebhooks', () => {
 			expect(needsWebhook).toBe(true);
 		});
 
-		test.each([true, false])(
+		test.each([
+			{ published: true, withSingleWebhookTrigger: true, shouldThrow: true },
+			{ published: true, withSingleWebhookTrigger: false, shouldThrow: false },
+			{ published: false, withSingleWebhookTrigger: true, shouldThrow: false },
+			{ published: false, withSingleWebhookTrigger: false, shouldThrow: false },
+		] satisfies Array<{
+			published: boolean;
+			withSingleWebhookTrigger: boolean;
+			shouldThrow: boolean;
+		}>)(
 			'handles single webhook trigger when workflowIsActive=%s',
-			async (workflowIsActive) => {
+			async ({ published: workflowIsActive, withSingleWebhookTrigger, shouldThrow }) => {
 				const workflow = mock<Workflow>();
 				const regularWebhook = mock<IWebhookData>({
 					node: 'Webhook',
@@ -183,11 +192,11 @@ describe('TestWebhooks', () => {
 					.mockReturnValue([regularWebhook, telegramWebhook]);
 				jest.spyOn(workflow, 'getNode').mockImplementation((name: string) => {
 					if (name === 'Webhook') return webhookNode;
-					if (name === 'Telegram Trigger') return telegramNode;
+					if (name === 'Telegram Trigger' && withSingleWebhookTrigger) return telegramNode;
 					return null;
 				});
 
-				if (workflowIsActive) {
+				if (shouldThrow) {
 					const promise = testWebhooks.needsWebhook({
 						...args,
 						workflowIsActive,
