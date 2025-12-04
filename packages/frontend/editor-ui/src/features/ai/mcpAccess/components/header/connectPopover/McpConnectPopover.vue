@@ -25,7 +25,7 @@ const tabItems = ref([
 	{ value: TABS.ACCESS_TOKEN, label: i18n.baseText('settings.mcp.connectPopover.tab.accessToken') },
 ]);
 
-const serverUrl = ref(`${rootStore.baseUrl}${MCP_ENDPOINT}`);
+const serverUrl = ref(`${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
 
 const activeTab = ref(tabItems.value[0].value);
 
