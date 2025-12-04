@@ -151,9 +151,9 @@ describe('ExecuteMessage', () => {
 	});
 
 	it('disables execution when validation issues exist', () => {
-		workflowValidationIssuesRef.value = [
-			{ node: 'Start Trigger', type: 'parameters', value: 'Missing field' },
-		];
+		const issue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
+		workflowValidationIssuesRef.value = [issue];
+		workflowTodosRef.value = [issue];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -166,6 +166,9 @@ describe('ExecuteMessage', () => {
 		workflowNodes[0].parameters = {
 			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
 		};
+		workflowTodosRef.value = [
+			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
+		];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -334,6 +337,10 @@ describe('ExecuteMessage', () => {
 				url: ['Some other validation error'],
 			},
 		};
+		workflowTodosRef.value = [
+			{ node: 'Start Trigger', type: 'parameters', value: 'Some other validation error' },
+			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
+		];
 
 		const { getAllByTestId, container } = renderExecuteMessage();
 		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;

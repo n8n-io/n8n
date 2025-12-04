@@ -777,13 +777,16 @@ describe('ParameterInput.vue', () => {
 	describe('placeholder tracking', () => {
 		it('tracks field_focus_placeholder_in_ndv when focusing placeholder value', async () => {
 			mockBuilderState.isPlaceholderValue.mockReturnValue(true);
-			mockNdvState.activeNode = {
-				id: faker.string.uuid(),
-				name: 'Test Node',
-				parameters: {},
-				position: [0, 0],
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: {
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: {},
+					position: [0, 0],
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				},
 			};
 
 			const rendered = renderComponent({
@@ -808,13 +811,16 @@ describe('ParameterInput.vue', () => {
 
 		it('does not track when value is not a placeholder', async () => {
 			mockBuilderState.isPlaceholderValue.mockReturnValue(false);
-			mockNdvState.activeNode = {
-				id: faker.string.uuid(),
-				name: 'Test Node',
-				parameters: {},
-				position: [0, 0],
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: {
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: {},
+					position: [0, 0],
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				},
 			};
 
 			const rendered = renderComponent({
@@ -837,13 +843,16 @@ describe('ParameterInput.vue', () => {
 		it('does not track when AI builder is disabled', async () => {
 			mockBuilderState.isPlaceholderValue.mockReturnValue(true);
 			mockBuilderState.isAIBuilderEnabled = false;
-			mockNdvState.activeNode = {
-				id: faker.string.uuid(),
-				name: 'Test Node',
-				parameters: {},
-				position: [0, 0],
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: {
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: {},
+					position: [0, 0],
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				},
 			};
 
 			const rendered = renderComponent({
