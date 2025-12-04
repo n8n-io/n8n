@@ -639,7 +639,7 @@ describe('findStartNodes', () => {
 			const inLoop = createNodeData({ name: 'inLoop' });
 			const graph = new DirectedGraph().addNodes(trigger, loop, inLoop).addConnections(
 				{ from: trigger, to: loop },
-				// Note: loop connects to afterLoop via output 1, but there's no connection
+				// Note: loop connects to inLoop via output 1, but there's no connection
 				// back to loop, so it's not actually a loop
 				{ from: loop, outputIndex: 1, to: inLoop },
 			);
@@ -661,7 +661,7 @@ describe('findStartNodes', () => {
 			// ASSERT
 			// Because the loop node doesn't form an actual loop, it should check output 1
 			// for run data (not output 0). Since output 1 has data, the loop node should
-			// not be a start node, and we should continue to afterLoop.
+			// not be a start node, and we should continue to inLoop.
 			expect(startNodes.size).toBe(1);
 			expect(startNodes).toContainEqual(inLoop);
 		});
