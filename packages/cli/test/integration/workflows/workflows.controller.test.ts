@@ -1198,7 +1198,7 @@ describe('GET /workflows', () => {
 				owner,
 			);
 
-			const normalWorkflow = await createWorkflow(
+			await createWorkflow(
 				{
 					name: 'Normal Workflow',
 					nodes: [
