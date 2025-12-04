@@ -108,6 +108,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -183,7 +185,10 @@ describe('useWorkflowSaving', () => {
 
 			const workflowStore = useWorkflowsStore();
 			const MOCK_ID = 'existing-workflow-id';
+			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
 			workflowStore.workflow.id = MOCK_ID;
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowStore.workflowsById = { [MOCK_ID]: existingWorkflow };
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -267,6 +272,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {
@@ -361,6 +368,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w0' });
@@ -382,6 +391,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w1' });
