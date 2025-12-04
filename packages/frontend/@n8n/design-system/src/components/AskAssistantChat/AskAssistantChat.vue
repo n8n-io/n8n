@@ -105,14 +105,13 @@ function groupToolMessagesIntoThinking(
 			j++;
 		}
 
-		// Deduplicate tool messages by toolCallId, keeping the latest status for each unique tool
-		// Tool messages come in multiple times as they progress through stages (running -> completed)
-		// Priority: toolCallId > toolName (for tools without IDs)
+		// Deduplicate tool messages by toolName, keeping the latest status for each unique tool type
+		// This matches the original behavior where multiple calls to the same tool (e.g., get_node_details)
+		// are collapsed into a single entry showing the most recent status
 		const uniqueToolsMap = new Map<string, ChatUI.ToolMessage>();
 		for (const tool of toolGroup) {
-			// Use toolCallId if available, otherwise fall back to toolName
-			// Don't use tool.id as it's a unique message ID that differs per update
-			const key = tool.toolCallId || `toolname-${tool.toolName}`;
+			// Group by toolName so multiple calls to the same tool are collapsed
+			const key = tool.toolName;
 			// Later messages in the array have the most recent status, so they overwrite earlier ones
 			uniqueToolsMap.set(key, tool);
 		}
@@ -123,9 +122,9 @@ function groupToolMessagesIntoThinking(
 		const allToolsCompleted = uniqueTools.every((m) => m.status === 'completed');
 		const hasRunningTool = uniqueTools.some((m) => m.status === 'running');
 
-		// Build the items array
+		// Build the items array - use toolName as id since we dedupe by toolName
 		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => ({
-			id: m.toolCallId || m.id || `tool-${m.toolName}`,
+			id: `tool-${m.toolName}`,
 			displayTitle:
 				m.customDisplayTitle ||
 				m.displayTitle ||
@@ -185,6 +184,26 @@ function groupToolMessagesIntoThinking(
 
 		result.push(thinkingGroup);
 		i = j;
+	}
+
+	// If streaming with a loadingMessage but no thinking-group exists yet (no tool messages received),
+	// create an initial thinking-group with just the "Thinking..." item
+	const hasThinkingGroup = result.some((msg) => msg.type === 'thinking-group');
+	if (options.streaming && options.loadingMessage && !hasThinkingGroup) {
+		const initialThinkingGroup: ChatUI.ThinkingGroupMessage = {
+			id: 'thinking-initial',
+			role: 'assistant',
+			type: 'thinking-group',
+			items: [
+				{
+					id: 'thinking-item',
+					displayTitle: options.loadingMessage,
+					status: 'running',
+				},
+			],
+			latestStatusText: options.loadingMessage,
+		};
+		result.push(initialThinkingGroup);
 	}
 
 	return result;

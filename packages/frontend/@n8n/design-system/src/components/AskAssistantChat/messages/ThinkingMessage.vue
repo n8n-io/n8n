@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
-import N8nText from '../../N8nText';
 
 interface Props {
 	items: ChatUI.ThinkingItem[];
@@ -28,13 +27,13 @@ const toggleExpanded = () => {
 function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 	switch (status) {
 		case 'completed':
-			return { icon: 'circle-check' as const, color: 'success' as const };
+			return { icon: 'circle-check' as const, spin: false };
 		case 'running':
-			return { icon: 'spinner' as const, color: 'secondary' as const, spin: true };
+			return { icon: 'spinner' as const, spin: true };
 		case 'error':
-			return { icon: 'triangle-alert' as const, color: 'warning' as const };
+			return { icon: 'triangle-alert' as const, spin: false };
 		default:
-			return { icon: 'circle' as const, color: 'text-light' as const };
+			return { icon: 'circle' as const, spin: false };
 	}
 }
 </script>
@@ -59,14 +58,12 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 				<div v-for="item in items" :key="item.id" :class="$style.item">
 					<N8nIcon
 						:icon="getIconForStatus(item.status).icon"
-						:color="getIconForStatus(item.status).color"
 						:spin="getIconForStatus(item.status).spin"
-						size="small"
 						:class="$style.itemIcon"
 					/>
-					<N8nText size="small" :class="$style.itemText">
+					<span :class="$style.itemText">
 						{{ item.displayTitle }}
-					</N8nText>
+					</span>
 				</div>
 			</div>
 		</Transition>
@@ -130,10 +127,19 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 .itemIcon {
 	flex-shrink: 0;
 	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	color: var(--color--text--tint-1);
+
+	svg {
+		width: var(--spacing--sm);
+		height: var(--spacing--sm);
+	}
 }
 
 .itemText {
 	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 }
 </style>
 
