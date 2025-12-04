@@ -19,7 +19,7 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
         type: string
       image:
         description: 'Image to use'
@@ -31,8 +31,10 @@ jobs:
   build-and-test:
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-pull
+      test-mode: docker-build
       shards: ${{ inputs.shards }}
       docker-image: ${{ inputs.image }}
-      test-command: pnpm --filter=n8n-playwright test:container:standard
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:ui
+      runner: blacksmith-4vcpu-ubuntu-2204
+      workers: '3'
     secrets: inherit
