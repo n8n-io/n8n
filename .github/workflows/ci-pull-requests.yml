@@ -135,7 +135,7 @@ jobs:
   # If you add/remove jobs that should block merging, update the 'needs' array below.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-test]
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]
     if: always()
     runs-on: ubuntu-slim
     steps:
