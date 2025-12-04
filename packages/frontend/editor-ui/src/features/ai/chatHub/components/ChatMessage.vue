@@ -79,6 +79,10 @@ const attachments = computed(() =>
 	})),
 );
 
+const hideMessage = computed(() => {
+	return message.status === 'success' && message.content === '';
+});
+
 const hoveredCodeBlockContent = computed(() => {
 	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
 
@@ -169,6 +173,7 @@ onBeforeMount(() => {
 
 <template>
 	<div
+		v-if="!hideMessage"
 		:class="[
 			$style.message,
 			message.type === 'human' ? $style.user : $style.assistant,
@@ -235,7 +240,7 @@ onBeforeMount(() => {
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
 						v-else
-						:key="markdown.forceReRenderKey"
+						:key="markdown.forceReRenderKey.value"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
