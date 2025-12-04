@@ -388,6 +388,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				testRun: false,
 				query: {},
 				customCss,
+				context: this,
 			});
 
 			res.render('form-trigger', data);
@@ -441,6 +442,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				testRun: false,
 				query: {},
 				customCss,
+				context: this,
 			});
 
 			res.render('form-trigger', data);
