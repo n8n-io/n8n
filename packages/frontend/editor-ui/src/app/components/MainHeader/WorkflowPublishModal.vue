@@ -277,6 +277,7 @@ async function handlePublish() {
 						@click="modalBus.emit('close')"
 					/>
 					<N8nButton
+						:disabled="isPublishDisabled"
 						:loading="publishing"
 						:label="i18n.baseText('workflows.publish')"
 						data-test-id="workflow-publish-button"
