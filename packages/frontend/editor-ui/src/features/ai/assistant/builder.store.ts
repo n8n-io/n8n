@@ -800,7 +800,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
 		workflowTodos,
-		manualExecStatsInBetweenMessages: computed(() => manualExecStatsInBetweenMessages.value),
 
 		// Methods
 		abortStreaming,

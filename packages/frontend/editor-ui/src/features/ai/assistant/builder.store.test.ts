@@ -2153,70 +2153,125 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	describe('incrementManualExecutionStats', () => {
-		it('should increment success count', () => {
+	describe('manual execution stats telemetry', () => {
+		it('should include success count in telemetry when sending message', () => {
 			const builderStore = useBuilderStore();
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
+			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('success');
+			builderStore.sendChatMessage({ text: 'test' });
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(1);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 1,
+					manual_exec_error_count_since_prev_msg: 0,
+				}),
+			);
 		});
 
-		it('should increment error count', () => {
+		it('should include error count in telemetry when sending message', () => {
 			const builderStore = useBuilderStore();
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
+			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('error');
+			builderStore.sendChatMessage({ text: 'test' });
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(1);
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 0,
+					manual_exec_error_count_since_prev_msg: 1,
+				}),
+			);
 		});
 
-		it('should increment counts multiple times', () => {
+		it('should include multiple incremented counts in telemetry', () => {
 			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
+			builderStore.sendChatMessage({ text: 'test' });
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(2);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(1);
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 2,
+					manual_exec_error_count_since_prev_msg: 1,
+				}),
+			);
 		});
-	});
 
-	describe('resetManualExecutionStats', () => {
-		it('should reset stats to zero', () => {
+		it('should reset stats after sending message', async () => {
 			const builderStore = useBuilderStore();
 
-			builderStore.incrementManualExecutionStats('success');
+			// First message with some stats
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
+			builderStore.sendChatMessage({ text: 'first message' });
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(2);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(1);
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
-			builderStore.resetManualExecutionStats();
+			// Verify first message had the stats
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 1,
+					manual_exec_error_count_since_prev_msg: 1,
+				}),
+			);
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
+			track.mockClear();
+
+			// Second message should have reset stats (zero counts)
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello again!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.sendChatMessage({ text: 'second message' });
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 0,
+					manual_exec_error_count_since_prev_msg: 0,
+				}),
+			);
 		});
 
-		it('should have no effect when stats are already zero', () => {
+		it('should include zero counts when no manual executions occurred', () => {
 			const builderStore = useBuilderStore();
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
+			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.resetManualExecutionStats();
+			builderStore.sendChatMessage({ text: 'test' });
 
-			expect(builderStore.manualExecStatsInBetweenMessages.success).toBe(0);
-			expect(builderStore.manualExecStatsInBetweenMessages.error).toBe(0);
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 0,
+					manual_exec_error_count_since_prev_msg: 0,
+				}),
+			);
 		});
 	});
 });
