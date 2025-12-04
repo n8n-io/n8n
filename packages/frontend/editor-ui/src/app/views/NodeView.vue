@@ -1821,12 +1821,14 @@ function updateNodeRoute(nodeId: string) {
 }
 
 watch(
-	() => route.name,
-	async (newRouteName, oldRouteName) => {
+	[() => route.name, () => route.params.name],
+	async ([newRouteName, newWorkflowId], [oldRouteName, oldWorkflowId]) => {
 		// When navigating from an existing workflow to a new workflow or the other way around we should load the new workflow
 		const force =
 			(newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW) ||
-			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW);
+			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW) ||
+			newWorkflowId !== oldWorkflowId;
+
 		await initializeRoute(force);
 	},
 );
