@@ -1,39 +1,58 @@
 import { customAlphabet } from 'nanoid';
 
-import { INSTANCE_OWNER_CREDENTIALS } from '../../config/test-users';
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../fixtures/base';
 
-test.describe('User Management', () => {
-	test('should login and logout @auth:none', async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.signIn.goToSignIn();
-		await n8n.signIn.loginWithEmailAndPassword(
-			INSTANCE_OWNER_CREDENTIALS.email,
-			INSTANCE_OWNER_CREDENTIALS.password,
-		);
-		await expect(n8n.sideBar.getUserMenu()).toBeVisible();
+const INVALID_NAMES = [
+	'https://n8n.io',
+	'http://n8n.io',
+	'www.n8n.io',
+	'n8n.io',
+	'n8n.бг',
+	'n8n.io/home',
+	'n8n.io/home?send=true',
+	'<a href="#">Jack</a>',
+	'<script>alert("Hello")</script>',
+];
+
+const VALID_NAMES = [
+	['a', 'a'],
+	['alice', 'alice'],
+	['Robert', 'Downey Jr.'],
+	['Mia', 'Mia-Downey'],
+	['Mark', "O'neil"],
+	['Thomas', 'Müler'],
+	['ßáçøñ', 'ßáçøñ'],
+	['أحمد', 'فلسطين'],
+	['Милорад', 'Филиповић'],
+];
+
+test.describe('Personal Settings', () => {
+	test('should allow to change first and last name', async ({ n8n }) => {
+		await n8n.settingsPersonal.goToPersonalSettings();
+
+		for (const name of VALID_NAMES) {
+			await n8n.settingsPersonal.fillPersonalData(name[0], name[1]);
+			await n8n.settingsPersonal.saveSettings();
+
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
+			).toBeVisible();
+			await n8n.notifications.closeNotificationByText('Personal details updated');
+		}
 	});
 
-	test('should prevent non-owners to access UM settings', async ({ n8n }) => {
-		// This creates a new user in the same context, so the cookies are refreshed and owner is no longer logged in
-		await n8n.api.users.create();
-		await n8n.navigate.toUsers();
-		await expect(n8n.workflows.getNewWorkflowCard()).toBeVisible();
-	});
+	test('should not allow malicious values for personal data', async ({ n8n }) => {
+		await n8n.settingsPersonal.goToPersonalSettings();
 
-	test('should allow instance owner to access UM settings', async ({ n8n }) => {
-		await n8n.navigate.toUsers();
-		expect(n8n.page.url()).toContain('/settings/users');
-	});
+		for (const name of INVALID_NAMES) {
+			await n8n.settingsPersonal.fillPersonalData(name, name);
+			await n8n.settingsPersonal.saveSettings();
 
-	test('should be able to change user role to Admin and back', async ({ n8n, api }) => {
-		const user = await api.users.create();
-		await n8n.navigate.toUsers();
-		await n8n.settingsUsers.search(user.email);
-		await n8n.settingsUsers.selectAccountType(user.email, 'Admin');
-		await expect(n8n.settingsUsers.getAccountType(user.email)).toHaveText('Admin');
-		await n8n.settingsUsers.selectAccountType(user.email, 'Member');
-		await expect(n8n.settingsUsers.getAccountType(user.email)).toHaveText('Member');
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Problem updating your details'),
+			).toBeVisible();
+			await n8n.notifications.closeNotificationByText('Problem updating your details');
+		}
 	});
 
 	test('should be able to change theme', async ({ n8n }) => {
@@ -43,33 +62,6 @@ test.describe('User Management', () => {
 			n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
 		).toBeVisible();
 		await expect(n8n.page.locator('body')).toHaveAttribute('data-theme', 'dark');
-	});
-
-	test('should delete user and their data', async ({ n8n, api }) => {
-		const user = await api.users.create();
-		await n8n.navigate.toUsers();
-		await n8n.page.reload();
-
-		await n8n.settingsUsers.search(user.email);
-		await expect(n8n.settingsUsers.getRow(user.email)).toBeVisible();
-
-		await n8n.settingsUsers.clickDeleteUser(user.email);
-		await n8n.settingsUsers.deleteData();
-		await expect(n8n.notifications.getNotificationByTitleOrContent('User deleted')).toBeVisible();
-	});
-
-	test('should delete user and transfer their data', async ({ n8n, api }) => {
-		const ownerEmail = INSTANCE_OWNER_CREDENTIALS.email;
-		const user = await api.users.create();
-		await n8n.navigate.toUsers();
-		await n8n.page.reload();
-
-		await n8n.settingsUsers.search(user.email);
-		await n8n.settingsUsers.getRow(user.email).isVisible();
-
-		await n8n.settingsUsers.clickDeleteUser(user.email);
-		await n8n.settingsUsers.transferData(ownerEmail);
-		await expect(n8n.notifications.getNotificationByTitleOrContent('User deleted')).toBeVisible();
 	});
 
 	test('should allow user to change their personal data', async ({ n8n }) => {
