@@ -251,10 +251,12 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 | `--dos <rules>` | Newline-separated "do" rules for local evaluation | - |
 | `--donts <rules>` | Newline-separated "don't" rules for local evaluation | - |
 | `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
-| `--repetitions <n>` | Number of workflow generations per prompt | 1 |
+| `--repetitions <n>` | Number of times to repeat the entire evaluation | 1 |
+| `--generations <n>` | Number of workflow generations per prompt (for variance reduction) | 1 |
 | `--judges <n>` | Number of LLM judges per evaluation | 3 |
 | `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
-| `--verbose`, `-v` | Enable verbose logging (shows judge details, criteria, etc.) | false |
+| `--output-dir <path>` | Save generated workflows and evaluation results to this directory | - |
+| `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
 
 #### Local Mode (No LangSmith Required)
 
@@ -305,16 +307,89 @@ LANGSMITH_DATASET_NAME=my-pairwise-dataset pnpm eval:pairwise
 EVAL_MAX_EXAMPLES=2 pnpm eval:pairwise
 ```
 
+#### Multi-Generation Evaluation
+
+The `--generations` flag enables multiple workflow generations per prompt, providing a **Generation Correctness** metric:
+
+```bash
+# Run 3 generations per prompt with 3 judges each
+pnpm eval:pairwise --generations 3 --judges 3 --verbose
+
+# Example output:
+# Gen 1: 2/3 judges → ✓ PASS (diag=85%)
+# Gen 2: 1/3 judges → ✗ FAIL (diag=60%)
+# Gen 3: 3/3 judges → ✓ PASS (diag=95%)
+# 📊 [#1] 2/3 gens → PASS (gen_corr=0.67, diag=80%)
+```
+
+**Generation Correctness** = (# passing generations) / total generations:
+- With `--generations 3`: Values are 0, 0.33, 0.67, or 1
+- With `--generations 5`: Values are 0, 0.2, 0.4, 0.6, 0.8, or 1
+
 #### Hierarchical Scoring System
 
 The pairwise evaluation uses a multi-level scoring hierarchy:
 
-1. **Individual Criterion**: Binary pass/fail for each do/don't rule
-2. **Single Judge**: `primaryPass` (true only if ALL criteria pass) + `diagnosticScore` (ratio of passes)
-3. **Multiple Judges**: Majority vote across judges (e.g., 2/3 judges pass → PASS)
-4. **Multiple Repetitions**: LangSmith aggregates across all generations
+| Level | Primary Score | Secondary Score |
+|-------|--------------|-----------------|
+| Individual do/don't | Binary (true/false) | 0 or 1 |
+| 1 LLM judge | false if ANY criterion fails | Average of criteria scores |
+| N judges on 1 generation | Majority vote (≥50% pass) | Average diagnostic across judges |
+| N generations on 1 prompt | (# passing gens) / N | Average diagnostic across generations |
+| Full dataset | Average across prompts | Average diagnostic across all |
 
-This approach reduces variance from LLM non-determinism by using multiple judges and repetitions.
+This approach reduces variance from LLM non-determinism by using multiple judges and generations.
+
+#### Saving Artifacts with --output-dir
+
+The `--output-dir` flag saves all generated workflows and evaluation results to disk:
+
+```bash
+# Save artifacts to ./eval-output directory
+pnpm eval:pairwise --generations 3 --output-dir ./eval-output --verbose
+```
+
+**Output structure:**
+```
+eval-output/
+├── prompt-1/
+│   ├── prompt.txt              # Original prompt text
+│   ├── criteria.json           # dos/donts criteria
+│   ├── gen-1/
+│   │   ├── workflow.json       # Importable n8n workflow
+│   │   └── evaluation.json     # Judge results for this generation
+│   ├── gen-2/
+│   │   ├── workflow.json
+│   │   └── evaluation.json
+│   └── gen-3/
+│       ├── workflow.json
+│       └── evaluation.json
+├── prompt-2/
+│   └── ...
+└── summary.json                # Overall results summary
+```
+
+**workflow.json**: Directly importable into n8n (File → Import from file)
+
+**evaluation.json**: Contains per-judge results including violations and passes:
+```json
+{
+  "generationIndex": 1,
+  "majorityPass": false,
+  "primaryPasses": 1,
+  "numJudges": 3,
+  "diagnosticScore": 0.35,
+  "judges": [
+    {
+      "judgeIndex": 1,
+      "primaryPass": false,
+      "diagnosticScore": 0.30,
+      "violations": [{"rule": "...", "justification": "..."}],
+      "passes": [{"rule": "...", "justification": "..."}]
+    }
+  ]
+}
+```
 
 ## Configuration
 
@@ -369,12 +444,17 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 
 - Results are stored in Langsmith dashboard
 - Experiment name format: `<name>-[uuid]` (default: `pairwise-evals-[uuid]`)
-- Metrics reported:
+- Metrics reported (single generation mode):
   - `pairwise_primary`: Binary pass/fail based on majority vote (0 or 1)
   - `pairwise_diagnostic`: Average diagnostic score across judges (0-1)
   - `pairwise_judges_passed`: Number of judges that returned primaryPass=true
   - `pairwise_total_violations`: Sum of violations across all judges
   - `pairwise_total_passes`: Sum of passes across all judges
+- Additional metrics reported (multi-generation mode with `--generations N`):
+  - `pairwise_generation_correctness`: (# passing generations) / N (0, 0.33, 0.67, 1 for N=3)
+  - `pairwise_aggregated_diagnostic`: Average diagnostic score across all generations
+  - `pairwise_generations_passed`: Count of generations that passed majority vote
+  - `pairwise_total_judge_calls`: Total judge invocations (generations × judges)
 - Each result includes detailed comments with:
   - Majority vote summary
   - List of violations with justifications (per judge)

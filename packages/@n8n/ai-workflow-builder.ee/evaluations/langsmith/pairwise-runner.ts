@@ -1,9 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import * as fs from 'fs';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import * as path from 'path';
 import pc from 'picocolors';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
@@ -77,6 +79,111 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 const DEFAULT_NUM_JUDGES = 3;
 const DEFAULT_NUM_GENERATIONS = 1;
 const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
+
+// ============================================================================
+// Artifact Saver
+// ============================================================================
+
+interface ArtifactSaver {
+	savePrompt(promptId: string, prompt: string, criteria: { dos: string; donts: string }): void;
+	saveGeneration(promptId: string, genIndex: number, result: GenerationResult): void;
+	saveSummary(results: Array<{ promptId: string; aggregation: MultiGenerationAggregation }>): void;
+}
+
+/** Creates an artifact saver if outputDir is provided, otherwise returns null */
+function createArtifactSaver(outputDir: string | undefined, log: EvalLogger): ArtifactSaver | null {
+	if (!outputDir) return null;
+
+	// Create output directory if it doesn't exist
+	fs.mkdirSync(outputDir, { recursive: true });
+
+	return {
+		savePrompt(promptId: string, prompt: string, criteria: { dos: string; donts: string }): void {
+			const promptDir = path.join(outputDir, `prompt-${promptId}`);
+			fs.mkdirSync(promptDir, { recursive: true });
+
+			// Save prompt text
+			fs.writeFileSync(path.join(promptDir, 'prompt.txt'), prompt, 'utf-8');
+
+			// Save criteria
+			fs.writeFileSync(
+				path.join(promptDir, 'criteria.json'),
+				JSON.stringify(criteria, null, 2),
+				'utf-8',
+			);
+
+			log.verbose(`  📁 Saved prompt artifacts to ${promptDir}`);
+		},
+
+		saveGeneration(promptId: string, genIndex: number, result: GenerationResult): void {
+			const genDir = path.join(outputDir, `prompt-${promptId}`, `gen-${genIndex + 1}`);
+			fs.mkdirSync(genDir, { recursive: true });
+
+			// Save workflow as importable n8n JSON
+			const workflowForExport = {
+				name: result.workflow.name ?? `Generated Workflow - Gen ${genIndex + 1}`,
+				nodes: result.workflow.nodes ?? [],
+				connections: result.workflow.connections ?? {},
+			};
+			fs.writeFileSync(
+				path.join(genDir, 'workflow.json'),
+				JSON.stringify(workflowForExport, null, 2),
+				'utf-8',
+			);
+
+			// Save evaluation results
+			const evalResult = {
+				generationIndex: genIndex + 1,
+				majorityPass: result.majorityPass,
+				primaryPasses: result.primaryPasses,
+				numJudges: result.judgeResults.length,
+				diagnosticScore: result.avgDiagnosticScore,
+				judges: result.judgeResults.map((jr, i) => ({
+					judgeIndex: i + 1,
+					primaryPass: jr.primaryPass,
+					diagnosticScore: jr.diagnosticScore,
+					violations: jr.violations,
+					passes: jr.passes,
+				})),
+			};
+			fs.writeFileSync(
+				path.join(genDir, 'evaluation.json'),
+				JSON.stringify(evalResult, null, 2),
+				'utf-8',
+			);
+
+			log.verbose(`  📁 Saved gen-${genIndex + 1} artifacts to ${genDir}`);
+		},
+
+		saveSummary(
+			results: Array<{ promptId: string; aggregation: MultiGenerationAggregation }>,
+		): void {
+			const summary = {
+				timestamp: new Date().toISOString(),
+				totalPrompts: results.length,
+				results: results.map((r) => ({
+					promptId: r.promptId,
+					generationCorrectness: r.aggregation.generationCorrectness,
+					aggregatedDiagnosticScore: r.aggregation.aggregatedDiagnosticScore,
+					passingGenerations: r.aggregation.passingGenerations,
+					totalGenerations: r.aggregation.totalGenerations,
+				})),
+				averageGenerationCorrectness:
+					results.reduce((sum, r) => sum + r.aggregation.generationCorrectness, 0) / results.length,
+				averageDiagnosticScore:
+					results.reduce((sum, r) => sum + r.aggregation.aggregatedDiagnosticScore, 0) /
+					results.length,
+			};
+			fs.writeFileSync(
+				path.join(outputDir, 'summary.json'),
+				JSON.stringify(summary, null, 2),
+				'utf-8',
+			);
+
+			log.info(`📁 Saved summary to ${path.join(outputDir, 'summary.json')}`);
+		},
+	};
+}
 
 /** Calculate minimum judges needed for majority (e.g., 2 for 3 judges, 3 for 5 judges) */
 function getMajorityThreshold(numJudges: number): number {
@@ -250,20 +357,12 @@ async function runSingleGeneration(
 		judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
 
 	// Log per-generation judge results
+	const totalViolations = judgeResults.reduce((sum, r) => sum + r.violations.length, 0);
 	log.verbose(
 		`  Gen ${generationIndex + 1}: ${primaryPasses}/${numJudges} judges → ` +
-			`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%)`,
+			`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%` +
+			`${totalViolations > 0 ? `, ${totalViolations} violations` : ''})`,
 	);
-
-	// Log violations per judge (verbose only)
-	for (let i = 0; i < judgeResults.length; i++) {
-		const result = judgeResults[i];
-		if (result.violations.length > 0) {
-			for (const v of result.violations) {
-				log.verbose(`    [Judge ${i + 1}] ✗ ${v.rule}: ${v.justification}`);
-			}
-		}
-	}
 
 	return {
 		workflow,
@@ -288,12 +387,14 @@ function createPairwiseWorkflowGenerator(
 	numJudges: number,
 	numGenerations: number,
 	log: EvalLogger,
+	artifactSaver: ArtifactSaver | null,
 	tracer?: LangChainTracer,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
 		const startTime = Date.now();
 		generationCounter++;
 		const currentEvalNumber = generationCounter;
+		const promptId = String(currentEvalNumber);
 		const promptPreview = inputs.prompt.slice(0, 60).replace(/\n/g, ' ');
 
 		log.verbose(
@@ -301,12 +402,22 @@ function createPairwiseWorkflowGenerator(
 		);
 		log.verbose(`   Running ${numGenerations} generation(s) x ${numJudges} judges...`);
 
+		// Save prompt artifacts if output dir is configured
+		artifactSaver?.savePrompt(promptId, inputs.prompt, inputs.evals);
+
 		// Run all generations in parallel
 		const generationResults = await Promise.all(
 			Array.from({ length: numGenerations }, async (_, i) => {
 				return await runSingleGeneration(parsedNodeTypes, llm, numJudges, inputs, i, log, tracer);
 			}),
 		);
+
+		// Save generation artifacts
+		if (artifactSaver) {
+			for (let i = 0; i < generationResults.length; i++) {
+				artifactSaver.saveGeneration(promptId, i, generationResults[i]);
+			}
+		}
 
 		// Aggregate across generations
 		const passingGenerations = generationResults.filter((g) => g.majorityPass).length;
@@ -427,6 +538,7 @@ export interface PairwiseEvaluationOptions {
 	numGenerations?: number;
 	verbose?: boolean;
 	experimentName?: string;
+	outputDir?: string;
 }
 
 /** Log configuration for pairwise evaluation */
@@ -465,11 +577,16 @@ export async function runPairwiseLangsmithEvaluation(
 		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
 		experimentName = DEFAULT_EXPERIMENT_NAME,
+		outputDir,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
 	logPairwiseConfig(log, experimentName, numGenerations, numJudges, repetitions, verbose);
+
+	if (outputDir) {
+		log.info(`➔ Output directory: ${outputDir}`);
+	}
 
 	if (!process.env.LANGSMITH_API_KEY) {
 		log.error('✗ LANGSMITH_API_KEY environment variable not set');
@@ -526,12 +643,16 @@ export async function runPairwiseLangsmithEvaluation(
 		const maxExamples = maxExamplesEnv ? parseInt(maxExamplesEnv, 10) : undefined;
 		const data = filterExamples(allExamples, notionId, maxExamples, log);
 
+		// Create artifact saver if output directory is configured
+		const artifactSaver = createArtifactSaver(outputDir, log);
+
 		const generateWorkflow = createPairwiseWorkflowGenerator(
 			parsedNodeTypes,
 			llm,
 			numJudges,
 			numGenerations,
 			log,
+			artifactSaver,
 			tracer,
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
@@ -585,6 +706,29 @@ export interface LocalPairwiseOptions {
 	numJudges?: number;
 	numGenerations?: number;
 	verbose?: boolean;
+	outputDir?: string;
+}
+
+/** Log configuration for local pairwise evaluation */
+function logLocalPairwiseConfig(
+	log: EvalLogger,
+	numGenerations: number,
+	numJudges: number,
+	outputDir: string | undefined,
+	prompt: string,
+	criteria: { dos: string; donts: string },
+): void {
+	log.info(`➔ Generations: ${numGenerations}, Judges: ${numJudges}`);
+	if (outputDir) {
+		log.info(`➔ Output directory: ${outputDir}`);
+	}
+	log.verbose(`➔ Prompt: ${prompt.slice(0, 80)}${prompt.length > 80 ? '...' : ''}`);
+	log.verbose(`➔ Dos: ${criteria.dos.slice(0, 60)}${criteria.dos.length > 60 ? '...' : ''}`);
+	if (criteria.donts) {
+		log.verbose(
+			`➔ Donts: ${criteria.donts.slice(0, 60)}${criteria.donts.length > 60 ? '...' : ''}`,
+		);
+	}
 }
 
 /**
@@ -598,23 +742,24 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		numJudges = DEFAULT_NUM_JUDGES,
 		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
+		outputDir,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('Local Pairwise Evaluation', 50));
-	log.info(`➔ Generations: ${numGenerations}, Judges: ${numJudges}`);
-	log.verbose(`➔ Prompt: ${prompt.slice(0, 80)}${prompt.length > 80 ? '...' : ''}`);
-	log.verbose(`➔ Dos: ${criteria.dos.slice(0, 60)}${criteria.dos.length > 60 ? '...' : ''}`);
-	if (criteria.donts) {
-		log.verbose(
-			`➔ Donts: ${criteria.donts.slice(0, 60)}${criteria.donts.length > 60 ? '...' : ''}`,
-		);
-	}
+	logLocalPairwiseConfig(log, numGenerations, numJudges, outputDir, prompt, criteria);
 
 	const startTime = Date.now();
 
 	try {
 		const { parsedNodeTypes, llm } = await setupTestEnvironment();
+
+		// Create artifact saver if output directory is configured
+		const artifactSaver = createArtifactSaver(outputDir, log);
+		const promptId = 'local';
+
+		// Save prompt artifacts
+		artifactSaver?.savePrompt(promptId, prompt, criteria);
 
 		log.info(`➔ Running ${numGenerations} generation(s)...`);
 
@@ -660,6 +805,13 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				return { workflow, judgeResults, primaryPasses, majorityPass, avgDiagnosticScore };
 			}),
 		);
+
+		// Save generation artifacts
+		if (artifactSaver) {
+			for (let i = 0; i < generationResults.length; i++) {
+				artifactSaver.saveGeneration(promptId, i, generationResults[i]);
+			}
+		}
 
 		// Aggregate across generations
 		const passingGenerations = generationResults.filter((g) => g.majorityPass).length;

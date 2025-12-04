@@ -64,6 +64,9 @@ async function main(): Promise<void> {
 	// Parse --name argument for custom experiment name
 	const experimentName = getFlagValue('--name');
 
+	// Parse --output-dir argument for saving evaluation artifacts
+	const outputDir = getFlagValue('--output-dir');
+
 	// Parse local pairwise evaluation flags
 	const prompt = getFlagValue('--prompt');
 	const dos = getFlagValue('--dos');
@@ -78,6 +81,7 @@ async function main(): Promise<void> {
 				numJudges,
 				numGenerations,
 				verbose,
+				outputDir,
 			});
 		} else {
 			// LangSmith mode
@@ -88,6 +92,7 @@ async function main(): Promise<void> {
 				numGenerations,
 				verbose,
 				experimentName,
+				outputDir,
 			});
 		}
 	} else if (useLangsmith) {
