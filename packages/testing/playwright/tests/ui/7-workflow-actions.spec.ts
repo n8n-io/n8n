@@ -113,6 +113,7 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
 
 		await n8n.canvas.publishWorkflow();
+		await n8n.workflowActivationModal.closeIfVisible();
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 	});
@@ -147,6 +148,7 @@ test.describe('Workflow Actions', () => {
 		await n8n.canvas.toggleNodeEnabled(nodeName!);
 
 		await n8n.canvas.publishWorkflow();
+		await n8n.workflowActivationModal.closeIfVisible();
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 	});

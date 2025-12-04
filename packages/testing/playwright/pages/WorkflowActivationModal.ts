@@ -28,4 +28,10 @@ export class WorkflowActivationModal extends BasePage {
 	async clickGotIt(): Promise<void> {
 		await this.getGotItButton().click();
 	}
+
+	async closeIfVisible(): Promise<void> {
+		if (await this.getModal().isVisible()) {
+			await this.getGotItButton().click();
+		}
+	}
 }
