@@ -1,5 +1,5 @@
-import { EDIT_FIELDS_SET_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import { EDIT_FIELDS_SET_NODE_NAME } from '../../../config/constants';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('CAT-726 Node connectors not rendered when nodes inserted on the canvas', () => {
 	test('should correctly append a No Op node when Loop Over Items node is added (from add button)', async ({
