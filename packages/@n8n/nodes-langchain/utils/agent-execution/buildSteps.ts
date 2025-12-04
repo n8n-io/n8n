@@ -1,6 +1,6 @@
 import { AIMessage } from '@langchain/core/messages';
 import { nodeNameToToolName } from 'n8n-workflow';
-import type { EngineResponse, IDataObject } from 'n8n-workflow';
+import type { EngineResponse, IBinaryKeyData, IDataObject, ITaskData } from 'n8n-workflow';
 
 import type {
 	RequestResponseMetadata,
@@ -156,32 +156,23 @@ function buildMessageContent(
 
 /**
  * Extracts binary data from tool results.
- * Collects binary data from all items in the tool response.
  *
- * @param toolData - The tool data from engine response
+ * @param toolTaskData - The task data containing tool results
  * @param toolId - The tool call ID for creating unique keys
- * @returns Record of binary data keyed by unique identifiers
+ * @returns Record of binary data extracted from tool results
  */
-function extractBinaryFromToolResult(
-	toolData: unknown,
-	toolId: string,
-): Record<string, Record<string, unknown>> {
-	const binaryData: Record<string, Record<string, unknown>> = {};
+function getBinaryFromTaskData(toolTaskData: ITaskData, toolId: string) {
+	const binaryData: IBinaryKeyData = {};
 
-	// Navigate to the tool result items
-	const toolItems = (toolData as any)?.data?.ai_tool?.[0];
-	if (!Array.isArray(toolItems)) {
-		return binaryData;
-	}
+	const toolExecutionData = toolTaskData?.data?.ai_tool?.[0];
+	if (!Array.isArray(toolExecutionData)) return binaryData;
 
-	// Collect binary data from each item
-	toolItems.forEach((item, itemIndex) => {
+	toolExecutionData.forEach((item, itemIndex) => {
 		if (item?.binary && typeof item.binary === 'object') {
-			// Store each binary field with a unique key
-			Object.entries(item.binary as Record<string, unknown>).forEach(([binaryKey, binaryValue]) => {
-				const uniqueKey = `tool_${toolId}_item_${itemIndex}_${binaryKey}`;
+			Object.entries(item.binary).forEach(([binaryKey, binaryValue]) => {
+				const key = `tool_${toolId}_item_${itemIndex}_${binaryKey}`;
 
-				binaryData[uniqueKey] = binaryValue as Record<string, unknown>;
+				binaryData[key] = binaryValue;
 			});
 		}
 	});
@@ -298,12 +289,10 @@ export function buildSteps(
 export function extractToolResultsBinary(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
 	itemIndex: number,
-): Record<string, Record<string, unknown>> {
-	const allBinaryData: Record<string, Record<string, unknown>> = {};
+) {
+	const allBinaryData: IBinaryKeyData = {};
 
-	if (!response) {
-		return allBinaryData;
-	}
+	if (!response) return allBinaryData;
 
 	const responses = response?.actionResponses ?? [];
 
@@ -312,9 +301,8 @@ export function extractToolResultsBinary(
 		if (!tool.data) continue;
 
 		const toolId = typeof tool.action?.id === 'string' ? tool.action.id : 'unknown';
-		const binaryData = extractBinaryFromToolResult(tool.data, toolId);
+		const binaryData = getBinaryFromTaskData(tool.data, toolId);
 
-		// Merge binary data from this tool
 		Object.assign(allBinaryData, binaryData);
 	}
 

@@ -58,13 +58,13 @@ export async function prepareItemContext(
 		options.enableStreaming = true;
 	}
 
-	const toolResultsBinary = extractToolResultsBinary(response, itemIndex);
+	const toolBinaryData = extractToolResultsBinary(response, itemIndex);
 
 	const messages = await prepareMessages(ctx, itemIndex, {
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 		outputParser,
-		toolResultsBinary,
+		toolBinaryData,
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);
 

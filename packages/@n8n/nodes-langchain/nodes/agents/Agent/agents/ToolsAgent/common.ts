@@ -58,18 +58,18 @@ function isImageFile(mimeType: string): boolean {
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
- * @param toolResultsBinary - Optional binary data from tool results
+ * @param toolBinaryData - Optional binary data from tool results
  * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
-	toolResultsBinary?: Record<string, Record<string, unknown>>,
+	toolBinaryData?: IBinaryKeyData,
 ): Promise<HumanMessage> {
 	const inputBinaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryData: IBinaryKeyData = {
 		...inputBinaryData,
-		...((toolResultsBinary ?? {}) as IBinaryKeyData),
+		...(toolBinaryData ?? {}),
 	};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
@@ -431,7 +431,7 @@ export async function prepareMessages(
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
 		outputParser?: N8nOutputParser;
-		toolResultsBinary?: Record<string, Record<string, unknown>>;
+		toolBinaryData?: IBinaryKeyData;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
 	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
@@ -452,12 +452,12 @@ export async function prepareMessages(
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	const hasToolBinaryData =
-		options.toolResultsBinary && Object.keys(options.toolResultsBinary).length > 0;
+		options.toolBinaryData && Object.keys(options.toolBinaryData).length > 0;
 
 	if ((hasBinaryData || hasToolBinaryData) && options.passthroughBinaryImages) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options.toolResultsBinary);
-		if (binaryMessage.content.length !== 0) {
-			messages.push(binaryMessage);
+		const binaryMessages = await extractBinaryMessages(ctx, itemIndex, options.toolBinaryData);
+		if (binaryMessages.content.length !== 0) {
+			messages.push(binaryMessages);
 		} else {
 			ctx.logger.debug('Not attaching binary message, since its content was empty');
 		}
