@@ -17,7 +17,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+const { isNewSession, selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+	isNewSession: boolean;
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
 	readyToShowModelSelector: boolean;
@@ -42,10 +43,6 @@ const showOpenWorkflow = computed(() => {
 		selectedModel?.model.provider === 'n8n' &&
 		hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } })
 	);
-});
-
-const isNewSession = computed(() => {
-	return router.currentRoute.value.name === CHAT_VIEW && !router.currentRoute.value.params.id;
 });
 
 function onOpenWorkflow() {
