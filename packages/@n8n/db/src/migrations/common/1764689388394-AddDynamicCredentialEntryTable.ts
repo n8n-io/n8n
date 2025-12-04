@@ -21,7 +21,7 @@ export class AddDynamicCredentialEntryTable1764689388394 implements ReversibleMi
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['credential_id'])
+			.withIndexOn(['subject_id'])
 			.withIndexOn(['resolver_id']);
 	}
 
