@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CONTAINER_REGISTRY: dxb.ocir.io
@@ -15,6 +24,7 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -33,7 +43,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
-      - name: Login to GitHub Container Registry
+      - name: Login to OCI Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.CONTAINER_REGISTRY }}
@@ -43,28 +53,36 @@ jobs:
       - name: Get Git Tag or Branch
         id: tag
         run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            # Extract tag name (remove refs/tags/ prefix)
-            TAG=${GITHUB_REF#refs/tags/}
+          # Check for manual workflow_dispatch input first
+          if [[ -n "${{ inputs.tag }}" ]]; then
+            TAG="${{ inputs.tag }}"
+            VERSION=${TAG#v}
             echo "tag=$TAG" >> $GITHUB_OUTPUT
-            echo "Using tag: $TAG"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Using manual input tag: $TAG, version: $VERSION"
+          elif [[ $GITHUB_REF == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG#v}
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Using tag: $TAG, version: $VERSION"
           else
-            # Use branch name with commit SHA for uniqueness
             BRANCH=${GITHUB_REF#refs/heads/}
             SHORT_SHA=${GITHUB_SHA:0:7}
             TAG="${BRANCH}-${SHORT_SHA}"
             echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "version=$TAG" >> $GITHUB_OUTPUT
             echo "Using branch tag: $TAG"
           fi
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           file: docker/images/n8n/Dockerfile
           build-args: |
             NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ steps.tag.outputs.tag }}
+            N8N_VERSION=${{ steps.tag.outputs.version }}
             N8N_RELEASE_TYPE=stable
           push: true
           tags: |
@@ -73,52 +91,11 @@ jobs:
           cache-from: type=registry,ref=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:build-cache,oci-mediatypes=true
           cache-to: type=registry,ref=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:build-cache,mode=max,oci-mediatypes=true,image-manifest=true
           platforms: linux/amd64
-#      - name: Checkout Kubernetes Repository
-#        uses: actions/checkout@v4
-#        with:
-#          ref: iohealth-main
-#          token: ${{ secrets.GIT_TOKEN }}
-#          repository: my-workforce/Kubernetes
-#          path: k8s-repo
-#
-#      - name: Setup Kustomize
-#        uses: imranismail/setup-kustomize@v1
-#        with:
-#          kustomize-version: '5.6.0'
-#
-#      - name: Update Test Environment Image
-#        run: |
-#          cd k8s-repo/n8n-test
-#          kustomize edit set image n8n-custom=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
-#          cat kustomization.yaml
-#
-#      - name: Update Production Environment Image (only for tags)
-#        if: startsWith(github.ref, 'refs/tags/')
-#        run: |
-#          cd k8s-repo/n8n-prod
-#          kustomize edit set image n8n-custom=${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
-#          cat kustomization.yaml
-#
-#      - name: Commit Changes
-#        run: |
-#          cd k8s-repo
-#          git config --local user.email "ajadaa@i3hub.com"
-#          git config --local user.name "Ajadaa"
-#          git add .
-#          git commit -m "Update n8n custom image to ${{ steps.tag.outputs.tag }}" || echo "No changes to commit"
-#
-#      - name: Push Changes
-#        uses: ad-m/github-push-action@master
-#        with:
-#          repository: my-workforce/Kubernetes
-#          github_token: ${{ secrets.GIT_TOKEN }}
-#          branch: iohealth-main
-#          directory: k8s-repo
-#
-#      - name: Build Summary
-#        run: |
-#          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-#          echo "- **Image**: ${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-#          echo "- **Registry**: ${{ env.CONTAINER_REGISTRY }}" >> $GITHUB_STEP_SUMMARY
-#          echo "- **Build Type**: $(if [[ $GITHUB_REF == refs/tags/* ]]; then echo "Release"; else echo "Development"; fi)" >> $GITHUB_STEP_SUMMARY
-#          echo "- **Updated Environments**: $(if [[ $GITHUB_REF == refs/tags/* ]]; then echo "Test + Production"; else echo "Test only"; fi)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build Summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.CONTAINER_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platform**: linux/amd64" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry**: ${{ env.CONTAINER_REGISTRY }}" >> $GITHUB_STEP_SUMMARY
