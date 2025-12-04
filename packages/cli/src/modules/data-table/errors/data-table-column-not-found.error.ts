@@ -1,4 +1,4 @@
-import { NotFoundError } from '@/errors/response-errors/not-found';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export class DataTableColumnNotFoundError extends NotFoundError {
 	constructor(dataTableId: string, columnId: string) {
