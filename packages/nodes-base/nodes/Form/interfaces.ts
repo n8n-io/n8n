@@ -13,8 +13,6 @@ export const FEATURES = {
 	useLegacyMultiselect: 'useLegacyMultiselect',
 } as const;
 
-export type FormNodeFeatures = Record<keyof typeof FEATURES, boolean>;
-
 export type FormField = {
 	id: string;
 	errorId: string;

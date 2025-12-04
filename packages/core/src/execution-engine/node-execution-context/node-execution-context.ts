@@ -171,22 +171,18 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	/**
 	 * Gets the feature flags for the current node version.
-	 * Caches the result to avoid calling defineFeatures multiple times.
+	 * Uses declarative features from the node type description.
 	 * @private
 	 */
 	@Memoized
 	private get nodeFeatures(): NodeFeatures {
-		const nodeType = this.nodeType;
-		if (!nodeType?.defineFeatures) {
-			return {};
-		}
-
-		return nodeType.defineFeatures(this.node.typeVersion);
+		const description = this.nodeType.description;
+		return NodeHelpers.getNodeFeatures(description.features, this.node.typeVersion);
 	}
 
 	/**
 	 * Checks if a feature is enabled for the current node version.
-	 * Uses the node type's defineFeatures() function to get feature flags.
+	 * Uses declarative features from the node type description.
 	 * Reads the node type and version from the current context.
 	 * @param featureName - The name of the feature to check
 	 * @returns true if the feature is enabled, false otherwise

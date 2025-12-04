@@ -34,8 +34,10 @@ import type {
 	GenericValue,
 	DisplayCondition,
 	NodeConnectionType,
-	NodeFeatures,
 	ICredentialDataDecryptedObject,
+	FeatureCondition,
+	NodeFeaturesDefinition,
+	NodeFeatures,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -254,43 +256,54 @@ export function isSubNodeType(
 }
 
 /**
- * Gets feature flags for a node type and version.
- * Calls the node type's defineFeatures() function if available.
+ * Evaluates a feature condition against a node version.
+ * @param featureDef The feature condition definition
+ * @param nodeVersion The node version to evaluate against
+ * @returns true if the feature is enabled, false otherwise
  */
-function getNodeFeatures(nodeType: INodeType | null | undefined, version: number): NodeFeatures {
-	if (!nodeType?.defineFeatures) {
-		return {};
+function evaluateFeature(featureDef: FeatureCondition, nodeVersion: number): boolean {
+	if (typeof featureDef === 'boolean') {
+		return featureDef;
 	}
-	return nodeType.defineFeatures(version);
+
+	if (featureDef['@version']) {
+		const conditions = Array.isArray(featureDef['@version'])
+			? featureDef['@version']
+			: [featureDef['@version']];
+
+		return checkConditions(conditions, [nodeVersion]);
+	}
+
+	return false;
 }
 
 /**
- * Checks if all features in the array are enabled (for 'show' conditions).
+ * Evaluates all feature definitions for a node type and returns the computed features.
+ * @param featuresDef The feature definitions from the node type description
+ * @param nodeVersion The node version to evaluate against
+ * @returns A record of feature names to their enabled state
  */
-function areAllFeaturesEnabled(
-	nodeType: INodeType | null | undefined,
-	node: Pick<INode, 'typeVersion' | 'type'> | null,
-	featureNames: string[],
-): boolean {
-	if (!node?.typeVersion) {
-		return false;
+export function getNodeFeatures(
+	featuresDef: NodeFeaturesDefinition | undefined,
+	nodeVersion: number,
+): NodeFeatures {
+	if (!featuresDef) {
+		return {};
 	}
-	const features = getNodeFeatures(nodeType, node.typeVersion);
-	for (const featureName of featureNames) {
-		if (!features[featureName]) {
-			return false;
-		}
+
+	const features: NodeFeatures = {};
+	for (const [featureName, condition] of Object.entries(featuresDef)) {
+		features[featureName] = evaluateFeature(condition, nodeVersion);
 	}
-	return true;
+	return features;
 }
 
 const getPropertyValues = (
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
-	node: Pick<INode, 'typeVersion' | 'type'> | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot: INodeParameters | ICredentialDataDecryptedObject,
-	nodeType?: INodeType | null,
 ) => {
 	let value;
 	if (propertyName.charAt(0) === '/') {
@@ -298,11 +311,18 @@ const getPropertyValues = (
 		value = get(nodeValuesRoot, propertyName.slice(1));
 	} else if (propertyName === '@version') {
 		value = node?.typeVersion || 0;
-	} else if (propertyName === '@feature') {
-		// @feature is handled directly in displayParameter, skip here
-		return [];
 	} else if (propertyName === '@tool') {
 		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
+	} else if (propertyName === '@feature') {
+		// Handle feature flags
+		if (!nodeTypeDescription?.features || !node?.typeVersion) {
+			return [];
+		}
+		const features = getNodeFeatures(nodeTypeDescription.features, node.typeVersion);
+		// Return array of enabled feature names
+		return Object.entries(features)
+			.filter(([_, enabled]) => enabled)
+			.map(([name]) => name);
 	} else {
 		// Get the value from current level
 		value = get(nodeValues, propertyName);
@@ -389,11 +409,10 @@ const checkConditions = (
 export function displayParameter(
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
-	node: Pick<INode, 'typeVersion' | 'type'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
+	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot?: INodeParameters | ICredentialDataDecryptedObject,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-	nodeType?: INodeType | null,
 ) {
 	if (!parameter[displayKey]) {
 		return true;
@@ -412,20 +431,10 @@ export function displayParameter(
 				node,
 				nodeTypeDescription,
 				nodeValuesRoot,
-				nodeType,
 			);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
-			}
-
-			// Handle @feature special case
-			if (propertyName === '@feature' && show['@feature']) {
-				const featureNames = show['@feature'] as string[];
-				if (!areAllFeaturesEnabled(nodeType, node, featureNames)) {
-					return false;
-				}
-				continue;
 			}
 
 			if (values.length === 0 || !checkConditions(show[propertyName]!, values)) {
@@ -437,18 +446,12 @@ export function displayParameter(
 	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(hide)) {
-			// @feature is not supported in hide - use show instead
-			if (propertyName === '@feature') {
-				continue;
-			}
-
 			const values = getPropertyValues(
 				nodeValues,
 				propertyName,
 				node,
 				nodeTypeDescription,
 				nodeValuesRoot,
-				nodeType,
 			);
 
 			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
@@ -473,10 +476,9 @@ export function displayParameterPath(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	path: string,
-	node: Pick<INode, 'typeVersion' | 'type'> | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-	nodeType?: INodeType | null,
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -496,7 +498,6 @@ export function displayParameterPath(
 		nodeTypeDescription,
 		nodeValuesRoot,
 		displayKey,
-		nodeType,
 	);
 }
 
@@ -647,7 +648,6 @@ type GetNodeParametersOptions = {
 	nodeValuesRoot?: INodeParameters;
 	parentType?: string;
 	parameterDependencies?: IParameterDependencies;
-	nodeType?: INodeType | null;
 };
 
 /**
@@ -666,12 +666,12 @@ export function getNodeParameters(
 	nodeValues: INodeParameters | null,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
-	node: Pick<INode, 'typeVersion' | 'type'> | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
 	options?: GetNodeParametersOptions,
 ): INodeParameters | null {
 	let { nodeValuesRoot, parameterDependencies } = options ?? {};
-	const { onlySimpleTypes = false, dataIsResolved = false, parentType, nodeType } = options ?? {};
+	const { onlySimpleTypes = false, dataIsResolved = false, parentType } = options ?? {};
 	if (parameterDependencies === undefined) {
 		parameterDependencies = getParameterDependencies(nodePropertiesArray);
 	}
@@ -708,7 +708,6 @@ export function getNodeParameters(
 				nodeValuesRoot,
 				parentType,
 				parameterDependencies,
-				nodeType,
 			},
 		) as INodeParameters;
 	}
@@ -740,8 +739,6 @@ export function getNodeParameters(
 				node,
 				nodeTypeDescription,
 				nodeValuesRoot,
-				'displayOptions',
-				nodeType,
 			)
 		) {
 			if (!returnNoneDisplayed || !returnDefaults) {
@@ -760,8 +757,6 @@ export function getNodeParameters(
 						node,
 						nodeTypeDescription,
 						nodeValuesRoot,
-						'displayOptions',
-						nodeType,
 					)
 				) {
 					continue;

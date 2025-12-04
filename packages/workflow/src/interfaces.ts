@@ -1542,6 +1542,20 @@ export type DisplayCondition =
  */
 export type NodeFeatures = Record<string, boolean>;
 
+/**
+ * Condition for evaluating a feature flag.
+ * Can be a direct boolean value or a version-based condition.
+ */
+export type FeatureCondition =
+	| boolean // Direct boolean value
+	| { '@version': DisplayCondition | DisplayCondition[] }; // Version-based condition
+
+/**
+ * Definition of feature flags for a node type.
+ * Each feature maps to a condition that determines if it's enabled.
+ */
+export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
@@ -1772,12 +1786,6 @@ export interface INodeType {
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
-	/**
-	 * Optional function to define feature flags for a given node version.
-	 * This function receives the node version and returns a record of feature names to boolean values.
-	 * Allows flexible feature definitions based on version or other logic.
-	 */
-	defineFeatures?(version: number): NodeFeatures;
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
@@ -2230,6 +2238,12 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	/**
+	 * Declarative feature flag definitions.
+	 * Features are evaluated based on node version using comparison operators.
+	 * Example: { useFieldName: { '@version': { _cnd: { gte: 2.4 } } } }
+	 */
+	features?: NodeFeaturesDefinition;
 }
 
 export type TriggerPanelDefinition = {

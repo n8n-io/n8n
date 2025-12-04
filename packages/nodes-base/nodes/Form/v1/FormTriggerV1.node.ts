@@ -15,7 +15,6 @@ import {
 	formTriggerPanel,
 	webhookPath,
 } from '../common.descriptions';
-import type { FormNodeFeatures } from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
 const descriptionV1: INodeTypeDescription = {
@@ -28,7 +27,18 @@ const descriptionV1: INodeTypeDescription = {
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-
+	features: {
+		requireAuth: false, // v1 doesn't require auth
+		defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
+		allowRespondToWebhook: true, // v1 allows respond to webhook
+		useFieldName: false, // v1 uses fieldLabel
+		useFieldLabel: true, // v1 uses fieldLabel
+		useWebhookPath: false, // not used in v1
+		useWebhookPathInOptions: false, // not used in v1
+		useResponseNodeOption: false, // v1 doesn't show responseNode option
+		useWorkflowTimezone: false, // v1 is not v2
+		useLegacyMultiselect: true, // v1 shows multiselect (true for v1)
+	},
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
@@ -85,26 +95,6 @@ const descriptionV1: INodeTypeDescription = {
 
 export class FormTriggerV1 implements INodeType {
 	description: INodeTypeDescription;
-
-	/**
-	 * Defines feature flags for a given node version.
-	 * Version 1 has all features disabled or set to defaults.
-	 * Can access version and implement any logic needed to determine features.
-	 */
-	defineFeatures(_version: number): FormNodeFeatures {
-		return {
-			requireAuth: false, // v1 doesn't require auth
-			defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
-			allowRespondToWebhook: true, // v1 allows respond to webhook
-			useFieldName: false, // v1 uses fieldLabel
-			useFieldLabel: true, // v1 uses fieldLabel
-			useWebhookPath: false, // not used in v1
-			useWebhookPathInOptions: false, // not used in v1
-			useResponseNodeOption: false, // v1 doesn't show responseNode option
-			useWorkflowTimezone: false, // v1 is not v2
-			useLegacyMultiselect: true, // v1 shows multiselect (true for v1)
-		};
-	}
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {

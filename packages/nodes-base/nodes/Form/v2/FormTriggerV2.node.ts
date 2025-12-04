@@ -20,11 +20,7 @@ import {
 	webhookPath,
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
-import {
-	FEATURES,
-	FORM_TRIGGER_AUTHENTICATION_PROPERTY,
-	type FormNodeFeatures,
-} from '../interfaces';
+import { FEATURES, FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
@@ -47,7 +43,18 @@ const descriptionV2: INodeTypeDescription = {
 	defaults: {
 		name: 'On form submission',
 	},
-
+	features: {
+		requireAuth: true, // v2+ always requires auth
+		defaultUseWorkflowTimezone: { '@version': { _cnd: { gt: 2 } } }, // v2.1+ defaults to true
+		allowRespondToWebhook: { '@version': { _cnd: { lte: 2.1 } } }, // v2.2+ doesn't allow
+		useFieldName: { '@version': { _cnd: { gte: 2.4 } } }, // v2.4+ uses fieldName
+		useFieldLabel: { '@version': { _cnd: { lt: 2.4 } } }, // v2.3 and below uses fieldLabel
+		useResponseNodeOption: { '@version': { _cnd: { gte: 2.2 } } }, // Show 'responseNode' option for v2.2+
+		useWorkflowTimezone: { '@version': { _cnd: { eq: 2 } } }, // Show useWorkflowTimezone with default false only for v2
+		useLegacyMultiselect: { '@version': { _cnd: { lt: 2.3 } } }, // Show multiselect option for v2.2 and below
+		useWebhookPath: { '@version': { _cnd: { lte: 2.1 } } }, // Show in main properties for v2.1 and below
+		useWebhookPathInOptions: { '@version': { _cnd: { gte: 2.2 } } }, // Show in options for v2.2+
+	},
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
@@ -213,26 +220,6 @@ const descriptionV2: INodeTypeDescription = {
 
 export class FormTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
-
-	/**
-	 * Defines feature flags for a given node version.
-	 * This is the SINGLE source of truth for all version checks.
-	 * Can access version and implement any logic needed to determine features.
-	 */
-	defineFeatures(version: number): FormNodeFeatures {
-		return {
-			requireAuth: true, // v2+ always requires auth
-			defaultUseWorkflowTimezone: version > 2, // v2.1+ defaults to true
-			allowRespondToWebhook: version <= 2.1, // v2.2+ doesn't allow
-			useFieldName: version >= 2.4, // v2.4+ uses fieldName
-			useFieldLabel: version < 2.4, // v2.3 and below uses fieldLabel
-			useResponseNodeOption: version >= 2.2, // Show 'responseNode' option for v2.2+
-			useWorkflowTimezone: version === 2, // Show useWorkflowTimezone with default false only for v2
-			useLegacyMultiselect: version < 2.3, // Show multiselect option for v2.2 and below
-			useWebhookPath: version <= 2.1, // Show in main properties for v2.1 and below
-			useWebhookPathInOptions: version >= 2.2, // Show in options for v2.2+
-		};
-	}
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
