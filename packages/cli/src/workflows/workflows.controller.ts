@@ -1,4 +1,9 @@
-import { ImportWorkflowFromUrlDto, ROLE, TransferWorkflowBodyDto } from '@n8n/api-types';
+import {
+	ActivateWorkflowDto,
+	ImportWorkflowFromUrlDto,
+	ROLE,
+	TransferWorkflowBodyDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
@@ -510,13 +515,13 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/activate')
 	@ProjectScope('workflow:update')
-	async activate(req: WorkflowRequest.Activate) {
-		const { workflowId } = req.params;
-		const { versionId, name, description, expectedChecksum } = req.body;
-
-		if (!versionId) {
-			throw new BadRequestError('versionId is required');
-		}
+	async activate(
+		req: WorkflowRequest.Activate,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: ActivateWorkflowDto,
+	) {
+		const { versionId, name, description, expectedChecksum } = body;
 
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
 			versionId,
