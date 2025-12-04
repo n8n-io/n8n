@@ -1,11 +1,10 @@
 import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { FileSystemHelperFunctions, INode, ResolvedFilePath } from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
 import { constants, createReadStream } from 'node:fs';
-import type { ResolvedFilePath } from 'n8n-workflow';
 import {
 	access as fsAccess,
 	writeFile as fsWriteFile,
@@ -89,17 +88,14 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				: error;
 		}
 
-		// Use O_NOFOLLOW to prevent TOCTOU race conditions where the file could be
-		// swapped to a symlink after validation but before opening
+		// Use O_NOFOLLOW to prevent createReadStream from following symlinks. We require that the path
+		// already be resolved beforehand.
 		const stream = createReadStream(resolvedFilePath, {
-			// TypeScript types expect flags to be a string, but Node.js accepts numbers
-			// We use numeric flags here to combine O_RDONLY and O_NOFOLLOW bitwise
 			flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
 		});
 
-		return new Promise<ReturnType<typeof createReadStream>>((resolve, reject) => {
+		return await new Promise<ReturnType<typeof createReadStream>>((resolve, reject) => {
 			stream.once('error', (error) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if ((error as NodeJS.ErrnoException).code === 'ELOOP') {
 					reject(
 						new NodeOperationError(
@@ -114,9 +110,6 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 			});
 			stream.once('open', () => resolve(stream));
 		});
-			}
-			throw error;
-		}
 	},
 
 	getStoragePath() {
