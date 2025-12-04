@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Global credentials @isolated', () => {
 	test.describe.configure({ mode: 'serial' });
