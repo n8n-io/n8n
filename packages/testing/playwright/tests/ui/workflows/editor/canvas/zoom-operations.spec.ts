@@ -5,10 +5,10 @@ import {
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	CODE_NODE_NAME,
 	CODE_NODE_DISPLAY_NAME,
-} from '../../../../config/constants';
-import { test, expect } from '../../../../fixtures/base';
-import type { n8nPage } from '../../../../pages/n8nPage';
-import { resolveFromRoot } from '../../../../utils/path-helper';
+} from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
+import type { n8nPage } from '../../../../../pages/n8nPage';
+import { resolveFromRoot } from '../../../../../utils/path-helper';
 
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Expected zoom after 1 zoom-in click (125%)

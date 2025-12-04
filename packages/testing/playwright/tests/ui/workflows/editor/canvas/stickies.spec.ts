@@ -1,4 +1,4 @@
-import { test, expect } from '../../../../fixtures/base';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Canvas Actions', () => {
 	test('adds sticky to canvas with default text and position', async ({ n8n }) => {

@@ -7,8 +7,8 @@ import {
 	CODE_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	CODE_NODE_DISPLAY_NAME,
-} from '../../../../config/constants';
-import { test, expect } from '../../../../fixtures/base';
+} from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Canvas Node Manipulation and Navigation', () => {
 	test.beforeEach(async ({ n8n }) => {

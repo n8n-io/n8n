@@ -7,10 +7,10 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	NOTION_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
-} from '../../../config/constants';
-import { test, expect } from '../../../fixtures/base';
-import type { n8nPage } from '../../../pages/n8nPage';
-import { resolveFromRoot } from '../../../utils/path-helper';
+} from '../../../../config/constants';
+import { test, expect } from '../../../../fixtures/base';
+import type { n8nPage } from '../../../../pages/n8nPage';
+import { resolveFromRoot } from '../../../../utils/path-helper';
 
 async function saveWorkflowAndGetId(n8n: n8nPage): Promise<string> {
 	const saveResponsePromise = n8n.page.waitForResponse(
@@ -143,7 +143,9 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.canvas.getPublishButton()).toBeDisabled();
 		await n8n.canvas.cancelPublishWorkflowModal();
 
-		const nodeName = await n8n.canvas.getCanvasNodes().last().getAttribute('data-node-name');
+		const lastNode = n8n.canvas.getCanvasNodes().last();
+		// eslint-disable-next-line playwright/prefer-web-first-assertions
+		const nodeName = await lastNode.getAttribute('data-node-name');
 		await n8n.canvas.toggleNodeEnabled(nodeName!);
 
 		await n8n.canvas.publishWorkflow();

@@ -1,5 +1,5 @@
-import { test, expect } from '../../../../fixtures/base';
-import type { TestRequirements } from '../../../../Types';
+import { test, expect } from '../../../../../fixtures/base';
+import type { TestRequirements } from '../../../../../Types';
 
 test.describe('Focus panel', () => {
 	test.describe('With experimental NDV in focus panel enabled', () => {

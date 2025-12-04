@@ -1,6 +1,6 @@
-import { INSTANCE_MEMBER_CREDENTIALS } from '../../../config/test-users';
-import { test, expect } from '../../../fixtures/base';
-import type { n8nPage } from '../../../pages/n8nPage';
+import { INSTANCE_MEMBER_CREDENTIALS } from '../../../../config/test-users';
+import { test, expect } from '../../../../fixtures/base';
+import type { n8nPage } from '../../../../pages/n8nPage';
 
 const MEMBER_EMAIL = INSTANCE_MEMBER_CREDENTIALS[0].email;
 

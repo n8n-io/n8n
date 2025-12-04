@@ -7,9 +7,9 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
-} from '../../../../config/constants';
-import { test, expect } from '../../../../fixtures/base';
-import { resolveFromRoot } from '../../../../utils/path-helper';
+} from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
+import { resolveFromRoot } from '../../../../../utils/path-helper';
 
 test.describe('Undo/Redo', () => {
 	test.beforeEach(async ({ n8n }) => {
