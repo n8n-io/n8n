@@ -125,7 +125,7 @@ export const test = base.extend<
 	],
 
 	// Backend URL - used for API calls
-	// When N8N_BACKEND_URL is set, use it; otherwise fall back to n8nUrl
+	// When N8N_BASE_URL is set, use it; otherwise fall back to n8nUrl
 	backendUrl: [
 		async ({ n8nContainer }, use) => {
 			const envBackendURL = getBackendUrl() ?? n8nContainer?.baseUrl;
