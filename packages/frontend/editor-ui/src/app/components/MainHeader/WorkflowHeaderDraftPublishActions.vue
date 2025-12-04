@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -42,9 +42,11 @@ const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
 const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+// We're dropping the save button soon with the autosave so this will also be dropped
+const autoSaveForPublish = ref(false);
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive.workflowSaving;
+	return uiStore.isActionActive.workflowSaving && !autoSaveForPublish.value;
 });
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
@@ -52,7 +54,9 @@ const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		autoSaveForPublish.value = true;
 		const saved = await saveCurrentWorkflow({}, true);
+		autoSaveForPublish.value = false;
 		if (!saved) {
 			// If save failed, don't open the modal
 			return;
@@ -127,6 +131,8 @@ defineExpose({
 		</div>
 		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
 			<N8nButton
+				:loading="autoSaveForPublish"
+				:disabled="isWorkflowSaving"
 				type="secondary"
 				data-test-id="workflow-open-publish-modal-button"
 				@click="onPublishButtonClick"
