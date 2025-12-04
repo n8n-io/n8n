@@ -139,16 +139,6 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Returns if the workflow is stored as `active`.
-	 *
-	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
-	 * which checks if the workflow is active in memory.
-	 */
-	async isActive(workflowId: WorkflowId) {
-		return await this.workflowRepository.isActive(workflowId);
-	}
-
-	/**
 	 * Register workflow-defined webhooks in the `workflow_entity` table.
 	 */
 	async addWebhooks(
