@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { ERROR_TRIGGER_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
@@ -14,6 +16,7 @@ type Workflow = {
 	versionId: string;
 	activeVersionId: string | null;
 	nodes: string | Node[];
+	connections: string;
 };
 
 /**
@@ -21,25 +24,51 @@ type Workflow = {
  * or an errorTrigger node. Also disables any other trigger nodes within those workflows.
  */
 export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements ReversibleMigration {
+	private findExecuteWfAndErrorTriggers(nodes: Node[]): {
+		executeWorkflowTriggerNode: Node | undefined;
+		errorTriggerNode: Node | undefined;
+	} {
+		let executeWorkflowTriggerNode: Node | undefined;
+		let errorTriggerNode: Node | undefined;
+
+		for (const node of nodes) {
+			if (node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE) {
+				executeWorkflowTriggerNode = node;
+			} else if (node.type === ERROR_TRIGGER_NODE_TYPE) {
+				errorTriggerNode = node;
+			}
+
+			// Early exit if both are found
+			if (executeWorkflowTriggerNode && errorTriggerNode) {
+				break;
+			}
+		}
+
+		return { executeWorkflowTriggerNode, errorTriggerNode };
+	}
+
 	async up({ escape, runQuery, runInBatches, parseJson }: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
+		const historyTableName = escape.tableName('workflow_history');
 		const idColumn = escape.columnName('id');
 		const versionIdColumn = escape.columnName('versionId');
 		const nodesColumn = escape.columnName('nodes');
+		const connectionsColumn = escape.columnName('connections');
 		const activeColumn = escape.columnName('active');
 		const activeVersionIdColumn = escape.columnName('activeVersionId');
+		const workflowIdColumn = escape.columnName('workflowId');
+		const authorsColumn = escape.columnName('authors');
+		const createdAtColumn = escape.columnName('createdAt');
+		const updatedAtColumn = escape.columnName('updatedAt');
 
-		const inactiveWorkflows = `SELECT ${idColumn}, ${nodesColumn}, ${versionIdColumn}, ${activeVersionIdColumn} FROM ${tableName} WHERE ${activeColumn} = false`;
+		const inactiveWorkflows = `SELECT ${idColumn}, ${nodesColumn}, ${connectionsColumn}, ${versionIdColumn}, ${activeVersionIdColumn} FROM ${tableName} WHERE ${activeColumn} = false AND (${nodesColumn} LIKE '%n8n-nodes-base.executeWorkflowTrigger%' OR ${nodesColumn} LIKE '%n8n-nodes-base.errorTrigger%')`;
 
 		await runInBatches<Workflow>(inactiveWorkflows, async (workflows) => {
 			for (const workflow of workflows) {
 				const nodes = parseJson(workflow.nodes);
 
-				const executeWorkflowTriggerNode = nodes.find(
-					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-				);
-
-				const errorTriggerNode = nodes.find((node: Node) => node.type === ERROR_TRIGGER_NODE_TYPE);
+				const { executeWorkflowTriggerNode, errorTriggerNode } =
+					this.findExecuteWfAndErrorTriggers(nodes);
 
 				if (!executeWorkflowTriggerNode && !errorTriggerNode) {
 					continue;
@@ -87,16 +116,35 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 				});
 
 				if (nodesModified) {
+					const newVersionId = crypto.randomUUID();
+
+					// Create workflow_history record with the modified nodes
 					await runQuery(
-						`UPDATE ${tableName} SET ${activeColumn} = :active, ${nodesColumn} = :nodes, ${activeVersionIdColumn} = :versionId WHERE ${idColumn} = :id`,
+						`INSERT INTO ${historyTableName} (${versionIdColumn}, ${workflowIdColumn}, ${authorsColumn}, ${nodesColumn}, ${connectionsColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (:versionId, :workflowId, :authors, :nodes, :connections, :createdAt, :updatedAt)`,
+						{
+							versionId: newVersionId,
+							workflowId: workflow.id,
+							authors: 'system migration',
+							nodes: JSON.stringify(nodes),
+							connections: workflow.connections,
+							createdAt: new Date(),
+							updatedAt: new Date(),
+						},
+					);
+
+					// Update workflow_entity with new versionId, modified nodes, and set as active
+					await runQuery(
+						`UPDATE ${tableName} SET ${activeColumn} = :active, ${nodesColumn} = :nodes, ${versionIdColumn} = :versionId, ${activeVersionIdColumn} = :activeVersionId WHERE ${idColumn} = :id`,
 						{
 							active: true,
 							nodes: JSON.stringify(nodes),
-							versionId: workflow.versionId,
+							versionId: newVersionId,
+							activeVersionId: newVersionId,
 							id: workflow.id,
 						},
 					);
 				} else {
+					// No nodes modified, just activate with existing versionId
 					await runQuery(
 						`UPDATE ${tableName} SET ${activeColumn} = :active, ${activeVersionIdColumn} = :versionId WHERE ${idColumn} = :id`,
 						{
