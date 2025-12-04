@@ -156,13 +156,13 @@ const menu = computed(() => {
 				id: provider,
 				title: providerDisplayNames[provider],
 				submenu: [
+					configureMenu,
+					{ isDivider: true as const, id: 'divider' },
 					{
 						id: `${provider}::loading`,
 						title: i18n.baseText('generic.loadingEllipsis'),
 						disabled: true,
 					},
-					{ isDivider: true as const, id: 'divider' },
-					configureMenu,
 				],
 			});
 			continue;
@@ -234,8 +234,12 @@ const menu = computed(() => {
 						} as const,
 					]
 				: []),
-			configureMenu,
 		]);
+
+		submenu.unshift(
+			configureMenu,
+			...(submenu.length > 1 ? [{ isDivider: true as const, id: 'divider' }] : []),
+		);
 
 		menuItems.push({
 			id: provider,
