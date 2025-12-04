@@ -217,7 +217,7 @@ describe('useRunWorkflow({ router })', () => {
 				waitingForWebhook: true,
 			});
 
-			expect(async () => await runWorkflowApi({} as IStartRunData)).not.toThrow();
+			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
 
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 		});
