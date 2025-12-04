@@ -106,9 +106,11 @@ describe('useChatState', () => {
 		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();
 
-		// Set values after store initialization since some stores initialize with computed values
-		logsStore.chatSessionId = 'session-456';
-		rootStore.webhookTestUrl = 'https://test.n8n.io/webhook-test';
+		// Mock computed getters
+		vi.spyOn(logsStore, 'chatSessionId', 'get').mockReturnValue('session-456');
+		vi.spyOn(rootStore, 'webhookTestUrl', 'get').mockReturnValue(
+			'https://test.n8n.io/webhook-test',
+		);
 
 		mockRunWorkflow = vi.fn().mockResolvedValue({ executionId: 'test-exec-id' });
 		vi.mocked(useRunWorkflowModule.useRunWorkflow).mockReturnValue({
