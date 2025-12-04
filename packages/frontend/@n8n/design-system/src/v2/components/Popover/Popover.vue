@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, PopoverArrow } from 'reka-ui';
-import { computed, ref, watch, useCssModule } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 
 import type { N8nPopoverProps, N8nPopoverEmits } from './Popover.types';
 
@@ -17,8 +17,6 @@ const props = withDefaults(defineProps<N8nPopoverProps>(), {
 });
 
 const emit = defineEmits<N8nPopoverEmits>();
-
-const $style = useCssModule();
 
 // Convert Element+ placement to Reka UI side + align
 type Side = 'top' | 'bottom' | 'left' | 'right';
@@ -88,18 +86,20 @@ const normalizedWidth = computed(() => {
 	return props.width;
 });
 
-// Animation events
-const onBeforeEnter = () => {
-	emit('before-enter');
-};
+// Emit animation events based on visibility changes
+watch(internalOpen, (isOpen, wasOpen) => {
+	if (isOpen && !wasOpen) {
+		emit('before-enter');
+	} else if (!isOpen && wasOpen) {
+		emit('after-leave');
+	}
+});
 
-const onAfterLeave = () => {
-	emit('after-leave');
-};
-
-// Compute content classes
-const contentClasses = computed(() => {
-	return [$style.popoverContent, props.contentClass];
+// Cleanup on unmount
+onUnmounted(() => {
+	if (hoverTimeout.value) {
+		clearTimeout(hoverTimeout.value);
+	}
 });
 
 // Compute content styles
@@ -121,25 +121,18 @@ const contentStyles = computed(() => {
 		</PopoverTrigger>
 
 		<component :is="teleported ? PopoverPortal : 'template'">
-			<Transition
-				:name="$style.popoverTransition"
-				@before-enter="onBeforeEnter"
-				@after-leave="onAfterLeave"
+			<PopoverContent
+				:side="placementParts.side"
+				:align="placementParts.align"
+				:side-offset="offset"
+				:class="[$style.popoverContent, contentClass]"
+				:style="contentStyles"
+				@mouseenter="handleMouseEnter"
+				@mouseleave="handleMouseLeave"
 			>
-				<PopoverContent
-					v-if="internalOpen"
-					:side="placementParts.side"
-					:align="placementParts.align"
-					:side-offset="offset"
-					:class="contentClasses"
-					:style="contentStyles"
-					@mouseenter="handleMouseEnter"
-					@mouseleave="handleMouseLeave"
-				>
-					<slot :close="close" />
-					<PopoverArrow v-if="showArrow" :class="$style.arrow" />
-				</PopoverContent>
-			</Transition>
+				<slot :close="close" />
+				<PopoverArrow v-if="showArrow" :class="$style.arrow" />
+			</PopoverContent>
 		</component>
 	</PopoverRoot>
 </template>
