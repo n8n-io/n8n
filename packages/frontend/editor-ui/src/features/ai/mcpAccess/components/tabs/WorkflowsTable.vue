@@ -26,7 +26,6 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
-	refresh: [];
 }>();
 
 const i18n = useI18n();
