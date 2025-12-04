@@ -8,10 +8,10 @@ import type {
 import { Container } from '@n8n/di';
 import type { ICredentialContext, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { CredentialResolverRegistry } from '../credential-resolver-registry.service';
+import { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 
-describe('CredentialResolverRegistry', () => {
-	let registry: CredentialResolverRegistry;
+describe('DynamicCredentialResolverRegistry', () => {
+	let registry: DynamicCredentialResolverRegistry;
 	let mockLogger: jest.Mocked<Logger>;
 	let mockMetadata: jest.Mocked<CredentialResolverEntryMetadata>;
 
@@ -62,7 +62,7 @@ describe('CredentialResolverRegistry', () => {
 			getClasses: jest.fn(),
 		} as unknown as jest.Mocked<CredentialResolverEntryMetadata>;
 
-		registry = new CredentialResolverRegistry(mockMetadata, mockLogger);
+		registry = new DynamicCredentialResolverRegistry(mockMetadata, mockLogger);
 	});
 
 	describe('init', () => {

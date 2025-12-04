@@ -77,6 +77,8 @@ export interface ResponderContext {
 	discoveryContext?: DiscoveryContext | null;
 	/** Current workflow state */
 	workflowJSON: SimpleWorkflow;
+	/** Summary of previous conversation (from compaction) */
+	previousSummary?: string;
 }
 
 /**
@@ -98,7 +100,20 @@ export class ResponderAgent {
 	private buildContextMessage(context: ResponderContext): HumanMessage | null {
 		const contextParts: string[] = [];
 
-		// Check for errors first - if there's an error, surface it prominently
+		// Previous conversation summary (from compaction)
+		if (context.previousSummary) {
+			contextParts.push(`**Previous Conversation Summary:**\n${context.previousSummary}`);
+		}
+
+		// Check for state management actions (compact/clear)
+		const stateManagementEntry = context.coordinationLog.find(
+			(e) => e.phase === 'state_management',
+		);
+		if (stateManagementEntry) {
+			contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
+		}
+
+		// Check for errors - if there's an error, surface it prominently
 		const errorEntry = getErrorEntry(context.coordinationLog);
 		if (errorEntry) {
 			contextParts.push(

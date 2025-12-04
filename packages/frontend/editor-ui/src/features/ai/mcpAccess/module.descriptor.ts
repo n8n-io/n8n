@@ -1,6 +1,7 @@
 import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
 
@@ -33,6 +34,11 @@ export const MCPModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.mcp'),
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
+			get available() {
+				return hasPermission(['rbac'], {
+					rbac: { scope: ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
+				});
+			},
 		},
 	],
 };
