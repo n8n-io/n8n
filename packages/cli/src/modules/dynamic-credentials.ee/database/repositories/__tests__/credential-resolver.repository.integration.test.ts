@@ -17,8 +17,7 @@ describe('DynamicCredentialResolverRepository', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['CredentialsEntity']);
-		await resolverRepository.clear();
+		await testDb.truncate(['CredentialsEntity', 'DynamicCredentialResolver']);
 	});
 
 	afterAll(async () => {
