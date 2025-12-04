@@ -198,10 +198,9 @@ export function useWorkflowActivate() {
 				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
 			}
 
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
+			void useExternalHooks().run('workflow.published', {
 				workflowId,
 				versionId: updatedWorkflow.activeVersion.versionId,
-				active: true,
 			});
 
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
@@ -244,10 +243,8 @@ export function useWorkflowActivate() {
 				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
 			}
 
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
+			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,
-				active: false,
-				versionId: null,
 			});
 
 			return true;
