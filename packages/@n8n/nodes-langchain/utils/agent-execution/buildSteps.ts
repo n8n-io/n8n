@@ -155,6 +155,41 @@ function buildMessageContent(
 }
 
 /**
+ * Extracts binary data from tool results.
+ * Collects binary data from all items in the tool response.
+ *
+ * @param toolData - The tool data from engine response
+ * @param toolId - The tool call ID for creating unique keys
+ * @returns Record of binary data keyed by unique identifiers
+ */
+function extractBinaryFromToolResult(
+	toolData: unknown,
+	toolId: string,
+): Record<string, Record<string, unknown>> {
+	const binaryData: Record<string, Record<string, unknown>> = {};
+
+	// Navigate to the tool result items
+	const toolItems = (toolData as any)?.data?.ai_tool?.[0];
+	if (!Array.isArray(toolItems)) {
+		return binaryData;
+	}
+
+	// Collect binary data from each item
+	toolItems.forEach((item, itemIndex) => {
+		if (item?.binary && typeof item.binary === 'object') {
+			// Store each binary field with a unique key
+			Object.entries(item.binary as Record<string, unknown>).forEach(([binaryKey, binaryValue]) => {
+				const uniqueKey = `tool_${toolId}_item_${itemIndex}_${binaryKey}`;
+
+				binaryData[uniqueKey] = binaryValue as Record<string, unknown>;
+			});
+		}
+	});
+
+	return binaryData;
+}
+
+/**
  * Rebuilds the agent steps from previous tool call responses.
  * This is used to continue agent execution after tool calls have been made.
  *
@@ -250,4 +285,38 @@ export function buildSteps(
 		}
 	}
 	return steps;
+}
+
+/**
+ * Extracts all binary data from tool results in the engine response.
+ * This binary data can be used to make images/files from tool results available to the AI model.
+ *
+ * @param response - The engine response containing tool call results
+ * @param itemIndex - The current item index being processed
+ * @returns Record of binary data from all tool results for this item
+ */
+export function extractToolResultsBinary(
+	response: EngineResponse<RequestResponseMetadata> | undefined,
+	itemIndex: number,
+): Record<string, Record<string, unknown>> {
+	const allBinaryData: Record<string, Record<string, unknown>> = {};
+
+	if (!response) {
+		return allBinaryData;
+	}
+
+	const responses = response?.actionResponses ?? [];
+
+	for (const tool of responses) {
+		if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
+		if (!tool.data) continue;
+
+		const toolId = typeof tool.action?.id === 'string' ? tool.action.id : 'unknown';
+		const binaryData = extractBinaryFromToolResult(tool.data, toolId);
+
+		// Merge binary data from this tool
+		Object.assign(allBinaryData, binaryData);
+	}
+
+	return allBinaryData;
 }

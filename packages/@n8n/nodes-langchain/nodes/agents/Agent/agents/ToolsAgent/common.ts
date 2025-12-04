@@ -7,7 +7,7 @@ import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calli
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions, IBinaryKeyData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
@@ -50,7 +50,7 @@ function isImageFile(mimeType: string): boolean {
 }
 
 /**
- * Extracts binary messages (images and text files) from the input data.
+ * Extracts binary messages (images and text files) from the input data and tool results.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
  *
  * Images are converted to base64 data URLs.
@@ -58,13 +58,19 @@ function isImageFile(mimeType: string): boolean {
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
+ * @param toolResultsBinary - Optional binary data from tool results
  * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	toolResultsBinary?: Record<string, Record<string, unknown>>,
 ): Promise<HumanMessage> {
-	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
+	const inputBinaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
+	const binaryData: IBinaryKeyData = {
+		...inputBinaryData,
+		...((toolResultsBinary ?? {}) as IBinaryKeyData),
+	};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
 			// select only the files we can process
@@ -415,7 +421,7 @@ export async function getTools(
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
- * @param options - Options containing systemMessage and other parameters
+ * @param options - Options containing systemMessage, binary passthrough settings, and optional tool results binary
  * @returns The array of prompt messages
  */
 export async function prepareMessages(
@@ -425,6 +431,7 @@ export async function prepareMessages(
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
 		outputParser?: N8nOutputParser;
+		toolResultsBinary?: Record<string, Record<string, unknown>>;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
 	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
@@ -444,8 +451,11 @@ export async function prepareMessages(
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
-	if (hasBinaryData && options.passthroughBinaryImages) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
+	const hasToolBinaryData =
+		options.toolResultsBinary && Object.keys(options.toolResultsBinary).length > 0;
+
+	if ((hasBinaryData || hasToolBinaryData) && options.passthroughBinaryImages) {
+		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, options.toolResultsBinary);
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
 		} else {

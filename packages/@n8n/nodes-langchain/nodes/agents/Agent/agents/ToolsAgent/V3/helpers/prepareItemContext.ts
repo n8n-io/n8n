@@ -3,7 +3,7 @@ import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
 
-import { buildSteps, type ToolCallData } from '@utils/agent-execution';
+import { buildSteps, extractToolResultsBinary, type ToolCallData } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -58,11 +58,13 @@ export async function prepareItemContext(
 		options.enableStreaming = true;
 	}
 
-	// Prepare the prompt messages and prompt template.
+	const toolResultsBinary = extractToolResultsBinary(response, itemIndex);
+
 	const messages = await prepareMessages(ctx, itemIndex, {
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 		outputParser,
+		toolResultsBinary,
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);
 
