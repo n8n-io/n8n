@@ -135,12 +135,14 @@ jobs:
     uses: ./.github/workflows/playwright-test-reusable.yml
     secrets: inherit
 
-  e2e-checks:
-    name: E2E - Checks
-    runs-on: ubuntu-latest
-    needs: [e2e-test]
+  required-checks:
+    name: Required Checks
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-test]
     if: always()
+    runs-on: ubuntu-slim
     steps:
-      - name: Fail if E2E tests failed
-        if: needs.e2e-test.result == 'failure'
+      - name: Fail if any required job failed or was skipped unexpectedly
+        if: |
+          contains(needs.*.result, 'failure') ||
+          (needs.install-and-build.outputs.non_python_changed == 'true' && contains(needs.*.result, 'skipped'))
         run: exit 1
