@@ -1034,7 +1034,7 @@ export class WorkflowDataProxy {
 
 			if (!resultData) {
 				inputData = this.connectionInputData?.[runIndex];
-				placeholdersDataInputData = inputData.json;
+				placeholdersDataInputData = inputData?.json;
 			} else {
 				inputData =
 					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
