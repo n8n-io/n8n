@@ -47,7 +47,8 @@ async function main(): Promise<void> {
 
 	// Parse --judges argument for pairwise evaluation (default: 3)
 	const numJudgesArg = getFlagValue('--judges');
-	const numJudges = numJudgesArg ? parseInt(numJudgesArg, 10) : 3;
+	const numJudgesParsed = numJudgesArg ? parseInt(numJudgesArg, 10) : 3;
+	const numJudges = Number.isNaN(numJudgesParsed) ? 3 : numJudgesParsed;
 
 	// Parse --verbose flag for detailed logging
 	const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');

@@ -59,6 +59,15 @@ function getMajorityThreshold(numJudges: number): number {
 	return Math.ceil(numJudges / 2);
 }
 
+/** Extract notion_id from metadata if present */
+function getNotionId(metadata: unknown): string | undefined {
+	if (typeof metadata === 'object' && metadata !== null && 'notion_id' in metadata) {
+		const id = (metadata as { notion_id: unknown }).notion_id;
+		return typeof id === 'string' ? id : undefined;
+	}
+	return undefined;
+}
+
 /** Build LangSmith-compatible evaluation results from judge panel output */
 function buildLangsmithResults(
 	judgeResults: PairwiseEvaluationResult[],
@@ -243,15 +252,11 @@ function filterExamples(
 ): Example[] {
 	if (notionId) {
 		log.warn(`🔍 Filtering by notion_id: ${notionId}`);
-		const filtered = allExamples.filter(
-			(e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id === notionId,
-		);
+		const filtered = allExamples.filter((e) => getNotionId(e.metadata) === notionId);
 
 		if (filtered.length === 0) {
 			log.error(`❌ No example found with notion_id: ${notionId}`);
-			const availableIds = allExamples
-				.map((e) => (e.metadata as Record<string, unknown> | undefined)?.notion_id)
-				.filter(Boolean);
+			const availableIds = allExamples.map((e) => getNotionId(e.metadata)).filter(Boolean);
 			log.dim(`Available: ${availableIds.join(', ')}`);
 			process.exit(1);
 		}
