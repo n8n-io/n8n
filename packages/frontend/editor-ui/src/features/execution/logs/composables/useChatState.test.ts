@@ -98,20 +98,17 @@ describe('useChatState', () => {
 						isArchived: false,
 					},
 				},
-				root: {
-					webhookTestUrl: 'https://test.n8n.io/webhook-test',
-				},
-				logs: {
-					chatSessionId: 'session-456',
-					chatSessionMessages: [],
-				},
 			},
 		});
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
 		logsStore = useLogsStore();
-		useRootStore(); // Initialize root store with initial state
+		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();
+
+		// Set values after store initialization since some stores initialize with computed values
+		logsStore.chatSessionId = 'session-456';
+		rootStore.webhookTestUrl = 'https://test.n8n.io/webhook-test';
 
 		mockRunWorkflow = vi.fn().mockResolvedValue({ executionId: 'test-exec-id' });
 		vi.mocked(useRunWorkflowModule.useRunWorkflow).mockReturnValue({
@@ -127,6 +124,7 @@ describe('useChatState', () => {
 		// Mock node type
 		Object.defineProperty(nodeTypesStore, 'getNodeType', {
 			value: vi.fn().mockReturnValue({
+				group: [],
 				properties: [
 					{
 						name: 'options',
@@ -350,7 +348,10 @@ describe('useChatState', () => {
 				triggerNode: 'ChatTrigger',
 				source: 'RunData.ManualChatTrigger',
 				sessionId: 'session-456',
-				destinationNode: 'DestinationNode',
+				destinationNode: {
+					nodeName: 'DestinationNode',
+					mode: 'inclusive',
+				},
 			});
 			expect(workflowsStore.chatPartialExecutionDestinationNode).toBeNull();
 		});
