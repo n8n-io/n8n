@@ -123,9 +123,21 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-  e2e-checks:
-    name: E2E - Checks
+  e2e-tests:
+    name: E2E Tests
     needs: [install-and-build]
     if: needs.install-and-build.outputs.non_python_changed == 'true'
     uses: ./.github/workflows/playwright-test-ci.yml
     secrets: inherit
+
+  required-checks:
+    name: Required Checks
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any required job failed or was skipped unexpectedly
+        if: |
+          contains(needs.*.result, 'failure') ||
+          (needs.install-and-build.outputs.non_python_changed == 'true' && contains(needs.*.result, 'skipped'))
+        run: exit 1
