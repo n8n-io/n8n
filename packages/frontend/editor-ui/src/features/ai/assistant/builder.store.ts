@@ -413,8 +413,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 			type,
-			prev_manual_exec_success: manualExecStatsInBetweenMessages.value.success,
-			prev_manual_exec_error: manualExecStatsInBetweenMessages.value.error,
+			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
+			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
 			user_message_id: userMessageId,
 			...getTodosToTrack(),
 		};
