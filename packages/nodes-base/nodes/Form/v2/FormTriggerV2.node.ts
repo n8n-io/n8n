@@ -215,12 +215,12 @@ export class FormTriggerV2 implements INodeType {
 	 */
 	defineFeatures(version: number): NodeFeatures {
 		return {
-			requireAuth: version >= 2, // v2+ always requires auth
+			requireAuth: true, // v2+ always requires auth
 			defaultUseWorkflowTimezone: version > 2, // v2.1+ defaults to true
 			allowRespondToWebhook: version <= 2.1, // v2.2+ doesn't allow
 			useFieldName: version >= 2.4, // v2.4+ uses fieldName
 			useFieldLabel: version < 2.4, // v2.3 and below uses fieldLabel
-			useResponseNodeOption: version >= 2.2, // Hide 'responseNode' option for v2.2+
+			useResponseNodeOption: version >= 2.2, // Show 'responseNode' option for v2.2+
 			useWorkflowTimezone: version === 2, // Show useWorkflowTimezone with default false only for v2
 			useLegacyMultiselect: version < 2.3, // Show multiselect option for v2.2 and below
 			useWebhookPath: version <= 2.1, // Show in main properties for v2.1 and below

@@ -100,7 +100,7 @@ export class FormTriggerV1 implements INodeType {
 			useFieldLabel: true, // v1 uses fieldLabel
 			useWebhookPath: false, // not used in v1
 			useWebhookPathInOptions: false, // not used in v1
-			useResponseNodeOption: false, // v1 doesn't hide responseNode option
+			useResponseNodeOption: false, // v1 doesn't show responseNode option
 			useWorkflowTimezone: false, // v1 is not v2
 			useLegacyMultiselect: true, // v1 shows multiselect (true for v1)
 		};
