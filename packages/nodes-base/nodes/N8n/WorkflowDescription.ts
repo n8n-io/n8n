@@ -70,6 +70,11 @@ export const workflowOperations: INodeProperties[] = [
 				},
 			},
 			{
+				name: 'Get Version',
+				value: 'getVersion',
+				action: 'Get a workflow version',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a workflow',
@@ -97,6 +102,63 @@ const activateOperation: INodeProperties[] = [
 				url: '=/workflows/{{ $value }}/activate',
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['workflow'],
+				operation: ['activate'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Version ID',
+				name: 'versionId',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'versionId',
+					},
+				},
+				description: 'The version ID of the workflow to publish',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'name',
+					},
+				},
+				description: 'The name of the workflow',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					rows: 4,
+				},
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'description',
+					},
+				},
+				description: 'The description of the workflow',
+			},
+		],
 	},
 ];
 
@@ -309,6 +371,39 @@ const getOperation: INodeProperties[] = [
 	},
 ];
 
+const getVersionOperation: INodeProperties[] = [
+	{
+		...workflowIdLocator,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['workflow'],
+				operation: ['getVersion'],
+			},
+		},
+		routing: {
+			request: {
+				method: 'GET',
+				url: '=/workflows/{{ $value }}/{{ $parameter["versionId"] }}',
+			},
+		},
+	},
+	{
+		displayName: 'Version ID',
+		name: 'versionId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['workflow'],
+				operation: ['getVersion'],
+			},
+		},
+		description: 'The version ID to retrieve',
+	},
+];
+
 const updateOperation: INodeProperties[] = [
 	{
 		...workflowIdLocator,
@@ -360,5 +455,6 @@ export const workflowFields: INodeProperties[] = [
 	...deleteOperation,
 	...getAllOperation,
 	...getOperation,
+	...getVersionOperation,
 	...updateOperation,
 ];
