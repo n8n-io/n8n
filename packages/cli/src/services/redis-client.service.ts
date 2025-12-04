@@ -223,7 +223,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			const reconnectionMsg = `Trying to reconnect in ${retryInterval}...`;
 			const timeoutDetails = `${cumulativeTimeout}/${maxTimeout}`;
 
-			this.logger.warn(`Lost Redis connection. ${reconnectionMsg} (${timeoutDetails})`);
+			const { host, port, clusterNodes } = this.globalConfig.queue.bull.redis;
+			const connectionInfo = clusterNodes ? `cluster nodes: ${clusterNodes}` : `${host}:${port}`;
+
+			this.logger.warn(
+				`Lost Redis connection (${connectionInfo}). ${reconnectionMsg} (${timeoutDetails})`,
+			);
 
 			this.lostConnection = true;
 		});

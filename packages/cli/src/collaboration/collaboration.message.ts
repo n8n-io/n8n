@@ -5,14 +5,14 @@ export type CollaborationMessage = WorkflowOpenedMessage | WorkflowClosedMessage
 export const workflowOpenedMessageSchema = z
 	.object({
 		type: z.literal('workflowOpened'),
-		workflowId: z.string().min(1),
+		workflowId: z.string().uuid('Invalid workflow ID format'),
 	})
 	.strict();
 
 export const workflowClosedMessageSchema = z
 	.object({
 		type: z.literal('workflowClosed'),
-		workflowId: z.string().min(1),
+		workflowId: z.string().uuid('Invalid workflow ID format'),
 	})
 	.strict();
 

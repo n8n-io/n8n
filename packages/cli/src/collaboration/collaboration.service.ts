@@ -33,15 +33,29 @@ export class CollaborationService {
 			try {
 				await this.handleUserMessage(event.userId, event.msg);
 			} catch (error) {
-				this.errorReporter.error(
-					new UnexpectedError('Error handling CollaborationService push message', {
-						extra: {
-							msg: event.msg,
-							userId: event.userId,
-						},
-						cause: error,
-					}),
-				);
+				// Log validation errors separately for better debugging
+				if (error instanceof Error && error.name === 'ZodError') {
+					this.errorReporter.error(
+						new UnexpectedError('Invalid collaboration message format', {
+							extra: {
+								msg: event.msg,
+								userId: event.userId,
+								validationError: error.message,
+							},
+							cause: error,
+						}),
+					);
+				} else {
+					this.errorReporter.error(
+						new UnexpectedError('Error handling CollaborationService push message', {
+							extra: {
+								msg: event.msg,
+								userId: event.userId,
+							},
+							cause: error,
+						}),
+					);
+				}
 			}
 		});
 	}

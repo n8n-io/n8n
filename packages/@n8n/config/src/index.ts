@@ -187,7 +187,11 @@ export class GlobalConfig {
 	@Env('N8N_HIDE_USAGE_PAGE')
 	hideUsagePage: boolean = false;
 
-	/** Number of reverse proxies n8n is running behind. */
+	/**
+	 * Number of reverse proxies n8n is running behind.
+	 * Set to 1 or more when running behind a proxy/load balancer to properly handle
+	 * X-Forwarded-For headers and enable accurate rate limiting and IP detection.
+	 */
 	@Env('N8N_PROXY_HOPS')
 	proxy_hops: number = 0;
 
