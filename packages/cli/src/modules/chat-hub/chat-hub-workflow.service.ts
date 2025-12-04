@@ -468,14 +468,21 @@ export class ChatHubWorkflowService {
 		};
 	}
 
+	getSystemMessageMetadata(timeZone: string) {
+		const now = DateTime.now().setZone(timeZone).toISO({
+			includeOffset: true,
+		});
+
+		return `The user's current local date and time is: ${now} (timezone: ${timeZone}).
+When you need to reference “now”, use this date and time.`;
+	}
+
 	private getBaseSystemMessage(timeZone: string) {
 		const now = DateTime.now().setZone(timeZone).toISO({
 			includeOffset: true,
 		});
 
-		return `You are a helpful assistant.
-The user's current local date and time is: ${now} (timezone: ${timeZone}).
-When you need to reference “now”, use this date and time.`;
+		return 'You are a helpful assistant.\n' + this.getSystemMessageMetadata(timeZone);
 	}
 
 	private buildToolsAgentNode(

@@ -1385,7 +1385,8 @@ export class ChatHubService {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
-		const systemMessage = agent.systemPrompt;
+		const systemMessage =
+			agent.systemPrompt + '\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
 
 		const model: ChatHubBaseLLMModel = {
 			provider: agent.provider,
