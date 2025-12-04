@@ -247,7 +247,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 			// Mock createReadStream to return a proper stream-like object
 			const mockStream: { once: jest.Mock } = {
-				once: jest.fn((event: string, callback: Function): typeof mockStream => {
+				once: jest.fn((event: string, callback: (error?: Error) => void): typeof mockStream => {
 					if (event === 'open') {
 						// Immediately call the open callback
 						setImmediate(() => callback());
@@ -280,7 +280,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 			// Mock createReadStream to return a stream that emits an error event
 			const mockStream: { once: jest.Mock } = {
-				once: jest.fn((event: string, callback: Function): typeof mockStream => {
+				once: jest.fn((event: string, callback: (error?: Error) => void): typeof mockStream => {
 					if (event === 'error') {
 						// Emit the error asynchronously
 						setImmediate(() => callback(eloopError));
