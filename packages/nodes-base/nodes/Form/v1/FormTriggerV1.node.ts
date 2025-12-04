@@ -28,16 +28,16 @@ const descriptionV1: INodeTypeDescription = {
 		name: 'n8n Form Trigger',
 	},
 	features: {
-		requireAuth: false, // v1 doesn't require auth
-		defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
-		allowRespondToWebhook: true, // v1 allows respond to webhook
-		useFieldName: false, // v1 uses fieldLabel
-		useFieldLabel: true, // v1 uses fieldLabel
-		useWebhookPath: false, // not used in v1
-		useWebhookPathInOptions: false, // not used in v1
-		useResponseNodeOption: false, // v1 doesn't show responseNode option
-		useWorkflowTimezone: false, // v1 is not v2
-		useLegacyMultiselect: true, // v1 shows multiselect (true for v1)
+		requireAuth: { '@version': [{ _cnd: { eq: 0 } }] }, // v1 doesn't require auth (never matches)
+		defaultUseWorkflowTimezone: { '@version': [{ _cnd: { eq: 0 } }] }, // v1 doesn't default to workflow timezone
+		allowRespondToWebhook: { '@version': [1] }, // v1 allows respond to webhook
+		useFieldName: { '@version': [{ _cnd: { eq: 0 } }] }, // v1 uses fieldLabel (never matches)
+		useFieldLabel: { '@version': [1] }, // v1 uses fieldLabel
+		useWebhookPath: { '@version': [{ _cnd: { eq: 0 } }] }, // not used in v1 (never matches)
+		useWebhookPathInOptions: { '@version': [{ _cnd: { eq: 0 } }] }, // not used in v1 (never matches)
+		useResponseNodeOption: { '@version': [{ _cnd: { eq: 0 } }] }, // v1 doesn't show responseNode option (never matches)
+		useWorkflowTimezone: { '@version': [{ _cnd: { eq: 0 } }] }, // v1 is not v2 (never matches)
+		useLegacyMultiselect: { '@version': [1] }, // v1 shows multiselect
 	},
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],

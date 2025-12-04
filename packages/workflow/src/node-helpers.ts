@@ -257,24 +257,13 @@ export function isSubNodeType(
 
 /**
  * Evaluates a feature condition against a node version.
+ * Uses the same logic as '@version' in displayOptions.
  * @param featureDef The feature condition definition
  * @param nodeVersion The node version to evaluate against
  * @returns true if the feature is enabled, false otherwise
  */
 function evaluateFeature(featureDef: FeatureCondition, nodeVersion: number): boolean {
-	if (typeof featureDef === 'boolean') {
-		return featureDef;
-	}
-
-	if (featureDef['@version']) {
-		const conditions = Array.isArray(featureDef['@version'])
-			? featureDef['@version']
-			: [featureDef['@version']];
-
-		return checkConditions(conditions, [nodeVersion]);
-	}
-
-	return false;
+	return checkConditions(featureDef['@version'], [nodeVersion]);
 }
 
 /**
@@ -314,12 +303,11 @@ const getPropertyValues = (
 	} else if (propertyName === '@tool') {
 		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
 	} else if (propertyName === '@feature') {
-		// Handle feature flags
 		if (!nodeTypeDescription?.features || !node?.typeVersion) {
 			return [];
 		}
+
 		const features = getNodeFeatures(nodeTypeDescription.features, node.typeVersion);
-		// Return array of enabled feature names
 		return Object.entries(features)
 			.filter(([_, enabled]) => enabled)
 			.map(([name]) => name);

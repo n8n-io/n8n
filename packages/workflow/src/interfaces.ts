@@ -1544,11 +1544,9 @@ export type NodeFeatures = Record<string, boolean>;
 
 /**
  * Condition for evaluating a feature flag.
- * Can be a direct boolean value or a version-based condition.
+ * Uses the same format as '@version' in IDisplayOptions.
  */
-export type FeatureCondition =
-	| boolean // Direct boolean value
-	| { '@version': DisplayCondition | DisplayCondition[] }; // Version-based condition
+export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
 
 /**
  * Definition of feature flags for a node type.
