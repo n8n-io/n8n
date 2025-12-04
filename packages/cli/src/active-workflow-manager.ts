@@ -50,6 +50,7 @@ import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workfl
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { ScheduleValidationService } from 'n8n-core';
+import type { ScheduleInterval } from 'n8n-nodes-base/dist/nodes/Schedule/SchedulerInterface';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -1058,7 +1059,7 @@ export class ActiveWorkflowManager {
 				if (interval.field === 'cronExpression' && 'expression' in interval) {
 					this.scheduleValidationService.validateCronExpression(interval.expression as string);
 				} else {
-					this.scheduleValidationService.validateScheduleInterval(interval);
+					this.scheduleValidationService.validateScheduleInterval(interval as ScheduleInterval);
 				}
 			}
 		}
