@@ -1479,6 +1479,75 @@ describe('CredentialsService', () => {
 			// ASSERT
 			expect(savedCredential.isGlobal).toBeUndefined();
 		});
+
+		it('should allow creating credential when required field has default value and is not provided', async () => {
+			// ARRANGE
+			// Mock credential properties with a required field that has a default value
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'Host',
+					name: 'host',
+					type: 'string',
+					required: true,
+					default: 'https://generativelanguage.googleapis.com',
+				},
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			] as any);
+
+			// Payload without 'host' field - should use default value
+			const payload = {
+				name: 'Google Gemini Credential',
+				type: 'googlePalmApi',
+				data: { apiKey: 'test-api-key' }, // host is not provided
+				projectId: 'project-1',
+			};
+
+			// @ts-expect-error - Mocking manager for testing
+			credentialsRepository.manager = {
+				transaction: jest.fn().mockImplementation(async (callback) => {
+					const mockManager = {
+						save: jest.fn().mockImplementation(async (entity) => {
+							return { ...entity, id: 'new-cred-id' };
+						}),
+					};
+					return await callback(mockManager);
+				}),
+			};
+
+			// ACT & ASSERT
+			await expect(service.createUnmanagedCredential(payload, ownerUser)).resolves.toBeDefined();
+		});
+
+		it('should throw error when required field without default value is not provided', async () => {
+			// ARRANGE
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: '', // Empty default means no valid default
+				},
+			] as any);
+
+			const payload = {
+				name: 'Test Credential',
+				type: 'apiKey',
+				data: {}, // apiKey is missing
+				projectId: 'project-1',
+			};
+
+			// ACT & ASSERT
+			await expect(service.createUnmanagedCredential(payload, ownerUser)).rejects.toThrow(
+				'The field "apiKey" is mandatory for credentials of type "apiKey"',
+			);
+		});
 	});
 
 	describe('createManagedCredential', () => {
