@@ -4,9 +4,11 @@ import {
 	continueEvaluationLoop,
 	executionFinished,
 	getRunExecutionData,
+	handleExecutionFinishedWithSuccessOrOther,
+	handleExecutionFinishedWithErrorOrCanceled,
 	type SimplifiedExecution,
 } from './executionFinished';
-import type { ITaskData } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -522,5 +524,94 @@ describe('executionFinished', () => {
 		expect(setProcessingExecutionResultsSpy).toHaveBeenCalledWith(false);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
+	});
+});
+
+describe('manual execution stats tracking', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	describe('handleExecutionFinishedWithSuccessOrOther', () => {
+		it('increments success stats on successful execution', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+
+			expect(incrementSpy).toHaveBeenCalledWith('success');
+		});
+
+		it('does not increment success stats when successToastAlreadyShown is true', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+
+			expect(incrementSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not increment stats for non-success status', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'error', false);
+
+			expect(incrementSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleExecutionFinishedWithErrorOrCanceled', () => {
+		it('increments error stats on execution error', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+
+			const execution = mock<SimplifiedExecution>({
+				status: 'error',
+				data: {
+					resultData: {
+						error: { message: 'test error', name: 'Error' },
+					},
+				},
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error: { message: 'test', name: 'Error' } } }),
+			);
+
+			expect(incrementSpy).toHaveBeenCalledWith('error');
+		});
+
+		it('does not increment stats for canceled executions', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const incrementSpy = vi.spyOn(workflowsStore, 'incrementManualExecutionStats');
+
+			const execution = mock<SimplifiedExecution>({
+				status: 'canceled',
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: {} }),
+			);
+
+			expect(incrementSpy).not.toHaveBeenCalled();
+		});
 	});
 });

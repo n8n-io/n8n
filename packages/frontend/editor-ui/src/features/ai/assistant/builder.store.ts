@@ -748,7 +748,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Methods
 		abortStreaming,
-		stopStreaming, // todo remove from exports
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,
