@@ -210,8 +210,9 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 :80 {
   # Reverse proxy with load balancing
   reverse_proxy ${backends} {
-    # Enable sticky sessions using cookie
-    lb_policy cookie
+    # Use first available backend for simpler debugging
+    # (cookie-based sticky sessions can cause issues with separate API/browser contexts)
+    lb_policy first
 
     # Health check (optional)
     health_uri /healthz
