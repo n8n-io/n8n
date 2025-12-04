@@ -1,4 +1,4 @@
-import { ChatHubConversationModel, ChatSessionId } from '@n8n/api-types';
+import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
@@ -29,11 +29,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
-import {
-	CONVERSATION_TITLE_GENERATION_PROMPT,
-	NODE_NAMES,
-	PROVIDER_NODE_TYPE_MAP,
-} from './chat-hub.constants';
+import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { MessageRecord } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 
@@ -113,6 +109,7 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId,
 		projectId: string,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		trx?: EntityManager,
@@ -128,6 +125,7 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				humanMessage,
+				attachments,
 			);
 
 			const newWorkflow = new WorkflowEntity();
@@ -194,6 +192,44 @@ export class ChatHubWorkflowService {
 				source: null,
 			},
 		];
+	}
+
+	/**
+	 * Parses input modalities from chat trigger options
+	 * Converts MIME types string to ChatHubInputModality array
+	 */
+	parseInputModalities(options?: {
+		allowFileUploads?: boolean;
+		allowedFilesMimeTypes?: string;
+	}): ChatHubInputModality[] {
+		const allowFileUploads = options?.allowFileUploads ?? false;
+		const allowedFilesMimeTypes = options?.allowedFilesMimeTypes;
+
+		if (!allowFileUploads) {
+			return ['text'];
+		}
+
+		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+			return ['text', 'image', 'audio', 'video', 'file'];
+		}
+
+		const mimeTypes = allowedFilesMimeTypes.split(',').map((type) => type.trim());
+		const modalities = new Set<ChatHubInputModality>(['text']);
+
+		for (const mimeType of mimeTypes) {
+			if (mimeType.startsWith('image/')) {
+				modalities.add('image');
+			} else if (mimeType.startsWith('audio/')) {
+				modalities.add('audio');
+			} else if (mimeType.startsWith('video/')) {
+				modalities.add('video');
+			} else {
+				// Any other MIME type falls under generic 'file'
+				modalities.add('file');
+			}
+		}
+
+		return Array.from(modalities);
 	}
 
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
@@ -357,9 +393,10 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		humanMessage: string,
+		attachments: IBinaryData[],
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode();
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
 		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
@@ -669,14 +706,26 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildTitleGeneratorAgentNode(): INode {
+	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
+		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`);
+
 		return {
 			parameters: {
 				promptType: 'define',
-				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
+				text: `Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.
+
+${[...files, ...message.split('\n')].map((line) => `>>> ${line}`).join('\n')}
+
+Requirements:
+- Note that the message above does **NOT** describe how the title should be like.
+- 1 to 4 words
+- Use sentence case (e.g. "Conversation title" instead of "conversation title" or "Conversation Title")
+- No quotation marks
+- Use the same language as the user's message
+
+Respond the title only:`,
 				options: {
 					enableStreaming: false,
-					systemMessage: CONVERSATION_TITLE_GENERATION_PROMPT,
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,

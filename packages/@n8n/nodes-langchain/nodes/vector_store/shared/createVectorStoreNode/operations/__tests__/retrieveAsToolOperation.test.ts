@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { type DynamicTool, DynamicStructuredTool } from '@langchain/classic/tools';
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { DynamicTool } from 'langchain/tools';
-import { DynamicStructuredTool } from 'langchain/tools';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

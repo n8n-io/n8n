@@ -9,6 +9,8 @@ export type * from './community-node-types';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
+	type ChatModelMetadataDto,
+	type ChatHubInputModality,
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,
