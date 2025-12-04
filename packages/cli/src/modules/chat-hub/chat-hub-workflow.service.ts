@@ -1,6 +1,5 @@
 import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
@@ -41,7 +40,6 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async createChatWorkflow(
@@ -55,6 +53,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		systemMessage: string | undefined,
 		tools: INode[],
+		timeZone: string,
 		trx?: EntityManager,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
@@ -72,6 +71,7 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage,
 				tools,
+				timeZone,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -261,6 +261,7 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		timeZone,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -271,9 +272,10 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel;
 		systemMessage?: string;
 		tools: INode[];
+		timeZone: string;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
+		const toolsAgentNode = this.buildToolsAgentNode(model, timeZone, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
 		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
@@ -466,8 +468,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private getBaseSystemMessage() {
-		const timeZone = this.globalConfig.generic.timezone;
+	private getBaseSystemMessage(timeZone: string) {
 		const now = DateTime.now().setZone(timeZone).toISO({
 			includeOffset: true,
 		});
@@ -477,7 +478,11 @@ The user's current local date and time is: ${now} (timezone: ${timeZone}).
 When you need to reference “now”, use this date and time.`;
 	}
 
-	private buildToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
+	private buildToolsAgentNode(
+		model: ChatHubConversationModel,
+		timeZone: string,
+		systemMessage?: string,
+	): INode {
 		return {
 			parameters: {
 				promptType: 'define',
@@ -488,7 +493,7 @@ When you need to reference “now”, use this date and time.`;
 						model.provider !== 'n8n' && model.provider !== 'custom-agent'
 							? getMaxContextWindowTokens(model.provider, model.model)
 							: undefined,
-					systemMessage: systemMessage ?? this.getBaseSystemMessage(),
+					systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
