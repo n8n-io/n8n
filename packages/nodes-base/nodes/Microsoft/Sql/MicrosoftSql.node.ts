@@ -276,7 +276,7 @@ export class MicrosoftSql implements INodeType {
 					for (const resolvable of getResolvables(rawQuery)) {
 						rawQuery = rawQuery.replace(
 							resolvable,
-							this.evaluateExpression(resolvable, i) as string,
+							() => this.evaluateExpression(resolvable, i) as string,
 						);
 					}
 					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i);

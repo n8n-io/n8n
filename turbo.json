@@ -1,4 +1,5 @@
 {
+	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
@@ -6,7 +7,7 @@
 			"outputs": ["dist/**"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck"]
+			"dependsOn": ["^typecheck", "^build"]
 		},
 		"format": {},
 		"format:check": {},
@@ -21,6 +22,14 @@
 			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
 		"test": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},

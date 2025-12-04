@@ -310,7 +310,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should handle manual trigger mode', async () => {
-		const { emit } = await testTriggerNode(KafkaTrigger, {
+		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
 			mode: 'manual',
 			node: {
 				parameters: {
@@ -329,6 +329,8 @@ describe('KafkaTrigger Node', () => {
 				authentication: false,
 			},
 		});
+
+		await manualTriggerFunction?.();
 
 		expect(mockConsumerConnect).toHaveBeenCalledTimes(1);
 		expect(mockConsumerSubscribe).toHaveBeenCalledTimes(1);

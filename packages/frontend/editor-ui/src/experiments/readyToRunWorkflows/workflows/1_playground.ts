@@ -266,7 +266,7 @@ export const PLAYGROUND_1: WorkflowDataCreate = {
 				],
 			],
 		},
-		'Set Category = Personnal': {
+		'Set Category = Personal': {
 			main: [
 				[
 					{
@@ -299,7 +299,7 @@ export const PLAYGROUND_1: WorkflowDataCreate = {
 				],
 				[
 					{
-						node: 'Set Category = Personnal',
+						node: 'Set Category = Personal',
 						type: 'main',
 						index: 0,
 					},

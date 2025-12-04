@@ -12,6 +12,20 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region Credentials
+	'reload-overwrite-credentials': never;
+	// #endregion
+
+	// # region SSO
+
+	'reload-oidc-config': never;
+	'reload-saml-config': never;
+
+	// # sso provisioning
+	'reload-sso-provisioning-configuration': never;
+
+	// #endregion
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -63,6 +77,7 @@ export type PubSubCommandMap = {
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
+		asBinary: boolean;
 	};
 
 	'clear-test-webhooks': {

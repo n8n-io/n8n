@@ -30,7 +30,7 @@ jest.mock('@langchain/langgraph', () => ({
 
 describe('ConnectNodesTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let connectNodesTool: ReturnType<typeof createConnectNodesTool>;
+	let connectNodesTool: ReturnType<typeof createConnectNodesTool>['tool'];
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
 		typeof getCurrentTaskInput
 	>;
@@ -39,7 +39,7 @@ describe('ConnectNodesTool', () => {
 		jest.clearAllMocks();
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.agent];
-		connectNodesTool = createConnectNodesTool(nodeTypesList);
+		connectNodesTool = createConnectNodesTool(nodeTypesList).tool;
 	});
 
 	afterEach(() => {
@@ -112,7 +112,7 @@ describe('ConnectNodesTool', () => {
 
 			// Update node types list
 			nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, agentNodeType, toolNodeType];
-			connectNodesTool = createConnectNodesTool(nodeTypesList);
+			connectNodesTool = createConnectNodesTool(nodeTypesList).tool;
 
 			const existingWorkflow = createWorkflow([
 				createNode({ id: 'agent1', name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
@@ -176,7 +176,7 @@ describe('ConnectNodesTool', () => {
 			// Replace the agent node type in the list
 			nodeTypesList = nodeTypesList.filter((nt) => nt.name !== '@n8n/n8n-nodes-langchain.agent');
 			nodeTypesList.push(agentNodeType, languageModelNodeType);
-			connectNodesTool = createConnectNodesTool(nodeTypesList);
+			connectNodesTool = createConnectNodesTool(nodeTypesList).tool;
 
 			const existingWorkflow = createWorkflow([
 				createNode({
@@ -374,7 +374,7 @@ describe('ConnectNodesTool', () => {
 			});
 
 			nodeTypesList.push(multiOutputNode);
-			connectNodesTool = createConnectNodesTool(nodeTypesList);
+			connectNodesTool = createConnectNodesTool(nodeTypesList).tool;
 
 			const existingWorkflow = createWorkflow([
 				createNode({ id: 'multi1', name: 'Multi Output', type: 'test.multiOutput' }),

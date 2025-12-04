@@ -5,8 +5,9 @@ import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
-import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
-import type { Tool } from 'langchain/tools';
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
@@ -24,12 +25,21 @@ import {
 	prepareMessages,
 	preparePrompt,
 	getTools,
+	getAgentStepsParser,
+	handleAgentFinishOutput,
 } from '../../agents/ToolsAgent/common';
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
 	(fakeOutputParser.getSchema as jest.Mock).mockReturnValue(returnSchema);
 	return fakeOutputParser;
+}
+
+function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8nOutputParser {
+	const mockParser = mock<N8nOutputParser>();
+	(mockParser.parse as jest.Mock).mockResolvedValue(parseReturnValue);
+
+	return mockParser;
 }
 
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
@@ -106,6 +116,97 @@ describe('extractBinaryMessages', () => {
 			image_url: { url: expectedUrl },
 		});
 	});
+
+	it('should extract markdown and CSV text files', async () => {
+		const mdContent = '# Test Markdown\n\nThis is a test.';
+		const csvContent = 'name,age\nJohn,30';
+		const fakeItem = {
+			json: {},
+			binary: {
+				markdown: {
+					mimeType: 'text/markdown',
+					fileName: 'test.md',
+					data: `data:text/markdown;base64,${Buffer.from(mdContent).toString('base64')}`,
+				},
+				csv: {
+					mimeType: 'text/csv',
+					fileName: 'data.csv',
+					data: `data:text/csv;base64,${Buffer.from(csvContent).toString('base64')}`,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{ type: 'text', text: `File: test.md\nContent:\n${mdContent}` },
+				{ type: 'text', text: `File: data.csv\nContent:\n${csvContent}` },
+			]),
+		);
+	});
+
+	it('should extract both images and text files together', async () => {
+		const textContent = 'Some text content';
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					data: `data:text/plain;base64,${Buffer.from(textContent).toString('base64')}`,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{
+					type: 'image_url',
+					image_url: { url: 'data:image/png;base64,imageData123' },
+				},
+				{ type: 'text', text: `File: test.txt\nContent:\n${textContent}` },
+			]),
+		);
+	});
+
+	it('should decode base64-encoded text files without prefix', async () => {
+		const textContent = 'Hello world!';
+		const fakeItem = {
+			json: {},
+			binary: {
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					// Default n8n binary format: base64 without data URL prefix
+					data: Buffer.from(textContent).toString('base64'),
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'text',
+			text: `File: test.txt\nContent:\n${textContent}`,
+		});
+	});
 });
 
 describe('fixEmptyContentMessage', () => {
@@ -124,8 +225,10 @@ describe('fixEmptyContentMessage', () => {
 		const messageContent = fixed?.[0]?.messageLog?.[0].content;
 
 		// Type assertion needed since we're extending MessageContentComplex
-		expect((messageContent?.[0] as { input: unknown })?.input).toEqual({});
-		expect((messageContent?.[1] as { input: unknown })?.input).toEqual({ already: 'object' });
+		expect((messageContent?.[0] as unknown as { input: unknown })?.input).toEqual({});
+		expect((messageContent?.[1] as unknown as { input: unknown })?.input).toEqual({
+			already: 'object',
+		});
 	});
 });
 
@@ -406,5 +509,373 @@ describe('preparePrompt', () => {
 		const prompt = preparePrompt(sampleMessages);
 
 		expect(prompt).toBeDefined();
+	});
+});
+
+describe('getAgentStepsParser', () => {
+	let mockMemory: BaseChatMemory;
+
+	beforeEach(() => {
+		mockMemory = mock<BaseChatMemory>();
+	});
+
+	describe('with format_final_json_response tool', () => {
+		it('should parse output from format_final_json_response tool', async () => {
+			const steps: AgentAction[] = [
+				{
+					tool: 'format_final_json_response',
+					toolInput: { city: 'Berlin', temperature: 15 },
+					log: '',
+				},
+			];
+
+			const mockOutputParser = createMockOutputParser({
+				city: 'Berlin',
+				temperature: 15,
+			});
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('{"city":"Berlin","temperature":15}');
+			expect(result).toEqual({
+				returnValues: { output: '{"city":"Berlin","temperature":15}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should stringify tool input if it is not an object', async () => {
+			const steps: AgentAction[] = [
+				{
+					tool: 'format_final_json_response',
+					toolInput: 'simple string',
+					log: '',
+				},
+			];
+
+			const mockOutputParser = createMockOutputParser({ text: 'simple string' });
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('simple string');
+			expect(result).toEqual({
+				returnValues: { output: '{"text":"simple string"}' },
+				log: 'Final response formatted',
+			});
+		});
+	});
+
+	describe('manual parsing path', () => {
+		it('should handle already wrapped output structure correctly', async () => {
+			// Agent returns output that already has { output: {...} } structure
+			const steps: AgentFinish = {
+				returnValues: {
+					output: '{"output":{"city":"Berlin","temperature":15}}',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({
+				city: 'Berlin',
+				temperature: 15,
+			});
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should detect the existing wrapper and not double-wrap
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(
+				'{"output":{"city":"Berlin","temperature":15}}',
+			);
+			expect(result).toEqual({
+				returnValues: { output: '{"city":"Berlin","temperature":15}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should wrap output that is not already wrapped', async () => {
+			// Agent returns plain data without { output: ... } wrapper
+			const steps: AgentFinish = {
+				returnValues: {
+					output: '{"city":"Berlin","temperature":15}',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({
+				city: 'Berlin',
+				temperature: 15,
+			});
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should wrap the data in { output: ... } for the parser
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(
+				'{"output":{"city":"Berlin","temperature":15}}',
+			);
+			expect(result).toEqual({
+				returnValues: { output: '{"city":"Berlin","temperature":15}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should handle output with additional properties correctly', async () => {
+			// Output has more than just the "output" property
+			const steps: AgentFinish = {
+				returnValues: {
+					output: '{"output":{"text":"Hello"},"metadata":{"source":"test"}}',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({
+				text: 'Hello',
+				metadata: { source: 'test' },
+			});
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should wrap since it has multiple properties
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(
+				'{"output":{"output":{"text":"Hello"},"metadata":{"source":"test"}}}',
+			);
+			expect(result).toEqual({
+				returnValues: { output: '{"text":"Hello","metadata":{"source":"test"}}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should handle parse errors gracefully', async () => {
+			const steps: AgentFinish = {
+				returnValues: {
+					output: 'invalid json',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ text: 'invalid json' });
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should fallback to raw output when JSON parsing fails
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('invalid json');
+			expect(result).toEqual({
+				returnValues: { output: '{"text":"invalid json"}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should handle null output correctly', async () => {
+			const steps: AgentFinish = {
+				returnValues: {
+					output: 'null',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ result: null });
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should wrap null in { output: null }
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('{"output":null}');
+			expect(result).toEqual({
+				returnValues: { output: '{"result":null}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should handle undefined-like values correctly', async () => {
+			const steps: AgentFinish = {
+				returnValues: {
+					output: 'undefined',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ text: 'undefined' });
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should fallback to raw string since "undefined" is not valid JSON
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('undefined');
+			expect(result).toEqual({
+				returnValues: { output: '{"text":"undefined"}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should return output as-is without memory', async () => {
+			const steps: AgentFinish = {
+				returnValues: {
+					output: '{"city":"Berlin","temperature":15}',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({
+				city: 'Berlin',
+				temperature: 15,
+			});
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			const result = await parser(steps);
+
+			expect(result).toEqual({
+				returnValues: { city: 'Berlin', temperature: 15 },
+				log: 'Final response formatted',
+			});
+		});
+	});
+
+	describe('without output parser', () => {
+		it('should pass through agent finish steps unchanged', async () => {
+			const steps: AgentFinish = {
+				returnValues: { output: 'Final answer' },
+				log: '',
+			};
+
+			const parser = getAgentStepsParser(undefined, undefined);
+			const result = await parser(steps);
+
+			expect(result).toEqual({
+				log: '',
+				returnValues: { output: 'Final answer' },
+			});
+		});
+
+		it('should handle array of agent actions', async () => {
+			const steps: AgentAction[] = [
+				{ tool: 'some_tool', toolInput: { query: 'test' }, log: '' },
+				{ tool: 'another_tool', toolInput: { data: 'value' }, log: '' },
+			];
+
+			const parser = getAgentStepsParser(undefined, undefined);
+			const result = await parser(steps);
+
+			expect(result).toEqual(steps);
+		});
+	});
+});
+
+describe('handleAgentFinishOutput', () => {
+	it('should merge multi-output text arrays into a single string', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'text', text: 'First part' },
+					{ index: 1, type: 'text', text: 'Second part' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps);
+
+		expect(result).toEqual({
+			log: '',
+			returnValues: {
+				output: 'First part\nSecond part',
+			},
+		});
+	});
+
+	it('should not modify non-text multi-output arrays', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'text', text: 'Text part' },
+					{ index: 1, type: 'image', url: 'http://example.com/image.png' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps);
+
+		expect(result).toEqual(steps);
+	});
+
+	it('should not modify simple string output', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: 'Simple string output',
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps);
+
+		expect(result).toEqual(steps);
+	});
+
+	it('should handle agent action arrays unchanged', () => {
+		const steps: AgentAction[] = [
+			{
+				tool: 'tool1',
+				toolInput: {},
+				log: '',
+			},
+			{
+				tool: 'tool2',
+				toolInput: {},
+				log: '',
+			},
+		];
+
+		const result = handleAgentFinishOutput(steps);
+
+		expect(result).toEqual(steps);
+	});
+
+	it('should filter out thinking blocks and return only text blocks', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'thinking', thinking: 'Internal reasoning...' },
+					{ index: 1, type: 'text', text: 'User-facing output' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('User-facing output');
+	});
+
+	it('should return thinking content when no text blocks exist', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'thinking', thinking: 'Only thinking content' },
+					{ index: 1, type: 'thinking', thinking: 'More thinking' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('Only thinking content\nMore thinking');
+	});
+
+	it('should return empty string when no text or thinking blocks exist', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [{ index: 0, type: 'unknown' }],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('');
 	});
 });

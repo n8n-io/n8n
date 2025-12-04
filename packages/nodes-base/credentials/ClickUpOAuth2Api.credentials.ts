@@ -7,7 +7,7 @@ export class ClickUpOAuth2Api implements ICredentialType {
 
 	displayName = 'ClickUp OAuth2 API';
 
-	documentationUrl = 'clickUp';
+	documentationUrl = 'clickup';
 
 	properties: INodeProperties[] = [
 		{

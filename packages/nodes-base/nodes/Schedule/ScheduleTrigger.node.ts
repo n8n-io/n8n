@@ -5,10 +5,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	Cron,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
+import {
+	intervalToRecurrence,
+	recurrenceCheck,
+	toCronExpression,
+	validateInterval,
+} from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
 export class ScheduleTrigger implements INodeType {
@@ -17,7 +23,7 @@ export class ScheduleTrigger implements INodeType {
 		name: 'scheduleTrigger',
 		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -105,6 +111,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								description: 'Number of seconds between each workflow trigger',
+								hint: 'Must be in range 1-59',
 							},
 							{
 								displayName: 'Minutes Between Triggers',
@@ -117,6 +124,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								description: 'Number of minutes between each workflow trigger',
+								hint: 'Must be in range 1-59',
 							},
 							{
 								displayName: 'Hours Between Triggers',
@@ -129,6 +137,7 @@ export class ScheduleTrigger implements INodeType {
 								},
 								default: 1,
 								description: 'Number of hours between each workflow trigger',
+								hint: 'Must be in range 1-23',
 							},
 							{
 								displayName: 'Days Between Triggers',
@@ -141,6 +150,7 @@ export class ScheduleTrigger implements INodeType {
 								},
 								default: 1,
 								description: 'Number of days between each workflow trigger',
+								hint: 'Must be in range 1-31',
 							},
 							{
 								displayName: 'Weeks Between Triggers',
@@ -411,6 +421,7 @@ export class ScheduleTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const version = this.getNode().typeVersion;
 		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
@@ -418,6 +429,12 @@ export class ScheduleTrigger implements INodeType {
 		};
 		if (!staticData.recurrenceRules) {
 			staticData.recurrenceRules = [];
+		}
+
+		if (version >= 1.3) {
+			for (let i = 0; i < intervals.length; i++) {
+				validateInterval(this.getNode(), i, intervals[i]);
+			}
 		}
 
 		const executeTrigger = (recurrence: IRecurrenceRule) => {
@@ -451,7 +468,10 @@ export class ScheduleTrigger implements INodeType {
 		if (this.getMode() !== 'manual') {
 			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
-					const cron = { expression: cronExpression, recurrence };
+					const cron: Cron = {
+						expression: cronExpression,
+						recurrence,
+					};
 					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
 				} catch (error) {
 					if (interval.field === 'cronExpression') {

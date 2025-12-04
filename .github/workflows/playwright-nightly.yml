@@ -1,0 +1,29 @@
+name: Playwright Tests - Nightly
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Docker image to test against'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
+  push:
+    branches:
+      - ci-containers-nightly
+
+jobs:
+  test-configurations:
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [standard, postgres]
+    name: Test ${{ matrix.config }}
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-pull
+      docker-image: ${{ github.event.inputs.image || 'n8nio/n8n:nightly' }}
+      test-command: pnpm --filter=n8n-playwright test:container:${{ matrix.config }}
+    secrets: inherit

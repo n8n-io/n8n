@@ -14,15 +14,17 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_NODE_TYPE,
+	WorkflowConfigurationError,
 	jsonParse,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import { validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import type { FormTriggerData, FormTriggerInput } from '../interfaces';
+import type { FormTriggerData, FormField } from '../interfaces';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -54,6 +56,14 @@ export function sanitizeHtml(text: string) {
 			'ol',
 			'li',
 			'p',
+			'table',
+			'thead',
+			'tbody',
+			'tfoot',
+			'td',
+			'tr',
+			'th',
+			'br',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -69,6 +79,8 @@ export function sanitizeHtml(text: string) {
 				'referrerpolicy',
 			],
 			source: ['src', 'type'],
+			td: ['colspan', 'rowspan', 'scope', 'headers'],
+			th: ['colspan', 'rowspan', 'scope', 'headers'],
 		},
 		allowedSchemes: ['https', 'http'],
 		allowedSchemesByTag: {
@@ -126,6 +138,19 @@ export function createDescriptionMetadata(description: string) {
 		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
 }
 
+/**
+ * Gets the field identifier to use based on node version.
+ * For v2.4+, uses fieldName as the primary identifier.
+ * For earlier versions, falls back to fieldLabel.
+ */
+function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: number): string {
+	if (nodeVersion && nodeVersion >= 2.4 && field.fieldName) {
+		return field.fieldName;
+	}
+
+	return field.fieldLabel ?? field.fieldName ?? '';
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -140,6 +165,7 @@ export function prepareFormData({
 	appendAttribution = true,
 	buttonLabel,
 	customCss,
+	nodeVersion,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -154,6 +180,7 @@ export function prepareFormData({
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
 	customCss?: string;
+	nodeVersion?: number;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -185,24 +212,34 @@ export function prepareFormData({
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect, placeholder } = field;
+		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
+		const queryParam = getFieldIdentifier(field, nodeVersion);
 
-		const input: IDataObject = {
+		const input: FormField = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
-			defaultValue: query[field.fieldLabel] ?? '',
+			defaultValue: query[queryParam] ?? defaultValue ?? '',
 			placeholder,
 		};
 
-		if (multiselect) {
+		if (multiselect || (fieldType && ['radio', 'checkbox'].includes(fieldType))) {
 			input.isMultiSelect = true;
 			input.multiSelectOptions =
 				field.fieldOptions?.values.map((e, i) => ({
 					id: `option${i}_${input.id}`,
 					label: e.option,
 				})) ?? [];
+
+			if (fieldType === 'radio') {
+				input.radioSelect = 'radio';
+			} else if (field.limitSelection === 'exact') {
+				input.exactSelectedOptions = field.numberOfSelections;
+			} else if (field.limitSelection === 'range') {
+				input.minSelectedOptions = field.minSelections;
+				input.maxSelectedOptions = field.maxSelections;
+			}
 		} else if (fieldType === 'file') {
 			input.isFileInput = true;
 			input.acceptFileTypes = field.acceptFileTypes;
@@ -226,7 +263,7 @@ export function prepareFormData({
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
 		}
 
-		formData.formFields.push(input as FormTriggerInput);
+		formData.formFields.push(input);
 	}
 
 	return formData;
@@ -253,9 +290,9 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	}
 
 	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
-		throw new NodeOperationError(
+		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error(`${context.getNode().name} node not correctly configured`),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
@@ -281,10 +318,11 @@ export function addFormResponseDataToReturnItem(
 	returnItem: INodeExecutionData,
 	formFields: FormFieldsParameter,
 	bodyData: IDataObject,
+	nodeVersion?: number,
 ) {
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
-		const name = field.fieldLabel ?? field.fieldName;
+		const name = getFieldIdentifier(field, nodeVersion);
 		let value = bodyData[key] ?? null;
 
 		if (value === null) {
@@ -305,11 +343,19 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'text') {
 			value = String(value).trim();
 		}
-		if (field.multiselect && typeof value === 'string') {
+		if (
+			(field.multiselect || field.fieldType === 'checkbox' || field.fieldType === 'radio') &&
+			typeof value === 'string'
+		) {
 			value = jsonParse(value);
+
+			if (field.fieldType === 'radio' && Array.isArray(value)) {
+				value = value[0];
+			}
 		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		if (field.fieldType === 'date' && value && field.formatDate) {
+			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
+			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
 			value = [value];
@@ -325,6 +371,8 @@ export async function prepareFormReturnItem(
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 ) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
 
@@ -358,7 +406,8 @@ export async function prepareFormReturnItem(
 		}
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
-		const fieldLabel = isNaN(entryIndex) ? key : formFields[entryIndex].fieldLabel;
+		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
+		const fieldLabel = field ? getFieldIdentifier(field, context.getNode().typeVersion) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
@@ -376,7 +425,7 @@ export async function prepareFormReturnItem(
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context.getNode().typeVersion);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
@@ -460,6 +509,7 @@ export function renderForm({
 		appendAttribution,
 		buttonLabel,
 		customCss,
+		nodeVersion: context.getNode().typeVersion,
 	});
 
 	res.render('form-trigger', data);

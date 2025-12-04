@@ -136,7 +136,7 @@ export async function estimateTokensFromStringList(
 			return 0;
 		}
 
-		const encoder = encodingForModel(model);
+		const encoder = await encodingForModel(model);
 		const encodedListLength = await Promise.all(
 			list.map(async (text) => {
 				try {

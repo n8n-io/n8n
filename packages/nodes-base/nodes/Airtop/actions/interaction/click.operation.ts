@@ -25,6 +25,33 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Click Type',
+		name: 'clickType',
+		type: 'options',
+		default: 'click',
+		description: 'The type of click to perform. Defaults to left click.',
+		options: [
+			{
+				name: 'Left Click',
+				value: 'click',
+			},
+			{
+				name: 'Double Click',
+				value: 'doubleClick',
+			},
+			{
+				name: 'Right Click',
+				value: 'rightClick',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['interaction'],
+				operation: ['click'],
+			},
+		},
+	},
 ];
 
 export async function execute(
@@ -39,8 +66,13 @@ export async function execute(
 		'Element Description',
 	);
 
+	const clickType = validateRequiredStringField.call(this, index, 'clickType', 'Click Type');
+
 	const request = constructInteractionRequest.call(this, index, {
 		elementDescription,
+		configuration: {
+			clickType,
+		},
 	});
 
 	const response = await apiRequest.call(

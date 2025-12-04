@@ -10,6 +10,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
+import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -22,7 +23,7 @@ export async function awsApiRequest(
 	option: IDataObject = {},
 	_region?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	const requestOptions = {
 		qs: {
@@ -39,7 +40,7 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 }
 
 export async function awsApiRequestREST(

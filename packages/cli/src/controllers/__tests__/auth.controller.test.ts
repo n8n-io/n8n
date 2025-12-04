@@ -18,6 +18,14 @@ import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 
 import { AuthController } from '../auth.controller';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { v4 as uuidv4 } from 'uuid';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { AuthlessRequest } from '@/requests';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import { ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 jest.mock('@/auth');
 
@@ -40,6 +48,10 @@ describe('AuthController', () => {
 	const postHog = Container.get(PostHogClient);
 
 	describe('login', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
 		it('should not validate email in "emailOrLdapLoginId" if LDAP is enabled', async () => {
 			// Arrange
 
@@ -47,7 +59,7 @@ describe('AuthController', () => {
 
 			const member = mock<User>({
 				id: '123',
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				mfaEnabled: false,
 			});
 
@@ -96,6 +108,324 @@ describe('AuthController', () => {
 				mfaAuthenticated: false,
 				posthog: postHog,
 				withScopes: true,
+			});
+		});
+
+		it('should not allow members to login with email if "OIDC" is the authentication method', async () => {
+			const member = mock<User>({
+				id: '123',
+				role: { slug: 'global:member' },
+				mfaEnabled: false,
+			});
+
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				user: member,
+				body,
+				browserId: '1',
+			});
+
+			const res = mock<Response>();
+
+			mockedAuth.handleEmailLogin.mockResolvedValue(member);
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			// Act
+
+			await expect(controller.login(req, res, body)).rejects.toThrowError(
+				new AuthError('SSO is enabled, please log in with SSO'),
+			);
+
+			// Assert
+
+			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+				body.emailOrLdapLoginId,
+				body.password,
+			);
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+		});
+
+		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {
+			config.set('userManagement.authenticationMethod', 'oidc');
+
+			const member = mock<User>({
+				id: '123',
+				role: { slug: 'global:owner' },
+				mfaEnabled: false,
+			});
+
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				user: member,
+				body,
+				browserId: '1',
+			});
+
+			const res = mock<Response>();
+
+			mockedAuth.handleEmailLogin.mockResolvedValue(member); // Act
+
+			await controller.login(req, res, body);
+
+			// Assert
+
+			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+				body.emailOrLdapLoginId,
+				body.password,
+			);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, '1');
+		});
+	});
+
+	describe('resolveSignupToken', () => {
+		const logger: Logger = mockInstance(Logger);
+		const mfaService: MfaService = mockInstance(MfaService);
+		const authService: AuthService = mockInstance(AuthService);
+		const userService: UserService = mockInstance(UserService);
+		const license: License = mockInstance(License);
+		const userRepository: UserRepository = mockInstance(UserRepository);
+		const postHog: PostHogClient = mockInstance(PostHogClient);
+		const eventService: EventService = mockInstance(EventService);
+
+		it('throws a BadRequestError if SSO is enabled', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+			const id = uuidv4();
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			const payload = new ResolveSignupTokenQueryDto({
+				inviterId: id,
+				inviteeId: id,
+			});
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError(
+					'Invite links are not supported on this system, please use single sign on instead.',
+				),
+			);
+		});
+
+		it('throws a ForbiddenError if the users quota is reached', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			const payload = new ResolveSignupTokenQueryDto({
+				inviterId: id,
+				inviteeId: id,
+			});
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(false);
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED),
+			);
+		});
+
+		it('throws a BadRequestError if the users are not found', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			const payload = new ResolveSignupTokenQueryDto({
+				inviterId: id,
+				inviteeId: id,
+			});
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
+			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([]);
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid invite URL'),
+			);
+		});
+
+		it('throws a BadRequestError if the invitee already has a password', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			const payload = new ResolveSignupTokenQueryDto({
+				inviterId: id,
+				inviteeId: id,
+			});
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
+			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
+				mock<User>({
+					id,
+					password: 'Password123!',
+				}),
+				mock<User>({
+					id,
+					password: null,
+				}),
+			]);
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('The invitation was likely either deleted or already claimed'),
+			);
+		});
+
+		it('throws a BadRequestError if the inviter does not exist or is not set up', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			const payload = new ResolveSignupTokenQueryDto({
+				inviterId: id,
+				inviteeId: id,
+			});
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
+			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
+				mock<User>({
+					id,
+					email: undefined,
+					password: null,
+				}),
+				mock<User>({
+					id,
+					email: undefined,
+					password: null,
+				}),
+			]);
+
+			await expect(authController.resolveSignupToken(req, res, payload)).rejects.toThrow(
+				new BadRequestError('Invalid request'),
+			);
+		});
+
+		it('returns the inviter if the invitation is valid', async () => {
+			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				eventService,
+				postHog,
+			);
+
+			const payload = new ResolveSignupTokenQueryDto({
+				inviterId: id,
+				inviteeId: id,
+			});
+
+			const req = mock<AuthlessRequest>({
+				body: payload,
+			});
+			const res = mock<Response>();
+
+			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
+			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
+				mock<User>({
+					id,
+					email: 'inviter@example.com',
+					firstName: 'Inviter first name',
+					lastName: 'Inviter last name',
+					password: null,
+				}),
+				mock<User>({
+					id,
+					email: 'invitee@example.com',
+					firstName: 'Invitee first name',
+					lastName: 'Invitee last name',
+					password: null,
+				}),
+			]);
+
+			await expect(authController.resolveSignupToken(req, res, payload)).resolves.toEqual({
+				inviter: {
+					firstName: 'Inviter first name',
+					lastName: 'Inviter last name',
+				},
 			});
 		});
 	});

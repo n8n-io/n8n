@@ -1,26 +1,18 @@
 import { test, expect } from '../../fixtures/base';
 
-test('default signin is as owner', async ({ n8n }) => {
-	await n8n.goHome();
-	await expect(n8n.page).toHaveURL(/\/workflow/);
-});
+test.describe('Authentication', () => {
+	const testCases = [
+		{ role: 'default', expectedUrl: /\/workflow/, auth: '' },
+		{ role: 'owner', expectedUrl: /\/workflow/, auth: '@auth:owner' },
+		{ role: 'admin', expectedUrl: /\/workflow/, auth: '@auth:admin' },
+		{ role: 'member', expectedUrl: /\/workflow/, auth: '@auth:member' },
+		{ role: 'none', expectedUrl: /\/signin/, auth: '@auth:none' },
+	];
 
-test('owner can access dashboard @auth:owner', async ({ n8n }) => {
-	await n8n.goHome();
-	await expect(n8n.page).toHaveURL(/\/workflow/);
-});
-
-test('admin can access dashboard @auth:admin', async ({ n8n }) => {
-	await n8n.goHome();
-	await expect(n8n.page).toHaveURL(/\/workflow/);
-});
-
-test('member can access dashboard @auth:member', async ({ n8n }) => {
-	await n8n.goHome();
-	await expect(n8n.page).toHaveURL(/\/workflow/);
-});
-
-test('no auth can not access dashboard @auth:none', async ({ n8n }) => {
-	await n8n.goHome();
-	await expect(n8n.page).toHaveURL(/\/signin/);
+	for (const { role, expectedUrl, auth } of testCases) {
+		test(`${role} authentication ${auth}`, async ({ n8n }) => {
+			await n8n.goHome();
+			await expect(n8n.page).toHaveURL(expectedUrl);
+		});
+	}
 });

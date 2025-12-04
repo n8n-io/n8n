@@ -1,9 +1,11 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
+import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 
 // ANSI colors for terminal output
 const colors = {
@@ -36,11 +38,22 @@ ${colors.yellow}Usage:${colors.reset}
 ${colors.yellow}Options:${colors.reset}
   --postgres        Use PostgreSQL instead of SQLite
   --queue           Enable queue mode (requires PostgreSQL)
+  --task-runner     Enable external task runner container
+  --source-control  Enable source control (Git) container for testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
   --env KEY=VALUE   Set environment variables
+  --plan <plan>     Use performance plan preset (${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')})
   --help, -h        Show this help
+
+${colors.yellow}Performance Plans:${colors.reset}
+${Object.entries(BASE_PERFORMANCE_PLANS)
+	.map(
+		([name, plan]) =>
+			`  ${name.padEnd(12)} ${plan.memory}GB RAM, ${plan.cpu} CPU cores - SQLite only`,
+	)
+	.join('\n')}
 
 ${colors.yellow}Environment Variables:${colors.reset}
   • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
@@ -55,11 +68,22 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Queue mode (automatically uses PostgreSQL)${colors.reset}
   npm run stack --queue
 
+  ${colors.bright}# With external task runner${colors.reset}
+  npm run stack --postgres --task-runner
+
+  ${colors.bright}# With source control (Git) testing${colors.reset}
+  npm run stack --postgres --source-control
+
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
 
   ${colors.bright}# With environment variables${colors.reset}
   npm run stack --postgres --env N8N_LOG_LEVEL=info --env N8N_ENABLED_MODULES=insights
+
+  ${colors.bright}# Performance plan presets${colors.reset}
+${Object.keys(BASE_PERFORMANCE_PLANS)
+	.map((name) => `  npm run stack --plan ${name}`)
+	.join('\n')}
 
   ${colors.bright}# Parallel instances${colors.reset}
   npm run stack --name test-1
@@ -69,6 +93,7 @@ ${colors.yellow}Notes:${colors.reset}
   • SQLite is the default database (no external dependencies)
   • Queue mode requires PostgreSQL and enables horizontal scaling
   • Use --name for running multiple instances in parallel
+  • Performance plans simulate cloud constraints (SQLite only, resource-limited)
   • Press Ctrl+C to stop all containers
 `);
 }
@@ -80,10 +105,13 @@ async function main() {
 			help: { type: 'boolean', short: 'h' },
 			postgres: { type: 'boolean' },
 			queue: { type: 'boolean' },
+			'task-runner': { type: 'boolean' },
+			'source-control': { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
 			env: { type: 'string', multiple: true },
+			plan: { type: 'string' },
 		},
 		allowPositionals: false,
 	});
@@ -97,6 +125,8 @@ async function main() {
 	// Build configuration
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
+		taskRunner: values['task-runner'] ?? false,
+		sourceControl: values['source-control'] ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -115,6 +145,32 @@ async function main() {
 		if (!values.queue && (values.mains ?? values.workers)) {
 			log.warn('--mains and --workers imply queue mode');
 		}
+	}
+
+	if (values.plan) {
+		const planName = values.plan;
+		if (!isValidPerformancePlan(planName)) {
+			log.error(`Invalid performance plan: ${values.plan}`);
+			log.error(`Available plans: ${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')}`);
+			process.exit(1);
+		}
+
+		const plan = BASE_PERFORMANCE_PLANS[planName];
+
+		if (values.postgres) {
+			log.warn('Performance plans use SQLite only. PostgreSQL option ignored.');
+		}
+		if (values.queue || values.mains || values.workers) {
+			log.warn('Performance plans use SQLite only. Queue mode ignored.');
+		}
+
+		config.resourceQuota = plan;
+		config.postgres = false; // Force SQLite for performance plans
+		config.queueMode = false; // Force single instance for performance plans
+
+		log.info(
+			`Using ${planName} performance plan: ${plan.memory}GB RAM, ${plan.cpu} CPU cores (SQLite only)`,
+		);
 	}
 
 	// Parse environment variables
@@ -161,7 +217,7 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
+	const dockerImage = getDockerImageFromEnv();
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
@@ -180,6 +236,31 @@ function displayConfig(config: N8NConfig) {
 		}
 	} else {
 		log.info('Queue mode: disabled');
+	}
+
+	// Display task runner status
+	if (config.taskRunner) {
+		log.info('Task runner: enabled (external container)');
+		if (!usePostgres) {
+			log.warn('Task runner recommended with PostgreSQL for better performance');
+		}
+	} else {
+		log.info('Task runner: disabled');
+	}
+
+	// Display source control status
+	if (config.sourceControl) {
+		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
+		log.info('  Admin: giteaadmin / giteapassword');
+		log.info('  Repository: n8n-test-repo');
+	} else {
+		log.info('Source Control: disabled');
+	}
+
+	if (config.resourceQuota) {
+		log.info(
+			`Resource limits: ${config.resourceQuota.memory}GB RAM, ${config.resourceQuota.cpu} CPU cores`,
+		);
 	}
 
 	if (config.env) {

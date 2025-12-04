@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 // @ts-expect-error - 'generate-schema' is not typed, so we ignore the TS error.
-import GenerateSchema from 'generate-schema';
+import generateSchema from 'generate-schema';
 import * as path from 'path';
 
 import { findPackagesRoot } from '../../utils/path-helper';
@@ -136,7 +136,7 @@ test.describe('Workflow Tests', () => {
 
 			// Optionally, validate the output against a JSON schema snapshot if enabled.
 			if (SCHEMA_MODE && result.data && workflow.enableSchemaValidation) {
-				const schema = GenerateSchema.json(result.data);
+				const schema = generateSchema.json(result.data);
 				expect(JSON.stringify(schema, null, 2)).toMatchSnapshot(
 					`workflow-${workflow.id}-schema.snap`,
 				);

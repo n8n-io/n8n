@@ -14,6 +14,8 @@ import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-rel
 import { NoConstructorInBackendModuleRule } from './no-constructor-in-backend-module.js';
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 import { NoArgumentSpreadRule } from './no-argument-spread.js';
+import { NoInternalPackageImportRule } from './no-internal-package-import.js';
+import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -31,4 +33,6 @@ export const rules = {
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
 	'no-constructor-in-backend-module': NoConstructorInBackendModuleRule,
 	'no-argument-spread': NoArgumentSpreadRule,
+	'no-internal-package-import': NoInternalPackageImportRule,
+	'no-import-enterprise-edition': NoImportEnterpriseEditionRule,
 } satisfies Record<string, AnyRuleModule>;

@@ -1,0 +1,84 @@
+name: Data tooling, test exports and imports of data to various db types
+
+# TODO: Uncomment this after it works on a manual invocation
+# on:
+#   pull_request:
+#     branches:
+#       - '**'
+#       - '!release/*'
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  sqlite-export-sqlite-import:
+    name: sqlite database export -> sqlite database import
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      db_changed: ${{ steps.paths-filter.outputs.db == 'true' }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        # with:
+        #   ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Check for frontend changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: paths-filter
+        with:
+          filters: |
+            db:
+              - packages/@n8n/db/**
+              - packages/cli/**
+      - name: Setup, build and export sqlite
+        if: steps.paths-filter.outputs.db == 'true'
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        with:
+          build-command: |
+            pnpm build
+            ./packages/cli/bin/n8n export:entities --outputDir packages/cli/commands/export/outputs 
+            ./packages/cli/bin/n8n import:entities --inputDir packages/cli/commands/export/outputs --truncateTables
+  postgres-export-postgres-import:
+    name: postgres export -> postgres import
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      db_changed: ${{ steps.paths-filter.outputs.db == 'true' }}
+    env:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_HOST: localhost
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_USER: postgres
+      DB_POSTGRESDB_PASSWORD: password
+      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        # with:
+        #   ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Check for db changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: paths-filter
+        with:
+          filters: |
+            db:
+              - packages/@n8n/db/**
+              - packages/cli/**
+
+      - name: Setup and Build
+        if: steps.paths-filter.outputs.db == 'true'
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Start Postgres
+        if: steps.paths-filter.outputs.db == 'true'
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: |
+            postgres
+
+      - name: Export postgres
+        if: steps.paths-filter.outputs.db == 'true'
+        run: ./packages/cli/bin/n8n export:entities --outputDir packages/cli/commands/export/outputs 
+      - name: Import postgres
+        if: steps.paths-filter.outputs.db == 'true'
+        run: ./packages/cli/bin/n8n import:entities --inputDir packages/cli/commands/export/outputs --truncateTables

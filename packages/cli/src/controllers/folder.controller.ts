@@ -18,8 +18,9 @@ import {
 	Put,
 	Param,
 	Licensed,
+	Middleware,
 } from '@n8n/decorators';
-import { Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -28,13 +29,31 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { ProjectService } from '@/services/project.service.ee';
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {
 	constructor(
 		private readonly folderService: FolderService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
+		private readonly projectService: ProjectService,
 	) {}
+
+	@Middleware()
+	async validateProjectExists(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		try {
+			const { projectId } = req.params;
+			await this.projectService.getProject(projectId);
+			next();
+		} catch (e) {
+			res.status(404).send('Project not found');
+			return;
+		}
+	}
 
 	@Post('/')
 	@ProjectScope('folder:create')
@@ -44,8 +63,10 @@ export class ProjectController {
 		_res: Response,
 		@Body payload: CreateFolderDto,
 	) {
+		const { projectId } = req.params;
+
 		try {
-			const folder = await this.folderService.createFolder(payload, req.params.projectId);
+			const folder = await this.folderService.createFolder(payload, projectId);
 			return folder;
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {

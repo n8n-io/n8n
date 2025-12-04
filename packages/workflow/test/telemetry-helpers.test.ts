@@ -28,6 +28,7 @@ import {
 	userInInstanceRanOutOfFreeAiCredits,
 } from '../src/telemetry-helpers';
 import { randomInt } from '../src/utils';
+import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -103,6 +104,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -168,6 +170,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -212,6 +215,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -279,6 +283,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -303,7 +308,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 					},
 					id: '03e85c3e-4303-4f93-8d62-e05d457e8f70',
 					name: 'Sticky Note',
@@ -582,6 +587,7 @@ describe('generateNodesGraph', () => {
 					'0': {
 						id: 'openai-node-id',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [400, 400],
 					},
@@ -734,6 +740,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -758,7 +765,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 						height: 488,
 						width: 645,
 					},
@@ -1289,6 +1296,7 @@ describe('generateNodesGraph', () => {
 					'2': {
 						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [780, 500],
 					},
@@ -1414,6 +1422,410 @@ describe('generateNodesGraph', () => {
 				},
 				notes: {},
 			},
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with undefined metrics - uses default predefined metric', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						// metrics is undefined - should fall back to default metric
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: [DEFAULT_EVALUATION_METRIC], // Default metric
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with custom metric parameter', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						metric: 'helpfulness',
+						// metrics is undefined but metric parameter is set
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: ['helpfulness'], // Custom metric from parameter
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with valid metrics assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						metrics: {
+							assignments: [
+								{ name: 'accuracy', value: 0.95 },
+								{ name: 'precision', value: 0.87 },
+								{ name: 'recall', value: 0.92 },
+							],
+						},
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: ['accuracy', 'precision', 'recall'],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test.each([
+		{ typeVersion: 1.2, parameterValue: undefined, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: true, expectedValue: true },
+		{ typeVersion: 1.3, parameterValue: false, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: undefined, expectedValue: true },
+	])(
+		'should handle LMChatOpenAi node with use_responses_api set to $expectedValue when typeVersion is $typeVersion and parameterValue is $parameterValue',
+		({ typeVersion, parameterValue, expectedValue }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							responsesApiEnabled: parameterValue,
+						},
+						id: 'lmchatopenai-node-id',
+						name: 'LMChatOpenAi Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'lmchatopenai-node-id',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: typeVersion,
+							position: [100, 100],
+							use_responses_api: expectedValue,
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'LMChatOpenAi Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should add package version to node graph', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+					name: 'When clicking ‘Execute workflow’',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+					name: 'Community Installed Node',
+					type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+					name: 'Community Installed Node 2',
+					type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+					name: 'Community Missing Node',
+					type: 'community-missing-node.communityMissingNode',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+		};
+
+		expect(
+			generateNodesGraph(workflow, {
+				...nodeTypes,
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const orig = nodeTypes.getByNameAndVersion(nodeType, version);
+					if (nodeType === 'n8n-nodes-community-installed-node.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.0',
+							},
+						};
+					}
+					if (nodeType === 'n8n-nodes-community-installed-node2.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.1',
+							},
+						};
+					}
+					return orig;
+				},
+			}),
+		).toEqual({
+			evaluationTriggerNodeNames: [],
+			nameIndices: {
+				'When clicking ‘Execute workflow’': '0',
+				'Community Installed Node': '1',
+				'Community Installed Node 2': '2',
+				'Community Missing Node': '3',
+			},
+			webhookNodeNames: [],
+			nodeGraph: {
+				is_pinned: false,
+				node_types: [
+					'n8n-nodes-base.manualTrigger',
+					'n8n-nodes-community-installed-node.communityInstalledNode',
+					'n8n-nodes-community-installed-node2.communityInstalledNode',
+					'community-missing-node.communityMissingNode',
+				],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						position: [100, 100],
+					},
+					'1': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+						type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+						version: 1,
+						position: [200, 200],
+						package_version: '1.0.0',
+					},
+					'2': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+						type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+						version: 1,
+						position: [300, 300],
+						package_version: '1.0.1',
+					},
+					'3': {
+						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+						type: 'community-missing-node.communityMissingNode',
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+			},
+		});
+	});
+
+	test.each(['classify', 'sanitize'])(
+		'should handle Guardrails node with valid guardrails assignments for operation %s',
+		(operation) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							operation,
+							guardrails: {
+								promptInjection: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								nsfw: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								pii: {
+									type: 'all',
+									entities: ['email', 'phone'],
+									customRegex: {
+										regex: ['/1234567890/'],
+									},
+								},
+								urls: {
+									allowedUrls: 'https://example.com',
+									allowedSchemes: ['https'],
+									blockUserinfo: true,
+									allowSubdomains: true,
+								},
+							},
+						},
+						id: 'guardrails-node-id',
+						name: 'Guardrails Node',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'guardrails-node-id',
+							type: '@n8n/n8n-nodes-langchain.guardrails',
+							version: 1,
+							position: [100, 100],
+							operation,
+							used_guardrails: ['promptInjection', 'nsfw', 'pii', 'urls'],
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Guardrails Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should handle Guardrails node without guardrails assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'classify',
+						guardrails: {},
+					},
+					id: 'guardrails-node-id',
+					name: 'Guardrails Node',
+					type: '@n8n/n8n-nodes-langchain.guardrails',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'guardrails-node-id',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						version: 1,
+						position: [100, 100],
+						operation: 'classify',
+						used_guardrails: [],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Guardrails Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
 		});
@@ -2094,7 +2506,7 @@ describe('makeAIMetrics', () => {
 			position: [0, 0],
 		}) as INode;
 
-	it('should count applicable nodes and parameters', async () => {
+	it('should count applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2139,7 +2551,7 @@ describe('makeAIMetrics', () => {
 		});
 	});
 
-	it('should not count non-applicable nodes and parameters', async () => {
+	it('should not count non-applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2159,7 +2571,7 @@ describe('makeAIMetrics', () => {
 		expect(result).toMatchObject({});
 	});
 
-	it('should count ai nodes without tools', async () => {
+	it('should count ai nodes without tools', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2414,6 +2826,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		id: 'test-workflow',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		nodes,
 		connections: connections || {},

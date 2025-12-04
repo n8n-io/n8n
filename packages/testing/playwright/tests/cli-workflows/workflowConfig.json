@@ -293,6 +293,12 @@
 		"skipReason": "This API service has been discontinued. For more details, please check here: https://notify-bot.line.me/closing-announce on node Line"
 	},
 	{
+		"workflowId": "133",
+		"status": "SKIPPED",
+		"skipReason": "Account is inactive, looks like expired credentials, but it returns as 'Bad Request'.",
+		"ticketReference": "NODE-3805"
+	},
+	{
 		"workflowId": "134",
 		"status": "SKIPPED"
 	},
@@ -324,6 +330,11 @@
 		"workflowId": "143",
 		"status": "SKIPPED",
 		"skipReason": "Invalid API key for Clearbit."
+	},
+	{
+		"workflowId": "144",
+		"status": "SKIPPED",
+		"skipReason": "Quota exceeded, APITemplate.io need to check the rate limit."
 	},
 	{
 		"workflowId": "145",

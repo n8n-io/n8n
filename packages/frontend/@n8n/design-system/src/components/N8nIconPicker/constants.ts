@@ -63,6 +63,7 @@ export const ALL_ICON_PICKER_ICONS: IconName[] = [
 	'triangle-alert',
 	'maximize',
 	'maximize-2',
+	'mcp',
 	'external-link',
 	'arrow-left-right',
 	'file',

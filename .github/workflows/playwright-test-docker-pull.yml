@@ -34,4 +34,5 @@ jobs:
       test-mode: docker-pull
       shards: ${{ inputs.shards }}
       docker-image: ${{ inputs.image }}
+      test-command: pnpm --filter=n8n-playwright test:container:standard
     secrets: inherit

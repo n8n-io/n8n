@@ -135,10 +135,12 @@ export class DbConnectionOptions {
 	}
 
 	private getMysqlConnectionOptions(dbType: 'mariadb' | 'mysqldb'): MysqlConnectionOptions {
+		const { mysqldb: mysqlConfig } = this.config;
 		return {
 			type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
 			...this.getCommonOptions(),
 			...this.getOverrides('mysqldb'),
+			poolSize: mysqlConfig.poolSize,
 			migrations: mysqlMigrations,
 			timezone: 'Z', // set UTC as default
 		};

@@ -15,7 +15,6 @@ export async function createWorkflowStatisticsItem(
 		workflowId,
 	});
 
-	// @ts-ignore CAT-957
 	await Container.get(WorkflowStatisticsRepository).insert(entity);
 
 	return entity;

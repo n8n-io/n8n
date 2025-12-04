@@ -1,0 +1,388 @@
+{
+	"name": "Task management agent (with Google Sheets)",
+	"meta": {
+		"templateCredsSetupCompleted": false,
+		"templateId": "task_management_agent_with_google_sheets"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-4o",
+					"mode": "list",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [-608, 272],
+			"id": "7ebac830-d775-47af-a56c-9ff428f385d0",
+			"name": "Model",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.3,
+			"position": [-656, -32],
+			"id": "3eb00ee5-cab6-4a07-b3d5-cee733bae08d",
+			"name": "When chat message received",
+			"webhookId": "df8223bf-119c-44d5-9bbf-f74ae26828e8"
+		},
+		{
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [-496, 272],
+			"id": "5341bef1-5ba0-4898-85c2-ca8741210079",
+			"name": "Simple Memory"
+		},
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o",
+					"mode": "list",
+					"cachedResultName": "Enrichment example",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "gid=0",
+					"mode": "list",
+					"cachedResultName": "Tasks",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit#gid=0"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"typeVersion": 4.7,
+			"position": [-352, 272],
+			"id": "a1792c3e-4248-49e2-b4c2-db58c4eb1b59",
+			"name": "Get tasks",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"operation": "append",
+				"documentId": {
+					"__rl": true,
+					"value": "1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o",
+					"mode": "list",
+					"cachedResultName": "Enrichment example",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "gid=0",
+					"mode": "list",
+					"cachedResultName": "Tasks",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit#gid=0"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Task": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Task', ``, 'string') }}",
+						"Description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+						"Deadline": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Deadline', ``, 'string') }}",
+						"Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Status', ``, 'string') }}"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "Task",
+							"displayName": "Task",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"displayName": "Status",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true,
+							"removed": false
+						},
+						{
+							"id": "Description",
+							"displayName": "Description",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Deadline",
+							"displayName": "Deadline",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"typeVersion": 4.7,
+			"position": [-224, 272],
+			"id": "1ebd8dd5-13e0-4f57-bb37-a3a5d8cf4e80",
+			"name": "Create task",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"documentId": {
+					"__rl": true,
+					"value": "1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o",
+					"mode": "list",
+					"cachedResultName": "Enrichment example",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "gid=0",
+					"mode": "list",
+					"cachedResultName": "Tasks",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit#gid=0"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Task": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Task', ``, 'string') }}",
+						"Description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+						"Deadline": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Deadline', ``, 'string') }}",
+						"Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Status', ``, 'string') }}",
+						"row_number": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('row_number__using_to_match_', ``, 'number') }}"
+					},
+					"matchingColumns": ["row_number"],
+					"schema": [
+						{
+							"id": "ID",
+							"displayName": "ID",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true,
+							"removed": true
+						},
+						{
+							"id": "Task",
+							"displayName": "Task",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true,
+							"removed": false
+						},
+						{
+							"id": "Status",
+							"displayName": "Status",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true,
+							"removed": false
+						},
+						{
+							"id": "Description",
+							"displayName": "Description",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Deadline",
+							"displayName": "Deadline",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"displayName": "row_number",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "number",
+							"canBeUsedToMatch": true,
+							"readOnly": true,
+							"removed": false
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"typeVersion": 4.7,
+			"position": [-96, 272],
+			"id": "a118d819-41ef-4323-a4d1-d83d70e41ec5",
+			"name": "Update task",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"documentId": {
+					"__rl": true,
+					"value": "1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o",
+					"mode": "list",
+					"cachedResultName": "Enrichment example",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "gid=0",
+					"mode": "list",
+					"cachedResultName": "Tasks",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit#gid=0"
+				},
+				"startIndex": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Row_Number', ``, 'number') }}",
+				"numberToDelete": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Number_of_Rows_to_Delete', ``, 'number') }}"
+			},
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"typeVersion": 4.7,
+			"position": [32, 272],
+			"id": "c15d7d0f-d24c-4e5a-aa3f-a23abf2f6853",
+			"name": "Delete task",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "=# Task Management Agent System Prompt\n\nYou are a helpful task management assistant that helps users organize their tasks using a Google Sheets database. You can create, view, update, and delete tasks while maintaining data consistency.\n\n## Your Capabilities\n\nYou can help users with:\n- **View tasks** - Show current tasks and their status\n- **Create new tasks** - Add tasks with proper formatting\n- **Update tasks** - Modify existing task details or status\n- **Delete tasks** - Remove tasks after confirmation\n- **Track progress** - Monitor task status changes\n\n## Task Data Structure\n\nEach task has these fields:\n- **Task**: The task name/title (required - always ask if missing)\n- **Status**: Must be one of: \"TODO\", \"IN PROGRESS\", or \"DONE\" (default: \"TODO\")\n- **Description**: Optional additional details about the task\n- **Deadline**: Optional due date (accept various date formats)\n\nNote: Google Sheets automatically provides a row_number field for tracking - you don't need to manage IDs manually.\n\n## Important Rules\n\n### Status Management\n- Status must be exactly one of: \"TODO\", \"IN PROGRESS\", or \"DONE\"\n- Default new tasks to \"TODO\" status\n- When users say things like \"mark as complete\" or \"finish task\", change status to \"DONE\"\n- When users say \"start working on\" or \"begin task\", change status to \"IN PROGRESS\"\n\n### Task Creation Process\n1. Always ask for the task name if not provided\n2. Ask if they want to add a description (optional)\n3. Ask about deadline if relevant (optional)\n4. Set status to \"TODO\" by default\n5. Use the \"Create task\" tool to add to the sheet\n\n### Task Updates\n- Ask which task to update (by name)\n- Confirm what changes to make\n- Use \"Update task\" tool with the task name as the matching column\n- Provide clear feedback about what was changed\n\n### Task Deletion\n- **ALWAYS ask for confirmation before deleting any task**\n- Show the task details and ask \"Are you sure you want to delete this task?\"\n- Only proceed with deletion after explicit user confirmation\n- Use the row number from Google Sheets for the \"Start_Row_Number\" parameter\n- Set \"Number_of_Rows_to_Delete\" to 1 (unless specifically told otherwise)\n\n## User Interaction Guidelines\n\n### When Creating Tasks\n**User**: \"Add a new task\"\n**You**: \"I'd be happy to help you create a new task. What would you like to call this task?\"\n\n### When Information is Missing\n**User**: \"Create a task for tomorrow\"\n**You**: \"I can create a task with a deadline for tomorrow. What should I call this task?\"\n\n### When Deleting Tasks\n**User**: \"Delete the marketing task\"\n**You**: \"I found the task 'Marketing Campaign Planning'. Are you sure you want to delete this task? This action cannot be undone.\"\n\n### When Updating Status\n**User**: \"Mark the report as done\"\n**You**: \"I'll update the status of 'Monthly Report' to 'DONE'. Task completed!\"\n\n## Response Style\n\n- Be helpful and efficient\n- Always confirm actions taken\n- Ask clarifying questions when needed\n- Provide clear status updates\n- Use friendly, professional language\n- Show task details when relevant\n\n## Error Handling\n\n- If a task can't be found, offer to show all tasks\n- If status values are invalid, explain the valid options\n- If required information is missing, ask specific questions\n- Provide helpful suggestions when commands are unclear\n\nRemember: Always prioritize data accuracy and user confirmation, especially for destructive actions like deletion. Keep the task list organized and up-to-date."
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [-384, -32],
+			"id": "e923a630-08b1-4e4d-a99c-23704085eaab",
+			"name": "Task management agent"
+		},
+		{
+			"parameters": {
+				"content": "## Start here!\n@[youtube](cmR6m_p0-ro)",
+				"height": 320,
+				"width": 464,
+				"color": 5
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1200, -32],
+			"typeVersion": 1,
+			"id": "56870cd2-d303-41cf-8f8a-2bba13c3d3ea",
+			"name": "Sticky Note"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get tasks": {
+			"ai_tool": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create task": {
+			"ai_tool": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update task": {
+			"ai_tool": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete task": {
+			"ai_tool": [
+				[
+					{
+						"node": "Task management agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "all",
+		"callerPolicy": "workflowsFromSameOwner"
+	},
+	"tags": []
+}

@@ -9,8 +9,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
-import type { WorkflowId } from 'n8n-workflow';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
 
 import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -32,7 +31,7 @@ export async function getSharedWorkflowIds(
 	} else {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
 			workflowRoles: ['workflow:owner'],
-			projectRoles: ['project:personalOwner'],
+			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
 			projectId,
 		});
 	}
@@ -44,7 +43,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
+			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [
@@ -85,27 +84,8 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflowId: WorkflowId) {
-	await Container.get(WorkflowRepository).update(workflowId, {
-		active: true,
-		updatedAt: new Date(),
-	});
-}
-
-export async function setWorkflowAsInactive(workflowId: WorkflowId) {
-	return await Container.get(WorkflowRepository).update(workflowId, {
-		active: false,
-		updatedAt: new Date(),
-	});
-}
-
 export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
 	return await Container.get(WorkflowRepository).remove(workflow);
-}
-
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	// @ts-ignore CAT-957
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

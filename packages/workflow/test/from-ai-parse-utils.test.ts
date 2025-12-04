@@ -11,10 +11,19 @@ describe('extractFromAICalls', () => {
 	test.each<[string, [unknown, unknown, unknown, unknown]]>([
 		['$fromAI("a", "b", "string")', ['a', 'b', 'string', undefined]],
 		['$fromAI("a", "b", "number", 5)', ['a', 'b', 'number', 5]],
+		['$fromAI("a", "b", "number", "5")', ['a', 'b', 'number', 5]],
 		['$fromAI("a", "`", "number", 5)', ['a', '`', 'number', 5]],
 		['$fromAI("a", "\\`", "number", 5)', ['a', '`', 'number', 5]], // this is a bit surprising, but intended
 		['$fromAI("a", "\\n", "number", 5)', ['a', 'n', 'number', 5]], // this is a bit surprising, but intended
 		['{{ $fromAI("a", "b", "boolean") }}', ['a', 'b', 'boolean', undefined]],
+		['{{ $fromAI("a", "b", "boolean", "true") }}', ['a', 'b', 'boolean', true]],
+		['{{ $fromAI("a", "b", "boolean", "false") }}', ['a', 'b', 'boolean', false]],
+		['{{ $fromAI("a", "b", "boolean", true) }}', ['a', 'b', 'boolean', true]],
+		['{{ $fromAI("a", "b", "string", "") }}', ['a', 'b', 'string', '']],
+		['{{ $fromAI("a", "b", "string", "null") }}', ['a', 'b', 'string', 'null']],
+		['{{ $fromAI("a", "b", "string", "5") }}', ['a', 'b', 'string', '5']],
+		['{{ $fromAI("a", "b", "string", "true") }}', ['a', 'b', 'string', 'true']],
+		['{{ $fromAI("a", "b", "string", "{}") }}', ['a', 'b', 'string', '{}']],
 	])('should parse args as expected for %s', (formula, [key, description, type, defaultValue]) => {
 		expect(extractFromAICalls(formula)).toEqual([
 			{

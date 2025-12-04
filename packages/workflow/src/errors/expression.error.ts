@@ -28,25 +28,6 @@ export interface ExpressionErrorOptions {
 /**
  * Class for instantiating an expression error
  */
-// Expression error constants
-export const EXPRESSION_ERROR_MESSAGES = {
-	NODE_NOT_FOUND: 'Error finding the referenced node',
-	NODE_REFERENCE_TEMPLATE:
-		'Make sure the node you referenced is spelled correctly and is a parent of this node',
-	NO_EXECUTION_DATA: 'No execution data available',
-} as const;
-
-export const EXPRESSION_ERROR_TYPES = {
-	PAIRED_ITEM_NO_CONNECTION: 'paired_item_no_connection',
-} as const;
-
-export const EXPRESSION_DESCRIPTION_KEYS = {
-	NODE_NOT_FOUND: 'nodeNotFound',
-	NO_NODE_EXECUTION_DATA: 'noNodeExecutionData',
-	PAIRED_ITEM_NO_CONNECTION: 'pairedItemNoConnection',
-	PAIRED_ITEM_NO_CONNECTION_CODE_NODE: 'pairedItemNoConnectionCodeNode',
-} as const;
-
 export class ExpressionError extends ExecutionBaseError {
 	constructor(message: string, options?: ExpressionErrorOptions) {
 		super(message, { cause: options?.cause, level: 'warning' });

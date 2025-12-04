@@ -2,9 +2,8 @@
 import type { Placement } from 'element-plus';
 import { computed } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types';
-import type { IconColor } from '@n8n/design-system/types/icon';
-
+import type { IconSize } from '../../types';
+import type { IconColor } from '../../types/icon';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
@@ -106,26 +105,26 @@ const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 }
 
 .base {
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-size-s);
+	font-size: var(--font-size--2xs);
+	line-height: var(--font-size--sm);
 	word-break: normal;
 	display: flex;
 	align-items: center;
 
 	svg {
-		font-size: var(--font-size-s);
+		font-size: var(--font-size--sm);
 	}
 }
 
 .bold {
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight--medium);
 }
 
 .note {
 	composes: base;
 
 	svg {
-		margin-right: var(--spacing-4xs);
+		margin-right: var(--spacing--4xs);
 	}
 }
 
