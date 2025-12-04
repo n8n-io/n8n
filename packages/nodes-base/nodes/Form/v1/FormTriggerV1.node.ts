@@ -91,18 +91,18 @@ export class FormTriggerV1 implements INodeType {
 	 * Version 1 has all features disabled or set to defaults.
 	 * Can access version and implement any logic needed to determine features.
 	 */
-	defineFeatures(version: number): NodeFeatures {
+	defineFeatures(_version: number): NodeFeatures {
 		return {
 			requireAuth: false, // v1 doesn't require auth
 			defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
 			allowRespondToWebhook: true, // v1 allows respond to webhook
 			useFieldName: false, // v1 uses fieldLabel
 			useFieldLabel: true, // v1 uses fieldLabel
-			showWebhookPath: version <= 2.1, // v1 and v2.1 show in main (true for v1)
-			showWebhookPathInOptions: version >= 2.2, // v2.2+ shows in options (false for v1)
-			hideResponseNodeOption: false, // v1 doesn't hide responseNode option
-			useWorkflowTimezoneV2Only: false, // v1 is not v2
-			showMultiselect: true, // v1 shows multiselect
+			useWebhookPath: false, // not used in v1
+			useWebhookPathInOptions: false, // not used in v1
+			useResponseNodeOption: false, // v1 doesn't hide responseNode option
+			useWorkflowTimezone: false, // v1 is not v2
+			useLegacyMultiselect: true, // v1 shows multiselect (true for v1)
 		};
 	}
 

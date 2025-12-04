@@ -377,7 +377,7 @@ export const formFields: INodeProperties = {
 						show: {
 							multiselect: [true],
 							fieldType: ['dropdown'],
-							'@feature': ['showMultiselect'],
+							'@feature': ['useLegacyMultiselect'],
 						},
 					},
 				},
@@ -391,7 +391,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
-							'@feature': ['showMultiselect'],
+							'@feature': ['useLegacyMultiselect'],
 						},
 					},
 				},

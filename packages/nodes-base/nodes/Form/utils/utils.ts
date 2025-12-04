@@ -289,11 +289,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		);
 	}
 
-	if (
-		isRespondToWebhookConnected &&
-		responseMode !== 'responseNode' &&
-		context.isNodeFeatureEnabled('allowRespondToWebhook')
-	) {
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && allowRespondToWebhook) {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
 			new Error('Unused Respond to Webhook node found in the workflow'),

@@ -100,17 +100,17 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		{ ...webhookPath, displayOptions: { show: { '@feature': ['showWebhookPath'] } } },
+		{ ...webhookPath, displayOptions: { show: { '@feature': ['useWebhookPath'] } } },
 		formTitle,
 		formDescription,
 		formFields,
-		{ ...formRespondMode, displayOptions: { show: { '@feature': ['showWebhookPath'] } } },
+		{ ...formRespondMode, displayOptions: { show: { '@feature': ['useWebhookPath'] } } },
 		{
 			...formRespondMode,
 			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
 				(option) => option.value !== 'responseNode',
 			),
-			displayOptions: { show: { '@feature': ['hideResponseNodeOption'] } },
+			displayOptions: { show: { '@feature': ['useResponseNodeOption'] } },
 		},
 		{
 			displayName:
@@ -147,7 +147,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...webhookPath,
 					required: false,
-					displayOptions: { show: { '@feature': ['showWebhookPathInOptions'] } },
+					displayOptions: { show: { '@feature': ['useWebhookPathInOptions'] } },
 				},
 				{
 					...respondWithOptions,
@@ -170,7 +170,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': ['useWorkflowTimezoneV2Only'],
+							'@feature': ['useWorkflowTimezone'],
 						},
 					},
 				},
@@ -220,11 +220,11 @@ export class FormTriggerV2 implements INodeType {
 			allowRespondToWebhook: version <= 2.1, // v2.2+ doesn't allow
 			useFieldName: version >= 2.4, // v2.4+ uses fieldName
 			useFieldLabel: version < 2.4, // v2.3 and below uses fieldLabel
-			showWebhookPath: version <= 2.1, // Show in main properties for v2.1 and below
-			showWebhookPathInOptions: version >= 2.2, // Show in options for v2.2+
-			hideResponseNodeOption: version >= 2.2, // Hide 'responseNode' option for v2.2+
-			useWorkflowTimezoneV2Only: version === 2, // Show useWorkflowTimezone with default false only for v2
-			showMultiselect: version < 2.3, // Show multiselect option for v2.2 and below
+			useResponseNodeOption: version >= 2.2, // Hide 'responseNode' option for v2.2+
+			useWorkflowTimezone: version === 2, // Show useWorkflowTimezone with default false only for v2
+			useLegacyMultiselect: version < 2.3, // Show multiselect option for v2.2 and below
+			useWebhookPath: version <= 2.1, // Show in main properties for v2.1 and below
+			useWebhookPathInOptions: version >= 2.2, // Show in options for v2.2+
 		};
 	}
 
