@@ -40,6 +40,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
 	EngineResponse,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -53,14 +54,17 @@ import {
 	OperationalError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { assertExecutionDataExists } from '@/utils/assertions';
 import { isJsonCompatible } from '@/utils/is-json-compatible';
 
+import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -88,20 +92,7 @@ export class WorkflowExecute {
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
-		private runExecutionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-				pinData: {},
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		},
+		private runExecutionData: IRunExecutionData = createRunExecutionData(),
 	) {}
 
 	/**
@@ -118,14 +109,14 @@ export class WorkflowExecute {
 	run(
 		workflow: Workflow,
 		startNode?: INode,
-		destinationNode?: string,
+		destinationNode?: IDestinationNode,
 		pinData?: IPinData,
 		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
 	): PCancelable<IRun> {
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from
-		startNode = startNode || workflow.getStartNode(destinationNode);
+		startNode = startNode || workflow.getStartNode(destinationNode?.nodeName);
 
 		if (startNode === undefined) {
 			throw new ApplicationError('No node to start the workflow from could be found');
@@ -134,8 +125,10 @@ export class WorkflowExecute {
 		// If a destination node is given we only run the direct parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
-			runNodeFilter = workflow.getParentNodes(destinationNode);
-			runNodeFilter.push(destinationNode);
+			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
+			if (destinationNode.mode === 'inclusive') {
+				runNodeFilter.push(destinationNode.nodeName);
+			}
 		}
 
 		// Initialize the data of the start nodes
@@ -155,23 +148,18 @@ export class WorkflowExecute {
 			},
 		];
 
-		this.runExecutionData = {
+		this.runExecutionData = createRunExecutionData({
 			startData: {
 				destinationNode,
 				runNodeFilter,
 			},
+			executionData: {
+				nodeExecutionStack,
+			},
 			resultData: {
-				runData: {},
 				pinData,
 			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack,
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+		});
 
 		return this.processRunExecutionData(workflow);
 	}
@@ -189,15 +177,15 @@ export class WorkflowExecute {
 		runData: IRunData,
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
-		destinationNodeName: string,
+		destinationNode: IDestinationNode,
 		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
-		const originalDestination = destinationNodeName;
+		const originalDestination = { ...destinationNode };
 
-		let destination = workflow.getNode(destinationNodeName);
+		let destination = workflow.getNode(destinationNode.nodeName);
 		assert.ok(
 			destination,
-			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+			`Could not find a node with the name ${destinationNode.nodeName} in the workflow.`,
 		);
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
@@ -216,55 +204,19 @@ export class WorkflowExecute {
 				throw new OperationalError('ToolExecutor can not be found');
 			}
 			destination = toolExecutorNode;
-			destinationNodeName = toolExecutorNode.name;
-		} else {
-			// Edge Case 1:
-			// Support executing a single node that is not connected to a trigger
-			const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
-			if (destinationHasNoParents) {
-				// short cut here, only create a subgraph and the stacks
-				graph = findSubgraph({
-					graph: filterDisabledNodes(graph),
-					destination,
-					trigger: destination,
-				});
-				const filteredNodes = graph.getNodes();
-				runData = cleanRunData(runData, graph, new Set([destination]));
-				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-					recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
-
-				this.status = 'running';
-				this.runExecutionData = {
-					startData: {
-						destinationNode: destinationNodeName,
-						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
-					},
-					resultData: {
-						runData,
-						pinData,
-					},
-					executionData: {
-						contextData: {},
-						nodeExecutionStack,
-						metadata: {},
-						waitingExecution,
-						waitingExecutionSource,
-					},
-				};
-
-				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
-			}
+			// TODO(CAT-1265): Verify that this functionality works as expected.
+			destinationNode = { nodeName: toolExecutorNode.name, mode: 'inclusive' };
 		}
 
 		// 1. Find the Trigger
-		let trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
+		let trigger = findTriggerForPartialExecution(workflow, destinationNode.nodeName, runData);
 		if (trigger === undefined) {
 			// destination has parents but none of them are triggers, so find the closest
 			// parent node that has run data, and treat that parent as starting point
 
 			let startNode;
 
-			const parentNodes = workflow.getParentNodes(destinationNodeName);
+			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 
 			for (const nodeName of parentNodes) {
 				if (runData[nodeName]) {
@@ -306,9 +258,9 @@ export class WorkflowExecute {
 		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData);
 
 		this.status = 'running';
-		this.runExecutionData = {
+		this.runExecutionData = createRunExecutionData({
 			startData: {
-				destinationNode: destinationNodeName,
+				destinationNode,
 				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
@@ -317,13 +269,11 @@ export class WorkflowExecute {
 				pinData,
 			},
 			executionData: {
-				contextData: {},
 				nodeExecutionStack,
-				metadata: {},
 				waitingExecution,
 				waitingExecutionSource,
 			},
-		};
+		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
 		// needs it to create more useful error messages, e.g. differentiate
@@ -855,7 +805,7 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		inputData: {
 			startNode?: string;
-			destinationNode?: string;
+			destinationNode?: IDestinationNode;
 			pinDataNodeNames?: string[];
 		} = {},
 	): IWorkflowIssues | null {
@@ -865,8 +815,10 @@ export class WorkflowExecute {
 		if (inputData.destinationNode) {
 			// If a destination node is given we have to check all the nodes
 			// leading up to it
-			checkNodes = workflow.getParentNodes(inputData.destinationNode);
-			checkNodes.push(inputData.destinationNode);
+			checkNodes = workflow.getParentNodes(inputData.destinationNode.nodeName);
+			if (inputData.destinationNode.mode === 'inclusive') {
+				checkNodes.push(inputData.destinationNode.nodeName);
+			}
 		} else if (inputData.startNode) {
 			// If a start node is given we have to check all nodes which
 			// come after it
@@ -1325,22 +1277,6 @@ export class WorkflowExecute {
 		);
 	}
 
-	private assertExecutionDataExists(
-		this: WorkflowExecute,
-		executionData: IRunExecutionData['executionData'],
-		workflow: Workflow,
-	): asserts executionData is NonNullable<IRunExecutionData['executionData']> {
-		if (!executionData) {
-			throw new UnexpectedError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
-	}
-
 	/**
 	 * Handles executions that have been waiting by
 	 * 1. unsetting the `waitTill`
@@ -1354,7 +1290,12 @@ export class WorkflowExecute {
 		if (this.runExecutionData.waitTill) {
 			this.runExecutionData.waitTill = undefined;
 
-			this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+			assertExecutionDataExists(
+				this.runExecutionData.executionData,
+				workflow,
+				this.additionalData,
+				this.mode,
+			);
 			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
@@ -1363,13 +1304,18 @@ export class WorkflowExecute {
 	}
 
 	private checkForWorkflowIssues(workflow: Workflow): void {
-		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		// Node execution stack will be empty for an execution containing only Chat
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
 
-		let destinationNode: string | undefined;
-		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+		let destinationNode: IDestinationNode | undefined;
+		if (this.runExecutionData.startData?.destinationNode) {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
@@ -1487,6 +1433,14 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					// Establish the execution context
+					await establishExecutionContext(
+						workflow,
+						this.runExecutionData,
+						this.additionalData,
+						this.mode,
+					);
+
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
 					}
@@ -1976,11 +1930,7 @@ export class WorkflowExecute {
 						break;
 					}
 
-					if (
-						this.runExecutionData.startData &&
-						this.runExecutionData.startData.destinationNode &&
-						this.runExecutionData.startData.destinationNode === executionNode.name
-					) {
+					if (this.runExecutionData?.startData?.destinationNode?.nodeName === executionNode.name) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.
 						await hooks.runHook('nodeExecuteAfter', [
@@ -2396,32 +2346,29 @@ export class WorkflowExecute {
 		executionError?: ExecutionBaseError,
 		closeFunction?: Promise<void>,
 	): Promise<IRun> {
-		const fullRunData = this.getFullRunData(startedAt);
-
+		// Set status before creating fullRunData
 		if (executionError !== undefined) {
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
-			fullRunData.data.resultData.error = {
-				...executionError,
-				message: executionError.message,
-				stack: executionError.stack,
-			} as ExecutionBaseError;
-			if (executionError.message?.includes('canceled')) {
-				fullRunData.status = 'canceled';
+			if (
+				executionError.message?.includes('canceled') ||
+				executionError.name?.includes('Cancelled')
+			) {
+				this.status = 'canceled';
+			} else {
+				this.status = 'error';
 			}
 		} else if (this.runExecutionData.waitTill) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
-			fullRunData.waitTill = this.runExecutionData.waitTill;
-			fullRunData.status = 'waiting';
+			this.status = 'waiting';
 		} else {
 			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
-			fullRunData.finished = true;
-			fullRunData.status = 'success';
+			this.status = 'success';
 		}
 
 		// Check if static data changed
@@ -2433,13 +2380,6 @@ export class WorkflowExecute {
 		}
 
 		this.moveNodeMetadata();
-		// Prevent from running the hook if the error is an abort error as it was already handled
-		if (!this.isCancelled) {
-			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
-				fullRunData,
-				newStaticData,
-			]);
-		}
 
 		if (closeFunction) {
 			try {
@@ -2454,15 +2394,39 @@ export class WorkflowExecute {
 			}
 		}
 
+		// Capture stoppedAt timestamp after all processing is complete
+		const stoppedAt = new Date();
+		const fullRunData = this.getFullRunData(startedAt, stoppedAt);
+
+		if (executionError !== undefined) {
+			fullRunData.data.resultData.error = {
+				...executionError,
+				message: executionError.message,
+				stack: executionError.stack,
+			} satisfies ExecutionBaseError;
+		} else if (this.runExecutionData.waitTill) {
+			fullRunData.waitTill = this.runExecutionData.waitTill;
+		} else {
+			fullRunData.finished = true;
+		}
+
+		// Prevent from running the hook if the error is an abort error as it was already handled
+		if (!this.isCancelled) {
+			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
+				fullRunData,
+				newStaticData,
+			]);
+		}
+
 		return fullRunData;
 	}
 
-	getFullRunData(startedAt: Date): IRun {
+	getFullRunData(startedAt: Date, stoppedAt?: Date): IRun {
 		return {
 			data: this.runExecutionData,
 			mode: this.mode,
 			startedAt,
-			stoppedAt: new Date(),
+			stoppedAt: stoppedAt ?? new Date(),
 			status: this.status,
 		};
 	}
@@ -2515,7 +2479,6 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-					item.error = undefined;
 				} else if (item.json.error && Object.keys(item.json).length === 1) {
 					errorData = item.json.error;
 				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {

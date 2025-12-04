@@ -15,6 +15,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
+	IExecutionContext,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -138,6 +139,7 @@ export interface IWorkflowErrorData {
 		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
+		executionContext?: IExecutionContext;
 	};
 	trigger?: {
 		error: ExecutionError;

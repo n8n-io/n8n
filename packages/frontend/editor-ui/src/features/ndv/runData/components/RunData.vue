@@ -113,7 +113,6 @@ type Props = {
 	workflowObject: Workflow;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
-	tooMuchDataTitle: string;
 	executingMessage: string;
 	pushRef?: string;
 	paneType: NodePanelType;
@@ -1420,7 +1419,7 @@ function onSearchClear() {
 
 function executeNode(nodeName: string) {
 	void runWorkflow({
-		destinationNode: nodeName,
+		destinationNode: { nodeName, mode: 'inclusive' },
 		source: 'schema-preview',
 	});
 }
@@ -1831,27 +1830,34 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-data-size-warning"
 				:class="$style.center"
 			>
-				<NDVEmptyState :title="tooMuchDataTitle">
-					<span
-						v-n8n-html="
-							i18n.baseText('ndv.output.tooMuchData.message', {
-								interpolate: { size: dataSizeInMB },
+				<div :class="$style.dataSizeWarning">
+					<NDVEmptyState
+						:title="
+							i18n.baseText('ndv.tooMuchData.title', {
+								interpolate: {
+									size: dataSizeInMB,
+								},
 							})
 						"
-					/>
-				</NDVEmptyState>
+					>
+						<span v-n8n-html="i18n.baseText('ndv.tooMuchData.message')" />
+					</NDVEmptyState>
 
-				<N8nButton
-					outline
-					:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
-					@click="showTooMuchData"
-				/>
+					<div :class="$style.warningActions">
+						<N8nButton
+							outline
+							size="small"
+							:label="i18n.baseText('runData.downloadBinaryData')"
+							@click="downloadJsonData()"
+						/>
 
-				<N8nButton
-					size="small"
-					:label="i18n.baseText('runData.downloadBinaryData')"
-					@click="downloadJsonData()"
-				/>
+						<N8nButton
+							size="small"
+							:label="i18n.baseText('ndv.tooMuchData.showDataAnyway')"
+							@click="showTooMuchData"
+						/>
+					</div>
+				</div>
 			</div>
 
 			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
@@ -1978,7 +1984,13 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
+		<N8nBlockUi
+			:show="blockUI"
+			:class="{
+				[$style.uiBlocker]: true,
+				[$style.uiBlockerNdvV2]: isNDVV2,
+			}"
+		/>
 	</div>
 </template>
 
@@ -2239,6 +2251,10 @@ defineExpose({ enterEditMode });
 	border-bottom-left-radius: 0;
 }
 
+.uiBlockerNdvV2 {
+	border-radius: 0;
+}
+
 .hintCallout {
 	margin-bottom: var(--spacing--xs);
 	margin-left: var(--ndv--spacing);
@@ -2310,6 +2326,25 @@ defineExpose({ enterEditMode });
 .ndv-v2,
 .compact {
 	--ndv--spacing: var(--spacing--2xs);
+}
+
+.dataSizeWarning {
+	padding: var(--spacing--sm) var(--spacing--md);
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.warningActions {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	align-items: center;
 }
 </style>
 

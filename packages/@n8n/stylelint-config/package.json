@@ -20,6 +20,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"

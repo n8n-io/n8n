@@ -282,6 +282,7 @@ async function onWorkflowDeactivated() {
 					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
+					:description="workflow.description"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
@@ -362,7 +363,7 @@ async function onWorkflowDeactivated() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--p--color--primary-420);
+		color: var(--color--orange-400);
 	}
 }
 .github-button-container {

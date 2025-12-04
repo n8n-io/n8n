@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { fireEvent, screen } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { vi } from 'vitest';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
@@ -250,6 +250,209 @@ describe('ResourceLocatorDropdown', () => {
 
 			// Should not emit loadMore when hasMore is false
 			expect(wrapper.emitted().loadMore).toBeUndefined();
+		});
+
+		describe('auto-loading when list is not scrollable', () => {
+			it('should emit loadMore when list is not scrollable but hasMore is true', async () => {
+				vi.useFakeTimers();
+
+				const fewResources: IResourceLocatorResultExpanded[] = [
+					{
+						name: 'Workflow 1',
+						value: 'workflow-1',
+						url: '/workflow/workflow-1',
+					},
+					{
+						name: 'Workflow 2',
+						value: 'workflow-2',
+						url: '/workflow/workflow-2',
+					},
+				];
+
+				const props = {
+					show: true,
+					resources: fewResources,
+					hasMore: false,
+					loading: false,
+					filter: '',
+				};
+
+				const wrapper = renderComponent({ props });
+
+				const resultsContainer = await waitFor(
+					() =>
+						wrapper.container
+							.querySelector('[data-test-id="resource-locator-dropdown"]')
+							?.querySelector('[class*="container"]') as HTMLDivElement,
+				);
+
+				Object.defineProperty(resultsContainer, 'scrollHeight', {
+					value: 100,
+					writable: true,
+				});
+				Object.defineProperty(resultsContainer, 'clientHeight', {
+					value: 100,
+					writable: true,
+				});
+
+				await wrapper.rerender({ ...props, hasMore: true });
+
+				await vi.advanceTimersByTimeAsync(500);
+				expect(wrapper.emitted().loadMore).toBeDefined();
+				expect(wrapper.emitted().loadMore).toHaveLength(1);
+
+				vi.useRealTimers();
+			});
+
+			it('should not emit loadMore when list is scrollable even if hasMore is true', async () => {
+				vi.useFakeTimers();
+
+				const fewResources: IResourceLocatorResultExpanded[] = [
+					{
+						name: 'Workflow 1',
+						value: 'workflow-1',
+						url: '/workflow/workflow-1',
+					},
+					{
+						name: 'Workflow 2',
+						value: 'workflow-2',
+						url: '/workflow/workflow-2',
+					},
+				];
+
+				const props = {
+					show: true,
+					resources: fewResources,
+					hasMore: false,
+					loading: false,
+					filter: '',
+				};
+
+				const wrapper = renderComponent({ props });
+
+				const resultsContainer = await waitFor(
+					() =>
+						wrapper.container
+							.querySelector('[data-test-id="resource-locator-dropdown"]')
+							?.querySelector('[class*="container"]') as HTMLDivElement,
+				);
+
+				Object.defineProperty(resultsContainer, 'scrollHeight', {
+					value: 150,
+					writable: true,
+				});
+				Object.defineProperty(resultsContainer, 'clientHeight', {
+					value: 100,
+					writable: true,
+				});
+
+				await wrapper.rerender({ ...props, hasMore: true });
+
+				await vi.advanceTimersByTimeAsync(500);
+
+				expect(wrapper.emitted().loadMore).toBeUndefined();
+
+				vi.useRealTimers();
+			});
+
+			it('should not emit loadMore when filter is present', async () => {
+				vi.useFakeTimers();
+
+				const fewResources: IResourceLocatorResultExpanded[] = [
+					{
+						name: 'Workflow 1',
+						value: 'workflow-1',
+						url: '/workflow/workflow-1',
+					},
+					{
+						name: 'Workflow 2',
+						value: 'workflow-2',
+						url: '/workflow/workflow-2',
+					},
+				];
+
+				const props = {
+					show: true,
+					resources: fewResources,
+					hasMore: false,
+					loading: false,
+					filter: 'search',
+				};
+
+				const wrapper = renderComponent({ props });
+
+				const resultsContainer = await waitFor(
+					() =>
+						wrapper.container
+							.querySelector('[data-test-id="resource-locator-dropdown"]')
+							?.querySelector('[class*="container"]') as HTMLDivElement,
+				);
+
+				Object.defineProperty(resultsContainer, 'scrollHeight', {
+					value: 100,
+					writable: true,
+				});
+				Object.defineProperty(resultsContainer, 'clientHeight', {
+					value: 100,
+					writable: true,
+				});
+
+				await wrapper.rerender({ ...props, hasMore: true });
+
+				await vi.advanceTimersByTimeAsync(500);
+				expect(wrapper.emitted().loadMore).toBeUndefined();
+
+				vi.useRealTimers();
+			});
+
+			it('should not emit loadMore when loading', async () => {
+				vi.useFakeTimers();
+
+				const fewResources: IResourceLocatorResultExpanded[] = [
+					{
+						name: 'Workflow 1',
+						value: 'workflow-1',
+						url: '/workflow/workflow-1',
+					},
+					{
+						name: 'Workflow 2',
+						value: 'workflow-2',
+						url: '/workflow/workflow-2',
+					},
+				];
+
+				const props = {
+					show: true,
+					resources: fewResources,
+					hasMore: false,
+					loading: true,
+				};
+
+				const wrapper = renderComponent({ props });
+
+				const resultsContainer = await waitFor(
+					() =>
+						wrapper.container
+							.querySelector('[data-test-id="resource-locator-dropdown"]')
+							?.querySelector('[class*="container"]') as HTMLDivElement,
+				);
+
+				Object.defineProperty(resultsContainer, 'scrollHeight', {
+					value: 100,
+					writable: true,
+				});
+				Object.defineProperty(resultsContainer, 'clientHeight', {
+					value: 100,
+					writable: true,
+				});
+
+				await wrapper.rerender({ ...props, hasMore: true });
+
+				await vi.advanceTimersByTimeAsync(500);
+				expect(wrapper.emitted().loadMore).toBeUndefined();
+
+				vi.useRealTimers();
+			});
 		});
 	});
 });

@@ -140,14 +140,14 @@ describe('useWorkflowNavigationCommands', () => {
 			value: vi
 				.fn()
 				.mockImplementation(
-					async (params: { name?: string; nodeTypes?: string[]; tags?: string[] }) => {
+					async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
 						if (params.nodeTypes && params.nodeTypes.length > 0) {
 							return [{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] }];
 						}
 						if (params.tags && params.tags.length > 0) {
 							return [allWorkflows[0]];
 						}
-						if (typeof params.name === 'string') {
+						if (typeof params.query === 'string') {
 							return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
 						}
 						return [];

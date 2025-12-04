@@ -2,6 +2,7 @@ import type { LicenseProvider } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
+	DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT,
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
 	Time,
@@ -300,11 +301,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.EXTERNAL_SECRETS);
 	}
 
-	/** @deprecated Use `LicenseState.isWorkflowHistoryLicensed` instead. */
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_HISTORY);
-	}
-
 	/** @deprecated Use `LicenseState.isAPIDisabled` instead. */
 	isAPIDisabled() {
 		return this.isLicensed(LICENSE_FEATURES.API_DISABLED);
@@ -403,7 +399,10 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	getWorkflowHistoryPruneLimit() {
-		return this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+		return (
+			this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ??
+			DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT
+		);
 	}
 
 	/** @deprecated Use `LicenseState` instead. */

@@ -39,6 +39,8 @@ export const createDataTableApi = async (
 	name: string,
 	projectId: string,
 	columns?: DataTableColumnCreatePayload[],
+	fileId?: string,
+	hasHeaders: boolean = true,
 ) => {
 	return await makeRestApiRequest<DataTable>(
 		context,
@@ -47,6 +49,8 @@ export const createDataTableApi = async (
 		{
 			name,
 			columns: columns ?? [],
+			hasHeaders,
+			...(fileId ? { fileId } : {}),
 		},
 	);
 };
@@ -138,6 +142,7 @@ export const getDataTableRowsApi = async (
 		take?: number;
 		sortBy?: string;
 		filter?: string;
+		search?: string;
 	},
 ) => {
 	return await makeRestApiRequest<{
@@ -216,4 +221,41 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 		'GET',
 		'/data-tables-global/limits',
 	);
+};
+
+export const downloadDataTableCsvApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+): Promise<{ csvContent: string; filename: string }> => {
+	const response = await makeRestApiRequest<{ csvContent: string; dataTableName: string }>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/download-csv`,
+	);
+
+	// Use just the data table name as filename
+	const filename = `${response.dataTableName}.csv`;
+
+	return {
+		csvContent: response.csvContent,
+		filename,
+	};
+};
+export const uploadCsvFileApi = async (
+	context: IRestApiContext,
+	file: File,
+	hasHeaders: boolean = true,
+) => {
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('hasHeaders', String(hasHeaders));
+
+	return await makeRestApiRequest<{
+		originalName: string;
+		id: string;
+		rowCount: number;
+		columnCount: number;
+		columns: Array<{ name: string; type: string; compatibleTypes: string[] }>;
+	}>(context, 'POST', '/data-tables/uploads', formData);
 };

@@ -28,6 +28,7 @@ import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
 import { isPresent } from '@/app/utils/typesUtils';
+import { setParameterValue } from '@/app/utils/parameterUtils';
 import type { Ref } from 'vue';
 import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -305,34 +306,11 @@ export function updateParameterByPath(
 	nodeType: INodeTypeDescription,
 	nodeTypeVersion: INode['typeVersion'],
 ) {
-	// Remove the 'parameters.' from the beginning to just have the
-	// actual parameter name
 	const parameterPath = parameterName.split('.').slice(1).join('.');
 
-	// Check if the path is supposed to change an array and if so get
-	// the needed data like path and index
-	const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
+	setParameterValue(nodeParameters, parameterPath, newValue);
 
-	// Apply the new value
-	if (newValue === undefined && parameterPathArray !== null) {
-		// Delete array item
-		const path = parameterPathArray[1];
-		const index = parameterPathArray[2];
-		const data = get(nodeParameters, path);
-
-		if (Array.isArray(data)) {
-			data.splice(parseInt(index, 10), 1);
-			set(nodeParameters as object, path, data);
-		}
-	} else {
-		if (newValue === undefined) {
-			unset(nodeParameters as object, parameterPath);
-		} else {
-			set(nodeParameters as object, parameterPath, newValue);
-		}
-
-		// If value is updated, remove parameter values that have invalid options
-		// so getNodeParameters checks don't fail
+	if (newValue !== undefined) {
 		removeMismatchedOptionValues(nodeType, nodeTypeVersion, nodeParameters, {
 			name: parameterPath,
 			value: newValue,

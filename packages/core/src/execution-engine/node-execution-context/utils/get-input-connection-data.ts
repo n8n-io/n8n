@@ -170,7 +170,7 @@ export function makeHandleToolInvocation(
 			} catch (error) {
 				// Check if error is due to cancellation
 				if (abortSignal?.aborted) {
-					return 'Error during node execution: Execution was cancelled';
+					throw new NodeOperationError(node, 'Execution was cancelled');
 				}
 
 				const nodeError = new NodeOperationError(node, error as Error);
@@ -178,14 +178,26 @@ export function makeHandleToolInvocation(
 
 				lastError = nodeError;
 
-				// If this is the last attempt, throw the error
+				// If this is the last attempt, throw the error to properly terminate execution
 				if (tryIndex === maxTries - 1) {
-					return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
+					// Enhance the error with detailed information
+					if (nodeError.description && !nodeError.message.includes(nodeError.description)) {
+						nodeError.message = `${nodeError.message}\n\nDetails: ${nodeError.description}`;
+					}
+					throw nodeError;
 				}
 			}
 		}
 
-		return 'Error during node execution : ' + (lastError?.description ?? lastError?.message);
+		// This should never be reached, but if it is, throw the error
+		if (lastError) {
+			if (lastError.description && !lastError.message.includes(lastError.description)) {
+				lastError.message = `${lastError.message}\n\nDetails: ${lastError.description}`;
+			}
+			throw lastError;
+		}
+
+		throw new NodeOperationError(node, 'Unknown error during node execution');
 	};
 }
 
@@ -346,6 +358,14 @@ export async function getInputConnectionData(
 				// Display the error on the node which is causing it
 				await context.addExecutionDataFunctions(
 					'input',
+					error,
+					connectionType,
+					parentNode.name,
+					currentNodeRunIndex,
+				);
+
+				await context.addExecutionDataFunctions(
+					'output',
 					error,
 					connectionType,
 					parentNode.name,

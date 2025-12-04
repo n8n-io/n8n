@@ -2,7 +2,7 @@ import type { SamlPreferences } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import type { UserRepository, Settings } from '@n8n/db';
+import type { UserRepository, Settings, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
@@ -251,6 +251,46 @@ describe('SamlService', () => {
 				'SAML Authentication failed. Invalid SAML response (missing attributes: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn).',
 			);
 		});
+
+		test('returns the attributes when they are present', async () => {
+			jest
+				.spyOn(samlService, 'getIdentityProviderInstance')
+				.mockReturnValue(mock<IdentityProviderInstance>());
+			const serviceProviderInstance = mock<ServiceProviderInstance>();
+			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
+				samlContent: '',
+				extract: {},
+			});
+			jest
+				.spyOn(samlService, 'getServiceProviderInstance')
+				.mockReturnValue(serviceProviderInstance);
+
+			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					n8nInstanceRole: 'global:admin',
+					n8nProjectRoles: ['projectRole1', 'projectRole2'],
+				},
+				missingAttributes: [],
+			});
+
+			const attributes = await samlService.getAttributesFromLoginResponse(
+				mock<express.Request>(),
+				'post',
+			);
+
+			expect(attributes).toEqual({
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				n8nInstanceRole: 'global:admin',
+				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			});
+		});
 	});
 
 	describe('init', () => {
@@ -320,10 +360,7 @@ describe('SamlService', () => {
 		});
 	});
 
-	// TODO: add tests for getAttributesFromLoginResponse
-
 	describe('handleSamlLogin', () => {
-		// TODO: add test cases for remaining logic (so far only for onboarding user)
 		it('throws error for invalid email', async () => {
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				email: 'invalid',
@@ -360,6 +397,75 @@ describe('SamlService', () => {
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
 				onboardingRequired: false,
+			});
+		});
+
+		it('logs in user that has not completed onboarding', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [],
+			} as any;
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+			jest.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: true,
+			});
+		});
+
+		it('does not log in the user if sso just-in-time provisioning is disabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: undefined,
+				attributes: samlAttributes,
+				onboardingRequired: false,
+			});
+		});
+
+		it('logs in the user if just-in-time provisioning is enabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const mockUser = mock<User>();
+
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: true,
 			});
 		});
 

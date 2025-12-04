@@ -47,6 +47,7 @@ export type UseDataTableOperationsParams = {
 	currentSortBy: Ref<string>;
 	currentSortOrder: Ref<string | null>;
 	currentFilterJSON?: Ref<string | undefined>;
+	searchQuery?: Ref<string | undefined>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
 	handleCopyFocusedCell: (params: CellKeyDownEvent<DataTableRow>) => Promise<void>;
@@ -73,6 +74,7 @@ export const useDataTableOperations = ({
 	currentSortBy,
 	currentSortOrder,
 	currentFilterJSON,
+	searchQuery,
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
@@ -279,6 +281,7 @@ export const useDataTableOperations = ({
 				pageSize.value,
 				`${currentSortBy.value}:${currentSortOrder.value}`,
 				currentFilterJSON?.value,
+				searchQuery?.value,
 			);
 			rowData.value = fetchedRows.data;
 			setTotalItems(fetchedRows.count);

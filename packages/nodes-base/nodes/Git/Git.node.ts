@@ -5,7 +5,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, assertParamIsBoolean, assertParamIsString } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	assertParamIsBoolean,
+	assertParamIsString,
+} from 'n8n-workflow';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL } from 'url';
@@ -282,6 +287,14 @@ export class Git implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+				const isFilePathBlocked = await this.helpers.isFilePathBlocked(repositoryPath);
+				if (isFilePathBlocked) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Access to the repository path is not allowed',
+					);
+				}
+
 				const options = this.getNodeParameter('options', itemIndex, {});
 
 				if (operation === 'clone') {
@@ -300,6 +313,11 @@ export class Git implements INodeType {
 				const disableBareRepos = securityConfig.disableBareRepos;
 				if (isCloud || disableBareRepos) {
 					gitConfig.push('safe.bareRepository=explicit');
+				}
+
+				const enableHooks = securityConfig.enableGitNodeHooks;
+				if (!enableHooks) {
+					gitConfig.push('core.hooksPath=/dev/null');
 				}
 
 				const gitOptions: Partial<SimpleGitOptions> = {

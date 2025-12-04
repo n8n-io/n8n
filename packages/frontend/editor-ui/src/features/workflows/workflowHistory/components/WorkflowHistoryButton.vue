@@ -2,19 +2,13 @@
 import { computed } from 'vue';
 import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { I18nT } from 'vue-i18n';
 
-import { N8nIconButton, N8nLink, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 const locale = useI18n();
 
 const props = defineProps<{
 	workflowId: string;
 	isNewWorkflow: boolean;
-	isFeatureEnabled: boolean;
-}>();
-
-const emit = defineEmits<{
-	upgrade: [];
 }>();
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => ({
@@ -29,7 +23,7 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 	<N8nTooltip placement="bottom">
 		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
-				:disabled="isNewWorkflow || !isFeatureEnabled"
+				:disabled="isNewWorkflow"
 				data-test-id="workflow-history-button"
 				type="highlight"
 				icon="history"
@@ -37,19 +31,10 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 			/>
 		</RouterLink>
 		<template #content>
-			<span v-if="isFeatureEnabled && isNewWorkflow">
+			<span v-if="isNewWorkflow">
 				{{ locale.baseText('workflowHistory.button.tooltip.empty') }}
 			</span>
-			<span v-else-if="isFeatureEnabled">{{
-				locale.baseText('workflowHistory.button.tooltip.enabled')
-			}}</span>
-			<I18nT v-else keypath="workflowHistory.button.tooltip.disabled" scope="global">
-				<template #link>
-					<N8nLink size="small" @click="emit('upgrade')">
-						{{ locale.baseText('workflowHistory.button.tooltip.disabled.link') }}
-					</N8nLink>
-				</template>
-			</I18nT>
+			<span v-else>{{ locale.baseText('workflowHistory.button.tooltip') }}</span>
 		</template>
 	</N8nTooltip>
 </template>

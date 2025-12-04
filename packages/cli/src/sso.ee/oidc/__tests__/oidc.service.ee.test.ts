@@ -188,6 +188,26 @@ describe('OidcService', () => {
 				loginEnabled: mockOidcConfig.loginEnabled,
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
+				authenticationContextClassReference: expect.any(Array),
+			});
+		});
+
+		it('should fill out optional authenticationContextClassReference parameter with default value', async () => {
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(mockOidcConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toEqual({
+				clientId: mockOidcConfig.clientId,
+				clientSecret: mockOidcConfig.clientSecret,
+				loginEnabled: mockOidcConfig.loginEnabled,
+				prompt: 'select_account',
+				discoveryEndpoint: expect.any(URL),
+				authenticationContextClassReference: [],
 			});
 		});
 
@@ -281,6 +301,7 @@ describe('OidcService', () => {
 				loginEnabled: mockOidcConfig.loginEnabled,
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
+				authenticationContextClassReference: expect.any(Array),
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});

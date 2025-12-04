@@ -1,9 +1,10 @@
 import type { DataRequestResponse, PartialAdditionalData, TaskData } from '@n8n/task-runner';
-import type {
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowParameters,
+import {
+	createRunExecutionData,
+	type IRunExecutionData,
+	type IWorkflowExecuteAdditionalData,
+	type Workflow,
+	type WorkflowParameters,
 } from 'n8n-workflow';
 
 /**
@@ -65,8 +66,8 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	private buildRunExecutionData(runExecutionData: IRunExecutionData) {
-		return {
+	private buildRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
+		return createRunExecutionData({
 			startData: runExecutionData.startData,
 			resultData: runExecutionData.resultData,
 			executionData: runExecutionData.executionData
@@ -81,6 +82,6 @@ export class DataRequestResponseBuilder {
 						waitingExecutionSource: null,
 					}
 				: undefined,
-		};
+		});
 	}
 }

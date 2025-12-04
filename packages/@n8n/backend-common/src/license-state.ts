@@ -130,10 +130,6 @@ export class LicenseState {
 		return this.isLicensed('feat:externalSecrets');
 	}
 
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed('feat:workflowHistory');
-	}
-
 	isAPIDisabled() {
 		return this.isLicensed('feat:apiDisabled');
 	}
@@ -179,7 +175,7 @@ export class LicenseState {
 	}
 
 	isProvisioningLicensed() {
-		return this.isLicensed(['feat:saml', 'feat:oidc', 'feat:ldap']);
+		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
 	// --------------------

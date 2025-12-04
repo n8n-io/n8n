@@ -100,4 +100,9 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 
+export {
+	OAuthClientResponseDto,
+	ListOAuthClientsResponseDto,
+	DeleteOAuthClientResponseDto,
+} from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';

@@ -67,6 +67,8 @@ describe('Custom Role Functionality Tests', () => {
 			passwordReset: jest.fn(),
 		});
 
+		await utils.initCredentialsTypes();
+
 		// Create standard users
 		owner = await createOwner();
 		member1 = await createMember();
@@ -166,7 +168,7 @@ describe('Custom Role Functionality Tests', () => {
 	});
 
 	afterAll(async () => {
-		await testDb.truncate(['User']);
+		await testDb.truncate(['User', 'ProjectRelation']);
 		await cleanupRolesAndScopes();
 	});
 

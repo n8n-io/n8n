@@ -383,4 +383,20 @@ export class DataTableDetails extends BasePage {
 
 		await sourceColumn.dragTo(targetColumn);
 	}
+
+	getSearchInput() {
+		return this.page.getByTestId('data-table-search-input');
+	}
+
+	async search(query: string) {
+		const searchInput = this.getSearchInput();
+		await searchInput.fill(query);
+		// Wait for debounce
+		await this.page.waitForTimeout(300);
+		await this.page.getByText('Loading...').waitFor({ state: 'hidden' });
+	}
+
+	async clearSearch() {
+		await this.search('');
+	}
 }

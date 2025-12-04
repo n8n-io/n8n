@@ -10,6 +10,7 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -28,6 +29,7 @@ import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export function useWorkflowSaving({
 	router,
@@ -45,7 +47,6 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
-
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -59,7 +60,11 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		if (!uiStore.stateIsDirty || workflowsStore.workflow.isArchived) {
+		if (
+			!uiStore.stateIsDirty ||
+			workflowsStore.workflow.isArchived ||
+			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+		) {
 			next();
 			return;
 		}
@@ -135,13 +140,17 @@ export function useWorkflowSaving({
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
+		if (IS_DRAFT_PUBLISH_ENABLED) {
+			return undefined;
+		}
+
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
 
 		if (missingActivatableTriggerNode) {
 			// Automatically deactivate if all activatable triggers are removed
 			return {
-				title: i18n.baseText('workflows.deactivated'),
+				title: i18n.baseText('workflows.autodeactivated'),
 				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
 				type: 'info',
 			};
@@ -377,10 +386,11 @@ export function useWorkflowSaving({
 			}
 
 			// workflow should not be active if there is live webhook with the same path
-			if (workflowData.active) {
+			if (workflowData.activeVersionId !== null) {
 				const conflict = await checkConflictingWebhooks(workflowData.id);
 				if (conflict) {
 					workflowData.active = false;
+					workflowData.activeVersionId = null;
 
 					toast.showMessage({
 						title: 'Conflicting Webhook Path',
@@ -390,7 +400,7 @@ export function useWorkflowSaving({
 				}
 			}
 
-			workflowState.setActive(workflowData.active || false);
+			workflowState.setActive(workflowData.activeVersionId);
 			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });

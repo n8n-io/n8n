@@ -1,4 +1,3 @@
-import { N8N_VERSION } from '@/constants';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -15,6 +14,12 @@ import type { PushConfig } from '@/push/push.config';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
+
+// Mock the workflow history helper functions to avoid DI container issues in tests
+jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
+	getWorkflowHistoryLicensePruneTime: jest.fn(() => 24),
+	getWorkflowHistoryPruneTime: jest.fn(() => 24),
+}));
 
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -45,7 +50,7 @@ describe('FrontendService', () => {
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
-		workflowHistory: { enabled: false },
+		workflowHistory: { pruneTime: 24 },
 		path: '',
 		sso: {
 			ldap: { loginEnabled: false },
@@ -99,7 +104,6 @@ describe('FrontendService', () => {
 		isExternalSecretsEnabled: jest.fn().mockReturnValue(false),
 		isLicensed: jest.fn().mockReturnValue(false),
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
-		isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
 		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),
@@ -200,42 +204,22 @@ describe('FrontendService', () => {
 		it('should return public settings', () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
-				instanceId: instanceSettings.instanceId,
-				defaultLocale: globalConfig.defaultLocale,
-				versionCli: N8N_VERSION,
-				releaseChannel: globalConfig.generic.releaseChannel,
-				versionNotifications: {
-					enabled: globalConfig.versionNotifications.enabled,
-					endpoint: globalConfig.versionNotifications.endpoint,
-					whatsNewEnabled: globalConfig.versionNotifications.whatsNewEnabled,
-					whatsNewEndpoint: globalConfig.versionNotifications.whatsNewEndpoint,
-					infoUrl: globalConfig.versionNotifications.infoUrl,
-				},
 				userManagement: {
-					quota: 100,
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
 				},
 				sso: {
-					saml: { loginEnabled: false, loginLabel: '' },
+					saml: { loginEnabled: false },
 					ldap: { loginEnabled: false, loginLabel: '' },
 					oidc: {
 						loginEnabled: false,
 						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
-						callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
 					},
 				},
-				mfa: { enabled: false, enforced: false },
 				authCookie: { secure: false },
-				oauthCallbackUrls: {
-					oauth1: 'http://localhost:5678/rest/oauth1-credential/callback',
-					oauth2: 'http://localhost:5678/rest/oauth2-credential/callback',
-				},
-				banners: { dismissed: [] },
 				previewMode: false,
-				telemetry: { enabled: false },
-				enterprise: { saml: false, ldap: false, oidc: false, showNonProdBanner: false },
+				enterprise: { saml: false, ldap: false, oidc: false },
 			};
 
 			const { service } = createMockService();

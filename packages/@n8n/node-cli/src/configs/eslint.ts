@@ -21,6 +21,7 @@ function createConfig(supportCloud = true): ConfigArray {
 			],
 			rules: {
 				'prefer-spread': 'off',
+				'no-console': 'error',
 			},
 		},
 		{

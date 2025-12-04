@@ -55,12 +55,14 @@ const props = withDefaults(
 		tooltip?: string;
 		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
 		showLoadingSpinner?: boolean;
+		executionMode?: 'inclusive' | 'exclusive';
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
 		square: false,
 		showLoadingSpinner: true,
+		executionMode: 'inclusive',
 	},
 );
 
@@ -384,7 +386,7 @@ async function onClick() {
 				await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
 				await runWorkflow({
-					destinationNode: props.nodeName,
+					destinationNode: { nodeName: props.nodeName, mode: props.executionMode },
 					source: 'RunData.ExecuteNodeButton',
 				});
 

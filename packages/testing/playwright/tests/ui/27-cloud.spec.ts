@@ -41,6 +41,12 @@ const setupCloudTest = async (
 	await n8n.page.waitForLoadState();
 };
 
+const createProjectAndNavigate = async (n8n: n8nPage) => {
+	await n8n.goHome();
+	const { projectId } = await n8n.projectComposer.createProject();
+	await n8n.page.goto(`projects/${projectId}/workflows`);
+};
+
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Banner', () => {
 		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
@@ -84,7 +90,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await n8n.navigate.toWorkflows();
+			await createProjectAndNavigate(n8n);
 
 			await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeHidden();
 		});
@@ -96,7 +102,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await n8n.navigate.toWorkflows();
+			await createProjectAndNavigate(n8n);
 
 			await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeVisible();
 		});
@@ -108,7 +114,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await n8n.navigate.toWorkflows();
+			await createProjectAndNavigate(n8n);
 
 			await n8n.workflows.clickEasyAiWorkflowCard();
 

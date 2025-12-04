@@ -561,13 +561,14 @@ export class DataTableRowsRepository {
 	async getManyAndCount(
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
+		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
 		return await withTransaction(
 			this.dataSource.manager,
 			trx,
 			async (em) => {
-				const [countQuery, query] = this.getManyQuery(dataTableId, dto, em);
+				const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
 				const data: DataTableRowsReturn = await query.select('*').getRawMany();
 				const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 					count: number | string | null;
@@ -619,6 +620,7 @@ export class DataTableRowsRepository {
 	private getManyQuery(
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
+		columns: DataTableColumn[],
 		em: EntityManager,
 	): [QueryBuilder, QueryBuilder] {
 		const query = em.createQueryBuilder();
@@ -628,11 +630,59 @@ export class DataTableRowsRepository {
 		if (dto.filter) {
 			this.applyFilters(query, dto.filter, tableReference);
 		}
+
+		if (dto.search && dto.search.trim().length > 0) {
+			this.applySearch(query, dto.search, tableReference, columns);
+		}
+
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
 		this.applyPagination(query, dto);
 
 		return [countQuery, query];
+	}
+
+	private applySearch(
+		query: QueryBuilder,
+		rawSearch: string,
+		tableReference: string,
+		columns: DataTableColumn[],
+	) {
+		const dbType = this.dataSource.options.type;
+		const searchTerm = rawSearch.includes('%') ? rawSearch : `%${rawSearch}%`;
+		const isSqlite = ['sqlite', 'sqlite-pooled'].includes(dbType);
+		const isMy = ['mysql', 'mariadb'].includes(dbType);
+		const isPg = dbType === 'postgres';
+
+		const allColumnNames: string[] = columns.map((c) => c.name);
+		if (allColumnNames.length === 0) return;
+
+		const tableRefQuoted = quoteIdentifier(tableReference, dbType);
+		const conditions: string[] = [];
+
+		for (const col of allColumnNames) {
+			const colRef = `${tableRefQuoted}.${quoteIdentifier(col, dbType)}`;
+			if (isSqlite) {
+				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) LIKE UPPER(:search) ESCAPE '\\'`);
+				continue;
+			}
+
+			if (isMy) {
+				conditions.push(`UPPER(CAST(${colRef} AS CHAR)) LIKE UPPER(:search) ESCAPE '\\\\'`);
+				continue;
+			}
+
+			if (isPg) {
+				conditions.push(`CAST(${colRef} AS TEXT) ILIKE :search ESCAPE '\\'`);
+				continue;
+			}
+
+			conditions.push(`UPPER(CAST(${colRef} AS TEXT)) LIKE UPPER(:search)`);
+		}
+
+		if (conditions.length === 0) return;
+		const whereClause = `(${conditions.join(' OR ')})`;
+		query.andWhere(whereClause, { search: escapeLikeSpecials(searchTerm) });
 	}
 
 	private applyFilters<T extends ObjectLiteral>(

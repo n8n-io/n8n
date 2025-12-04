@@ -185,7 +185,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-@use '@/app/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .ioSearch {
 	transition: max-width 0.3s $ease-out-expo;

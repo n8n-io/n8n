@@ -25,3 +25,5 @@ export const LOCAL_STORAGE_CHAT_HUB_CREDENTIALS = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_CREDENTIALS`;
 export const LOCAL_STORAGE_CHAT_HUB_STATIC_SIDEBAR = (userId: string) =>
 	`${userId}_N8N_CHAT_HUB_STATIC_SIDEBAR`;
+export const LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS = (userId: string) =>
+	`${userId}_N8N_CHAT_HUB_SELECTED_TOOLS`;

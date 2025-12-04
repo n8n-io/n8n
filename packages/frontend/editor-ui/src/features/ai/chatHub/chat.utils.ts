@@ -6,6 +6,9 @@ import {
 	type ChatModelDto,
 	type ChatSessionId,
 	type ChatMessageId,
+	type ChatHubProvider,
+	type ChatHubLLMProvider,
+	type ChatHubInputModality,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -13,8 +16,10 @@ import type {
 	ChatAgentFilter,
 	ChatStreamingState,
 	FlattenedModel,
+	ChatConversation,
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
+import { v4 as uuidv4 } from 'uuid';
 
 export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
@@ -249,6 +254,7 @@ export function createAiMessageFromStreamingState(
 		revisionOfMessageId: null,
 		responses: [],
 		alternatives: [],
+		attachments: [],
 		...(streaming?.model
 			? flattenModel(streaming.model)
 			: {
@@ -258,4 +264,114 @@ export function createAiMessageFromStreamingState(
 					agentId: null,
 				}),
 	};
+}
+
+export function buildUiMessages(
+	sessionId: string,
+	conversation: ChatConversation,
+	streaming?: ChatStreamingState,
+): ChatMessage[] {
+	const messagesToShow: ChatMessage[] = [];
+	let foundRunning = false;
+
+	for (let index = 0; index < conversation.activeMessageChain.length; index++) {
+		const id = conversation.activeMessageChain[index];
+		const message = conversation.messages[id];
+
+		if (!message) {
+			continue;
+		}
+
+		foundRunning = foundRunning || message.status === 'running';
+
+		if (foundRunning || streaming?.sessionId !== sessionId || message.type !== 'ai') {
+			messagesToShow.push(message);
+			continue;
+		}
+
+		if (streaming.retryOfMessageId === id && !streaming.messageId) {
+			// While waiting for streaming to start on regeneration, show previously generated message
+			// in running state as an immediate feedback
+			messagesToShow.push({ ...message, content: '', status: 'running' });
+			foundRunning = true;
+			continue;
+		}
+
+		if (index === conversation.activeMessageChain.length - 1) {
+			// When agent responds multiple messages (e.g. when tools are used),
+			// there's a noticeable time gap between messages.
+			// In order to indicate that agent is still responding, show the last AI message as running
+			messagesToShow.push({ ...message, status: 'running' });
+			foundRunning = true;
+			continue;
+		}
+
+		messagesToShow.push(message);
+	}
+
+	if (
+		!foundRunning &&
+		streaming?.sessionId === sessionId &&
+		!streaming.messageId &&
+		streaming.retryOfMessageId === null &&
+		streaming.promptId === messagesToShow[messagesToShow.length - 1]?.id
+	) {
+		// While waiting for streaming to start on sending new message/editing, append a fake message
+		// in running state as an immediate feedback
+		messagesToShow.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
+	}
+
+	return messagesToShow;
+}
+
+export function isLlmProvider(provider?: ChatHubProvider): provider is ChatHubLLMProvider {
+	return provider !== 'n8n' && provider !== 'custom-agent';
+}
+
+export function isLlmProviderModel(
+	model?: ChatHubConversationModel,
+): model is ChatHubConversationModel & { provider: ChatHubLLMProvider } {
+	return isLlmProvider(model?.provider);
+}
+
+export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+	return {
+		id: streaming.sessionId,
+		title: 'New Chat',
+		ownerId: '',
+		lastMessageAt: new Date().toISOString(),
+		credentialId: null,
+		agentName: streaming.agentName,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		tools: streaming.tools,
+		...flattenModel(streaming.model),
+	};
+}
+
+export function createMimeTypes(modalities: ChatHubInputModality[]): string | undefined {
+	if (modalities.length === 0) {
+		return undefined;
+	}
+
+	// If 'file' modality is present, accept all file types
+	if (modalities.includes('file')) {
+		return '*/*';
+	}
+
+	const mimeTypes: string[] = [];
+
+	for (const modality of modalities) {
+		if (modality === 'image') {
+			mimeTypes.push('image/*');
+		}
+		if (modality === 'audio') {
+			mimeTypes.push('audio/*');
+		}
+		if (modality === 'video') {
+			mimeTypes.push('video/*');
+		}
+	}
+
+	return mimeTypes.length > 0 ? mimeTypes.join(',') : undefined;
 }

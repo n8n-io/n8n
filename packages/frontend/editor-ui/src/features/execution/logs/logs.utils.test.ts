@@ -16,7 +16,12 @@ import {
 	processFiles,
 	extractBotResponse,
 } from './logs.utils';
-import { AGENT_LANGCHAIN_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import type { ExecutionError, ITaskStartedData, IRunExecutionData } from 'n8n-workflow';
 import {
 	aiAgentNode,
@@ -563,7 +568,7 @@ describe(findSelectedLogEntry, () => {
 						createTestNode({ name: 'C' }),
 					],
 				}),
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 			});
 
 			expect(find({ type: 'initial' }, response, false)).toBe(undefined);
@@ -578,7 +583,7 @@ describe(findSelectedLogEntry, () => {
 						createTestNode({ name: 'C' }),
 					],
 				}),
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
@@ -598,7 +603,7 @@ describe(findSelectedLogEntry, () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 
 			expect(find({ type: 'initial' }, response, false)).toEqual(
@@ -622,7 +627,7 @@ describe(findSelectedLogEntry, () => {
 						},
 					},
 				}),
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
@@ -642,7 +647,7 @@ describe(findSelectedLogEntry, () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 
 			expect(find({ type: 'initial' }, response, false)).toEqual(
@@ -659,7 +664,7 @@ describe(findSelectedLogEntry, () => {
 						createTestNode({ name: 'C' }),
 					],
 				}),
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
@@ -671,7 +676,7 @@ describe(findSelectedLogEntry, () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 
 			expect(find({ type: 'initial' }, response, false)).toEqual(
@@ -688,7 +693,7 @@ describe(findSelectedLogEntry, () => {
 						createTestNode({ name: 'C' }),
 					],
 				}),
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
@@ -702,7 +707,7 @@ describe(findSelectedLogEntry, () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 
 			expect(find({ type: 'initial' }, response, false)).toEqual(
@@ -719,7 +724,7 @@ describe(findSelectedLogEntry, () => {
 						createTestNode({ name: 'C' }),
 					],
 				}),
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							A: [createTestTaskData({ executionStatus: 'success', startTime: 0 })],
@@ -731,7 +736,7 @@ describe(findSelectedLogEntry, () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 
 			expect(find({ type: 'initial' }, response, false)).toEqual(
@@ -749,7 +754,7 @@ describe(findSelectedLogEntry, () => {
 		});
 		const response = createTestWorkflowExecutionResponse({
 			workflowData,
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [
@@ -760,7 +765,7 @@ describe(findSelectedLogEntry, () => {
 						B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
 					},
 				},
-			},
+			}),
 		});
 
 		it('should return manually selected log', () => {
@@ -831,7 +836,7 @@ describe(createLogTree, () => {
 			},
 		});
 		const execution = createTestWorkflowExecutionResponse({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [
@@ -858,7 +863,7 @@ describe(createLogTree, () => {
 						],
 					},
 				},
-			},
+			}),
 		});
 
 		expect(createLogTree(workflow, execution)).toEqual([
@@ -890,7 +895,7 @@ describe(createLogTree, () => {
 			createLogTree(
 				workflow,
 				createTestWorkflowExecutionResponse({
-					data: {
+					data: createRunExecutionData({
 						resultData: {
 							runData: {
 								A: [
@@ -917,7 +922,7 @@ describe(createLogTree, () => {
 								],
 							},
 						},
-					},
+					}),
 				}),
 			),
 		).toEqual([
@@ -941,14 +946,14 @@ describe(createLogTree, () => {
 			},
 		});
 		const response = createTestWorkflowExecutionResponse({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [createTestTaskData()],
 						B: [createTestTaskData()],
 					},
 				},
-			},
+			}),
 		});
 
 		expect(createLogTree(workflow, response)).toEqual([
@@ -970,7 +975,7 @@ describe(createLogTree, () => {
 		});
 		const rootExecutionData = createTestWorkflowExecutionResponse({
 			id: 'root-exec-id',
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [createTestTaskData()],
@@ -983,11 +988,11 @@ describe(createLogTree, () => {
 						],
 					},
 				},
-			},
+			}),
 		});
-		const subExecutionData = {
+		const subExecutionData = createRunExecutionData({
 			resultData: { runData: { C: [createTestTaskData(), createTestTaskData()] } },
-		};
+		});
 		const logs = createLogTree(
 			workflow,
 			rootExecutionData,
@@ -1040,7 +1045,7 @@ describe(createLogTree, () => {
 		});
 		const rootExecutionData = createTestWorkflowExecutionResponse({
 			id: 'root-exec-id',
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [
@@ -1052,9 +1057,9 @@ describe(createLogTree, () => {
 						],
 					},
 				},
-			},
+			}),
 		});
-		const subExecutionData = {
+		const subExecutionData = createRunExecutionData({
 			resultData: {
 				runData: {
 					B: [createTestTaskData(), createTestTaskData()],
@@ -1065,7 +1070,7 @@ describe(createLogTree, () => {
 					],
 				},
 			},
-		};
+		});
 		const logs = createLogTree(
 			workflow,
 			rootExecutionData,
@@ -1088,7 +1093,9 @@ describe(createLogTree, () => {
 	it('should not include nodes without run data', () => {
 		const logs = createLogTree(
 			createTestWorkflowObject(aiChatWorkflow),
-			createTestWorkflowExecutionResponse({ data: { resultData: { runData: {} } } }),
+			createTestWorkflowExecutionResponse({
+				data: createEmptyRunExecutionData(),
+			}),
 		);
 
 		expect(logs).toHaveLength(0);
@@ -1101,7 +1108,9 @@ describe(createLogTree, () => {
 		const logs = createLogTree(
 			createTestWorkflowObject(aiChatWorkflow),
 			createTestWorkflowExecutionResponse({
-				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+				data: createRunExecutionData({
+					resultData: { runData: { [aiModelNode.name]: [taskData] } },
+				}),
 			}),
 		);
 
@@ -1122,7 +1131,9 @@ describe(createLogTree, () => {
 				nodes: [{ ...aiAgentNode, disabled: true }, aiModelNode],
 			}),
 			createTestWorkflowExecutionResponse({
-				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+				data: createRunExecutionData({
+					resultData: { runData: { [aiModelNode.name]: [taskData] } },
+				}),
 			}),
 		);
 
@@ -1156,7 +1167,9 @@ describe(createLogTree, () => {
 				},
 			}),
 			createTestWorkflowExecutionResponse({
-				data: { resultData: { runData: { [aiModelNode.name]: [taskData] } } },
+				data: createRunExecutionData({
+					resultData: { runData: { [aiModelNode.name]: [taskData] } },
+				}),
 			}),
 		);
 
@@ -1399,14 +1412,14 @@ describe('extractBotResponse', () => {
 describe(mergeStartData, () => {
 	it('should return unchanged execution response if start data is empty', () => {
 		const response = createTestWorkflowExecutionResponse({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [createTestTaskData()],
 						B: [createTestTaskData(), createTestTaskData()],
 					},
 				},
-			},
+			}),
 		});
 
 		expect(mergeStartData({}, response)).toEqual(response);
@@ -1414,7 +1427,7 @@ describe(mergeStartData, () => {
 
 	it('should add runs in start data to the execution response as running state', () => {
 		const response = createTestWorkflowExecutionResponse({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
@@ -1424,7 +1437,7 @@ describe(mergeStartData, () => {
 						],
 					},
 				},
-			},
+			}),
 		});
 		const startData: { [nodeName: string]: ITaskStartedData[] } = {
 			B: [{ startTime: 3, executionIndex: 3, source: [] }],
@@ -1445,13 +1458,13 @@ describe(mergeStartData, () => {
 
 	it('should not add runs in start data if a run with the same executionIndex already exists in response', () => {
 		const response = createTestWorkflowExecutionResponse({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [createTestTaskData({ executionIndex: 0 })],
 					},
 				},
-			},
+			}),
 		});
 		const startData = {
 			A: [createTestTaskData({ executionIndex: 0 })],
@@ -1463,13 +1476,13 @@ describe(mergeStartData, () => {
 
 	it('should not add runs in start data if a run for the same node with larger start time already exists in response', () => {
 		const response = createTestWorkflowExecutionResponse({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						A: [createTestTaskData({ startTime: 1, executionIndex: 1 })],
 					},
 				},
-			},
+			}),
 		});
 		const startData = {
 			A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
@@ -1530,7 +1543,7 @@ describe(restoreChatHistory, () => {
 						createTestNode({ name: 'B', type: AGENT_NODE_TYPE }),
 					],
 				}),
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'B',
 						runData: {
@@ -1549,7 +1562,7 @@ describe(restoreChatHistory, () => {
 							],
 						},
 					},
-				},
+				}),
 				finished: true,
 				mode: 'manual',
 				status: 'success',

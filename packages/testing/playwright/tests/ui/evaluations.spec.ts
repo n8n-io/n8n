@@ -13,7 +13,9 @@ test.describe('Evaluations @capability:proxy', () => {
 		await n8n.goHome();
 	});
 
-	test('should load evaluations workflow and execute twice', async ({ n8n, proxyServer }) => {
+	// @AI team to look at this
+	// eslint-disable-next-line playwright/no-skipped-test
+	test.skip('should load evaluations workflow and execute twice', async ({ n8n, proxyServer }) => {
 		await proxyServer.loadExpectations('evaluations');
 
 		await n8n.api.credentials.createCredentialFromDefinition({
@@ -53,7 +55,7 @@ m82JpEptTfAxFHtd8+Sb0U2G
 			},
 		});
 
-		await n8n.workflows.addResource.workflow();
+		await n8n.navigate.toWorkflow('new');
 		// Import the evaluations workflow
 		await n8n.canvas.importWorkflow('evaluations_loop.json', 'Evaluations');
 

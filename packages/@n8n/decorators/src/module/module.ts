@@ -1,4 +1,4 @@
-import type { LICENSE_FEATURES } from '@n8n/constants';
+import type { LICENSE_FEATURES, InstanceType } from '@n8n/constants';
 import { Container, Service, type Constructable } from '@n8n/di';
 
 import { ModuleMetadata } from './module-metadata';
@@ -83,12 +83,27 @@ export type ModuleClass = Constructable<ModuleInterface>;
 
 export type LicenseFlag = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 
+export type BackendModuleOptions = {
+	/** Canonical name of the backend module. Use kebab-case.*/
+	name: string;
+
+	/**
+	 * If present, initialize the module only if the instance has access to a licensed feature.
+	 * Multiple license flags use `OR` logic, i.e. at least one must be licensed.
+	 */
+	licenseFlag?: LicenseFlag | LicenseFlag[];
+
+	/** If present, initialize the module only if the instance type is one of the specified types. */
+	instanceTypes?: InstanceType[];
+};
+
 export const BackendModule =
-	(opts: { name: string; licenseFlag?: LicenseFlag | LicenseFlag[] }): ClassDecorator =>
+	(opts: BackendModuleOptions): ClassDecorator =>
 	(target) => {
 		Container.get(ModuleMetadata).register(opts.name, {
 			class: target as unknown as ModuleClass,
 			licenseFlag: opts?.licenseFlag,
+			instanceTypes: opts?.instanceTypes,
 		});
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return

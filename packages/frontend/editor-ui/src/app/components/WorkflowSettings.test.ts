@@ -60,6 +60,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
+				activeVersionId: 'v1',
 				isArchived: false,
 				nodes: [],
 				connections: {},
@@ -72,6 +73,7 @@ describe('WorkflowSettingsVue', () => {
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			activeVersionId: 'v1',
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -137,7 +139,7 @@ describe('WorkflowSettingsVue', () => {
 		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
 		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: undefined,
+				query: undefined,
 			}),
 		);
 	});
@@ -279,6 +281,7 @@ describe('WorkflowSettingsVue', () => {
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			activeVersionId: 'v1',
 			isArchived: false,
 			nodes: [],
 			connections: {},
