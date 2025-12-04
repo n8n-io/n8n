@@ -95,6 +95,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
 
@@ -807,6 +808,7 @@ function getResolvedNodeOutputs() {
 	}
 	return [];
 }
+
 function shouldHintBeDisplayed(hint: NodeHint): boolean {
 	const { location, whenToDisplay } = hint;
 
@@ -963,6 +965,8 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
 		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
+		workflow_id: workflowsStore.workflowId,
+		node_id: activeNode.value?.id,
 	});
 }
 
@@ -1038,6 +1042,8 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 			push_ref: props.pushRef,
 			run_index: props.runIndex,
 			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : props.displayMode,
+			workflow_id: workflowsStore.workflowId,
+			node_id: activeNode.value?.id,
 		};
 
 		void externalHooks.run('runData.onTogglePinData', telemetryPayload);
@@ -1725,9 +1731,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
-				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small">{{
-					i18n.baseText('runData.pinData.insertedExecutionData')
-				}}</N8nText>
+				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small"
+					>{{ i18n.baseText('runData.pinData.insertedExecutionData') }}
+				</N8nText>
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
 						:model-value="editMode.value"
