@@ -91,22 +91,29 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 
 		// Use O_NOFOLLOW to prevent TOCTOU race conditions where the file could be
 		// swapped to a symlink after validation but before opening
-		try {
-			return createReadStream(resolvedFilePath, {
-				// TypeScript types expect flags to be a string, but Node.js accepts numbers
-				// We use numeric flags here to combine O_RDONLY and O_NOFOLLOW bitwise
-				flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
+		const stream = createReadStream(resolvedFilePath, {
+			// TypeScript types expect flags to be a string, but Node.js accepts numbers
+			// We use numeric flags here to combine O_RDONLY and O_NOFOLLOW bitwise
+			flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
+		});
+
+		return new Promise<ReturnType<typeof createReadStream>>((resolve, reject) => {
+			stream.once('error', (error) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				if ((error as NodeJS.ErrnoException).code === 'ELOOP') {
+					reject(
+						new NodeOperationError(
+							node,
+							`The file "${String(resolvedFilePath)}" could not be opened.`,
+							{ level: 'warning' },
+						),
+					);
+				} else {
+					reject(error);
+				}
 			});
-		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (error.code === 'ELOOP') {
-				throw new NodeOperationError(
-					node,
-					`The file "${String(resolvedFilePath)}" could not be opened.`,
-					{
-						level: 'warning',
-					},
-				);
+			stream.once('open', () => resolve(stream));
+		});
 			}
 			throw error;
 		}
