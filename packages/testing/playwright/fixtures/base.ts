@@ -96,7 +96,7 @@ export const test = base.extend<
 
 	// Create a new n8n container if backend URL is not set, otherwise use the existing n8n instance
 	n8nContainer: [
-		async ({ containerConfig }, use) => {
+		async ({ containerConfig }, use, workerInfo) => {
 			const envBaseURL = getBackendUrl();
 
 			if (envBaseURL) {
@@ -104,10 +104,22 @@ export const test = base.extend<
 				return;
 			}
 
-			console.log('Creating container with config:', containerConfig);
-			const container = await createN8NStack(containerConfig);
+			const startTime = Date.now();
+			console.log(
+				`[${new Date().toISOString()}] Creating container for project: ${workerInfo.project.name}, worker: ${workerInfo.workerIndex}`,
+			);
+			console.log('Container config:', JSON.stringify(containerConfig));
 
-			console.log(`Container URL: ${container.baseUrl}`);
+			const container = await createN8NStack(containerConfig);
+			const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+			console.log(
+				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
+			);
+
+			console.log(
+				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
+			);
 
 			await use(container);
 			await container.stop();
