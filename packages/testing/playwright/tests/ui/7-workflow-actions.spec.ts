@@ -55,7 +55,7 @@ test.describe('Workflow Actions', () => {
 		expect(tagName).toBe('SPAN');
 
 		// After saving, ?new=true query param should be removed
-		await expect(n8n.page).not.toHaveURL(/\?new=true/);
+		await expect(n8n.page).not.toHaveURL(/\?.*new=true/);
 		await expect(n8n.page).toHaveURL(/\/workflow\/[a-zA-Z0-9_-]+$/);
 	});
 

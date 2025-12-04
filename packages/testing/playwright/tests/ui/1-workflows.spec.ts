@@ -19,7 +19,7 @@ test.describe('Workflows', () => {
 		await n8n.page.goto(`projects/${projectId}/workflows`);
 		await n8n.workflows.clickNewWorkflowCard();
 		// New workflows redirect to /workflow/<id>?new=true
-		await expect(n8n.page).toHaveURL(/workflow\/[a-zA-Z0-9_-]+\?new=true/);
+		await expect(n8n.page).toHaveURL(/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 	});
 
 	test('should create a new workflow using add workflow button and save successfully', async ({
