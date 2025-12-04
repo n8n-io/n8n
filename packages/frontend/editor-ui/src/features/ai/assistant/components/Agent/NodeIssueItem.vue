@@ -63,7 +63,6 @@ function handleEditClick() {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--3xs) 0;
-	border-bottom: 1px solid var(--color--foreground--tint-1);
 	cursor: pointer;
 
 	&:hover {
@@ -75,7 +74,7 @@ function handleEditClick() {
 	}
 
 	&:last-child {
-		border-bottom: none;
+		padding-bottom: 0;
 	}
 }
 
