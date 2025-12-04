@@ -177,14 +177,20 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context }, use, testInfo) => {
+	n8n: async ({ context, backendUrl }, use, testInfo) => {
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
-		const n8nInstance = new n8nPage(page);
+
+		// Create a separate API context with backend URL for API calls
+		const apiContext = await request.newContext({ baseURL: backendUrl });
+		const api = new ApiHelpers(apiContext);
+
+		const n8nInstance = new n8nPage(page, api);
 		await n8nInstance.api.setupFromTags(testInfo.tags);
 		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
 		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
+		await apiContext.dispose();
 	},
 
 	// This is a completely isolated API context for tests that don't need the browser

@@ -2,9 +2,10 @@
   "name": "n8n-playwright",
   "private": true,
   "scripts": {
+    "dev": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 pnpm run test:local:base",
     "test:all": "playwright test",
-    "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=ui --project=ui:isolated",
-    "test:dev": "N8N_EDITOR_URL=http://localhost:8080 pnpm run test:local",
+    "test:local:base": "RESET_E2E_DB=true playwright test --project=ui --project=ui:isolated",
+    "test:local": "N8N_BASE_URL=http://localhost:5680 pnpm run test:local:base",
     "test:ui": "playwright test --project=*ui*",
     "test:performance": "playwright test --project=performance",
     "test:chaos": "playwright test --project='*:chaos'",
