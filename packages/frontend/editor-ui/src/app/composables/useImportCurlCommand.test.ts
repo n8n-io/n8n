@@ -572,6 +572,26 @@ describe('useImportCurlCommand', () => {
 			const curl = 'curl -X POST -d "key=value"';
 			expect(() => toHttpNodeParameters(curl)).toThrow('no URL specified!');
 		});
+
+		test('Should parse cURL command with Content-Type header containing parameters', () => {
+			const curl = `curl --request POST \
+  --url https://example.com/api \
+  --header 'content-type: application/json; charset=UTF-8' \
+  --data '{"userId":"123","active":false,"visited":false}'`;
+
+			const parameters = toHttpNodeParameters(curl);
+
+			expect(parameters.url).toBe('https://example.com/api');
+			expect(parameters.method).toBe('POST');
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.bodyParameters?.parameters).toEqual(
+				expect.arrayContaining([
+					{ name: 'userId', value: '123' },
+					{ name: 'active', value: 'false' },
+					{ name: 'visited', value: 'false' },
+				]),
+			);
+		});
 	});
 });
 
