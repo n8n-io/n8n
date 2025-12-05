@@ -11,21 +11,28 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 
-	if (workflowsStore.workflow.activeVersionId !== data.activeVersionId) {
+	const { workflowId, activeVersionId } = data;
+
+	const cachedWorkflow = workflowsStore.getWorkflowById(workflowId);
+	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
+	if (
+		(workflowIsBeingViewed && workflowsStore.workflow.activeVersionId !== activeVersionId) ||
+		cachedWorkflow
+	) {
 		const activeVersion = await getWorkflowVersion(
 			rootStore.restApiContext,
-			data.workflowId,
-			data.activeVersionId,
+			workflowId,
+			activeVersionId,
 		);
 
-		workflowsStore.setWorkflowActive(data.workflowId, activeVersion);
+		workflowsStore.setWorkflowActive(workflowId, activeVersion, false);
 	}
 
 	// Remove auto-deactivated banner and update checksum if viewing this workflow
-	if (workflowsStore.workflowId === data.workflowId) {
+	if (workflowIsBeingViewed) {
 		// Only update checksum if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {
-			await workflowsStore.fetchAndUpdateWorkflowChecksum(data.workflowId);
+			await workflowsStore.fetchAndUpdateWorkflowChecksum(workflowId);
 		}
 		bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 	}

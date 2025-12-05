@@ -857,7 +857,7 @@ export function useWorkflowHelpers() {
 		}
 
 		if (workflow.activeVersion) {
-			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion);
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
 		}
