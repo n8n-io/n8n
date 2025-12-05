@@ -207,7 +207,7 @@ describe('FrontendService', () => {
 	});
 
 	describe('getPublicSettings', () => {
-		it('should return public settings', () => {
+		it('should return public settings', async () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
 				userManagement: {
