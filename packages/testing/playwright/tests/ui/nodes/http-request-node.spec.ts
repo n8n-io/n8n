@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('HTTP Request node', () => {
 	test.beforeEach(async ({ n8n }) => {

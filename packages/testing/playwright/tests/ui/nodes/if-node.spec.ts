@@ -1,5 +1,5 @@
-import { IF_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import { IF_NODE_NAME } from '../../../config/constants';
+import { test, expect } from '../../../fixtures/base';
 
 const FILTER_PARAM_NAME = 'conditions';
 

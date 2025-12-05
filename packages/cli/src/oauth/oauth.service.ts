@@ -10,27 +10,32 @@ import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import {
+	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
+	RESPONSE_ERROR_MESSAGES,
+} from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-type CsrfStateParam = {
-	/** Id of the oAuth credential in the DB */
-	cid: string;
+type CsrfStateRequired = {
 	/** Random CSRF token, used to verify the signature of the CSRF state */
 	token: string;
 	/** Creation timestamp of the CSRF state. Used for expiration.  */
 	createdAt: number;
-	/** User who initiated OAuth flow, included to prevent cross-user credential hijacking. Optional only if `skipAuthOnOAuthCallback` is enabled. */
-	userId?: string;
 };
+
+type CreateCsrfStateData = {
+	cid: string;
+	[key: string]: unknown;
+};
+
+type CsrfState = CsrfStateRequired & CreateCsrfStateData;
 
 const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
 
@@ -41,13 +46,15 @@ export function shouldSkipAuthOnOAuthCallback() {
 
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
-@Service()
-export abstract class AbstractOAuthController {
-	abstract oauthVersion: number;
+export const enum OauthVersion {
+	V1 = 1,
+	V2 = 2,
+}
 
+@Service()
+export class OauthService {
 	constructor(
 		protected readonly logger: Logger,
-		protected readonly externalHooks: ExternalHooks,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -55,14 +62,12 @@ export abstract class AbstractOAuthController {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	get baseUrl() {
+	getBaseUrl(oauthVersion: OauthVersion) {
 		const restUrl = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}`;
-		return `${restUrl}/oauth${this.oauthVersion}-credential`;
+		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	protected async getCredential(
-		req: OAuthRequest.OAuth2Credential.Auth,
-	): Promise<CredentialsEntity> {
+	async getCredential(req: OAuthRequest.OAuth2Credential.Auth): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
 
 		if (!credentialId) {
@@ -77,7 +82,7 @@ export abstract class AbstractOAuthController {
 
 		if (!credential) {
 			this.logger.error(
-				`OAuth${this.oauthVersion} credential authorization failed because the current user does not have the correct permissions`,
+				'OAuth credential authorization failed because the current user does not have the correct permissions',
 				{ userId: req.user.id },
 			);
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
@@ -141,7 +146,7 @@ export abstract class AbstractOAuthController {
 		)) as unknown as T;
 	}
 
-	protected async encryptAndSaveData(
+	async encryptAndSaveData(
 		credential: ICredentialsDb,
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
@@ -159,21 +164,20 @@ export abstract class AbstractOAuthController {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(credentialsId: string, userId?: string): [string, string] {
+	createCsrfState(data: CreateCsrfStateData): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
-		const state: CsrfStateParam = {
+		const state: CsrfState = {
 			token: token.create(csrfSecret),
-			cid: credentialsId,
 			createdAt: Date.now(),
-			userId,
+			...data,
 		};
 		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
 	}
 
-	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfStateParam {
+	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
 		const errorMessage = 'Invalid state format';
-		const decoded = jsonParse<CsrfStateParam>(Buffer.from(encodedState, 'base64').toString(), {
+		const decoded = jsonParse<CsrfState>(Buffer.from(encodedState, 'base64').toString(), {
 			errorMessage,
 		});
 
@@ -190,7 +194,7 @@ export abstract class AbstractOAuthController {
 
 	protected verifyCsrfState(
 		decrypted: ICredentialDataDecryptedObject & { csrfSecret?: string },
-		state: CsrfStateParam,
+		state: CsrfState,
 	) {
 		const token = new Csrf();
 
@@ -201,7 +205,7 @@ export abstract class AbstractOAuthController {
 		);
 	}
 
-	protected async resolveCredential<T>(
+	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
 	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
 		const { state: encodedState } = req.query;
@@ -230,7 +234,31 @@ export abstract class AbstractOAuthController {
 		return [credential, decryptedDataOriginal, oauthCredentials];
 	}
 
-	protected renderCallbackError(res: Response, message: string, reason?: string) {
+	renderCallbackError(res: Response, message: string, reason?: string) {
 		res.render('oauth-error-callback', { error: { message, reason } });
+	}
+
+	async getOAuthCredentials<T>(credential: CredentialsEntity): Promise<T> {
+		const additionalData = await this.getAdditionalData();
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
+
+		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
+		// Delete scope before applying defaults to make sure new scopes are present on reconnect
+		// Generic Oauth2 API is an exception because it needs to save the scope
+		if (
+			decryptedDataOriginal?.scope &&
+			credential.type.includes('OAuth2') &&
+			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
+		) {
+			delete decryptedDataOriginal.scope;
+		}
+
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
+			credential,
+			decryptedDataOriginal,
+			additionalData,
+		);
+
+		return oauthCredentials;
 	}
 }

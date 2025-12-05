@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('External Webhook Triggering', () => {
 	test('should create workflow via API, activate it, trigger webhook externally, and verify execution', async ({
