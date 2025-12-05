@@ -41,8 +41,6 @@ import {
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import WorkflowDescriptionPopover from './WorkflowDescriptionPopover.vue';
-
 import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -558,11 +556,6 @@ onBeforeUnmount(() => {
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
-				<WorkflowDescriptionPopover
-					v-else-if="!props.readOnly && workflowPermissions.update"
-					:workflow-id="props.id"
-					:workflow-description="props.description"
-				/>
 			</span>
 		</span>
 
