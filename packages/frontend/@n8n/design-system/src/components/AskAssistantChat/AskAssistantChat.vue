@@ -596,6 +596,12 @@ defineExpose({
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
+	line-height: var(--line-height--xl);
+
+	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
+	:global(p) {
+		line-height: var(--line-height--xl);
+	}
 
 	pre,
 	code {

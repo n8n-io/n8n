@@ -118,7 +118,6 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
 }
 
 .item {
