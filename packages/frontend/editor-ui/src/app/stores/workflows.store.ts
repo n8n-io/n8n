@@ -1721,18 +1721,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			description,
 		});
 
+		if (workflowsById.value[id]) {
+			workflowsById.value[id] = {
+				...workflowsById.value[id],
+				description: updated.description,
+				versionId: updated.versionId,
+			};
+		}
+
 		// Update local store state
 		if (isCurrentWorkflow) {
 			setDescription(updated.description ?? '');
 			if (updated.versionId !== currentVersionId) {
 				setWorkflowVersionId(updated.versionId);
 			}
-		} else if (workflowsById.value[id]) {
-			workflowsById.value[id] = {
-				...workflowsById.value[id],
-				description: updated.description,
-				versionId: updated.versionId,
-			};
 		}
 
 		return updated;

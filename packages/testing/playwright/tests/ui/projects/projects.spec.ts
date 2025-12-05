@@ -4,8 +4,8 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 	INSTANCE_MEMBER_CREDENTIALS,
 	INSTANCE_OWNER_CREDENTIALS,
-} from '../../config/test-users';
-import { test, expect } from '../../fixtures/base';
+} from '../../../config/test-users';
+import { test, expect } from '../../../fixtures/base';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
