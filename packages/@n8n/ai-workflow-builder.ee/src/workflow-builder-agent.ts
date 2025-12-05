@@ -19,6 +19,7 @@ import {
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
 } from '@/constants';
+import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
@@ -27,7 +28,6 @@ import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
-import { createMainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
 import {
 	applyCacheControlMarkers,
