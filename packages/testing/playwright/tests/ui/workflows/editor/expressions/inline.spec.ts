@@ -3,8 +3,8 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 	NO_OPERATION_NODE_NAME,
 	HACKER_NEWS_NODE_NAME,
-} from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+} from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 const SCHEDULE_PARAMETER_NAME = 'daysInterval';
 const HACKER_NEWS_ACTION = 'Get many items';
