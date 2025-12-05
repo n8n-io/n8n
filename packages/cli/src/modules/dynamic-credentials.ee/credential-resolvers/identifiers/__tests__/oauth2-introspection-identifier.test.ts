@@ -3,7 +3,7 @@ import { Time } from '@n8n/constants';
 import axios from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';
@@ -39,6 +39,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 
 	const mockContext = {
 		identity: 'mock-access-token',
+		version: 1 as const,
 	};
 
 	beforeEach(() => {
@@ -54,15 +55,15 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValueOnce({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
 			// Mock introspection endpoint
 			mockedAxios.post.mockResolvedValueOnce({
 				status: 200,
 				data: validIntrospectionResponse,
-			} as any);
+			});
 
-			const result = await identifier.resolve(mockContext as any, validOptions);
+			const result = await identifier.resolve(mockContext, validOptions);
 
 			expect(result).toBe('user-123');
 			expect(cache.set).toHaveBeenCalledWith(
@@ -89,9 +90,9 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValueOnce({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
-			const result = await identifier.resolve(mockContext as any, validOptions);
+			const result = await identifier.resolve(mockContext, validOptions);
 
 			expect(result).toBe('cached-user-123');
 			expect(mockedAxios.post).not.toHaveBeenCalled(); // Should not call introspection
@@ -104,14 +105,14 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValueOnce({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
 			mockedAxios.post.mockResolvedValueOnce({
 				status: 200,
 				data: customResponse,
-			} as any);
+			});
 
-			const result = await identifier.resolve(mockContext as any, customOptions);
+			const result = await identifier.resolve(mockContext, customOptions);
 
 			expect(result).toBe('john.doe');
 		});
@@ -121,7 +122,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		test('should throw IdentifierValidationError for invalid options', async () => {
 			const invalidOptions = { metadataUri: 'not-a-url' };
 
-			await expect(identifier.resolve(mockContext as any, invalidOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, invalidOptions)).rejects.toThrow(
 				IdentifierValidationError,
 			);
 		});
@@ -130,17 +131,17 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValue({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
 			mockedAxios.post.mockResolvedValue({
 				status: 200,
 				data: { ...validIntrospectionResponse, active: false },
-			} as any);
+			});
 
-			await expect(identifier.resolve(mockContext as any, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				IdentifierValidationError,
 			);
-			await expect(identifier.resolve(mockContext as any, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				'Token is not active',
 			);
 		});
@@ -149,12 +150,12 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValue({
 				status: 404,
 				data: {},
-			} as any);
+			});
 
-			await expect(identifier.resolve(mockContext as any, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				IdentifierValidationError,
 			);
-			await expect(identifier.resolve(mockContext as any, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				'Failed to fetch OAuth2 metadata',
 			);
 		});
@@ -163,18 +164,18 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValue({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
 			const responseWithoutSub = { active: true, exp: validIntrospectionResponse.exp };
 			mockedAxios.post.mockResolvedValue({
 				status: 200,
 				data: responseWithoutSub,
-			} as any);
+			});
 
-			await expect(identifier.resolve(mockContext as any, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				IdentifierValidationError,
 			);
-			await expect(identifier.resolve(mockContext as any, validOptions)).rejects.toThrow(
+			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
 				'missing subject claim',
 			);
 		});
@@ -190,14 +191,14 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValueOnce({
 				status: 200,
 				data: metadataWithoutAuthMethods,
-			} as any);
+			});
 
 			mockedAxios.post.mockResolvedValueOnce({
 				status: 200,
 				data: validIntrospectionResponse,
-			} as any);
+			});
 
-			const result = await identifier.resolve(mockContext as any, validOptions);
+			const result = await identifier.resolve(mockContext, validOptions);
 
 			expect(result).toBe('user-123');
 			expect(mockedAxios.post).toHaveBeenCalledWith(
@@ -220,14 +221,14 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValue({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
 			mockedAxios.post.mockResolvedValue({
 				status: 200,
 				data: longLivedResponse,
-			} as any);
+			});
 
-			await identifier.resolve(mockContext as any, validOptions);
+			await identifier.resolve(mockContext, validOptions);
 
 			// Check that the subject cache was set with the max TTL
 			// Find the call that sets the subject (not metadata)
@@ -246,14 +247,14 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			mockedAxios.get.mockResolvedValue({
 				status: 200,
 				data: validMetadata,
-			} as any);
+			});
 
 			mockedAxios.post.mockResolvedValue({
 				status: 200,
 				data: expiredButActiveResponse,
-			} as any);
+			});
 
-			await identifier.resolve(mockContext as any, validOptions);
+			await identifier.resolve(mockContext, validOptions);
 
 			// Check that the subject cache was set with the min TTL
 			// Find the call that sets the subject (not metadata)
