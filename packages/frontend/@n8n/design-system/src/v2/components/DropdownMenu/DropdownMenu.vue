@@ -6,7 +6,7 @@ import {
 	DropdownMenuPortal,
 	DropdownMenuContent,
 } from 'reka-ui';
-import { computed, ref, watch, useCssModule } from 'vue';
+import { computed, ref, watch, useCssModule, nextTick } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
@@ -92,9 +92,17 @@ const handleOpenChange = (open: boolean) => {
 	emit('update:modelValue', open);
 
 	// Clear search when dropdown closes
-	if (!open && props.searchable) {
-		searchTerm.value = '';
-		emit('search', '');
+	if (props.searchable) {
+		if (open) {
+			// Focus search input when dropdown opens
+			void nextTick(() => {
+				searchInputRef.value?.focus();
+			});
+		} else {
+			// Clear search when dropdown closes
+			searchTerm.value = '';
+			emit('search', '');
+		}
 	}
 };
 
