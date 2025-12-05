@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
+	AuthRolesService,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -191,6 +192,7 @@ export class E2EController {
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
+		await this.reseedRolesAndScopes();
 		await this.resetCache();
 		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
@@ -302,6 +304,13 @@ export class E2EController {
 				});
 			}
 		}
+	}
+
+	private async reseedRolesAndScopes() {
+		// Re-initialize scopes and roles after truncation so that foreign keys
+		// from users and project relations can be created safely, especially
+		// on databases that strictly enforce foreign keys like Postgres.
+		await Container.get(AuthRolesService).init();
 	}
 
 	private async setupUserManagement(

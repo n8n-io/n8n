@@ -73,6 +73,11 @@ test.describe('Template credentials setup @db:reset', () => {
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 
 		await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
+		// Modal should open automatically
+		await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
+
+		// Close the modal and re-open it
+		await n8n.templateCredentialSetup.closeSetupCredentialModal();
 		await n8n.templateCredentialSetup.getCanvasSetupButton().click();
 		await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
 
