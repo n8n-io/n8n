@@ -53,16 +53,6 @@ const wfHasAnyChanges = computed(() => {
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
-const nodesWithIssues = computed(() =>
-	workflowsStore.workflow.nodes.filter((node) => {
-		const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-		const isConnected =
-			Object.keys(workflowsStore.outgoingConnectionsByNodeName(node.name)).length > 0 ||
-			Object.keys(workflowsStore.incomingConnectionsByNodeName(node.name)).length > 0;
-		return !node.disabled && isConnected && nodeHasIssues;
-	}),
-);
-
 const inputsDisabled = computed(() => {
 	return !wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value;
 });
@@ -245,12 +235,12 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					{{
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: nodesWithIssues.length },
-							adjustToNumber: nodesWithIssues.length,
+							interpolate: { count: workflowsStore.nodesWithIssues.length },
+							adjustToNumber: workflowsStore.nodesWithIssues.length,
 						})
 					}}
 					<ul :class="$style.nodeLinks">
-						<li v-for="node in nodesWithIssues" :key="node.id">
+						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
 							<N8nLink
 								size="small"
 								:to="`/workflow/${workflowsStore.workflow.id}/${node.id}`"
