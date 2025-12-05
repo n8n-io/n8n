@@ -13,6 +13,12 @@ export const messageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create Forward',
+				value: 'createForward',
+				description: 'Creates a forward message draft',
+				action: 'Creates a forward message draft',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
@@ -76,6 +82,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: [
+					'createForward',
 					'addAttachment',
 					'delete',
 					'get',
@@ -85,6 +92,72 @@ export const messageFields: INodeProperties[] = [
 					'update',
 					'reply',
 				],
+			},
+		},
+	},
+
+	// message:createForward
+	{
+		displayName: 'To Recipients',
+		name: 'toRecipients',
+		type: 'string',
+		description: 'Comma-separated list of email addresses of recipients',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['createForward'],
+			},
+		},
+	},
+	{
+		displayName: 'Message Options',
+		name: 'messageOptions',
+		type: 'options',
+		options: [
+			{
+				name: 'Comment',
+				value: 'comment',
+			},
+			{
+				name: 'Body',
+				value: 'body',
+			},
+		],
+		default: 'comment',
+		description: 'Choose between adding a comment or setting the full message body',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['createForward'],
+			},
+		},
+	},
+	{
+		displayName: 'Comment',
+		name: 'comment',
+		type: 'string',
+		default: '',
+		description: 'A comment to include. Set a comment or body, but not both.',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['createForward'],
+				messageOptions: ['comment'],
+			},
+		},
+	},
+	{
+		displayName: 'Body',
+		name: 'body',
+		type: 'string',
+		default: '',
+		description: 'The body of the message. Set a comment or body, but not both.',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['createForward'],
+				messageOptions: ['body'],
 			},
 		},
 	},
