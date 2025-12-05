@@ -46,7 +46,7 @@ export function shouldSkipAuthOnOAuthCallback() {
 
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
-export enum OauthVersion {
+export const enum OauthVersion {
 	V1 = 1,
 	V2 = 2,
 }
@@ -82,7 +82,7 @@ export class OauthService {
 
 		if (!credential) {
 			this.logger.error(
-				`OAuth credential authorization failed because the current user does not have the correct permissions`,
+				'OAuth credential authorization failed because the current user does not have the correct permissions',
 				{ userId: req.user.id },
 			);
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
