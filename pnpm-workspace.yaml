@@ -94,4 +94,3 @@ minimumReleaseAgeExclude:
   - '@google/genai'
   - body-parser
   - node-forge
-  - '@modelcontextprotocol/sdk'
