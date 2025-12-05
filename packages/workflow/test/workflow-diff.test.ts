@@ -797,7 +797,7 @@ describe('hasCredentialChanges', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should handle node being deleted (not found in new nodes)', () => {
+	it('should return false when node is deleted (deletion is not a credential change)', () => {
 		const oldNodes = [
 			createNode('1', {
 				credentials: { testApi: { id: 'cred-1', name: 'Test Credential' } },
@@ -807,7 +807,7 @@ describe('hasCredentialChanges', () => {
 
 		const result = hasCredentialChanges(oldNodes, newNodes);
 
-		// When a node is deleted, its credentials are effectively removed
-		expect(result).toBe(true);
+		// When a node is deleted, it's not considered a credential change
+		expect(result).toBe(false);
 	});
 });

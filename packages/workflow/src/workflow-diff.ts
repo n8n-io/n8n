@@ -302,8 +302,11 @@ export function hasCredentialChanges(oldNodes: INode[], newNodes: INode[]): bool
 	for (const oldNode of oldNodes) {
 		const newNode = newNodesMap.get(oldNode.id);
 
+		// Skip nodes that were deleted - deletion is not a credential change
+		if (!newNode) continue;
+
 		const oldCreds = oldNode.credentials ?? {};
-		const newCreds = newNode?.credentials ?? {};
+		const newCreds = newNode.credentials ?? {};
 
 		const oldCredTypes = Object.keys(oldCreds);
 		const newCredTypes = Object.keys(newCreds);

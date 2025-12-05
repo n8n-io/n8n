@@ -839,7 +839,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			payload.event_properties = eventProperties;
 		}
 
-		telemetry.track('workflow_builder_journey', payload);
+		telemetry.track('Workflow builder journey', payload);
 	}
 
 	watch(

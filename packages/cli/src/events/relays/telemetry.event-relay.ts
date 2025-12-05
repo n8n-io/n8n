@@ -660,7 +660,6 @@ export class TelemetryEventRelay extends EventRelay {
 			(note) => note.overlapping,
 		).length;
 
-		// Compute workflow_edited_no_pos and credential_edited if previous workflow is available
 		let workflowEditedNoPos = false;
 		let credentialEdited = false;
 		if (previousWorkflow) {
