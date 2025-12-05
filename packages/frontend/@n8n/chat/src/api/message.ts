@@ -188,12 +188,18 @@ async function sendWithFiles(
 		formData.append('files', file);
 	}
 
+	const headers: Record<string, string> = {
+		Accept: 'text/plain',
+		...options.webhookConfig?.headers,
+	};
+
+	const filteredHeaders = Object.fromEntries(
+		Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'content-type'),
+	);
+
 	return await fetch(options.webhookUrl, {
 		method: 'POST',
-		headers: {
-			Accept: 'text/plain',
-			...options.webhookConfig?.headers,
-		},
+		headers: filteredHeaders,
 		body: formData,
 	});
 }
