@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/base';
-import type { TestRequirements } from '../../Types';
+import { test, expect } from '../../../fixtures/base';
+import type { TestRequirements } from '../../../Types';
 
 const NOW = Date.now();
 const ONE_DAY = 24 * 60 * 60 * 1000;
