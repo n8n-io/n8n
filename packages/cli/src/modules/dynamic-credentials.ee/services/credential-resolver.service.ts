@@ -58,7 +58,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(resolver);
 		this.logger.debug(`Created credential resolver "${saved.name}" (${saved.id})`);
 
-		return saved;
+		return this.withDecryptedConfig(saved);
 	}
 
 	/**

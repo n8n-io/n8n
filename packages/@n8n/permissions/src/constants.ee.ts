@@ -38,6 +38,7 @@ export const RESOURCES = {
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list'] as const,
 	apiKey: ['manage'] as const,
+	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

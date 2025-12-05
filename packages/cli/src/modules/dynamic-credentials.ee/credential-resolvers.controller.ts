@@ -1,0 +1,123 @@
+import { CreateCredentialResolverDto, UpdateCredentialResolverDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	RestController,
+	CredentialResolverValidationError,
+} from '@n8n/decorators';
+import { Response } from 'express';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
+import { DynamicCredentialResolverService } from './services/credential-resolver.service';
+
+@RestController('/resolvers')
+export class CredentialResolversController {
+	constructor(private readonly service: DynamicCredentialResolverService) {}
+
+	@Get('/')
+	@GlobalScope('credentialResolver:list')
+	async listResolvers(_req: AuthenticatedRequest, _res: Response) {
+		try {
+			return await this.service.findAll();
+		} catch (e: unknown) {
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Post('/')
+	@GlobalScope('credentialResolver:create')
+	async createResolver(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: CreateCredentialResolverDto,
+	) {
+		try {
+			return await this.service.create({
+				name: dto.name,
+				type: dto.type,
+				config: dto.config,
+			});
+		} catch (e: unknown) {
+			if (e instanceof CredentialResolverValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Get('/:id')
+	@GlobalScope('credentialResolver:read')
+	async getResolver(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
+		try {
+			return await this.service.findById(id);
+		} catch (e: unknown) {
+			if (e instanceof DynamicCredentialResolverNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Patch('/:id')
+	@GlobalScope('credentialResolver:update')
+	async updateResolver(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+		@Body dto: UpdateCredentialResolverDto,
+	) {
+		try {
+			return await this.service.update(id, {
+				name: dto.name,
+				config: dto.config,
+			});
+		} catch (e: unknown) {
+			if (e instanceof DynamicCredentialResolverNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			if (e instanceof CredentialResolverValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Delete('/:id')
+	@GlobalScope('credentialResolver:delete')
+	async deleteResolver(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
+		try {
+			await this.service.delete(id);
+			return { success: true };
+		} catch (e: unknown) {
+			if (e instanceof DynamicCredentialResolverNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+}
