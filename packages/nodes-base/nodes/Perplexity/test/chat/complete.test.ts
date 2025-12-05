@@ -14,7 +14,7 @@ describe('Perplexity Node - Chat Completions', () => {
 		nock('https://api.perplexity.ai')
 			.post('/chat/completions', (body) => {
 				return (
-					body?.model?.value === 'r1-1776' &&
+					body?.model?.value === 'sonar' &&
 					body?.model?.mode === 'id' &&
 					Array.isArray(body?.messages) &&
 					body.messages.length === 3 &&
@@ -25,7 +25,7 @@ describe('Perplexity Node - Chat Completions', () => {
 			})
 			.reply(200, {
 				id: '6bb24c98-3071-4691-9a7b-dc4bc18c3c2c',
-				model: 'r1-1776',
+				model: 'sonar',
 				created: 1743161086,
 				object: 'chat.completion',
 				usage: {

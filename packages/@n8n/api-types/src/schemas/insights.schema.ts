@@ -48,9 +48,11 @@ export const insightsByWorkflowDataSchemas = {
 	data: z.array(
 		z
 			.object({
-				workflowId: z.string(),
+				// Workflow id will be null if the workflow has been deleted
+				workflowId: z.string().nullable(),
 				workflowName: z.string(),
-				projectId: z.string(),
+				// Project id will be null if the project has been deleted
+				projectId: z.string().nullable(),
 				projectName: z.string(),
 				total: z.number(),
 				succeeded: z.number(),

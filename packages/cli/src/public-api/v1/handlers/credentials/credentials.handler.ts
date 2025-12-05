@@ -72,7 +72,7 @@ export = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (!['global:owner', 'global:admin'].includes(req.user.role)) {
+			if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
 				const shared = await getSharedCredentials(req.user.id, credentialId);
 
 				if (shared?.role === 'credential:owner') {

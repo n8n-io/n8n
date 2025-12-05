@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "activeRegionNum": {
-            "type": "integer"
-        },
         "beginTime": {
             "type": "string"
         },
@@ -39,6 +36,9 @@
         "peakTime": {
             "type": "string"
         },
+        "sentNotifications": {
+            "type": "null"
+        },
         "sourceLocation": {
             "type": "string"
         },
@@ -49,5 +49,5 @@
             "type": "integer"
         }
     },
-    "version": 4
+    "version": 6
 }

@@ -26,16 +26,16 @@ runs:
         node-version: ${{ inputs.node-version }}
 
     - name: Setup pnpm and Install Dependencies
-      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.0.0
+      uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
       with:
         run_install: true
 
     - name: Configure Turborepo Cache
       uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
-    - name: Setup Blacksmith Buildx for Docker Cache
+    - name: Setup Docker Builder for Docker Cache
       if: ${{ inputs.enable-docker-cache == 'true' }}
-      uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2.0
+      uses: useblacksmith/setup-docker-builder@0b434dfbb431f4e3a2bcee7a773a56bd363184c5 # v1
 
     - name: Build Project
       run: ${{ inputs.build-command }}

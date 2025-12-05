@@ -1,5 +1,10 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import type { WebhookEntity } from '@n8n/db';
+import {
+	createWorkflowWithHistory,
+	setActiveVersion,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { IWorkflowDb, Project, User, WebhookEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -14,33 +19,40 @@ import type {
 	INodeTypeData,
 } from 'n8n-workflow';
 
+import { createOwner } from './shared/db/users';
+import * as utils from './shared/utils/';
+
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
-
-import { createOwner } from './shared/db/users';
-import * as utils from './shared/utils/';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
 mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
 mockInstance(WorkflowService);
+mockInstance(OwnershipService, {
+	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+});
 
 const webhookService = mockInstance(WebhookService);
 const externalHooks = mockInstance(ExternalHooks);
 
 let activeWorkflowManager: ActiveWorkflowManager;
 
-let createActiveWorkflow: () => Promise<IWorkflowBase>;
+let createActiveWorkflow: (
+	workflowOptions?: Parameters<typeof createWorkflowWithHistory>[0],
+) => Promise<IWorkflowBase>;
 let createInactiveWorkflow: () => Promise<IWorkflowBase>;
+let owner: User;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -60,15 +72,19 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes(nodes);
 
-	const owner = await createOwner();
-	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
-	createInactiveWorkflow = async () => await createWorkflow({ active: false }, owner);
+	owner = await createOwner();
+	createActiveWorkflow = async (workflowOptions: Partial<IWorkflowDb> = {}) => {
+		const workflow = await createWorkflowWithHistory({ active: true, ...workflowOptions }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		return workflow;
+	};
+	createInactiveWorkflow = async () => await createWorkflowWithHistory({ active: false }, owner);
 	Container.get(InstanceSettings).markAsLeader();
 });
 
 afterEach(async () => {
 	await activeWorkflowManager.removeAll();
-	await testDb.truncate(['WorkflowEntity', 'WebhookEntity']);
+	await testDb.truncate(['WorkflowEntity', 'WebhookEntity', 'WorkflowHistory']);
 	jest.clearAllMocks();
 });
 
@@ -104,24 +120,6 @@ describe('init()', () => {
 		await activeWorkflowManager.init();
 
 		expect(checkSpy).toHaveBeenCalledTimes(2);
-	});
-});
-
-describe('isActive()', () => {
-	it('should return `true` for active workflow in storage', async () => {
-		const dbWorkflow = await createActiveWorkflow();
-
-		await activeWorkflowManager.init();
-
-		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(true);
-	});
-
-	it('should return `false` for inactive workflow in storage', async () => {
-		const dbWorkflow = await createInactiveWorkflow();
-
-		await activeWorkflowManager.init();
-
-		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(false);
 	});
 });
 
@@ -172,7 +170,7 @@ describe('add()', () => {
 		);
 
 		// Create a workflow which has a form trigger
-		const dbWorkflow = await createWorkflow({
+		const dbWorkflow = await createActiveWorkflow({
 			nodes: [
 				{
 					id: 'uuid-1',
@@ -188,6 +186,25 @@ describe('add()', () => {
 		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
 
 		expect(updateWorkflowTriggerCountSpy).toHaveBeenCalledWith(dbWorkflow.id, 1);
+	});
+
+	test('should activate a workflow after its active status changes from false to true', async () => {
+		await activeWorkflowManager.init();
+
+		const dbWorkflow = await createInactiveWorkflow();
+		webhookService.getNodeWebhooks.mockReturnValue([]);
+
+		// Verify it's not active in memory yet
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
+
+		// Simulate the workflow being activated
+		await setActiveVersion(dbWorkflow.id, dbWorkflow.versionId!);
+		await Container.get(WorkflowRepository).update(dbWorkflow.id, { active: true });
+
+		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
+
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
 });
 
@@ -289,7 +306,7 @@ describe('addWebhooks()', () => {
 
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
 
-		const additionalData = await AdditionalData.getBase('some-user-id');
+		const additionalData = await AdditionalData.getBase({ userId: 'some-user-id' });
 
 		const dbWorkflow = await createActiveWorkflow();
 

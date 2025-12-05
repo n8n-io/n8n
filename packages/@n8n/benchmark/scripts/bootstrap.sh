@@ -52,7 +52,7 @@ sudo systemctl disable cron.service
 curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
 sudo -E bash nodesource_setup.sh
 
-# Install docker, docker compose and nodejs
+# Install docker, docker compose, nodejs
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -yq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq docker.io docker-compose nodejs
 

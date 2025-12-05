@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.41.0",
+  "version": "1.59.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -10,6 +10,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
@@ -36,7 +37,7 @@
   "dependencies": {
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "@n8n/errors": "workspace:^",
+    "@n8n/errors": "workspace:*",
     "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",

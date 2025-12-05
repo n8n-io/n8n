@@ -34,7 +34,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
 
 	let bodyContent: string;

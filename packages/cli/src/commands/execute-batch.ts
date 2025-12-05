@@ -17,7 +17,6 @@ import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
-import config from '../config';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
@@ -638,9 +637,9 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		const workflowRunner = Container.get(WorkflowRunner);
 
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			this.logger.warn('`executeBatch` does not support queue mode. Falling back to regular mode.');
-			workflowRunner.setExecutionMode('regular');
+			this.globalConfig.executions.mode = 'regular';
 		}
 
 		return await new Promise(async (resolve) => {

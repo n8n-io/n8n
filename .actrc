@@ -1,0 +1,5 @@
+-P blacksmith-2vcpu-ubuntu-2204=ubuntu-latest
+-P blacksmith-4vcpu-ubuntu-2204=ubuntu-latest
+-P ubuntu-22.04=ubuntu-latest
+-P ubuntu-20.04=ubuntu-latest
+--container-architecture linux/amd64

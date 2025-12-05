@@ -16,11 +16,19 @@ export const LOG_SCOPES = [
 	'scaling',
 	'waiting-executions',
 	'task-runner',
+	'task-runner-js',
+	'task-runner-py',
 	'insights',
 	'workflow-activation',
 	'ssh-client',
+	'data-table',
 	'cron',
 	'community-nodes',
+	'legacy-sqlite-execution-recovery',
+	'chat-hub',
+	'breaking-changes',
+	'circuit-breaker',
+	'dynamic-credentials',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -110,9 +118,11 @@ export class LoggingConfig {
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
-	 * - `task-runner`
+	 * - `task-runner-js`
+	 * - `task-runner-py`
 	 * - `workflow-activation`
 	 * - `insights`
+	 * - `chat-hub`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

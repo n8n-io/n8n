@@ -25,11 +25,16 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { CredentialsFinderService } from './credentials-finder.service';
+import { CredentialsService } from './credentials.service';
+import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -41,10 +46,6 @@ import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-
-import { CredentialsFinderService } from './credentials-finder.service';
-import { CredentialsService } from './credentials.service';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -73,6 +74,7 @@ export class CredentialsController {
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
+			includeGlobal: query.includeGlobal,
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -192,6 +194,7 @@ export class CredentialsController {
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
+			uiContext: payload.uiContext,
 		});
 
 		return newCredential;
@@ -239,6 +242,18 @@ export class CredentialsController {
 			type: preparedCredentialData.type,
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
+
+		// Update isGlobal if provided in the payload and user has permission
+		const isGlobal = body.isGlobal;
+		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
+			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+			if (!canShareGlobally) {
+				throw new ForbiddenError(
+					'You do not have permission to change global sharing for credentials',
+				);
+			}
+			newCredentialData.isGlobal = isGlobal;
+		}
 
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
@@ -363,7 +378,7 @@ export class CredentialsController {
 
 		const projectsRelations = await this.projectRelationRepository.findBy({
 			projectId: In(newShareeIds),
-			role: 'project:personalOwner',
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
 		});
 
 		await this.userManagementMailer.notifyCredentialsShared({

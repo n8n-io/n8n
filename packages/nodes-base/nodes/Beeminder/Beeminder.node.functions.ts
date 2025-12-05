@@ -27,7 +27,7 @@ export async function createDatapoint(
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints.json`;
 
-	return await beeminderApiRequest.call(this, 'POST', endpoint, data, {}, true);
+	return await beeminderApiRequest.call(this, 'POST', endpoint, data, {});
 }
 
 export async function getAllDatapoints(
@@ -55,7 +55,7 @@ export async function updateDatapoint(
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
-	return await beeminderApiRequest.call(this, 'PUT', endpoint, data, {}, true);
+	return await beeminderApiRequest.call(this, 'PUT', endpoint, data, {});
 }
 
 export async function deleteDatapoint(
@@ -80,7 +80,7 @@ export async function createCharge(
 		...(data.dryrun && { dryrun: data.dryrun }),
 	};
 
-	return await beeminderApiRequest.call(this, 'POST', endpoint, body, {}, true);
+	return await beeminderApiRequest.call(this, 'POST', endpoint, body, {});
 }
 
 export async function uncleGoal(
@@ -102,7 +102,7 @@ export async function createAllDatapoints(
 		datapoints: data.datapoints,
 	};
 
-	return await beeminderApiRequest.call(this, 'POST', endpoint, body, {}, true);
+	return await beeminderApiRequest.call(this, 'POST', endpoint, body, {});
 }
 
 export async function getSingleDatapoint(
@@ -162,7 +162,7 @@ export async function createGoal(
 ) {
 	const endpoint = '/users/me/goals.json';
 
-	return await beeminderApiRequest.call(this, 'POST', endpoint, data, {}, true);
+	return await beeminderApiRequest.call(this, 'POST', endpoint, data, {});
 }
 
 export async function updateGoal(
@@ -182,7 +182,7 @@ export async function updateGoal(
 ) {
 	const endpoint = `/users/me/goals/${data.goalName}.json`;
 
-	return await beeminderApiRequest.call(this, 'PUT', endpoint, data, {}, true);
+	return await beeminderApiRequest.call(this, 'PUT', endpoint, data, {});
 }
 
 export async function refreshGoal(

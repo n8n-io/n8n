@@ -2,12 +2,11 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable prefer-spread */
+import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -26,7 +25,6 @@ import type {
 	INodePropertyRegexValidation,
 	INodeType,
 	IParameterDependencies,
-	IRunExecutionData,
 	IVersionedNodeType,
 	NodeParameterValue,
 	ResourceMapperValue,
@@ -36,8 +34,10 @@ import type {
 	GenericValue,
 	DisplayCondition,
 	NodeConnectionType,
+	ICredentialDataDecryptedObject,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import {
 	isFilterValue,
 	isINodePropertyOptionsList,
@@ -253,11 +253,11 @@ export function isSubNodeType(
 }
 
 const getPropertyValues = (
-	nodeValues: INodeParameters,
+	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
-	nodeValuesRoot: INodeParameters,
+	nodeValuesRoot: INodeParameters | ICredentialDataDecryptedObject,
 ) => {
 	let value;
 	if (propertyName.charAt(0) === '/') {
@@ -351,11 +351,11 @@ const checkConditions = (
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  */
 export function displayParameter(
-	nodeValues: INodeParameters,
-	parameter: INodeProperties | INodeCredentialDescription,
+	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
+	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeTypeDescription: INodeTypeDescription | null,
-	nodeValuesRoot?: INodeParameters,
+	nodeValuesRoot?: INodeParameters | ICredentialDataDecryptedObject,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
 	if (!parameter[displayKey]) {
@@ -418,7 +418,7 @@ export function displayParameter(
  */
 export function displayParameterPath(
 	nodeValues: INodeParameters,
-	parameter: INodeProperties | INodeCredentialDescription,
+	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
@@ -1048,12 +1048,15 @@ export function getNodeOutputs(
 	} else {
 		// Calculate the outputs dynamically
 		try {
-			outputs = (workflow.expression.getSimpleParameterValue(
+			const result = workflow.expression.getSimpleParameterValue(
 				node,
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as NodeConnectionType[];
+			);
+			outputs = Array.isArray(result)
+				? (result as Array<NodeConnectionType | INodeOutputConfiguration>)
+				: [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
@@ -1587,6 +1590,15 @@ function resolveResourceAndOperation(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ) {
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const language = nodeParameters.language as string;
+		const langProp = nodeTypeDescription.properties.find((p) => p.name === 'language');
+		if (langProp?.options && isINodePropertyOptionsList(langProp.options)) {
+			const found = langProp.options.find((o) => o.value === language);
+			if (found?.action) return { action: found.action };
+		}
+	}
+
 	const resource = nodeParameters.resource as string;
 	const operation = nodeParameters.operation as string;
 	const nodeTypeOperation = nodeTypeDescription.properties.find(
@@ -1649,11 +1661,14 @@ export function isTool(
 	}
 
 	// Check for other tool nodes
-	for (const output of nodeTypeDescription.outputs) {
-		if (typeof output === 'string') {
-			return output === NodeConnectionTypes.AiTool;
-		} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
-			return true;
+	if (Array.isArray(nodeTypeDescription.outputs)) {
+		// Handle static outputs (array case)
+		for (const output of nodeTypeDescription.outputs) {
+			if (typeof output === 'string') {
+				return output === NodeConnectionTypes.AiTool;
+			} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
+				return true;
+			}
 		}
 	}
 
@@ -1702,13 +1717,9 @@ export function isDefaultNodeName(
 	nodeType: INodeTypeDescription,
 	parameters: INodeParameters,
 ): boolean {
-	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
 	const currentDefaultName = makeNodeName(parameters, nodeType);
-	for (const defaultName of [legacyDefaultName, currentDefaultName]) {
-		if (name.startsWith(defaultName) && /^\d*$/.test(name.slice(defaultName.length))) return true;
-	}
 
-	return false;
+	return name.startsWith(currentDefaultName) && /^\d*$/.test(name.slice(currentDefaultName.length));
 }
 
 /**

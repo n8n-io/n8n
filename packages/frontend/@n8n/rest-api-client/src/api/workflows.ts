@@ -20,12 +20,14 @@ export interface WorkflowData {
 	tags?: string[];
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId?: string | null;
 	meta?: WorkflowMetadata;
 }
 
 export interface WorkflowDataUpdate {
 	id?: string;
 	name?: string;
+	description?: string | null;
 	nodes?: INode[];
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
@@ -35,6 +37,7 @@ export interface WorkflowDataUpdate {
 	versionId?: string;
 	meta?: WorkflowMetadata;
 	parentFolderId?: string;
+	uiContext?: string;
 }
 
 export interface WorkflowDataCreate extends WorkflowDataUpdate {

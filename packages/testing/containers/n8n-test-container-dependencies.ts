@@ -5,6 +5,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 export async function setupRedis({
 	redisImage,
@@ -53,6 +54,7 @@ export async function setupPostgres({
 			'com.docker.compose.service': 'postgres',
 		})
 		.withName(`${projectName}-postgres`)
+		.withAddedCapabilities('NET_ADMIN') // Allows us to drop IP tables and block traffic
 		.withReuse()
 		.start();
 
@@ -208,8 +210,9 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 :80 {
   # Reverse proxy with load balancing
   reverse_proxy ${backends} {
-    # Enable sticky sessions using cookie
-    lb_policy cookie
+    # Use first available backend for simpler debugging
+    # (cookie-based sticky sessions can cause issues with separate API/browser contexts)
+    lb_policy first
 
     # Health check (optional)
     health_uri /healthz
@@ -316,6 +319,76 @@ export async function pollContainerHttpEndpoint(
 	);
 }
 
-// TODO: Look at Ollama container?
-// TODO: Look at MariaDB container?
-// TODO: Look at MockServer container, could we use this for mocking out external services?
+export async function setupProxyServer({
+	proxyServerImage,
+	projectName,
+	network,
+	hostname,
+	port,
+}: {
+	proxyServerImage: string;
+	projectName: string;
+	network: StartedNetwork;
+	hostname: string;
+	port: number;
+}): Promise<StartedTestContainer> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(proxyServerImage)
+			.withNetwork(network)
+			.withNetworkAliases(hostname)
+			.withExposedPorts(port)
+			// Wait.forListeningPorts strategy did not work here for some reason
+			.withWaitStrategy(Wait.forLogMessage(`INFO ${port} started on port: ${port}`))
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'proxyserver',
+			})
+			.withName(`${projectName}-proxyserver`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}
+
+const TASK_RUNNER_IMAGE = TEST_CONTAINER_IMAGES.taskRunner;
+
+export async function setupTaskRunner({
+	projectName,
+	network,
+	taskBrokerUri,
+}: {
+	projectName: string;
+	network: StartedNetwork;
+	taskBrokerUri: string;
+}): Promise<StartedTestContainer> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(TASK_RUNNER_IMAGE)
+			.withNetwork(network)
+			.withNetworkAliases(`${projectName}-task-runner`)
+			.withExposedPorts(5680)
+			.withEnvironment({
+				N8N_RUNNERS_AUTH_TOKEN: 'test',
+				N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
+				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
+				N8N_RUNNERS_MAX_CONCURRENCY: '5',
+				N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15',
+			})
+			.withWaitStrategy(Wait.forListeningPorts())
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'task-runner',
+			})
+			.withName(`${projectName}-task-runner`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}

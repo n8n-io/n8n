@@ -4,11 +4,16 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
+import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -19,10 +24,14 @@ export class WorkflowBuilderService {
 	private service: AiWorkflowBuilderService | undefined;
 
 	constructor(
-		private readonly nodeTypes: NodeTypes,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly urlService: UrlService,
+		private readonly push: Push,
+		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -43,19 +52,62 @@ export class WorkflowBuilderService {
 				});
 			}
 
-			this.service = new AiWorkflowBuilderService(this.nodeTypes, client, this.logger);
+			// Create callback that uses the push service
+			const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
+				this.push.sendToUsers(
+					{
+						type: 'updateBuilderCredits',
+						data: {
+							creditsQuota,
+							creditsClaimed,
+						},
+					},
+					[userId],
+				);
+			};
+
+			// Callback for AI Builder to send telemetry events
+			const onTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => {
+				this.telemetry.track(event, properties);
+			};
+
+			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+
+			this.service = new AiWorkflowBuilderService(
+				nodeTypeDescriptions,
+				client,
+				this.logger,
+				this.instanceSettings.instanceId,
+				this.urlService.getInstanceBaseUrl(),
+				N8N_VERSION,
+				onCreditsUpdated,
+				onTelemetryEvent,
+			);
 		}
+
 		return this.service;
 	}
 
-	async *chat(payload: ChatPayload, user: IUser) {
+	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
 		const service = await this.getService();
-		yield* service.chat(payload, user);
+		yield* service.chat(payload, user, abortSignal);
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser) {
 		const service = await this.getService();
 		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
+	}
+
+	async getSessionsMetadata(workflowId: string | undefined, user: IUser) {
+		const service = await this.getService();
+		const sessions = await service.getSessions(workflowId, user);
+		const hasMessages = sessions.sessions.length > 0 && sessions.sessions[0].messages.length > 0;
+		return { hasMessages };
+	}
+
+	async getBuilderInstanceCredits(user: IUser) {
+		const service = await this.getService();
+		return await service.getBuilderInstanceCredits(user);
 	}
 }

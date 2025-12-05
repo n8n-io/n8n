@@ -17,6 +17,8 @@ import type {
 	INode,
 	INodeInputConfiguration,
 	NodeConnectionType,
+	NodeOutput,
+	GenericValue,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -31,9 +33,64 @@ import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+import { isEngineRequest } from '../../requests-response';
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
+}
+
+function containsBinaryData(nodeExecutionResult?: NodeOutput): boolean {
+	if (isEngineRequest(nodeExecutionResult)) {
+		return false;
+	}
+
+	if (nodeExecutionResult === undefined || nodeExecutionResult === null) {
+		return false;
+	}
+
+	return nodeExecutionResult.some((outputBranch) => outputBranch.some((item) => item.binary));
+}
+
+function containsDataThatIsUsefulToTheAgent(nodeExecutionResult?: NodeOutput): boolean {
+	if (isEngineRequest(nodeExecutionResult)) {
+		return false;
+	}
+
+	if (nodeExecutionResult === undefined || nodeExecutionResult === null) {
+		return false;
+	}
+
+	return nodeExecutionResult.some((outputBranch) =>
+		outputBranch.some((item) => Object.keys(item.json).length > 0),
+	);
+}
+
+/**
+ * Filters out non-json items and reports if the result contained mixed
+ * responses (e.g. json and binary).
+ */
+function mapResult(result?: NodeOutput) {
+	let response:
+		| string
+		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
+		| undefined;
+	let nodeHasMixedJsonAndBinaryData = false;
+
+	if (result === undefined) {
+		response = undefined;
+	} else if (isEngineRequest(result)) {
+		response =
+			'Error: The Tool attempted to return an engine request, which is not supported in Agents';
+	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {
+		response = 'Error: The Tool attempted to return binary data, which is not supported in Agents';
+	} else {
+		if (containsBinaryData(result)) {
+			nodeHasMixedJsonAndBinaryData = true;
+		}
+		response = result?.[0]?.flatMap((item) => item.json);
+	}
+
+	return { response, nodeHasMixedJsonAndBinaryData };
 }
 
 export function makeHandleToolInvocation(
@@ -94,20 +151,13 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				// Process and map the results
-				const mappedResults = result?.[0]?.flatMap((item) => item.json);
-				let response: string | typeof mappedResults = mappedResults;
+				const { response, nodeHasMixedJsonAndBinaryData } = mapResult(result);
 
-				// Warn if any (unusable) binary data was returned
-				if (result?.some((x) => x.some((y) => y.binary))) {
-					if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
-						response =
-							'Error: The Tool attempted to return binary data, which is not supported in Agents';
-					} else {
-						context.logger.warn(
-							`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
-						);
-					}
+				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
+				if (nodeHasMixedJsonAndBinaryData) {
+					context.logger.warn(
+						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
+					);
 				}
 
 				// Add output data to the context
@@ -120,7 +170,7 @@ export function makeHandleToolInvocation(
 			} catch (error) {
 				// Check if error is due to cancellation
 				if (abortSignal?.aborted) {
-					return 'Error during node execution: Execution was cancelled';
+					throw new NodeOperationError(node, 'Execution was cancelled');
 				}
 
 				const nodeError = new NodeOperationError(node, error as Error);
@@ -128,14 +178,26 @@ export function makeHandleToolInvocation(
 
 				lastError = nodeError;
 
-				// If this is the last attempt, throw the error
+				// If this is the last attempt, throw the error to properly terminate execution
 				if (tryIndex === maxTries - 1) {
-					return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
+					// Enhance the error with detailed information
+					if (nodeError.description && !nodeError.message.includes(nodeError.description)) {
+						nodeError.message = `${nodeError.message}\n\nDetails: ${nodeError.description}`;
+					}
+					throw nodeError;
 				}
 			}
 		}
 
-		return 'Error during node execution : ' + (lastError?.description ?? lastError?.message);
+		// This should never be reached, but if it is, throw the error
+		if (lastError) {
+			if (lastError.description && !lastError.message.includes(lastError.description)) {
+				lastError.message = `${lastError.message}\n\nDetails: ${lastError.description}`;
+			}
+			throw lastError;
+		}
+
+		throw new NodeOperationError(node, 'Unknown error during node execution');
 	};
 }
 
@@ -273,6 +335,10 @@ export async function getInputConnectionData(
 				if (supplyData.closeFunction) {
 					closeFunctions.push(supplyData.closeFunction);
 				}
+				// Add hints from context to supply data
+				if (context.hints.length > 0) {
+					supplyData.hints = context.hints;
+				}
 				nodes.push(supplyData);
 			} catch (error) {
 				// Propagate errors from sub-nodes
@@ -292,6 +358,14 @@ export async function getInputConnectionData(
 				// Display the error on the node which is causing it
 				await context.addExecutionDataFunctions(
 					'input',
+					error,
+					connectionType,
+					parentNode.name,
+					currentNodeRunIndex,
+				);
+
+				await context.addExecutionDataFunctions(
+					'output',
 					error,
 					connectionType,
 					parentNode.name,

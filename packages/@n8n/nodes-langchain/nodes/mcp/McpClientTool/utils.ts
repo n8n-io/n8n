@@ -1,35 +1,14 @@
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
-import { Toolkit } from 'langchain/agents';
-import {
-	createResultError,
-	createResultOk,
-	type IDataObject,
-	type IExecuteFunctions,
-	type Result,
-} from 'n8n-workflow';
+import { Toolkit } from '@langchain/classic/agents';
+import { type IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type {
-	McpAuthenticationOption,
-	McpServerTransport,
-	McpTool,
-	McpToolIncludeMode,
-} from './types';
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
-export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
-	const { tools, nextCursor } = await client.listTools({ cursor });
-
-	if (nextCursor) {
-		return (tools as McpTool[]).concat(await getAllTools(client, nextCursor));
-	}
-
-	return tools as McpTool[];
-}
+import type { McpToolIncludeMode } from './types';
+import type { McpTool } from '../shared/types';
 
 export function getSelectedTools({
 	mode,
@@ -77,7 +56,8 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, onError: (error: string) => void) => async (args: IDataObject) => {
+	(name: string, client: Client, timeout: number, onError: (error: string) => void) =>
+	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
 
 		function handleError(error: unknown) {
@@ -88,7 +68,9 @@ export const createCallTool =
 		}
 
 		try {
-			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
+			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema, {
+				timeout,
+			});
 		} catch (error) {
 			return handleError(error);
 		}
@@ -130,111 +112,5 @@ export function mcpToolToDynamicTool(
 export class McpToolkit extends Toolkit {
 	constructor(public tools: DynamicStructuredTool[]) {
 		super();
-	}
-}
-
-function safeCreateUrl(url: string, baseUrl?: string | URL): Result<URL, Error> {
-	try {
-		return createResultOk(new URL(url, baseUrl));
-	} catch (error) {
-		return createResultError(error);
-	}
-}
-
-function normalizeAndValidateUrl(input: string): Result<URL, Error> {
-	const withProtocol = !/^https?:\/\//i.test(input) ? `https://${input}` : input;
-	const parsedUrl = safeCreateUrl(withProtocol);
-
-	if (!parsedUrl.ok) {
-		return createResultError(parsedUrl.error);
-	}
-
-	return parsedUrl;
-}
-
-type ConnectMcpClientError =
-	| { type: 'invalid_url'; error: Error }
-	| { type: 'connection'; error: Error };
-export async function connectMcpClient({
-	headers,
-	serverTransport,
-	endpointUrl,
-	name,
-	version,
-}: {
-	serverTransport: McpServerTransport;
-	endpointUrl: string;
-	headers?: Record<string, string>;
-	name: string;
-	version: number;
-}): Promise<Result<Client, ConnectMcpClientError>> {
-	const endpoint = normalizeAndValidateUrl(endpointUrl);
-
-	if (!endpoint.ok) {
-		return createResultError({ type: 'invalid_url', error: endpoint.error });
-	}
-
-	const client = new Client({ name, version: version.toString() }, { capabilities: { tools: {} } });
-
-	if (serverTransport === 'httpStreamable') {
-		try {
-			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				requestInit: { headers },
-			});
-			await client.connect(transport);
-			return createResultOk(client);
-		} catch (error) {
-			return createResultError({ type: 'connection', error });
-		}
-	}
-
-	try {
-		const sseTransport = new SSEClientTransport(endpoint.result, {
-			eventSourceInit: {
-				fetch: async (url, init) =>
-					await fetch(url, {
-						...init,
-						headers: {
-							...headers,
-							Accept: 'text/event-stream',
-						},
-					}),
-			},
-			requestInit: { headers },
-		});
-		await client.connect(sseTransport);
-		return createResultOk(client);
-	} catch (error) {
-		return createResultError({ type: 'connection', error });
-	}
-}
-
-export async function getAuthHeaders(
-	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
-	authentication: McpAuthenticationOption,
-): Promise<{ headers?: Record<string, string> }> {
-	switch (authentication) {
-		case 'headerAuth': {
-			const header = await ctx
-				.getCredentials<{ name: string; value: string }>('httpHeaderAuth')
-				.catch(() => null);
-
-			if (!header) return {};
-
-			return { headers: { [header.name]: header.value } };
-		}
-		case 'bearerAuth': {
-			const result = await ctx
-				.getCredentials<{ token: string }>('httpBearerAuth')
-				.catch(() => null);
-
-			if (!result) return {};
-
-			return { headers: { Authorization: `Bearer ${result.token}` } };
-		}
-		case 'none':
-		default: {
-			return {};
-		}
 	}
 }

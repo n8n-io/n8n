@@ -1,13 +1,16 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.15.0",
+  "version": "0.33.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:with-cli": "pnpm build && pnpm --filter=n8n build",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest --config=jest.config.unit.js",
+    "test:integration": "jest --config=jest.config.integration.js",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
@@ -20,8 +23,16 @@
     "deps:report": "madge src/index.ts --json > deps-report.json && echo 'Dependency report saved to deps-report.json'",
     "deps:orphans": "madge src/index.ts --orphans",
     "deps:all": "pnpm run deps:graph && pnpm run deps:graph:service && pnpm run deps:graph:tools && pnpm run deps:circular && pnpm run deps:report",
-    "eval": "tsx evaluations/run-evaluation.ts",
-    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations/run-evaluation.ts"
+    "eval": "tsx evaluations",
+    "eval:csv": "tsx evaluations --prompts-csv",
+    "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
+    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
+    "eval:categorize": "tsx scripts/categorize-prompts.ts",
+    "eval:pairwise": "USE_PAIRWISE_EVAL=true tsx evaluations",
+    "python:check": "cd evaluations/programmatic/python && just check",
+    "python:test": "cd evaluations/programmatic/python && just test",
+    "python:lint": "cd evaluations/programmatic/python && just lint",
+    "python:format": "cd evaluations/programmatic/python && just format"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -39,13 +50,16 @@
   "dependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/langgraph": "0.2.74",
+    "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
-    "@n8n/backend-common": "workspace:^",
+    "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
+    "csv-parse": "5.5.0",
     "langsmith": "^0.3.45",
+    "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
     "zod": "catalog:"
@@ -53,10 +67,10 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/cli-progress": "^3.11.5",
-    "p-limit": "^3.1.0",
     "cli-progress": "^3.12.0",
     "cli-table3": "^0.6.3",
     "jest-mock-extended": "^3.0.4",
-    "madge": "^8.0.0"
+    "madge": "^8.0.0",
+    "p-limit": "^3.1.0"
   }
 }

@@ -1,0 +1,144 @@
+{
+	"name": "Github Organization getRepositories Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "organization",
+				"operation": "getRepositories",
+				"owner": {
+					"__rl": true,
+					"value": "testorg",
+					"mode": "name"
+				},
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "github-node-id",
+			"name": "Get Organization Repositories",
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Repositories Response"
+		}
+	],
+	"pinData": {
+		"Repositories Response": [
+			{
+				"json": {
+					"id": 1296269,
+					"name": "hello-world",
+					"full_name": "testorg/hello-world",
+					"owner": {
+						"login": "testorg",
+						"id": 1,
+						"type": "Organization"
+					},
+					"private": false,
+					"html_url": "https://github.com/testorg/hello-world",
+					"description": "My first repository on GitHub!",
+					"fork": false,
+					"created_at": "2011-01-26T19:01:12Z",
+					"updated_at": "2011-01-26T19:14:43Z",
+					"pushed_at": "2011-01-26T19:06:43Z",
+					"clone_url": "https://github.com/testorg/hello-world.git",
+					"size": 108,
+					"stargazers_count": 80,
+					"watchers_count": 9,
+					"language": "C",
+					"forks_count": 9,
+					"archived": false,
+					"disabled": false,
+					"open_issues_count": 0,
+					"license": {
+						"key": "mit",
+						"name": "MIT License"
+					},
+					"visibility": "public",
+					"default_branch": "master"
+				}
+			},
+			{
+				"json": {
+					"id": 1296270,
+					"name": "test-repo",
+					"full_name": "testorg/test-repo",
+					"owner": {
+						"login": "testorg",
+						"id": 1,
+						"type": "Organization"
+					},
+					"private": true,
+					"html_url": "https://github.com/testorg/test-repo",
+					"description": "Test repository",
+					"fork": false,
+					"created_at": "2011-01-27T19:01:12Z",
+					"updated_at": "2011-01-27T19:14:43Z",
+					"pushed_at": "2011-01-27T19:06:43Z",
+					"clone_url": "https://github.com/testorg/test-repo.git",
+					"size": 256,
+					"stargazers_count": 42,
+					"watchers_count": 15,
+					"language": "JavaScript",
+					"forks_count": 3,
+					"archived": false,
+					"disabled": false,
+					"open_issues_count": 2,
+					"license": {
+						"key": "apache-2.0",
+						"name": "Apache License 2.0"
+					},
+					"visibility": "private",
+					"default_branch": "main"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Organization Repositories",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Organization Repositories": {
+			"main": [
+				[
+					{
+						"node": "Repositories Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

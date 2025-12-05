@@ -141,8 +141,8 @@ onMounted(() => {
 <style lang="scss" module>
 .grid {
 	display: grid;
-	grid-row-gap: var(--spacing-s);
-	grid-column-gap: var(--spacing-2xs);
+	grid-row-gap: var(--spacing--sm);
+	grid-column-gap: var(--spacing--2xs);
 }
 
 .gridMulti {

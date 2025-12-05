@@ -1,0 +1,112 @@
+{
+	"name": "Used in 5-ndv and 14-mapping",
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"id": "0f7d87ee-19c6-4576-bdff-1f3c4739392c",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1,
+			"position": [720, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2b0f25a2-9483-4579-9f6d-91b7ac2fcb71",
+							"name": "other",
+							"value": "",
+							"type": "string"
+						}
+					]
+				}
+			},
+			"id": "2dfc690a-95cf-48c2-85a6-2b3bb8cd1d1d",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [920, 300]
+		},
+		{
+			"id": "9bee04af-1bfc-4be2-a704-e975cb887ced",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1120, 300],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2b0f25a2-9483-4579-9f6d-91b7ac2fcb71",
+							"name": "other",
+							"value": "",
+							"type": "string"
+						}
+					]
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Schedule Trigger": [
+			{
+				"json": {
+					"input": [
+						{
+							"count": 0,
+							"with space": "!!",
+							"with.dot": "!!",
+							"with\"quotes": "!!"
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"input": [
+						{
+							"count": 1
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c26af749-dacb-45ef-8071-98aba8688075",
+	"id": "1",
+	"meta": {
+		"instanceId": "fe45a93dd232270eb40d3ba1f7907ad3935bbd72ad5e4ee09ff61e96674f9aef"
+	},
+	"tags": []
+}

@@ -32,7 +32,12 @@ describe('ExecutionsController', () => {
 	});
 
 	describe('getMany', () => {
-		const NO_EXECUTIONS = { count: 0, estimated: false, results: [] };
+		const NO_EXECUTIONS = {
+			count: 0,
+			estimated: false,
+			results: [],
+			concurrentExecutionsCount: -1,
+		};
 
 		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
 			{
@@ -91,6 +96,7 @@ describe('ExecutionsController', () => {
 
 					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
 		});
@@ -108,6 +114,7 @@ describe('ExecutionsController', () => {
 
 					expect(executionService.findLatestCurrentAndCompleted).toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
+					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
 		});
@@ -130,6 +137,7 @@ describe('ExecutionsController', () => {
 
 				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+				expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 			});
 		});
 	});

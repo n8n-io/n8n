@@ -5,13 +5,11 @@ import { UserError } from '../src/errors';
 import { NodeConnectionTypes } from '../src/interfaces';
 import type {
 	IBinaryKeyData,
-	IConnection,
 	IConnections,
 	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	NodeParameterValueType,
 } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
@@ -20,6 +18,7 @@ process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
 // eslint-disable-next-line import/order
 import * as Helpers from './helpers';
+import { createRunExecutionData, type IRunExecutionData } from '../src';
 
 interface StubNode {
 	name: string;
@@ -1821,7 +1820,7 @@ describe('Workflow', () => {
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 				const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
 
-				const runExecutionData: IRunExecutionData = {
+				const runExecutionData = createRunExecutionData({
 					resultData: {
 						runData: {
 							Node1: [
@@ -1850,7 +1849,7 @@ describe('Workflow', () => {
 							'Node 4 with spaces': [],
 						},
 					},
-				};
+				});
 
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1905,7 +1904,7 @@ describe('Workflow', () => {
 			const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 			const activeNodeName = 'Node1';
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				resultData: {
 					runData: {
 						Node1: [
@@ -1927,7 +1926,7 @@ describe('Workflow', () => {
 						],
 					},
 				},
-			};
+			});
 
 			const itemIndex = 0;
 			const runIndex = 0;
@@ -2362,479 +2361,6 @@ describe('Workflow', () => {
 			const result = WORKFLOW_WITH_LOOPS.getParentMainInputNode(set1Node);
 			expect(result).toBe(set1Node);
 		});
-
-		describe('nodes with only main outputs', () => {
-			test('should return the same node when it only has main outputs', () => {
-				const nodes: INode[] = [
-					{
-						id: '1',
-						name: 'SimpleNode',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [100, 100],
-						parameters: {},
-					},
-					{
-						id: '2',
-						name: 'TargetNode',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [200, 100],
-						parameters: {},
-					},
-				];
-
-				const connections = {
-					SimpleNode: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }],
-						],
-					},
-				};
-
-				const workflow = new Workflow({
-					id: 'test',
-					nodes,
-					connections,
-					active: false,
-					nodeTypes,
-				});
-
-				const simpleNode = workflow.getNode('SimpleNode')!;
-				const result = workflow.getParentMainInputNode(simpleNode);
-
-				expect(result).toBe(simpleNode);
-				expect(result!.name).toBe('SimpleNode');
-			});
-
-			test('should return the same node when it has no connections', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'IsolatedNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-					],
-					connections: {},
-					active: false,
-					nodeTypes,
-				});
-
-				const isolatedNode = workflow.getNode('IsolatedNode')!;
-				const result = workflow.getParentMainInputNode(isolatedNode);
-
-				expect(result).toBe(isolatedNode);
-				expect(result!.name).toBe('IsolatedNode');
-			});
-		});
-
-		describe('nodes with non-main outputs (AI/Tool connections)', () => {
-			test('should follow AI tool connection to find main input node', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'ToolNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-						{
-							id: '2',
-							name: 'AgentNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						ToolNode: {
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: 'AgentNode', type: NodeConnectionTypes.AiTool, index: 0 }],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const toolNode = workflow.getNode('ToolNode')!;
-				const result = workflow.getParentMainInputNode(toolNode);
-
-				expect(result!.name).toBe('AgentNode');
-			});
-
-			test('should follow AI memory connection to find main input node', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'MemoryNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-						{
-							id: '2',
-							name: 'ChatNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						MemoryNode: {
-							[NodeConnectionTypes.AiMemory]: [
-								[{ node: 'ChatNode', type: NodeConnectionTypes.AiMemory, index: 0 }],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const memoryNode = workflow.getNode('MemoryNode')!;
-				const result = workflow.getParentMainInputNode(memoryNode);
-
-				expect(result!.name).toBe('ChatNode');
-			});
-
-			test('should handle mixed main and non-main outputs', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'MixedNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-						{
-							id: '2',
-							name: 'MainTarget',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 100],
-							parameters: {},
-						},
-						{
-							id: '3',
-							name: 'ToolTarget',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 200],
-							parameters: {},
-						},
-					],
-					connections: {
-						MixedNode: {
-							[NodeConnectionTypes.Main]: [
-								[{ node: 'MainTarget', type: NodeConnectionTypes.Main, index: 0 }],
-							],
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: 'ToolTarget', type: NodeConnectionTypes.AiTool, index: 0 }],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const mixedNode = workflow.getNode('MixedNode')!;
-				const result = workflow.getParentMainInputNode(mixedNode);
-
-				// Should follow the first non-main connection (AiTool)
-				expect(result!.name).toBe('ToolTarget');
-			});
-		});
-
-		describe('chain traversal scenarios', () => {
-			test('should follow a chain of AI connections until reaching main input node', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'StartTool',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-						{
-							id: '2',
-							name: 'MiddleTool',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 100],
-							parameters: {},
-						},
-						{
-							id: '3',
-							name: 'FinalAgent',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [300, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						StartTool: {
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: 'MiddleTool', type: NodeConnectionTypes.AiTool, index: 0 }],
-							],
-						},
-						MiddleTool: {
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: 'FinalAgent', type: NodeConnectionTypes.AiTool, index: 0 }],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const startTool = workflow.getNode('StartTool')!;
-				const result = workflow.getParentMainInputNode(startTool);
-
-				expect(result!.name).toBe('FinalAgent');
-			});
-
-			test('should handle chain that ends with a node having only main outputs', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'ToolNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-						{
-							id: '2',
-							name: 'IntermediateNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 100],
-							parameters: {},
-						},
-						{
-							id: '3',
-							name: 'EndNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [300, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						ToolNode: {
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: 'IntermediateNode', type: NodeConnectionTypes.AiTool, index: 0 }],
-							],
-						},
-						IntermediateNode: {
-							[NodeConnectionTypes.Main]: [
-								[{ node: 'EndNode', type: NodeConnectionTypes.Main, index: 0 }],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const toolNode = workflow.getNode('ToolNode')!;
-				const result = workflow.getParentMainInputNode(toolNode);
-
-				expect(result!.name).toBe('IntermediateNode');
-			});
-
-			test('should handle complex multi-branch AI connections', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'MultiTool',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-						{
-							id: '2',
-							name: 'Agent1',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 50],
-							parameters: {},
-						},
-						{
-							id: '3',
-							name: 'Agent2',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [200, 150],
-							parameters: {},
-						},
-					],
-					connections: {
-						MultiTool: {
-							[NodeConnectionTypes.AiTool]: [
-								[
-									{ node: 'Agent1', type: NodeConnectionTypes.AiTool, index: 0 },
-									{ node: 'Agent2', type: NodeConnectionTypes.AiTool, index: 0 },
-								],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const multiTool = workflow.getNode('MultiTool')!;
-				const result = workflow.getParentMainInputNode(multiTool);
-
-				// Should follow the first connection in the array
-				expect(result!.name).toBe('Agent1');
-			});
-		});
-
-		describe('edge cases', () => {
-			test('should handle null node input', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [],
-					connections: {},
-					active: false,
-					nodeTypes,
-				});
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				const result = workflow.getParentMainInputNode(null as any);
-				expect(result).toBeNull();
-			});
-
-			test('should handle undefined node input', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [],
-					connections: {},
-					active: false,
-					nodeTypes,
-				});
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				const result = workflow.getParentMainInputNode(undefined as any);
-				expect(result).toBeUndefined();
-			});
-
-			test('should throw error when connected node does not exist in workflow', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'ToolNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						ToolNode: {
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: 'NonExistentNode', type: NodeConnectionTypes.AiTool, index: 0 }],
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const toolNode = workflow.getNode('ToolNode')!;
-
-				expect(() => {
-					workflow.getParentMainInputNode(toolNode);
-				}).toThrow('Node "NonExistentNode" not found');
-			});
-
-			test('should handle empty connection arrays', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'EmptyConnectionNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						EmptyConnectionNode: {
-							[NodeConnectionTypes.AiTool]: [
-								[], // Empty connection array
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const emptyConnectionNode = workflow.getNode('EmptyConnectionNode')!;
-				const result = workflow.getParentMainInputNode(emptyConnectionNode);
-
-				expect(result).toBe(emptyConnectionNode);
-			});
-
-			test('should handle null connections in connection array', () => {
-				const workflow = new Workflow({
-					id: 'test',
-					nodes: [
-						{
-							id: '1',
-							name: 'NullConnectionNode',
-							type: 'test.set',
-							typeVersion: 1,
-							position: [100, 100],
-							parameters: {},
-						},
-					],
-					connections: {
-						NullConnectionNode: {
-							[NodeConnectionTypes.AiTool]: [
-								[{ node: '', type: NodeConnectionTypes.AiTool, index: 0 }], // Connection with empty node name
-							],
-						},
-					},
-					active: false,
-					nodeTypes,
-				});
-
-				const nullConnectionNode = workflow.getNode('NullConnectionNode')!;
-				const result = workflow.getParentMainInputNode(nullConnectionNode);
-
-				expect(result).toBe(nullConnectionNode);
-			});
-		});
 	});
 
 	describe('getNodeConnectionIndexes', () => {
@@ -2864,18 +2390,352 @@ describe('Workflow', () => {
 			});
 		});
 
-		test('should return undefined when depth is 0', () => {
+		test('should return undefined when no connection exists', () => {
 			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes(
-				'Set',
 				'Start',
+				'Set',
 				NodeConnectionTypes.Main,
-				0,
 			);
 			expect(result).toBeUndefined();
 		});
 
 		test('should handle workflows with multiple connection indexes', () => {
 			const result = WORKFLOW_WITH_SWITCH.getNodeConnectionIndexes('Set', 'Switch');
+			expect(result).toEqual({
+				sourceIndex: 1,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should find connection through multiple intermediate nodes', () => {
+			const result = WORKFLOW_WITH_SWITCH.getNodeConnectionIndexes('Set2', 'Switch');
+			expect(result).toEqual({
+				sourceIndex: 1,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should return first found connection when multiple paths exist', () => {
+			// Set2 can be reached from Switch via two paths: Switch->Set->Set2 and Switch->Set1->Set2
+			// Should return the first one found (via Set at index 1)
+			const result = WORKFLOW_WITH_SWITCH.getNodeConnectionIndexes('Set2', 'Switch');
+			expect(result).toEqual({
+				sourceIndex: 1,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should handle same source connecting to multiple outputs of destination', () => {
+			// Switch connects to Set via both output 1 and 2, should find first connection
+			const result = WORKFLOW_WITH_SWITCH.getNodeConnectionIndexes('Set', 'Switch');
+			expect(result).toEqual({
+				sourceIndex: 1,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should handle cyclic connections without infinite loops', () => {
+			// Test with WORKFLOW_WITH_LOOPS which has cycles
+			const result = WORKFLOW_WITH_LOOPS.getNodeConnectionIndexes('Set', 'Start');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should return undefined for reverse connection lookup', () => {
+			// Try to find Start from Set1 - should be undefined as Start doesn't connect to Set1
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set1', 'Start');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should handle disconnected subgraphs', () => {
+			// Create a workflow with disconnected nodes
+			const disconnectedWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						name: 'Node1',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-1',
+						position: [100, 100],
+						parameters: {},
+					},
+					{
+						name: 'Node2',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-2',
+						position: [200, 100],
+						parameters: {},
+					},
+				],
+				connections: {}, // No connections
+				active: false,
+			});
+
+			const result = disconnectedWorkflow.getNodeConnectionIndexes('Node2', 'Node1');
+			expect(result).toBeUndefined();
+		});
+
+		test('should handle empty workflow', () => {
+			const emptyWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			const result = emptyWorkflow.getNodeConnectionIndexes('NonExistent1', 'NonExistent2');
+			expect(result).toBeUndefined();
+		});
+
+		test('should handle single node workflow', () => {
+			const singleNodeWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						name: 'OnlyNode',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-1',
+						position: [100, 100],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+			});
+
+			const result = singleNodeWorkflow.getNodeConnectionIndexes('OnlyNode', 'OnlyNode');
+			expect(result).toBeUndefined();
+		});
+
+		test('should handle nodes with same names as method parameters', () => {
+			// Test edge case where node names might conflict with internal variables
+			const edgeCaseWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						name: 'queue',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-1',
+						position: [100, 100],
+						parameters: {},
+					},
+					{
+						name: 'visitedNodes',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-2',
+						position: [200, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					queue: {
+						main: [
+							[
+								{
+									node: 'visitedNodes',
+									type: NodeConnectionTypes.Main,
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+				active: false,
+			});
+
+			const result = edgeCaseWorkflow.getNodeConnectionIndexes('visitedNodes', 'queue');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should handle complex branching and merging patterns', () => {
+			// Create a diamond pattern: A -> B, A -> C, B -> D, C -> D
+			const diamondWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						name: 'A',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-1',
+						position: [100, 100],
+						parameters: {},
+					},
+					{
+						name: 'B',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-2',
+						position: [200, 50],
+						parameters: {},
+					},
+					{
+						name: 'C',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-3',
+						position: [200, 150],
+						parameters: {},
+					},
+					{
+						name: 'D',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-4',
+						position: [300, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					A: {
+						main: [
+							[
+								{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'C', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					B: {
+						main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+					C: {
+						main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 1 }]],
+					},
+				},
+				active: false,
+			});
+
+			// Should find connection A -> B -> D
+			const result = diamondWorkflow.getNodeConnectionIndexes('D', 'A');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should handle multiple input indexes correctly', () => {
+			// Test a node that receives inputs at different indexes
+			const multiInputWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						name: 'Source1',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-1',
+						position: [100, 100],
+						parameters: {},
+					},
+					{
+						name: 'Source2',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-2',
+						position: [100, 200],
+						parameters: {},
+					},
+					{
+						name: 'Target',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-3',
+						position: [300, 150],
+						parameters: {},
+					},
+				],
+				connections: {
+					Source1: {
+						main: [[{ node: 'Target', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+					Source2: {
+						main: [[{ node: 'Target', type: NodeConnectionTypes.Main, index: 1 }]],
+					},
+				},
+				active: false,
+			});
+
+			// Check connection from Source1 to Target (should be at input index 0)
+			const result1 = multiInputWorkflow.getNodeConnectionIndexes('Target', 'Source1');
+			expect(result1).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+
+			// Check connection from Source2 to Target (should be at input index 1)
+			const result2 = multiInputWorkflow.getNodeConnectionIndexes('Target', 'Source2');
+			expect(result2).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should respect connection type parameter', () => {
+			// Test with different connection types if available
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes(
+				'Set',
+				'Start',
+				NodeConnectionTypes.Main,
+			);
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+
+			// Test with non-existent connection type (should return undefined)
+			const resultNonExistent = SIMPLE_WORKFLOW.getNodeConnectionIndexes(
+				'Set',
+				'Start',
+				'nonexistent' as any,
+			);
+			expect(resultNonExistent).toBeUndefined();
+		});
+
+		test('should handle nodes with null or undefined connections gracefully', () => {
+			// Test workflow with sparse connection arrays
+			const sparseWorkflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						name: 'Start',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-1',
+						position: [100, 100],
+						parameters: {},
+					},
+					{
+						name: 'End',
+						type: 'test.set',
+						typeVersion: 1,
+						id: 'uuid-2',
+						position: [200, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					Start: {
+						main: [
+							null, // Null connection at index 0
+							[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }], // Connection at index 1
+						],
+					},
+				},
+				active: false,
+			});
+
+			const result = sparseWorkflow.getNodeConnectionIndexes('End', 'Start');
 			expect(result).toEqual({
 				sourceIndex: 1,
 				destinationIndex: 0,
@@ -3243,15 +3103,19 @@ describe('Workflow', () => {
 		});
 	});
 
-	describe('hasPath method', () => {
-		test('should return true for self-reference', () => {
+	describe('Error handling', () => {
+		test('should handle unknown node type in constructor', () => {
+			// Create a workflow with a node that has an unknown type
 			const workflow = new Workflow({
-				id: 'test',
+				nodeTypes: {
+					getByNameAndVersion: () => undefined, // Always return undefined to simulate unknown node type
+					getAll: () => [],
+				} as any,
 				nodes: [
 					{
-						id: 'Node1',
-						name: 'Node1',
-						type: 'test.set',
+						id: 'unknown-node',
+						name: 'UnknownNode',
+						type: 'unknown.type',
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -3259,141 +3123,50 @@ describe('Workflow', () => {
 				],
 				connections: {},
 				active: false,
-				nodeTypes,
 			});
 
-			expect(workflow.hasPath('Node1', 'Node1')).toBe(true);
+			// Should not throw error, just continue processing
+			expect(workflow).toBeDefined();
+			expect(workflow.getNode('UnknownNode')).toBeDefined();
 		});
 
-		test('should return false when nodes are not connected', () => {
+		test('should throw error for unknown context type', () => {
+			expect(() => {
+				SIMPLE_WORKFLOW.getStaticData('invalid' as any);
+			}).toThrow('Unknown context type. Only `global` and `node` are supported.');
+		});
+
+		test('should throw error when node parameter is undefined for node context', () => {
+			expect(() => {
+				SIMPLE_WORKFLOW.getStaticData('node', undefined);
+			}).toThrow('The request data of context type "node" the node parameter has to be set!');
+		});
+
+		test('should return deterministic results for AI agent nodes', () => {
+			// Test that deterministic sorting works for AI agent scenarios
 			const workflow = new Workflow({
-				id: 'test',
+				nodeTypes,
 				nodes: [
 					{
-						id: 'Node1',
-						name: 'Node1',
-						type: 'test.set',
-						typeVersion: 1,
+						id: 'aiAgent1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.8,
 						position: [0, 0],
 						parameters: {},
 					},
 					{
-						id: 'Node2',
-						name: 'Node2',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-				active: false,
-				nodeTypes,
-			});
-
-			expect(workflow.hasPath('Node1', 'Node2')).toBe(false);
-		});
-
-		test('should return true for directly connected nodes', () => {
-			const workflow = new Workflow({
-				id: 'test',
-				nodes: [
-					{
-						id: 'Node1',
-						name: 'Node1',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'Node2',
-						name: 'Node2',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {},
-					},
-				],
-				connections: {
-					Node1: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-						],
-					},
-				},
-				active: false,
-				nodeTypes,
-			});
-
-			expect(workflow.hasPath('Node1', 'Node2')).toBe(true);
-			expect(workflow.hasPath('Node2', 'Node1')).toBe(true);
-		});
-
-		test('should respect maximum depth limit', () => {
-			const workflow = new Workflow({
-				id: 'test',
-				nodes: [
-					{
-						id: 'Node1',
-						name: 'Node1',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'Node2',
-						name: 'Node2',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {},
-					},
-				],
-				connections: {
-					Node1: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-						],
-					},
-				},
-				active: false,
-				nodeTypes,
-			});
-
-			// Should find path with sufficient depth
-			expect(workflow.hasPath('Node1', 'Node2', 5)).toBe(true);
-			expect(workflow.hasPath('Node1', 'Node2', 1)).toBe(true);
-
-			// Should not find path with insufficient depth
-			expect(workflow.hasPath('Node1', 'Node2', 0)).toBe(false);
-		});
-
-		test('should handle AI connection types', () => {
-			const workflow = new Workflow({
-				id: 'test',
-				nodes: [
-					{
-						id: 'Agent',
-						name: 'Agent',
-						type: 'test.ai.agent',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'Tool1',
+						id: 'tool1',
 						name: 'Tool1',
-						type: 'test.ai.tool',
+						type: '@n8n/n8n-nodes-langchain.toolWikipedia',
 						typeVersion: 1,
 						position: [100, 0],
 						parameters: {},
 					},
 					{
-						id: 'Memory',
-						name: 'Memory',
-						type: 'test.ai.memory',
+						id: 'tool2',
+						name: 'Tool2',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
 						typeVersion: 1,
 						position: [200, 0],
 						parameters: {},
@@ -3402,186 +3175,234 @@ describe('Workflow', () => {
 				connections: {
 					Tool1: {
 						[NodeConnectionTypes.AiTool]: [
-							[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
 						],
 					},
-					Memory: {
-						[NodeConnectionTypes.AiMemory]: [
-							[{ node: 'Agent', type: NodeConnectionTypes.AiMemory, index: 0 }],
+					Tool2: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
 						],
 					},
 				},
 				active: false,
-				nodeTypes,
 			});
 
-			expect(workflow.hasPath('Tool1', 'Agent')).toBe(true);
-			expect(workflow.hasPath('Memory', 'Agent')).toBe(true);
-			expect(workflow.hasPath('Tool1', 'Memory')).toBe(true);
+			const aiAgent = workflow.getNode('AI Agent')!;
+			const result1 = workflow.getParentMainInputNode(aiAgent);
+			const result2 = workflow.getParentMainInputNode(aiAgent);
+
+			// Results should be consistent across multiple calls
+			expect(result1.name).toBe(result2.name);
 		});
 
-		test('should handle complex paths with multiple connection types', () => {
+		test('should handle multiple non-main connection types deterministically', () => {
+			// This test demonstrates why alphabetical sorting is crucial:
+			// Without sorting, Object.keys() could return different orders across JavaScript engines/runs
+			// We test that the same input always produces the same output
+
+			const createTestWorkflow = () => {
+				const workflow = new Workflow({
+					nodeTypes,
+					nodes: [
+						{
+							id: 'aiAgent1',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.8,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'tool1',
+							name: 'Tool1',
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							typeVersion: 1,
+							position: [100, 0],
+							parameters: {},
+						},
+						{
+							id: 'tool2',
+							name: 'Tool2',
+							type: '@n8n/n8n-nodes-langchain.toolWikipedia',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						Tool1: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+							],
+						},
+						Tool2: {
+							[NodeConnectionTypes.AiTool]: [
+								[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 1 }],
+							],
+						},
+					},
+					active: false,
+				});
+				return workflow;
+			};
+
+			// Create multiple identical workflows
+			const workflow1 = createTestWorkflow();
+			const workflow2 = createTestWorkflow();
+			const workflow3 = createTestWorkflow();
+
+			const aiAgent1 = workflow1.getNode('AI Agent')!;
+			const aiAgent2 = workflow2.getNode('AI Agent')!;
+			const aiAgent3 = workflow3.getNode('AI Agent')!;
+
+			const result1 = workflow1.getParentMainInputNode(aiAgent1);
+			const result2 = workflow2.getParentMainInputNode(aiAgent2);
+			const result3 = workflow3.getParentMainInputNode(aiAgent3);
+
+			// All results should be identical (demonstrates deterministic behavior)
+			expect(result1.name).toBe(result2.name);
+			expect(result2.name).toBe(result3.name);
+			expect(result1.name).toBe(result3.name);
+		});
+
+		test('should demonstrate the problem that deterministic sorting solves', () => {
+			// This test verifies that alphabetical sorting ensures consistent results
+			// regardless of the order in which connection types are processed
+
+			// Create a workflow with multiple AI connection types in a specific structure
+			// that would trigger the non-deterministic behavior without sorting
 			const workflow = new Workflow({
-				id: 'test',
+				nodeTypes,
 				nodes: [
 					{
-						id: 'Start',
-						name: 'Start',
-						type: 'test.start',
-						typeVersion: 1,
+						id: 'aiAgent1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.8,
 						position: [0, 0],
 						parameters: {},
 					},
 					{
-						id: 'VectorStore',
-						name: 'VectorStore',
-						type: 'test.vectorstore',
+						id: 'tool1',
+						name: 'ZZZ Tool', // Intentionally named to come last alphabetically
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
 						typeVersion: 1,
 						position: [100, 0],
 						parameters: {},
 					},
 					{
-						id: 'Document',
-						name: 'Document',
-						type: 'test.document',
+						id: 'tool2',
+						name: 'AAA Tool', // Intentionally named to come first alphabetically
+						type: '@n8n/n8n-nodes-langchain.toolWikipedia',
 						typeVersion: 1,
 						position: [200, 0],
 						parameters: {},
 					},
-					{
-						id: 'End',
-						name: 'End',
-						type: 'test.end',
-						typeVersion: 1,
-						position: [300, 0],
-						parameters: {},
-					},
 				],
 				connections: {
-					Start: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'VectorStore', type: NodeConnectionTypes.AiVectorStore, index: 0 }],
+					'ZZZ Tool': {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
 						],
 					},
-					Document: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'VectorStore', type: NodeConnectionTypes.AiDocument, index: 0 }],
-						],
-					},
-					VectorStore: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }],
+					'AAA Tool': {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 1 }],
 						],
 					},
 				},
 				active: false,
-				nodeTypes,
 			});
 
-			expect(workflow.hasPath('Start', 'End')).toBe(true);
-			expect(workflow.hasPath('Document', 'End')).toBe(true);
-			expect(workflow.hasPath('Start', 'Document')).toBe(true);
+			const aiAgent = workflow.getNode('AI Agent')!;
+
+			// Test multiple times to ensure consistent behavior
+			// Without proper sorting, the result could vary based on internal iteration order
+			const results: string[] = [];
+			for (let i = 0; i < 20; i++) {
+				const result = workflow.getParentMainInputNode(aiAgent);
+				results.push(result.name);
+			}
+
+			// All results should be identical (proving deterministic sorting works)
+			const uniqueResults = new Set(results);
+			expect(uniqueResults.size).toBe(1);
+
+			// The result should be consistent across all calls
+			const firstResult = results[0];
+			results.forEach((result) => {
+				expect(result).toBe(firstResult);
+			});
 		});
 
-		test('should handle cyclic graphs without infinite loops', () => {
+		test('should explain why sorting is needed with real-world AI agent scenarios', () => {
+			// Simulates a complex AI agent workflow - the exact type that was experiencing
+			// non-deterministic behavior before the fix
+			// This test documents the business value of the deterministic sorting fix
+
 			const workflow = new Workflow({
-				id: 'test',
+				nodeTypes,
 				nodes: [
 					{
-						id: 'Node1',
-						name: 'Node1',
-						type: 'test.set',
-						typeVersion: 1,
+						id: 'aiAgent1',
+						name: 'ChatGPT Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.8,
 						position: [0, 0],
 						parameters: {},
 					},
 					{
-						id: 'Node2',
-						name: 'Node2',
-						type: 'test.set',
+						id: 'calculatorTool',
+						name: 'Calculator Tool',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
 						typeVersion: 1,
 						position: [100, 0],
 						parameters: {},
 					},
 					{
-						id: 'Node3',
-						name: 'Node3',
-						type: 'test.set',
+						id: 'wikipediaTool',
+						name: 'Wikipedia Tool',
+						type: '@n8n/n8n-nodes-langchain.toolWikipedia',
 						typeVersion: 1,
-						position: [200, 0],
+						position: [100, 100],
 						parameters: {},
 					},
 				],
 				connections: {
-					Node1: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
+					'Calculator Tool': {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'ChatGPT Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
 						],
 					},
-					Node2: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'Node3', type: NodeConnectionTypes.Main, index: 0 }],
-						],
-					},
-					Node3: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
+					'Wikipedia Tool': {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'ChatGPT Agent', type: NodeConnectionTypes.AiTool, index: 1 }],
 						],
 					},
 				},
 				active: false,
-				nodeTypes,
 			});
 
-			expect(workflow.hasPath('Node1', 'Node3')).toBe(true);
-			expect(workflow.hasPath('Node2', 'Node1')).toBe(true);
-			expect(workflow.hasPath('Node3', 'Node2')).toBe(true);
-		});
+			const chatGPTAgent = workflow.getNode('ChatGPT Agent')!;
 
-		test('should handle empty workflow', () => {
-			const workflow = new Workflow({
-				id: 'test',
-				nodes: [],
-				connections: {},
-				active: false,
-				nodeTypes,
-			});
+			// Test what the original bug report described:
+			// "AI agent node problem" with non-deterministic behavior
+			const results = Array.from(
+				{ length: 100 },
+				() => workflow.getParentMainInputNode(chatGPTAgent).name,
+			);
 
-			expect(workflow.hasPath('NonExistent1', 'NonExistent2')).toBe(false);
-		});
+			// The fix ensures all results are identical (deterministic)
+			// Previously, this could return different tool nodes across runs
+			expect(new Set(results).size).toBe(1);
 
-		test('should handle nodes with no outgoing connections', () => {
-			const workflow = new Workflow({
-				id: 'test',
-				nodes: [
-					{
-						id: 'Node1',
-						name: 'Node1',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'Node2',
-						name: 'Node2',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {},
-					},
-				],
-				connections: {
-					Node1: {
-						[NodeConnectionTypes.Main]: [[]],
-					},
-				},
-				active: false,
-				nodeTypes,
-			});
+			// Additionally, verify that consecutive calls return the same result
+			const result1 = workflow.getParentMainInputNode(chatGPTAgent);
+			const result2 = workflow.getParentMainInputNode(chatGPTAgent);
+			const result3 = workflow.getParentMainInputNode(chatGPTAgent);
 
-			expect(workflow.hasPath('Node1', 'Node2')).toBe(false);
-			expect(workflow.hasPath('Node2', 'Node1')).toBe(false);
+			expect(result1.name).toBe(result2.name);
+			expect(result2.name).toBe(result3.name);
 		});
 	});
 });

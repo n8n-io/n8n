@@ -36,7 +36,7 @@ jest.mock('../../../src/chains/parameter-updater', () => ({
 
 describe('UpdateNodeParametersTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>;
+	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>['tool'];
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
 		typeof getCurrentTaskInput
 	>;
@@ -59,7 +59,7 @@ describe('UpdateNodeParametersTool', () => {
 		parameterUpdaterModule.createParameterUpdaterChain.mockReturnValue(mockChain);
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.setNode];
-		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM);
+		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM).tool;
 	});
 
 	afterEach(() => {
@@ -192,7 +192,7 @@ describe('UpdateNodeParametersTool', () => {
 			});
 		});
 
-		it('should merge parameters instead of replacing them', async () => {
+		it('should be able to remove parameters', async () => {
 			const existingWorkflow = createWorkflow([
 				createNode({
 					id: 'node1',
@@ -208,9 +208,10 @@ describe('UpdateNodeParametersTool', () => {
 			]);
 			setupWorkflowState(mockGetCurrentTaskInput, existingWorkflow);
 
-			// Mock chain response - only updating URL
+			// Mock chain response - removing authentication
 			mockChain.invoke.mockResolvedValue({
 				parameters: {
+					method: 'GET',
 					url: 'https://api.example.com/v2',
 				},
 			});
@@ -218,19 +219,17 @@ describe('UpdateNodeParametersTool', () => {
 			const mockConfig = createToolConfig('update_node_parameters', 'test-call-3');
 
 			const result = await updateNodeParametersTool.invoke(
-				buildUpdateNodeInput('node1', ['Update URL to v2 endpoint']),
+				buildUpdateNodeInput('node1', ['Update URL to v2 endpoint', 'Remove authentication']),
 				mockConfig,
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
 
-			// Should keep existing parameters and only update URL
+			// Should remove authentication and keep other parameters
 			expectNodeUpdated(content, 'node1', {
 				parameters: expect.objectContaining({
 					method: 'GET', // preserved
 					url: 'https://api.example.com/v2', // updated
-					authentication: 'genericCredentialType', // preserved
-					genericAuthType: 'httpBasicAuth', // preserved
 				}),
 			});
 		});
@@ -469,7 +468,7 @@ describe('UpdateNodeParametersTool', () => {
 			};
 
 			// Create tool with custom node type
-			const customTool = createUpdateNodeParametersTool([customNodeType], mockLLM);
+			const customTool = createUpdateNodeParametersTool([customNodeType], mockLLM).tool;
 
 			const existingWorkflow = createWorkflow([
 				createNode({
@@ -769,6 +768,206 @@ describe('UpdateNodeParametersTool', () => {
 			expect(JSON.stringify(errorData)).toContain(
 				'Received tool input did not match expected schema',
 			);
+		});
+
+		it('should update parameters using the correct node version when multiple versions exist', async () => {
+			// Create multiple versions of the same node type with different parameters
+			const httpRequestV1 = {
+				...nodeTypes.httpRequest,
+				version: 1,
+				displayName: 'HTTP Request V1',
+				properties: [
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Method',
+						name: 'method',
+						type: 'options',
+						options: [
+							{ name: 'GET', value: 'GET' },
+							{ name: 'POST', value: 'POST' },
+						],
+						default: 'GET',
+					},
+				],
+			};
+
+			const httpRequestV2 = {
+				...nodeTypes.httpRequest,
+				version: 2,
+				displayName: 'HTTP Request V2',
+				properties: [
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Method',
+						name: 'method',
+						type: 'options',
+						options: [
+							{ name: 'GET', value: 'GET' },
+							{ name: 'POST', value: 'POST' },
+							{ name: 'PUT', value: 'PUT' },
+							{ name: 'DELETE', value: 'DELETE' },
+						],
+						default: 'GET',
+					},
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Basic Auth', value: 'basicAuth' },
+						],
+						default: 'none',
+					},
+				],
+			};
+
+			const testNode = createNode({
+				id: 'http-node',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 2, // Using version 2
+				parameters: { url: 'https://example.com', method: 'GET' },
+			});
+
+			const testNodeTypes = [
+				httpRequestV1 as INodeTypeDescription,
+				httpRequestV2 as INodeTypeDescription,
+				nodeTypes.code,
+			];
+			const testTool = createUpdateNodeParametersTool(testNodeTypes, mockLLM).tool;
+
+			setupWorkflowState(mockGetCurrentTaskInput, createWorkflow([testNode]));
+
+			// Mock the chain to return valid parameters for v2 (including authentication which is only in v2)
+			mockChain.invoke.mockResolvedValue({
+				parameters: {
+					authentication: 'basicAuth',
+					method: 'POST',
+				},
+			});
+
+			const mockConfig = createToolConfig('update_node_parameters', 'test-version-match');
+
+			const result = await testTool.invoke(
+				buildUpdateNodeInput('http-node', ['Set authentication to basicAuth and method to POST']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectToolSuccess(
+				content,
+				'Successfully updated parameters for node "HTTP Request" (n8n-nodes-base.httpRequest):',
+			);
+
+			// Verify that the update was successful and used v2 parameters
+			expectNodeUpdated(content, 'http-node', {
+				parameters: expect.objectContaining({
+					authentication: 'basicAuth',
+					method: 'POST',
+				}),
+			});
+		});
+
+		it('should fail when node version does not match any available node type', async () => {
+			const testNode = createNode({
+				id: 'old-node',
+				name: 'Old Code Node',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 99, // Non-existent version
+				parameters: {},
+			});
+
+			setupWorkflowState(mockGetCurrentTaskInput, createWorkflow([testNode]));
+
+			mockChain.invoke.mockResolvedValue({
+				parameters: { newParam: 'value' },
+			});
+
+			const mockConfig = createToolConfig('update_node_parameters', 'test-no-version-match');
+
+			const result = await updateNodeParametersTool.invoke(
+				buildUpdateNodeInput('old-node', ['Add new parameter']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectToolError(content, 'Error: Node type "n8n-nodes-base.code" not found');
+		});
+
+		it('should handle array version node types correctly', async () => {
+			// Create a node type that supports multiple versions in an array
+			const multiVersionNode = {
+				...nodeTypes.code,
+				version: [1, 2, 3],
+				displayName: 'Multi Version Code',
+				properties: [
+					{
+						displayName: 'Code',
+						name: 'code',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'JavaScript', value: 'js' },
+							{ name: 'Python', value: 'python' },
+						],
+						default: 'js',
+					},
+				],
+			};
+
+			const testNode = createNode({
+				id: 'multi-version-node',
+				name: 'Multi Version Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2, // Request version 2 from the array
+				parameters: { code: 'console.log("hello")', mode: 'js' },
+			});
+
+			const testNodeTypes = [multiVersionNode as INodeTypeDescription, nodeTypes.httpRequest];
+			const testTool = createUpdateNodeParametersTool(testNodeTypes, mockLLM).tool;
+
+			setupWorkflowState(mockGetCurrentTaskInput, createWorkflow([testNode]));
+
+			mockChain.invoke.mockResolvedValue({
+				parameters: { mode: 'python' },
+			});
+
+			const mockConfig = createToolConfig('update_node_parameters', 'test-array-version');
+
+			const result = await testTool.invoke(
+				buildUpdateNodeInput('multi-version-node', ['Change mode to Python']),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectToolSuccess(
+				content,
+				'Successfully updated parameters for node "Multi Version Code" (n8n-nodes-base.code):',
+			);
+			expectNodeUpdated(content, 'multi-version-node', {
+				parameters: expect.objectContaining({
+					mode: 'python',
+				}),
+			});
 		});
 	});
 });

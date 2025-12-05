@@ -1,0 +1,45 @@
+{
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"id": "e3fa278e-1cb1-48fb-88e4-301c7d04d22c",
+			"name": "When Executed by Another Workflow"
+		},
+		{
+			"parameters": {
+				"amount": 120
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [224, 0],
+			"id": "1d7ee221-49ac-4744-970e-3ba78220b455",
+			"name": "Wait"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [[]]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "c0eda2ee62dc0e7e8288317ffba83079dda1ea0d80d2eaa966e6d217327a763e"
+	}
+}

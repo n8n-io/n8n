@@ -1,4 +1,4 @@
-import type { ApiKeyScope, GlobalRole } from './types.ee';
+import { isApiKeyScope, type ApiKeyScope, type AuthPrincipal, type GlobalRole } from './types.ee';
 
 export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:read',
@@ -34,6 +34,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:deactivate',
 	'execution:delete',
 	'execution:read',
+	'execution:retry',
 	'execution:list',
 	'credential:create',
 	'credential:move',
@@ -59,6 +60,35 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:deactivate',
 	'execution:delete',
 	'execution:read',
+	'execution:retry',
+	'execution:list',
+	'credential:create',
+	'credential:move',
+	'credential:delete',
+];
+
+export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
+
+/**
+ * This is a bit of a mess, because we are handing out scopes in API keys that are only
+ * valid for the personal project, which is enforced in the public API, because the workflows,
+ * execution endpoints are limited to the personal project.
+ * This is a temporary solution until we have a better way to handle personal projects and API key scopes!
+ */
+export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
+	'workflowTags:update',
+	'workflowTags:list',
+	'workflow:create',
+	'workflow:read',
+	'workflow:update',
+	'workflow:delete',
+	'workflow:list',
+	'workflow:move',
+	'workflow:activate',
+	'workflow:deactivate',
+	'execution:delete',
+	'execution:read',
+	'execution:retry',
 	'execution:list',
 	'credential:create',
 	'credential:move',
@@ -69,10 +99,22 @@ const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
 	'global:owner': OWNER_API_KEY_SCOPES,
 	'global:admin': ADMIN_API_KEY_SCOPES,
 	'global:member': MEMBER_API_KEY_SCOPES,
+	'global:chatUser': CHAT_USER_API_KEY_SCOPES,
 };
 
-export const getApiKeyScopesForRole = (role: GlobalRole) => {
-	return MAP_ROLE_SCOPES[role];
+export const getApiKeyScopesForRole = (user: AuthPrincipal) => {
+	if (user.role.slug === 'global:chatUser') {
+		return [];
+	}
+
+	return [
+		...new Set(
+			user.role.scopes
+				.map((scope) => scope.slug)
+				.concat(API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT)
+				.filter(isApiKeyScope),
+		),
+	];
 };
 
 export const getOwnerOnlyApiKeyScopes = () => {

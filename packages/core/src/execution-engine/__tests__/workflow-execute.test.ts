@@ -34,16 +34,19 @@ import type {
 	RelatedExecution,
 	IExecuteFunctions,
 	IDataObject,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
+	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
 	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
@@ -121,6 +124,14 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -190,6 +201,15 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -215,7 +235,10 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, 'node1');
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node1',
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const workflowHooks = runHookSpy.mock.calls.filter(
@@ -268,6 +291,41 @@ describe('WorkflowExecute', () => {
 			]);
 
 			expect(nodeHooks).toHaveLength(0);
+		});
+
+		test("don't execute destination node when mode is exclusive", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node2',
+				mode: 'exclusive',
+			});
+
+			// ASSERT
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+				// node2 should NOT appear here because mode is 'exclusive'
+			]);
 		});
 	});
 
@@ -292,7 +350,10 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, 'node1');
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node1',
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const workflowHooks = runHookSpy.mock.calls.filter(
@@ -345,6 +406,41 @@ describe('WorkflowExecute', () => {
 			]);
 
 			expect(nodeHooks).toHaveLength(0);
+		});
+
+		test("don't execute destination node when mode is exclusive", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node2',
+				mode: 'exclusive',
+			});
+
+			// ASSERT
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+				// node2 should NOT appear here because mode is 'exclusive'
+			]);
 		});
 	});
 
@@ -404,6 +500,15 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				// expect(result.data.executionData!.contextData).toEqual({}); //Fails when test workflow Includes splitInbatches
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -433,7 +538,7 @@ describe('WorkflowExecute', () => {
 				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
 			};
 			const dirtyNodeNames = [node1.name];
-			const destinationNode = node2.name;
+			const destinationNode: IDestinationNode = { nodeName: node2.name, mode: 'inclusive' };
 
 			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
 
@@ -496,7 +601,7 @@ describe('WorkflowExecute', () => {
 				[destination.name]: [toITaskData([{ data: { node: 'destination' } }])],
 			};
 			const dirtyNodeNames = [set2.name];
-			const destinationNode = destination.name;
+			const destinationNode: IDestinationNode = { nodeName: destination.name, mode: 'inclusive' };
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(
@@ -541,7 +646,7 @@ describe('WorkflowExecute', () => {
 				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
 			};
 			const dirtyNodeNames: string[] = [];
-			const destinationNode = node2.name;
+			const destinationNode: IDestinationNode = { nodeName: node2.name, mode: 'inclusive' };
 
 			const processRunExecutionDataSpy = jest
 				.spyOn(workflowExecute, 'processRunExecutionData')
@@ -615,13 +720,10 @@ describe('WorkflowExecute', () => {
 			);
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				afterLoop.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: afterLoop.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(recreateNodeExecutionStackSpy).toHaveBeenNthCalledWith(
@@ -668,13 +770,10 @@ describe('WorkflowExecute', () => {
 			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				node1.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: node1.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const subgraph = new DirectedGraph()
@@ -724,13 +823,10 @@ describe('WorkflowExecute', () => {
 			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destination.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destination.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const subgraph = new DirectedGraph()
@@ -743,55 +839,6 @@ describe('WorkflowExecute', () => {
 				subgraph,
 				// first call with the dirty nodes, which are an empty set in this case
 				new Set([trigger]),
-			);
-		});
-
-		//                 ►►
-		//                ┌──────┐
-		//                │orphan│
-		//                └──────┘
-		//  ┌───────┐     ┌───────────┐
-		//  │trigger├────►│destination│
-		//  └───────┘     └───────────┘
-		test('works with a single node', async () => {
-			// ARRANGE
-			const waitPromise = createDeferredPromise<IRun>();
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
-			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
-
-			const trigger = createNodeData({ name: 'trigger' });
-			const destination = createNodeData({ name: 'destination' });
-			const orphan = createNodeData({ name: 'orphan' });
-
-			const workflow = new DirectedGraph()
-				.addNodes(trigger, destination, orphan)
-				.addConnections({ from: trigger, to: destination })
-				.toWorkflow({ name: '', active: false, nodeTypes });
-
-			const pinData: IPinData = {};
-			const runData: IRunData = {
-				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
-				[destination.name]: [toITaskData([{ data: { nodeName: destination.name } }])],
-			};
-			const dirtyNodeNames: string[] = [];
-
-			const processRunExecutionDataSpy = jest
-				.spyOn(workflowExecute, 'processRunExecutionData')
-				.mockImplementationOnce(jest.fn());
-
-			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				orphan.name,
-			);
-
-			// ASSERT
-			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
-			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(
-				new DirectedGraph().addNode(orphan).toWorkflow({ ...workflow }),
 			);
 		});
 
@@ -858,13 +905,10 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ ...workflow });
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				tool.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: tool.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -906,13 +950,10 @@ describe('WorkflowExecute', () => {
 			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destinationNode,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destinationNode,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -955,13 +996,10 @@ describe('WorkflowExecute', () => {
 			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destinationNode,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destinationNode,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -1000,13 +1038,10 @@ describe('WorkflowExecute', () => {
 				.mockImplementationOnce(jest.fn());
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destinationNode,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destinationNode,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -1096,6 +1131,64 @@ describe('WorkflowExecute', () => {
 			expect(issues).toEqual({ [startNode.name]: { execution: false } });
 			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
 			expect(nodeParamIssuesSpy).toHaveBeenCalled();
+		});
+
+		it('should check destination node when mode is inclusive', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+			const destination = mock<INode>({ name: 'destination' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1, destination],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+					node1: { main: [[{ node: 'destination', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: 'destination', mode: 'inclusive' },
+			});
+
+			expect(issues).toBe(null);
+			// Should check: trigger, node1, destination (3 nodes = 3 calls to getByNameAndVersion)
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(3);
+			expect(nodeParamIssuesSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('should not check destination node when mode is exclusive', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+			const destination = mock<INode>({ name: 'destination' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1, destination],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+					node1: { main: [[{ node: 'destination', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: 'destination', mode: 'exclusive' },
+			});
+
+			expect(issues).toBe(null);
+			// Should check: trigger, node1 only (2 nodes = 2 calls to getByNameAndVersion)
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
+			expect(nodeParamIssuesSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -1219,7 +1312,7 @@ describe('WorkflowExecute', () => {
 			},
 		};
 
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData: IRunExecutionData = createRunExecutionData({
 			resultData: {
 				runData: {
 					previousNode: [
@@ -1235,7 +1328,7 @@ describe('WorkflowExecute', () => {
 					],
 				},
 			},
-		};
+		});
 
 		let workflowExecute: WorkflowExecute;
 
@@ -1401,6 +1494,19 @@ describe('WorkflowExecute', () => {
 				},
 			]);
 		});
+
+		test('should handle top-level error property correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: {}, error: { message: 'Test error' } as NodeApiError }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{ json: {}, error: { message: 'Test error' } as NodeApiError },
+			]);
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
@@ -1408,20 +1514,7 @@ describe('WorkflowExecute', () => {
 		let workflowExecute: WorkflowExecute;
 
 		beforeEach(() => {
-			runExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
+			runExecutionData = createRunExecutionData();
 			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
@@ -1614,20 +1707,7 @@ describe('WorkflowExecute', () => {
 		const parentExecution = mock<RelatedExecution>();
 
 		beforeEach(() => {
-			runExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
+			runExecutionData = createRunExecutionData();
 			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
@@ -1769,7 +1849,7 @@ describe('WorkflowExecute', () => {
 		let additionalData: IWorkflowExecuteAdditionalData;
 
 		beforeEach(() => {
-			runExecutionData = {
+			runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -1779,7 +1859,7 @@ describe('WorkflowExecute', () => {
 					waitingExecution: {},
 					waitingExecutionSource: null,
 				},
-			};
+			});
 			additionalData = mock();
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 
@@ -1861,6 +1941,58 @@ describe('WorkflowExecute', () => {
 			// Verify cleanup was called
 			await mockCleanupPromise;
 			expect(cleanupCalled).toBe(true);
+		});
+
+		test('should capture stoppedAt timestamp after all processing completes', async () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+
+			let cleanupExecuted = false;
+			let cleanupTimestamp: Date | null = null;
+			const closeFunction = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					cleanupExecuted = true;
+					cleanupTimestamp = new Date();
+					resolve();
+				}, 50);
+			});
+
+			const result = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				undefined,
+				closeFunction,
+			);
+
+			// Verify cleanup was executed
+			expect(cleanupExecuted).toBe(true);
+			// Verify stoppedAt is after cleanup completed
+			expect(result.stoppedAt!.getTime()).toBeGreaterThanOrEqual(cleanupTimestamp!.getTime());
+			// Verify stoppedAt is after startedAt
+			expect(result.stoppedAt!.getTime()).toBeGreaterThan(result.startedAt.getTime());
+		});
+
+		test('should use explicit stoppedAt when provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const explicitStoppedAt = new Date('2023-01-01T00:00:05.500Z');
+
+			const result = workflowExecute.getFullRunData(startedAt, explicitStoppedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(explicitStoppedAt);
+			expect(result.stoppedAt!.getTime() - result.startedAt.getTime()).toBe(5500);
+		});
+
+		test('should default to current time when stoppedAt not provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const currentTime = new Date('2023-01-01T00:00:03.250Z');
+			jest.useFakeTimers().setSystemTime(currentTime);
+
+			const result = workflowExecute.getFullRunData(startedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(currentTime);
+
+			jest.useRealTimers();
 		});
 	});
 
@@ -1965,7 +2097,7 @@ describe('WorkflowExecute', () => {
 
 		test('should return true when node has no input connections', () => {
 			workflow.nodes = {};
-			workflow.connectionsByDestinationNode = {};
+			workflow.setConnections({});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1978,11 +2110,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1996,11 +2128,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [[{ json: { test: 'data' } }]] };
 
@@ -2015,11 +2147,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [null] };
 
@@ -2162,7 +2294,7 @@ describe('WorkflowExecute', () => {
 		let mockHooks: ExecutionLifecycleHooks;
 
 		beforeEach(() => {
-			runExecutionData = {
+			runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -2172,7 +2304,7 @@ describe('WorkflowExecute', () => {
 					waitingExecution: {},
 					waitingExecutionSource: null,
 				},
-			};
+			});
 
 			mockHooks = mock<ExecutionLifecycleHooks>();
 			additionalData = mock<IWorkflowExecuteAdditionalData>();
@@ -2483,6 +2615,161 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			]);
+		});
+	});
+
+	describe('Cancellation', () => {
+		test('should update only running task statuses to cancelled when workflow is cancelled', () => {
+			// Arrange - create a workflow with some nodes
+			const startNode = createNodeData({ name: 'Start' });
+			const processingNode = createNodeData({ name: 'Processing' });
+			const completedNode = createNodeData({ name: 'Completed' });
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [startNode, processingNode, completedNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create run execution data with tasks in various statuses
+			const runExecutionData: IRunExecutionData = createRunExecutionData({
+				startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+				resultData: {
+					runData: {
+						Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+						Processing: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'running' })],
+						Completed: [
+							toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+							toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'running' }),
+							toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+						],
+					},
+					lastNodeExecuted: 'Processing',
+				},
+				executionData: {
+					runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+				},
+			});
+
+			// Set the run execution data on the workflow execute instance
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			assert(additionalData.hooks);
+			const runHook = jest.fn();
+			additionalData.hooks.runHook = runHook;
+
+			const promise = workflowExecute.processRunExecutionData(workflow);
+			promise.cancel('reason');
+
+			const updatedExecutionData = {
+				data: {
+					version: 1,
+					startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+					resultData: {
+						runData: {
+							Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+							Processing: [
+								toITaskData([{ data: { test: 'data' } }], { executionStatus: 'canceled' }),
+							],
+							Completed: [
+								toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+								toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'canceled' }),
+								toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+							],
+						},
+						lastNodeExecuted: 'Processing',
+					},
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+						runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+					},
+				},
+			};
+
+			expect(runHook.mock.lastCall[0]).toEqual('workflowExecuteAfter');
+			expect(JSON.stringify(runHook.mock.lastCall[1][0].data)).toBe(
+				JSON.stringify(updatedExecutionData.data),
+			);
+			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
+		});
+
+		test('should set status to canceled when execution timeout is reached', async () => {
+			// Arrange - create a workflow with multiple nodes
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({
+					name: 'test-workflow',
+					nodeTypes,
+					active: false,
+				});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create initial execution data with nodes queued to execute
+			const runExecutionData: IRunExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: {
+					runData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: node1,
+							data: {
+								main: [[{ json: { value: 1 } }]],
+							},
+							source: null,
+						},
+						{
+							node: node2,
+							data: {
+								main: [[{ json: { value: 2 } }]],
+							},
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			// Set execution timeout to a time in the past to trigger immediate timeout on first loop iteration
+			additionalData.executionTimeoutTimestamp = Date.now() - 1000;
+
+			// Act - run the workflow
+			const promise = workflowExecute.processRunExecutionData(workflow);
+			const result = await promise;
+
+			// Assert - verify status was set to canceled and timedOut flag was set
+			// @ts-expect-error private data
+			expect(workflowExecute.status).toBe('canceled');
+			expect(workflowExecute.timedOut).toBe(true);
+			expect(result.status).toBe('canceled');
+			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
 		});
 	});
 });

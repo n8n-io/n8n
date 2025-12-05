@@ -9,11 +9,14 @@ import { TOOL_NODE_EXAMPLES } from './examples/advanced/tool-node-examples';
 import { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
 import { SET_NODE_EXAMPLES } from './examples/basic/set-node-examples';
 import { SIMPLE_UPDATE_EXAMPLES } from './examples/basic/simple-updates';
+import { SWITCH_NODE_EXAMPLES } from './examples/basic/switch-node-examples';
 import { HTTP_REQUEST_GUIDE } from './node-types/http-request';
 import { IF_NODE_GUIDE } from './node-types/if-node';
 import { SET_NODE_GUIDE } from './node-types/set-node';
+import { SWITCH_NODE_GUIDE } from './node-types/switch-node';
 import { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
 import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
+import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
 import { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
 import {
 	DEFAULT_PROMPT_CONFIG,
@@ -35,10 +38,14 @@ export class ParameterUpdatePromptBuilder {
 		sections.push(EXPRESSION_RULES);
 
 		// Add node-type specific guides
-		if (this.isSetNode(context.nodeType)) {
+		if (this.hasSystemMessageParameters(context.nodeDefinition)) {
+			sections.push(SYSTEM_MESSAGE_GUIDE);
+		} else if (this.isSetNode(context.nodeType)) {
 			sections.push(SET_NODE_GUIDE);
 		} else if (this.isIfNode(context.nodeType)) {
 			sections.push(IF_NODE_GUIDE);
+		} else if (this.isSwitchNode(context.nodeType)) {
+			sections.push(SWITCH_NODE_GUIDE);
 		} else if (this.isHttpRequestNode(context.nodeType)) {
 			sections.push(HTTP_REQUEST_GUIDE);
 		}
@@ -66,7 +73,7 @@ export class ParameterUpdatePromptBuilder {
 			const examples = this.selectRelevantExamples(context);
 			if (examples.length > 0) {
 				sections.push('\n## Relevant Examples');
-				sections.push(...examples);
+				sections.push.apply(sections, examples);
 			}
 		}
 
@@ -76,6 +83,39 @@ export class ParameterUpdatePromptBuilder {
 		const finalPrompt = sections.join('\n');
 
 		return finalPrompt;
+	}
+
+	/**
+	 * Checks if node has system message parameters based on node definition
+	 * This applies to nodes like AI Agent, LLM Chain, Anthropic, OpenAI, etc.
+	 */
+	private static hasSystemMessageParameters(nodeDefinition: INodeTypeDescription): boolean {
+		if (!nodeDefinition.properties) return false;
+
+		// Check for common system message parameter patterns
+		const hasSystemMessageParam = nodeDefinition.properties.some((prop) => {
+			// Pattern 1 & 2: options.systemMessage (AI Agent) or options.system (Anthropic)
+			if (prop.name === 'options' && prop.type === 'collection') {
+				const collectionProp = prop;
+				if (Array.isArray(collectionProp.options)) {
+					return collectionProp.options.some(
+						(opt) => opt.name === 'systemMessage' || opt.name === 'system',
+					);
+				}
+			}
+
+			// Pattern 3: messages parameter with role support (OpenAI, LLM Chain)
+			if (
+				prop.name === 'messages' &&
+				(prop.type === 'fixedCollection' || prop.type === 'collection')
+			) {
+				return true; // Messages typically support system role
+			}
+
+			return false;
+		});
+
+		return hasSystemMessageParam;
 	}
 
 	/**
@@ -92,6 +132,14 @@ export class ParameterUpdatePromptBuilder {
 	private static isIfNode(nodeType: string): boolean {
 		const category = getNodeTypeCategory(nodeType);
 		return category === 'if';
+	}
+
+	/**
+	 * Checks if node is a Switch node
+	 */
+	private static isSwitchNode(nodeType: string): boolean {
+		const category = getNodeTypeCategory(nodeType);
+		return category === 'switch';
 	}
 
 	/**
@@ -143,6 +191,8 @@ export class ParameterUpdatePromptBuilder {
 			examples.push(SET_NODE_EXAMPLES);
 		} else if (this.isIfNode(context.nodeType)) {
 			examples.push(IF_NODE_EXAMPLES);
+		} else if (this.isSwitchNode(context.nodeType)) {
+			examples.push(SWITCH_NODE_EXAMPLES);
 		}
 		// Add resource locator examples if needed
 		if (context.hasResourceLocatorParams) {

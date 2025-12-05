@@ -163,9 +163,7 @@ describe('WebhookRequestHandler', () => {
 
 			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
 			expect(res.status).toHaveBeenCalledWith(200);
-			expect(res.header).toHaveBeenCalledWith({
-				'x-custom-header': 'test',
-			});
+			expect(res.setHeader).toHaveBeenCalledWith('x-custom-header', 'test');
 			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 		});
 

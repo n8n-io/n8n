@@ -1,8 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
-import { SettingsRepository, type AuthProviderType } from '@n8n/db';
+import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import config from '@/config';
+import { Logger } from '@n8n/backend-common';
 
 /**
  * Only one authentication method can be active at a time. This function sets
@@ -24,6 +25,25 @@ export async function setCurrentAuthenticationMethod(
 	);
 }
 
+export async function reloadAuthenticationMethod(): Promise<void> {
+	const settings = await Container.get(SettingsRepository).findByKey(
+		'userManagement.authenticationMethod',
+	);
+	if (settings) {
+		if (isAuthProviderType(settings.value)) {
+			const authenticationMethod = settings.value;
+			config.set('userManagement.authenticationMethod', authenticationMethod);
+			Container.get(Logger).debug('Reloaded authentication method from the database', {
+				authenticationMethod,
+			});
+		} else {
+			Container.get(Logger).warn('Invalid authentication method read from the database', {
+				value: settings.value,
+			});
+		}
+	}
+}
+
 export function getCurrentAuthenticationMethod(): AuthProviderType {
 	return config.getEnv('userManagement.authenticationMethod');
 }
@@ -38,6 +58,14 @@ export function isLdapCurrentAuthenticationMethod(): boolean {
 
 export function isOidcCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'oidc';
+}
+
+export function isSsoCurrentAuthenticationMethod(): boolean {
+	return (
+		isSamlCurrentAuthenticationMethod() ||
+		isLdapCurrentAuthenticationMethod() ||
+		isOidcCurrentAuthenticationMethod()
+	);
 }
 
 export function isEmailCurrentAuthenticationMethod(): boolean {

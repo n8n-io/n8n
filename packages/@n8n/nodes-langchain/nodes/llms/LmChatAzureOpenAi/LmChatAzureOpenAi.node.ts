@@ -105,6 +105,9 @@ export class LmChatAzureOpenAi implements INodeType {
 
 			// Create and return the model
 			const model = new AzureChatOpenAI({
+				// Model name is required so logs are correct
+				// Also ensures internal logic (like mapping "maxTokens" to "maxCompletionTokens") is correct
+				model: modelName,
 				azureOpenAIApiDeploymentName: modelName,
 				...modelConfig,
 				...options,

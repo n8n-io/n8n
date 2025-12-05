@@ -3,6 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -16,11 +17,16 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	ExecutionCancelledError,
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
@@ -44,8 +50,6 @@ import { EventService } from './events/event.service';
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 
-	private executionsMode = config.getEnv('executions.mode');
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -58,11 +62,8 @@ export class WorkflowRunner {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionDataService: ExecutionDataService,
 		private readonly eventService: EventService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
-
-	setExecutionMode(mode: 'regular' | 'queue') {
-		this.executionsMode = mode;
-	}
 
 	/** The process did error */
 	async processError(
@@ -80,7 +81,7 @@ export class WorkflowRunner {
 		if (
 			error instanceof ExecutionNotFoundError ||
 			error instanceof ExecutionCancelledError ||
-			error.message.includes('cancelled')
+			(typeof error.message === 'string' && error.message.includes('cancelled'))
 		) {
 			return;
 		}
@@ -88,7 +89,7 @@ export class WorkflowRunner {
 		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
-		const isQueueMode = config.getEnv('executions.mode') === 'queue';
+		const isQueueMode = this.executionsConfig.mode === 'queue';
 
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
@@ -104,7 +105,7 @@ export class WorkflowRunner {
 		}
 
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error: {
 						...error,
@@ -113,7 +114,7 @@ export class WorkflowRunner {
 					},
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -166,8 +167,8 @@ export class WorkflowRunner {
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsMode === 'queue'
-				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
+				? this.executionsConfig.mode === 'queue'
+				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
 			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
@@ -178,9 +179,10 @@ export class WorkflowRunner {
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
 		if (
-			this.executionsMode !== 'queue' ||
+			this.executionsConfig.mode !== 'queue' ||
 			this.instanceSettings.instanceType === 'worker' ||
-			data.executionMode === 'manual'
+			data.executionMode === 'manual' ||
+			data.executionMode === 'chat'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise.catch((error) => {
@@ -219,9 +221,9 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 
 		const workflowSettings = data.workflowData.settings ?? {};
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
+		let workflowTimeout = workflowSettings.executionTimeout ?? this.executionsConfig.timeout; // initialize with default
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
+			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
 		let pinData: IPinData | undefined;
@@ -234,18 +236,19 @@ export class WorkflowRunner {
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
-			active: data.workflowData.active,
+			active: data.workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
 			pinData,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			data.userId,
-			undefined,
-			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId: data.userId,
+			workflowId: workflow.id,
+			executionTimeoutTimestamp:
+				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		});
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
@@ -305,7 +308,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				let timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as milliseconds
+				let timeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout) * 1000; // as milliseconds
 				if (data.startedAt && data.startedAt instanceof Date) {
 					// If startedAt is set, we calculate the timeout based on the startedAt time
 					// This is useful for executions that were waiting in a waiting state
@@ -314,10 +317,16 @@ export class WorkflowRunner {
 					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
 				}
 				if (timeout === 0) {
-					this.activeExecutions.stopExecution(executionId);
+					this.activeExecutions.stopExecution(
+						executionId,
+						new TimeoutExecutionCancelledError(executionId),
+					);
 				} else {
 					executionTimeout = setTimeout(() => {
-						void this.activeExecutions.stopExecution(executionId);
+						void this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
 					}, timeout);
 				}
 			}
@@ -405,7 +414,7 @@ export class WorkflowRunner {
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-					const error = new ExecutionCancelledError(executionId);
+					const error = new ManualExecutionCancelledError(executionId);
 					await this.processError(
 						error,
 						new Date(),
@@ -422,6 +431,7 @@ export class WorkflowRunner {
 				} catch (error) {
 					if (
 						error instanceof Error &&
+						typeof error.message === 'string' &&
 						error.message.includes('job stalled more than maxStalledCount')
 					) {
 						error = new MaxStalledCountError(error);

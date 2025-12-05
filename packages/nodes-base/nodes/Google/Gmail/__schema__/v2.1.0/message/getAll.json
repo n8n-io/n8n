@@ -56,9 +56,6 @@
                 "dkim-signature": {
                     "type": "string"
                 },
-                "feedback-id": {
-                    "type": "string"
-                },
                 "from": {
                     "type": "string"
                 },
@@ -74,9 +71,6 @@
                 "received-spf": {
                     "type": "string"
                 },
-                "reply-to": {
-                    "type": "string"
-                },
                 "return-path": {
                     "type": "string"
                 },
@@ -84,6 +78,12 @@
                     "type": "string"
                 },
                 "to": {
+                    "type": "string"
+                },
+                "x-gm-message-state": {
+                    "type": "string"
+                },
+                "x-google-dkim-signature": {
                     "type": "string"
                 },
                 "x-google-smtp-source": {
@@ -110,12 +110,6 @@
             "type": "integer"
         },
         "subject": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
-        "textAsHtml": {
             "type": "string"
         },
         "threadId": {
@@ -147,5 +141,5 @@
             }
         }
     },
-    "version": 4
+    "version": 7
 }

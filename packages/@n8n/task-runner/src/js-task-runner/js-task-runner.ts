@@ -48,7 +48,6 @@ import { makeSerializable } from './errors/serializable-error';
 import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
 export interface RpcCallObject {
@@ -57,6 +56,8 @@ export interface RpcCallObject {
 
 export interface JSExecSettings {
 	code: string;
+	// Additional properties to add to the context
+	additionalProperties?: Record<string, unknown>;
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
@@ -137,7 +138,17 @@ export class JsTaskRunner extends TaskRunner {
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of allowedExternalModules) {
-				require(module);
+				try {
+					require(module);
+				} catch (error) {
+					if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') {
+						console.error(
+							`Allowlisted module '${module}' is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
+						);
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 
@@ -210,9 +221,19 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private getNativeVariables() {
+		const { mode } = this;
 		return {
 			// Exposed Node.js globals
-			Buffer,
+			Buffer: new Proxy(Buffer, {
+				get(target, prop) {
+					if (mode === 'insecure') return target[prop as keyof typeof Buffer];
+					if (prop === 'allocUnsafe' || prop === 'allocUnsafeSlow') {
+						// eslint-disable-next-line @typescript-eslint/unbound-method
+						return Buffer.alloc;
+					}
+					return target[prop as keyof typeof Buffer];
+				},
+			}),
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -240,12 +261,13 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
-	): Promise<INodeExecutionData[]> {
+	): Promise<TaskResultData['result']> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
 
 		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
 			items: inputItems,
+			...settings.additionalProperties,
 		});
 
 		try {
@@ -278,7 +300,7 @@ export class JsTaskRunner extends TaskRunner {
 				return [];
 			}
 
-			return validateRunForAllItemsOutput(result);
+			return result;
 		} catch (e) {
 			// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
 			const error = this.toExecutionErrorIfNeeded(e);
@@ -310,7 +332,13 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
-		const context = this.buildContext(taskId, workflow, data.node);
+		const context = this.buildContext(
+			taskId,
+			workflow,
+			data.node,
+			undefined,
+			settings.additionalProperties,
+		);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const dataProxy = this.createDataProxy(data, workflow, index);
@@ -318,7 +346,7 @@ export class JsTaskRunner extends TaskRunner {
 			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
-				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
+				const result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
 					const abortHandler = () => {
 						reject(new TimeoutError(this.taskTimeout));
 					};
@@ -348,17 +376,18 @@ export class JsTaskRunner extends TaskRunner {
 					continue;
 				}
 
-				result = validateRunForEachItemOutput(result, index);
 				if (result) {
+					const jsonData = this.extractJsonData(result);
+
 					returnData.push(
 						result.binary
 							? {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 									binary: result.binary,
 								}
 							: {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 								},
 					);
@@ -414,6 +443,19 @@ export class JsTaskRunner extends TaskRunner {
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
+	}
+
+	private extractJsonData(result: INodeExecutionData) {
+		if (!isObject(result)) return result;
+
+		if ('json' in result) return result.json;
+
+		if ('binary' in result) {
+			// Pick only json property to prevent metadata duplication
+			return (result as INodeExecutionData).json ?? {};
+		}
+
+		return result;
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {

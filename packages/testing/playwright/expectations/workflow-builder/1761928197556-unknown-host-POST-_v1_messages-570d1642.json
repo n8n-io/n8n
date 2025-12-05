@@ -1,0 +1,80 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["2708"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["7"],
+			"request-id": ["req_011CUfbEWYRaoyiJKGwd7HxT"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:27:53Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15500000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:27:53Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:27:53Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:27:53 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["997485ac99867f11-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_011bLWcJAY1FynpEuqzKghmh",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01EDBwdjWhBRyX33pefdNEFw",
+						"name": "get_best_practices",
+						"input": {
+							"techniques": [
+								"form_input",
+								"scraping_and_research",
+								"data_extraction",
+								"content_generation",
+								"data_transformation"
+							]
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 5,
+					"cache_creation_input_tokens": 380,
+					"cache_read_input_tokens": 11239,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 380,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 82,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDExYkxXY0pBWTFGeW5wRXVxektnaG1oIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUVEQndkaldoQlJ5WDMzcGVmZE5FRnciLCJuYW1lIjoiZ2V0X2Jlc3RfcHJhY3RpY2VzIiwiaW5wdXQiOnsidGVjaG5pcXVlcyI6WyJmb3JtX2lucHV0Iiwic2NyYXBpbmdfYW5kX3Jlc2VhcmNoIiwiZGF0YV9leHRyYWN0aW9uIiwiY29udGVudF9nZW5lcmF0aW9uIiwiZGF0YV90cmFuc2Zvcm1hdGlvbiJdfX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo1LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjM4MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjExMjM5LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjozODAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo4Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQifX0="
+		}
+	},
+	"id": "1761928197556-unknown-host-POST-_v1_messages-570d1642.json",
+	"priority": 22,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

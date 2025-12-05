@@ -1,4 +1,4 @@
-import type { IWorkflowDb } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
@@ -27,7 +27,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'john@n8n.io',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'owner',
+					role: { slug: 'owner' },
 				},
 				workflow: mock<IWorkflowBase>({
 					id: 'wf123',
@@ -61,7 +61,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'jane@n8n.io',
 					firstName: 'Jane',
 					lastName: 'Smith',
-					role: 'user',
+					role: { slug: 'user' },
 				},
 				workflowId: 'wf789',
 				publicApi: false,
@@ -89,7 +89,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'jane@n8n.io',
 					firstName: 'Jane',
 					lastName: 'Smith',
-					role: 'user',
+					role: { slug: 'user' },
 				},
 				workflowId: 'wf789',
 				publicApi: false,
@@ -117,7 +117,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'jane@n8n.io',
 					firstName: 'Jane',
 					lastName: 'Smith',
-					role: 'user',
+					role: { slug: 'user' },
 				},
 				workflowId: 'wf789',
 				publicApi: false,
@@ -145,7 +145,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'alex@n8n.io',
 					firstName: 'Alex',
 					lastName: 'Johnson',
-					role: 'editor',
+					role: { slug: 'editor' },
 				},
 				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
 				publicApi: false,
@@ -172,6 +172,7 @@ describe('LogStreamingEventRelay', () => {
 				id: 'wf202',
 				name: 'Test Workflow',
 				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [],
 				connections: {},
 				staticData: undefined,
@@ -347,7 +348,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'updated@example.com',
 					firstName: 'Updated',
 					lastName: 'User',
-					role: 'global:member',
+					role: { slug: 'global:member' },
 				},
 				fieldsChanged: ['firstName', 'lastName', 'password'],
 			};
@@ -374,7 +375,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'john@n8n.io',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'some-role',
+					role: { slug: 'some-role' },
 				},
 				targetUserOldStatus: 'active',
 				publicApi: false,
@@ -404,7 +405,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'inviter@example.com',
 					firstName: 'Inviter',
 					lastName: 'User',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				targetUserId: ['newUser123'],
 				publicApi: false,
@@ -434,7 +435,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'reinviter@example.com',
 					firstName: 'Reinviter',
 					lastName: 'User',
-					role: 'global:admin',
+					role: { slug: 'global:admin' },
 				},
 				targetUserId: ['existingUser456'],
 			};
@@ -461,7 +462,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'newuser@example.com',
 					firstName: 'New',
 					lastName: 'User',
-					role: 'global:member',
+					role: { slug: 'global:member' },
 				},
 				userType: 'email',
 				wasDisabledLdapUser: false,
@@ -488,7 +489,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'loggedin@example.com',
 					firstName: 'Logged',
 					lastName: 'In',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				authenticationMethod: 'email',
 			};
@@ -517,7 +518,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'user101@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'global:member',
+					role: { slug: 'global:member' },
 				},
 			};
 
@@ -542,14 +543,14 @@ describe('LogStreamingEventRelay', () => {
 					email: 'john@n8n.io',
 					firstName: 'John',
 					lastName: 'Doe',
-					role: 'some-role',
+					role: { slug: 'some-role' },
 				},
 				invitee: {
 					id: '456',
 					email: 'jane@n8n.io',
 					firstName: 'Jane',
 					lastName: 'Doe',
-					role: 'some-other-role',
+					role: { slug: 'some-other-role' },
 				},
 			};
 
@@ -583,7 +584,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'resetuser@example.com',
 					firstName: 'Reset',
 					lastName: 'User',
-					role: 'global:member',
+					role: { slug: 'global:member' },
 				},
 			};
 
@@ -608,6 +609,7 @@ describe('LogStreamingEventRelay', () => {
 				id: 'wf303',
 				name: 'Test Workflow with Nodes',
 				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [
 					{
 						id: 'node1',
@@ -656,6 +658,7 @@ describe('LogStreamingEventRelay', () => {
 				id: 'wf404',
 				name: 'Test Workflow with Completed Node',
 				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [
 					{
 						id: 'node1',
@@ -708,7 +711,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'sharer@example.com',
 					firstName: 'Alice',
 					lastName: 'Sharer',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred789',
 				credentialType: 'githubApi',
@@ -743,7 +746,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'Test',
 					lastName: 'User',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialType: 'githubApi',
 				credentialId: 'cred456',
@@ -778,7 +781,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'creduser@example.com',
 					firstName: 'Cred',
 					lastName: 'User',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred789',
 				credentialType: 'githubApi',
@@ -807,7 +810,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'updatecred@example.com',
 					firstName: 'Update',
 					lastName: 'Cred',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred101',
 				credentialType: 'slackApi',
@@ -859,7 +862,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'packageupdater@example.com',
 					firstName: 'Package',
 					lastName: 'Updater',
-					role: 'global:admin',
+					role: { slug: 'global:admin' },
 				},
 				packageName: 'n8n-nodes-awesome-package',
 				packageVersionCurrent: '1.0.0',
@@ -896,7 +899,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'admin@example.com',
 					firstName: 'Admin',
 					lastName: 'User',
-					role: 'global:admin',
+					role: { slug: 'global:admin' },
 				},
 				inputString: 'n8n-nodes-custom-package',
 				packageName: 'n8n-nodes-custom-package',
@@ -935,7 +938,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'packagedeleter@example.com',
 					firstName: 'Package',
 					lastName: 'Deleter',
-					role: 'global:admin',
+					role: { slug: 'global:admin' },
 				},
 				packageName: 'n8n-nodes-awesome-package',
 				packageVersion: '1.0.0',
@@ -972,7 +975,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'recipient@example.com',
 					firstName: 'Failed',
 					lastName: 'Recipient',
-					role: 'global:member',
+					role: { slug: 'global:member' },
 				},
 				messageType: 'New user invite',
 				publicApi: false,
@@ -1002,7 +1005,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'apiuser@example.com',
 					firstName: 'API',
 					lastName: 'User',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
 			};
@@ -1028,7 +1031,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'apiuser@example.com',
 					firstName: 'API',
 					lastName: 'User',
-					role: 'global:owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
 			};

@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
-const FileTypeSchema = z.enum(['credential', 'workflow', 'tags', 'variables', 'file', 'folders']);
+const FileTypeSchema = z.enum([
+	'credential',
+	'workflow',
+	'tags',
+	'variables',
+	'file',
+	'folders',
+	'project',
+]);
 export const SOURCE_CONTROL_FILE_TYPE = FileTypeSchema.Values;
 
 const FileStatusSchema = z.enum([

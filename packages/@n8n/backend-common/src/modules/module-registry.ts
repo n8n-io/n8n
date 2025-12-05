@@ -1,5 +1,6 @@
+import type { InstanceType } from '@n8n/constants';
 import { ModuleMetadata } from '@n8n/decorators';
-import type { EntityClass, ModuleSettings } from '@n8n/decorators';
+import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -15,7 +16,11 @@ import { Logger } from '../logging/logger';
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
 
+	readonly loadDirs: string[] = [];
+
 	readonly settings: Map<string, ModuleSettings> = new Map();
+
+	readonly context: Map<string, ModuleContext> = new Map();
 
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
@@ -24,7 +29,16 @@ export class ModuleRegistry {
 		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+	private readonly defaultModules: ModuleName[] = [
+		'insights',
+		'external-secrets',
+		'community-packages',
+		'data-table',
+		'mcp',
+		'provisioning',
+		'breaking-changes',
+		'dynamic-credentials',
+	];
 
 	private readonly activeModules: string[] = [];
 
@@ -79,9 +93,11 @@ export class ModuleRegistry {
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
 			const entities = await Container.get(ModuleClass).entities?.();
 
-			if (!entities || entities.length === 0) continue;
+			if (entities?.length) this.entities.push(...entities);
 
-			this.entities.push(...entities);
+			const loadDir = await Container.get(ModuleClass).loadDir?.();
+
+			if (loadDir) this.loadDirs.push(loadDir);
 		}
 	}
 
@@ -93,12 +109,19 @@ export class ModuleRegistry {
 	 *
 	 * `ModuleRegistry.loadModules` must have been called before.
 	 */
-	async initModules() {
+	async initModules(instanceType: InstanceType) {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
-			const { licenseFlag, class: ModuleClass } = moduleEntry;
+			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
 
-			if (licenseFlag && !this.licenseState.isLicensed(licenseFlag)) {
+			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
 				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
+				continue;
+			}
+
+			if (instanceTypes !== undefined && !instanceTypes.includes(instanceType)) {
+				this.logger.debug(
+					`Skipped init for module "${moduleName}" (instance type "${instanceType}" not in: ${instanceTypes.join(', ')})`,
+				);
 				continue;
 			}
 
@@ -106,14 +129,41 @@ export class ModuleRegistry {
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
-			if (!moduleSettings) continue;
+			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
 
-			this.settings.set(moduleName, moduleSettings);
+			const moduleContext = await Container.get(ModuleClass).context?.();
+
+			if (moduleContext) this.context.set(moduleName, moduleContext);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 
 			this.activeModules.push(moduleName);
 		}
+	}
+
+	/**
+	 * Refreshes the settings for a specific module by calling its `settings` method.
+	 * This will make sure that any changes to the module's settings are reflected in the registry
+	 * and in turn available to other parts of the application (like front-end settings service).
+	 * If the module does not provide settings, it removes any existing settings for that module.
+	 */
+	async refreshModuleSettings(moduleName: ModuleName) {
+		const moduleEntry = this.moduleMetadata.get(moduleName);
+
+		if (!moduleEntry) {
+			this.logger.debug('Skipping settings refresh for unregistered module', { moduleName });
+			return null;
+		}
+
+		const moduleSettings = await Container.get(moduleEntry.class).settings?.();
+
+		if (moduleSettings) {
+			this.settings.set(moduleName, moduleSettings);
+		} else {
+			this.settings.delete(moduleName);
+		}
+
+		return moduleSettings ?? null;
 	}
 
 	async shutdownModule(moduleName: ModuleName) {
