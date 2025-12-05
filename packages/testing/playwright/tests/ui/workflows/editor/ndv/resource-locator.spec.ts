@@ -1,5 +1,5 @@
-import { E2E_TEST_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import { E2E_TEST_NODE_NAME } from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 const NO_CREDENTIALS_MESSAGE = 'Add your credential';
 const INVALID_CREDENTIALS_MESSAGE = 'Check your credential';

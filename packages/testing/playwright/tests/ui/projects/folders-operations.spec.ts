@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Folders - Operations', () => {
 	test.describe('Rename and delete folders', () => {
