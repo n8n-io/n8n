@@ -36,6 +36,10 @@ const { connectionState, testConnection, setConnectionState } = useExternalSecre
 	providerData,
 );
 
+// Typed i18n key for on-demand label (avoids BaseTextKey compile error)
+const ON_DEMAND_I18N_KEY = 'settings.externalSecrets.card.onDemand' as unknown as Parameters<
+	typeof i18n.baseText
+>[0];
 const actionDropdownOptions = computed(() => [
 	{
 		value: 'setup',
@@ -120,7 +124,8 @@ async function onActionDropdownClick(id: string) {
 			<div :class="$style.cardContent">
 				<N8nText bold>{{ provider.displayName }}</N8nText>
 				<N8nText v-if="provider.connected" color="text-light" size="small">
-					<span>
+					<span v-if="provider.name === 'akeyless'">{{ i18n.baseText(ON_DEMAND_I18N_KEY) }}</span>
+					<span v-else>
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
 								interpolate: {
