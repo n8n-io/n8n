@@ -176,8 +176,9 @@ function groupToolMessagesIntoThinking(
 		}
 
 		// Create a ThinkingGroup message with deduplicated items
+		// Use a stable ID so Vue preserves component state when items update
 		const thinkingGroup: ChatUI.ThinkingGroupMessage = {
-			id: `thinking-${toolGroup[0].id || i}`,
+			id: 'thinking-group',
 			role: 'assistant',
 			type: 'thinking-group',
 			items,
@@ -190,10 +191,11 @@ function groupToolMessagesIntoThinking(
 
 	// If streaming with a loadingMessage but no thinking-group exists yet (no tool messages received),
 	// create an initial thinking-group with just the "Thinking..." item
+	// Use the same stable ID as tool-based thinking-groups so Vue preserves component state
 	const hasThinkingGroup = result.some((msg) => msg.type === 'thinking-group');
 	if (options.streaming && options.loadingMessage && !hasThinkingGroup) {
 		const initialThinkingGroup: ChatUI.ThinkingGroupMessage = {
-			id: 'thinking-initial',
+			id: 'thinking-group',
 			role: 'assistant',
 			type: 'thinking-group',
 			items: [
