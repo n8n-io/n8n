@@ -19,7 +19,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -53,10 +52,9 @@ export enum OauthVersion {
 }
 
 @Service()
-export abstract class AbstractOAuthController {
+export class OauthService {
 	constructor(
 		protected readonly logger: Logger,
-		protected readonly externalHooks: ExternalHooks,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -69,9 +67,7 @@ export abstract class AbstractOAuthController {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	protected async getCredential(
-		req: OAuthRequest.OAuth2Credential.Auth,
-	): Promise<CredentialsEntity> {
+	async getCredential(req: OAuthRequest.OAuth2Credential.Auth): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
 
 		if (!credentialId) {
@@ -150,7 +146,7 @@ export abstract class AbstractOAuthController {
 		)) as unknown as T;
 	}
 
-	protected async encryptAndSaveData(
+	async encryptAndSaveData(
 		credential: ICredentialsDb,
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
@@ -209,7 +205,7 @@ export abstract class AbstractOAuthController {
 		);
 	}
 
-	protected async resolveCredential<T>(
+	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
 	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
 		const { state: encodedState } = req.query;
@@ -238,7 +234,7 @@ export abstract class AbstractOAuthController {
 		return [credential, decryptedDataOriginal, oauthCredentials];
 	}
 
-	protected renderCallbackError(res: Response, message: string, reason?: string) {
+	renderCallbackError(res: Response, message: string, reason?: string) {
 		res.render('oauth-error-callback', { error: { message, reason } });
 	}
 

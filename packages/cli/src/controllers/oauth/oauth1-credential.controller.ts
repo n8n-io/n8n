@@ -9,11 +9,9 @@ import clientOAuth1 from 'oauth-1.0a';
 
 import { OAuthRequest } from '@/requests';
 
-import {
-	AbstractOAuthController,
-	OauthVersion,
-	skipAuthOnOAuthCallback,
-} from './abstract-oauth.controller';
+import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
+import { Logger } from '@n8n/backend-common';
+import { ExternalHooks } from '@/external-hooks';
 
 interface OAuth1CredentialData {
 	signatureMethod: 'HMAC-SHA256' | 'HMAC-SHA512' | 'HMAC-SHA1';
@@ -31,14 +29,21 @@ const algorithmMap = {
 } as const;
 
 @RestController('/oauth1-credential')
-export class OAuth1CredentialController extends AbstractOAuthController {
+export class OAuth1CredentialController {
+	constructor(
+		private readonly oauthService: OauthService,
+		private readonly externalHooks: ExternalHooks,
+		private readonly logger: Logger,
+	) {}
+
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
-		const credential = await this.getCredential(req);
-		const oauthCredentials = await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+		const credential = await this.oauthService.getCredential(req);
+		const oauthCredentials =
+			await this.oauthService.getOAuthCredentials<OAuth1CredentialData>(credential);
 
-		const [csrfSecret, state] = this.createCsrfState({
+		const [csrfSecret, state] = this.oauthService.createCsrfState({
 			cid: credential.id,
 			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
 		});
@@ -59,7 +64,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 		};
 
 		const oauthRequestData = {
-			oauth_callback: `${this.getBaseUrl(OauthVersion.V1)}/callback?state=${state}`,
+			oauth_callback: `${this.oauthService.getBaseUrl(OauthVersion.V1)}/callback?state=${state}`,
 		};
 
 		await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -88,7 +93,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 
 		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
 
-		await this.encryptAndSaveData(credential, { csrfSecret });
+		await this.oauthService.encryptAndSaveData(credential, { csrfSecret });
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
@@ -105,7 +110,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			const { oauth_verifier, oauth_token, state: encodedState } = req.query;
 
 			if (!oauth_verifier || !oauth_token || !encodedState) {
-				return this.renderCallbackError(
+				return this.oauthService.renderCallbackError(
 					res,
 					'Insufficient parameters for OAuth1 callback.',
 					`Received following query parameters: ${JSON.stringify(req.query)}`,
@@ -113,7 +118,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			}
 
 			const [credential, _, oauthCredentials] =
-				await this.resolveCredential<OAuth1CredentialData>(req);
+				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
 
 			// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
 			const oauthToken = await axios.post<string>(
@@ -128,15 +133,18 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 
 			const oauthTokenData = Object.fromEntries(paramParser.entries());
 
-			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+			console.log('oauthTokenData', oauthTokenData);
+
+			await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
 			this.logger.debug('OAuth1 callback successful for new credential', {
 				credentialId: credential.id,
 			});
 			return res.render('oauth-callback');
 		} catch (e) {
+			console.log('error', e);
 			const error = ensureError(e);
-			return this.renderCallbackError(
+			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
 				'body' in error ? jsonStringify(error.body) : undefined,

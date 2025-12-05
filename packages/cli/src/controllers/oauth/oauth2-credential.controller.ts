@@ -21,26 +21,30 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
 import {
-	AbstractOAuthController,
-	OauthVersion,
-	skipAuthOnOAuthCallback,
-} from './abstract-oauth.controller';
-import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
 } from './oauth2-dynamic-client-registration.schema';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
+import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
+import { Logger } from '@n8n/backend-common';
+import { ExternalHooks } from '@/external-hooks';
 
 @RestController('/oauth2-credential')
-export class OAuth2CredentialController extends AbstractOAuthController {
+export class OAuth2CredentialController {
+	constructor(
+		private readonly oauthService: OauthService,
+		private readonly logger: Logger,
+		private readonly externalHooks: ExternalHooks,
+	) {}
+
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
-		const credential = await this.getCredential(req);
+		const credential = await this.oauthService.getCredential(req);
 		const oauthCredentials: OAuth2CredentialData =
-			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+			await this.oauthService.getOAuthCredentials<OAuth2CredentialData>(credential);
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
@@ -85,7 +89,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				authentication,
 			);
 			const registerPayload = {
-				redirect_uris: [`${this.getBaseUrl(OauthVersion.V2)}/callback`],
+				redirect_uris: [`${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`],
 				token_endpoint_auth_method,
 				grant_types,
 				response_types: ['code'],
@@ -118,7 +122,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState({
+		const [csrfSecret, state] = this.oauthService.createCsrfState({
 			cid: credential.id,
 			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
 		});
@@ -145,7 +149,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			toUpdate.codeVerifier = code_verifier;
 		}
 
-		await this.encryptAndSaveData(credential, toUpdate);
+		await this.oauthService.encryptAndSaveData(credential, toUpdate);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 		const returnUri = oAuthObj.code.getUri();
@@ -164,7 +168,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
-				return this.renderCallbackError(
+				return this.oauthService.renderCallbackError(
 					res,
 					'Insufficient parameters for OAuth2 callback.',
 					`Received following query parameters: ${JSON.stringify(req.query)}`,
@@ -172,7 +176,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			}
 
 			const [credential, decryptedDataOriginal, oauthCredentials] =
-				await this.resolveCredential<OAuth2CredentialData>(req);
+				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
 			let options: Partial<ClientOAuth2Options> = {};
 
@@ -216,7 +220,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				...oauthToken.data,
 			};
 
-			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+			await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
 			this.logger.debug('OAuth2 callback successful for credential', {
 				credentialId: credential.id,
@@ -225,7 +229,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			return res.render('oauth-callback');
 		} catch (e) {
 			const error = ensureError(e);
-			return this.renderCallbackError(
+			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
 				'body' in error ? jsonStringify(error.body) : undefined,
@@ -240,7 +244,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			accessTokenUri: credential.accessTokenUrl ?? '',
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
-			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
+			redirectUri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
