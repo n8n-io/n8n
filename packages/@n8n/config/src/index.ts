@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
+import { BrowserUseConfig } from './configs/browser-use.config';
 import { ComputerUseConfig } from './configs/computer-use.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
@@ -218,6 +219,9 @@ export class GlobalConfig {
 
 	@Nested
 	computerUse: ComputerUseConfig;
+
+	@Nested
+	browserUse: BrowserUseConfig;
 
 	@Nested
 	dataTable: DataTableConfig;

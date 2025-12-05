@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  browser-use-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: browser-use-api
+    ports:
+      - '8766:8766' # API server
+    environment:
+      - PORT=8766
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:8766/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
