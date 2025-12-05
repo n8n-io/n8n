@@ -18,6 +18,7 @@ import { useBuilderStore } from '../../builder.store';
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
 >([]);
+const workflowTodosRef = ref<Array<{ node: string; type: string; value: string | string[] }>>([]);
 const executionWaitingForWebhookRef = ref(false);
 const selectedTriggerNodeNameRef = ref<string | undefined>(undefined);
 const hasNoCreditsRemainingRef = ref(false);
@@ -68,7 +69,8 @@ const renderComponent = createComponentRenderer(ExecuteMessage);
 
 vi.mock('./NodeIssueItem.vue', () => ({
 	default: {
-		template: '<li />',
+		template: '<li data-test-id="node-issue-item" @click="$emit(\'click\')" />',
+		emits: ['click'],
 	},
 }));
 
@@ -84,6 +86,7 @@ describe('ExecuteMessage', () => {
 		runWorkflowMock.mockReset();
 		showMessageMock.mockReset();
 		workflowValidationIssuesRef.value = [];
+		workflowTodosRef.value = [];
 		executionWaitingForWebhookRef.value = false;
 		selectedTriggerNodeNameRef.value = undefined;
 		hasNoCreditsRemainingRef.value = false;
@@ -139,14 +142,18 @@ describe('ExecuteMessage', () => {
 		Object.defineProperty(builderStore, 'hasNoCreditsRemaining', {
 			get: () => hasNoCreditsRemainingRef.value,
 		});
+		Object.defineProperty(builderStore, 'workflowTodos', {
+			get: () => workflowTodosRef.value,
+		});
+		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
 		renderExecuteMessage = () => renderComponent({ pinia });
 	});
 
 	it('disables execution when validation issues exist', () => {
-		workflowValidationIssuesRef.value = [
-			{ node: 'Start Trigger', type: 'parameters', value: 'Missing field' },
-		];
+		const issue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
+		workflowValidationIssuesRef.value = [issue];
+		workflowTodosRef.value = [issue];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -159,6 +166,9 @@ describe('ExecuteMessage', () => {
 		workflowNodes[0].parameters = {
 			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
 		};
+		workflowTodosRef.value = [
+			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
+		];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -327,6 +337,10 @@ describe('ExecuteMessage', () => {
 				url: ['Some other validation error'],
 			},
 		};
+		workflowTodosRef.value = [
+			{ node: 'Start Trigger', type: 'parameters', value: 'Some other validation error' },
+			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
+		];
 
 		const { getAllByTestId, container } = renderExecuteMessage();
 		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
@@ -336,5 +350,29 @@ describe('ExecuteMessage', () => {
 		expect(button.disabled).toBe(true);
 		// Should have both the existing issue and the placeholder issue
 		expect(issueItems.length).toBeGreaterThan(0);
+	});
+
+	it('tracks user_clicked_todo when clicking on an issue item', async () => {
+		const todoIssue = { node: 'HTTP Request', type: 'parameters', value: 'Missing URL' };
+		workflowTodosRef.value = [todoIssue];
+		workflowNodes.push({
+			id: '2',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			position: [100, 0],
+			parameters: {},
+			typeVersion: 1,
+			issues: {},
+		});
+
+		const { getAllByTestId } = renderExecuteMessage();
+		const issueItem = getAllByTestId('node-issue-item')[0];
+
+		await fireEvent.click(issueItem);
+
+		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith('user_clicked_todo', {
+			node_type: 'n8n-nodes-base.httpRequest',
+			type: 'parameters',
+		});
 	});
 });

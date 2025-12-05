@@ -38,6 +38,7 @@ export interface WorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 	parentFolderId?: string;
 	uiContext?: string;
+	aiBuilderAssisted?: boolean;
 }
 
 export interface WorkflowDataCreate extends WorkflowDataUpdate {

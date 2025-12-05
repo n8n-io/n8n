@@ -420,7 +420,7 @@ export class WorkflowsController {
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
-		const { tags, parentFolderId, ...rest } = req.body;
+		const { tags, parentFolderId, aiBuilderAssisted, ...rest } = req.body;
 
 		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
 		if (
@@ -445,6 +445,7 @@ export class WorkflowsController {
 			tagIds: tags,
 			parentFolderId,
 			forceSave: isSharingEnabled ? forceSave : true,
+			aiBuilderAssisted,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);

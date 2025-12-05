@@ -10,7 +10,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { hasCredentialChanges, hasNonPositionalChanges, TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
@@ -621,7 +621,13 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private async workflowSaved({ user, workflow, publicApi }: RelayEventMap['workflow-saved']) {
+	private async workflowSaved({
+		user,
+		workflow,
+		publicApi,
+		previousWorkflow,
+		aiBuilderAssisted,
+	}: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = this.globalConfig.deployment.type === 'cloud';
 
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
@@ -654,6 +660,18 @@ export class TelemetryEventRelay extends EventRelay {
 			(note) => note.overlapping,
 		).length;
 
+		let workflowEditedNoPos = false;
+		let credentialEdited = false;
+		if (previousWorkflow) {
+			workflowEditedNoPos = hasNonPositionalChanges(
+				previousWorkflow.nodes,
+				workflow.nodes,
+				previousWorkflow.connections,
+				workflow.connections,
+			);
+			credentialEdited = hasCredentialChanges(previousWorkflow.nodes, workflow.nodes);
+		}
+
 		this.telemetry.track('User saved workflow', {
 			user_id: user.id,
 			workflow_id: workflow.id,
@@ -665,6 +683,9 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 			sharing_role: userRole,
 			meta: JSON.stringify(workflow.meta),
+			workflow_edited_no_pos: workflowEditedNoPos,
+			credential_edited: credentialEdited,
+			ai_builder_assisted: aiBuilderAssisted ?? false,
 		});
 	}
 
@@ -813,13 +834,17 @@ export class TelemetryEventRelay extends EventRelay {
 							manualExecEventProperties.is_managed = credential.isManaged;
 						}
 					}
+					const destinationNodeName = runData.data.startData?.destinationNode.nodeName;
 					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
-						node_type: TelemetryHelpers.getNodeTypeForName(
-							workflow,
-							runData.data.startData?.destinationNode.nodeName,
-						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode.nodeName],
+						node_type: TelemetryHelpers.getNodeTypeForName(workflow, destinationNodeName)?.type,
+						node_id: nodeGraphResult.nameIndices[destinationNodeName],
+						node_role: TelemetryHelpers.getNodeRole(
+							destinationNodeName,
+							workflow.connections,
+							this.nodeTypes,
+							workflow.nodes,
+						),
 					};
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);

@@ -27,6 +27,7 @@ export declare namespace WorkflowRequest {
 		projectId: string;
 		parentFolderId?: string;
 		uiContext?: string;
+		aiBuilderAssisted?: boolean;
 	}>;
 
 	// TODO: Use a discriminator when CAT-1809 lands

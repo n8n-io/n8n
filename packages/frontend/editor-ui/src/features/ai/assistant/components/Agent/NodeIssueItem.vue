@@ -19,12 +19,19 @@ interface Props {
 	formatIssueMessage: (value: WorkflowNodeIssue['value']) => string;
 }
 
+interface Emits {
+	click: [];
+}
+
 const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 const ndvStore = useNDVStore();
 
 function handleEditClick() {
 	ndvStore.setActiveNodeName(props.issue.node, 'other');
+
+	emit('click');
 }
 </script>
 

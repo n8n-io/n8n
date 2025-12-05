@@ -226,6 +226,7 @@ export class WorkflowService {
 			forceSave?: boolean;
 			publicApi?: boolean;
 			publishIfActive?: boolean;
+			aiBuilderAssisted?: boolean;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -234,6 +235,7 @@ export class WorkflowService {
 			forceSave = false,
 			publicApi = false,
 			publishIfActive = false,
+			aiBuilderAssisted = false,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -414,6 +416,8 @@ export class WorkflowService {
 			user,
 			workflow: updatedWorkflow,
 			publicApi,
+			previousWorkflow: workflow,
+			aiBuilderAssisted,
 		});
 
 		// Activate workflow if requested, or
