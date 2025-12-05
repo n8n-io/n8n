@@ -28,6 +28,7 @@ import type { Response } from 'express';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	AGENT_LANGCHAIN_NODE_TYPE,
 	OperationalError,
 	ManualExecutionCancelledError,
 	type INodeCredentials,
@@ -940,13 +941,21 @@ export class ChatHubService {
 			}
 
 			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-
 			if (!chatTrigger) {
 				continue;
 			}
 
 			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
 			if (!chatTriggerParams) {
+				continue;
+			}
+
+			const agentNodes = activeVersion.nodes?.filter(
+				(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
+			);
+
+			// Agents older than this can't do streaming
+			if (agentNodes.some((node) => node.typeVersion < 2.1)) {
 				continue;
 			}
 

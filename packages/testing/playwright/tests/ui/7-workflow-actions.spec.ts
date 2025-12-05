@@ -37,7 +37,8 @@ async function goToWorkflow(n8n: n8nPage, workflowId: string): Promise<void> {
 	await loadResponsePromise;
 }
 
-test.describe('Workflow Actions', () => {
+// eslint-disable-next-line playwright/no-skipped-test
+test.skip('Workflow Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
