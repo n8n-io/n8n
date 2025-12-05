@@ -286,6 +286,10 @@ const openCommunityRegisterModal = () => {
 			</div>
 
 			<N8nInfoTip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</N8nInfoTip>
+			<br />
+			<N8nInfoTip v-if="usageStore.activeWorkflowTriggersLimit > 0">
+				{{ locale.baseText('settings.usageAndPlan.activeWorkflows.overcountWarning') }}
+			</N8nInfoTip>
 
 			<div :class="$style.buttons">
 				<N8nButton
