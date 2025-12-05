@@ -1,5 +1,5 @@
-import { EDIT_FIELDS_SET_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import { EDIT_FIELDS_SET_NODE_NAME } from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 const NOTIFICATIONS = {
 	WORKFLOW_EXECUTED_SUCCESSFULLY: 'Workflow executed successfully',

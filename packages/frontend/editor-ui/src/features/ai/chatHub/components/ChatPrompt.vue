@@ -125,6 +125,8 @@ function handleSubmitForm() {
 function handleKeydownTextarea(e: KeyboardEvent) {
 	const trimmed = message.value.trim();
 
+	speechInput.stop();
+
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
 		speechInput.stop();

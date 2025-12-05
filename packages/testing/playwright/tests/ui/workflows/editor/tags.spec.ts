@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../fixtures/base';
 
 test.describe('Workflow tags - Tag creation', () => {
 	test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
