@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
+import { test, expect } from '../../../../../fixtures/base';
+import type { n8nPage } from '../../../../../pages/n8nPage';
 
 test.describe('Data transformation expressions', () => {
 	test.beforeEach(async ({ n8n }) => {
