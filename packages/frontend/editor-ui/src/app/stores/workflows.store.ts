@@ -613,7 +613,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 			lastSuccessfulExecution.value = await workflowsApi.getLastSuccessfulExecution(
 				rootStore.restApiContext,
-				workflowId,
+				workflowId.value,
 			);
 		} catch (e: unknown) {
 			// no need to do anything if fails

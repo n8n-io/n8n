@@ -16,12 +16,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
+const mockRouteQuery = reactive<Record<string, string>>({});
 vi.mock('vue-router', async (importOriginal) => {
-	const query = reactive({});
 	return {
 		...(await importOriginal()),
 		useRoute: () => ({
-			query,
+			query: mockRouteQuery,
 		}),
 	};
 });
@@ -36,14 +36,12 @@ vi.mock('@/app/composables/useMessage', () => ({
 		confirm: vi.fn().mockResolvedValue(true),
 	}),
 }));
-vi.mock('@/app/composables/useWorkflowSaving', () => {
-	const saveAsNewWorkflow = vi.fn().mockResolvedValue('abc123');
-	return {
-		useWorkflowSaving: () => ({
-			saveAsNewWorkflow,
-		}),
-	};
-});
+const saveAsNewWorkflowMock = vi.fn().mockResolvedValue('abc123');
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({
+		saveAsNewWorkflow: saveAsNewWorkflowMock,
+	}),
+}));
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({
 		workflow: { share: true },
@@ -72,7 +70,6 @@ let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsEEStore: MockedStore<typeof useWorkflowsEEStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let rolesStore: MockedStore<typeof useRolesStore>;
-let workflowSaving: ReturnType<typeof useWorkflowSaving>;
 
 describe('WorkflowShareModal.ee.vue', () => {
 	beforeEach(() => {
@@ -81,6 +78,9 @@ describe('WorkflowShareModal.ee.vue', () => {
 		workflowsEEStore = mockedStore(useWorkflowsEEStore);
 		projectsStore = mockedStore(useProjectsStore);
 		rolesStore = mockedStore(useRolesStore);
+
+		// Reset route query
+		Object.keys(mockRouteQuery).forEach((key) => delete mockRouteQuery[key]);
 
 		// Set up default store state
 		settingsStore.settings.enterprise = { sharing: true } as FrontendSettings['enterprise'];
@@ -107,10 +107,13 @@ describe('WorkflowShareModal.ee.vue', () => {
 			},
 		];
 
-		workflowSaving = useWorkflowSaving({ router: useRouter() });
+		saveAsNewWorkflowMock.mockClear();
 	});
 
 	it('should share new, unsaved workflow after saving it first', async () => {
+		// Set route query to indicate new workflow
+		mockRouteQuery.new = 'true';
+
 		workflowsStore.workflow = {
 			id: '',
 			name: 'My workflow',
@@ -143,7 +146,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));
 		await waitFor(() => {
-			expect(workflowSaving.saveAsNewWorkflow).toHaveBeenCalled();
+			expect(saveAsNewWorkflowMock).toHaveBeenCalled();
 			expect(saveWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: 'abc123',
 				sharedWithProjects: [projectsStore.personalProjects[0]],
