@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
 
-import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
-import { EditFieldsNode } from '../../pages/nodes/EditFieldsNode';
+import { test, expect } from '../../../fixtures/base';
+import type { n8nPage } from '../../../pages/n8nPage';
+import { EditFieldsNode } from '../../../pages/nodes/EditFieldsNode';
 
 const cowBase64 =
 	'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=';

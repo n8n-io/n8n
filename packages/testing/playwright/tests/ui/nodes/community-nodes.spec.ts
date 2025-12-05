@@ -1,9 +1,9 @@
-import { MANUAL_TRIGGER_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
-import customCredential from '../../workflows/Custom_credential.json';
-import customNodeFixture from '../../workflows/Custom_node.json';
-import customNodeWithCustomCredentialFixture from '../../workflows/Custom_node_custom_credential.json';
-import customNodeWithN8nCredentialFixture from '../../workflows/Custom_node_n8n_credential.json';
+import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
+import { test, expect } from '../../../fixtures/base';
+import customCredential from '../../../workflows/Custom_credential.json';
+import customNodeFixture from '../../../workflows/Custom_node.json';
+import customNodeWithCustomCredentialFixture from '../../../workflows/Custom_node_custom_credential.json';
+import customNodeWithN8nCredentialFixture from '../../../workflows/Custom_node_n8n_credential.json';
 
 const CUSTOM_NODE_NAME = 'E2E Node';
 const CUSTOM_NODE_WITH_N8N_CREDENTIAL = 'E2E Node with native n8n credential';

@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Webhook Origin Isolation', () => {
 	test.beforeAll(async ({ api }) => {
