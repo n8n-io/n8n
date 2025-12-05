@@ -366,7 +366,7 @@ watch(
 watch(
 	defaultAgent,
 	(agent, prevAgent) => {
-		if (defaultModel.value && agent && agent.name !== prevAgent?.name) {
+		if (defaultModel.value && agent?.name && agent.name !== prevAgent?.name) {
 			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
 		}
 
