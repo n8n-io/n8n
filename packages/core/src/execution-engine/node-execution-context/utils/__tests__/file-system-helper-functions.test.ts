@@ -1,7 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { createReadStream } from 'node:fs';
+import { constants, createReadStream } from 'node:fs';
 import { access as fsAccess, realpath as fsRealpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -304,7 +304,7 @@ describe('getFileSystemHelperFunctions', () => {
 				helperFunctions.writeContentToFile(
 					await helperFunctions.resolvePath(instanceSettings.n8nFolder + '/test.txt'),
 					'content',
-					'w',
+					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
 			).rejects.toThrow('not writable');
 		});

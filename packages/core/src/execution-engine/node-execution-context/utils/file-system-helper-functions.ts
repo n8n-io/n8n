@@ -36,7 +36,7 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-const resolvePath = async (path: PathLike): Promise<ResolvedFilePath> => {
+async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
 	try {
 		return (await fsRealpath(path)) as ResolvedFilePath; // apply brand, since we know it's resolved now
 	} catch (error: unknown) {
@@ -45,7 +45,7 @@ const resolvePath = async (path: PathLike): Promise<ResolvedFilePath> => {
 		}
 		throw error;
 	}
-};
+}
 
 function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	const allowedPaths = getAllowedPaths();
@@ -98,11 +98,10 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 			stream.once('error', (error) => {
 				if ((error as NodeJS.ErrnoException).code === 'ELOOP') {
 					reject(
-						new NodeOperationError(
-							node,
-							`The file "${String(resolvedFilePath)}" could not be opened.`,
-							{ level: 'warning' },
-						),
+						new NodeOperationError(node, error, {
+							level: 'warning',
+							description: 'Symlinks are not allowed.',
+						}),
 					);
 				} else {
 					reject(error);
@@ -126,7 +125,10 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				},
 			);
 		}
-		return await fsWriteFile(resolvedFilePath, content, { encoding: 'binary', flag });
+		return await fsWriteFile(resolvedFilePath, content, {
+			encoding: 'binary',
+			flag: (flag ?? 0) | constants.O_NOFOLLOW,
+		});
 	},
 	resolvePath,
 	isFilePathBlocked,

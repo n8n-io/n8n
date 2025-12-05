@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { constants } from 'node:fs';
 import type { Readable } from 'stream';
 
 export class WriteBinaryFile implements INodeType {
@@ -75,7 +76,9 @@ export class WriteBinaryFile implements INodeType {
 
 				const options = this.getNodeParameter('options', 0, {});
 
-				const flag: string = options.append ? 'a' : 'w';
+				const flag: number = options.append
+					? constants.O_APPEND
+					: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC;
 
 				item = items[itemIndex];
 

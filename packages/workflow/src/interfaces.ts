@@ -694,7 +694,7 @@ export interface BaseHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
-const __brand = Symbol('brand');
+const __brand = Symbol('resolvedFilePath');
 
 export type ResolvedFilePath = string & {
 	[__brand]: 'ResolvedFilePath';
@@ -708,7 +708,7 @@ export interface FileSystemHelperFunctions {
 	writeContentToFile(
 		path: ResolvedFilePath,
 		content: string | Buffer | Readable,
-		flag?: string,
+		flag?: number,
 	): Promise<void>;
 }
 

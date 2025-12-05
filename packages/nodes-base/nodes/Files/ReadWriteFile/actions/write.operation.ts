@@ -10,6 +10,7 @@ import type { Readable } from 'stream';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { errorMapper } from '../helpers/utils';
+import { constants } from 'node:fs';
 
 export const properties: INodeProperties[] = [
 	{
@@ -68,7 +69,9 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 			fileName = this.getNodeParameter('fileName', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const flag: string = options.append ? 'a' : 'w';
+			const flag: number = options.append
+				? constants.O_APPEND
+				: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC;
 
 			item = items[itemIndex];
 
