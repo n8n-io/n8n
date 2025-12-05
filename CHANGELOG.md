@@ -1,3 +1,13 @@
+## [1.123.3](https://github.com/n8n-io/n8n/compare/n8n@1.123.2...n8n@1.123.3) (2025-12-05)
+
+
+### Bug Fixes
+
+* Add `HOME` env var to distroless runners image ([#22796](https://github.com/n8n-io/n8n/issues/22796)) ([0bcc116](https://github.com/n8n-io/n8n/commit/0bcc11680258923c11e6801e1832f8276408ac86))
+* **core:** Hide migration rule issues not relevant to cloud ([#22749](https://github.com/n8n-io/n8n/issues/22749)) ([9ac4fd0](https://github.com/n8n-io/n8n/commit/9ac4fd019ec9852c48321f1559dabc1bc2c665d5))
+
+
+
 ## [1.123.2](https://github.com/n8n-io/n8n/compare/n8n@1.123.1...n8n@1.123.2) (2025-12-04)
 
 
