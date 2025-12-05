@@ -22,6 +22,7 @@ const props = withDefaults(
 	defineProps<{
 		item: WorkflowHistory;
 		index: number;
+		timelineIndex?: number;
 		actions: Array<UserAction<IUser>>;
 		isSelected?: boolean;
 		isVersionActive?: boolean;
@@ -34,13 +35,23 @@ const props = withDefaults(
 const emit = defineEmits<{
 	action: [value: WorkflowHistoryAction];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
-	mounted: [value: { index: number; offsetTop: number; isSelected: boolean }];
+	mounted: [
+		value: {
+			index: number;
+			itemIndex: number;
+			offsetTop: number;
+			isSelected: boolean;
+		},
+	];
 }>();
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 
 const actionsVisible = ref(false);
+const effectiveTimelineIndex = computed(() =>
+	props.timelineIndex === undefined ? props.index : props.timelineIndex,
+);
 const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
@@ -126,7 +137,8 @@ const onItemClick = (event: MouseEvent) => {
 
 onMounted(() => {
 	emit('mounted', {
-		index: props.index,
+		index: effectiveTimelineIndex.value,
+		itemIndex: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isSelected: props.isSelected,
 	});
@@ -145,23 +157,30 @@ onMounted(() => {
 		}"
 	>
 		<slot :formatted-created-at="formattedCreatedAt">
-			<p v-if="isDraftPublishEnabled" @click="onItemClick">
+			<p v-if="isDraftPublishEnabled" :class="$style.content" @click="onItemClick">
 				<span v-if="versionName" :class="$style.mainLine">{{ versionName }}</span>
-				<time :datetime="item.createdAt" :class="$style.metaItem">
-					{{ i18n.baseText('workflowHistory.item.savedAtLabel') }} {{ formattedCreatedAt }}
-				</time>
-				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
-					<template #content>{{ props.item.authors }}</template>
-					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
-				</N8nTooltip>
-				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
-					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
-				</time>
-				<span v-if="publishedByUserName" :class="$style.metaItem">
-					{{ publishedByUserName }}
+				<span :class="$style.metaRow">
+					<time :datetime="item.createdAt" :class="$style.metaItem">
+						{{ i18n.baseText('workflowHistory.item.savedAtLabel') }} {{ formattedCreatedAt }}
+					</time>
+					<N8nTooltip
+						placement="right-end"
+						:disabled="authors.size < 2 && !isAuthorElementTruncated"
+					>
+						<template #content>{{ props.item.authors }}</template>
+						<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
+					</N8nTooltip>
+				</span>
+				<span v-if="publishedAt || publishedByUserName" :class="$style.metaRowSecondary">
+					<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
+						{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
+					</time>
+					<span v-if="publishedByUserName" :class="$style.metaItem">
+						{{ publishedByUserName }}
+					</span>
 				</span>
 			</p>
-			<p v-else @click="onItemClick">
+			<p v-else :class="$style.contentLegacy" @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
 				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 					<template #content>{{ props.item.authors }}</template>
@@ -198,80 +217,113 @@ onMounted(() => {
 </template>
 <style module lang="scss">
 .item {
-	display: flex;
 	position: relative;
-	align-items: center;
-	justify-content: space-between;
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: stretch;
 	border-left: 2px var(--border-style) transparent;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
+}
 
-	p {
-		display: grid;
-		padding: var(--spacing--sm);
-		cursor: pointer;
-		flex: 1 1 auto;
+.item::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--spacing--lg);
+	width: 2px;
+	background-color: var(--color--foreground--tint-1);
+}
 
-		time {
-			padding: 0 0 var(--spacing--5xs);
-			color: var(--color--text--shade-1);
-			font-size: var(--font-size--sm);
-			font-weight: var(--font-weight--bold);
-		}
+.item::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: var(--spacing--lg);
+	width: 10px;
+	height: 10px;
+	border-radius: 9999px;
+	border: 2px solid var(--color--foreground--shade-2);
+	background-color: var(--color--background);
+	transform: translate(-50%, -50%);
+}
 
-		span,
-		data {
-			justify-self: start;
-			max-width: 160px;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			margin-top: calc(var(--spacing--4xs) * -1);
-			font-size: var(--font-size--2xs);
-		}
+.content,
+.contentLegacy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--sm);
+	padding-left: calc(var(--spacing--lg) + var(--spacing--sm));
+	cursor: pointer;
+	flex: 1 1 auto;
+}
 
-		.mainLine {
-			padding: 0 0 var(--spacing--5xs);
-			color: var(--color--text--shade-1);
-			font-size: var(--font-size--sm);
-			font-weight: var(--font-weight--bold);
-		}
+.mainLine {
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+}
 
-		.metaItem {
-			justify-self: start;
-			max-width: 180px;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			margin-top: calc(var(--spacing--4xs) * -1);
-			font-size: var(--font-size--2xs);
-			// Reset styles that might be inherited from time selector
-			padding: 0;
-			color: var(--color--text);
-			font-weight: var(--font-weight--regular);
-		}
+.metaRow,
+.metaRowSecondary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.metaItem {
+	max-width: 180px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	font-weight: var(--font-weight--regular);
+}
+
+.contentLegacy {
+	time {
+		padding: 0 0 var(--spacing--5xs);
+		color: var(--color--text--shade-1);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
 	}
 
-	.tail {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
+	span,
+	data {
+		max-width: 160px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		margin-top: calc(var(--spacing--4xs) * -1);
+		font-size: var(--font-size--2xs);
 	}
+}
 
-	&.selected {
-		background-color: var(--color--background);
-		border-left-color: var(--color--primary);
+.tail {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--3xs);
+	padding-right: var(--spacing--sm);
+}
 
-		p {
-			cursor: default;
-		}
+.item.selected {
+	background-color: var(--color--background);
+	border-left-color: var(--color--primary);
+
+	.content,
+	.contentLegacy {
+		cursor: default;
 	}
+}
 
-	&:hover,
-	&.actionsVisible {
-		border-left-color: var(--color--foreground--shade-2);
-	}
+.item:hover,
+.item.actionsVisible {
+	border-left-color: var(--color--foreground--shade-2);
 }
 
 .actions {

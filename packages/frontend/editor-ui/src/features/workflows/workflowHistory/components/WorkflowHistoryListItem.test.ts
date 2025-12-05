@@ -61,6 +61,15 @@ describe('WorkflowHistoryListItem', () => {
 		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
-		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
+		expect(emitted().mounted).toEqual([
+			[
+				{
+					index: 2,
+					itemIndex: 2,
+					isSelected: true,
+					offsetTop: 0,
+				},
+			],
+		]);
 	});
 });

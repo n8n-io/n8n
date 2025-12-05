@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -11,9 +11,13 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { N8nLoading } from '@n8n/design-system';
+import { N8nLoading, N8nIcon } from '@n8n/design-system';
 import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
-import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import type {
+	WorkflowHistoryAction,
+	WorkflowHistoryTimelineEntry,
+} from '@/features/workflows/workflowHistory/types';
+import { groupUnnamedVersions } from '@/features/workflows/workflowHistory/utils';
 
 const props = defineProps<{
 	items: WorkflowHistory[];
@@ -37,6 +41,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
+const expandedGroups = ref<Record<string, boolean>>({});
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: listElement,
@@ -44,6 +49,36 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 	onIntersect: () =>
 		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
 });
+
+const groupedEntries = computed(() => groupUnnamedVersions(props.items));
+
+const timelineEntries = computed<WorkflowHistoryTimelineEntry[]>(() => {
+	const entries: WorkflowHistoryTimelineEntry[] = [];
+
+	groupedEntries.value.forEach((entry) => {
+		if (entry.type === 'group') {
+			entries.push(entry);
+
+			if (expandedGroups.value[entry.id]) {
+				entry.items.forEach((item, offset) => {
+					entries.push({
+						type: 'item',
+						item,
+						itemIndex: entry.itemIndexes[offset],
+					});
+				});
+			}
+		} else {
+			entries.push(entry);
+		}
+	});
+
+	return entries;
+});
+
+const toggleGroup = (id: string) => {
+	expandedGroups.value[id] = !expandedGroups.value[id];
+};
 
 const getActions = (item: WorkflowHistory, index: number) => {
 	let filteredActions = props.actions;
@@ -79,10 +114,12 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 
 const onItemMounted = ({
 	index,
+	itemIndex,
 	offsetTop,
 	isSelected,
 }: {
 	index: number;
+	itemIndex: number;
 	offsetTop: number;
 	isSelected: boolean;
 }) => {
@@ -92,7 +129,7 @@ const onItemMounted = ({
 	}
 
 	if (
-		index === props.items.length - 1 &&
+		itemIndex === props.items.length - 1 &&
 		props.lastReceivedItemsLength === props.requestNumberOfItems
 	) {
 		observeForLoadMore(listElement.value?.children[index]);
@@ -102,18 +139,47 @@ const onItemMounted = ({
 
 <template>
 	<ul ref="listElement" :class="$style.list" data-test-id="workflow-history-list">
-		<WorkflowHistoryListItem
-			v-for="(item, index) in props.items"
-			:key="item.versionId"
-			:index="index"
-			:item="item"
-			:is-selected="item.versionId === props.selectedItem?.versionId"
-			:is-version-active="item.versionId === props.activeVersionId"
-			:actions="getActions(item, index)"
-			@action="onAction"
-			@preview="onPreview"
-			@mounted="onItemMounted"
-		/>
+		<template
+			v-for="(entry, index) in timelineEntries"
+			:key="entry.type === 'group' ? entry.id : entry.item.versionId"
+		>
+			<li
+				v-if="entry.type === 'group'"
+				:class="$style.group"
+				data-test-id="workflow-history-unnamed-group"
+			>
+				<button
+					type="button"
+					:class="$style.groupToggle"
+					data-test-id="workflow-history-unnamed-group-toggle"
+					@click="toggleGroup(entry.id)"
+				>
+					<N8nIcon
+						:icon="expandedGroups[entry.id] ? 'chevron-down' : 'chevron-right'"
+						size="small"
+					/>
+				</button>
+				<span :class="$style.groupLabel">
+					{{
+						i18n.baseText('workflowHistory.group.unnamedCountLabel', {
+							interpolate: { count: String(entry.count) },
+						})
+					}}
+				</span>
+			</li>
+			<WorkflowHistoryListItem
+				v-else
+				:index="entry.itemIndex"
+				:timeline-index="index"
+				:item="entry.item"
+				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
+				:is-version-active="entry.item.versionId === props.activeVersionId"
+				:actions="getActions(entry.item, entry.itemIndex)"
+				@action="onAction"
+				@preview="onPreview"
+				@mounted="onItemMounted"
+			/>
+		</template>
 		<li v-if="!props.items.length && !props.isListLoading" :class="$style.empty">
 			{{ i18n.baseText('workflowHistory.empty') }}
 			<br />
@@ -183,5 +249,55 @@ const onItemMounted = ({
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--lg);
 	text-align: center;
+}
+
+.group {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: center;
+	padding: var(--spacing--sm);
+	padding-left: calc(var(--spacing--lg) + var(--spacing--sm));
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+}
+
+.group::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--spacing--lg);
+	width: 2px;
+	background-color: var(--color--foreground--tint-1);
+}
+
+.group::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: var(--spacing--lg);
+	width: 10px;
+	height: 10px;
+	border-radius: 9999px;
+	border: 2px solid var(--color--foreground--shade-2);
+	background-color: var(--color--background);
+	transform: translate(-50%, -50%);
+}
+
+.groupToggle {
+	background: none;
+	border: none;
+	padding: 0;
+	margin-right: var(--spacing--xs);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.groupLabel {
+	justify-self: flex-start;
 }
 </style>

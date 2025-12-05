@@ -108,6 +108,72 @@ describe('WorkflowHistoryList', () => {
 		expect(listItems).toHaveLength(numberOfItems);
 	});
 
+	it('groups consecutive unnamed unpublished versions into a collapsible section', async () => {
+		const namedBefore = workflowHistoryDataFactory();
+		const unnamedBlock = Array.from({ length: 4 }, () => {
+			const item = workflowHistoryDataFactory();
+			return {
+				...item,
+				name: '',
+			};
+		});
+		const namedAfter = workflowHistoryDataFactory();
+
+		const items = [namedBefore, ...unnamedBlock, namedAfter];
+
+		const { getAllByTestId, getByTestId } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: null,
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneDays: -1,
+			},
+		});
+
+		const groupHeader = getByTestId('workflow-history-unnamed-group');
+		expect(groupHeader).toBeInTheDocument();
+		expect(groupHeader).toHaveTextContent('4 versions');
+
+		// Only non-grouped versions should be rendered as list items while collapsed
+		let listItems = getAllByTestId('workflow-history-list-item');
+		expect(listItems).toHaveLength(2);
+
+		// Expanding the group should reveal all versions
+		await userEvent.click(getByTestId('workflow-history-unnamed-group-toggle'));
+
+		listItems = getAllByTestId('workflow-history-list-item');
+		expect(listItems).toHaveLength(items.length);
+	});
+
+	it('does not group a single unnamed unpublished version', () => {
+		const namedBefore = workflowHistoryDataFactory();
+		const unnamed = {
+			...workflowHistoryDataFactory(),
+			name: '',
+		};
+		const namedAfter = workflowHistoryDataFactory();
+
+		const items = [namedBefore, unnamed, namedAfter];
+
+		const { getAllByTestId, queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: null,
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneDays: -1,
+			},
+		});
+
+		expect(queryByTestId('workflow-history-unnamed-group')).not.toBeInTheDocument();
+		expect(getAllByTestId('workflow-history-list-item')).toHaveLength(items.length);
+	});
+
 	it('should scroll to selected item', async () => {
 		const items = Array.from({ length: 30 }, workflowHistoryDataFactory);
 
