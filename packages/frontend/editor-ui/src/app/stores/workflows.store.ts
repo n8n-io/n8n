@@ -567,7 +567,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		let id: string | undefined = workflow.value.id;
 		// If workflow doesn't exist in store, treat as new (no ID)
-		if (id && (!workflowsById.value[id] || !workflowsById.value[id].id)) {
+		if (id && !workflowsById.value[id]?.id) {
 			id = undefined;
 		}
 
@@ -598,13 +598,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchLastSuccessfulExecution() {
-		const workflowId = workflow.value.id;
 		const workflowPermissions = getResourcePermissions(workflow.value.scopes).workflow;
 
 		try {
 			if (
-				!workflowId ||
-				!workflowsById.value[workflowId] ||
+				isNewWorkflow.value ||
 				sourceControlStore.preferences.branchReadOnly ||
 				uiStore.isReadOnlyView ||
 				!workflowPermissions.update ||
