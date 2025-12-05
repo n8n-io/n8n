@@ -2,7 +2,7 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '../assistant.types';
-import { v4 as uuid } from 'uuid';
+import { generateShortId } from '../builder.utils';
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
@@ -274,7 +274,7 @@ export function useBuilderMessages() {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
 
-		const messageGroupId = uuid();
+		const messageGroupId = generateShortId();
 
 		newMessages.forEach((msg, index) => {
 			// Generate unique ID for each message in the batch, based on original user message id.
