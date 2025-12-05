@@ -4,8 +4,8 @@ import {
 	CODE_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 	CODE_NODE_DISPLAY_NAME,
-} from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+} from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Canvas Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
