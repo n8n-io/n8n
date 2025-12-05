@@ -216,18 +216,5 @@ describe('MCPAccessTokenPopoverTab', () => {
 
 			expect(mockGetOrCreateApiKey).not.toHaveBeenCalled();
 		});
-
-		it('should reset access token on unmount', async () => {
-			const { unmount } = renderComponent({
-				props: {
-					serverUrl: 'http://localhost:5678/mcp',
-				},
-			});
-
-			await vi.runAllTimersAsync();
-
-			unmount();
-			expect(mockResetCurrentUserMCPKey).toHaveBeenCalled();
-		});
 	});
 });

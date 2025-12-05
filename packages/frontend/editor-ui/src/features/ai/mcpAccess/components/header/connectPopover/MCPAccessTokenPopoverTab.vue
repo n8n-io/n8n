@@ -116,10 +116,6 @@ onMounted(async () => {
 		loadingApiKey.value = false;
 	}
 });
-
-onBeforeUnmount(() => {
-	mcpStore.resetCurrentUserMCPKey();
-});
 </script>
 
 <template>

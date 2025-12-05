@@ -12,6 +12,14 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	}),
 }));
 
+const mockResetCurrentUserMCPKey = vi.fn();
+
+vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+	useMCPStore: () => ({
+		resetCurrentUserMCPKey: mockResetCurrentUserMCPKey,
+	}),
+}));
+
 vi.mock('./MCPOAuthPopoverTab.vue', () => ({
 	default: {
 		name: 'MCPOAuthPopoverTab',
@@ -82,6 +90,23 @@ describe('McpConnectPopover', () => {
 			await waitFor(() => {
 				expect(getByTestId('mcp-oauth-popover-tab')).toBeVisible();
 				expect(queryByTestId('mcp-access-token-popover-tab')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should reset current user MCP key when popover closes', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent();
+
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-popover-content')).toBeVisible();
+			});
+
+			await user.keyboard('{Escape}');
+
+			await waitFor(() => {
+				expect(mockResetCurrentUserMCPKey).toHaveBeenCalled();
 			});
 		});
 	});

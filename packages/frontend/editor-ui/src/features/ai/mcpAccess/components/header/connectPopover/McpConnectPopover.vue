@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { N8nButton, N8nPopoverReka, N8nRadioButtons } from '@n8n/design-system';
 import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
 import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { MCP_ENDPOINT, MCP_CONNECT_POPOVER_WIDTH } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const mcpStore = useMCPStore();
 
-defineProps<{
+const props = defineProps<{
 	disabled?: boolean;
 }>();
 
@@ -34,6 +36,9 @@ const activeTab = ref(tabItems.value[0].value);
 
 const handlePopoverOpenChange = (isOpen: boolean) => {
 	popoverOpen.value = isOpen;
+	if (!isOpen) {
+		mcpStore.resetCurrentUserMCPKey();
+	}
 };
 
 const handleTabChange = (newTab: string) => {
@@ -58,6 +63,16 @@ const trackCopyEvent = (payload: {
 		source: payload.source,
 	});
 };
+
+// Automatically open the popover when mcp access is turned on
+watch(
+	() => props.disabled,
+	(newValue) => {
+		if (!newValue) {
+			popoverOpen.value = true;
+		}
+	},
+);
 </script>
 
 <template>
