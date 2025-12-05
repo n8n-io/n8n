@@ -123,6 +123,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -138,11 +139,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -161,6 +164,7 @@ describe('useRecentResources', () => {
 				const route = {
 					name: VIEWS.WORKFLOW,
 					params: { name: 'workflow-1', nodeId: `node-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 				trackResourceOpened(route);
@@ -177,11 +181,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -201,6 +207,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -215,6 +222,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -225,12 +233,13 @@ describe('useRecentResources', () => {
 			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
 		});
 
-		it('should not register workflow when id is "new"', () => {
+		it('should not register workflow when query.new is "true"', () => {
 			const { trackResourceOpened } = useRecentResources();
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'new' },
+				params: { name: 'workflow-1' },
+				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -238,12 +247,13 @@ describe('useRecentResources', () => {
 			expect(recentWorkflowsRef.value).toHaveLength(0);
 		});
 
-		it('should not register workflow when id is "new"', () => {
+		it('should not register workflow when creating new workflow', () => {
 			const { trackResourceOpened } = useRecentResources();
 
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'new' },
+				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -257,6 +267,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: 'OTHER_VIEW',
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -279,11 +290,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -306,11 +319,13 @@ describe('useRecentResources', () => {
 			const route1 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'nonexistent-node' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -329,6 +344,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -349,11 +365,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -374,6 +392,7 @@ describe('useRecentResources', () => {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
 					params: { name: `workflow-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
 
@@ -390,11 +409,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'nonexistent-workflow' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -419,6 +440,7 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-unnamed' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -433,6 +455,7 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -454,6 +477,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -475,6 +499,7 @@ describe('useRecentResources', () => {
 			const route = {
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -510,16 +535,19 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-4' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			await initialize();
@@ -541,6 +569,7 @@ describe('useRecentResources', () => {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
 					params: { name: `workflow-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
 
@@ -564,6 +593,7 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			// Should not throw
@@ -576,11 +606,13 @@ describe('useRecentResources', () => {
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
 				params: { name: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			await initialize();

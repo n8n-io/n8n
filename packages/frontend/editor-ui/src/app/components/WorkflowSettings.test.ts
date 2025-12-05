@@ -20,6 +20,7 @@ vi.mock('vue-router', async () => ({
 			params: {
 				name: '1',
 			},
+			query: {},
 		}),
 	RouterLink: {
 		template: '<a><slot /></a>',
