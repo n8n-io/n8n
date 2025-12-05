@@ -1,4 +1,4 @@
-import { expect, test } from '../../fixtures/base';
+import { expect, test } from '../../../fixtures/base';
 
 test.describe('PDF Test', () => {
 	test('Can read and write PDF files and extract text', async ({ n8n }) => {
