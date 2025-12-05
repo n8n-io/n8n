@@ -36,7 +36,8 @@ const CONVERSATIONAL_RESPONSES = `FOR QUESTIONS/CONVERSATIONS:
 const RESPONSE_STYLE = `RESPONSE STYLE:
 - Keep responses focused and not overly long
 - Use markdown formatting for readability
-- Be conversational and helpful`;
+- Be conversational and helpful
+- Do not use emojis in your response`;
 
 export function buildResponderPrompt(): string {
 	return [RESPONDER_ROLE, WORKFLOW_COMPLETION, CONVERSATIONAL_RESPONSES, RESPONSE_STYLE].join(
