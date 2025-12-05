@@ -4,12 +4,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import type { WorkflowListItem } from '@/Interface';
 
+const { mockRouterPush } = vi.hoisted(() => ({
+	mockRouterPush: vi.fn(),
+}));
+
 vi.mock('@/app/router', () => ({
 	default: {
 		resolve: vi.fn(({ name, params }) => ({
 			fullPath:
 				name === 'NodeViewExisting' ? `/workflows/${params.name}` : `/projects/${params.projectId}`,
 		})),
+		push: mockRouterPush,
 	},
 }));
 
@@ -62,6 +67,20 @@ describe('WorkflowsTable', () => {
 
 			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
 			expect(getByTestId('mcp-workflow-table-empty-state-description')).toBeVisible();
+		});
+
+		it('should navigate to workflows list when button is clicked', async () => {
+			const { getByTestId } = createComponent({
+				props: {
+					workflows: [],
+					loading: false,
+				},
+			});
+
+			const button = getByTestId('mcp-workflow-table-empty-state-button');
+			await userEvent.click(button);
+
+			expect(mockRouterPush).toHaveBeenCalledWith({ name: 'WorkflowsView' });
 		});
 	});
 
