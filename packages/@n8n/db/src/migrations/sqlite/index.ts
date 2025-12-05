@@ -118,6 +118,7 @@ import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-Crea
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
 import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
 import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
+import { AddResolvableFieldsToCredentials1764689448000 } from '../common/1764689448000-AddResolvableFieldsToCredentials';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -241,6 +242,7 @@ const sqliteMigrations: Migration[] = [
 	AddCreatorIdToProjectTable1764276827837,
 	CreateDynamicCredentialResolverTable1764682447000,
 	AddDynamicCredentialEntryTable1764689388394,
+	AddResolvableFieldsToCredentials1764689448000,
 ];
 
 export { sqliteMigrations };
