@@ -40,7 +40,7 @@ describe('ToolSerpApi', () => {
 			const node = new ToolSerpApi();
 			const inputData: INodeExecutionData[] = [
 				{
-					json: { query: 'artificial intelligence news' },
+					json: { input: 'artificial intelligence news' },
 				},
 			];
 
@@ -69,17 +69,18 @@ describe('ToolSerpApi', () => {
 					},
 				],
 			]);
-			expect(SerpAPI.prototype.invoke).toHaveBeenCalledWith(inputData[0]);
+
+			expect(SerpAPI.prototype.invoke).toHaveBeenCalledWith(inputData[0].json.input);
 		});
 
 		it('should handle multiple input items', async () => {
 			const node = new ToolSerpApi();
 			const inputData: INodeExecutionData[] = [
 				{
-					json: { query: 'machine learning' },
+					json: { input: 'machine learning' },
 				},
 				{
-					json: { query: 'deep learning' },
+					json: { input: 'deep learning' },
 				},
 			];
 
@@ -125,7 +126,7 @@ describe('ToolSerpApi', () => {
 			const node = new ToolSerpApi();
 			const inputData: INodeExecutionData[] = [
 				{
-					json: { query: 'test query' },
+					json: { input: 'test query' },
 				},
 			];
 
@@ -143,6 +144,84 @@ describe('ToolSerpApi', () => {
 
 			expect(mockExecute.getCredentials).toHaveBeenCalledWith('serpApi');
 			expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('options', 0);
+		});
+
+		it('should fallback to chatInput if input is not provided', async () => {
+			const node = new ToolSerpApi();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { chatInput: 'fallback query test' },
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
+				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNodeParameter: jest.fn().mockReturnValue({}),
+			});
+
+			const mockResult = 'Fallback query results';
+			SerpAPI.prototype.invoke = jest.fn().mockResolvedValue(mockResult);
+
+			const result = await node.execute.call(mockExecute);
+
+			expect(SerpAPI.prototype.invoke).toHaveBeenCalledWith(inputData[0].json.chatInput);
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							response: mockResult,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					},
+				],
+			]);
+		});
+
+		it('should throw error if neither input nor chatInput is provided', async () => {
+			const node = new ToolSerpApi();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: {},
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
+				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNodeParameter: jest.fn().mockReturnValue({}),
+			});
+
+			await expect(node.execute.call(mockExecute)).rejects.toThrow(
+				'No query string found at index 0',
+			);
+		});
+
+		it.each([
+			['', 'empty string'],
+			[123, 'number'],
+			[{ query: 'test' }, 'object'],
+			[['query1'], 'array'],
+			[null, 'null'],
+			[undefined, 'undefined'],
+		])('should throw error for invalid query type: %s', async (invalidInput, _description) => {
+			const node = new ToolSerpApi();
+			const inputData: INodeExecutionData[] = [{ json: { input: invalidInput } }];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ name: 'test serpapi' })),
+				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNodeParameter: jest.fn().mockReturnValue({}),
+			});
+
+			await expect(node.execute.call(mockExecute)).rejects.toThrow(
+				'No query string found at index 0',
+			);
 		});
 	});
 });
