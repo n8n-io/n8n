@@ -30,7 +30,12 @@ export const personalRoleSchema = z.enum([
 ]);
 
 // Those are the system roles for projects assignable to a user
-export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'project:viewer']);
+export const teamRoleSchema = z.enum([
+	'project:admin',
+	'project:editor',
+	'project:viewer',
+	'project:chatUser',
+]);
 
 // Custom project role can be anything but the system roles
 export const customProjectRoleSchema = z

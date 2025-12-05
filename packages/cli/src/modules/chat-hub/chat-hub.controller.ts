@@ -31,14 +31,14 @@ import type { Response } from 'express';
 import { jsonStringify } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-import { ChatHubModelsService } from './chat-hub.models.service';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
 export class ChatHubController {
