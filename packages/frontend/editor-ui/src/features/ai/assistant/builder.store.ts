@@ -542,11 +542,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	watch(
 		() => workflowsStore.workflowId,
 		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
+			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
 				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
+				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
+				isAIBuilderEnabled.value
 			) {
 				void fetchSessionsMetadata();
 			} else {
