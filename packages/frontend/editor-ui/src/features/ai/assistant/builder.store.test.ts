@@ -430,6 +430,20 @@ describe('AI Builder store', () => {
 		builderStore.resetBuilderChat();
 		expect(builderStore.chatMessages).toEqual([]);
 		expect(builderStore.builderThinkingMessage).toBeUndefined();
+
+		// Verify last_user_message_id is reset (tracked via trackWorkflowBuilderJourney)
+		track.mockClear();
+		builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
+		expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+			workflow_id: 'test-workflow-id',
+			session_id: expect.any(String),
+			event_type: 'user_clicked_todo',
+		});
+		// Should NOT have last_user_message_id after reset
+		expect(track).not.toHaveBeenCalledWith(
+			'Workflow builder journey',
+			expect.objectContaining({ last_user_message_id: expect.any(String) }),
+		);
 	});
 
 	describe('isAIBuilderEnabled computed property', () => {
@@ -1710,7 +1724,7 @@ describe('AI Builder store', () => {
 	});
 
 	describe('trackWorkflowBuilderJourney', () => {
-		it('tracks event with workflow_id, session_id, and event_type', () => {
+		it('tracks event with workflow_id, session_id, and event_type (without last_user_message_id when no message sent)', () => {
 			const builderStore = useBuilderStore();
 
 			builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
@@ -1719,6 +1733,31 @@ describe('AI Builder store', () => {
 				workflow_id: 'test-workflow-id',
 				session_id: expect.any(String),
 				event_type: 'user_clicked_todo',
+			});
+		});
+
+		it('includes last_user_message_id after user sends a message', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.sendChatMessage({ text: 'test' });
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			track.mockClear();
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+				last_user_message_id: expect.any(String),
 			});
 		});
 
@@ -1762,6 +1801,38 @@ describe('AI Builder store', () => {
 				workflow_id: 'test-workflow-id',
 				session_id: expect.any(String),
 				event_type: 'no_placeholder_values_left',
+			});
+		});
+
+		it('includes both event_properties and last_user_message_id when both are present', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.sendChatMessage({ text: 'test' });
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			track.mockClear();
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+				node_type: 'n8n-nodes-base.httpRequest',
+				type: 'parameters',
+			});
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+				event_properties: {
+					node_type: 'n8n-nodes-base.httpRequest',
+					type: 'parameters',
+				},
+				last_user_message_id: expect.any(String),
 			});
 		});
 	});

@@ -56,6 +56,7 @@ interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
 	session_id: string;
 	event_type: WorkflowBuilderJourneyEventType;
 	event_properties?: WorkflowBuilderJourneyEventProperties;
+	last_user_message_id?: string;
 }
 
 interface PlaceholderDetail {
@@ -90,6 +91,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const aiBuilderMadeEdits = ref(false);
 
 	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
+
+	// Track the last user message ID for telemetry
+	const lastUserMessageId = ref<string | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -252,6 +256,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = clearMessages();
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
+		lastUserMessageId.value = undefined;
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -508,6 +513,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			initialGeneration.value = options.initialGeneration;
 		}
 		const userMessageId = generateMessageId();
+		lastUserMessageId.value = userMessageId;
 		const currentWorkflowJson = getWorkflowSnapshot();
 
 		currentStreamingMessage.value = {
@@ -837,6 +843,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		if (eventProperties && Object.keys(eventProperties).length > 0) {
 			payload.event_properties = eventProperties;
+		}
+
+		if (lastUserMessageId.value) {
+			payload.last_user_message_id = lastUserMessageId.value;
 		}
 
 		telemetry.track('Workflow builder journey', payload);
