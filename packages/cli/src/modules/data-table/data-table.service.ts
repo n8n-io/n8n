@@ -4,6 +4,7 @@ import type {
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	DataTableListOptions,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
@@ -201,6 +202,18 @@ export class DataTableService {
 		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
 		return true;
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		dto: RenameDataTableColumnDto,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+
+		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {

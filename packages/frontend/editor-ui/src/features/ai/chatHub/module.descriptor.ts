@@ -57,7 +57,6 @@ export const ChatModule: FrontendModuleDescription = {
 					provider: null,
 					initialValue: null,
 					onSelect: () => {},
-					onCreateNew: () => {},
 				},
 			},
 		},
