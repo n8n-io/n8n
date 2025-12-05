@@ -1442,6 +1442,38 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(historyVersion!.nodes).toEqual(payload.nodes);
 		});
 	});
+
+	test('should include activeVersion relation in response for active workflows', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createActiveWorkflow({}, teamProject);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated Name',
+			versionId: workflow.versionId,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('activeVersion');
+		expect(response.body.data.activeVersion).toBeDefined();
+		expect(response.body.data.activeVersion).toMatchObject({
+			versionId: expect.any(String),
+			workflowId: workflow.id,
+		});
+	});
+
+	test('should include activeVersion as null for inactive workflows', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createWorkflow({}, teamProject);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated Name',
+			versionId: workflow.versionId,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('activeVersion');
+		expect(response.body.data.activeVersion).toBeNull();
+	});
 });
 
 describe('PUT /:workflowId/transfer', () => {

@@ -749,6 +749,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowChecksum.value = checksum;
 	}
 
+	async function updateWorkflowChecksum() {
+		const checksum = await calculateWorkflowChecksum(workflow.value);
+		setWorkflowChecksum(checksum);
+	}
+
 	function setWorkflowActiveVersion(version: WorkflowHistory) {
 		workflow.value.activeVersion = deepCopy(version);
 	}
@@ -899,21 +904,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function setWorkflowActive(targetWorkflowId: string, activeVersion?: WorkflowHistory) {
-		const index = activeWorkflows.value.indexOf(targetWorkflowId);
-		if (index === -1) {
+	function setWorkflowActive(
+		targetWorkflowId: string,
+		activeVersion: WorkflowHistory,
+		clearDirtyState: boolean = true,
+	) {
+		if (activeWorkflows.value.indexOf(targetWorkflowId) === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
 		}
-		const targetWorkflow = workflowsById.value[targetWorkflowId];
-		if (targetWorkflow) {
-			targetWorkflow.active = true;
-			targetWorkflow.activeVersionId = activeVersion?.versionId ?? targetWorkflow.versionId;
-			targetWorkflow.activeVersion = activeVersion;
+
+		const cachedWorkflow = workflowsById.value[targetWorkflowId];
+		if (cachedWorkflow) {
+			cachedWorkflow.active = true;
+			cachedWorkflow.activeVersionId = activeVersion.versionId;
+			cachedWorkflow.activeVersion = activeVersion;
 		}
+
 		if (targetWorkflowId === workflow.value.id) {
-			uiStore.stateIsDirty = false;
+			if (clearDirtyState) {
+				uiStore.stateIsDirty = false;
+			}
 			workflow.value.active = true;
-			workflow.value.activeVersionId = activeVersion?.versionId ?? workflow.value.versionId;
+			workflow.value.activeVersionId = activeVersion.versionId;
 			workflow.value.activeVersion = activeVersion;
 		}
 	}
@@ -2018,6 +2030,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setUsedCredentials,
 		setWorkflowVersionId,
 		setWorkflowChecksum,
+		updateWorkflowChecksum,
 		setWorkflowActiveVersion,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,

@@ -110,8 +110,8 @@ export function useWorkflowActivate() {
 			}
 
 			// Update local state
-			if (workflow.activeVersionId !== null) {
-				workflowsStore.setWorkflowActive(currWorkflowId);
+			if (workflow.activeVersion) {
+				workflowsStore.setWorkflowActive(currWorkflowId, workflow.activeVersion);
 			} else {
 				workflowsStore.setWorkflowInactive(currWorkflowId);
 			}
@@ -214,6 +214,7 @@ export function useWorkflowActivate() {
 					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
+			workflowsStore.setWorkflowInactive(workflowId);
 			return false;
 		} finally {
 			updatingWorkflowActivation.value = false;
