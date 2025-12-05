@@ -18,7 +18,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
@@ -41,7 +40,7 @@ import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
@@ -70,7 +69,6 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -384,9 +382,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 
 const onWorkflowActivate = () => {
 	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
