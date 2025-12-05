@@ -215,6 +215,8 @@ export function usePinnedData(
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
+			workflow_id: workflowsStore.workflowId,
+			node_id: targetNode?.id,
 		};
 
 		void externalHooks.run('runData.onDataPinningSuccess', telemetryPayload);

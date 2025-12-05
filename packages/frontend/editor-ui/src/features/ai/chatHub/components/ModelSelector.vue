@@ -156,13 +156,13 @@ const menu = computed(() => {
 				id: provider,
 				title: providerDisplayNames[provider],
 				submenu: [
+					configureMenu,
+					{ isDivider: true as const, id: 'divider' },
 					{
 						id: `${provider}::loading`,
 						title: i18n.baseText('generic.loadingEllipsis'),
 						disabled: true,
 					},
-					{ isDivider: true as const, id: 'divider' },
-					configureMenu,
 				],
 			});
 			continue;
@@ -234,8 +234,12 @@ const menu = computed(() => {
 						} as const,
 					]
 				: []),
-			configureMenu,
 		]);
+
+		submenu.unshift(
+			configureMenu,
+			...(submenu.length > 1 ? [{ isDivider: true as const, id: 'divider' }] : []),
+		);
 
 		menuItems.push({
 			id: provider,
@@ -270,7 +274,6 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 			provider,
 			initialValue: credentials?.[provider] ?? null,
 			onSelect: handleSelectCredentials,
-			onCreateNew: handleCreateNewCredential,
 		},
 	});
 }
@@ -315,19 +318,6 @@ function onSelect(id: string) {
 	});
 
 	emit('change', parsedModel);
-}
-
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-
-	telemetry.track('User opened Credential modal', {
-		credential_type: credentialType,
-		source: 'chat',
-		new_credential: true,
-		workflow_id: null,
-	});
-
-	uiStore.openNewCredential(credentialType);
 }
 
 onClickOutside(
