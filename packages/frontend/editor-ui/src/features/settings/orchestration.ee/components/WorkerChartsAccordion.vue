@@ -95,7 +95,6 @@ orchestrationStore.$onAction(({ name, store }) => {
 			const usedMem = totalMem - item.data.process.memory.available;
 
 			const usage = (usedMem / totalMem) * 100;
-			// newDataMemoryUsage.labels = dataMemoryUsage.value.labels;
 			newDataMemoryUsage.datasets[0].data.push(usage);
 		});
 		dataJobs.value = newDataJobs;

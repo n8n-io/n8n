@@ -7,9 +7,9 @@ export function averageWorkerLoadFromLoadsAsString(loads: number[]): string {
 }
 
 export function memAsGb(mem: number, decimalPlaces: number = 2): number {
-	return (mem / 1024 / 1024 / 1024).toFixed(decimalPlaces);
+	return Number((mem / 1024 / 1024 / 1024).toFixed(decimalPlaces));
 }
 
 export function memAsMb(mem: number, decimalPlaces: number = 2): number {
-	return (mem / 1024 / 1024).toFixed(decimalPlaces);
+	return Number((mem / 1024 / 1024).toFixed(decimalPlaces));
 }
