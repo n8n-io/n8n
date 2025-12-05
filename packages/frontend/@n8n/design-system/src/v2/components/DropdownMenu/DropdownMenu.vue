@@ -130,6 +130,16 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 		const contentEl = contentRef.value?.$el as HTMLElement | undefined;
 		const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
 		firstItem?.focus();
+	} else if (event.key === 'ArrowDown') {
+		// Move focus to first menu item only if cursor is at the end of input
+		const input = event.target as HTMLInputElement;
+		const isAtEnd = input.selectionStart === input.value.length;
+		if (isAtEnd) {
+			event.preventDefault();
+			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+			const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
+			firstItem?.focus();
+		}
 	}
 };
 
