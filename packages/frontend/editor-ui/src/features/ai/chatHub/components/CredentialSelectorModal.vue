@@ -8,6 +8,7 @@ import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -15,11 +16,12 @@ const props = defineProps<{
 		provider: ChatHubLLMProvider;
 		initialValue: string | null;
 		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
-		onCreateNew: (provider: ChatHubLLMProvider) => void;
 	};
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+
 const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
@@ -43,6 +45,15 @@ function onDeleteCredential(credentialId: string) {
 	if (credentialId === props.data.initialValue) {
 		props.data.onSelect(props.data.provider, null);
 	}
+}
+
+function onCredentialModalOpened(credentialId?: string) {
+	telemetry.track('User opened Credential modal', {
+		credential_type: credentialType.value,
+		source: 'chat',
+		new_credential: !credentialId,
+		workflow_id: null,
+	});
 }
 
 function onConfirm() {
@@ -106,6 +117,7 @@ function onCancel() {
 						@credential-selected="onCredentialSelect"
 						@credential-deselected="onCredentialDeselect"
 						@credential-deleted="onDeleteCredential"
+						@credential-modal-opened="onCredentialModalOpened"
 					/>
 				</div>
 			</div>
