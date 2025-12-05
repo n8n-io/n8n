@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../fixtures/base';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
