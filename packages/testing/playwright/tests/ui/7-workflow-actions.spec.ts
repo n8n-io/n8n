@@ -281,7 +281,7 @@ test.describe('Workflow Actions', () => {
 	});
 
 	test('should update workflow settings', async ({ n8n, api }) => {
-		await api.workflows.createWorkflow({
+		const errorWorkflow = await api.workflows.createWorkflow({
 			name: 'Error Handler',
 			nodes: [
 				{
@@ -295,8 +295,9 @@ test.describe('Workflow Actions', () => {
 			],
 			connections: {},
 			settings: {},
-			active: true,
+			active: false,
 		});
+		await api.workflows.activate(errorWorkflow.id, errorWorkflow.versionId);
 
 		await n8n.navigate.toHome();
 

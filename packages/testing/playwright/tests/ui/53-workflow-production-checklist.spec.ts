@@ -104,7 +104,7 @@ test.describe('Workflow Production Checklist', () => {
 	});
 
 	test('should show completed state for configured actions', async ({ n8n, api }) => {
-		await api.workflows.createWorkflow({
+		const errorWorkflow = await api.workflows.createWorkflow({
 			name: 'Error Handler',
 			nodes: [
 				{
@@ -118,8 +118,9 @@ test.describe('Workflow Production Checklist', () => {
 			],
 			connections: {},
 			settings: {},
-			active: true,
+			active: false,
 		});
+		await api.workflows.activate(errorWorkflow.id, errorWorkflow.versionId);
 
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
