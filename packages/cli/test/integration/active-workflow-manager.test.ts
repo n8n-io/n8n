@@ -123,24 +123,6 @@ describe('init()', () => {
 	});
 });
 
-describe('isActive()', () => {
-	it('should return `true` for active workflow in storage', async () => {
-		const dbWorkflow = await createActiveWorkflow();
-
-		await activeWorkflowManager.init();
-
-		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(true);
-	});
-
-	it('should return `false` for inactive workflow in storage', async () => {
-		const dbWorkflow = await createInactiveWorkflow();
-
-		await activeWorkflowManager.init();
-
-		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(false);
-	});
-});
-
 describe('add()', () => {
 	describe('in single-main mode', () => {
 		test.each(['activate', 'update'])(

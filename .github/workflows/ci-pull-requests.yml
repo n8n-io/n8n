@@ -123,24 +123,26 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-  e2e-test:
+  e2e-tests:
     name: E2E Tests
-    needs: [install-and-build, unit-test, typecheck, lint]
-    if: |
-      always() &&
-      needs.install-and-build.result == 'success' &&
-      needs.unit-test.result != 'failure' &&
-      needs.typecheck.result != 'failure' &&
-      needs.lint.result != 'failure'
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    needs: [install-and-build]
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    uses: ./.github/workflows/playwright-test-ci.yml
     secrets: inherit
 
-  e2e-checks:
-    name: E2E - Checks
-    runs-on: ubuntu-latest
-    needs: [e2e-test]
+  # This job is required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  # If you add/remove jobs that should block merging, update the 'needs' array below.
+  required-checks:
+    name: Required Checks
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]
     if: always()
+    runs-on: ubuntu-slim
     steps:
-      - name: Fail if E2E tests failed
-        if: needs.e2e-test.result == 'failure'
+      - name: Fail if any required job failed or was skipped unexpectedly
+        # The non_python_changed check allows jobs to be skipped for python-only changes,
+        # since those jobs don't run when only python files are modified.
+        if: |
+          contains(needs.*.result, 'failure') ||
+          (needs.install-and-build.outputs.non_python_changed == 'true' && contains(needs.*.result, 'skipped'))
         run: exit 1

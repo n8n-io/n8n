@@ -79,6 +79,7 @@ export class WorkflowBuilderService {
 				this.logger,
 				this.instanceSettings.instanceId,
 				this.urlService.getInstanceBaseUrl(),
+				N8N_VERSION,
 				onCreditsUpdated,
 				onTelemetryEvent,
 			);
