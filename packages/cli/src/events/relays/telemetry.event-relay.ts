@@ -835,13 +835,17 @@ export class TelemetryEventRelay extends EventRelay {
 							manualExecEventProperties.is_managed = credential.isManaged;
 						}
 					}
+					const destinationNodeName = runData.data.startData?.destinationNode.nodeName;
 					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
-						node_type: TelemetryHelpers.getNodeTypeForName(
-							workflow,
-							runData.data.startData?.destinationNode.nodeName,
-						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode.nodeName],
+						node_type: TelemetryHelpers.getNodeTypeForName(workflow, destinationNodeName)?.type,
+						node_id: nodeGraphResult.nameIndices[destinationNodeName],
+						node_role: TelemetryHelpers.getNodeRole(
+							destinationNodeName,
+							workflow.connections,
+							this.nodeTypes,
+							workflow.nodes,
+						),
 					};
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);
