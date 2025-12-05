@@ -12,6 +12,10 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
+defineProps<{
+	disabled?: boolean;
+}>();
+
 const popoverOpen = ref(false);
 
 const TABS = {
@@ -68,7 +72,11 @@ const trackCopyEvent = (payload: {
 			@update:open="handlePopoverOpenChange"
 		>
 			<template #trigger>
-				<N8nButton data-test-id="mcp-connect-popover-trigger-button" type="tertiary">
+				<N8nButton
+					data-test-id="mcp-connect-popover-trigger-button"
+					type="tertiary"
+					:disabled="disabled"
+				>
 					{{ i18n.baseText('generic.connect') }}
 				</N8nButton>
 			</template>

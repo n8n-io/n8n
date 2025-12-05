@@ -8,6 +8,7 @@ import { useI18n } from '@n8n/i18n';
 type Props = {
 	toggleDisabled?: boolean;
 	loading?: boolean;
+	accessEnabled: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,13 +27,13 @@ const i18n = useI18n();
 	<div :class="$style.container" data-test-id="mcp-header-actions">
 		<ExternalLink :href="MCP_DOCS_PAGE_URL">{{ i18n.baseText('generic.docs') }}</ExternalLink>
 		<MCPAccessToggle
-			:model-value="true"
+			:model-value="accessEnabled"
 			:disabled="props.toggleDisabled"
 			:loading="props.loading"
 			:class="$style['mcp-access-toggle']"
 			@disable-mcp-access="emit('disableMcpAccess')"
 		/>
-		<McpConnectPopover />
+		<McpConnectPopover :disabled="!accessEnabled" />
 	</div>
 </template>
 

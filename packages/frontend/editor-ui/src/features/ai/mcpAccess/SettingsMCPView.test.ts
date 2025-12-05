@@ -103,8 +103,8 @@ describe('SettingsMCPView', () => {
 
 			expect(getByTestId('mcp-settings-header')).toBeVisible();
 			expect(getByTestId('mcp-empty-state')).toBeVisible();
+			expect(queryByTestId('mcp-header-actions')).toBeVisible();
 			expect(queryByTestId('mcp-enabled-section')).not.toBeInTheDocument();
-			expect(queryByTestId('mcp-header-actions')).not.toBeInTheDocument();
 		});
 	});
 

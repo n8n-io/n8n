@@ -276,6 +276,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 
 .workflow-cell {
 	display: flex;
+	padding: var(--spacing--2xs) 0;
 	.separator,
 	.ellipsis {
 		padding-bottom: 1px;
@@ -306,6 +307,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	line-clamp: 3;
 	overflow: hidden;
 	color: var(--color--text);
+	padding: var(--spacing--2xs) 0;
 
 	span {
 		display: flex;

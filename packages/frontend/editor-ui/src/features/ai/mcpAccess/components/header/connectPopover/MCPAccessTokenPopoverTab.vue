@@ -9,7 +9,7 @@ import {
 	MCP_TOOLTIP_DELAY,
 	MCP_CONNECT_POPOVER_WIDTH,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown } from '@n8n/design-system';
+import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown, N8nNotice } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
 
 type Props = {
@@ -134,6 +134,7 @@ onBeforeUnmount(() => {
 			<N8nLoading :loading="loadingApiKey" variant="h1" :class="$style['url-skeleton']" />
 			<N8nLoading :loading="loadingApiKey" variant="button" :class="$style['code-skeleton']" />
 		</div>
+
 		<div v-else-if="apiKey?.apiKey" :class="$style['parameters-container']">
 			<ConnectionParameter
 				id="access-token"
@@ -153,6 +154,9 @@ onBeforeUnmount(() => {
 					</N8nTooltip>
 				</template>
 			</ConnectionParameter>
+			<N8nNotice v-if="!isKeyRedacted">
+				{{ i18n.baseText('settings.mcp.access.token.notice') }}
+			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
 				<label :class="$style.label" for="mcp-json">
 					{{ i18n.baseText('settings.mcp.connectPopover.jsonConfig') }}
@@ -205,13 +209,14 @@ onBeforeUnmount(() => {
 .parameters-container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+
 	padding-top: var(--spacing--sm);
 }
 
 .json-container {
 	flex-grow: 1;
 	position: relative;
+	margin-top: var(--spacing--sm);
 
 	.label {
 		display: inline-flex;
