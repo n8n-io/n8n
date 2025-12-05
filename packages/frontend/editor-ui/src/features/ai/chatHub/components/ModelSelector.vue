@@ -275,7 +275,6 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 			provider,
 			initialValue: credentials?.[provider] ?? null,
 			onSelect: handleSelectCredentials,
-			onCreateNew: handleCreateNewCredential,
 		},
 	});
 }
@@ -320,19 +319,6 @@ function onSelect(id: string) {
 	});
 
 	emit('change', parsedModel);
-}
-
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-
-	telemetry.track('User opened Credential modal', {
-		credential_type: credentialType,
-		source: 'chat',
-		new_credential: true,
-		workflow_id: null,
-	});
-
-	uiStore.openNewCredential(credentialType);
 }
 
 onClickOutside(

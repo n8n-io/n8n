@@ -1,29 +1,31 @@
+import { In, type WorkflowRepository, type User } from '@n8n/db';
+import { getBase } from '@/workflow-execute-additional-data';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	type INodeCredentials,
+	type INodePropertyOptions,
+	type IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import {
 	chatHubProviderSchema,
-	ChatModelDto,
 	emptyChatModelsResponse,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubLLMProvider,
 	type ChatHubProvider,
+	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { In, User, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	type INodeCredentials,
-	type IWorkflowExecuteAdditionalData,
-} from 'n8n-workflow';
-
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowService } from '@/workflows/workflow.service';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { validChatTriggerParamsShape } from './chat-hub.types';
+import { Service } from '@n8n/di';
 
 @Service()
 export class ChatHubModelsService {
@@ -32,8 +34,8 @@ export class ChatHubModelsService {
 		private readonly workflowService: WorkflowService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatHubAgentService: ChatHubAgentService,
+		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 	) {}
 
 	async getModels(
@@ -116,9 +118,14 @@ export class ChatHubModelsService {
 				const rawModels = await this.fetchOllamaModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'ollama') };
 			}
-			case 'azureOpenAi':
-			case 'azureEntraId':
-				return this.fetchAzureOpenAiModels(credentials, additionalData);
+			case 'azureOpenAi': {
+				const rawModels = this.fetchAzureOpenAiModels(credentials, additionalData);
+				return { models: this.transformAndFilterModels(rawModels, 'azureOpenAi') };
+			}
+			case 'azureEntraId': {
+				const rawModels = this.fetchAzureEntraIdModels(credentials, additionalData);
+				return { models: this.transformAndFilterModels(rawModels, 'azureEntraId') };
+			}
 			case 'awsBedrock': {
 				const rawModels = await this.fetchAwsBedrockModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'awsBedrock') };
@@ -161,7 +168,7 @@ export class ChatHubModelsService {
 	private async fetchOpenAiModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
+	): Promise<INodePropertyOptions[]> {
 		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
 			'searchModels',
 			'parameters.model',
@@ -171,17 +178,13 @@ export class ChatHubModelsService {
 			credentials,
 		);
 
-		return resourceLocatorResults.results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
+		return resourceLocatorResults.results;
 	}
 
 	private async fetchAnthropicModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
+	): Promise<INodePropertyOptions[]> {
 		const resourceLocatorResults = await this.nodeParametersService.getResourceLocatorResults(
 			'searchModels',
 			'parameters.model',
@@ -191,18 +194,14 @@ export class ChatHubModelsService {
 			credentials,
 		);
 
-		return resourceLocatorResults.results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
+		return resourceLocatorResults.results;
 	}
 
 	private async fetchGoogleModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				// From Gemini node
 				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts#L75
@@ -248,19 +247,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
 	}
 
 	private async fetchOllamaModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				// From Ollama Model node
 				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LMOllama/description.ts#L24
@@ -299,30 +292,29 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
 	}
 
 	private fetchAzureOpenAiModels(
 		_credentials: INodeCredentials,
 		_additionalData: IWorkflowExecuteAdditionalData,
-	): ChatModelsResponse['azureOpenAi'] {
+	): INodePropertyOptions[] {
 		// Azure doesn't appear to offer a way to list available models via API.
 		// If we add support for this in the future on the Azure OpenAI node we should copy that
 		// implementation here too.
-		return {
-			models: [],
-		};
+		return [];
+	}
+
+	private fetchAzureEntraIdModels(
+		_credentials: INodeCredentials,
+		_additionalData: IWorkflowExecuteAdditionalData,
+	): INodePropertyOptions[] {
+		return [];
 	}
 
 	private async fetchAwsBedrockModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
+	): Promise<INodePropertyOptions[]> {
 		// From AWS Bedrock node
 		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L100
 		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L155
@@ -410,18 +402,14 @@ export class ChatHubModelsService {
 			inferenceProfileModelsRequest,
 		]);
 
-		return foundationModels.concat(inferenceProfileModels).map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? String(result.value),
-		}));
+		return foundationModels.concat(inferenceProfileModels);
 	}
 
 	private async fetchMistralCloudModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -464,19 +452,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? String(result.value),
-		}));
 	}
 
 	private async fetchCohereModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -514,19 +496,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
 	}
 
 	private async fetchDeepSeekModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -563,19 +539,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? String(result.value),
-		}));
 	}
 
 	private async fetchOpenRouterModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -612,19 +582,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
 	}
 
 	private async fetchGroqModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -661,19 +625,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
 	}
 
 	private async fetchXAiGrokModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -710,19 +668,13 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? null,
-		}));
 	}
 
 	private async fetchVercelAiGatewayModels(
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<Array<{ id: string; name: string; description: string | null }>> {
-		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
 			{
 				routing: {
 					request: {
@@ -759,12 +711,6 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
-
-		return results.map((result) => ({
-			id: String(result.value),
-			name: result.name,
-			description: result.description ?? String(result.value),
-		}));
 	}
 
 	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
@@ -796,13 +742,21 @@ export class ChatHubModelsService {
 			}
 
 			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-
 			if (!chatTrigger) {
 				continue;
 			}
 
 			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
 			if (!chatTriggerParams) {
+				continue;
+			}
+
+			const agentNodes = activeVersion.nodes?.filter(
+				(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
+			);
+
+			// Agents older than this can't do streaming
+			if (agentNodes.some((node) => node.typeVersion < 2.1)) {
 				continue;
 			}
 
@@ -834,25 +788,32 @@ export class ChatHubModelsService {
 		};
 	}
 
-	/**
-	 * Transform raw model results into ChatModelDto with metadata and filter out unavailable models
-	 */
 	private transformAndFilterModels(
-		rawModels: Array<{ id: string; name: string; description: string | null }>,
+		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
 	): ChatModelDto[] {
-		return rawModels
-			.map((model) => ({
-				name: model.name,
-				description: model.description,
-				model: {
-					provider,
-					model: model.id,
+		return rawModels.flatMap((model) => {
+			const id = String(model.value);
+			const metadata = getModelMetadata(provider, id);
+
+			if (!metadata.available) {
+				return [];
+			}
+
+			return [
+				{
+					id,
+					name: model.name,
+					description: model.description ?? null,
+					model: {
+						provider,
+						model: id,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata,
 				},
-				createdAt: null,
-				updatedAt: null,
-				metadata: getModelMetadata(provider, model.id),
-			}))
-			.filter((model) => model.metadata.available);
+			];
+		});
 	}
 }

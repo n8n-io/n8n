@@ -44,8 +44,8 @@ import { ChatHubModelsService } from './chat-hub.models.service';
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
-		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatModelsService: ChatHubModelsService,
+		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
 	) {}
