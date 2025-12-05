@@ -148,7 +148,18 @@ test.describe('Workflow Actions', () => {
 		const nodeName = await n8n.canvas.getCanvasNodes().last().getAttribute('data-node-name');
 		await n8n.canvas.toggleNodeEnabled(nodeName!);
 
-		await n8n.canvas.publishWorkflow();
+		// Wait for publish response after clicking
+		const responsePromise = n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows/') &&
+				response.url().includes('/activate') &&
+				response.request().method() === 'POST',
+		);
+		await n8n.canvas.getOpenPublishModalButton().click();
+		await expect(n8n.canvas.getPublishButton()).toBeEnabled();
+		await n8n.canvas.getPublishButton().click();
+		await responsePromise;
+
 		await n8n.workflowActivationModal.closeIfVisible();
 		await n8n.canvas.closeProductionChecklistIfVisible();
 
