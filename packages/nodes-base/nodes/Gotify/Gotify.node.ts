@@ -115,6 +115,13 @@ export class Gotify implements INodeType {
 						default: '',
 						description: 'The title of the message',
 					},
+					{
+						displayName: 'URL On Click',
+						name: 'url',
+						type: 'string',
+						default: '',
+						description: 'The URL to open when clicking on the notification',
+					},
 				],
 			},
 			{
@@ -216,15 +223,30 @@ export class Gotify implements INodeType {
 							message,
 						};
 
-						if (options.contentType) {
-							body.extras = {
-								'client::display': {
+						// set body.extras if needed
+						if (options.contentType || additionalFields.url) {
+							const extras: IDataObject = {};
+
+							if (options.contentType) {
+								extras['client::display'] = {
 									contentType: options.contentType,
-								},
-							};
+								};
+							}
+
+							if (additionalFields.url) {
+								extras['client::notification'] = {
+									click: { url: additionalFields.url },
+								};
+							}
+
+							body.extras = extras;
 						}
 
-						Object.assign(body, additionalFields);
+						// add other additionalFields (title & priority) directly to the root of the body
+						Object.assign(body, {
+							title: additionalFields.title,
+							priority: additionalFields.priority,
+						});
 
 						responseData = await gotifyApiRequest.call(this, 'POST', '/message', body);
 					}
