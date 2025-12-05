@@ -176,6 +176,14 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
+		id: 'dependency-graph',
+		icon: 'waypoints',
+		label: 'Dependency Graph',
+		position: 'bottom',
+		route: { to: { name: VIEWS.DEPENDENCY_GRAPH } },
+		available: hasPermission(['authenticated']),
+	},
+	{
 		id: 'help',
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
