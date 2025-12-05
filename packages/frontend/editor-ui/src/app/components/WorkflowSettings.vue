@@ -93,6 +93,10 @@ const defaultValues = ref({
 	availableInMCP: false,
 });
 
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
+});
+
 const isMCPEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -480,20 +484,7 @@ onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
-	if (!workflowId.value) {
-		toast.showMessage({
-			title: 'No workflow active',
-			message: 'No workflow active to display settings of.',
-			type: 'error',
-			duration: 0,
-		});
-		closeDialog();
-		return;
-	}
-
-	// Check if workflow exists in store
-	const workflow = workflowsStore.workflowsById[workflowId.value];
-	if (!workflow || !workflow.id) {
+	if (isNewWorkflowRoute.value) {
 		toast.showMessage({
 			title: 'No workflow active',
 			message: 'No workflow active to display settings of.',

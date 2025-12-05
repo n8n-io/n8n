@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
