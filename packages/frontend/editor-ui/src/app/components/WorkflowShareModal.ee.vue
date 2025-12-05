@@ -70,6 +70,10 @@ const isSharingEnabled = computed(
 
 const isHomeTeamProject = computed(() => workflow.value.homeProject?.type === ProjectTypes.Team);
 
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
+});
+
 const modalTitle = computed(() => {
 	if (isHomeTeamProject.value) {
 		return i18n.baseText('workflows.shareModal.title.static', {
@@ -150,11 +154,7 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		// Check if workflow exists in store (is it saved)
-		const existingWorkflow = workflow.value.id
-			? workflowsStore.workflowsById[workflow.value.id]
-			: null;
-		if (!existingWorkflow || !existingWorkflow.id) {
+		if (isNewWorkflowRoute.value) {
 			const parentFolderId = route.query.folderId as string | undefined;
 			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
 			if (!workflowId) {
@@ -213,8 +213,8 @@ const initialize = async () => {
 	if (isSharingEnabled.value) {
 		await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
 
-		// Fetch workflow if it exists and has a valid ID
-		if (workflow.value.id && workflowsStore.workflowsById[workflow.value.id]) {
+		// Fetch workflow if it exists and is not new
+		if (!isNewWorkflowRoute.value) {
 			await workflowsStore.fetchWorkflow(workflow.value.id);
 		}
 
