@@ -146,6 +146,7 @@ describe('WorkflowBuilderAgent', () => {
 
 		beforeEach(() => {
 			mockPayload = {
+				id: '12345',
 				message: 'Create a workflow',
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
@@ -156,6 +157,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should throw ValidationError when message exceeds maximum length', async () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
+				id: '12345',
 				message: longMessage,
 			};
 
@@ -173,6 +175,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should handle valid message length', async () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
+				id: '12345',
 				message: validMessage,
 			};
 
@@ -491,6 +494,7 @@ describe('WorkflowBuilderAgent', () => {
 			);
 
 			const generator = agent.chat({
+				id: '12345',
 				message: 'Create a workflow',
 				featureFlags: { templateExamples: true },
 			});
@@ -511,6 +515,7 @@ describe('WorkflowBuilderAgent', () => {
 			);
 
 			const generator = agent.chat({
+				id: '12345',
 				message: 'Create a workflow',
 				featureFlags: { templateExamples: false },
 			});
@@ -530,7 +535,10 @@ describe('WorkflowBuilderAgent', () => {
 				mockAsyncGenerator,
 			);
 
-			const generator = agent.chat({ message: 'Create a workflow' });
+			const generator = agent.chat({
+				id: '12345',
+				message: 'Create a workflow',
+			});
 			await generator.next();
 
 			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });

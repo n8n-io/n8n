@@ -31,9 +31,22 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { WorkflowValidationIssue } from '@/Interface';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
+const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
+const PLACEHOLDER_SUFFIX = '__>';
+
+interface PlaceholderDetail {
+	path: string[];
+	label: string;
+}
+
+interface EndOfStreamingTrackingPayload {
+	userMessageId: string;
+	startWorkflowJson: string;
+}
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
@@ -45,6 +58,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const hasMessages = ref<boolean>(false);
+	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
+		success: 0,
+		error: 0,
+	});
+
+	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -112,6 +131,91 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	function extractPlaceholderLabel(value: unknown): string | null {
+		if (typeof value !== 'string') return null;
+		if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) return null;
+
+		const label = value
+			.slice(PLACEHOLDER_PREFIX.length, value.length - PLACEHOLDER_SUFFIX.length)
+			.trim();
+		return label.length > 0 ? label : null;
+	}
+
+	function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
+		const label = extractPlaceholderLabel(value);
+		if (label) return [{ path, label }];
+
+		if (Array.isArray(value)) {
+			return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
+		}
+
+		if (value !== null && typeof value === 'object') {
+			return Object.entries(value).flatMap(([key, nested]) =>
+				findPlaceholderDetails(nested, [...path, key]),
+			);
+		}
+
+		return [];
+	}
+
+	function formatPlaceholderPath(path: string[]): string {
+		if (path.length === 0) return 'parameters';
+
+		return path
+			.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
+			.join('');
+	}
+
+	// Workflow validation from store
+	const baseWorkflowIssues = computed(() =>
+		workflowsStore.workflowValidationIssues.filter((issue) =>
+			['credentials', 'parameters'].includes(issue.type),
+		),
+	);
+
+	const placeholderIssues = computed(() => {
+		const issues: WorkflowValidationIssue[] = [];
+		const seen = new Set<string>();
+
+		for (const node of workflowsStore.workflow.nodes) {
+			if (!node?.parameters) continue;
+
+			const placeholders = findPlaceholderDetails(node.parameters);
+			if (placeholders.length === 0) continue;
+
+			const existingParameterIssues = node.issues?.parameters ?? {};
+
+			for (const placeholder of placeholders) {
+				const path = formatPlaceholderPath(placeholder.path);
+				const message = locale.baseText('aiAssistant.builder.executeMessage.fillParameter', {
+					interpolate: { label: placeholder.label },
+				});
+				const rawMessages = existingParameterIssues[path];
+				const existingMessages = rawMessages
+					? Array.isArray(rawMessages)
+						? rawMessages
+						: [rawMessages]
+					: [];
+
+				if (existingMessages.includes(message)) continue;
+
+				const key = `${node.name}|${path}|${placeholder.label}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+
+				issues.push({
+					node: node.name,
+					type: 'parameters',
+					value: message,
+				});
+			}
+		}
+
+		return issues;
+	});
+
+	const workflowTodos = computed(() => [...baseWorkflowIssues.value, ...placeholderIssues.value]);
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -124,17 +228,78 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 	}
 
+	function incrementManualExecutionStats(type: 'success' | 'error') {
+		manualExecStatsInBetweenMessages.value[type]++;
+	}
+
+	function resetManualExecutionStats() {
+		manualExecStatsInBetweenMessages.value = {
+			success: 0,
+			error: 0,
+		};
+	}
+
 	// Message handling functions
 	function addLoadingAssistantMessage(message: string) {
 		builderThinkingMessage.value = message;
 	}
 
-	function stopStreaming() {
+	function dedupeToolNames(toolNames: string[]): string[] {
+		return [...new Set(toolNames)];
+	}
+
+	function getWorkflowModifications({
+		userMessageId,
+		startWorkflowJson,
+	}: EndOfStreamingTrackingPayload) {
+		const newToolMessages = toolMessages.value.filter((toolMsg) =>
+			toolMsg.id?.startsWith(userMessageId),
+		);
+		const endWorkflowJson = getWorkflowSnapshot();
+
+		return {
+			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			start_workflow_json: startWorkflowJson,
+			end_workflow_json: endWorkflowJson,
+		};
+	}
+
+	type StopStreamingPayload =
+		| {
+				error: string;
+		  }
+		| { aborted: true };
+	function trackEndBuilderResponse(payload?: StopStreamingPayload) {
+		if (!currentStreamingMessage.value) {
+			return;
+		}
+
+		const { userMessageId } = currentStreamingMessage.value;
+
+		telemetry.track('End of response from builder', {
+			// todo user_id available as trait already?
+			user_message_id: userMessageId,
+			workflow_id: workflowsStore.workflowId,
+			session_id: trackingSessionId.value,
+			...getWorkflowModifications(currentStreamingMessage.value),
+			...payload,
+			...getTodosToTrack(),
+		});
+	}
+
+	function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
 		}
+
+		trackEndBuilderResponse(payload);
+		currentStreamingMessage.value = undefined;
+	}
+
+	function abortStreaming() {
+		stopStreaming({ aborted: true });
 	}
 
 	// Error handling
@@ -144,10 +309,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * The retry function, if provided, will remove the error message before retrying.
 	 * Tracks error telemetry
 	 */
-	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
+	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
-		stopStreaming();
+		stopStreaming({
+			error: e.message,
+		});
 		builderThinkingMessage.value = undefined;
 
 		if (e.name === 'AbortError') {
@@ -163,17 +330,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
-			id,
+			userMessageId,
 			retry,
 		);
 
 		chatMessages.value = [...chatMessages.value, errorMessage];
-
-		telemetry.track('Workflow generation errored', {
-			error: e.message,
-			session_id: trackingSessionId.value,
-			workflow_id: workflowsStore.workflowId,
-		});
 	}
 
 	// Helper functions
@@ -201,6 +362,84 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== messageId);
 			await retryFn();
 		};
+	}
+
+	function getTodosToTrack() {
+		const credentials_todo_count = workflowsStore.workflowValidationIssues.filter(
+			(issue) => issue.type === 'credentials',
+		).length;
+		const placeholders_todo_count = placeholderIssues.value.length;
+		return {
+			credentials_todo_count,
+			placeholders_todo_count,
+			todos: workflowTodos.value.map((todo) => ({
+				type: todo.type,
+				node_type: workflowsStore.getNodeByName(todo.node)?.type,
+				label: todo.value,
+			})),
+		};
+	}
+
+	// Telemetry functions
+	/**
+	 * Tracks when a user submits a message to the builder.
+	 * Captures workflow state, execution data, and todo counts for analytics.
+	 */
+	function trackUserSubmittedBuilderMessage(options: {
+		text: string;
+		source: 'chat' | 'canvas';
+		type: 'message' | 'execution';
+		userMessageId: string;
+		currentWorkflowJson: string;
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
+	}) {
+		const {
+			text,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		} = options;
+
+		const trackingPayload: Record<string, string | number | object[]> = {
+			source,
+			message: text,
+			session_id: trackingSessionId.value,
+			start_workflow_json: currentWorkflowJson,
+			workflow_id: workflowsStore.workflowId,
+			type,
+			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
+			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
+			user_message_id: userMessageId,
+			...getTodosToTrack(),
+		};
+
+		if (type === 'execution') {
+			let resultData = '{}';
+			let resultDataSizeKb = 0;
+
+			try {
+				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+			} catch (error) {
+				// Handle circular structure errors gracefully
+				console.warn('Failed to stringify execution data for telemetry:', error);
+			}
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
+			trackingPayload.execution_status = executionStatus ?? '';
+			if (executionStatus === 'error') {
+				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_node_type = errorNodeType ?? '';
+			}
+		}
+
+		telemetry.track('User submitted builder message', trackingPayload);
 	}
 
 	// Core API functions
@@ -242,51 +481,38 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (options.initialGeneration !== undefined) {
 			initialGeneration.value = options.initialGeneration;
 		}
-		const messageId = generateMessageId();
-
+		const userMessageId = generateMessageId();
 		const currentWorkflowJson = getWorkflowSnapshot();
-		const trackingPayload: Record<string, string> = {
-			source,
-			message: text,
-			session_id: trackingSessionId.value,
-			start_workflow_json: currentWorkflowJson,
-			workflow_id: workflowsStore.workflowId,
-			type,
+
+		currentStreamingMessage.value = {
+			userMessageId,
+			startWorkflowJson: currentWorkflowJson,
 		};
 
-		if (type === 'execution') {
-			let resultData = '{}';
-			let resultDataSizeKb = 0;
+		trackUserSubmittedBuilderMessage({
+			text,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		});
 
-			try {
-				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
-				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
-			} catch (error) {
-				// Handle circular structure errors gracefully
-				console.warn('Failed to stringify execution data for telemetry:', error);
-			}
+		resetManualExecutionStats();
 
-			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
-			trackingPayload.execution_status = executionStatus ?? '';
-			if (executionStatus === 'error') {
-				trackingPayload.error_message = errorMessage ?? '';
-				trackingPayload.error_node_type = errorNodeType ?? '';
-			}
-		}
-
-		telemetry.track('User submitted builder message', trackingPayload);
-
-		prepareForStreaming(text, messageId);
+		prepareForStreaming(text, userMessageId);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
-		const payload = createBuilderPayload(text, {
+		const payload = createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
-		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
+		const retry = createRetryHandler(userMessageId, async () => sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
@@ -302,7 +528,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
-						generateMessageId(),
+						userMessageId,
 						retry,
 					);
 					chatMessages.value = result.messages;
@@ -315,11 +541,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					}
 				},
 				() => stopStreaming(),
-				(e) => handleServiceError(e, messageId, retry),
+				(e) => handleServiceError(e, userMessageId, retry),
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
-			handleServiceError(e, messageId, retry);
+			handleServiceError(e, userMessageId, retry);
 		}
 	}
 
@@ -574,9 +800,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsRemaining,
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
+		workflowTodos,
 
 		// Methods
-		stopStreaming,
+		abortStreaming,
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,
@@ -586,5 +813,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		updateBuilderCredits,
 		getRunningTools,
 		fetchSessionsMetadata,
+		incrementManualExecutionStats,
+		resetManualExecutionStats,
 	};
 });

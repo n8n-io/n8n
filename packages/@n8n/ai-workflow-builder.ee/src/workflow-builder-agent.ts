@@ -157,6 +157,7 @@ export interface BuilderFeatureFlags {
 }
 
 export interface ChatPayload {
+	id: string;
 	message: string;
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];

@@ -40,7 +40,7 @@ export async function executionRecovered(
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, false);
+		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);

@@ -151,9 +151,6 @@ describe('AiWorkflowBuilderService', () => {
 
 		// Mock AI assistant client
 		mockClient = mock<AiAssistantClient>();
-		(mockClient.generateApiProxyCredentials as jest.Mock).mockResolvedValue({
-			apiKey: 'test-api-key',
-		});
 		(mockClient.getBuilderApiProxyToken as jest.Mock).mockResolvedValue({
 			tokenType: 'Bearer',
 			accessToken: 'test-access-token',
@@ -301,6 +298,7 @@ describe('AiWorkflowBuilderService', () => {
 
 		beforeEach(() => {
 			mockPayload = {
+				id: '12345',
 				message: 'Create a simple workflow',
 				workflowContext: {
 					currentWorkflow: { id: 'test-workflow' },
@@ -571,6 +569,7 @@ describe('AiWorkflowBuilderService', () => {
 		it('should handle complete workflow from chat to session retrieval', async () => {
 			const workflowId = 'integration-test-workflow';
 			const mockPayload: ChatPayload = {
+				id: '545623',
 				message: 'Create a workflow with HTTP request',
 				workflowContext: {
 					currentWorkflow: { id: workflowId },

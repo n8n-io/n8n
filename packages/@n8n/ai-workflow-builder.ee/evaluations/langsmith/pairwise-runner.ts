@@ -53,7 +53,7 @@ function createPairwiseWorkflowGenerator(
 		// Use the prompt from the dataset
 		await consumeGenerator(
 			agent.chat(
-				getChatPayload(inputs.prompt, runId, featureFlags),
+				getChatPayload('langsmith-pairwise', inputs.prompt, runId, featureFlags),
 				'langsmith-pairwise-eval-user',
 			),
 		);
