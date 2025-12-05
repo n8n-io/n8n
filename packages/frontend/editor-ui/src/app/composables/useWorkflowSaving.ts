@@ -222,8 +222,8 @@ export function useWorkflowSaving({
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
-			// Check if AI Builder made edits since last save (consumes and resets the flag)
-			workflowDataRequest.aiBuilderAssisted = builderStore.consumeAiBuilderMadeEdits();
+			// Check if AI Builder made edits since last save
+			workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
 
 			const deactivateReason = await getWorkflowDeactivationInfo(
 				currentWorkflow,
@@ -259,6 +259,9 @@ export function useWorkflowSaving({
 			uiStore.stateIsDirty = false;
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
+
+			// Reset AI Builder edits flag only after successful save
+			builderStore.resetAiBuilderMadeEdits();
 
 			return true;
 		} catch (error) {

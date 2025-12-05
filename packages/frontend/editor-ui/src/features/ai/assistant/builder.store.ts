@@ -766,13 +766,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	/**
-	 * Returns true if AI Builder made edits since the last save, then resets the flag.
-	 * This should be called when saving the workflow to include in telemetry.
+	 * Returns true if AI Builder made edits since the last save.
+	 * Use resetAiBuilderMadeEdits() after successful save to clear the flag.
 	 */
-	function consumeAiBuilderMadeEdits(): boolean {
-		const value = aiBuilderMadeEdits.value;
+	function getAiBuilderMadeEdits(): boolean {
+		return aiBuilderMadeEdits.value;
+	}
+
+	/**
+	 * Resets the AI Builder edits flag.
+	 * Should only be called after a successful workflow save.
+	 */
+	function resetAiBuilderMadeEdits(): void {
 		aiBuilderMadeEdits.value = false;
-		return value;
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
@@ -872,7 +878,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function isPlaceholderValue(value: unknown): boolean {
 		if (typeof value !== 'string') return false;
-		return value.startsWith(PLACEHOLDER_PREFIX);
+		return value.startsWith(PLACEHOLDER_PREFIX) && value.endsWith(PLACEHOLDER_SUFFIX);
 	}
 
 	// Public API
@@ -908,7 +914,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchSessionsMetadata,
 		trackWorkflowBuilderJourney,
 		isPlaceholderValue,
-		consumeAiBuilderMadeEdits,
+		getAiBuilderMadeEdits,
+		resetAiBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
 	};
