@@ -1,3 +1,12 @@
+## [1.122.6](https://github.com/n8n-io/n8n/compare/n8n@1.122.5...n8n@1.122.6) (2025-12-05)
+
+
+### Bug Fixes
+
+* Add `HOME` env var to distroless runners image ([#22796](https://github.com/n8n-io/n8n/issues/22796)) ([96bb48b](https://github.com/n8n-io/n8n/commit/96bb48bef10efe2364cb9c40be87682fab7b0f69))
+
+
+
 ## [1.122.5](https://github.com/n8n-io/n8n/compare/n8n@1.122.4...n8n@1.122.5) (2025-12-04)
 
 
