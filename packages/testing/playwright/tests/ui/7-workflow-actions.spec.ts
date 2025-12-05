@@ -280,11 +280,23 @@ test.describe('Workflow Actions', () => {
 		}
 	});
 
-	test('should update workflow settings', async ({ n8n }) => {
-		await n8n.start.fromBlankCanvas();
-		await n8n.canvas.addNode('Error Trigger', { closeNDV: true });
-		await n8n.canvas.setWorkflowName('Error Handler');
-		await n8n.canvas.saveWorkflow();
+	test('should update workflow settings', async ({ n8n, api }) => {
+		const errorWorkflow = await api.workflows.createWorkflow({
+			name: 'Error Handler',
+			nodes: [
+				{
+					id: 'error-trigger',
+					name: 'Error Trigger',
+					type: 'n8n-nodes-base.errorTrigger',
+					parameters: {},
+					typeVersion: 1,
+					position: [0, 0],
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+		await api.workflows.activate(errorWorkflow.id, errorWorkflow.versionId);
 
 		await n8n.navigate.toHome();
 
