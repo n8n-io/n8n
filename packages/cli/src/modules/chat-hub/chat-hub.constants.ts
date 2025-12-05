@@ -337,6 +337,16 @@ const MODEL_METADATA_REGISTRY: Partial<
 	},
 	// Reference: https://ai.google.dev/gemini-api/docs/models
 	google: {
+		// Gemini 3 series - latest models with advanced multimodal understanding
+		'models/gemini-3-pro-image-preview': {
+			inputModalities: ['text', 'image'],
+			capabilities: { functionCalling: false },
+		},
+		// Gemini 2.5 Pro series
+		'models/gemini-2.5-pro-preview-tts': {
+			inputModalities: ['text'],
+			capabilities: { functionCalling: false },
+		},
 		// Gemini 2.5 Flash series
 		'models/gemini-2.5-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -349,6 +359,18 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'models/gemini-2.5-flash-preview-09-2025': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+		},
+		'models/gemini-2.5-flash-preview-tts': {
+			inputModalities: ['text'],
+			capabilities: { functionCalling: false },
+		},
+		'models/gemini-2.5-flash-image': {
+			inputModalities: ['text', 'image'],
+			capabilities: { functionCalling: false },
+		},
+		'models/gemini-2.5-flash-image-preview': {
+			inputModalities: ['text', 'image'],
+			capabilities: { functionCalling: false },
 		},
 		'models/gemini-2.5-flash-native-audio-preview-09-2025': {
 			inputModalities: ['text', 'audio', 'video'],
