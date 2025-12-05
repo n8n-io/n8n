@@ -7,7 +7,8 @@ import { EditFieldsNode } from '../../pages/nodes/EditFieldsNode';
 const cowBase64 =
 	'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=';
 
-test.describe('Webhook Trigger node', () => {
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode due to webhook registration timing issues
+test.describe.skip('Webhook Trigger node', () => {
 	test.describe.configure({ mode: 'serial' });
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();

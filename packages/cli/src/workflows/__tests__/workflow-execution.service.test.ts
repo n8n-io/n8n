@@ -15,6 +15,7 @@ import {
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
+import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -335,6 +336,66 @@ describe('WorkflowExecutionService', () => {
 			expect(callArgs.workflowData.activeVersionId).toBe(null);
 			expect(callArgs.executionMode).toBe('manual');
 			expect(result).toEqual({ executionId });
+		});
+
+		test('should pass workflowIsActive to testWebhooks.needsWebhook', async () => {
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const testWebhooks = mock<TestWebhooks>();
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			const telegramTrigger: INode = {
+				id: '1',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'Telegram Trigger',
+				type: 'n8n-nodes-base.telegramTrigger',
+			};
+			const activeWorkflowData = {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'version-123',
+				isArchived: false,
+				nodes: [telegramTrigger],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+			workflowRepositoryMock.isActive.mockResolvedValue(true);
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				testWebhooks,
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+				workflowData: activeWorkflowData,
+				triggerToStartFrom: { name: telegramTrigger.name },
+			};
+
+			testWebhooks.needsWebhook.mockRejectedValue(
+				new Error(
+					'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
+				),
+			);
+
+			await expect(service.executeManually(runPayload, user)).rejects.toThrow(
+				'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
+			);
+
+			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowIsActive: true,
+				}),
+			);
 		});
 	});
 

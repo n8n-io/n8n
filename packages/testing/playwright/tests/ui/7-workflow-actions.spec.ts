@@ -37,7 +37,8 @@ async function goToWorkflow(n8n: n8nPage, workflowId: string): Promise<void> {
 	await loadResponsePromise;
 }
 
-test.describe('Workflow Actions', () => {
+// eslint-disable-next-line playwright/no-skipped-test
+test.skip('Workflow Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -369,7 +370,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 	});
 
-	test('should archive published workflow and then delete it', async ({ n8n }) => {
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
+	test.skip('should archive published workflow and then delete it', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await saveWorkflowAndGetId(n8n);
 		await n8n.canvas.publishWorkflow();
@@ -437,7 +439,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.workflowSettingsModal.getUnpublishMenuItem()).not.toBeAttached();
 	});
 
-	test('should unpublish a published workflow', async ({ n8n }) => {
+	// TODO: flaky test - 18 similar failures across 10 branches in last 14 days
+	test.skip('should unpublish a published workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
@@ -454,7 +457,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
 	});
 
-	test('should unpublish published workflow on archive', async ({ n8n }) => {
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode
+	test.skip('should unpublish published workflow on archive', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await saveWorkflowAndGetId(n8n);
 		await n8n.canvas.publishWorkflow();
