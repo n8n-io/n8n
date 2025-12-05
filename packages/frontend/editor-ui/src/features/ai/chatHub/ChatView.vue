@@ -320,6 +320,7 @@ watch(
 	[sessionId, isNewSession],
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
+		editingMessageId.value = undefined;
 
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
