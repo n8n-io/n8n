@@ -227,6 +227,11 @@ defineExpose({ open, close });
 							</div>
 						</slot>
 					</template>
+					<template v-else-if="items.length === 0">
+						<slot name="empty">
+							<div :class="$style.emptyState">No items</div>
+						</slot>
+					</template>
 					<template v-else>
 						<template v-for="item in items" :key="item.id">
 							<slot name="item" :item="item">
@@ -351,5 +356,12 @@ defineExpose({ open, close });
 	&::placeholder {
 		color: var(--color--text--tint-1);
 	}
+}
+
+.emptyState {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	text-align: center;
 }
 </style>

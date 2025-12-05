@@ -106,6 +106,8 @@ export interface DropdownMenuSlots<T = string> {
 	'item-trailing': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 	/** Custom loading state */
 	loading: () => void;
+	/** Custom empty state when no items */
+	empty: () => void;
 }
 
 export interface DropdownMenuItemSlots<T = string> {

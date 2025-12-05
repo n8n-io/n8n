@@ -594,3 +594,46 @@ export const SearchableWithSubmenus: Story = {
 		items: [] as Array<DropdownMenuItemProps<string>>,
 	},
 };
+
+export const EmptyState: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			return { args };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu :items="args.items" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const CustomEmptyState: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			return { args };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu :items="args.items">
+				<template #empty>
+					<div style="padding: 24px; text-align: center; color: var(--color--text--tint-1);">
+						<div style="font-size: 12px; margin-bottom: 8px;">🔍</div>
+						<div>Nothing here yet</div>
+					</div>
+				</template>
+			</DropdownMenu>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
