@@ -1,4 +1,4 @@
-import type { NodePromptConfig } from '../../types/config';
+import type { NodePromptConfig } from '@/types/config';
 
 export const DEFAULT_PROMPT_CONFIG: NodePromptConfig = {
 	nodeTypePatterns: {

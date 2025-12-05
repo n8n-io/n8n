@@ -1,6 +1,6 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
-import { instanceUrlPrompt } from '../../chains/prompts/instance-url';
+import { instanceUrlPrompt } from './chains/parameter-updater/instance-url';
 
 /**
  * Phase configuration for the workflow creation sequence
