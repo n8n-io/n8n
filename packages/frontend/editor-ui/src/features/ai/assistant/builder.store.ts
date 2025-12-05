@@ -39,7 +39,7 @@ const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
 const PLACEHOLDER_SUFFIX = '__>';
 
 /**
- * Event types for the workflow_builder_journey telemetry event
+ * Event types for the Workflow builder journey telemetry event
  */
 export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'

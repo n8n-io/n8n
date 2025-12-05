@@ -1715,7 +1715,7 @@ describe('AI Builder store', () => {
 
 			builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
 
-			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
 				workflow_id: 'test-workflow-id',
 				session_id: expect.any(String),
 				event_type: 'user_clicked_todo',
@@ -1730,7 +1730,7 @@ describe('AI Builder store', () => {
 				type: 'parameters',
 			});
 
-			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
 				workflow_id: 'test-workflow-id',
 				session_id: expect.any(String),
 				event_type: 'user_clicked_todo',
@@ -1746,7 +1746,7 @@ describe('AI Builder store', () => {
 
 			builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {});
 
-			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
 				workflow_id: 'test-workflow-id',
 				session_id: expect.any(String),
 				event_type: 'field_focus_placeholder_in_ndv',
@@ -1758,7 +1758,7 @@ describe('AI Builder store', () => {
 
 			builderStore.trackWorkflowBuilderJourney('no_placeholder_values_left');
 
-			expect(track).toHaveBeenCalledWith('workflow_builder_journey', {
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
 				workflow_id: 'test-workflow-id',
 				session_id: expect.any(String),
 				event_type: 'no_placeholder_values_left',
