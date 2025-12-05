@@ -9,7 +9,7 @@ import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	TIME_SAVED_NODE_EXPERIMENT,
+	// TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
@@ -31,7 +31,7 @@ import { useDebounce } from '@/app/composables/useDebounce';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
-import { usePostHog } from '@/app/stores/posthog.store';
+// import { usePostHog } from '@/app/stores/posthog.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -51,7 +51,7 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
-const posthogStore = usePostHog();
+// const posthogStore = usePostHog();
 const nodeCreatorStore = useNodeCreatorStore();
 
 const isLoading = ref(true);
@@ -132,7 +132,8 @@ const isEligibleForMcp = computed(() => {
 });
 
 const isTimeSavedNodeExperimentEnabled = computed(() => {
-	return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
+	return true;
+	// return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
 });
 
 const savedTimeNodes = computed(() => {

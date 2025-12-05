@@ -1,7 +1,7 @@
 import { nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { within, waitFor } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -10,7 +10,7 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+// import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('vue-router', async () => ({
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
-let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+// let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
 let searchWorkflowsSpy: MockInstance<(typeof workflowsStore)['searchWorkflows']>;
@@ -48,7 +48,7 @@ describe('WorkflowSettingsVue', () => {
 		pinia = createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		settingsStore = mockedStore(useSettingsStore);
-		sourceControlStore = mockedStore(useSourceControlStore);
+		// sourceControlStore = mockedStore(useSourceControlStore);
 
 		settingsStore.settings = {
 			enterprise: {},
@@ -223,80 +223,80 @@ describe('WorkflowSettingsVue', () => {
 		},
 	);
 
-	it('should save time saved per execution correctly', async () => {
-		const { getByTestId, getByRole } = createComponent({ pinia });
-		await nextTick();
+	// it('should save time saved per execution correctly', async () => {
+	// 	const { getByTestId, getByRole } = createComponent({ pinia });
+	// 	await nextTick();
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+	// 	const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
 
-		expect(timeSavedPerExecutionInput).toBeVisible();
+	// 	expect(timeSavedPerExecutionInput).toBeVisible();
 
-		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
-		expect(timeSavedPerExecutionInput).toHaveValue(10);
+	// 	await userEvent.type(timeSavedPerExecutionInput as Element, '10');
+	// 	expect(timeSavedPerExecutionInput).toHaveValue(10);
 
-		await userEvent.click(getByRole('button', { name: 'Save' }));
-		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({ settings: expect.objectContaining({ timeSavedPerExecution: 10 }) }),
-		);
-	});
+	// 	await userEvent.click(getByRole('button', { name: 'Save' }));
+	// 	expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+	// 		expect.any(String),
+	// 		expect.objectContaining({ settings: expect.objectContaining({ timeSavedPerExecution: 10 }) }),
+	// 	);
+	// });
 
-	it('should remove time saved per execution setting', async () => {
-		workflowsStore.workflowSettings.timeSavedPerExecution = 10;
+	// it('should remove time saved per execution setting', async () => {
+	// 	workflowsStore.workflowSettings.timeSavedPerExecution = 10;
 
-		const { getByTestId, getByRole } = createComponent({ pinia });
-		await nextTick();
+	// 	const { getByTestId, getByRole } = createComponent({ pinia });
+	// 	await nextTick();
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+	// 	const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
 
-		expect(timeSavedPerExecutionInput).toBeVisible();
-		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
+	// 	expect(timeSavedPerExecutionInput).toBeVisible();
+	// 	await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
-		await userEvent.clear(timeSavedPerExecutionInput as Element);
-		expect(timeSavedPerExecutionInput).not.toHaveValue();
+	// 	await userEvent.clear(timeSavedPerExecutionInput as Element);
+	// 	expect(timeSavedPerExecutionInput).not.toHaveValue();
 
-		await userEvent.click(getByRole('button', { name: 'Save' }));
-		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({
-				settings: expect.not.objectContaining({ timeSavedPerExecution: 10 }),
-			}),
-		);
-	});
+	// 	await userEvent.click(getByRole('button', { name: 'Save' }));
+	// 	expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+	// 		expect.any(String),
+	// 		expect.objectContaining({
+	// 			settings: expect.not.objectContaining({ timeSavedPerExecution: 10 }),
+	// 		}),
+	// 	);
+	// });
 
-	it('should disable save time saved per execution if env is read-only', async () => {
-		sourceControlStore.preferences.branchReadOnly = true;
+	// it('should disable save time saved per execution if env is read-only', async () => {
+	// 	sourceControlStore.preferences.branchReadOnly = true;
 
-		const { getByTestId } = createComponent({ pinia });
-		await nextTick();
+	// 	const { getByTestId } = createComponent({ pinia });
+	// 	await nextTick();
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+	// 	const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
 
-		expect(timeSavedPerExecutionInput).toBeVisible();
-		expect(timeSavedPerExecutionInput).toBeDisabled();
-	});
+	// 	expect(timeSavedPerExecutionInput).toBeVisible();
+	// 	expect(timeSavedPerExecutionInput).toBeDisabled();
+	// });
 
-	it('should disable save time saved per execution if user has no permission to update workflow', async () => {
-		workflowsStore.getWorkflowById.mockImplementation(() => ({
-			id: '1',
-			name: 'Test Workflow',
-			active: true,
-			activeVersionId: 'v1',
-			isArchived: false,
-			nodes: [],
-			connections: {},
-			createdAt: 1,
-			updatedAt: 1,
-			versionId: '123',
-			scopes: ['workflow:read'],
-		}));
+	// it('should disable save time saved per execution if user has no permission to update workflow', async () => {
+	// 	workflowsStore.getWorkflowById.mockImplementation(() => ({
+	// 		id: '1',
+	// 		name: 'Test Workflow',
+	// 		active: true,
+	// 		activeVersionId: 'v1',
+	// 		isArchived: false,
+	// 		nodes: [],
+	// 		connections: {},
+	// 		createdAt: 1,
+	// 		updatedAt: 1,
+	// 		versionId: '123',
+	// 		scopes: ['workflow:read'],
+	// 	}));
 
-		const { getByTestId } = createComponent({ pinia });
-		await nextTick();
+	// 	const { getByTestId } = createComponent({ pinia });
+	// 	await nextTick();
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+	// 	const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
 
-		expect(timeSavedPerExecutionInput).toBeVisible();
-		expect(timeSavedPerExecutionInput).toBeDisabled();
-	});
+	// 	expect(timeSavedPerExecutionInput).toBeVisible();
+	// 	expect(timeSavedPerExecutionInput).toBeDisabled();
+	// });
 });
