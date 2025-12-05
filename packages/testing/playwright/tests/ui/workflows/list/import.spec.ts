@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/base';
-import onboardingWorkflow from '../../workflows/Onboarding_workflow.json';
+import { test, expect } from '../../../../fixtures/base';
+import onboardingWorkflow from '../../../../workflows/Onboarding_workflow.json';
 
 test.describe('Import workflow', () => {
 	test.describe('From URL', () => {
