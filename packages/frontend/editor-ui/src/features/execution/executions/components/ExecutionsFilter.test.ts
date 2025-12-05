@@ -56,7 +56,8 @@ const workflowDataFactory = (): IWorkflowShortResponse => ({
 	updatedAt: faker.date.past().toDateString(),
 	id: faker.string.uuid(),
 	name: faker.string.sample(),
-	active: faker.datatype.boolean(),
+	active: false,
+	activeVersionId: null,
 	tags: [],
 });
 

@@ -18,8 +18,9 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
-import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
@@ -30,12 +31,12 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -63,6 +64,8 @@ export abstract class BaseCommand<F = never> {
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
 	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
+	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
@@ -95,6 +98,7 @@ export abstract class BaseCommand<F = never> {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
+
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection
@@ -192,47 +196,41 @@ export abstract class BaseCommand<F = never> {
 		throw new UnexpectedError(message);
 	}
 
-	async initObjectStoreService() {
-		const binaryDataConfig = Container.get(BinaryDataConfig);
-		const isSelected = binaryDataConfig.mode === 's3';
-		const isAvailable = binaryDataConfig.availableModes.includes('s3');
-
-		if (!isSelected) return;
-
-		if (isSelected && !isAvailable) {
-			throw new UserError(
-				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
-			);
-		}
-
-		const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
-		if (!isLicensed) {
-			this.logger.error(
-				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
-			);
-			return process.exit(1);
-		}
-
-		this.logger.debug('License found for external storage - Initializing object store service');
-		try {
-			await Container.get(ObjectStoreService).init();
-			this.logger.debug('Object store init completed');
-		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.debug('Object store init failed', { error });
-		}
-	}
-
 	async initBinaryDataService() {
-		try {
-			await this.initObjectStoreService();
-		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.error(`Failed to init object store: ${error.message}`, { error });
-			process.exit(1);
+		const binaryDataConfig = Container.get(BinaryDataConfig);
+		const binaryDataService = Container.get(BinaryDataService);
+		const isS3WriteMode = binaryDataConfig.mode === 's3';
+
+		const { DatabaseManager } = await import('@/binary-data/database.manager');
+		binaryDataService.setManager('database', Container.get(DatabaseManager));
+
+		if (isS3WriteMode) {
+			const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
+			if (!isLicensed) {
+				this.logger.error(
+					'S3 binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
 		}
 
-		await Container.get(BinaryDataService).init();
+		// we always try to init S3 for reading - silently fail if not configured
+		try {
+			const objectStoreService = Container.get(ObjectStoreService);
+			await objectStoreService.init();
+			const { ObjectStoreManager } = await import('n8n-core/dist/binary-data/object-store.manager');
+			binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
+		} catch {
+			if (isS3WriteMode) {
+				this.logger.error(
+					'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
+				);
+				process.exit(1);
+			}
+			// S3 not configured - users without S3 data are unaffected; users with S3 data will fail at runtime when reading
+		}
+
+		await binaryDataService.init();
 	}
 
 	protected async initDataDeduplicationService() {
