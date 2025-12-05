@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -50,7 +50,7 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	it('should render disabled execute node button when node is deactivated', async () => {
-		const { getByTestId, getByRole } = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia,
 			global: {
 				provide: {
@@ -69,8 +69,9 @@ describe('CanvasNodeToolbar', () => {
 
 		await userEvent.hover(button);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent("This node is deactivated and can't be run");
+		await waitFor(() => {
+			expect(screen.getByText("This node is deactivated and can't be run")).toBeVisible();
+		});
 	});
 
 	it('should not render execute node button when renderType is configuration', async () => {

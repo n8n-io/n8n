@@ -5,7 +5,7 @@ import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/vue';
 import merge from 'lodash/merge';
 import { computed, nextTick, ref } from 'vue';
 import Assignment from './Assignment.vue';
@@ -94,7 +94,7 @@ describe('Assignment.vue', () => {
 	});
 
 	it('should show binary data tooltip when assignment type is binary', async () => {
-		const { getByTestId, getByRole } = renderComponent({
+		const { getByTestId, baseElement } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
 				modelValue: {
@@ -109,13 +109,11 @@ describe('Assignment.vue', () => {
 		const typeSelect = getByTestId('assignment-type-select');
 
 		// Hover over the type select to trigger tooltip
-		await fireEvent.mouseEnter(typeSelect);
-		await nextTick();
+		await userEvent.hover(typeSelect);
 
 		// Check if tooltip with binary data information is displayed
 		await waitFor(() => {
-			const tooltip = getByRole('tooltip');
-			expect(tooltip).toBeInTheDocument();
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
 			expect(tooltip).toHaveTextContent(
 				'Specify the property name of the binary data in the input item',
 			);

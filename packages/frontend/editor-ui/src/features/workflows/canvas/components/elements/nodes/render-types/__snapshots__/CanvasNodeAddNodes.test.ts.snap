@@ -6,8 +6,12 @@ exports[`CanvasNodeAddNodes > should render node correctly 1`] = `
   data-test-id="canvas-add-button"
 >
   
+  
+  
   <button
-    class="button el-tooltip__trigger el-tooltip__trigger"
+    class="button"
+    data-grace-area-trigger=""
+    data-state="closed"
     data-test-id="canvas-plus-button"
   >
     <svg
@@ -30,8 +34,9 @@ exports[`CanvasNodeAddNodes > should render node correctly 1`] = `
       />
     </svg>
   </button>
-  <!--teleport start-->
-  <!--teleport end-->
+  <!--v-if-->
+  
+  
   
   <p
     class="label"

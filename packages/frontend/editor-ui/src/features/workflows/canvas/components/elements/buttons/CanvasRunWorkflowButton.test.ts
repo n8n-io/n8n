@@ -42,7 +42,7 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.getAllByText('Executing workflow')).toHaveLength(2);
+		expect(wrapper.getByText('Executing workflow')).toBeInTheDocument();
 	});
 
 	it('should render different label when executing and waiting for webhook', () => {
@@ -53,25 +53,31 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.getAllByText('Waiting for trigger event')).toHaveLength(2);
+		expect(wrapper.getByText('Waiting for trigger event')).toBeInTheDocument();
 	});
 
-	it("should only show the tooltip when it's not executing", async () => {
+	it('should show tooltip when not executing', async () => {
 		const wrapper = renderComponent({ props: { executing: false } });
 		await userEvent.hover(wrapper.getByRole('button'));
 
-		function isTooltipVisible(isVisible: boolean) {
-			return wrapper.baseElement.querySelector(
-				`[id^="el-popper-container"] div[aria-hidden="${!isVisible}"]`,
-			);
+		function getTooltip() {
+			return wrapper.baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
 		}
 
-		await waitFor(() => expect(isTooltipVisible(true)).toBeTruthy());
+		await waitFor(() => expect(getTooltip()).toBeInTheDocument());
+	});
 
-		await wrapper.rerender({ executing: true });
+	it('should not show tooltip when executing', async () => {
+		const wrapper = renderComponent({ props: { executing: true } });
 		await userEvent.hover(wrapper.getByRole('button'));
 
-		await waitFor(() => expect(isTooltipVisible(false)).toBeTruthy());
+		function getTooltip() {
+			return wrapper.baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+		}
+
+		// Wait longer than showAfter (500ms) then verify tooltip didn't appear
+		await new Promise((r) => setTimeout(r, 600));
+		expect(getTooltip()).not.toBeInTheDocument();
 	});
 
 	it('should render split button if multiple triggers are available', () => {

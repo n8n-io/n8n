@@ -2,6 +2,7 @@ import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -228,16 +229,17 @@ describe('NodeExecuteButton', () => {
 			mockNode({ name: 'test', type: SET_NODE_TYPE, disabled: true }),
 		);
 
-		const { getByRole, queryByRole } = renderComponent();
+		const { getByRole, baseElement } = renderComponent();
 
 		const button = getByRole('button');
 		expect(button).toBeDisabled();
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(button);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('Enable node to execute');
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent('Enable node to execute');
+		});
 	});
 
 	it('should be disabled when workflow is running but node is not executing', async () => {
@@ -247,16 +249,17 @@ describe('NodeExecuteButton', () => {
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
 
-		const { getByRole, queryByRole } = renderComponent();
+		const { getByRole, baseElement } = renderComponent();
 
 		const button = getByRole('button');
 		expect(button).toBeDisabled();
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(button);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('Workflow is already running');
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent('Workflow is already running');
+		});
 	});
 
 	it('disables button when trigger node has issues', async () => {

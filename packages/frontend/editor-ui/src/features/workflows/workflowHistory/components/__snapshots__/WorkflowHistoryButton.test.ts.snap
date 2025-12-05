@@ -3,8 +3,11 @@
 exports[`WorkflowHistoryButton > should be enabled if the workflow is not new 1`] = `
 <div>
   
+  
+  
   <div
-    class="el-tooltip__trigger"
+    data-grace-area-trigger=""
+    data-state="closed"
     to="[object Object]"
   >
     
@@ -21,8 +24,9 @@ exports[`WorkflowHistoryButton > should be enabled if the workflow is not new 1`
     />
     
   </div>
-  <!--teleport start-->
-  <!--teleport end-->
+  <!--v-if-->
+  
+  
   
 </div>
 `;

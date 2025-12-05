@@ -14,40 +14,20 @@ exports[`InsightsSummary > should render the summary correctly 2`] = `
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -59,37 +39,20 @@ exports[`InsightsSummary > should render the summary correctly 3`] = `
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" size="medium" spin="false" class="icon el-tooltip__trigger el-tooltip__trigger"></n8n-icon-stub><!--teleport start--><!--teleport end--></small></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" size="medium" spin="false" data-state="closed" data-grace-area-trigger="" class="icon"></n8n-icon-stub><!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -101,40 +64,20 @@ exports[`InsightsSummary > should render the summary correctly 4`] = `
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 2%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 2%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub> 0h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-up" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-up" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -146,25 +89,20 @@ exports[`InsightsSummary > should render the summary correctly 5`] = `
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><!--v-if--></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><!--v-if--></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><!--v-if--></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><!--v-if--></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><!--v-if--></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><!--v-if--></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><!--v-if--></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><!--v-if--></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><!--v-if--></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><!--v-if--></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -176,37 +114,20 @@ exports[`InsightsSummary > should render the summary correctly 6`] = `
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub> 0%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub> 0%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i>%</i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 7 days</small><span><em>0 <i>%</i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub> 0pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" size="medium" spin="false" class="icon el-tooltip__trigger el-tooltip__trigger"></n8n-icon-stub><!--teleport start--><!--teleport end--></small></span></a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><n8n-icon-stub icon="info" size="medium" spin="false" data-state="closed" data-grace-area-trigger="" class="icon"></n8n-icon-stub><!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 7 days</small><span><em>0 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-right" spin="false" class="icon neutral"></n8n-icon-stub> 0s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -218,40 +139,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'cust
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">6 Sep - 13 Sep, 2025</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -263,40 +164,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 7 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -308,40 +189,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 14 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 14 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 14 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 14 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 14 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 14 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 14 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 14 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 14 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 14 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -353,40 +214,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 24 hours</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 24 hours</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 24 hours</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 24 hours</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 24 hours</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 24 hours</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 24 hours</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 24 hours</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 24 hours</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 24 hours</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -398,40 +239,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 30 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 30 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 30 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 30 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 30 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 30 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 30 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 30 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 30 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 30 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -443,40 +264,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 90 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">Last 90 days</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 90 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">Last 90 days</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 90 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">Last 90 days</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 90 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">Last 90 days</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 90 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">Last 90 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -488,40 +289,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">6 months</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">6 months</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">6 months</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">6 months</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">6 months</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">6 months</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">6 months</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">6 months</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">6 months</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">6 months</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
@@ -533,40 +314,20 @@ exports[`InsightsSummary > with different date ranges > should render with 'last
   <!--v-if-->
   <div class="insights">
     <ul data-test-id="insights-summary-tabs">
-      <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">One year</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-total"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Prod. executions<!--v-if--></strong><small class="days">One year</small><span><em>525 <i></i></em><small class="positive"><n8n-icon-stub icon="chevron-up" spin="false" class="icon positive"></n8n-icon-stub> 85%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">One year</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failed"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failed prod. executions<!--v-if--></strong><small class="days">One year</small><span><em>14 <i></i></em><small class="negative"><n8n-icon-stub icon="chevron-up" spin="false" class="icon negative"></n8n-icon-stub> 3%<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">One year</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-failureRate"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Failure rate<!--v-if--></strong><small class="days">One year</small><span><em>1.9 <i>%</i></em><small class="positive"><n8n-icon-stub icon="chevron-down" spin="false" class="icon positive"></n8n-icon-stub> 0.8pp<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">One year</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-timeSaved"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Time saved<!--v-if--></strong><small class="days">One year</small><span><em>55.55 <i>h</i></em><small class="negative"><n8n-icon-stub icon="chevron-down" spin="false" class="icon negative"></n8n-icon-stub> 5.16h<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
-      <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">One year</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
-          <!--teleport start-->
-          <!--teleport end--></small></span>
-        </a>
-        <!--teleport start-->
-        <!--teleport end-->
+      <li data-test-id="insights-summary-tab-averageRunTime"><a data-state="closed" data-grace-area-trigger="" to="[object Object]" exact-active-class="activeTab"><strong> Run time (avg.)<!--v-if--></strong><small class="days">One year</small><span><em>2.5 <i>s</i></em><small class="neutral"><n8n-icon-stub icon="chevron-down" spin="false" class="icon neutral"></n8n-icon-stub> 0.5s<!--v-if--></small></span></a>
+        <!--v-if-->
       </li>
     </ul>
   </div><!-- TODO: This should be removed after some time when the number issue is behind us -->
