@@ -292,7 +292,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
-			).rejects.toThrow('could not be opened');
+			).rejects.toThrow('ELOOP: too many symbolic links encountered');
 		});
 	});
 
