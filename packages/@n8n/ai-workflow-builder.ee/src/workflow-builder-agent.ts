@@ -119,19 +119,23 @@ function getWorkflowContext(state: typeof WorkflowState.State) {
 		'<current_simplified_execution_data>',
 		JSON.stringify(executionData),
 		'</current_simplified_execution_data>',
-		'',
-		'<current_execution_nodes_schemas>',
-		JSON.stringify(executionSchema),
-		'</current_execution_nodes_schemas>',
 	];
 
 	if (state.context?.activeNodeInfo?.node?.id) {
 		workflowContextParts.push(
+			'',
 			'<current_node_json>',
 			JSON.stringify(state.context?.activeNodeInfo?.node),
 			'</current_node_json>',
 		);
 	}
+
+	workflowContextParts.push(
+		'',
+		'<current_execution_nodes_schemas>',
+		JSON.stringify(executionSchema),
+		'</current_execution_nodes_schemas>',
+	);
 
 	return workflowContextParts.join('\n');
 }

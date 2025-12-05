@@ -226,6 +226,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Close NDV on new message
+		// new: do not close to keep selected node
 		// ndvStore.unsetActiveNodeName();
 
 		const {
