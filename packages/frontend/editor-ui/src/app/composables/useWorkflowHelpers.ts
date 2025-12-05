@@ -856,8 +856,8 @@ export function useWorkflowHelpers() {
 			uiStore.stateIsDirty = false;
 		}
 
-		if (workflow.activeVersionId !== null) {
-			workflowsStore.setWorkflowActive(workflowId);
+		if (workflow.activeVersion) {
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
 		}
