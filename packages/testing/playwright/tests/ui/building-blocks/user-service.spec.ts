@@ -1,4 +1,4 @@
-import { expect, test } from '../../fixtures/base';
+import { expect, test } from '../../../fixtures/base';
 
 test.describe('User API Service', () => {
 	test('should create a user with default values', async ({ api }) => {
