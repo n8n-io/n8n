@@ -1,3 +1,5 @@
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+
 import { runCliEvaluation } from './cli/runner.js';
 import { runPairwiseLangsmithEvaluation } from './langsmith/pairwise-runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
@@ -36,13 +38,21 @@ async function main(): Promise<void> {
 		: 1;
 	const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
 
+	// Parse feature flags from environment variables or CLI arguments
+	const featureFlags = parseFeatureFlags();
+
 	if (usePairwiseEval) {
-		await runPairwiseLangsmithEvaluation(repetitions);
+		await runPairwiseLangsmithEvaluation(repetitions, featureFlags);
 	} else if (useLangsmith) {
-		await runLangsmithEvaluation(repetitions);
+		await runLangsmithEvaluation(repetitions, featureFlags);
 	} else {
 		const csvTestCases = promptsCsvPath ? loadTestCasesFromCsv(promptsCsvPath) : undefined;
-		await runCliEvaluation({ testCases: csvTestCases, testCaseFilter: testCaseId, repetitions });
+		await runCliEvaluation({
+			testCases: csvTestCases,
+			testCaseFilter: testCaseId,
+			repetitions,
+			featureFlags,
+		});
 	}
 }
 
@@ -63,6 +73,36 @@ function getFlagValue(flag: string): string | undefined {
 			throw new Error(`Flag ${flag} requires a value`);
 		}
 		return value;
+	}
+
+	return undefined;
+}
+
+/**
+ * Parse feature flags from environment variables or CLI arguments.
+ * Environment variables:
+ *   - EVAL_FEATURE_TEMPLATE_EXAMPLES=true - Enable template examples feature
+ *   - EVAL_FEATURE_MULTI_AGENT=true - Enable multi-agent feature
+ * CLI arguments:
+ *   - --template-examples - Enable template examples feature
+ *   - --multi-agent - Enable multi-agent feature
+ */
+function parseFeatureFlags(): BuilderFeatureFlags | undefined {
+	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
+	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
+
+	const templateExamplesFromCli = process.argv.includes('--template-examples');
+	const multiAgentFromCli = process.argv.includes('--multi-agent');
+
+	const templateExamples = templateExamplesFromEnv || templateExamplesFromCli;
+	const multiAgent = multiAgentFromEnv || multiAgentFromCli;
+
+	// Only return feature flags object if at least one flag is set
+	if (templateExamples || multiAgent) {
+		return {
+			templateExamples: templateExamples || undefined,
+			multiAgent: multiAgent || undefined,
+		};
 	}
 
 	return undefined;
