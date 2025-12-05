@@ -15,6 +15,7 @@ export interface ChatOptions {
 	chatSessionKey?: string;
 	defaultLanguage?: 'en';
 	initialMessages?: string[];
+	starterPrompts?: Array<string | { label: string; message: string }>;
 	metadata?: Record<string, unknown>;
 	i18n: Record<
 		string,
@@ -25,6 +26,7 @@ export interface ChatOptions {
 			getStarted: string;
 			inputPlaceholder: string;
 			closeButtonTooltip: string;
+			resetConversation: string;
 			[message: string]: string;
 		}
 	>;
