@@ -254,6 +254,8 @@ export function configureQueryRunner(
 		if (queryBatching === 'single') {
 			try {
 				const concatQueries = pgp.helpers.concat(queries);
+				this.nodeLogger.error('Error message', { tag: 'Postgres Query' });
+				this.nodeLogger.warn('Warning message', { tag: 'Postgres Query' });
 				this.nodeLogger.debug(`Executing queries: \n${concatQueries}\n`, { tag: 'Postgres Query' });
 				returnData = (await db.multi(concatQueries))
 					.map((result, i) => {

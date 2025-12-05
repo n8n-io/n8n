@@ -15,13 +15,14 @@ import {
 } from '@/features/execution/logs/logs.constants';
 import type { ChatMessage } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
+import type { LogLevel } from 'n8n-workflow';
 
 export interface ConsoleMessage {
 	id: string;
 	timestamp: number;
 	source: string;
 	messages: unknown[];
-	level: string;
+	level: LogLevel;
 }
 
 export const useLogsStore = defineStore('logs', () => {
@@ -134,7 +135,7 @@ export const useLogsStore = defineStore('logs', () => {
 		chatSessionMessages.value.push(message);
 	}
 
-	function addConsoleMessage(source: string, messages: unknown[], level: string) {
+	function addConsoleMessage(source: string, messages: unknown[], level: LogLevel) {
 		const match = source.match(/\[Node: "([^"]+)"/);
 		if (match) {
 			const nodeName = match[1];

@@ -5,6 +5,7 @@ import { N8nText, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
+import { LogLevel } from 'n8n-workflow';
 
 interface Props {
 	nodeName: string;
@@ -56,10 +57,30 @@ function formatMessage(message: unknown): string {
 	return JSON.stringify(message, null, 2);
 }
 
+function getLogLevelClass(level: LogLevel): string {
+	switch (level) {
+		case 'error':
+			return 'error';
+		case 'warn':
+			return 'warning';
+		case 'info':
+			return 'info';
+		case 'debug':
+			return 'debug';
+		default:
+			return 'info';
+	}
+}
+
+function getLogLevelDisplay(level: LogLevel): string {
+	return level.toUpperCase();
+}
+
 function copyAllLogs() {
 	const logsData = consoleMessages.value.map((log) => {
 		const parsed = parseSource(log.source);
 		return {
+			level: log.level,
 			tag: parsed.tag,
 			date: formatDate(parsed.date),
 			messages: log.messages.map((msg) => {
@@ -110,12 +131,14 @@ function copyAllLogs() {
 				<div
 					v-for="log in consoleMessages"
 					:key="log.id"
-					:class="$style.logEntry"
+					:class="[$style.logEntry, $style[`logEntry--${getLogLevelClass(log.level)}`]]"
 					data-test-id="console-log-entry"
 				>
 					<div :class="$style.logHeader">
 						<div :class="$style.logMetadata">
-							<span :class="$style.tag">{{ parseSource(log.source).tag }}</span>
+							<span :class="[$style.tag, $style[`tag--${getLogLevelClass(log.level)}`]]">
+								{{ getLogLevelDisplay(log.level) }}
+							</span>
 							<N8nText :class="$style.logDate" size="xsmall" color="text-light">
 								{{ formatDate(parseSource(log.source).date) }}
 							</N8nText>
@@ -123,7 +146,15 @@ function copyAllLogs() {
 					</div>
 					<div :class="$style.logBody">
 						<div v-for="(message, index) in log.messages" :key="index" :class="$style.logMessage">
-							<pre :class="$style.logMessageContent">{{ formatMessage(message) }}</pre>
+							<pre
+								:class="[
+									$style.logMessageContent,
+									$style[`logMessageContent--${getLogLevelClass(log.level)}`],
+								]"
+							>
+								{{ formatMessage(message) }}
+							</pre
+							>
 						</div>
 					</div>
 				</div>
@@ -189,6 +220,22 @@ function copyAllLogs() {
 	overflow: hidden;
 }
 
+.logEntry--error {
+	border-left: 3px solid var(--color--danger);
+}
+
+.logEntry--warning {
+	border-left: 3px solid var(--color--warning);
+}
+
+.logEntry--info {
+	border-left: 3px solid var(--color--info);
+}
+
+.logEntry--debug {
+	border-left: 3px solid var(--color--text--tint-2);
+}
+
 .logHeader {
 	display: flex;
 	align-items: center;
@@ -216,6 +263,26 @@ function copyAllLogs() {
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
 	white-space: nowrap;
+}
+
+.tag--error {
+	background: var(--color--danger);
+	color: var(--color--neutral-white);
+}
+
+.tag--warning {
+	background: var(--color--warning);
+	color: var(--color--neutral-white);
+}
+
+.tag--info {
+	background: var(--color--info);
+	color: var(--color--neutral-white);
+}
+
+.tag--debug {
+	background: var(--color--text--tint-2);
+	color: var(--color--background--xlight);
 }
 
 .logDate {
@@ -246,5 +313,25 @@ function copyAllLogs() {
 	white-space: pre-wrap;
 	word-break: break-word;
 	overflow-x: auto;
+}
+
+.logMessageContent--error {
+	color: var(--color--danger);
+	background: var(--color--danger--tint-4);
+}
+
+.logMessageContent--warning {
+	color: var(--color--warning--shade-1);
+	background: var(--color--warning--tint-2);
+}
+
+.logMessageContent--info {
+	color: var(--color--text--dark);
+	background: var(--color--background--light-1);
+}
+
+.logMessageContent--debug {
+	color: var(--color--text--tint-1);
+	background: var(--color--background--light-2);
 }
 </style>
