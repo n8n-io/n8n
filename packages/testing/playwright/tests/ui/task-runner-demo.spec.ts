@@ -28,7 +28,10 @@ test.describe('Task Runner Capability @capability:task-runner', () => {
 	test('should execute Python with task runner enabled', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in Python (Beta)', closeNDV: true });
+		await n8n.canvas.addNode(CODE_NODE_NAME, {
+			action: 'Code in Python (Native)',
+			closeNDV: true,
+		});
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 			'Workflow executed successfully',
 		);
