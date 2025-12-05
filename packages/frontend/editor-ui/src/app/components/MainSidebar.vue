@@ -57,6 +57,7 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
+import MainSidebarTrialUpgrade from './MainSidebarTrialUpgrade.vue';
 import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
@@ -580,6 +581,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		</N8nScrollArea>
 
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<MainSidebarTrialUpgrade />
 		<MainSidebarUserArea
 			v-if="showUserArea"
 			ref="user"
