@@ -231,6 +231,13 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		margin: 0;
 	}
 
+	// Add top padding to strong elements only when there's content before them
+	:not(:first-child) > strong:first-child,
+	* + strong {
+		display: inline-block;
+		padding-top: var(--spacing--md);
+	}
+
 	h1,
 	h2,
 	h3 {
