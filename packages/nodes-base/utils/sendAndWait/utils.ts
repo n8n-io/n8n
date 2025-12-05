@@ -1,18 +1,26 @@
 import isbot from 'isbot';
+import type {
+	FormFieldsParameter,
+	IDataObject,
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
 	tryToParseJsonToFormFields,
 	updateDisplayOptions,
 } from 'n8n-workflow';
-import type {
-	INodeProperties,
-	IExecuteFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	FormFieldsParameter,
-} from 'n8n-workflow';
 
+import { cssVariables } from '../../nodes/Form/cssVariables';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
+import {
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+} from '../../nodes/Form/utils/utils';
+import { escapeHtml } from '../utilities';
 import { limitWaitTimeProperties } from './descriptions';
 import {
 	ACTION_RECORDED_PAGE,
@@ -22,14 +30,6 @@ import {
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
-import { cssVariables } from '../../nodes/Form/cssVariables';
-import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import {
-	prepareFormData,
-	prepareFormReturnItem,
-	resolveRawData,
-} from '../../nodes/Form/utils/utils';
-import { escapeHtml } from '../utilities';
 
 export type SendAndWaitConfig = {
 	title: string;
@@ -82,6 +82,7 @@ export function getSendAndWaitProperties(
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		additionalOptionsProperties?: INodeProperties[];
 	},
 ) {
 	const buttonStyle: INodeProperties = {
@@ -248,7 +249,11 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption, appendAttributionOption],
+			options: [
+				...(options?.additionalOptionsProperties ?? []),
+				limitWaitTimeOption,
+				appendAttributionOption,
+			],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -262,6 +267,7 @@ export function getSendAndWaitProperties(
 			placeholder: 'Add option',
 			default: {},
 			options: [
+				...(options?.additionalOptionsProperties ?? []),
 				{
 					displayName: 'Message Button Label',
 					name: 'messageButtonLabel',
