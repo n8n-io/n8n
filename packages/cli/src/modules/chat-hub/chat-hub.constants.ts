@@ -1,16 +1,6 @@
 import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
 import type { INodeTypeNameVersion } from 'n8n-workflow';
 
-export const CONVERSATION_TITLE_GENERATION_PROMPT = `Generate a concise, descriptive title for this conversation based on the user's message.
-
-Requirements:
-- 2 to 5 words
-- Use normal sentence case (not title case)
-- No quotation marks
-- Only output the title, nothing else
-- Use the same language as the user's message
-`;
-
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
 		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',

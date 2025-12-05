@@ -73,22 +73,14 @@ function onDelete() {
 </style>
 
 <style lang="scss">
-@mixin dark-button-styles {
-	--button--color--background: var(--color--background);
-	--button--color--background--hover: var(--color--background--light-2);
-}
-
-@media (prefers-color-scheme: dark) {
-	body:not([data-theme]) .canvas-edge-toolbar-button {
-		@include dark-button-styles();
-	}
-}
-
-[data-theme='dark'] .canvas-edge-toolbar-button {
-	@include dark-button-styles();
-}
-
 .canvas-edge-toolbar-button {
-	border-width: 2px;
+	border-width: 0;
+	--button--color--text: light-dark(var(--color--neutral-700), var(--color--neutral-250));
+	--button--color--text--hover: light-dark(var(--color--neutral-850), var(--color--neutral-150));
+	--button--color--background: light-dark(var(--color--neutral-200), var(--color--neutral-850));
+	--button--color--background--hover: light-dark(
+		var(--color--neutral-250),
+		var(--color--neutral-800)
+	);
 }
 </style>

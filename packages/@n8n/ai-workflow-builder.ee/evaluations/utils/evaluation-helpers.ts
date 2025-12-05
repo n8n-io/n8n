@@ -8,7 +8,7 @@ import { join } from 'path';
 import pc from 'picocolors';
 
 import { anthropicClaudeSonnet45 } from '../../src/llm-config';
-import type { ChatPayload } from '../../src/workflow-builder-agent';
+import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import type { Violation } from '../types/evaluation';
 import type { TestResult } from '../types/test-result';
@@ -277,11 +277,16 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	}
 }
 
-export function getChatPayload(message: string, id: string): ChatPayload {
+export function getChatPayload(
+	message: string,
+	id: string,
+	featureFlags?: BuilderFeatureFlags,
+): ChatPayload {
 	return {
 		message,
 		workflowContext: {
 			currentWorkflow: { id, nodes: [], connections: {} },
 		},
+		featureFlags,
 	};
 }

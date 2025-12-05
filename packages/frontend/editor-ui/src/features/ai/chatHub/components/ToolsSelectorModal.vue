@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -13,6 +21,9 @@ import { ElSwitch } from 'element-plus';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -26,7 +37,13 @@ const i18n = useI18n();
 const modalBus = ref(createEventBus());
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
+const projectStore = useProjectsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
+
+const canCreateCredentials = computed(() => {
+	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
+});
 
 const selectedByProvider = ref<Record<ChatHubAgentTool, Set<string>>>({
 	[JINA_AI_TOOL_NODE_TYPE]: new Set(),
@@ -125,6 +142,13 @@ function onCredentialSelect(providerKey: ChatHubAgentTool, id: string) {
 function onCreateNewCredential(providerKey: ChatHubAgentTool) {
 	const provider = AVAILABLE_TOOLS[providerKey];
 	if (!provider.credentialType) return;
+
+	telemetry.track('User opened Credential modal', {
+		credential_type: provider.credentialType,
+		source: 'chat',
+		new_credential: true,
+		workflow_id: null,
+	});
 
 	uiStore.openNewCredential(provider.credentialType);
 }
@@ -250,9 +274,22 @@ onMounted(async () => {
 									:label="c.name"
 								/>
 							</N8nSelect>
-							<N8nButton size="medium" type="secondary" @click="onCreateNewCredential(key)">
-								{{ i18n.baseText('chatHub.tools.editor.credential.new') }}
-							</N8nButton>
+							<N8nTooltip
+								placement="left"
+								:disabled="canCreateCredentials"
+								:content="
+									i18n.baseText('chatHub.tools.editor.credential.createNew.permissionDenied')
+								"
+							>
+								<N8nButton
+									size="medium"
+									type="secondary"
+									:disabled="!canCreateCredentials"
+									@click="onCreateNewCredential(key)"
+								>
+									{{ i18n.baseText('chatHub.tools.editor.credential.createNew') }}
+								</N8nButton>
+							</N8nTooltip>
 						</div>
 					</div>
 
