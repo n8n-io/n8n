@@ -28,6 +28,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const state = {
 	initialized: false,
@@ -175,7 +176,10 @@ export async function initializeAuthenticatedFeatures(
 			});
 	}
 
-	if (settingsStore.isDataTableFeatureEnabled) {
+	if (
+		settingsStore.isDataTableFeatureEnabled &&
+		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } })
+	) {
 		void dataTableStore
 			.fetchDataTableSize()
 			.then(({ quotaStatus }) => {
