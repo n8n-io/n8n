@@ -2,16 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { UserAction } from '@/Interface';
-import {
-	N8nActionBox,
-	N8nActionToggle,
-	N8nButton,
-	N8nDataTableServer,
-	N8nHeading,
-	N8nLoading,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionToggle, N8nDataTableServer, N8nLoading, N8nText } from '@n8n/design-system';
 import { ref } from 'vue';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -27,7 +18,6 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
-	refresh: [];
 }>();
 
 const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
@@ -36,8 +26,8 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 		key: 'name',
 		width: 250,
 		disableSort: true,
-		value(client: OAuthClientResponseDto) {
-			return client.name;
+		value() {
+			return;
 		},
 	},
 	{
@@ -82,35 +72,33 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
-			<div :class="[$style.header, 'mb-s']">
-				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.mcp.oAuthClients.heading') }} ({{ props.clients.length }})
-				</N8nHeading>
-				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
-					<N8nButton
-						data-test-id="mcp-oauth-clients-refresh-button"
-						size="small"
-						type="tertiary"
-						icon="refresh-cw"
-						:square="true"
-						@click="$emit('refresh')"
-					/>
-				</N8nTooltip>
-			</div>
-			<N8nActionBox
-				v-if="props.clients.length === 0"
-				data-test-id="empty-oauth-clients-list-box"
-				:heading="i18n.baseText('settings.mcp.oAuthClients.table.empty.title')"
-			/>
 			<N8nDataTableServer
-				v-else
 				data-test-id="oauth-clients-data-table"
 				:headers="tableHeaders"
 				:items="props.clients"
 				:items-length="props.clients.length"
 			>
+				<template v-if="props.clients.length === 0" #cover>
+					<div :class="$style['empty-state']">
+						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
+							{{ i18n.baseText('settings.mcp.oauth.table.empty.title') }}
+						</N8nText>
+						<N8nText
+							data-test-id="mcp-workflow-table-empty-state-description"
+							size="small"
+							color="text-base"
+						>
+							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
+						</N8nText>
+					</div>
+				</template>
+				<template #[`item.name`]="{ item }">
+					<N8nText data-test-id="mcp-client-name" color="text-base">
+						{{ item.name }}
+					</N8nText>
+				</template>
 				<template #[`item.createdAt`]="{ item }">
-					<N8nText data-test-id="mcp-client-created-at">
+					<N8nText data-test-id="mcp-client-created-at" color="text-base">
 						<TimeAgo :date="String(item.createdAt)" />
 					</N8nText>
 				</template>
@@ -133,5 +121,15 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg) 0;
+	min-height: 250px;
 }
 </style>

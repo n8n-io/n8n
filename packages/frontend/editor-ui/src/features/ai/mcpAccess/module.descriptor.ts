@@ -9,7 +9,7 @@ const SettingsMCPView = async () => await import('@/features/ai/mcpAccess/Settin
 
 export const MCPModule: FrontendModuleDescription = {
 	id: 'mcp',
-	name: 'MCP Access',
+	name: 'MCP Server',
 	description: 'Access your n8n instance through MCP clients',
 	icon: 'mcp',
 	routes: [

@@ -226,7 +226,7 @@ describe('McpSettingsController', () => {
 				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
 					availableInMCP: true,
 				}),
-			).rejects.toThrow(new BadRequestError('MCP access can only be set for active workflows'));
+			).rejects.toThrow(new BadRequestError('MCP access can only be set for published workflows'));
 
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
@@ -274,7 +274,7 @@ describe('McpSettingsController', () => {
 				}),
 			).rejects.toThrow(
 				new BadRequestError(
-					'MCP access can only be set for active workflows with one of the following trigger nodes: Schedule Trigger, Webhook Trigger, Form Trigger, Chat Trigger.',
+					'MCP access can only be set for published workflows with one of the following trigger nodes: Schedule Trigger, Webhook Trigger, Form Trigger, Chat Trigger.',
 				),
 			);
 
