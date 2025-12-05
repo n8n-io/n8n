@@ -920,8 +920,7 @@ export function useWorkflowHelpers() {
 		const workflow = workflowsStore.workflowsById[workflowId];
 
 		// Check if workflow is new (not saved) or belongs to personal project
-		const isNewWorkflow = !workflow || !workflow.id;
-		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || isNewWorkflow) {
+		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
 			workflow?.sharedWithProjects?.some(
