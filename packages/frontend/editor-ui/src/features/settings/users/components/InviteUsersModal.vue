@@ -88,6 +88,13 @@ const isChatHubEnabled = computed((): boolean => {
 	return settingsStore.isChatFeatureEnabled;
 });
 
+const isChatUsersEnabled = computed((): boolean => {
+	return (
+		isChatHubEnabled.value &&
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions]
+	);
+});
+
 const validateEmails = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
 		return false;
@@ -295,6 +302,7 @@ onMounted(() => {
 								{
 									value: ROLE.ChatUser,
 									label: i18n.baseText('auth.roles.chatUser'),
+									disabled: !isChatUsersEnabled.value,
 								},
 							]
 						: []),
