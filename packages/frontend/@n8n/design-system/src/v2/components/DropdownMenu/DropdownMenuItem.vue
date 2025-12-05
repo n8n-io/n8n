@@ -1,12 +1,19 @@
 <script setup lang="ts" generic="T = string">
-import { DropdownMenuItem, DropdownMenuSeparator } from 'reka-ui';
+import {
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubTrigger,
+	DropdownMenuSubContent,
+	DropdownMenuPortal,
+} from 'reka-ui';
 import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 
-defineOptions({ inheritAttrs: false });
+defineOptions({ inheritAttrs: false, name: 'N8nDropdownMenuItem' });
 
 const props = defineProps<DropdownMenuItemProps<T>>();
 defineSlots<DropdownMenuItemSlots<T>>();
@@ -17,6 +24,8 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
+const hasChildren = computed(() => props.children && props.children.length > 0);
+
 const leadingProps = computed(() => ({
 	class: $style.itemLeading,
 }));
@@ -25,8 +34,12 @@ const trailingProps = computed(() => ({
 	class: $style.itemTrailing,
 }));
 
-const handleSelect = () => {
-	if (!props.disabled) {
+const handleSelect = (value: T) => {
+	emit('select', value);
+};
+
+const handleItemSelect = () => {
+	if (!props.disabled && !hasChildren.value) {
 		emit('select', props.id);
 	}
 };
@@ -35,10 +48,42 @@ const handleSelect = () => {
 <template>
 	<div :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
+
+		<!-- Sub-menu item with children -->
+		<DropdownMenuSub v-if="hasChildren">
+			<DropdownMenuSubTrigger
+				:disabled="disabled"
+				:class="[$style.item, $style.subTrigger, props.class]"
+			>
+				<slot name="item-leading" :item="props" :ui="leadingProps">
+					<Icon v-if="icon" :icon="icon" :class="$style.itemLeading" />
+				</slot>
+
+				<span :class="$style.itemLabel">
+					<slot name="item-label" :item="props">
+						{{ label }}
+					</slot>
+				</span>
+
+				<Icon icon="chevron-right" :class="$style.subIndicator" />
+			</DropdownMenuSubTrigger>
+
+			<DropdownMenuPortal>
+				<DropdownMenuSubContent :class="$style.subContent" :side-offset="4">
+					<template v-for="child in props.children" :key="child.id">
+						<!-- eslint-disable-next-line vue/no-undef-components - recursive component -->
+						<N8nDropdownMenuItem v-bind="child" @select="handleSelect" />
+					</template>
+				</DropdownMenuSubContent>
+			</DropdownMenuPortal>
+		</DropdownMenuSub>
+
+		<!-- Regular item without children -->
 		<DropdownMenuItem
+			v-else
 			:disabled="disabled"
 			:class="[$style.item, props.class]"
-			@select="handleSelect"
+			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
 				<Icon v-if="icon" :icon="icon" :class="$style.itemLeading" />
@@ -88,6 +133,28 @@ const handleSelect = () => {
 		color: var(--color--text--tint-1);
 		cursor: not-allowed;
 	}
+}
+
+.subTrigger {
+	&[data-state='open'] {
+		background-color: var(--color--background--light-1);
+	}
+}
+
+.subIndicator {
+	margin-left: auto;
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+}
+
+.subContent {
+	min-width: 160px;
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+	border: var(--border);
+	background-color: var(--color--background--light-2);
+	box-shadow: var(--shadow);
+	z-index: 999999;
 }
 
 .itemLeading {

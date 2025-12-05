@@ -33,6 +33,8 @@ export type DropdownMenuItemProps<T = string> = {
 	checked?: boolean;
 	/** Additional CSS classes */
 	class?: VueCssClass;
+	/** Nested menu items (creates a sub-menu) */
+	children?: Array<DropdownMenuItemProps<T>>;
 };
 
 export interface DropdownMenuProps<T = string> {

@@ -294,3 +294,102 @@ export const ControlledState: Story = {
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
+
+export const NestedMenus: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu :items="args.items" @select="handleSelect" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'new', label: 'New', icon: 'plus' },
+			{
+				id: 'open',
+				label: 'Open',
+				icon: 'folder-open',
+				children: [
+					{ id: 'open-recent', label: 'Recent Files' },
+					{ id: 'open-folder', label: 'Open Folder...' },
+					{
+						id: 'open-workspace',
+						label: 'Open Workspace',
+						children: [
+							{ id: 'workspace-1', label: 'Project Alpha' },
+							{ id: 'workspace-2', label: 'Project Beta' },
+							{ id: 'workspace-3', label: 'Project Gamma' },
+						],
+					},
+				],
+			},
+			{ id: 'save', label: 'Save', icon: 'save' },
+			{
+				id: 'export',
+				label: 'Export As',
+				icon: 'download',
+				divided: true,
+				children: [
+					{ id: 'export-pdf', label: 'PDF', icon: 'file' },
+					{ id: 'export-png', label: 'PNG', icon: 'file' },
+					{ id: 'export-json', label: 'JSON', icon: 'file' },
+				],
+			},
+			{ id: 'settings', label: 'Settings', icon: 'cog', divided: true },
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const DeeplyNestedMenus: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu :items="args.items" @select="handleSelect" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{
+				id: 'level-1',
+				label: 'Level 1',
+				children: [
+					{
+						id: 'level-2',
+						label: 'Level 2',
+						children: [
+							{
+								id: 'level-3',
+								label: 'Level 3',
+								children: [
+									{ id: 'level-4-a', label: 'Level 4 - Item A' },
+									{ id: 'level-4-b', label: 'Level 4 - Item B' },
+								],
+							},
+							{ id: 'level-3-sibling', label: 'Level 3 Sibling' },
+						],
+					},
+					{ id: 'level-2-sibling', label: 'Level 2 Sibling' },
+				],
+			},
+			{ id: 'regular-item', label: 'Regular Item' },
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
