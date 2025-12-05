@@ -1,7 +1,7 @@
-import { test, expect } from '../../fixtures/base';
-import basePlanData from '../../fixtures/plan-data-trial.json';
-import type { n8nPage } from '../../pages/n8nPage';
-import type { TestRequirements } from '../../Types';
+import { test, expect } from '../../../fixtures/base';
+import basePlanData from '../../../fixtures/plan-data-trial.json';
+import type { n8nPage } from '../../../pages/n8nPage';
+import type { TestRequirements } from '../../../Types';
 
 const fiveDaysFromNow = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 const planData = { ...basePlanData, expirationDate: fiveDaysFromNow.toJSON() };
