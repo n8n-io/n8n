@@ -43,7 +43,7 @@ export function useWorkflowActivate() {
 		let currWorkflowId: string | undefined = workflowId;
 		// Check if workflow needs to be saved (doesn't exist in store yet)
 		const existingWorkflow = currWorkflowId ? workflowsStore.workflowsById[currWorkflowId] : null;
-		if (!currWorkflowId || !existingWorkflow || !existingWorkflow.id) {
+		if (!currWorkflowId || !existingWorkflow?.id) {
 			const saved = await workflowSaving.saveCurrentWorkflow();
 			if (!saved) {
 				updatingWorkflowActivation.value = false;
