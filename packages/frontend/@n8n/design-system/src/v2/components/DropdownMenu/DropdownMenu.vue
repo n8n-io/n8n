@@ -108,6 +108,7 @@ const handleOpenChange = (open: boolean) => {
 
 // Search functionality
 const searchInputRef = ref<HTMLInputElement | null>(null);
+const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
 
 const debouncedEmitSearch = useDebounceFn((term: string) => {
@@ -118,6 +119,18 @@ const handleSearchInput = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	searchTerm.value = target.value;
 	debouncedEmitSearch(target.value);
+};
+
+const handleSearchKeydown = (event: KeyboardEvent) => {
+	if (event.key === 'Escape') {
+		close();
+	} else if (event.key === 'Tab' && !event.shiftKey) {
+		// Move focus to the first menu item
+		event.preventDefault();
+		const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+		const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
+		firstItem?.focus();
+	}
 };
 
 const handleItemSelect = (value: T) => {
@@ -152,7 +165,7 @@ defineExpose({ open, close });
 		<component :is="teleported ? DropdownMenuPortal : 'template'">
 			<DropdownMenuContent
 				:id="id"
-				ref="content"
+				ref="contentRef"
 				:class="[$style.content, extraPopperClass]"
 				:side="placementParts.side"
 				:align="placementParts.align"
@@ -171,7 +184,7 @@ defineExpose({ open, close });
 							:placeholder="searchPlaceholder"
 							:value="searchTerm"
 							@input="handleSearchInput"
-							@keydown.stop
+							@keydown.stop="handleSearchKeydown"
 						/>
 					</div>
 
