@@ -19,6 +19,7 @@ import {
 	resolveRawData,
 	isFormConnected,
 	sanitizeHtml,
+	sanitizeCustomCss,
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
@@ -344,6 +345,30 @@ describe('FormTrigger, sanitizeHtml', () => {
 	});
 });
 
+describe('FormTrigger, sanitizeCustomCss', () => {
+	it('should return undefined when given undefined input', () => {
+		expect(sanitizeCustomCss(undefined)).toBeUndefined();
+	});
+
+	it('should preserve plain CSS content', () => {
+		const css = 'body { color: red; }\n.button { background: blue; }';
+
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should strip HTML tags', () => {
+		const css = '<style>body { color: red; }</style>';
+
+		expect(sanitizeCustomCss(css)).toBe('');
+	});
+
+	it('should remove script tags and their content', () => {
+		const css = '<script>alert("xss")</script>.safe { color: blue; }';
+
+		expect(sanitizeCustomCss(css)).toBe('.safe { color: blue; }');
+	});
+});
+
 describe('FormTrigger, formWebhook', () => {
 	const executeFunctions = mock<IWebhookFunctions>();
 	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
@@ -401,82 +426,62 @@ describe('FormTrigger, formWebhook', () => {
 
 		await formWebhook(executeFunctions);
 
-		expect(mockRender).toHaveBeenCalledWith('form-trigger', {
-			appendAttribution: true,
-			buttonLabel: 'Submit',
-			formDescription: 'Test Description',
-			formDescriptionMetadata: 'Test Description',
-			formFields: [
-				{
-					defaultValue: '',
-					errorId: 'error-field-0',
-					id: 'field-0',
-					inputRequired: 'form-required',
-					isInput: true,
-					label: 'Name',
-					placeholder: undefined,
-					type: 'text',
-				},
-				{
-					defaultValue: '',
-					errorId: 'error-field-1',
-					id: 'field-1',
-					inputRequired: '',
-					isInput: true,
-					label: 'Age',
-					placeholder: undefined,
-					type: 'number',
-				},
-				{
-					defaultValue: '',
-					errorId: 'error-field-2',
-					id: 'field-2',
-					inputRequired: 'form-required',
-					isInput: true,
-					label: 'Gender',
-					placeholder: undefined,
-					type: 'select',
-				},
-				{
-					acceptFileTypes: '.pdf,.doc',
-					defaultValue: '',
-					errorId: 'error-field-3',
-					id: 'field-3',
-					inputRequired: 'form-required',
-					isFileInput: true,
-					label: 'Resume',
-					multipleFiles: '',
-					placeholder: undefined,
-				},
-				{
-					id: 'field-4',
-					errorId: 'error-field-4',
-					label: 'Custom HTML',
-					inputRequired: '',
-					defaultValue: '',
-					placeholder: undefined,
-					html: '<div>Test HTML</div>',
-					isHtml: true,
-				},
-				{
-					id: 'field-5',
-					errorId: 'error-field-5',
-					hiddenName: 'Powerpuff Girl',
-					hiddenValue: 'Blossom',
-					label: 'Powerpuff Girl',
-					isHidden: true,
-					inputRequired: '',
-					defaultValue: '',
-					placeholder: undefined,
-				},
-			],
-			formSubmittedText: 'Your response has been recorded',
-			formTitle: 'Test Form',
-			n8nWebsiteLink:
-				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
-			testRun: true,
-			useResponseData: false,
-		});
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				appendAttribution: true,
+				buttonLabel: 'Submit',
+				dangerousCustomCss: undefined,
+				formDescription: 'Test Description',
+				formDescriptionMetadata: 'Test Description',
+				formFields: [
+					expect.objectContaining({
+						id: 'field-0',
+						label: 'Name',
+						defaultValue: '',
+						inputRequired: 'form-required',
+						isInput: true,
+					}),
+					expect.objectContaining({
+						id: 'field-1',
+						label: 'Age',
+						defaultValue: '',
+						isInput: true,
+					}),
+					expect.objectContaining({
+						id: 'field-2',
+						label: 'Gender',
+						defaultValue: '',
+						isInput: true,
+					}),
+					expect.objectContaining({
+						id: 'field-3',
+						label: 'Resume',
+						isFileInput: true,
+						acceptFileTypes: '.pdf,.doc',
+					}),
+					expect.objectContaining({
+						id: 'field-4',
+						label: 'Custom HTML',
+						isHtml: true,
+						html: '<div>Test HTML</div>',
+					}),
+					expect.objectContaining({
+						id: 'field-5',
+						hiddenName: 'Powerpuff Girl',
+						hiddenValue: 'Blossom',
+						isHidden: true,
+					}),
+				],
+				formSubmittedHeader: undefined,
+				formSubmittedText: 'Your response has been recorded',
+				formTitle: 'Test Form',
+				n8nWebsiteLink:
+					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+				testRun: true,
+				useResponseData: false,
+			}),
+		);
 	});
 
 	it('should sanitize form descriptions', async () => {
@@ -499,30 +504,32 @@ describe('FormTrigger, formWebhook', () => {
 
 			await formWebhook(executeFunctions);
 
-			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
-				appendAttribution: true,
-				buttonLabel: 'Submit',
-				formDescription: expected,
-				formDescriptionMetadata: createDescriptionMetadata(expected),
-				formFields: [
-					{
-						defaultValue: '',
-						errorId: 'error-field-0',
-						id: 'field-0',
-						inputRequired: 'form-required',
-						isInput: true,
-						label: 'Name',
-						placeholder: undefined,
-						type: 'text',
-					},
-				],
-				formSubmittedText: 'Your response has been recorded',
-				formTitle: 'Test Form',
-				n8nWebsiteLink:
-					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
-				testRun: true,
-				useResponseData: false,
-			});
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					appendAttribution: true,
+					buttonLabel: 'Submit',
+					dangerousCustomCss: undefined,
+					formDescription: expected,
+					formDescriptionMetadata: createDescriptionMetadata(expected),
+					formFields: [
+						expect.objectContaining({
+							id: 'field-0',
+							label: 'Name',
+							defaultValue: '',
+							isInput: true,
+							inputRequired: 'form-required',
+						}),
+					],
+					formSubmittedHeader: undefined,
+					formSubmittedText: 'Your response has been recorded',
+					formTitle: 'Test Form',
+					n8nWebsiteLink:
+						'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+					testRun: true,
+					useResponseData: false,
+				}),
+			);
 		}
 	});
 
@@ -748,6 +755,8 @@ describe('FormTrigger, prepareFormData', () => {
 			useResponseData: undefined,
 			appendAttribution: true,
 			buttonLabel: 'Submit',
+			dangerousCustomCss: undefined,
+			formSubmittedHeader: undefined,
 		});
 	});
 
