@@ -748,6 +748,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowChecksum.value = checksum;
 	}
 
+	async function fetchAndUpdateWorkflowChecksum(wid: string) {
+		const fetchedWorkflow = await fetchWorkflow(wid);
+		const checksum = await calculateWorkflowChecksum(fetchedWorkflow);
+		setWorkflowChecksum(checksum);
+	}
+
 	function setWorkflowActiveVersion(version: WorkflowHistory) {
 		workflow.value.activeVersion = deepCopy(version);
 	}
@@ -2017,6 +2023,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setUsedCredentials,
 		setWorkflowVersionId,
 		setWorkflowChecksum,
+		fetchAndUpdateWorkflowChecksum,
 		setWorkflowActiveVersion,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,

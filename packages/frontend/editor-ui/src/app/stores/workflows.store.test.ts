@@ -916,7 +916,7 @@ describe('useWorkflowsStore', () => {
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
-		it('should not modify active workflows when workflow is already active', async () => {
+		it('should not modify active workflows when workflow is already active', () => {
 			workflowsStore.activeWorkflows = ['1'];
 			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
@@ -938,7 +938,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflow.active).toBe(true);
 		});
 
-		it('should not set current workflow as active when it is not the target', async () => {
+		it('should not set current workflow as active when it is not the target', () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
