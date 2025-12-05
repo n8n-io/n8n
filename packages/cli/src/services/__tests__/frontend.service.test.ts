@@ -202,11 +202,6 @@ describe('FrontendService', () => {
 
 	describe('getPublicSettings', () => {
 		it('should return public settings', () => {
-			const { service } = createMockService();
-			service.settings.versionCli = '1.123.0';
-
-			const settings = service.getPublicSettings();
-
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
 				userManagement: {
@@ -214,7 +209,6 @@ describe('FrontendService', () => {
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
 				},
-				versionCli: '1.123.0',
 				sso: {
 					saml: { loginEnabled: false },
 					ldap: { loginEnabled: false, loginLabel: '' },
@@ -227,6 +221,10 @@ describe('FrontendService', () => {
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 			};
+
+			const { service } = createMockService();
+			const settings = service.getPublicSettings();
+
 			expect(settings).toEqual(expectedPublicSettings);
 		});
 	});

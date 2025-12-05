@@ -39,8 +39,6 @@ export type PublicFrontendSettings = {
 	/** Controls initialization flow in settings store */
 	settingsMode: FrontendSettings['settingsMode'];
 
-	versionCli: string;
-
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
 
@@ -542,7 +540,6 @@ export class FrontendService {
 					loginUrl: ssoOidc.loginUrl,
 				},
 			},
-			versionCli: this.settings.versionCli,
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
