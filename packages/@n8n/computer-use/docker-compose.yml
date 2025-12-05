@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  computer-use-api:
+  computer-use:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: computer-use-api
+    container_name: computer-use
     ports:
       - '8765:8765' # API server
       - '5900:5900' # VNC server

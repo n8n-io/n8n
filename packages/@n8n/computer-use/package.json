@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/computer-use-api",
+  "name": "@n8n/computer-use",
   "version": "1.0.0",
   "description": "Computer Use API - MCP server for LLM-driven computer control",
   "main": "dist/index.js",
@@ -26,10 +26,12 @@
     "@hono/node-server": "1.19.6",
     "@modelcontextprotocol/sdk": "1.20.0",
     "hono": "4.10.7",
+    "pngjs": "^7.0.0",
     "zod": "3.25.67"
   },
   "devDependencies": {
     "@types/node": "20.19.21",
+    "@types/pngjs": "^6.0.5",
     "tsx": "4.19.3",
     "typescript": "5.9.2"
   },

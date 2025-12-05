@@ -92,8 +92,8 @@ sequenceDiagram
 
 ```bash
 cd packages/@n8n/computer-use
-docker build -t computer-use-api:latest .
-docker run -p 8765:8765 -p 5900:5900 -it computer-use-api:latest
+docker build -t computer-use:latest .
+docker run -p 8765:8765 -p 5900:5900 -it computer-use:latest
 ```
 
 Or use Docker Compose:

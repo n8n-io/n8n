@@ -1,8 +1,6 @@
 import { BaseTool, ToolError } from './base';
 import { ComputerAction, ComputerActionSchema, ToolResult } from '../types';
-import { promises as fs } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { VncClient, PointerButton, parseKeySpec, textToKeysyms } from '../vnc';
 
 interface Resolution {
 	width: number;
@@ -18,22 +16,18 @@ const MAX_SCALING_TARGETS: Record<string, Resolution> = {
 export class ComputerTool extends BaseTool {
 	name = 'computer';
 
-	private width: number;
-	private height: number;
-	private displayNum: string;
+	private vncClient: VncClient;
 	private screenshotDelay = 2000; // ms
 	private scalingEnabled = true;
 	private typingDelayMs = 12;
-	private typingGroupSize = 50;
+	private clickDelayMs = 50;
 
 	constructor() {
 		super();
-		this.width = parseInt(process.env.WIDTH || '1280', 10);
-		this.height = parseInt(process.env.HEIGHT || '800', 10);
-		this.displayNum = process.env.DISPLAY || ':1';
+		this.vncClient = VncClient.getInstance();
 	}
 
-	async execute(input: Record<string, any>): Promise<ToolResult> {
+	async execute(input: Record<string, unknown>): Promise<ToolResult> {
 		const validated = ComputerActionSchema.parse(input);
 		return this.handleAction(validated);
 	}
@@ -97,7 +91,7 @@ export class ComputerTool extends BaseTool {
 					return await this.zoom(action.region);
 
 				default:
-					throw new ToolError(`Unknown action: ${(action as any).action}`);
+					throw new ToolError(`Unknown action: ${(action as { action: string }).action}`);
 			}
 		} catch (error) {
 			if (error instanceof ToolError) {
@@ -116,79 +110,34 @@ export class ComputerTool extends BaseTool {
 	 * Used by screenshot action and to return screenshots after other actions
 	 */
 	private async captureScreenshot(message: string): Promise<ToolResult> {
-		const outputPath = join(tmpdir(), `screenshot_${Date.now()}.png`);
-
 		try {
-			// Use scrot or gnome-screenshot
-			const { exitCode } = await this.execCommand('scrot', [outputPath], {
-				env: { ...process.env, DISPLAY: this.displayNum },
-			});
-
-			if (exitCode !== 0) {
-				throw new ToolError('Failed to capture screenshot');
-			}
-
-			// Read screenshot as buffer for efficiency
-			const imageBuffer = await fs.readFile(outputPath);
+			let pngBuffer: Buffer;
 
 			// Scale if needed
-			const scaledBuffer = this.scalingEnabled ? await this.scaleImage(imageBuffer) : imageBuffer;
+			const target = this.getScalingTarget();
+			if (this.scalingEnabled && target) {
+				pngBuffer = await this.vncClient.captureScreenshotScaled(target.width, target.height);
+			} else {
+				pngBuffer = await this.vncClient.captureScreenshot();
+			}
 
-			// Convert to base64
-			const base64Image = scaledBuffer.toString('base64');
-
-			// Cleanup
-			await fs.unlink(outputPath).catch(() => {});
+			const base64Image = pngBuffer.toString('base64');
 
 			return {
 				output: message,
 				base64_image: base64Image,
 			};
 		} catch (error) {
-			await fs.unlink(outputPath).catch(() => {});
-			throw error;
-		}
-	}
-
-	private async scaleImage(imageBuffer: Buffer): Promise<Buffer> {
-		const target = this.getScalingTarget();
-		if (!target) {
-			return imageBuffer;
-		}
-
-		const tmpInput = join(tmpdir(), `scale_input_${Date.now()}.png`);
-		const tmpOutput = join(tmpdir(), `scale_output_${Date.now()}.png`);
-
-		try {
-			await fs.writeFile(tmpInput, imageBuffer);
-
-			const { exitCode } = await this.execCommand('convert', [
-				tmpInput,
-				'-resize',
-				`${target.width}x${target.height}!`,
-				tmpOutput,
-			]);
-
-			if (exitCode !== 0) {
-				return imageBuffer; // Return original if scaling fails
-			}
-
-			const scaledBuffer = await fs.readFile(tmpOutput);
-
-			await fs.unlink(tmpInput).catch(() => {});
-			await fs.unlink(tmpOutput).catch(() => {});
-
-			return scaledBuffer;
-		} catch (error) {
-			await fs.unlink(tmpInput).catch(() => {});
-			await fs.unlink(tmpOutput).catch(() => {});
-			return imageBuffer;
+			throw new ToolError(`Failed to capture screenshot: ${error}`);
 		}
 	}
 
 	private getScalingTarget(): Resolution | null {
+		const width = this.vncClient.framebufferWidth;
+		const height = this.vncClient.framebufferHeight;
+
 		for (const target of Object.values(MAX_SCALING_TARGETS)) {
-			if (this.width > target.width || this.height > target.height) {
+			if (width > target.width || height > target.height) {
 				return target;
 			}
 		}
@@ -196,35 +145,14 @@ export class ComputerTool extends BaseTool {
 	}
 
 	private async getCursorPosition(): Promise<ToolResult> {
-		const { stdout, stderr, exitCode } = await this.execCommand(
-			'xdotool',
-			['getmouselocation', '--shell'],
-			{ env: { ...process.env, DISPLAY: this.displayNum } },
-		);
-
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to get cursor position: exitCode=${exitCode}, stderr=${stderr}`);
-		}
-
-		const lines = stdout.split('\n');
-		const x = lines.find((l) => l.startsWith('X='))?.split('=')[1];
-		const y = lines.find((l) => l.startsWith('Y='))?.split('=')[1];
-
-		return { output: `X=${x} Y=${y}` };
+		const pos = this.vncClient.getCursorPosition();
+		return { output: `X=${pos.x} Y=${pos.y}` };
 	}
 
 	private async mouseMove(coordinate: [number, number]): Promise<ToolResult> {
 		const [x, y] = this.scaleCoordinates(coordinate);
 
-		const { exitCode, stderr } = await this.execCommand(
-			'xdotool',
-			['mousemove', '--sync', String(x), String(y)],
-			{ env: { ...process.env, DISPLAY: this.displayNum } },
-		);
-
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to move mouse: exitCode=${exitCode}, stderr=${stderr}`);
-		}
+		await this.vncClient.sendPointerEvent(x, y, PointerButton.NONE);
 
 		await this.delay(this.screenshotDelay);
 		return this.captureScreenshot(`Moved mouse to (${x}, ${y})`);
@@ -234,31 +162,37 @@ export class ComputerTool extends BaseTool {
 		button: 'left_click' | 'right_click' | 'middle_click' | 'double_click' | 'triple_click',
 		coordinate?: [number, number],
 	): Promise<ToolResult> {
-		const buttonMap: Record<string, string[]> = {
-			left_click: ['1'],
-			right_click: ['3'],
-			middle_click: ['2'],
-			double_click: ['--repeat', '2', '--delay', '10', '1'],
-			triple_click: ['--repeat', '3', '--delay', '10', '1'],
+		const buttonMaskMap: Record<string, number> = {
+			left_click: PointerButton.LEFT,
+			right_click: PointerButton.RIGHT,
+			middle_click: PointerButton.MIDDLE,
+			double_click: PointerButton.LEFT,
+			triple_click: PointerButton.LEFT,
 		};
 
-		// xdotool click doesn't support coordinates directly.
-		// We need to chain mousemove with click: xdotool mousemove x y click 1
-		let args: string[];
+		const buttonMask = buttonMaskMap[button];
+		const clickCount = button === 'double_click' ? 2 : button === 'triple_click' ? 3 : 1;
+
+		// Move to coordinate if specified
 		if (coordinate) {
 			const [x, y] = this.scaleCoordinates(coordinate);
-			// Chain mousemove and click in a single xdotool command
-			args = ['mousemove', '--sync', String(x), String(y), 'click', ...buttonMap[button]];
-		} else {
-			args = ['click', ...buttonMap[button]];
+			await this.vncClient.sendPointerEvent(x, y, PointerButton.NONE);
 		}
 
-		const { exitCode, stderr } = await this.execCommand('xdotool', args, {
-			env: { ...process.env, DISPLAY: this.displayNum },
-		});
+		// Get current position for the click
+		const pos = this.vncClient.getCursorPosition();
 
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to perform ${button}: exitCode=${exitCode}, stderr=${stderr}`);
+		// Perform clicks
+		for (let i = 0; i < clickCount; i++) {
+			// Button down
+			await this.vncClient.sendPointerEvent(pos.x, pos.y, buttonMask);
+			await this.delay(this.clickDelayMs);
+			// Button up
+			await this.vncClient.sendPointerEvent(pos.x, pos.y, PointerButton.NONE);
+
+			if (i < clickCount - 1) {
+				await this.delay(this.clickDelayMs);
+			}
 		}
 
 		await this.delay(this.screenshotDelay);
@@ -267,52 +201,32 @@ export class ComputerTool extends BaseTool {
 
 	private async drag(coordinate: [number, number]): Promise<ToolResult> {
 		const [x, y] = this.scaleCoordinates(coordinate);
+		const startPos = this.vncClient.getCursorPosition();
 
-		const { exitCode, stderr } = await this.execCommand(
-			'xdotool',
-			[
-				'mousemove',
-				'--sync',
-				String(x),
-				String(y),
-				'mousedown',
-				'1',
-				'mousemove_relative',
-				'0',
-				'0',
-			],
-			{ env: { ...process.env, DISPLAY: this.displayNum } },
-		);
+		// Press button at current position
+		await this.vncClient.sendPointerEvent(startPos.x, startPos.y, PointerButton.LEFT);
+		await this.delay(this.clickDelayMs);
 
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to drag mouse: exitCode=${exitCode}, stderr=${stderr}`);
-		}
+		// Move to target position while holding button
+		await this.vncClient.sendPointerEvent(x, y, PointerButton.LEFT);
+		await this.delay(this.clickDelayMs);
+
+		// Release button
+		await this.vncClient.sendPointerEvent(x, y, PointerButton.NONE);
 
 		await this.delay(this.screenshotDelay);
 		return this.captureScreenshot(`Dragged to (${x}, ${y})`);
 	}
 
 	private async mouseDown(): Promise<ToolResult> {
-		const { exitCode, stderr } = await this.execCommand('xdotool', ['mousedown', '1'], {
-			env: { ...process.env, DISPLAY: this.displayNum },
-		});
-
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to press mouse button: exitCode=${exitCode}, stderr=${stderr}`);
-		}
-
+		const pos = this.vncClient.getCursorPosition();
+		await this.vncClient.sendPointerEvent(pos.x, pos.y, PointerButton.LEFT);
 		return { output: 'Mouse button pressed' };
 	}
 
 	private async mouseUp(): Promise<ToolResult> {
-		const { exitCode, stderr } = await this.execCommand('xdotool', ['mouseup', '1'], {
-			env: { ...process.env, DISPLAY: this.displayNum },
-		});
-
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to release mouse button: exitCode=${exitCode}, stderr=${stderr}`);
-		}
-
+		const pos = this.vncClient.getCursorPosition();
+		await this.vncClient.sendPointerEvent(pos.x, pos.y, PointerButton.NONE);
 		return { output: 'Mouse button released' };
 	}
 
@@ -321,51 +235,44 @@ export class ComputerTool extends BaseTool {
 		amount?: number,
 		coordinate?: [number, number],
 	): Promise<ToolResult> {
+		// Move to coordinate if specified
 		if (coordinate) {
 			const [x, y] = this.scaleCoordinates(coordinate);
-			await this.execCommand('xdotool', ['mousemove', String(x), String(y)], {
-				env: { ...process.env, DISPLAY: this.displayNum },
-			});
+			await this.vncClient.sendPointerEvent(x, y, PointerButton.NONE);
 		}
 
-		const scrollMap: Record<string, string> = {
-			up: '4',
-			down: '5',
-			left: '6',
-			right: '7',
+		const scrollButtonMap: Record<string, number> = {
+			up: PointerButton.SCROLL_UP,
+			down: PointerButton.SCROLL_DOWN,
+			left: PointerButton.SCROLL_LEFT,
+			right: PointerButton.SCROLL_RIGHT,
 		};
 
-		const button = scrollMap[direction || 'down'];
-		const scrollAmount = amount || 5;
+		const scrollButton = scrollButtonMap[direction ?? 'down'];
+		const scrollAmount = amount ?? 5;
+		const pos = this.vncClient.getCursorPosition();
 
-		const { exitCode, stderr } = await this.execCommand(
-			'xdotool',
-			['click', '--repeat', String(scrollAmount), button],
-			{ env: { ...process.env, DISPLAY: this.displayNum } },
-		);
-
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to scroll: exitCode=${exitCode}, stderr=${stderr}`);
+		// Simulate scroll by pressing/releasing scroll button multiple times
+		for (let i = 0; i < scrollAmount; i++) {
+			// Button down
+			await this.vncClient.sendPointerEvent(pos.x, pos.y, scrollButton);
+			// Button up
+			await this.vncClient.sendPointerEvent(pos.x, pos.y, PointerButton.NONE);
 		}
 
 		await this.delay(this.screenshotDelay);
-		return this.captureScreenshot(`Scrolled ${direction || 'down'} ${scrollAmount} times`);
+		return this.captureScreenshot(`Scrolled ${direction ?? 'down'} ${scrollAmount} times`);
 	}
 
 	private async type(text: string): Promise<ToolResult> {
-		// Chunk typing for efficiency
-		const chunks = this.chunkString(text, this.typingGroupSize);
+		const keysyms = textToKeysyms(text);
 
-		for (const chunk of chunks) {
-			const { exitCode, stderr } = await this.execCommand(
-				'xdotool',
-				['type', '--delay', String(this.typingDelayMs), '--', chunk],
-				{ env: { ...process.env, DISPLAY: this.displayNum } },
-			);
-
-			if (exitCode !== 0) {
-				throw new ToolError(`Failed to type text: exitCode=${exitCode}, stderr=${stderr}`);
-			}
+		for (const keysym of keysyms) {
+			// Key down
+			await this.vncClient.sendKeyEvent(keysym, true);
+			await this.delay(this.typingDelayMs);
+			// Key up
+			await this.vncClient.sendKeyEvent(keysym, false);
 		}
 
 		await this.delay(this.screenshotDelay);
@@ -373,12 +280,21 @@ export class ComputerTool extends BaseTool {
 	}
 
 	private async key(text: string): Promise<ToolResult> {
-		const { exitCode, stderr } = await this.execCommand('xdotool', ['key', '--', text], {
-			env: { ...process.env, DISPLAY: this.displayNum },
-		});
+		const parsed = parseKeySpec(text);
 
-		if (exitCode !== 0) {
-			throw new ToolError(`Failed to press key: ${text}, exitCode=${exitCode}, stderr=${stderr}`);
+		// Press modifiers
+		for (const modifier of parsed.modifiers) {
+			await this.vncClient.sendKeyEvent(modifier, true);
+		}
+
+		// Press main key
+		await this.vncClient.sendKeyEvent(parsed.keysym, true);
+		await this.delay(this.clickDelayMs);
+		await this.vncClient.sendKeyEvent(parsed.keysym, false);
+
+		// Release modifiers (in reverse order)
+		for (let i = parsed.modifiers.length - 1; i >= 0; i--) {
+			await this.vncClient.sendKeyEvent(parsed.modifiers[i], false);
 		}
 
 		await this.delay(this.screenshotDelay);
@@ -386,23 +302,25 @@ export class ComputerTool extends BaseTool {
 	}
 
 	private async holdKey(text: string, duration = 1): Promise<ToolResult> {
-		const { exitCode: downCode } = await this.execCommand('xdotool', ['keydown', text], {
-			env: { ...process.env, DISPLAY: this.displayNum },
-		});
+		const parsed = parseKeySpec(text);
 
-		if (downCode !== 0) {
-			throw new ToolError(`Failed to hold key: ${text}`);
+		// Press modifiers
+		for (const modifier of parsed.modifiers) {
+			await this.vncClient.sendKeyEvent(modifier, true);
 		}
+
+		// Press and hold main key
+		await this.vncClient.sendKeyEvent(parsed.keysym, true);
 
 		// Hold for duration (in seconds)
 		await this.delay(duration * 1000);
 
-		const { exitCode: upCode } = await this.execCommand('xdotool', ['keyup', text], {
-			env: { ...process.env, DISPLAY: this.displayNum },
-		});
+		// Release main key
+		await this.vncClient.sendKeyEvent(parsed.keysym, false);
 
-		if (upCode !== 0) {
-			throw new ToolError(`Failed to release key: ${text}`);
+		// Release modifiers (in reverse order)
+		for (let i = parsed.modifiers.length - 1; i >= 0; i--) {
+			await this.vncClient.sendKeyEvent(parsed.modifiers[i], false);
 		}
 
 		return this.captureScreenshot(`Held key ${text} for ${duration}s`);
@@ -419,41 +337,16 @@ export class ComputerTool extends BaseTool {
 		const width = x1 - x0;
 		const height = y1 - y0;
 
-		const outputPath = join(tmpdir(), `screenshot_${Date.now()}.png`);
-		const croppedPath = join(tmpdir(), `cropped_${Date.now()}.png`);
-
 		try {
-			// Take screenshot
-			await this.execCommand('scrot', [outputPath], {
-				env: { ...process.env, DISPLAY: this.displayNum },
-			});
-
-			// Crop using ImageMagick
-			const { exitCode } = await this.execCommand('convert', [
-				outputPath,
-				'-crop',
-				`${width}x${height}+${x0}+${y0}`,
-				croppedPath,
-			]);
-
-			if (exitCode !== 0) {
-				throw new ToolError('Failed to crop screenshot');
-			}
-
-			const imageBuffer = await fs.readFile(croppedPath);
-			const base64Image = imageBuffer.toString('base64');
-
-			await fs.unlink(outputPath).catch(() => {});
-			await fs.unlink(croppedPath).catch(() => {});
+			const pngBuffer = await this.vncClient.captureRegion(x0, y0, width, height);
+			const base64Image = pngBuffer.toString('base64');
 
 			return {
 				output: `Zoomed to region (${x0}, ${y0}) to (${x1}, ${y1})`,
 				base64_image: base64Image,
 			};
 		} catch (error) {
-			await fs.unlink(outputPath).catch(() => {});
-			await fs.unlink(croppedPath).catch(() => {});
-			throw error;
+			throw new ToolError(`Failed to capture region: ${error}`);
 		}
 	}
 
@@ -467,18 +360,13 @@ export class ComputerTool extends BaseTool {
 			return coordinate;
 		}
 
-		const xScale = this.width / target.width;
-		const yScale = this.height / target.height;
+		const width = this.vncClient.framebufferWidth;
+		const height = this.vncClient.framebufferHeight;
+
+		const xScale = width / target.width;
+		const yScale = height / target.height;
 
 		return [Math.round(coordinate[0] * xScale), Math.round(coordinate[1] * yScale)];
-	}
-
-	private chunkString(str: string, size: number): string[] {
-		const chunks: string[] = [];
-		for (let i = 0; i < str.length; i += size) {
-			chunks.push(str.slice(i, i + size));
-		}
-		return chunks;
 	}
 
 	private delay(ms: number): Promise<void> {
