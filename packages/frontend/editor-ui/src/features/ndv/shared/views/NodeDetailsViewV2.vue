@@ -41,7 +41,7 @@ import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
@@ -384,9 +384,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 
 const onWorkflowActivate = () => {
 	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
