@@ -148,6 +148,30 @@ describe('formCompletionUtils', () => {
 			sanitizeHtmlSpy.mockRestore();
 		});
 
+		it('should convert \\n and </br> to <br> in completion message', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Line 1\\nLine 2</br>Line 3',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: undefined,
+				dangerousCustomCss: undefined,
+				formTitle: 'Form Title',
+				message: 'Line 1<br />Line 2<br />Line 3',
+				redirectUrl: undefined,
+				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseText: '',
+				title: 'Form Completion',
+			});
+		});
+
 		it('throw an error if no binary data with the field name is found', async () => {
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
