@@ -169,13 +169,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		Object.values(workflowsById.value).sort((a, b) => a.name.localeCompare(b.name)),
 	);
 
+	// A workflow is new if it hasn't been saved to the backend yet
 	const isNewWorkflow = computed(() => {
-		// A workflow is new if it hasn't been saved to the backend yet
-		// Check if the workflow exists in workflowsById (loaded from backend)
 		if (!workflow.value.id) return true;
+
+		// Check if the workflow exists in workflowsById
 		const existingWorkflow = workflowsById.value[workflow.value.id];
 		// If workflow doesn't exist in the store or has no ID, it's new
-		return !existingWorkflow || !existingWorkflow.id;
+		return !existingWorkflow?.id;
 	});
 
 	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
