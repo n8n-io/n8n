@@ -17,6 +17,7 @@ vi.mock('@/app/composables/useClipboard', () => ({
 
 const mockGetOrCreateApiKey = vi.fn();
 const mockGenerateNewApiKey = vi.fn();
+const mockResetCurrentUserMCPKey = vi.fn();
 let mockCurrentUserMCPKey: { apiKey: string } | null = { apiKey: 'test-api-key-12345' };
 
 vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
@@ -26,6 +27,7 @@ vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
 		},
 		getOrCreateApiKey: mockGetOrCreateApiKey,
 		generateNewApiKey: mockGenerateNewApiKey,
+		resetCurrentUserMCPKey: mockResetCurrentUserMCPKey,
 	}),
 }));
 
@@ -213,6 +215,19 @@ describe('MCPAccessTokenPopoverTab', () => {
 			await vi.runAllTimersAsync();
 
 			expect(mockGetOrCreateApiKey).not.toHaveBeenCalled();
+		});
+
+		it('should reset access token on unmount', async () => {
+			const { unmount } = renderComponent({
+				props: {
+					serverUrl: 'http://localhost:5678/mcp',
+				},
+			});
+
+			await vi.runAllTimersAsync();
+
+			unmount();
+			expect(mockResetCurrentUserMCPKey).toHaveBeenCalled();
 		});
 	});
 });

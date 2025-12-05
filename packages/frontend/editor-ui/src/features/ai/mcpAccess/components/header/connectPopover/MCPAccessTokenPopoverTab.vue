@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -115,6 +115,10 @@ onMounted(async () => {
 	} else {
 		loadingApiKey.value = false;
 	}
+});
+
+onBeforeUnmount(() => {
+	mcpStore.resetCurrentUserMCPKey();
 });
 </script>
 
