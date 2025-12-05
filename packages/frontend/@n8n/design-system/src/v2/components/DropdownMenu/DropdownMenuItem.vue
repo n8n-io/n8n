@@ -10,12 +10,15 @@ import {
 import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 
 defineOptions({ inheritAttrs: false, name: 'N8nDropdownMenuItem' });
 
-const props = defineProps<DropdownMenuItemProps<T>>();
+const props = withDefaults(defineProps<DropdownMenuItemProps<T>>(), {
+	loadingItemCount: 3,
+});
 defineSlots<DropdownMenuItemSlots<T>>();
 
 const emit = defineEmits<{
@@ -25,6 +28,7 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const hasChildren = computed(() => props.children && props.children.length > 0);
+const hasSubMenu = computed(() => hasChildren.value || props.loading);
 
 const leadingProps = computed(() => ({
 	class: $style.itemLeading,
@@ -39,7 +43,7 @@ const handleSelect = (value: T) => {
 };
 
 const handleItemSelect = () => {
-	if (!props.disabled && !hasChildren.value) {
+	if (!props.disabled && !hasSubMenu.value) {
 		emit('select', props.id);
 	}
 };
@@ -49,8 +53,8 @@ const handleItemSelect = () => {
 	<div :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
-		<!-- Sub-menu item with children -->
-		<DropdownMenuSub v-if="hasChildren">
+		<!-- Sub-menu item with children or loading state -->
+		<DropdownMenuSub v-if="hasSubMenu">
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
 				:class="[$style.item, $style.subTrigger, props.class]"
@@ -70,9 +74,22 @@ const handleItemSelect = () => {
 
 			<DropdownMenuPortal>
 				<DropdownMenuSubContent :class="$style.subContent" :side-offset="4">
-					<template v-for="child in props.children" :key="child.id">
-						<!-- eslint-disable-next-line vue/no-undef-components - recursive component -->
-						<N8nDropdownMenuItem v-bind="child" @select="handleSelect" />
+					<!-- Loading state -->
+					<div v-if="loading" :class="$style.loadingContainer">
+						<N8nLoading
+							v-for="i in loadingItemCount"
+							:key="i"
+							variant="p"
+							:rows="1"
+							:class="$style.loadingItem"
+						/>
+					</div>
+					<!-- Children items -->
+					<template v-else-if="hasChildren">
+						<template v-for="child in props.children" :key="child.id">
+							<!-- eslint-disable-next-line vue/no-undef-components - recursive component -->
+							<N8nDropdownMenuItem v-bind="child" @select="handleSelect" />
+						</template>
 					</template>
 				</DropdownMenuSubContent>
 			</DropdownMenuPortal>
@@ -175,5 +192,17 @@ const handleItemSelect = () => {
 	height: 1px;
 	background-color: var(--color--foreground);
 	margin: var(--spacing--4xs) var(--spacing--2xs);
+}
+
+.loadingContainer {
+	padding: var(--spacing--4xs);
+}
+
+.loadingItem {
+	margin-bottom: var(--spacing--4xs);
+
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 </style>

@@ -393,3 +393,48 @@ export const DeeplyNestedMenus: Story = {
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
+
+export const SubMenuLoading: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu :items="args.items" @select="handleSelect" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'new', label: 'New', icon: 'plus' },
+			{
+				id: 'open',
+				label: 'Open Recent',
+				icon: 'folder-open',
+				loading: true,
+				loadingItemCount: 4,
+			},
+			{ id: 'save', label: 'Save', icon: 'save' },
+			{
+				id: 'export',
+				label: 'Export As',
+				icon: 'download',
+				children: [
+					{ id: 'export-pdf', label: 'PDF' },
+					{
+						id: 'export-image',
+						label: 'Image',
+						loading: true,
+						loadingItemCount: 2,
+					},
+				],
+			},
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};

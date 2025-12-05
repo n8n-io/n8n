@@ -35,6 +35,10 @@ export type DropdownMenuItemProps<T = string> = {
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */
 	children?: Array<DropdownMenuItemProps<T>>;
+	/** Whether to show loading state in sub-menu */
+	loading?: boolean;
+	/** Number of skeleton items to show when loading */
+	loadingItemCount?: number;
 };
 
 export interface DropdownMenuProps<T = string> {
