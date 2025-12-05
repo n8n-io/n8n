@@ -2,6 +2,7 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '../assistant.types';
+import { generateShortId } from '../builder.utils';
 
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
@@ -267,16 +268,18 @@ export function useBuilderMessages() {
 	function processAssistantMessages(
 		currentMessages: ChatUI.AssistantMessage[],
 		newMessages: ChatRequest.MessageResponse[],
-		baseId: string,
+		userMessageId: string,
 		retry?: () => Promise<void>,
 	): MessageProcessingResult {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
 
+		const messageGroupId = generateShortId();
+
 		newMessages.forEach((msg, index) => {
 			// Generate unique ID for each message in the batch, based on original user message id.
 			// Used in telemetry to track events related to a specific user message
-			const messageId = `${baseId}-${index}`;
+			const messageId = `${userMessageId}--${messageGroupId}--${index}`;
 			const clearThinking = processSingleMessage(mutableMessages, msg, messageId, retry);
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});

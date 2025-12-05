@@ -8,8 +8,12 @@ import {
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
+export function generateShortId() {
+	return Math.random().toString(36).substr(2, 9);
+}
+
 export function generateMessageId(): string {
-	return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	return `${Date.now()}-${generateShortId()}`;
 }
 
 export function createBuilderPayload(

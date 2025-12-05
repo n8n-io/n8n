@@ -33,8 +33,6 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
-const trackedTools = ref(new Set<string>());
-const trackedCategorizations = ref(new Set<string>());
 const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -106,8 +104,6 @@ async function onUserMessage(content: string) {
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
-	trackedTools.value.clear();
-	trackedCategorizations.value.clear();
 	shouldTidyUp.value = false;
 }
 
