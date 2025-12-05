@@ -1,6 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
+import { readFile } from 'fs/promises';
 
 type Resolvers = 'environment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
 type RetrunData = {
@@ -201,8 +202,9 @@ async function getContainerMetadataCredentials() {
  * Retrieves AWS credentials from EKS Pod Identity service.
  * This function is used when running in an EKS pod with Pod Identity configured.
  * It uses the AWS_CONTAINER_CREDENTIALS_FULL_URI environment variable to fetch credentials.
- * When AWS_CONTAINER_AUTHORIZATION_TOKEN is available, it includes the Authorization header
- * as required by AWS for Pod Identity credential endpoints.
+ * When AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE or AWS_CONTAINER_AUTHORIZATION_TOKEN is available,
+ * it includes the Authorization header as required by AWS for Pod Identity credential endpoints.
+ * The file-based token takes precedence over the direct token, following AWS SDK behavior.
  *
  * @returns Promise resolving to credentials object or null if not running with EKS Pod Identity
  *
@@ -215,7 +217,23 @@ async function getPodIdentityCredentials() {
 	}
 
 	try {
-		const authToken = envGetter('AWS_CONTAINER_AUTHORIZATION_TOKEN');
+		let authToken: string | undefined;
+
+		// Check for file-based token first (used by EKS Pod Identity)
+		const authTokenFile = envGetter('AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE');
+		if (authTokenFile) {
+			try {
+				authToken = (await readFile(authTokenFile, 'utf-8')).trim();
+			} catch (error) {
+				// If file read fails, fall back to direct token
+			}
+		}
+
+		// Fall back to direct token (used by ECS Task Roles)
+		if (!authToken) {
+			authToken = envGetter('AWS_CONTAINER_AUTHORIZATION_TOKEN');
+		}
+
 		const headers: Record<string, string> = {
 			'User-Agent': 'n8n-aws-credential',
 		};
