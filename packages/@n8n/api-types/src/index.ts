@@ -68,6 +68,8 @@ export type {
 } from './schemas/project.schema';
 
 export {
+	isSourceControlledFileStatus,
+	type SourceControlledFileStatus,
 	type SourceControlledFile,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
