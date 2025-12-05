@@ -640,6 +640,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			isArchived?: boolean;
 			parentFolderId?: string;
 			availableInMCP?: boolean;
+			triggerNodeType?: string;
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
@@ -682,6 +683,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		tags,
 		select,
 		isArchived,
+		triggerNodeType,
 	}: {
 		projectId?: string;
 		query?: string;
@@ -689,6 +691,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		tags?: string[];
 		select?: string[];
 		isArchived?: boolean;
+		triggerNodeType?: string;
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
@@ -696,6 +699,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeTypes,
 			tags,
 			isArchived,
+			triggerNodeType,
 		};
 
 		// Check if filter has meaningful values (not just undefined, null, or empty arrays/strings)

@@ -308,4 +308,119 @@ describe('WorkflowRepository', () => {
 			expect(leftJoinCalls).toHaveLength(0);
 		});
 	});
+
+	describe('applyTriggerNodeTypeFilter', () => {
+		it('should filter workflows by trigger node type for PostgreSQL', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				filter: { triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.nodes::text LIKE :triggerNodeType',
+				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
+			);
+		});
+
+		it('should filter workflows by trigger node type for SQLite', async () => {
+			const sqliteConfig = mockInstance(GlobalConfig, {
+				database: { type: 'sqlite' },
+			});
+			const sqliteWorkflowRepository = new WorkflowRepository(
+				entityManager.connection,
+				sqliteConfig,
+				folderRepository,
+				workflowHistoryRepository,
+			);
+			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+
+			const workflowIds = ['workflow1'];
+			const options = {
+				filter: { triggerNodeType: 'n8n-nodes-base.errorTrigger' },
+			};
+
+			await sqliteWorkflowRepository.getMany(workflowIds, options);
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('workflow.nodes LIKE :triggerNodeType', {
+				triggerNodeType: '%n8n-nodes-base.errorTrigger%',
+			});
+		});
+
+		it('should filter workflows by trigger node type for MySQL', async () => {
+			const mysqlConfig = mockInstance(GlobalConfig, {
+				database: { type: 'mysqldb' },
+			});
+			const mysqlWorkflowRepository = new WorkflowRepository(
+				entityManager.connection,
+				mysqlConfig,
+				folderRepository,
+				workflowHistoryRepository,
+			);
+			jest.spyOn(mysqlWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+
+			const workflowIds = ['workflow1'];
+			const options = {
+				filter: { triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
+			};
+
+			await mysqlWorkflowRepository.getMany(workflowIds, options);
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('workflow.nodes LIKE :triggerNodeType', {
+				triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%',
+			});
+		});
+
+		it('should not apply filter when triggerNodeType is not provided', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				filter: { query: 'test' },
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+				call[0]?.includes('triggerNodeType'),
+			);
+			expect(triggerFilterCalls).toHaveLength(0);
+		});
+
+		it('should not apply filter when triggerNodeType is undefined', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				filter: { triggerNodeType: undefined },
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+				call[0]?.includes('triggerNodeType'),
+			);
+			expect(triggerFilterCalls).toHaveLength(0);
+		});
+
+		it('should work in combination with other filters', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				filter: {
+					query: 'workflow',
+					triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger',
+					active: true,
+				},
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			// Should have called andWhere for both name and triggerNodeType filters
+			const nameFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+				call[0]?.includes('workflow.name'),
+			);
+			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
+				call[0]?.includes('triggerNodeType'),
+			);
+			expect(nameFilterCalls.length).toBeGreaterThan(0);
+			expect(triggerFilterCalls.length).toBeGreaterThan(0);
+		});
+	});
 });

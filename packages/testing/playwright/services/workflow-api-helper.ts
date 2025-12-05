@@ -41,7 +41,7 @@ export class WorkflowApiHelper {
 	 * @param options - Optional configuration for workflow creation
 	 * @param options.folder - Optional folder ID to place the workflow in
 	 * @param options.name - Optional workflow name. If not provided, generates a unique name using nanoid
-	 * @returns Object containing the name and ID of the created workflow
+	 * @returns Object containing the name, ID, and versionId of the created workflow
 	 */
 	async createInProject(
 		project: string,
@@ -49,7 +49,7 @@ export class WorkflowApiHelper {
 			folder?: string;
 			name?: string;
 		},
-	): Promise<{ name: string; id: string }> {
+	): Promise<{ name: string; id: string; versionId: string }> {
 		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
 
 		const workflow = {
@@ -74,6 +74,7 @@ export class WorkflowApiHelper {
 		return {
 			name: workflowName,
 			id: workflowData.id,
+			versionId: workflowData.versionId,
 		};
 	}
 
