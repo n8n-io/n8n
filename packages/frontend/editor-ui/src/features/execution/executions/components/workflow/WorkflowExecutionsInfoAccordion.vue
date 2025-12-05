@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -32,6 +32,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 const locale = useI18n();
 
@@ -113,8 +114,8 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 	return undefined;
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
-const isNewWorkflow = computed(() => {
-	return !currentWorkflowId.value || currentWorkflowId.value === 'new';
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
 });
 const workflowName = computed(() => workflowsStore.workflowName);
 const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
@@ -167,11 +168,8 @@ async function onSaveWorkflowClick(): Promise<void> {
 	let currentId: string | undefined = undefined;
 	if (currentWorkflowId.value) {
 		currentId = currentWorkflowId.value;
-	} else if (
-		router.currentRoute.value.params.name &&
-		router.currentRoute.value.params.name !== 'new'
-	) {
-		const routeName = router.currentRoute.value.params.name;
+	} else if (route.params.name) {
+		const routeName = route.params.name;
 		currentId = Array.isArray(routeName) ? routeName[0] : routeName;
 	}
 	if (!currentId) {
@@ -201,7 +199,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		<template #customContent>
 			<footer class="mt-2xs">
 				{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer') }}
-				<N8nTooltip :disabled="!isNewWorkflow">
+				<N8nTooltip :disabled="!isNewWorkflowRoute">
 					<template #content>
 						<div>
 							<N8nLink @click.prevent="onSaveWorkflowClick">{{
@@ -211,7 +209,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 						</div>
 					</template>
 					<N8nLink
-						:class="{ [$style.disabled]: isNewWorkflow }"
+						:class="{ [$style.disabled]: isNewWorkflowRoute }"
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>

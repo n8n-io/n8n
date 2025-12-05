@@ -89,15 +89,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function notifyWorkflowOpened() {
-		const { workflowId } = workflowsStore;
-		if (!workflowId) return;
-		pushStore.send({ type: 'workflowOpened', workflowId });
+		if (workflowsStore.isNewWorkflow) return;
+		pushStore.send({ type: 'workflowOpened', workflowId: workflowsStore.workflowId });
 	}
 
 	function notifyWorkflowClosed() {
-		const { workflowId } = workflowsStore;
-		if (!workflowId) return;
-		pushStore.send({ type: 'workflowClosed', workflowId });
+		if (workflowsStore.isNewWorkflow) return;
+		pushStore.send({ type: 'workflowClosed', workflowId: workflowsStore.workflowId });
 
 		collaborators.value = collaborators.value.filter(
 			({ user }) => user.id !== usersStore.currentUserId,

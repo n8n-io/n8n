@@ -41,8 +41,9 @@ export function useRecentResources() {
 	function trackResourceOpened(to: RouteLocationNormalized): void {
 		if (to.name === VIEWS.WORKFLOW && typeof to.params.name === 'string') {
 			const workflowId = to.params.name;
+			const isNewWorkflow = to.query.new === 'true';
 			// Check if it's a valid workflow ID (not empty and exists)
-			if (workflowId && workflowId !== 'new') {
+			if (workflowId && !isNewWorkflow) {
 				registerWorkflowOpen(workflowId);
 
 				if (typeof to.params.nodeId === 'string' && to.params.nodeId) {
