@@ -329,7 +329,6 @@ export class SetV2 implements INodeType {
 			const workflowFieldsJson = this.getNodeParameter('fields.values', 0, [], {
 				rawExpressions: true,
 			}) as SetField[];
-
 			for (const entry of workflowFieldsJson) {
 				if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
 					rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
@@ -367,7 +366,6 @@ export class SetV2 implements INodeType {
 				returnData.push(newItem);
 			}
 		}
-
 		return [returnData];
 	}
 }
