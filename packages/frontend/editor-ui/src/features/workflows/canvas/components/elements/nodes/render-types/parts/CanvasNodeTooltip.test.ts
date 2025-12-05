@@ -9,7 +9,7 @@ const renderComponent = createComponentRenderer(CanvasNodeTooltip);
 describe('CanvasNodeTooltip', () => {
 	describe('rendering', () => {
 		it('should render tooltip when tooltip option is provided', async () => {
-			const { container, getByText } = renderComponent({
+			const { container } = renderComponent({
 				props: {
 					visible: true,
 				},
@@ -26,8 +26,11 @@ describe('CanvasNodeTooltip', () => {
 				},
 			});
 
-			expect(getByText('Test tooltip text')).toBeInTheDocument();
-			await waitFor(() => expect(container.querySelector('.el-popper')).toBeVisible());
+			await waitFor(() => {
+				const tooltipContent = container.querySelector('[data-dismissable-layer]');
+				expect(tooltipContent).toBeVisible();
+				expect(tooltipContent).toHaveTextContent('Test tooltip text');
+			});
 		});
 
 		it('should not render tooltip when tooltip option is not provided', () => {
@@ -48,7 +51,7 @@ describe('CanvasNodeTooltip', () => {
 				},
 			});
 
-			expect(container.querySelector('.el-popper')).not.toBeVisible();
+			expect(container.querySelector('[data-dismissable-layer]')).not.toBeInTheDocument();
 		});
 	});
 });

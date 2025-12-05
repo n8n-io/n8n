@@ -73,7 +73,7 @@ const addTargetBlank = (html: string) =>
 						v-if="tooltipText && label"
 						:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 					>
-						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
+						<N8nTooltip placement="top" :content-class="$style.tooltipPopper" :show-after="300">
 							<N8nIcon :class="$style.icon" icon="circle-help" size="small" />
 							<template #content>
 								<div v-n8n-html="addTargetBlank(tooltipText)" />
