@@ -73,8 +73,8 @@ sequenceDiagram
 
 ```bash
 cd packages/@n8n/browser-use
-docker build -t browser-use-api:latest .
-docker run -p 8766:8766 -it browser-use-api:latest
+docker build -t browser-use:latest .
+docker run -p 8766:8766 -it browser-use:latest
 ```
 
 Or use Docker Compose:
@@ -124,11 +124,3 @@ Browser automation tool with Puppeteer. Supports the following actions:
 
 #### Script
 - **script** - Execute custom Puppeteer script with access to page and browser objects
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 8766 | API server port |
-| `HOST` | 0.0.0.0 | Server host binding |
-| `PUPPETEER_EXECUTABLE_PATH` | /usr/bin/chromium | Path to Chromium executable |

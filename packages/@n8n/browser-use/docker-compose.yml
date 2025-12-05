@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  browser-use-api:
+  browser-use:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: browser-use-api
+    container_name: browser-use
     ports:
       - '8766:8766' # API server
     environment:

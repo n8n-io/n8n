@@ -126,6 +126,7 @@
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolCode/ToolCode.node.js",
+      "dist/nodes/tools/ToolBrowserUse/ToolBrowserUse.node.js",
       "dist/nodes/tools/ToolComputerUse/ToolComputerUse.node.js",
       "dist/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.js",
       "dist/nodes/tools/ToolSearXng/ToolSearXng.node.js",
@@ -160,7 +161,8 @@
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js",
       "dist/nodes/Guardrails/Guardrails.node.js",
-      "dist/nodes/ComputerUse/ComputerUse.node.js"
+      "dist/nodes/ComputerUse/ComputerUse.node.js",
+      "dist/nodes/BrowserUse/BrowserUse.node.js"
     ]
   },
   "devDependencies": {

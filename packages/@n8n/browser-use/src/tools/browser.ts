@@ -84,7 +84,7 @@ interface BrowserToolInput {
 }
 
 const DEFAULT_TIMEOUT = 30000;
-const CHROMIUM_PATH = process.env.PUPPETEER_EXECUTABLE_PATH ?? '/usr/bin/chromium';
+const CHROMIUM_PATH = '/usr/bin/chromium';
 
 export class BrowserTool extends BaseTool {
 	name = 'browser';

@@ -10,11 +10,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { connectMcpClient, mapToNodeOperationError } from '../mcp/shared/utils';
-
 import { bashFields, bashOperations } from './BashDescription';
 import { computerFields, computerOperations } from './ComputerDescription';
 import { editorFields, editorOperations } from './EditorDescription';
+import { connectMcpClient, mapToNodeOperationError } from '../mcp/shared/utils';
 
 type ComputerOperation =
 	| 'screenshot'
@@ -281,7 +280,7 @@ export class ComputerUse implements INodeType {
 		try {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				const resource = this.getNodeParameter('resource', itemIndex) as Resource;
-				const operation = this.getNodeParameter('operation', itemIndex) as string;
+				const operation = this.getNodeParameter('operation', itemIndex);
 
 				const mcpToolName = RESOURCE_TO_MCP_TOOL[resource];
 				let args: IDataObject;
