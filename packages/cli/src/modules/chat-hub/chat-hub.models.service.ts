@@ -1,4 +1,4 @@
-import { In, type WorkflowRepository, type User } from '@n8n/db';
+import { In, WorkflowRepository, type User } from '@n8n/db';
 import { getBase } from '@/workflow-execute-additional-data';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
