@@ -114,6 +114,11 @@ function handleConfirmEdit() {
 }
 
 function handleKeydownTextarea(e: KeyboardEvent) {
+	if (e.key === 'Escape') {
+		emit('cancelEdit');
+		return;
+	}
+
 	const trimmed = editedText.value.trim();
 
 	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
