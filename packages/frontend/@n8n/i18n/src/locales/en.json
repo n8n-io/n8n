@@ -3083,7 +3083,6 @@
 	"workflowPreview.showError.previewError.title": "Preview error",
 	"workflowRun.noActiveConnectionToTheServer": "Lost connection to the server",
 	"workflowRun.showError.deactivate": "Deactivate workflow to execute",
-	"workflowRun.showError.productionActive": "Because of limitations in {nodeName}, n8n can't listen for test executions at the same time as listening for production ones",
 	"workflowRun.showError.title": "Problem running workflow",
 	"workflowRun.showError.payloadTooLarge": "Please execute the whole workflow, rather than just the node. (Existing execution data is too large.)",
 	"workflowRun.showError.resolveOutstandingIssues": "Please resolve outstanding issues before you activate it",
