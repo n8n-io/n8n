@@ -1,13 +1,21 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import axios from 'axios';
-import { type ICredentialContext } from 'n8n-workflow';
+import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+
+// Use minimum of 30 seconds to avoid cache thrashing
+// Cap at 5 minutes to ensure periodic revalidation
+const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
+const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
+const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
+const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
@@ -96,7 +104,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			return cached;
 		}
 
-		let ttl = 300;
+		let ttl = DEFAULT_CACHE_TIMEOUT;
 		const { subject, ttl: ttlOverwrite } = await this.resolveBasedOnTokenIntrospection(
 			metadata,
 			options,
@@ -104,11 +112,6 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		);
 		if (ttlOverwrite) {
 			ttl = ttlOverwrite;
-		}
-
-		if (!subject) {
-			this.logger.error('No valid method to validate token found in metadata');
-			throw new IdentifierValidationError('No valid method to validate token found in metadata');
 		}
 
 		await this.cache.set(identifierCacheKey, subject, ttl);
@@ -142,6 +145,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		const response = await axios.get(options.metadataUri, {
 			validateStatus: () => true,
+			timeout: 10 * Time.seconds.toMilliseconds,
 		});
 
 		if (response.status !== 200) {
@@ -156,7 +160,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		try {
 			const metadata = OAuth2MetadataSchema.parse(response.data);
 			if (!skipCache) {
-				await this.cache.set(cacheKey, metadata, 3600); // Cache for 1 hour
+				await this.cache.set(cacheKey, metadata, METADATA_CACHE_TIMEOUT);
 			}
 			return metadata;
 		} catch (error) {
@@ -206,12 +210,11 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		metadata: OAuth2Metadata,
 		options: OAuth2IntrospectionOptions,
 		context: ICredentialContext,
-	) {
+	): Promise<{ subject: string; ttl?: number }> {
 		// Use token introspection to validate and get subject
-		const useBasic =
-			metadata.introspection_endpoint_auth_methods_supported?.includes('client_secret_basic');
-		const usePost =
-			metadata.introspection_endpoint_auth_methods_supported?.includes('client_secret_post');
+		const supportedMethods = metadata.introspection_endpoint_auth_methods_supported;
+		const useBasic = !supportedMethods || supportedMethods.includes('client_secret_basic');
+		const usePost = !useBasic && supportedMethods?.includes('client_secret_post');
 
 		let authHeaders: Record<string, string> = {};
 		let authParams: Record<string, string> = {};
@@ -238,10 +241,12 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		const response = await axios.post(metadata.introspection_endpoint, params, {
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...authHeaders },
+			validateStatus: () => true,
+			timeout: 10 * Time.seconds.toMilliseconds,
 		});
 
 		if (response.status !== 200) {
-			this.logger.error('Token introspection failed', {
+			this.logger.debug('Token introspection failed', {
 				status: response.status,
 				data: response.data,
 			});
@@ -255,7 +260,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			throw new IdentifierValidationError('Token is not active');
 		}
 
-		const subject = introspectionData[options.subjectClaim as keyof TokenIntrospectionResponse];
+		const subject = introspectionData[options.subjectClaim];
 		if (!subject) {
 			this.logger.error(
 				`Token introspection response missing subject claim (${options.subjectClaim})`,
@@ -273,7 +278,9 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		if (introspectionData.exp) {
 			const expiresIn = introspectionData.exp * 1000 - Date.now();
 			if (expiresIn > 0) {
-				ttl = Math.floor(expiresIn / 1000);
+				ttl = Math.max(MIN_TOKEN_CACHE_TIMEOUT, Math.min(expiresIn, MAX_TOKEN_CACHE_TIMEOUT));
+			} else {
+				ttl = MIN_TOKEN_CACHE_TIMEOUT;
 			}
 		}
 
