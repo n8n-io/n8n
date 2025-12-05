@@ -778,6 +778,7 @@ export class ChatHubModelsService {
 					capabilities: {
 						functionCalling: false,
 					},
+					available: true,
 				},
 			});
 		}
@@ -791,21 +792,28 @@ export class ChatHubModelsService {
 		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
 	): ChatModelDto[] {
-		return rawModels.map((model) => {
+		return rawModels.flatMap((model) => {
 			const id = String(model.value);
+			const metadata = getModelMetadata(provider, id);
 
-			return {
-				id,
-				name: model.name,
-				description: model.description ?? null,
-				model: {
-					provider,
-					model: id,
+			if (!metadata.available) {
+				return [];
+			}
+
+			return [
+				{
+					id,
+					name: model.name,
+					description: model.description ?? null,
+					model: {
+						provider,
+						model: id,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata,
 				},
-				createdAt: null,
-				updatedAt: null,
-				metadata: getModelMetadata(provider, id),
-			};
+			];
 		});
 	}
 }

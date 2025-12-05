@@ -780,6 +780,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
 				inputModalities: [],
+				available: true,
 			},
 		};
 		agents.value?.['custom-agent'].models.push(agent);
@@ -851,6 +852,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				capabilities: {
 					functionCalling: true,
 				},
+				available: true,
 			},
 		};
 	}

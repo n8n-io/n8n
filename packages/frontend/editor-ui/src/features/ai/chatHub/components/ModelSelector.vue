@@ -188,6 +188,7 @@ const menu = computed(() => {
 						capabilities: {
 							functionCalling: true,
 						},
+						available: true,
 					},
 				});
 			}
