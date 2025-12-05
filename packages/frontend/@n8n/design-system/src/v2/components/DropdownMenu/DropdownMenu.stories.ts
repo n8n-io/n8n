@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 import N8nBadge from '@n8n/design-system/components/N8nBadge/Badge.vue';
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
@@ -436,5 +436,61 @@ export const SubMenuLoading: Story = {
 				],
 			},
 		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const Searchable: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const allItems: Array<DropdownMenuItemProps<string>> = [
+				{ id: 'apple', label: 'Apple' },
+				{ id: 'banana', label: 'Banana' },
+				{ id: 'cherry', label: 'Cherry' },
+				{ id: 'date', label: 'Date' },
+				{ id: 'elderberry', label: 'Elderberry' },
+				{ id: 'fig', label: 'Fig' },
+				{ id: 'grape', label: 'Grape' },
+				{ id: 'honeydew', label: 'Honeydew' },
+			];
+
+			const searchTerm = ref('');
+
+			const filteredItems = computed(() => {
+				if (!searchTerm.value) return allItems;
+				return allItems.filter((item) =>
+					item.label.toLowerCase().includes(searchTerm.value.toLowerCase()),
+				);
+			});
+
+			const handleSearch = (term: string) => {
+				console.log('Search term (debounced):', term);
+				searchTerm.value = term;
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			return { args, filteredItems, handleSearch, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu
+				:items="filteredItems"
+				searchable
+				:search-placeholder="args.searchPlaceholder"
+				:search-debounce="args.searchDebounce"
+				@search="handleSearch"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+		searchPlaceholder: 'Search fruits...',
+		searchDebounce: 300,
 	},
 };

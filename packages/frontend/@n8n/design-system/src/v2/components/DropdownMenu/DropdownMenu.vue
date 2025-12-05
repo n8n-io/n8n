@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="T = string">
+import { useDebounceFn } from '@vueuse/core';
 import {
 	DropdownMenuRoot,
 	DropdownMenuTrigger,
@@ -24,11 +25,15 @@ const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	hideArrow: false,
 	loading: false,
 	loadingItemCount: 3,
+	searchable: false,
+	searchPlaceholder: 'Search...',
+	searchDebounce: 300,
 });
 
 const emit = defineEmits<{
 	'update:modelValue': [open: boolean];
 	select: [value: T];
+	search: [searchTerm: string];
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T>>();
@@ -85,6 +90,26 @@ const contentStyle = computed(() => {
 const handleOpenChange = (open: boolean) => {
 	internalOpen.value = open;
 	emit('update:modelValue', open);
+
+	// Clear search when dropdown closes
+	if (!open && props.searchable) {
+		searchTerm.value = '';
+		emit('search', '');
+	}
+};
+
+// Search functionality
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const searchTerm = ref('');
+
+const debouncedEmitSearch = useDebounceFn((term: string) => {
+	emit('search', term);
+}, props.searchDebounce);
+
+const handleSearchInput = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	searchTerm.value = target.value;
+	debouncedEmitSearch(target.value);
 };
 
 const handleItemSelect = (value: T) => {
@@ -127,38 +152,54 @@ defineExpose({ open, close });
 				:style="contentStyle"
 			>
 				<slot v-if="slots.content" name="content" />
-				<template v-else-if="loading">
-					<slot name="loading">
-						<div :class="$style.loadingContainer">
-							<N8nLoading
-								v-for="i in loadingItemCount"
-								:key="i"
-								variant="p"
-								:rows="1"
-								:class="$style.loadingItem"
-							/>
-						</div>
-					</slot>
-				</template>
 				<template v-else>
-					<template v-for="item in items" :key="item.id">
-						<slot name="item" :item="item">
-							<N8nDropdownMenuItem v-bind="item" @select="handleItemSelect">
-								<template #item-leading="{ ui }">
-									<slot name="item-leading" :item="item" :ui="ui">
-										<Icon v-if="item.icon" :icon="item.icon" :class="ui.class" />
-									</slot>
-								</template>
-								<template #item-label>
-									<slot name="item-label" :item="item">
-										{{ item.label }}
-									</slot>
-								</template>
-								<template #item-trailing="{ ui }">
-									<slot name="item-trailing" :item="item" :ui="ui" />
-								</template>
-							</N8nDropdownMenuItem>
+					<!-- Search input -->
+					<div v-if="searchable" :class="$style.searchContainer">
+						<Icon icon="search" :class="$style.searchIcon" />
+						<input
+							ref="searchInputRef"
+							type="text"
+							:class="$style.searchInput"
+							:placeholder="searchPlaceholder"
+							:value="searchTerm"
+							@input="handleSearchInput"
+							@keydown.stop
+						/>
+					</div>
+
+					<template v-if="loading">
+						<slot name="loading">
+							<div :class="$style.loadingContainer">
+								<N8nLoading
+									v-for="i in loadingItemCount"
+									:key="i"
+									variant="p"
+									:rows="1"
+									:class="$style.loadingItem"
+								/>
+							</div>
 						</slot>
+					</template>
+					<template v-else>
+						<template v-for="item in items" :key="item.id">
+							<slot name="item" :item="item">
+								<N8nDropdownMenuItem v-bind="item" @select="handleItemSelect">
+									<template #item-leading="{ ui }">
+										<slot name="item-leading" :item="item" :ui="ui">
+											<Icon v-if="item.icon" :icon="item.icon" :class="ui.class" />
+										</slot>
+									</template>
+									<template #item-label>
+										<slot name="item-label" :item="item">
+											{{ item.label }}
+										</slot>
+									</template>
+									<template #item-trailing="{ ui }">
+										<slot name="item-trailing" :item="item" :ui="ui" />
+									</template>
+								</N8nDropdownMenuItem>
+							</slot>
+						</template>
 					</template>
 				</template>
 
@@ -232,6 +273,36 @@ defineExpose({ open, close });
 
 	&:last-child {
 		margin-bottom: 0;
+	}
+}
+
+.searchContainer {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-bottom: var(--border);
+	margin-bottom: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
+}
+
+.searchIcon {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
+.searchInput {
+	flex: 1;
+	min-width: 0;
+	border: none;
+	background: transparent;
+	outline: none;
+	font-family: inherit;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+	padding: var(--spacing--4xs) 0;
+
+	&::placeholder {
+		color: var(--color--text--tint-1);
 	}
 }
 </style>

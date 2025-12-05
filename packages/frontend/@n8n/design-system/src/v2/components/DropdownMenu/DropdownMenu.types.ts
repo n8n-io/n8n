@@ -70,6 +70,12 @@ export interface DropdownMenuProps<T = string> {
 	loadingItemCount?: number;
 	/** Additional CSS class for the dropdown popper */
 	extraPopperClass?: string;
+	/** Enable search functionality */
+	searchable?: boolean;
+	/** Search input placeholder */
+	searchPlaceholder?: string;
+	/** Debounce delay in ms for search event */
+	searchDebounce?: number;
 }
 
 export interface DropdownMenuEmits<T = string> {
@@ -77,6 +83,8 @@ export interface DropdownMenuEmits<T = string> {
 	(e: 'update:modelValue', open: boolean): void;
 	/** Emitted when a menu item is selected */
 	(e: 'select', value: T): void;
+	/** Emitted when search input value changes (debounced) */
+	(e: 'search', searchTerm: string): void;
 }
 
 type SlotUiProps = { class: string };
