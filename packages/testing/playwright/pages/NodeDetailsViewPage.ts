@@ -226,7 +226,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getVisiblePoppers() {
-		return this.page.locator('.el-popper:visible');
+		return this.page.locator('[data-state="open"][role="dialog"]');
 	}
 
 	async clearExpressionEditor(parameterName?: string) {
@@ -284,7 +284,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getVisiblePopper() {
-		return this.page.locator('.el-popper:visible');
+		return this.page.locator('[data-state="open"][role="dialog"]');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
