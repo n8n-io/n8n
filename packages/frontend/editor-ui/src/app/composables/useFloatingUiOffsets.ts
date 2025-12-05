@@ -12,7 +12,7 @@ export function useFloatingUiOffsets() {
 	const posthogStore = usePostHog();
 	const logsStore = useLogsStore();
 
-	const isNDVV2 = true;
+	const isNDVV2 = computed(() => true);
 	const askAiOffset = computed(() => (ndvStore.isNDVOpen && !isNDVV2.value ? 48 : 16));
 
 	return {
