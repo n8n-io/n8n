@@ -5,7 +5,6 @@ import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	START_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -26,7 +25,6 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
@@ -105,7 +103,6 @@ const inputModes = [
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
-const posthogStore = usePostHog();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 
@@ -257,12 +254,7 @@ const waitingMessage = computed(() => {
 	);
 });
 
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true);
 
 const nodeNameToExecute = computed(
 	() => (isActiveNodeConfig.value ? rootNode.value : activeNode.value?.name) ?? '',
