@@ -331,6 +331,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
