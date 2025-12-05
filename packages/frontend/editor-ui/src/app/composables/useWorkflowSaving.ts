@@ -196,12 +196,7 @@ export function useWorkflowSaving({
 
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
 		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
-		if (
-			!currentWorkflow ||
-			currentWorkflow === 'new' ||
-			!existingWorkflow ||
-			!existingWorkflow.id
-		) {
+		if (!currentWorkflow || !existingWorkflow?.id) {
 			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
 		}
 
