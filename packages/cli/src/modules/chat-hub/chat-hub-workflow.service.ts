@@ -31,8 +31,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { MessageRecord } from './chat-hub.types';
+import { MessageRecord, type ContentBlock } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
+import { BinaryDataService } from 'n8n-core';
+import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -40,6 +43,9 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly binaryDataService: BinaryDataService,
+		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async createChatWorkflow(
@@ -680,11 +686,40 @@ When you need to reference “now”, use this date and time.`;
 								ai: 'ai',
 								system: 'system',
 							};
+							const attachments = message.attachments ?? [];
+							const type = typeMap[message.type] || 'system';
 
 							// TODO: Tool messages etc?
+
+							if (attachments.length === 0) {
+								return {
+									type,
+									message: message.content,
+									hideFromUI: false,
+								};
+							}
+
 							return {
-								type: typeMap[message.type] || 'system',
-								message: message.content,
+								type,
+								message: [{ type: 'text', text: message.content } as ContentBlock].concat(
+									attachments.flatMap<ContentBlock>((attachment) => {
+										if (attachment.data) {
+											return [{ type: 'image_url', image_url: attachment.data }];
+										}
+
+										if (!attachment.id) {
+											return [];
+										}
+
+										const token = this.binaryDataService.createSignedToken(attachment, '1 hour');
+										const baseUrl = this.urlService.getWebhookBaseUrl();
+
+										return {
+											type: 'image_url',
+											image_url: `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`,
+										};
+									}),
+								),
 								hideFromUI: false,
 							};
 						}),
