@@ -31,7 +31,7 @@ jest.mock('@/tools/update-node-parameters.tool', () => ({
 jest.mock('@/tools/get-node-parameter.tool', () => ({
 	createGetNodeParameterTool: jest.fn().mockReturnValue({ tool: { name: 'get_node_parameter' } }),
 }));
-jest.mock('@/tools/prompts/main-agent.prompt', () => ({
+jest.mock('@/prompts/legacy-agent.prompt', () => ({
 	mainAgentPrompt: {
 		invoke: jest.fn().mockResolvedValue('mocked prompt'),
 	},
@@ -67,7 +67,7 @@ Object.defineProperty(global, 'crypto', {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
-import { createMainAgentPrompt } from '@/tools/prompts/main-agent.prompt';
+import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {

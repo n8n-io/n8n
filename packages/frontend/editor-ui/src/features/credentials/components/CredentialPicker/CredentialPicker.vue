@@ -25,7 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	credentialSelected: [credentialId: string];
 	credentialDeselected: [];
-	credentialModalOpened: [];
+	credentialModalOpened: [credentialId?: string];
 	credentialDeleted: [credentialId: string];
 }>();
 
@@ -102,13 +102,13 @@ const onCredentialSelected = (credentialId: string) => {
 const createNewCredential = () => {
 	uiStore.openNewCredential(props.credentialType, true);
 	wasModalOpenedFromHere.value = true;
-	emit('credentialModalOpened');
+	emit('credentialModalOpened', undefined);
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
 	uiStore.openExistingCredential(props.selectedCredentialId);
 	wasModalOpenedFromHere.value = true;
-	emit('credentialModalOpened');
+	emit('credentialModalOpened', props.selectedCredentialId);
 };
 const deleteCredential = async () => {
 	assert(props.selectedCredentialId);
