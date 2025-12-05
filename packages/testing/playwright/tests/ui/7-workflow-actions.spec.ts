@@ -281,6 +281,11 @@ test.describe('Workflow Actions', () => {
 	});
 
 	test('should update workflow settings', async ({ n8n }) => {
+		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.addNode('Error Trigger', { closeNDV: true });
+		await n8n.canvas.setWorkflowName('Error Handler');
+		await n8n.canvas.saveWorkflow();
+
 		await n8n.navigate.toHome();
 
 		const workflowsResponsePromise = n8n.page.waitForResponse(
@@ -290,9 +295,7 @@ test.describe('Workflow Actions', () => {
 
 		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
-		const workflowsResponse = await workflowsResponsePromise;
-		const responseBody = await workflowsResponse.json();
-		const totalWorkflows = responseBody.count;
+		await workflowsResponsePromise;
 
 		await n8n.canvas.saveWorkflow();
 
@@ -301,8 +304,8 @@ test.describe('Workflow Actions', () => {
 
 		await n8n.workflowSettingsModal.getErrorWorkflowField().click();
 		const optionCount = await n8n.page.getByRole('option').count();
-		expect(optionCount).toBeGreaterThanOrEqual(totalWorkflows + 2);
-		await n8n.page.getByRole('option', { disabled: false }).nth(1).click();
+		expect(optionCount).toBeGreaterThanOrEqual(1);
+		await n8n.page.getByRole('option', { disabled: false }).first().click();
 
 		await n8n.workflowSettingsModal.getTimezoneField().click();
 		await expect(n8n.page.getByRole('option').first()).toBeVisible();

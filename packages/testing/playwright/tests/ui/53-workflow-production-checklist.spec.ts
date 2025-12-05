@@ -104,6 +104,12 @@ test.describe('Workflow Production Checklist', () => {
 	});
 
 	test('should show completed state for configured actions', async ({ n8n }) => {
+		await n8n.canvas.addNode('Error Trigger', { closeNDV: true });
+		await n8n.canvas.setWorkflowName('Error Handler');
+		await n8n.canvas.saveWorkflow();
+
+		await n8n.navigate.toHome();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.publishWorkflow();
@@ -113,7 +119,7 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.workflowSettingsModal.open();
 		await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 
-		await n8n.workflowSettingsModal.selectErrorWorkflow('My workflow');
+		await n8n.workflowSettingsModal.selectErrorWorkflow('Error Handler');
 		await n8n.workflowSettingsModal.clickSave();
 		await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
 
