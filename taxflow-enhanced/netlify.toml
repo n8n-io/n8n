@@ -1,0 +1,141 @@
+# Netlify Configuration for TaxFlow Enhanced
+# Version: 1.0.0
+
+# Build settings
+[build]
+  # Base directory (if your code is in a subdirectory)
+  base = "taxflow-enhanced/"
+
+  # Directory with the build output
+  publish = "dist"
+
+  # Build command
+  command = "npm run build"
+
+  # Functions directory (for serverless functions, if needed)
+  # functions = "netlify-functions"
+
+# Build environment
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+
+  # NPM version (optional - uses Node's default if not specified)
+  # NPM_VERSION = "9"
+
+  # Production mode
+  NODE_ENV = "production"
+
+# Redirects and rewrites for Single Page Application (SPA)
+# This ensures all routes are handled by React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Optional: Redirect from www to non-www (or vice versa)
+# [[redirects]]
+#   from = "https://www.taxflow.example.com/*"
+#   to = "https://taxflow.example.com/:splat"
+#   status = 301
+#   force = true
+
+# Optional: Custom 404 page
+# [[redirects]]
+#   from = "/404"
+#   to = "/index.html"
+#   status = 404
+
+# Headers for security and performance
+[[headers]]
+  # Apply to all pages
+  for = "/*"
+
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Content Security Policy (adjust as needed)
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'"
+
+    # Permissions Policy (formerly Feature-Policy)
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+
+# Headers for static assets (aggressive caching)
+[[headers]]
+  for = "/assets/*"
+
+  [headers.values]
+    # Cache static assets for 1 year
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Headers for HTML files (no caching for index.html)
+[[headers]]
+  for = "/*.html"
+
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Headers for JavaScript files
+[[headers]]
+  for = "/*.js"
+
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+# Headers for CSS files
+[[headers]]
+  for = "/*.css"
+
+  [headers.values]
+    Content-Type = "text/css; charset=utf-8"
+
+# Context-specific settings
+
+# Production context (main branch)
+[context.production]
+  command = "npm run build"
+
+  [context.production.environment]
+    NODE_ENV = "production"
+    VITE_LOG_LEVEL = "error"
+    VITE_USE_MOCK_DATA = "false"
+
+# Deploy Preview context (pull requests)
+[context.deploy-preview]
+  command = "npm run build"
+
+  [context.deploy-preview.environment]
+    NODE_ENV = "production"
+    VITE_LOG_LEVEL = "warn"
+
+# Branch deploy context (non-production branches)
+[context.branch-deploy]
+  command = "npm run build"
+
+  [context.branch-deploy.environment]
+    NODE_ENV = "production"
+
+# Plugins (optional but recommended)
+# [[plugins]]
+#   package = "@netlify/plugin-lighthouse"
+#
+#   [plugins.inputs]
+#     output_path = "reports/lighthouse.html"
+
+# [[plugins]]
+#   package = "netlify-plugin-checklinks"
+
+# [[plugins]]
+#   package = "netlify-plugin-bundle-size"
+
+# Development settings
+[dev]
+  command = "npm run dev"
+  port = 5173
+  targetPort = 5173
+  autoLaunch = false

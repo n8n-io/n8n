@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Production build
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Keep example files
+!.env.example
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+stats.html
+dist/stats.html
+
+# TypeScript
+*.tsbuildinfo
+
+# Local development
+.local/
+
+# Netlify
+.netlify/
+netlify-functions/
