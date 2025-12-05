@@ -16,6 +16,36 @@ export {
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
 
+/** Parse an integer flag with default value */
+function getIntFlag(flag: string, defaultValue: number, max?: number): number {
+	const arg = getFlagValue(flag);
+	if (!arg) return defaultValue;
+	const parsed = parseInt(arg, 10);
+	if (Number.isNaN(parsed) || parsed < 1) return defaultValue;
+	return max ? Math.min(parsed, max) : parsed;
+}
+
+/** Parse all CLI arguments */
+function parseCliArgs() {
+	return {
+		testCaseId: process.argv.includes('--test-case')
+			? process.argv[process.argv.indexOf('--test-case') + 1]
+			: undefined,
+		promptsCsvPath: getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE,
+		repetitions: getIntFlag('--repetitions', 1),
+		notionId: getFlagValue('--notion-id'),
+		numJudges: getIntFlag('--judges', 3),
+		numGenerations: getIntFlag('--generations', 1, 10),
+		concurrency: getIntFlag('--concurrency', 5),
+		verbose: process.argv.includes('--verbose') || process.argv.includes('-v'),
+		experimentName: getFlagValue('--name'),
+		outputDir: getFlagValue('--output-dir'),
+		prompt: getFlagValue('--prompt'),
+		dos: getFlagValue('--dos'),
+		donts: getFlagValue('--donts'),
+	};
+}
+
 /**
  * Main entry point for evaluation
  * Determines which evaluation mode to run based on environment variables
@@ -23,83 +53,47 @@ export { setupTestEnvironment, createAgent } from './core/environment.js';
 async function main(): Promise<void> {
 	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
 	const usePairwiseEval = process.env.USE_PAIRWISE_EVAL === 'true';
+	const args = parseCliArgs();
 
-	// Parse command line arguments for single test case
-	const testCaseId = process.argv.includes('--test-case')
-		? process.argv[process.argv.indexOf('--test-case') + 1]
-		: undefined;
-
-	// Parse command line argument for CSV prompts file path
-	const promptsCsvPath = getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE;
-
-	if (promptsCsvPath && (useLangsmith || usePairwiseEval)) {
+	if (args.promptsCsvPath && (useLangsmith || usePairwiseEval)) {
 		console.warn('CSV-driven evaluations are only supported in CLI mode. Ignoring --prompts-csv.');
 	}
 
-	// Parse command line arguments for a number of repetitions (applies to both modes)
-	const repetitionsArg = process.argv.includes('--repetitions')
-		? parseInt(process.argv[process.argv.indexOf('--repetitions') + 1], 10)
-		: 1;
-	const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
-
-	// Parse --notion-id argument for pairwise evaluation filtering
-	const notionId = getFlagValue('--notion-id');
-
-	// Parse --judges argument for pairwise evaluation (default: 3)
-	const numJudgesArg = getFlagValue('--judges');
-	const numJudgesParsed = numJudgesArg ? parseInt(numJudgesArg, 10) : 3;
-	const numJudges = Number.isNaN(numJudgesParsed) ? 3 : numJudgesParsed;
-
-	// Parse --generations argument for multi-generation pairwise evaluation (default: 1, max: 10)
-	const numGenerationsArg = getFlagValue('--generations');
-	const numGenerationsParsed = numGenerationsArg ? parseInt(numGenerationsArg, 10) : 1;
-	const numGenerations =
-		Number.isNaN(numGenerationsParsed) || numGenerationsParsed < 1
-			? 1
-			: Math.min(numGenerationsParsed, 10);
-
-	// Parse --verbose flag for detailed logging
-	const verbose = process.argv.includes('--verbose') || process.argv.includes('-v');
-
-	// Parse --name argument for custom experiment name
-	const experimentName = getFlagValue('--name');
-
-	// Parse --output-dir argument for saving evaluation artifacts
-	const outputDir = getFlagValue('--output-dir');
-
-	// Parse local pairwise evaluation flags
-	const prompt = getFlagValue('--prompt');
-	const dos = getFlagValue('--dos');
-	const donts = getFlagValue('--donts');
-
 	if (usePairwiseEval) {
-		if (prompt) {
+		if (args.prompt) {
 			// Local mode - run single evaluation without LangSmith
 			await runLocalPairwiseEvaluation({
-				prompt,
-				criteria: { dos: dos ?? '', donts: donts ?? '' },
-				numJudges,
-				numGenerations,
-				verbose,
-				outputDir,
+				prompt: args.prompt,
+				criteria: { dos: args.dos ?? '', donts: args.donts ?? '' },
+				numJudges: args.numJudges,
+				numGenerations: args.numGenerations,
+				verbose: args.verbose,
+				outputDir: args.outputDir,
 			});
 		} else {
 			// LangSmith mode
 			await runPairwiseLangsmithEvaluation({
-				repetitions,
-				notionId,
-				numJudges,
-				numGenerations,
-				verbose,
-				experimentName,
-				outputDir,
+				repetitions: args.repetitions,
+				notionId: args.notionId,
+				numJudges: args.numJudges,
+				numGenerations: args.numGenerations,
+				verbose: args.verbose,
+				experimentName: args.experimentName,
+				outputDir: args.outputDir,
+				concurrency: args.concurrency,
 			});
 		}
 	} else if (useLangsmith) {
-		await runLangsmithEvaluation(repetitions);
+		await runLangsmithEvaluation(args.repetitions);
 	} else {
-		const csvTestCases = promptsCsvPath ? loadTestCasesFromCsv(promptsCsvPath) : undefined;
-		await runCliEvaluation({ testCases: csvTestCases, testCaseFilter: testCaseId, repetitions });
+		const csvTestCases = args.promptsCsvPath
+			? loadTestCasesFromCsv(args.promptsCsvPath)
+			: undefined;
+		await runCliEvaluation({
+			testCases: csvTestCases,
+			testCaseFilter: args.testCaseId,
+			repetitions: args.repetitions,
+		});
 	}
 }
 

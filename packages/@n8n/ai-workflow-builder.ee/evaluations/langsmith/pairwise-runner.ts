@@ -557,6 +557,15 @@ function filterExamples(
 	return allExamples;
 }
 
+/** Create repeated data array for LangSmith evaluation */
+function createRepeatedData(data: Example[], repetitions: number): Example[] {
+	const repeatedData: Example[] = [];
+	for (let i = 0; i < repetitions; i++) {
+		repeatedData.push(...data);
+	}
+	return repeatedData;
+}
+
 // ============================================================================
 // Public API
 // ============================================================================
@@ -569,6 +578,7 @@ export interface PairwiseEvaluationOptions {
 	verbose?: boolean;
 	experimentName?: string;
 	outputDir?: string;
+	concurrency?: number;
 }
 
 /** Log configuration for pairwise evaluation */
@@ -578,11 +588,12 @@ function logPairwiseConfig(
 	numGenerations: number,
 	numJudges: number,
 	repetitions: number,
+	concurrency: number,
 	verbose: boolean,
 ): void {
 	log.info(`➔ Experiment: ${experimentName}`);
 	log.info(
-		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps${verbose ? ' (verbose)' : ''}`,
+		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps (concurrency: ${concurrency})${verbose ? ' (verbose)' : ''}`,
 	);
 	if (numGenerations > 1) {
 		log.verbose('   Generation Correctness: (# passing gens) / total gens');
@@ -608,11 +619,20 @@ export async function runPairwiseLangsmithEvaluation(
 		verbose = false,
 		experimentName = DEFAULT_EXPERIMENT_NAME,
 		outputDir,
+		concurrency = 5,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
-	logPairwiseConfig(log, experimentName, numGenerations, numJudges, repetitions, verbose);
+	logPairwiseConfig(
+		log,
+		experimentName,
+		numGenerations,
+		numJudges,
+		repetitions,
+		concurrency,
+		verbose,
+	);
 
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
@@ -676,6 +696,12 @@ export async function runPairwiseLangsmithEvaluation(
 		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);
 
+		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
+		// (it only works with dataset names). We manually duplicate examples to work around this.
+		const repeatedData = createRepeatedData(data, repetitions);
+
+		log.info(`➔ Running ${data.length} × ${repetitions} = ${repeatedData.length} generations`);
+
 		const generateWorkflow = createPairwiseWorkflowGenerator(
 			parsedNodeTypes,
 			llm,
@@ -687,27 +713,19 @@ export async function runPairwiseLangsmithEvaluation(
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
 
-		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
-		// (it only works with dataset names). We manually duplicate examples to work around this.
-		const repeatedData: Example[] = [];
-		for (let i = 0; i < repetitions; i++) {
-			repeatedData.push(...data);
-		}
-
-		log.info(`➔ Running ${data.length} × ${repetitions} = ${repeatedData.length} generations`);
-
 		const evalStartTime = Date.now();
 
 		await evaluate(generateWorkflow, {
 			data: repeatedData,
 			evaluators: [evaluator],
-			maxConcurrency: 5,
+			maxConcurrency: concurrency,
 			experimentPrefix: experimentName,
 			// numRepetitions not used - we manually duplicate examples above
 			metadata: {
 				numJudges,
 				numGenerations,
 				repetitions,
+				concurrency,
 				scoringMethod: numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
 			},
 		});
