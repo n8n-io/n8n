@@ -274,35 +274,6 @@ describe('WorkflowCard', () => {
 		expect(actions).not.toHaveTextContent('Move');
 	});
 
-	it("should not show 'Move' action on the 'Workflows' page", async () => {
-		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
-
-		const data = createWorkflow({
-			scopes: ['workflow:update'],
-		});
-
-		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
-			name: VIEWS.WORKFLOWS,
-		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
-
-		const { getByTestId } = renderComponent({ props: { data } });
-		const cardActions = getByTestId('workflow-card-actions');
-
-		expect(cardActions).toBeInTheDocument();
-
-		const cardActionsOpener = within(cardActions).getByRole('button');
-		expect(cardActionsOpener).toBeInTheDocument();
-
-		const controllingId = cardActionsOpener.getAttribute('aria-controls');
-
-		await userEvent.click(cardActions);
-		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
-		if (!actions) {
-			throw new Error('Actions menu not found');
-		}
-		expect(actions).not.toHaveTextContent('Move');
-	});
-
 	it("should not show 'Move' action on read only instance", async () => {
 		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
 		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);

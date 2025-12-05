@@ -91,6 +91,7 @@ const emit = defineEmits<{
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 	];
 }>();
@@ -134,10 +135,6 @@ const projectPermissions = computed(
 const canCreateWorkflow = computed(
 	() => globalPermissions.value.create ?? projectPermissions.value.create,
 );
-
-const showFolders = computed(() => {
-	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
-});
 
 const showCardBreadcrumbs = computed(() => {
 	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
@@ -197,9 +194,9 @@ const actions = computed(() => {
 	// TODO: add test to verify that moving a readonly card is not possible
 	if (
 		!props.readOnly &&
+		props.areFoldersEnabled &&
 		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
-		showFolders.value &&
 		route.name !== VIEWS.SHARED_WORKFLOWS
 	) {
 		items.push({
@@ -352,6 +349,7 @@ async function onAction(action: string) {
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
+				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:

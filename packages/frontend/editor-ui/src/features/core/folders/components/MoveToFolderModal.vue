@@ -46,6 +46,7 @@ type Props = {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		};
 		workflowListEventBus: EventBus;
 	};
@@ -317,7 +318,15 @@ const isFolderSelectable = computed(() => {
 	return isOwnPersonalProject.value || !isPersonalProject.value;
 });
 
+// If there is not current project (e.g. on the Overview page), default to the resource's home project
+const currentResourceProjectId = computed(() => {
+	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
+});
+
 onMounted(async () => {
+	if (!projectsStore.isTeamProjectFeatureEnabled) {
+		selectedProject.value = projectsStore.personalProject;
+	}
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
 			workflowsStore.fetchWorkflow(props.data.resource.id),
@@ -407,7 +416,7 @@ onMounted(async () => {
 						ref="moveToFolderDropdown"
 						:selected-location="selectedFolder"
 						:selected-project-id="selectedProject.id"
-						:current-project-id="projectsStore.currentProject?.id"
+						:current-project-id="currentResourceProjectId"
 						:current-folder-id="currentFolder?.id"
 						:parent-folder-id="props.data.resource.parentFolderId"
 						:exclude-only-parent="props.data.resourceType === 'workflow'"
