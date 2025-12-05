@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
-import { N8nButton, N8nTooltip, N8nInfoTip } from '@n8n/design-system';
+import { N8nButton, N8nTooltip, N8nInfoTip, N8nInput } from '@n8n/design-system';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
@@ -52,7 +52,9 @@ const handleCopy = async (value: string) => {
 			:class="$style['parameter-value']"
 			data-test-id="connection-parameter-value"
 		>
-			<code>{{ props.value }}</code>
+			<div :class="$style['input-wrapper']">
+				<N8nInput v-model="props.value" type="text" :readonly="true" />
+			</div>
 			<div :class="$style['copy-button-wrapper']">
 				<slot name="customActions" />
 				<N8nTooltip
@@ -113,13 +115,25 @@ const handleCopy = async (value: string) => {
 	border-radius: var(--radius);
 	overflow: hidden;
 
-	code {
+	.input-wrapper {
+		flex: 1;
+		min-width: 0;
 		display: flex;
 		align-items: center;
-		text-overflow: ellipsis;
-		overflow: hidden;
-		white-space: pre;
-		padding: var(--spacing--2xs);
+	}
+
+	:global(.n8n-input) {
+		flex: 1;
+		align-items: center;
+
+		input {
+			font-family: monospace;
+			font-size: var(--font-size--2xs);
+			border: none;
+			color: var(--color--text);
+			min-height: var(--spacing--md);
+			height: var(--spacing--md);
+		}
 	}
 
 	button {
