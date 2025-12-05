@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../../fixtures/base';
 
 const EDIT_FIELDS_NAMES = [
 	'Edit Fields0',
