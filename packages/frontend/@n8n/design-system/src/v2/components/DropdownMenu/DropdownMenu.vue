@@ -133,6 +133,20 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	}
 };
 
+const handleContentKeydown = (event: KeyboardEvent) => {
+	if (!props.searchable) return;
+
+	if (event.key === 'ArrowUp') {
+		const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+		const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
+		// If the first menu item is focused, move focus to search input
+		if (firstItem && document.activeElement === firstItem) {
+			event.preventDefault();
+			searchInputRef.value?.focus();
+		}
+	}
+};
+
 const handleItemSelect = (value: T) => {
 	emit('select', value);
 };
@@ -171,6 +185,7 @@ defineExpose({ open, close });
 				:align="placementParts.align"
 				:side-offset="5"
 				:style="contentStyle"
+				@keydown="handleContentKeydown"
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
