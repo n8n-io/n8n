@@ -93,6 +93,18 @@ export const TEMPLATE_SETUP_EXPERIENCE = {
 	variant: 'variant',
 };
 
+export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
+	name: '056_ai_builder_template_examples',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
+	name: '057_ai_builder_multi_agent',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -102,6 +114,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
+	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TIME_SAVED_NODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 ];

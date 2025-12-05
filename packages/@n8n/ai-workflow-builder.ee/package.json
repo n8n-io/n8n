@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.32.0",
+  "version": "0.33.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -50,7 +50,7 @@
   "dependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/langgraph": "0.2.74",
+    "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
     "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
