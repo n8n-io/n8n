@@ -9,6 +9,7 @@ import * as path from 'path';
 import pc from 'picocolors';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import {
 	evaluateWorkflowPairwise,
 	type PairwiseEvaluationResult,
@@ -344,17 +345,18 @@ async function runSingleGeneration(
 	inputs: PairwiseDatasetInput,
 	generationIndex: number,
 	log: EvalLogger,
+	featureFlags?: BuilderFeatureFlags,
 	tracer?: LangChainTracer,
 ): Promise<GenerationResult> {
 	const startTime = Date.now();
 	const runId = generateRunId();
 
 	// Create dedicated agent for this generation
-	const agent = createAgent(parsedNodeTypes, llm, tracer);
+	const agent = createAgent(parsedNodeTypes, llm, tracer, featureFlags);
 
 	// Generate workflow
 	await consumeGenerator(
-		agent.chat(getChatPayload(inputs.prompt, runId), `pairwise-gen-${generationIndex}`),
+		agent.chat(getChatPayload(inputs.prompt, runId, featureFlags), `pairwise-gen-${generationIndex}`),
 	);
 
 	const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
@@ -418,6 +420,7 @@ function createPairwiseWorkflowGenerator(
 	numGenerations: number,
 	log: EvalLogger,
 	artifactSaver: ArtifactSaver | null,
+	featureFlags?: BuilderFeatureFlags,
 	tracer?: LangChainTracer,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
@@ -438,7 +441,7 @@ function createPairwiseWorkflowGenerator(
 		// Run all generations in parallel
 		const generationResults = await Promise.all(
 			Array.from({ length: numGenerations }, async (_, i) => {
-				return await runSingleGeneration(parsedNodeTypes, llm, numJudges, inputs, i, log, tracer);
+				return await runSingleGeneration(parsedNodeTypes, llm, numJudges, inputs, i, log, featureFlags, tracer);
 			}),
 		);
 
@@ -580,6 +583,18 @@ export interface PairwiseEvaluationOptions {
 	outputDir?: string;
 	concurrency?: number;
 	maxExamples?: number;
+	featureFlags?: BuilderFeatureFlags;
+}
+
+/** Log enabled feature flags */
+function logFeatureFlags(featureFlags?: BuilderFeatureFlags): void {
+	if (!featureFlags) return;
+	const enabledFlags = Object.entries(featureFlags)
+		.filter(([, v]) => v === true)
+		.map(([k]) => k);
+	if (enabledFlags.length > 0) {
+		console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+	}
 }
 
 /** Log configuration for pairwise evaluation */
@@ -622,6 +637,7 @@ export async function runPairwiseLangsmithEvaluation(
 		outputDir,
 		concurrency = 5,
 		maxExamples,
+		featureFlags,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -639,6 +655,8 @@ export async function runPairwiseLangsmithEvaluation(
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
 	}
+
+	logFeatureFlags(featureFlags);
 
 	if (!process.env.LANGSMITH_API_KEY) {
 		log.error('✗ LANGSMITH_API_KEY environment variable not set');
@@ -709,6 +727,7 @@ export async function runPairwiseLangsmithEvaluation(
 			numGenerations,
 			log,
 			artifactSaver,
+			featureFlags,
 			tracer,
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
@@ -755,6 +774,7 @@ export interface LocalPairwiseOptions {
 	numGenerations?: number;
 	verbose?: boolean;
 	outputDir?: string;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 /** Log configuration for local pairwise evaluation */
@@ -791,6 +811,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
 		outputDir,
+		featureFlags,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -816,8 +837,8 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 			Array.from({ length: numGenerations }, async (_, genIndex) => {
 				const genStartTime = Date.now();
 				const runId = generateRunId();
-				const agent = createAgent(parsedNodeTypes, llm);
-				await consumeGenerator(agent.chat(getChatPayload(prompt, runId), `local-gen-${genIndex}`));
+				const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
+				await consumeGenerator(agent.chat(getChatPayload(prompt, runId, featureFlags), `local-gen-${genIndex}`));
 				const state = await agent.getState(runId, `local-gen-${genIndex}`);
 
 				if (!state.values || !isWorkflowStateValues(state.values)) {

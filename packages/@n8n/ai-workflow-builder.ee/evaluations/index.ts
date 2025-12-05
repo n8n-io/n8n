@@ -1,3 +1,5 @@
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+
 import { runCliEvaluation } from './cli/runner.js';
 import {
 	runLocalPairwiseEvaluation,
@@ -60,6 +62,9 @@ async function main(): Promise<void> {
 		console.warn('CSV-driven evaluations are only supported in CLI mode. Ignoring --prompts-csv.');
 	}
 
+	// Parse feature flags from environment variables or CLI arguments
+	const featureFlags = parseFeatureFlags();
+
 	if (usePairwiseEval) {
 		if (args.prompt) {
 			// Local mode - run single evaluation without LangSmith
@@ -70,6 +75,7 @@ async function main(): Promise<void> {
 				numGenerations: args.numGenerations,
 				verbose: args.verbose,
 				outputDir: args.outputDir,
+				featureFlags,
 			});
 		} else {
 			// LangSmith mode
@@ -83,10 +89,11 @@ async function main(): Promise<void> {
 				outputDir: args.outputDir,
 				concurrency: args.concurrency,
 				maxExamples: args.maxExamples || undefined,
+				featureFlags,
 			});
 		}
 	} else if (useLangsmith) {
-		await runLangsmithEvaluation(args.repetitions);
+		await runLangsmithEvaluation(args.repetitions, featureFlags);
 	} else {
 		const csvTestCases = args.promptsCsvPath
 			? loadTestCasesFromCsv(args.promptsCsvPath)
@@ -95,6 +102,7 @@ async function main(): Promise<void> {
 			testCases: csvTestCases,
 			testCaseFilter: args.testCaseId,
 			repetitions: args.repetitions,
+			featureFlags,
 		});
 	}
 }
@@ -116,6 +124,36 @@ function getFlagValue(flag: string): string | undefined {
 			throw new Error(`Flag ${flag} requires a value`);
 		}
 		return value;
+	}
+
+	return undefined;
+}
+
+/**
+ * Parse feature flags from environment variables or CLI arguments.
+ * Environment variables:
+ *   - EVAL_FEATURE_TEMPLATE_EXAMPLES=true - Enable template examples feature
+ *   - EVAL_FEATURE_MULTI_AGENT=true - Enable multi-agent feature
+ * CLI arguments:
+ *   - --template-examples - Enable template examples feature
+ *   - --multi-agent - Enable multi-agent feature
+ */
+function parseFeatureFlags(): BuilderFeatureFlags | undefined {
+	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
+	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
+
+	const templateExamplesFromCli = process.argv.includes('--template-examples');
+	const multiAgentFromCli = process.argv.includes('--multi-agent');
+
+	const templateExamples = templateExamplesFromEnv || templateExamplesFromCli;
+	const multiAgent = multiAgentFromEnv || multiAgentFromCli;
+
+	// Only return feature flags object if at least one flag is set
+	if (templateExamples || multiAgent) {
+		return {
+			templateExamples: templateExamples || undefined,
+			multiAgent: multiAgent || undefined,
+		};
 	}
 
 	return undefined;
