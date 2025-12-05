@@ -8,7 +8,6 @@ import {
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
@@ -103,8 +102,8 @@ export function useWorkflowSaving({
 
 				return;
 			case MODAL_CLOSE:
-				// for new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				// For new workflows that are not saved yet, don't do anything, only close modal
+				if (!workflowsStore.isNewWorkflow) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -192,7 +191,9 @@ export function useWorkflowSaving({
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
-		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
+		// Check if workflow needs to be saved as new (doesn't exist in store yet)
+		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		if (!currentWorkflow || !existingWorkflow?.id) {
 			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
 		}
 
@@ -419,7 +420,8 @@ export function useWorkflowSaving({
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
 			workflowState.setWorkflowTagIds(tagIds);
 
-			const templateId = router.currentRoute.value.query.templateId;
+			const route = router.currentRoute.value;
+			const templateId = route.query.templateId;
 			if (templateId) {
 				telemetry.track('User saved new workflow from template', {
 					template_id: tryToParseNumber(String(templateId)),
@@ -430,9 +432,9 @@ export function useWorkflowSaving({
 
 			if (redirect) {
 				await router.replace({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
-					query: { action: 'workflowSave' },
+					name: route.name,
+					params: { ...route.params },
+					query: { ...route.query, new: undefined },
 				});
 			}
 

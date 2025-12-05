@@ -46,8 +46,9 @@ describe('router', () => {
 	test.each([
 		['/', VIEWS.WORKFLOWS],
 		['/workflows', VIEWS.WORKFLOWS],
-		['/workflow', VIEWS.NEW_WORKFLOW],
-		['/workflow/new', VIEWS.NEW_WORKFLOW],
+		// /workflow and /workflow/new now redirect to VIEWS.WORKFLOW with a generated ID
+		['/workflow', VIEWS.WORKFLOW],
+		['/workflow/new', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw/myNodeId', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw/398-1ewq213', VIEWS.WORKFLOW],

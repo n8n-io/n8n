@@ -60,7 +60,7 @@ test.describe('Template credentials setup @db:reset', () => {
 		await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
 		await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 
-		await expect(n8n.page).toHaveURL(/\/workflow\/new\?templateId=/);
+		await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 		await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
 	});
@@ -69,7 +69,7 @@ test.describe('Template credentials setup @db:reset', () => {
 		await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
 		await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 
-		await expect(n8n.page).toHaveURL(/\/workflow\/new\?templateId=/);
+		await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 
 		await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();

@@ -2,7 +2,7 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/app/constants';
+import { EVALUATIONS_DOCS_URL } from '@/app/constants';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -10,6 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useRoute } from 'vue-router';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
@@ -27,6 +28,7 @@ const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
+const route = useRoute();
 const sourceControlStore = useSourceControlStore();
 
 const { initializeWorkspace } = useCanvasOperations();
@@ -37,6 +39,10 @@ const evaluationsLicensed = computed(() => {
 
 const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
+});
+
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
 });
 
 const runs = computed(() => {
@@ -85,9 +91,9 @@ const { isReady } = useAsyncState(async () => {
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
 	if (isAlreadyInitialized) return;
 
-	if (workflowId && workflowId !== 'new') {
+	if (!isNewWorkflowRoute.value) {
 		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (!workflowsStore.workflow.id) {
 			try {
 				const data = await workflowsStore.fetchWorkflow(workflowId);
 
