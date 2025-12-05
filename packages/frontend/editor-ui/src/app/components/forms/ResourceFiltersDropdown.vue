@@ -110,8 +110,8 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-	<N8nPopover trigger="click" width="304" size="large">
-		<template #reference>
+	<N8nPopover width="304px" :content-class="$style['popover-content']">
+		<template #trigger>
 			<N8nButton
 				icon="funnel"
 				type="tertiary"
@@ -136,33 +136,35 @@ onBeforeMount(async () => {
 				</span>
 			</N8nButton>
 		</template>
-		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
-			<slot :filters="modelValue" :set-key-value="setKeyValue" />
-			<EnterpriseEdition
-				v-if="shareable && projectsStore.isProjectHome"
-				:features="[EnterpriseEditionFeature.Sharing]"
-			>
-				<N8nInputLabel
-					:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<ProjectSharing
-					v-model="selectedProject"
-					:projects="projectsStore.availableProjects"
-					:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
-					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
-					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
-				/>
-			</EnterpriseEdition>
-			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
-				<N8nLink @click="resetFilters">
-					{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
-				</N8nLink>
+		<template #content>
+			<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
+				<slot :filters="modelValue" :set-key-value="setKeyValue" />
+				<EnterpriseEdition
+					v-if="shareable && projectsStore.isProjectHome"
+					:features="[EnterpriseEditionFeature.Sharing]"
+				>
+					<N8nInputLabel
+						:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
+						:bold="false"
+						size="small"
+						color="text-base"
+						class="mb-3xs"
+					/>
+					<ProjectSharing
+						v-model="selectedProject"
+						:projects="projectsStore.availableProjects"
+						:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+						:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+						@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
+					/>
+				</EnterpriseEdition>
+				<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
+					<N8nLink @click="resetFilters">
+						{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
+					</N8nLink>
+				</div>
 			</div>
-		</div>
+		</template>
 	</N8nPopover>
 </template>
 
@@ -206,5 +208,9 @@ onBeforeMount(async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.popover-content {
+	padding: var(--spacing--sm);
 }
 </style>
