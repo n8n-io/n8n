@@ -23,11 +23,11 @@ const i18n = useI18n();
 					<tbody>
 						<tr>
 							<th>Total (os.totalmem)</th>
-							<td>{{ memAsGb(worker.host.memory.total) }}GB</td>
+							<td>{{ memAsGb(props.worker.host.memory.total) }}GB</td>
 						</tr>
 						<tr>
 							<th>Free (os.freemem)</th>
-							<td>{{ memAsGb(worker.host.memory.free) }}GB</td>
+							<td>{{ memAsGb(props.worker.host.memory.free) }}GB</td>
 						</tr>
 					</tbody>
 				</table>
@@ -37,23 +37,23 @@ const i18n = useI18n();
 					<tbody>
 						<tr v-if="worker.isInContainer">
 							<th>Constraint: (process.constrainedMemory)</th>
-							<td>{{ memAsMb(worker.process.memory.constraint) }}MB</td>
+							<td>{{ memAsMb(props.worker.process.memory.constraint) }}MB</td>
 						</tr>
 						<tr>
 							<th>Available: (process.availableMemory)</th>
-							<td>{{ memAsMb(worker.process.memory.available) }}MB</td>
+							<td>{{ memAsMb(props.worker.process.memory.available) }}MB</td>
 						</tr>
 						<tr>
 							<th>RSS: (process.memoryUsage().rss)</th>
-							<td>{{ memAsMb(worker.process.memory.rss) }}MB</td>
+							<td>{{ memAsMb(props.worker.process.memory.rss) }}MB</td>
 						</tr>
 						<tr>
 							<th>Heap total: (process.memoryUsage().heapTotal)</th>
-							<td>{{ memAsMb(worker.process.memory.heapTotal) }}MB</td>
+							<td>{{ memAsMb(props.worker.process.memory.heapTotal) }}MB</td>
 						</tr>
 						<tr>
 							<th>Heap used: (process.memoryUsage().heapUsed)</th>
-							<td>{{ memAsMb(worker.process.memory.heapUsed) }}MB</td>
+							<td>{{ memAsMb(props.worker.process.memory.heapUsed) }}MB</td>
 						</tr>
 					</tbody>
 				</table>
