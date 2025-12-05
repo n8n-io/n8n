@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';

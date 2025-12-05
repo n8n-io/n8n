@@ -5,7 +5,7 @@ import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/vue';
+import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
 import merge from 'lodash/merge';
 import { computed, nextTick, ref } from 'vue';
 import Assignment from './Assignment.vue';
