@@ -56,8 +56,8 @@ export class WordpressApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
-			url: '/users',
+			baseURL: '={{$credentials?.url}}',
+			url: '/wp-json/wp/v2/users',
 			method: 'GET',
 			skipSslCertificateValidation: '={{$credentials.allowUnauthorizedCerts}}',
 		},
