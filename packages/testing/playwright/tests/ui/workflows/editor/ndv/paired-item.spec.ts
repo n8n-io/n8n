@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('NDV Paired Items', () => {
 	test('maps paired input and output items', async ({ n8n }) => {
