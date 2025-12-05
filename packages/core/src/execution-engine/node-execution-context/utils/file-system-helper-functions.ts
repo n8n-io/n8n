@@ -1,4 +1,5 @@
 import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
+import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -8,6 +9,7 @@ import {
 	writeFile as fsWriteFile,
 	realpath as fsRealpath,
 } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 
 import {
@@ -15,21 +17,21 @@ import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
-	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
 const getAllowedPaths = () => {
-	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
-	if (!restrictFileAccessTo) {
-		return [];
-	}
+	const { restrictFileAccessTo } = Container.get(SecurityConfig);
+	if (restrictFileAccessTo === '') return [];
+
 	const allowedPaths = restrictFileAccessTo
 		.split(';')
 		.map((path) => path.trim())
-		.filter((path) => path);
+		.filter((path) => path)
+		.map((path) => (path.startsWith('~') ? path.replace('~', homedir()) : path));
+
 	return allowedPaths;
 };
 
@@ -99,6 +101,8 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		}
 		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
+
+	isFilePathBlocked,
 });
 
 /**

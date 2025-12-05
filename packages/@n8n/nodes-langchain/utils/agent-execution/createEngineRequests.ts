@@ -1,4 +1,4 @@
-import type { DynamicStructuredTool, Tool } from 'langchain/tools';
+import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
 
@@ -39,6 +39,28 @@ export async function createEngineRequests(
 				? { ...toolCall.toolInput, tool: toolCall.tool }
 				: toolCall.toolInput;
 
+			// Extract thought_signature from the AIMessage in messageLog (for Gemini 3)
+			let thoughtSignature: string | undefined;
+			if (toolCall.messageLog && Array.isArray(toolCall.messageLog)) {
+				for (const message of toolCall.messageLog) {
+					// Check if message has content that could contain thought_signature
+					if (message && typeof message === 'object' && 'content' in message) {
+						const content = message.content;
+						// Content can be string or array of content blocks
+						if (Array.isArray(content)) {
+							// Look for thought_signature in content blocks
+							for (const block of content) {
+								if (block && typeof block === 'object' && 'thoughtSignature' in block) {
+									thoughtSignature = block.thoughtSignature as string;
+									break;
+								}
+							}
+						}
+						if (thoughtSignature) break;
+					}
+				}
+			}
+
 			return {
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName,
@@ -47,6 +69,7 @@ export async function createEngineRequests(
 				id: toolCall.toolCallId,
 				metadata: {
 					itemIndex,
+					...(thoughtSignature && { thoughtSignature }),
 				},
 			};
 		})

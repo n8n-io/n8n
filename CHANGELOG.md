@@ -1,3 +1,52 @@
+# [2.0.0-rc.3](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.2...n8n@2.0.0-rc.3) (2025-12-04)
+
+
+### Bug Fixes
+
+* **core:** Address review feedback for sub-workflow wait fix ([#22745](https://github.com/n8n-io/n8n/issues/22745)) ([ce64032](https://github.com/n8n-io/n8n/commit/ce6403262badd93ccde1a254f71631adc2176886))
+
+
+### Features
+
+* **editor:** Improve node component visual states ([#20242](https://github.com/n8n-io/n8n/issues/20242)) ([3fc1c56](https://github.com/n8n-io/n8n/commit/3fc1c566a468509c758bd0800b30f3a47d981b4c))
+
+
+
+# [2.0.0-rc.2](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.1...n8n@2.0.0-rc.2) (2025-12-04)
+
+
+### Bug Fixes
+
+* **core:** Prevent execution data from being overwritten on manual workflow resume ([#22665](https://github.com/n8n-io/n8n/issues/22665)) ([f603bc8](https://github.com/n8n-io/n8n/commit/f603bc891f68d3779b4a8efaf667311afe38f2c9))
+
+
+
+# [2.0.0-rc.1](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.0...n8n@2.0.0-rc.1) (2025-12-04)
+
+
+### Bug Fixes
+
+* **core:** Make sub-workflows with waits return correct data to parents ([#22611](https://github.com/n8n-io/n8n/issues/22611)) ([14205dc](https://github.com/n8n-io/n8n/commit/14205dc0c6ae15b1329e46584c6b472100fe0ad5))
+
+
+### Features
+
+* **core:** Block access to env in code and expressions by default ([#22643](https://github.com/n8n-io/n8n/issues/22643)) ([0ffd760](https://github.com/n8n-io/n8n/commit/0ffd76093c2e9b62098e14dc7e402f727e14e027))
+* **core:** Introduce native Python code tool for AI agent ([#22658](https://github.com/n8n-io/n8n/issues/22658)) ([b1bc778](https://github.com/n8n-io/n8n/commit/b1bc7786d860d0b9e02fbda3604a979ed8d39f3d))
+* **editor:** Sidebar redesign ([#22395](https://github.com/n8n-io/n8n/issues/22395)) ([0ba2043](https://github.com/n8n-io/n8n/commit/0ba2043047dadfdccf96b30f5653886430d7eb54))
+
+
+
+# [2.0.0-rc.0](https://github.com/n8n-io/n8n/compare/n8n@1.122.0...n8n@2.0.0-rc.0) (2025-12-02)
+
+
+### Bug Fixes
+
+
+### Features
+
+
+
 # [1.122.0](https://github.com/n8n-io/n8n/compare/n8n@1.121.0...n8n@1.122.0) (2025-11-24)
 
 

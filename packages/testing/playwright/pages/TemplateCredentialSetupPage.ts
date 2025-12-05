@@ -33,6 +33,20 @@ export class TemplateCredentialSetupPage extends BasePage {
 		return this.page.getByTestId('continue-button');
 	}
 
+	getCanvasSetupButton(): Locator {
+		return this.page.getByTestId('setup-credentials-button');
+	}
+
+	getCanvasCredentialModal(): Locator {
+		return this.page.getByTestId('setup-workflow-credentials-modal');
+	}
+
+	getSetupCredentialModalSteps(): Locator {
+		return this.page
+			.getByTestId('setup-workflow-credentials-modal')
+			.getByTestId('setup-credentials-form-step');
+	}
+
 	getCreateCredentialButton(appName: string): Locator {
 		return this.page.getByRole('button', { name: `Create new ${appName} credential` });
 	}

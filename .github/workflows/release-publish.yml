@@ -34,12 +34,23 @@ jobs:
       NPM_CONFIG_PROVENANCE: true
     outputs:
       release: ${{ steps.set-release.outputs.release }}
+      release_type: ${{ steps.set-release.outputs.release_type }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set release version in env
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
+
+      - name: Determine release type
+        id: release-type
+        run: |
+          VERSION="${{ env.RELEASE }}"
+          if [[ "$VERSION" == *"-rc."* ]]; then
+            echo "type=rc" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=stable" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-github
@@ -57,7 +68,7 @@ jobs:
           node .github/scripts/trim-fe-packageJson.js
           node .github/scripts/ensure-provenance-fields.mjs
           cp README.md packages/cli/README.md
-          sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
+          sed -i "s/default: 'dev'/default: '${{ steps.release-type.outputs.type }}'/g" packages/cli/dist/config/schema.js
 
       - name: Publish n8n to NPM with rc tag
         env:
@@ -74,7 +85,9 @@ jobs:
         continue-on-error: true
 
       - id: set-release
-        run: echo "release=${{ env.RELEASE }}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "release=${{ env.RELEASE }}" >> "$GITHUB_OUTPUT"
+          echo "release_type=${{ steps.release-type.outputs.type }}" >> "$GITHUB_OUTPUT"
 
   publish-to-docker-hub:
     name: Publish to DockerHub
@@ -82,7 +95,7 @@ jobs:
     uses: ./.github/workflows/docker-build-push.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
-      release_type: stable
+      release_type: ${{ needs.publish-to-npm.outputs.release_type }}
     secrets: inherit
 
   create-github-release:
@@ -158,7 +171,9 @@ jobs:
   trigger-release-note:
     name: Trigger a release note
     needs: [publish-to-npm, create-github-release]
-    if: github.event.pull_request.merged == true
+    if: |
+      github.event.pull_request.merged == true &&
+      !contains(needs.publish-to-npm.outputs.release, '-rc.')
     runs-on: ubuntu-latest
     steps:
       - name: Trigger a release note

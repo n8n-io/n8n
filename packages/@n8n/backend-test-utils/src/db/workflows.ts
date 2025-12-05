@@ -6,6 +6,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -284,33 +285,15 @@ export async function createActiveWorkflow(
 	await setActiveVersion(workflow.id, workflow.versionId);
 
 	workflow.activeVersionId = workflow.versionId;
-	return workflow;
-}
 
-/**
- * Create a workflow with a specific active version.
- * This simulates a workflow where the active version differs from the current version.
- * @param activeVersionId the version ID to set as active
- * @param attributes workflow attributes
- * @param user user to assign the workflow to
- */
-export async function createWorkflowWithActiveVersion(
-	activeVersionId: string,
-	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
-) {
-	const workflow = await createWorkflowWithTriggerAndHistory({ active: true, ...attributes }, user);
+	if (userOrProject instanceof User) {
+		await Container.get(WorkflowPublishHistoryRepository).save({
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			event: 'activated',
+			userId: userOrProject.id,
+		});
+	}
 
-	await Container.get(WorkflowHistoryRepository).insert({
-		workflowId: workflow.id,
-		versionId: activeVersionId,
-		nodes: workflow.nodes,
-		connections: workflow.connections,
-		authors: user?.email ?? 'test@example.com',
-	});
-
-	await setActiveVersion(workflow.id, activeVersionId);
-
-	workflow.activeVersionId = activeVersionId;
 	return workflow;
 }

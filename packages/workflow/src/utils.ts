@@ -18,6 +18,21 @@ BigInt.prototype.toJSON = function () {
 	return this.toString();
 };
 
+/**
+ * Type guard for plain objects suitable for key-based traversal/serialization.
+ *
+ * Returns `true` for objects whose prototype is `Object.prototype` (object literals)
+ * or `null` (`Object.create(null)`), and `false` for arrays and non-plain objects
+ * such as `Date`, `Map`, `Set`, and class instances.
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
+	if (value === null || typeof value !== 'object') return false;
+	if (Array.isArray(value)) return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+
+	return Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null;
+}
+
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {

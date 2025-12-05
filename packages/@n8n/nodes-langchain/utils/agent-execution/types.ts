@@ -58,4 +58,6 @@ export type RequestResponseMetadata = {
 	previousRequests?: ToolCallData[];
 	/** Current iteration count (for max iterations enforcement) */
 	iterationCount?: number;
+	/** Thought signature for Gemini 3 tool calls */
+	thoughtSignature?: string;
 };

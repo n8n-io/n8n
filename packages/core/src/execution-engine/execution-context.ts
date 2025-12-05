@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import {
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
@@ -6,6 +7,8 @@ import {
 } from 'n8n-workflow';
 
 import { assertExecutionDataExists } from '@/utils/assertions';
+
+import { ExecutionContextService } from './execution-context.service';
 
 /**
  * Establishes the execution context for a workflow run.
@@ -169,28 +172,19 @@ export const establishExecutionContext = async (
 		return;
 	}
 
-	// TODO: the following comments will be implemented in future iterations
-	// to extract more context information based on the start node
-	// and the data that triggered the workflow execution.
-	// the comments are left here for now to provide more context on how
-	// this can be achieved.
+	// Call the execution context service to augment the context with any hook-based data
+	const executionContextService = Container.get(ExecutionContextService);
 
-	// startNodeParameters will hold the parameters of the start node
-	// this can be the settings for the different hooks to be executed
-	// for example to extract the bearer token from the start node data.
+	const { context, triggerItems } = await executionContextService.augmentExecutionContextWithHooks(
+		workflow,
+		startItem,
+		executionData.runtimeData,
+	);
 
-	// const startNodeParameters = startItem.node.parameters;
+	executionData.runtimeData = context;
 
-	// startNodeType holds the type of the start node
-
-	// const startNodeType = startItem.node.type;
-
-	// Main input data is an array of items, each item represents an event that triggers the workflow execution
-	// The 'main' selector selects the input name of the nodes, and the 0 index represents the runIndex,
-	// 0 being the first run of this node in the workflow.
-
-	// const mainInput = startItem.data["main"][0];
-
-	// based on startNodeParameters, startNodeType and mainInput we can now
-	// iterate over the different hooks to extract specific data for the runtime context
+	// If the trigger items were modified by hooks, update the start item accordingly
+	if (triggerItems) {
+		startItem.data['main'][0] = triggerItems;
+	}
 };

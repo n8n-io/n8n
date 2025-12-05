@@ -4,7 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import { createTestingPinia } from '@pinia/testing';
 import { defaultSettings } from '@/__tests__/defaults';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -181,17 +181,12 @@ describe('InsightsSummary', () => {
 				},
 			},
 			{
-				description: 'custom range ending today',
+				description: 'custom range',
 				getDates: () => {
-					const end = today(getLocalTimeZone());
-					return { start: end.subtract({ days: 15 }), end };
-				},
-			},
-			{
-				description: 'custom range not ending today',
-				getDates: () => {
-					const end = today(getLocalTimeZone()).subtract({ days: 2 });
-					return { start: end.subtract({ days: 7 }), end };
+					return {
+						start: new CalendarDate(2025, 9, 6),
+						end: new CalendarDate(2025, 9, 13),
+					};
 				},
 			},
 		])('should render with $description', ({ getDates }) => {
