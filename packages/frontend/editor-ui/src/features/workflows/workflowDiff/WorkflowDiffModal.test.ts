@@ -151,6 +151,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -167,6 +168,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -185,6 +187,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -201,6 +204,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -222,6 +226,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -238,6 +243,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -266,6 +272,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -280,6 +287,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -295,6 +303,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'pull',
 				},
 			},
@@ -305,6 +314,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -350,6 +360,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -378,6 +389,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -413,6 +425,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'new-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'pull',
 					},
 				},
@@ -433,6 +446,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'missing-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -450,6 +464,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -466,6 +481,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'pull',
 					},
 				},
@@ -488,6 +504,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -509,6 +526,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -529,6 +547,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -548,6 +567,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -571,6 +591,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -590,6 +611,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -607,6 +629,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -623,6 +646,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -650,6 +674,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -676,6 +701,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -688,6 +714,44 @@ describe('WorkflowDiffModal', () => {
 			expect(mockRouterReplace).toHaveBeenCalledTimes(1);
 			expect(mockRouterReplace).toHaveBeenCalledWith({
 				query: { other: 'param' },
+			});
+		});
+	});
+
+	describe('remote workflow loading', () => {
+		it('should not call getRemoteWorkflow when direction is push and workflowStatus is created', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						workflowStatus: 'created',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
+			});
+
+			expect(sourceControlStore.getRemoteWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should call getRemoteWorkflow when direction is push and workflowStatus is not created', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalledWith('test-workflow-id');
 			});
 		});
 	});
