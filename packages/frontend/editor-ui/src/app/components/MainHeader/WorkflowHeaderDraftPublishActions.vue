@@ -89,6 +89,10 @@ const showPublishIndicator = computed(() => {
 		return false;
 	}
 
+	if (workflowsStore.nodesIssuesExist) {
+		return false;
+	}
+
 	return (
 		(workflowsStore.workflow.versionId &&
 			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||

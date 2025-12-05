@@ -253,16 +253,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	});
 
-	const nodesWithIssuesCount = computed(
-		() =>
-			workflow.value.nodes.filter((node) => {
-				const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-				const isConnected =
-					Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-					Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
-				return !node.disabled && isConnected && nodeHasIssues;
-			}).length,
+	const nodesWithIssues = computed(() =>
+		workflow.value.nodes.filter((node) => {
+			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
+			const isConnected =
+				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+			return !node.disabled && isConnected && nodeHasIssues;
+		}),
 	);
+
+	const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
 
 	const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
 
@@ -1973,6 +1974,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		canvasNames,
 		nodesByName,
 		nodesWithIssuesCount,
+		nodesWithIssues,
 		nodesIssuesExist,
 		workflowValidationIssues,
 		formatIssueMessage,

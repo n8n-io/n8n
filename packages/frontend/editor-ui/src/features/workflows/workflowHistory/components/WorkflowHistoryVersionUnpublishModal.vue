@@ -5,7 +5,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 
-import { N8nButton, N8nCallout, N8nHeading } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 
 export type WorkflowHistoryVersionUnpublishModalEventBusEvents = {
 	unpublish: undefined;
@@ -56,9 +56,16 @@ onBeforeUnmount(() => {
 			</N8nHeading>
 		</template>
 		<template #content>
-			<N8nCallout theme="warning" icon="triangle-alert">
-				{{ i18n.baseText('workflowHistory.action.unpublish.modal.description') }}
-			</N8nCallout>
+			<div :class="$style.content">
+				<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
+				<N8nText size="medium">
+					{{
+						i18n.baseText('workflowHistory.action.unpublish.modal.description', {
+							interpolate: { versionName: props.data.versionName || '' },
+						})
+					}}
+				</N8nText>
+			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
@@ -82,5 +89,17 @@ onBeforeUnmount(() => {
 	button {
 		margin-left: var(--spacing--2xs);
 	}
+}
+
+.content {
+	display: flex;
+	flex-direction: row;
+	align-items: start;
+	gap: var(--spacing--xs);
+}
+
+.icon {
+	flex-shrink: 0;
+	margin-top: var(--spacing--4xs);
 }
 </style>
