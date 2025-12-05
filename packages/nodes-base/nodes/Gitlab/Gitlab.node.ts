@@ -492,21 +492,21 @@ export class Gitlab implements INodeType {
 					},
 					{
 						displayName: 'State',
-						name: 'state',
+						name: 'state_event',
 						type: 'options',
 						options: [
 							{
 								name: 'Closed',
-								value: 'closed',
+								value: 'close',
 								description: 'Set the state to "closed"',
 							},
 							{
 								name: 'Open',
-								value: 'open',
+								value: 'reopen',
 								description: 'Set the state to "open"',
 							},
 						],
-						default: 'open',
+						default: 'reopen',
 						description: 'The state to set',
 					},
 					{
