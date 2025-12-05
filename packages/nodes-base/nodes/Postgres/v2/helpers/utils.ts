@@ -254,7 +254,7 @@ export function configureQueryRunner(
 		if (queryBatching === 'single') {
 			try {
 				const concatQueries = pgp.helpers.concat(queries);
-				this.nodeDebugLogger(`Executing queries: \n${concatQueries}\n`);
+				this.nodeLogger.debug(`Executing queries: \n${concatQueries}\n`, { tag: 'Postgres Query' });
 				returnData = (await db.multi(concatQueries))
 					.map((result, i) => {
 						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
@@ -299,7 +299,7 @@ export function configureQueryRunner(
 					try {
 						const query = queries[i].query;
 						const values = queries[i].values;
-						this.nodeDebugLogger(`Executing query: \n${query}\n`);
+						this.nodeLogger.debug(`Executing query: \n${query}\n`, { tag: 'Postgres Query' });
 						let transactionResults;
 						if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await transaction.any(query, values);

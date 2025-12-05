@@ -362,7 +362,7 @@ function createHttpRequestLogHandler(
 					secrets = getSecrets(properties, credentials);
 				}
 				const sanitizedRequestOptions = sanitizeUiMessage(requestOptions, authKeys, secrets);
-				ctx.nodeDebugLogger(sanitizedRequestOptions, 'HTTP Request');
+				ctx.nodeLogger.debug(sanitizedRequestOptions, { tag: 'HTTP Request' });
 			} catch (e) {}
 		}
 	};

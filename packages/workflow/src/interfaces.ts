@@ -940,7 +940,7 @@ export interface FunctionsBase {
 
 	getExecutionContext: () => IExecutionContext | undefined;
 
-	nodeDebugLogger(message: any, tag?: string): void;
+	nodeLogger: INodeLogger;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -2691,7 +2691,7 @@ export interface IWorkflowExecuteAdditionalData {
 	restApiUrl: string;
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
-	sendDataToUI?: (type: string, data: IDataObject | IDataObject[], uselogger?: boolean) => void;
+	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
 	formWaitingBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
@@ -2804,11 +2804,20 @@ export type LogMetadata = {
 	file?: string;
 	function?: string;
 };
+export type NodeLogMetadata = {
+	[key: string]: unknown;
+	tag?: string;
+};
 export type Logger = Record<
 	Exclude<LogLevel, 'silent'>,
 	(message: string, metadata?: LogMetadata) => void
 >;
 export type LogLocationMetadata = Pick<LogMetadata, 'file' | 'function'>;
+
+export type INodeLogger = Record<
+	Exclude<LogLevel, 'silent'>,
+	(message: string | object, metadata?: NodeLogMetadata) => void
+>;
 
 export interface IStatusCodeMessages {
 	[key: string]: string;

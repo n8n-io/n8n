@@ -3,6 +3,7 @@ export type SendConsoleMessage = {
 	data: {
 		source: string;
 		messages: unknown[];
+		level?: string;
 	};
 };
 

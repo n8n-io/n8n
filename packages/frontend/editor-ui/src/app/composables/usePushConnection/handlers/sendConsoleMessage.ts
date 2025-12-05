@@ -7,7 +7,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
  */
 export async function sendConsoleMessage({ data }: SendConsoleMessage) {
 	const logsStore = useLogsStore();
-	logsStore.addConsoleMessage(data.source, data.messages);
+	logsStore.addConsoleMessage(data.source, data.messages, data.level ?? 'info');
 
 	console.log(data.source, ...data.messages);
 }

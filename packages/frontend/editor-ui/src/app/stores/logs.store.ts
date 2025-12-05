@@ -21,6 +21,7 @@ export interface ConsoleMessage {
 	timestamp: number;
 	source: string;
 	messages: unknown[];
+	level: string;
 }
 
 export const useLogsStore = defineStore('logs', () => {
@@ -133,7 +134,7 @@ export const useLogsStore = defineStore('logs', () => {
 		chatSessionMessages.value.push(message);
 	}
 
-	function addConsoleMessage(source: string, messages: unknown[]) {
+	function addConsoleMessage(source: string, messages: unknown[], level: string) {
 		const match = source.match(/\[Node: "([^"]+)"/);
 		if (match) {
 			const nodeName = match[1];
@@ -145,6 +146,7 @@ export const useLogsStore = defineStore('logs', () => {
 				timestamp: Date.now(),
 				source,
 				messages,
+				level,
 			});
 		}
 	}
