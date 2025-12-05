@@ -39,10 +39,11 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElCheckbox, ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import { ElCheckbox, ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
+import Select from '../../v2/components/Select/Select.vue';
 import N8nPagination from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
@@ -509,18 +510,13 @@ const table = useVueTable({
 				@update:current-page="page = $event - 1"
 			>
 			</N8nPagination>
-			<div class="table-pagination__sizes">
-				<div class="table-pagination__sizes__label">Page size</div>
-				<ElSelect
-					v-model.number="itemsPerPage"
-					class="table-pagination__sizes__select"
-					size="small"
-					:teleported="false"
-					@update:model-value="handlePageSizeChange"
-				>
-					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
-				</ElSelect>
-			</div>
+			<Select
+				v-model="itemsPerPage"
+				:class="$style.pagination"
+				:items="pageSizes"
+				data-test-id="page-size-select"
+				@update:model-value="handlePageSizeChange"
+			/>
 		</div>
 	</div>
 </template>
@@ -665,29 +661,6 @@ th.loading-row {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-
-	&__sizes {
-		display: flex;
-
-		&__label {
-			color: var(--color--text);
-			background-color: var(--color--background--light-2);
-			border: 1px solid var(--color--foreground);
-			border-right: 0;
-			font-size: 12px;
-			display: flex;
-			align-items: center;
-			padding: 0 8px;
-			border-top-left-radius: var(--radius);
-			border-bottom-left-radius: var(--radius);
-		}
-
-		&__select {
-			--input--radius--top-left: 0;
-			--input--radius--bottom-left: 0;
-			width: 70px;
-		}
-	}
 }
 
 .resizer {
@@ -727,5 +700,11 @@ th:hover:not(:last-child) > .resizer {
 	&--center {
 		text-align: center;
 	}
+}
+</style>
+
+<style module>
+.pagination {
+	width: 65px;
 }
 </style>
