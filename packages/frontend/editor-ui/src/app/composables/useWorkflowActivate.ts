@@ -214,6 +214,7 @@ export function useWorkflowActivate() {
 					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
+			workflowsStore.setWorkflowInactive(workflowId);
 			return false;
 		} finally {
 			updatingWorkflowActivation.value = false;
