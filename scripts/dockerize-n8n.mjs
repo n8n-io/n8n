@@ -7,7 +7,8 @@
  * Override with IMAGE_BASE_NAME and IMAGE_TAG environment variables.
  */
 
-import { $, echo, fs, chalk, os } from 'zx';
+import { $, echo, fs, os } from 'zx';
+import chalk from 'chalk';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
