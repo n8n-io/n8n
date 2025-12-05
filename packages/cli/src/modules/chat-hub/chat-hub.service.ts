@@ -23,10 +23,12 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository, In } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	AGENT_LANGCHAIN_NODE_TYPE,
 	OperationalError,
 	ManualExecutionCancelledError,
 	type INodeCredentials,
@@ -104,6 +106,7 @@ export class ChatHubService {
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async getModels(
@@ -938,13 +941,21 @@ export class ChatHubService {
 			}
 
 			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-
 			if (!chatTrigger) {
 				continue;
 			}
 
 			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
 			if (!chatTriggerParams) {
+				continue;
+			}
+
+			const agentNodes = activeVersion.nodes?.filter(
+				(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
+			);
+
+			// Agents older than this can't do streaming
+			if (agentNodes.some((node) => node.typeVersion < 2.1)) {
 				continue;
 			}
 
@@ -1029,7 +1040,9 @@ export class ChatHubService {
 			previousMessageId,
 			tools,
 			attachments,
+			timeZone,
 		} = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const credentialId = this.getModelCredential(model, credentials);
 
@@ -1079,6 +1092,7 @@ export class ChatHubService {
 					message,
 					tools,
 					processedAttachments,
+					tz,
 					trx,
 				);
 			});
@@ -1111,16 +1125,22 @@ export class ChatHubService {
 		// Generate title for the session on receiving the first human message.
 		// This could be moved on a separate API call perhaps, maybe triggered after the first message is sent?
 		if (previousMessageId === null) {
-			await this.generateSessionTitle(user, sessionId, message, credentials, model).catch(
-				(error) => {
-					this.logger.error(`Title generation failed: ${error}`);
-				},
-			);
+			await this.generateSessionTitle(
+				user,
+				sessionId,
+				message,
+				processedAttachments,
+				credentials,
+				model,
+			).catch((error) => {
+				this.logger.error(`Title generation failed: ${error}`);
+			});
 		}
 	}
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
-		const { sessionId, editId, messageId, message, model, credentials } = payload;
+		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const session = await this.getChatSession(user, sessionId, trx);
@@ -1165,6 +1185,7 @@ export class ChatHubService {
 					message,
 					session.tools,
 					attachments,
+					tz,
 					trx,
 				);
 			}
@@ -1190,7 +1211,8 @@ export class ChatHubService {
 	}
 
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
-		const { sessionId, retryId, model, credentials } = payload;
+		const { sessionId, retryId, model, credentials, timeZone } = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const {
 			workflow: { workflowData, executionData },
@@ -1237,6 +1259,7 @@ export class ChatHubService {
 				message,
 				session.tools,
 				attachments,
+				tz,
 				trx,
 			);
 
@@ -1268,6 +1291,7 @@ export class ChatHubService {
 		message: string,
 		tools: INode[],
 		attachments: IBinaryData[],
+		timeZone: string,
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
@@ -1288,6 +1312,7 @@ export class ChatHubService {
 				history,
 				message,
 				attachments,
+				timeZone,
 				trx,
 			);
 		}
@@ -1302,6 +1327,7 @@ export class ChatHubService {
 			undefined,
 			tools,
 			attachments,
+			timeZone,
 			trx,
 		);
 	}
@@ -1316,6 +1342,7 @@ export class ChatHubService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		attachments: IBinaryData[],
+		timeZone: string,
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
@@ -1337,6 +1364,7 @@ export class ChatHubService {
 			model,
 			systemMessage,
 			tools,
+			timeZone,
 			trx,
 		);
 	}
@@ -1348,6 +1376,7 @@ export class ChatHubService {
 		history: ChatHubMessage[],
 		message: string,
 		attachments: IBinaryData[],
+		timeZone: string,
 		trx: EntityManager,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id);
@@ -1365,7 +1394,8 @@ export class ChatHubService {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
-		const systemMessage = agent.systemPrompt;
+		const systemMessage =
+			agent.systemPrompt + '\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
 
 		const model: ChatHubBaseLLMModel = {
 			provider: agent.provider,
@@ -1379,7 +1409,7 @@ export class ChatHubService {
 			},
 		};
 
-		const tools: INode[] = [];
+		const { tools } = agent;
 
 		return await this.prepareBaseChatWorkflow(
 			user,
@@ -1391,6 +1421,7 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			attachments,
+			timeZone,
 			trx,
 		);
 	}
@@ -1450,11 +1481,9 @@ export class ChatHubService {
 		});
 
 		const workflowData: IWorkflowBase = {
-			...workflowEntity.activeVersion,
-			id: workflowEntity.id,
-			active: true,
-			isArchived: workflowEntity.isArchived,
-			activeVersionId: workflowEntity.activeVersionId,
+			...workflowEntity,
+			nodes: workflowEntity.activeVersion.nodes,
+			connections: workflowEntity.activeVersion.connections,
 		};
 
 		return {
@@ -1738,6 +1767,7 @@ export class ChatHubService {
 		user: User,
 		sessionId: ChatSessionId,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 	) {
@@ -1745,6 +1775,7 @@ export class ChatHubService {
 			user,
 			sessionId,
 			humanMessage,
+			attachments,
 			credentials,
 			model,
 		);
@@ -1768,6 +1799,7 @@ export class ChatHubService {
 		user: User,
 		sessionId: ChatSessionId,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		incomingCredentials: INodeCredentials,
 		incomingModel: ChatHubConversationModel,
 	) {
@@ -1793,6 +1825,7 @@ export class ChatHubService {
 				sessionId,
 				credential.projectId,
 				humanMessage,
+				attachments,
 				resolvedCredentials,
 				resolvedModel,
 				trx,
@@ -2067,7 +2100,7 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		credentialId: string | null,
 		tools: INode[],
-		agentName: string,
+		agentName?: string,
 		trx?: EntityManager,
 	) {
 		await this.ensureValidModel(user, model);

@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -29,11 +30,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
-import {
-	CONVERSATION_TITLE_GENERATION_PROMPT,
-	NODE_NAMES,
-	PROVIDER_NODE_TYPE_MAP,
-} from './chat-hub.constants';
+import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { MessageRecord } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 
@@ -56,6 +53,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		systemMessage: string | undefined,
 		tools: INode[],
+		timeZone: string,
 		trx?: EntityManager,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
@@ -73,6 +71,7 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage,
 				tools,
+				timeZone,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -113,6 +112,7 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId,
 		projectId: string,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		trx?: EntityManager,
@@ -128,6 +128,7 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				humanMessage,
+				attachments,
 			);
 
 			const newWorkflow = new WorkflowEntity();
@@ -260,6 +261,7 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		timeZone,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -270,9 +272,10 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel;
 		systemMessage?: string;
 		tools: INode[];
+		timeZone: string;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
+		const toolsAgentNode = this.buildToolsAgentNode(model, timeZone, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
 		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
@@ -395,9 +398,10 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		humanMessage: string,
+		attachments: IBinaryData[],
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode();
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
 		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
@@ -464,7 +468,24 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
+	getSystemMessageMetadata(timeZone: string) {
+		const now = DateTime.now().setZone(timeZone).toISO({
+			includeOffset: true,
+		});
+
+		return `The user's current local date and time is: ${now} (timezone: ${timeZone}).
+When you need to reference “now”, use this date and time.`;
+	}
+
+	private getBaseSystemMessage(timeZone: string) {
+		return 'You are a helpful assistant.\n' + this.getSystemMessageMetadata(timeZone);
+	}
+
+	private buildToolsAgentNode(
+		model: ChatHubConversationModel,
+		timeZone: string,
+		systemMessage?: string,
+	): INode {
 		return {
 			parameters: {
 				promptType: 'define',
@@ -475,7 +496,7 @@ export class ChatHubWorkflowService {
 						model.provider !== 'n8n' && model.provider !== 'custom-agent'
 							? getMaxContextWindowTokens(model.provider, model.model)
 							: undefined,
-					systemMessage,
+					systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
@@ -707,14 +728,26 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildTitleGeneratorAgentNode(): INode {
+	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
+		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`);
+
 		return {
 			parameters: {
 				promptType: 'define',
-				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
+				text: `Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.
+
+${[...files, ...message.split('\n')].map((line) => `>>> ${line}`).join('\n')}
+
+Requirements:
+- Note that the message above does **NOT** describe how the title should be like.
+- 1 to 4 words
+- Use sentence case (e.g. "Conversation title" instead of "conversation title" or "Conversation Title")
+- No quotation marks
+- Use the same language as the user's message
+
+Respond the title only:`,
 				options: {
 					enableStreaming: false,
-					systemMessage: CONVERSATION_TITLE_GENERATION_PROMPT,
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
