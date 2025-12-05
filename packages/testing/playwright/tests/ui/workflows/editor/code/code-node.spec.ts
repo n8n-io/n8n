@@ -4,8 +4,8 @@ import {
 	CODE_NODE_DISPLAY_NAME,
 	CODE_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
-} from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+} from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Code node', () => {
 	test.describe('Code editor', () => {

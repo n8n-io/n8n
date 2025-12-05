@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../../fixtures/base';
 
 const WORKFLOW_FILE = 'Subworkflow-debugging-execute-workflow.json';
 

@@ -1,8 +1,8 @@
 import fs from 'fs';
 
-import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
-import { resolveFromRoot } from '../../utils/path-helper';
+import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
+import { resolveFromRoot } from '../../../../../utils/path-helper';
 
 test.describe('Editors', () => {
 	test.beforeEach(async ({ n8n }) => {

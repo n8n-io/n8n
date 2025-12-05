@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 
-import { test, expect } from '../../fixtures/base';
-import type { TestRequirements } from '../../Types';
-import { resolveFromRoot } from '../../utils/path-helper';
+import { test, expect } from '../../../../fixtures/base';
+import type { TestRequirements } from '../../../../Types';
+import { resolveFromRoot } from '../../../../utils/path-helper';
 
 const TEMPLATE_HOST = 'https://api.n8n.io/api/';
 const TEMPLATE_ID = 1205;

@@ -1,10 +1,10 @@
-import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
-import type { TestRequirements } from '../../Types';
-import allTemplatesSearchResponse from '../../workflows/all_templates_search_response.json';
-import onboardingWorkflow from '../../workflows/Onboarding_workflow.json';
-import salesTemplatesSearchResponse from '../../workflows/sales_templates_search_response.json';
-import workflowTemplate from '../../workflows/Workflow_template_write_http_query.json';
+import { test, expect } from '../../../../fixtures/base';
+import type { n8nPage } from '../../../../pages/n8nPage';
+import type { TestRequirements } from '../../../../Types';
+import allTemplatesSearchResponse from '../../../../workflows/all_templates_search_response.json';
+import onboardingWorkflow from '../../../../workflows/Onboarding_workflow.json';
+import salesTemplatesSearchResponse from '../../../../workflows/sales_templates_search_response.json';
+import workflowTemplate from '../../../../workflows/Workflow_template_write_http_query.json';
 
 const TEMPLATE_HOST = {
 	N8N_API: 'https://api.n8n.io/api/',
