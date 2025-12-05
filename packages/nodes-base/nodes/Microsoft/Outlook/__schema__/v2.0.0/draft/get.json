@@ -18,9 +18,6 @@
                 }
             }
         },
-        "bodyPreview": {
-            "type": "string"
-        },
         "conversationId": {
             "type": "string"
         },
@@ -29,10 +26,7 @@
         },
         "id": {
             "type": "string"
-        },
-        "subject": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

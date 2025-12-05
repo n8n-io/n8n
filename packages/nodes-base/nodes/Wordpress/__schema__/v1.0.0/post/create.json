@@ -297,9 +297,6 @@
         "id": {
             "type": "integer"
         },
-        "link": {
-            "type": "string"
-        },
         "meta": {
             "type": "object",
             "properties": {
@@ -356,5 +353,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

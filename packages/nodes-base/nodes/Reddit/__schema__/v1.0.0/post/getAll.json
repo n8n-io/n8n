@@ -21,16 +21,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "a": {
-                        "type": "string"
-                    },
                     "e": {
                         "type": "string"
                     },
                     "t": {
-                        "type": "string"
-                    },
-                    "u": {
                         "type": "string"
                     }
                 }
@@ -78,9 +72,6 @@
         "created_utc": {
             "type": "integer"
         },
-        "discussion_type": {
-            "type": "null"
-        },
         "domain": {
             "type": "string"
         },
@@ -122,6 +113,9 @@
         },
         "is_video": {
             "type": "boolean"
+        },
+        "likes": {
+            "type": "null"
         },
         "link_flair_richtext": {
             "type": "array",
@@ -255,5 +249,5 @@
             "type": "boolean"
         }
     },
-    "version": 4
+    "version": 5
 }

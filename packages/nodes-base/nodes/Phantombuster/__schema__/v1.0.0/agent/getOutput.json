@@ -1,12 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "profileUrl": {
-            "type": "string"
-        },
         "timestamp": {
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }
