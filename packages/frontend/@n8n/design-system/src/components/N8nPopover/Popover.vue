@@ -11,6 +11,8 @@ import {
 import { watch } from 'vue';
 import type { CSSProperties } from 'vue';
 
+defineOptions({ name: 'N8nPopover' });
+
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface Props

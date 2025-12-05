@@ -53,34 +53,14 @@ const createDragEvent = (type: string, dataTransfer?: Partial<DataTransfer>) => 
 	return event;
 };
 
-// Stub Reka UI Popover components to render content inline (no teleportation)
-const rekaPopoverStubs = {
-	PopoverRoot: {
-		template: '<div><slot /></div>',
-		props: ['open'],
-		emits: ['update:open'],
-	},
-	PopoverTrigger: {
-		template: '<div><slot /></div>',
-		props: ['asChild'],
-	},
-	PopoverPortal: {
-		template: '<div><slot /></div>',
-		props: ['disabled'],
-	},
-	PopoverContent: {
-		template: '<div v-bind="$attrs"><slot /></div>',
-		props: ['side', 'sideOffset', 'align', 'class', 'style'],
-	},
-	PopoverArrow: {
-		template: '<div></div>',
-	},
-};
-
 const defaultStubs = {
 	N8nButton: true,
 	N8nIcon: true,
-	...rekaPopoverStubs,
+	N8nPopover: {
+		template:
+			'<div><trigger><slot name="trigger" /></trigger> <content><slot name="content" /></content></div>',
+		props: [],
+	},
 };
 
 describe('TableHeaderControlsButton', () => {
