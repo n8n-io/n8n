@@ -129,8 +129,8 @@ export function parsePostgresError(
 }
 
 export function addWhereClauses(
-	node: INode,
-	itemIndex: number,
+	_node: INode,
+	_itemIndex: number,
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
@@ -154,21 +154,17 @@ export function addWhereClauses(
 			clause.condition = '=';
 		}
 		if (['>', '<', '>=', '<='].includes(clause.condition)) {
-			const value = Number(clause.value);
+			const numericValue =
+				typeof clause.value === 'string' &&
+				clause.value.trim() !== '' &&
+				!Number.isNaN(Number(clause.value))
+					? Number(clause.value)
+					: NaN;
 
-			if (Number.isNaN(value)) {
-				throw new NodeOperationError(
-					node,
-					`Operator in entry ${index + 1} of 'Select Rows' works with numbers, but value ${
-						clause.value
-					} is not a number`,
-					{
-						itemIndex,
-					},
-				);
+			// Convert to number if numeric, otherwise keep as string for dates/text
+			if (!Number.isNaN(numericValue)) {
+				clause.value = numericValue;
 			}
-
-			clause.value = value;
 		}
 		const columnReplacement = `$${replacementIndex}:name`;
 		values.push(clause.column);
