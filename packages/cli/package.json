@@ -183,7 +183,7 @@
     "syslog-client": "1.1.1",
     "undici": "^7.16.0",
     "uuid": "catalog:",
-    "validator": "13.15.20",
+    "validator": "13.15.22",
     "ws": "8.17.1",
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",
