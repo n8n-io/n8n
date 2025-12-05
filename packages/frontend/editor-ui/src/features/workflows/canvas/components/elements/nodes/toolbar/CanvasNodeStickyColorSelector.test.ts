@@ -20,17 +20,17 @@ describe('CanvasNodeStickyColorSelector', () => {
 	});
 
 	it('should render all colors and apply selected color correctly', async () => {
-		// Start with visible=true to bypass click.stop issue
-		const { emitted } = renderComponent({
-			props: {
-				visible: true,
-			},
+		const { getByTestId, emitted } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
 				},
 			},
 		});
+
+		const colorSelector = getByTestId('change-sticky-color');
+
+		await userEvent.click(colorSelector);
 
 		// Use screen queries for teleported popover content
 		await waitFor(() => {
