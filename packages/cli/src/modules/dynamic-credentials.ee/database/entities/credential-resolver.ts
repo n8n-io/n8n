@@ -1,5 +1,6 @@
-import { Column, Entity } from '@n8n/typeorm';
 import { WithTimestampsAndStringId } from '@n8n/db';
+import type { CredentialResolverConfiguration } from '@n8n/decorators';
+import { Column, Entity } from '@n8n/typeorm';
 
 @Entity()
 export class DynamicCredentialResolver extends WithTimestampsAndStringId {
@@ -11,4 +12,7 @@ export class DynamicCredentialResolver extends WithTimestampsAndStringId {
 
 	@Column({ type: 'text' })
 	config: string;
+
+	/** Decrypted config, not persisted to the database */
+	decryptedConfig?: CredentialResolverConfiguration;
 }

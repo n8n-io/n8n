@@ -28,7 +28,6 @@ import {
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -116,16 +115,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: 'Admin Panel',
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
-	},
-	{
-		id: 'chat',
-		icon: 'message-circle',
-		label: 'Chat',
-		position: 'bottom',
-		route: { to: { name: CHAT_VIEW } },
-		available:
-			settingsStore.isChatFeatureEnabled &&
-			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		// Link to in-app pre-built agent templates, available experiment is enabled
