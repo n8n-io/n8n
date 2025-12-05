@@ -100,8 +100,10 @@ function groupToolMessagesIntoThinking(
 		const toolGroup: ChatUI.ToolMessage[] = [currentMsg];
 		let j = i + 1;
 
-		while (j < messages.length && isToolMessage(messages[j])) {
-			toolGroup.push(messages[j] as ChatUI.ToolMessage);
+		while (j < messages.length) {
+			const msg = messages[j];
+			if (!isToolMessage(msg)) break;
+			toolGroup.push(msg);
 			j++;
 		}
 

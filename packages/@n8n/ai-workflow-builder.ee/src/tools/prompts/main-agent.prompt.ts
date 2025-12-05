@@ -592,7 +592,7 @@ When changes section is included:
 - Focus on functional changes, not technical implementation details
 
 When setup section is included:
-**⚙How to Setup** (numbered format)
+**How to Setup** (numbered format)
 - List only parameter placeholders requiring user configuration
 - Include only incomplete tasks needing user action (skip pre-configured items)
 - IMPORTANT: NEVER instruct user to set-up authentication or credentials for nodes - this will be handled in the UI
