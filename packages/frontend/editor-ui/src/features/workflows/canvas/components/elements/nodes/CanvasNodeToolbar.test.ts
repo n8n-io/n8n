@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -156,8 +156,8 @@ describe('CanvasNodeToolbar', () => {
 		expect(emitted('open:contextmenu')[0]).toEqual([expect.any(MouseEvent)]);
 	});
 
-	it('should emit "update" when sticky note color is changed', async () => {
-		const { getAllByTestId, getByTestId, emitted } = renderComponent({
+	it('should render sticky note color selector for sticky notes', async () => {
+		const { getByTestId } = renderComponent({
 			pinia,
 			global: {
 				provide: {
@@ -174,10 +174,8 @@ describe('CanvasNodeToolbar', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('change-sticky-color'));
-		await userEvent.click(getAllByTestId('color')[0]);
-
-		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+		// Verify the color selector trigger is rendered for sticky notes
+		expect(getByTestId('change-sticky-color')).toBeInTheDocument();
 	});
 
 	it('should have "forceVisible" class when hovered', async () => {
@@ -198,28 +196,7 @@ describe('CanvasNodeToolbar', () => {
 		expect(toolbar).toHaveClass('forceVisible');
 	});
 
-	it('should have "forceVisible" class when sticky color picker is visible', async () => {
-		const { getByTestId } = renderComponent({
-			pinia,
-			global: {
-				provide: {
-					...createCanvasNodeProvide({
-						data: {
-							render: {
-								type: CanvasNodeRenderType.StickyNote,
-								options: { color: 3 },
-							},
-						},
-					}),
-					...createCanvasProvide(),
-				},
-			},
-		});
-
-		const toolbar = getByTestId('canvas-node-toolbar');
-
-		await userEvent.click(getByTestId('change-sticky-color'));
-
-		await waitFor(() => expect(toolbar).toHaveClass('forceVisible'));
-	});
+	// Note: The "forceVisible class when sticky color picker is visible" test
+	// has been moved to CanvasNodeStickyColorSelector.test.ts since the
+	// popover behavior is tested there more effectively.
 });

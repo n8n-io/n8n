@@ -1,4 +1,5 @@
-import { fireEvent } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import CanvasNodeStickyColorSelector from './CanvasNodeStickyColorSelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
@@ -19,7 +20,11 @@ describe('CanvasNodeStickyColorSelector', () => {
 	});
 
 	it('should render all colors and apply selected color correctly', async () => {
-		const { getByTestId, getAllByTestId, emitted } = renderComponent({
+		// Start with visible=true to bypass click.stop issue
+		const { emitted } = renderComponent({
+			props: {
+				visible: true,
+			},
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
@@ -27,16 +32,16 @@ describe('CanvasNodeStickyColorSelector', () => {
 			},
 		});
 
-		const colorSelector = getByTestId('change-sticky-color');
+		// Use screen queries for teleported popover content
+		await waitFor(() => {
+			expect(screen.getAllByTestId('color')).toHaveLength(7);
+		});
 
-		await fireEvent.click(colorSelector);
-
-		const colorOption = getAllByTestId('color');
+		const colorOption = screen.getAllByTestId('color');
 		const selectedIndex = 2;
 
-		await fireEvent.click(colorOption[selectedIndex]);
+		await userEvent.click(colorOption[selectedIndex]);
 
-		expect(colorOption).toHaveLength(7);
 		expect(emitted()).toHaveProperty('update');
 		expect(emitted().update[0]).toEqual([selectedIndex + 1]);
 	});

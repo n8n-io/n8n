@@ -157,8 +157,9 @@ describe('WorkflowDescriptionPopover', () => {
 			await userEvent.clear(textarea);
 			await userEvent.type(textarea, 'Updated description');
 
-			// Click outside to close popover
-			await userEvent.click(document.body);
+			// Click save button to close and save
+			const saveButton = getByTestId('workflow-description-save-button');
+			await userEvent.click(saveButton);
 
 			expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith(
 				'test-workflow-id',
