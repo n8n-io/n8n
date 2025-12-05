@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Manual partial execution', () => {
 	test('should not execute parent nodes with no run data', async ({ n8n }) => {
