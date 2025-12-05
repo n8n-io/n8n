@@ -7,6 +7,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { evaluateWorkflowPairwise } from '../chains/pairwise-evaluator';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
@@ -41,6 +42,7 @@ function createPairwiseWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
+	featureFlags?: BuilderFeatureFlags,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
 		const runId = generateRunId();
@@ -50,7 +52,10 @@ function createPairwiseWorkflowGenerator(
 
 		// Use the prompt from the dataset
 		await consumeGenerator(
-			agent.chat(getChatPayload(inputs.prompt, runId), 'langsmith-pairwise-eval-user'),
+			agent.chat(
+				getChatPayload(inputs.prompt, runId, featureFlags),
+				'langsmith-pairwise-eval-user',
+			),
 		);
 
 		// Get generated workflow
@@ -117,8 +122,20 @@ function createPairwiseLangsmithEvaluator(llm: BaseChatModel) {
 	};
 }
 
-export async function runPairwiseLangsmithEvaluation(repetitions: number = 1): Promise<void> {
+export async function runPairwiseLangsmithEvaluation(
+	repetitions: number = 1,
+	featureFlags?: BuilderFeatureFlags,
+): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
+
+	if (featureFlags) {
+		const enabledFlags = Object.entries(featureFlags)
+			.filter(([, v]) => v === true)
+			.map(([k]) => k);
+		if (enabledFlags.length > 0) {
+			console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+		}
+	}
 
 	if (!process.env.LANGSMITH_API_KEY) {
 		console.error(pc.red('✗ LANGSMITH_API_KEY environment variable not set'));
@@ -161,7 +178,12 @@ export async function runPairwiseLangsmithEvaluation(repetitions: number = 1): P
 			data = examples;
 		}
 
-		const generateWorkflow = createPairwiseWorkflowGenerator(parsedNodeTypes, llm, tracer);
+		const generateWorkflow = createPairwiseWorkflowGenerator(
+			parsedNodeTypes,
+			llm,
+			tracer,
+			featureFlags,
+		);
 		const evaluator = createPairwiseLangsmithEvaluator(llm);
 
 		await evaluate(generateWorkflow, {

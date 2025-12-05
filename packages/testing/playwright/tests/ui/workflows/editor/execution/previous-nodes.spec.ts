@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../../fixtures/base';
 
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode: "execute previous nodes" also executes the current node
 test.describe.skip('Execute previous nodes', () => {
