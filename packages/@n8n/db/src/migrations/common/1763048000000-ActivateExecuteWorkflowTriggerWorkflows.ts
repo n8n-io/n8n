@@ -75,8 +75,19 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 					continue;
 				}
 
+				// Skip if both trigger nodes are disabled
+				const executeWorkflowTriggerDisabled = executeWorkflowTriggerNode?.disabled === true;
+				const errorTriggerDisabled = errorTriggerNode?.disabled === true;
+
+				if (
+					(!executeWorkflowTriggerNode || executeWorkflowTriggerDisabled) &&
+					(!errorTriggerNode || errorTriggerDisabled)
+				) {
+					continue;
+				}
+
 				let hasValidExecuteWorkflowTrigger = false;
-				if (executeWorkflowTriggerNode) {
+				if (executeWorkflowTriggerNode && !executeWorkflowTriggerDisabled) {
 					const inputSource = executeWorkflowTriggerNode.parameters?.inputSource;
 
 					const shouldActivateByInputSource =
