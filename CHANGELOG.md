@@ -1,3 +1,14 @@
+# [2.0.0-rc.4](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.3...n8n@2.0.0-rc.4) (2025-12-05)
+
+
+### Bug Fixes
+
+* **editor:** Bind color-scheme to app theme setting ([#22774](https://github.com/n8n-io/n8n/issues/22774)) ([3d46b97](https://github.com/n8n-io/n8n/commit/3d46b97bdf1c01852998ce5a5eb4631fe990d268))
+* **editor:** Design tweaks for publish modals ([#22694](https://github.com/n8n-io/n8n/issues/22694)) ([98efa19](https://github.com/n8n-io/n8n/commit/98efa19ca4d9cf17c88a3778c00fea45caa54738))
+* Security patches ([#22748](https://github.com/n8n-io/n8n/issues/22748)) ([d22c173](https://github.com/n8n-io/n8n/commit/d22c173aec9f990f1912450399eea29893e62d24))
+
+
+
 # [2.0.0-rc.3](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.2...n8n@2.0.0-rc.3) (2025-12-04)
 
 
