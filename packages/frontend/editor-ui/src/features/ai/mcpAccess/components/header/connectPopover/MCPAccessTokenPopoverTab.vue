@@ -150,7 +150,7 @@ onMounted(async () => {
 					</N8nTooltip>
 				</template>
 			</ConnectionParameter>
-			<N8nNotice>
+			<N8nNotice v-if="!isKeyRedacted">
 				{{ i18n.baseText('settings.mcp.access.token.notice') }}
 			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
@@ -212,6 +212,7 @@ onMounted(async () => {
 .json-container {
 	flex-grow: 1;
 	position: relative;
+	margin-top: var(--spacing--sm);
 
 	.label {
 		display: inline-flex;
