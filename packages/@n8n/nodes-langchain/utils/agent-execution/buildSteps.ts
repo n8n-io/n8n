@@ -2,7 +2,157 @@ import { AIMessage } from '@langchain/core/messages';
 import { nodeNameToToolName } from 'n8n-workflow';
 import type { EngineResponse, IDataObject } from 'n8n-workflow';
 
-import type { RequestResponseMetadata, ToolCallData } from './types';
+import type {
+	RequestResponseMetadata,
+	ToolCallData,
+	ThinkingContentBlock,
+	RedactedThinkingContentBlock,
+	ToolUseContentBlock,
+} from './types';
+
+/**
+ * Provider-specific metadata extracted from tool action metadata
+ */
+interface ProviderMetadata {
+	/** Gemini thought_signature for extended thinking */
+	thoughtSignature?: string;
+	/** Anthropic thinking content */
+	thinkingContent?: string;
+	/** Anthropic thinking type (thinking or redacted_thinking) */
+	thinkingType?: 'thinking' | 'redacted_thinking';
+	/** Anthropic thinking signature */
+	thinkingSignature?: string;
+}
+
+/**
+ * Extracts provider-specific metadata from tool action metadata.
+ * Validates and normalizes metadata from different LLM providers.
+ *
+ * @param metadata - The request/response metadata from tool action
+ * @returns Extracted and validated provider metadata
+ */
+function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMetadata {
+	if (!metadata) return {};
+
+	// Extract Google/Gemini metadata
+	const thoughtSignature =
+		typeof metadata.google?.thoughtSignature === 'string'
+			? metadata.google.thoughtSignature
+			: undefined;
+
+	// Extract Anthropic metadata
+	const thinkingContent =
+		typeof metadata.anthropic?.thinkingContent === 'string'
+			? metadata.anthropic.thinkingContent
+			: undefined;
+
+	const thinkingType =
+		metadata.anthropic?.thinkingType === 'thinking' ||
+		metadata.anthropic?.thinkingType === 'redacted_thinking'
+			? metadata.anthropic.thinkingType
+			: undefined;
+
+	const thinkingSignature =
+		typeof metadata.anthropic?.thinkingSignature === 'string'
+			? metadata.anthropic.thinkingSignature
+			: undefined;
+
+	return {
+		thoughtSignature,
+		thinkingContent,
+		thinkingType,
+		thinkingSignature,
+	};
+}
+
+/**
+ * Builds Anthropic-specific content blocks for thinking mode.
+ * Creates an array with thinking block followed by tool_use block.
+ *
+ * IMPORTANT: The thinking block must come before tool_use in the message.
+ * When content is an array, LangChain ignores tool_calls field for Anthropic,
+ * so tool_use blocks must be in the content array.
+ *
+ * @param thinkingContent - The thinking content from Anthropic
+ * @param thinkingType - Type of thinking block (thinking or redacted_thinking)
+ * @param thinkingSignature - Optional signature for thinking block
+ * @param toolInput - The tool input data
+ * @param toolId - The tool call ID
+ * @param toolName - The tool name
+ * @returns Array of content blocks with thinking and tool_use
+ */
+function buildAnthropicContentBlocks(
+	thinkingContent: string,
+	thinkingType: 'thinking' | 'redacted_thinking',
+	thinkingSignature: string | undefined,
+	toolInput: IDataObject,
+	toolId: string,
+	toolName: string,
+): Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
+	// Create thinking block with correct field names for Anthropic API
+	const thinkingBlock: ThinkingContentBlock | RedactedThinkingContentBlock =
+		thinkingType === 'thinking'
+			? {
+					type: 'thinking',
+					thinking: thinkingContent,
+					signature: thinkingSignature ?? '', // Use original signature if available
+				}
+			: {
+					type: 'redacted_thinking',
+					data: thinkingContent,
+				};
+
+	// Create tool_use block (required for Anthropic when using structured content)
+	const toolInputData = toolInput.input;
+	const toolUseBlock: ToolUseContentBlock = {
+		type: 'tool_use',
+		id: toolId,
+		name: toolName,
+		input:
+			toolInputData && typeof toolInputData === 'object'
+				? (toolInputData as Record<string, unknown>)
+				: {},
+	};
+
+	return [thinkingBlock, toolUseBlock];
+}
+
+/**
+ * Builds message content for AI message, handling provider-specific formats.
+ * For Anthropic thinking mode, creates content blocks with thinking and tool_use.
+ * For other providers, creates simple string content.
+ *
+ * @param providerMetadata - Provider-specific metadata
+ * @param toolInput - The tool input data
+ * @param toolId - The tool call ID
+ * @param toolName - The tool name
+ * @param nodeName - The node name for fallback string content
+ * @returns Message content (string or content blocks array)
+ */
+function buildMessageContent(
+	providerMetadata: ProviderMetadata,
+	toolInput: IDataObject,
+	toolId: string,
+	toolName: string,
+	nodeName: string,
+): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
+	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
+
+	// Anthropic thinking mode: build content blocks
+	if (thinkingContent && thinkingType) {
+		return buildAnthropicContentBlocks(
+			thinkingContent,
+			thinkingType,
+			thinkingSignature,
+			toolInput,
+			toolId,
+			toolName,
+		);
+	}
+
+	// Default: simple string content
+	return `Calling ${nodeName} with input: ${JSON.stringify(toolInput)}`;
+}
 
 /**
  * Rebuilds the agent steps from previous tool call responses.
@@ -43,34 +193,51 @@ export function buildSteps(
 			if (step) {
 				continue;
 			}
-			// Create a synthetic AI message for the messageLog
-			// This represents the AI's decision to call the tool
-			// Extract thought_signature from metadata if present (for Gemini 3)
-			const rawThoughtSignature = tool.action.metadata?.thoughtSignature;
-			const thoughtSignature =
-				typeof rawThoughtSignature === 'string' ? rawThoughtSignature : undefined;
 
-			// Build the tool call object with thought_signature if present
-			// The thought_signature must be part of the tool call itself for Gemini 3
+			// Extract provider-specific metadata (Gemini, Anthropic, etc.)
+			const providerMetadata = extractProviderMetadata(tool.action.metadata);
+
+			// Build tool ID and name for reuse
+			const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
+			const toolName = nodeNameToToolName(tool.action.nodeName);
+
+			// Build the tool call object with thought_signature if present (for Gemini)
 			const toolCall = {
-				id: typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call',
-				name: nodeNameToToolName(tool.action.nodeName),
+				id: toolId,
+				name: toolName,
 				args: toolInput,
 				type: 'tool_call' as const,
 				additional_kwargs: {
-					...(thoughtSignature && { thought_signature: thoughtSignature }),
+					...(providerMetadata.thoughtSignature && {
+						thought_signature: providerMetadata.thoughtSignature,
+					}),
 				},
 			};
 
+			// Build message content using provider-specific logic
+			const messageContent = buildMessageContent(
+				providerMetadata,
+				toolInput,
+				toolId,
+				toolName,
+				tool.action.nodeName,
+			);
+
 			const syntheticAIMessage = new AIMessage({
-				content: `Calling ${tool.action.nodeName} with input: ${JSON.stringify(toolInput)}`,
-				tool_calls: [toolCall],
+				content: messageContent,
+				// Note: tool_calls is only used when content is a string
+				// When content is an array (thinking mode), tool_use blocks are in the content array
+				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
 			});
 
+			const toolInputForResult = toolInput.input;
 			const toolResult = {
 				action: {
 					tool: nodeNameToToolName(tool.action.nodeName),
-					toolInput: (toolInput.input as IDataObject) || {},
+					toolInput:
+						toolInputForResult && typeof toolInputForResult === 'object'
+							? (toolInputForResult as IDataObject)
+							: {},
 					log: toolInput.log || syntheticAIMessage.content,
 					messageLog: [syntheticAIMessage],
 					toolCallId: toolInput?.id,

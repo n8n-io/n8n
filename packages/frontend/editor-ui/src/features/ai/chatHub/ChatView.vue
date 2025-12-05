@@ -566,6 +566,7 @@ function onFilesDropped(files: File[]) {
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="isNewSession || !!currentConversation"
+			:is-new-session="isNewSession"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
