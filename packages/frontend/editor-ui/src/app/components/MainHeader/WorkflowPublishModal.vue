@@ -54,8 +54,6 @@ const wfHasAnyChanges = computed(() => {
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
-const nodesWithIssuesCount = computed(() => workflowsStore.nodesWithIssuesCount);
-
 const inputsDisabled = computed(() => {
 	return (
 		!wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value || publishing.value
