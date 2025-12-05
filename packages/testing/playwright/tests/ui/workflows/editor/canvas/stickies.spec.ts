@@ -21,7 +21,7 @@ test.describe('Canvas Actions', () => {
 		await expect(n8n.canvas.sticky.getStickies()).toHaveCount(3);
 
 		await expect(n8n.canvas.sticky.getStickies().first()).toHaveText(
-			"I'm a note\nDouble click to edit me. Guide\n",
+			'I’m a note\nDouble click to edit me. Guide\n',
 		);
 		const guideLink = n8n.canvas.sticky.getDefaultStickyGuideLink();
 		await expect(guideLink).toHaveAttribute('href');
