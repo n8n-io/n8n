@@ -9,7 +9,7 @@ import type { IUser } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
-import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
+import { formatTimestamp, generateVersionName } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 const i18n = useI18n();
@@ -50,7 +50,12 @@ const formattedCreatedAt = computed<string>(() => {
 });
 
 const versionNameDisplay = computed(() => {
-	return props.workflowVersion?.name ?? formattedCreatedAt.value;
+	if (props.workflowVersion?.name) {
+		return props.workflowVersion.name;
+	}
+	return props.isVersionActive && props.workflowVersion
+		? generateVersionName(props.workflowVersion.versionId)
+		: formattedCreatedAt.value;
 });
 
 const MAX_DESCRIPTION_LENGTH = 200;
