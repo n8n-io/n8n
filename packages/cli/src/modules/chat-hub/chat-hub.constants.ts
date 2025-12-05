@@ -164,19 +164,6 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'gpt-image-1-mini': {
 			available: false,
 		},
-		// Codex models - code completion, not conversational
-		'codex-mini-latest': {
-			available: false,
-		},
-		'gpt-5-codex': {
-			available: false,
-		},
-		'gpt-5.1-codex': {
-			available: false,
-		},
-		'gpt-5.1-codex-mini': {
-			available: false,
-		},
 		// Deep research models - long-running research, not interactive chat
 		'o4-mini-deep-research': {
 			available: false,
@@ -263,6 +250,9 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'gpt-audio-mini-2025-10-06': {
 			available: false,
 		},
+		'gpt-3.5-turbo-16k': {
+			available: false,
+		},
 	},
 	mistralCloud: {
 		// Most Mistral models support text and image
@@ -326,58 +316,27 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'ministral-8b-latest': {
 			inputModalities: ['text'],
 		},
+		'mistral-moderation-2411': {
+			available: false,
+		},
+		'mistral-moderation-latest': {
+			available: false,
+		},
+		'mistral-ocr-2503': {
+			available: false,
+		},
+		'mistral-ocr-2505': {
+			available: false,
+		},
+		'mistral-ocr-latest': {
+			available: false,
+		},
+		'voxtral-mini-transcribe-2507': {
+			available: false,
+		},
 	},
 	// Reference: https://ai.google.dev/gemini-api/docs/models
 	google: {
-		// Image generation models - for creating images, not chat
-		'models/imagen-4.0-fast-generate-001': {
-			available: false,
-		},
-		'models/imagen-4.0-generate-001': {
-			available: false,
-		},
-		'models/imagen-4.0-generate-preview-06-06': {
-			available: false,
-		},
-		'models/imagen-4.0-ultra-generate-001': {
-			available: false,
-		},
-		'models/imagen-4.0-ultra-generate-preview-06-06': {
-			available: false,
-		},
-		// Image-specific models - optimized for image tasks, not general chat
-		'models/gemini-3-pro-image-preview': {
-			available: false,
-		},
-		'models/gemini-2.5-flash-image': {
-			available: false,
-		},
-		'models/gemini-2.5-flash-image-preview': {
-			available: false,
-		},
-		// TTS models - text-to-speech, not chat
-		'models/gemini-2.5-pro-preview-tts': {
-			available: false,
-		},
-		'models/gemini-2.5-flash-preview-tts': {
-			available: false,
-		},
-		// Computer use models - for controlling computers, not chat
-		'models/gemini-2.5-computer-use-preview-10-2025': {
-			available: false,
-		},
-		// AQA model - Attributed Question Answering, specialized use case
-		'models/aqa': {
-			available: false,
-		},
-		// Gemini 3 series - latest models with advanced multimodal understanding
-		'models/gemini-3-pro-preview': {},
-		// Gemini 2.5 Pro series
-		'models/gemini-2.5-pro': {},
-		'models/gemini-2.5-pro-exp-03-25': {},
-		'models/gemini-2.5-pro-preview-03-25': {},
-		'models/gemini-2.5-pro-preview-05-06': {},
-		'models/gemini-2.5-pro-preview-06-05': {},
 		// Gemini 2.5 Flash series
 		'models/gemini-2.5-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -397,12 +356,6 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'models/gemini-live-2.5-flash-preview': {
 			inputModalities: ['text', 'audio', 'video'],
 		},
-		// Gemini 2.5 Flash-Lite series
-		'models/gemini-2.5-flash-lite': {},
-		'models/gemini-2.5-flash-lite-preview-06-17': {},
-		'models/gemini-2.5-flash-lite-preview-09-2025': {},
-		// Gemini 2.0 Pro series
-		'models/gemini-2.0-pro-exp-02-05': {},
 		// Gemini 2.0 Flash series
 		'models/gemini-2.0-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -437,6 +390,140 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'models/gemini-2.0-flash-lite-preview-02-05': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+		},
+	},
+	groq: {
+		'meta-llama/llama-prompt-guard-2-22m': {
+			available: false,
+		},
+		'meta-llama/llama-prompt-guard-2-86m': {
+			available: false,
+		},
+		'whisper-large-v3': {
+			available: false,
+		},
+		'whisper-large-v3-turbo': {
+			available: false,
+		},
+	},
+	vercelAiGateway: {
+		'alibaba/qwen3-embedding-0.6b': {
+			available: false,
+		},
+		'alibaba/qwen3-embedding-4b': {
+			available: false,
+		},
+		'alibaba/qwen3-embedding-8b': {
+			available: false,
+		},
+		'amazon/titan-embed-text-v2': {
+			available: false,
+		},
+		'cohere/embed-v4.0': {
+			available: false,
+		},
+		'google/gemini-embedding-001': {
+			available: false,
+		},
+		'google/text-embedding-005': {
+			available: false,
+		},
+		'google/text-multilingual-embedding-002': {
+			available: false,
+		},
+		'mistral/codestral-embed': {
+			available: false,
+		},
+		'mistral/mistral-embed': {
+			available: false,
+		},
+		'openai/text-embedding-3-large': {
+			available: false,
+		},
+		'openai/text-embedding-3-small': {
+			available: false,
+		},
+		'openai/text-embedding-ada-002': {
+			available: false,
+		},
+		'bfl/flux-kontext-max': {
+			available: false,
+		},
+		'bfl/flux-kontext-pro': {
+			available: false,
+		},
+		'bfl/flux-pro-1.0-fill': {
+			available: false,
+		},
+		'bfl/flux-pro-1.1': {
+			available: false,
+		},
+		'bfl/flux-pro-1.1-ultra': {
+			available: false,
+		},
+		'google/imagen-4.0-fast-generate-001': {
+			available: false,
+		},
+		'google/imagen-4.0-generate-001': {
+			available: false,
+		},
+		'google/imagen-4.0-ultra-generate-001': {
+			available: false,
+		},
+		// Instruct models - not suitable for chat
+		'openai/gpt-3.5-turbo-instruct': {
+			available: false,
+		},
+		// Deep research models - require specific tools
+		'openai/o3-deep-research': {
+			available: false,
+		},
+		// Geo-restricted - availability depends on location
+		'meta/llama-3.2-11b': {
+			available: false,
+		},
+		'meta/llama-3.2-90b': {
+			available: false,
+		},
+		// Model not found - may have been deprecated
+		'meituan/longcat-flash-thinking': {
+			available: false,
+		},
+		// Voyage models - language model method not implemented
+		'voyage/voyage-3-large': {
+			available: false,
+		},
+		'voyage/voyage-3.5': {
+			available: false,
+		},
+		'voyage/voyage-3.5-lite': {
+			available: false,
+		},
+		'voyage/voyage-code-2': {
+			available: false,
+		},
+		'voyage/voyage-code-3': {
+			available: false,
+		},
+		'voyage/voyage-finance-2': {
+			available: false,
+		},
+		'voyage/voyage-law-2': {
+			available: false,
+		},
+	},
+	openRouter: {
+		'openai/gpt-4o-audio-preview': {
+			available: false, // "Provider returned error"
+		},
+		'morph/morph-v3-fast': {
+			available: false, // Not supporting multi-turn conversations
+		},
+		'morph/morph-v3-large': {
+			available: false, // Not supporting multi-turn conversations
+		},
+		'relace/relace-apply-3': {
+			available: false, // Not supporting multi-turn conversations
 		},
 	},
 };
