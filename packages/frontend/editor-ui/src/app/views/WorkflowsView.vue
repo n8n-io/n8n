@@ -21,7 +21,6 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import {
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/app/constants';
@@ -33,6 +32,7 @@ import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplat
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
+import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
@@ -55,7 +55,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -66,11 +65,6 @@ import {
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
 import { getEasyAiWorkflowJson } from '@/features/workflows/templates/utils/workflowSamples';
-import {
-	isExtraTemplateLinksExperimentEnabled,
-	TemplateClickSource,
-	trackTemplatesClick,
-} from '@/experiments/utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -140,7 +134,6 @@ const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
-const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
 const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
@@ -354,6 +347,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				name: resource.name,
 				description: resource.description,
 				active: resource.active ?? false,
+				activeVersionId: resource.activeVersionId,
 				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
@@ -390,13 +384,17 @@ const showEasyAIWorkflowCallout = computed(() => {
 	return !easyAIWorkflowOnboardingDone;
 });
 
-const templatesCardEnabled = computed(() => {
-	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
-});
-
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
 		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
+	);
+});
+
+const showTemplatesDataQualityInline = computed(() => {
+	return (
+		templatesDataQualityStore.isFeatureEnabled() &&
+		!readOnlyEnv.value &&
+		projectPermissions.value.workflow.create
 	);
 });
 
@@ -921,22 +919,6 @@ const addWorkflow = () => {
 	trackEmptyCardClick('blank');
 };
 
-const openTemplatesRepository = async () => {
-	trackTemplatesClick(TemplateClickSource.emptyInstanceCard);
-
-	if (templatesStore.hasCustomTemplatesHost) {
-		await router.push({ name: VIEWS.TEMPLATES });
-		return;
-	}
-
-	if (templatesDataQualityStore.isFeatureEnabled()) {
-		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
-		return;
-	}
-
-	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
-};
-
 const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 	telemetry.track('User clicked empty page option', {
 		option,
@@ -1074,6 +1056,7 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+	workflow.activeVersionId = data.active ? workflow.versionId : null;
 
 	// Fetch the updated workflow to get the latest settings
 	try {
@@ -2247,25 +2230,9 @@ const onNameSubmit = async (name: string) => {
 							</N8nText>
 						</div>
 					</N8nCard>
-					<N8nCard
-						v-if="templatesCardEnabled"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="new-workflow-from-template-card"
-						@click="openTemplatesRepository"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="package-open"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.empty.startWithTemplate') }}
-							</N8nText>
-						</div>
-					</N8nCard>
+				</div>
+				<div v-if="showTemplatesDataQualityInline" :class="$style.templatesContainer">
+					<TemplatesDataQualityInlineSection />
 				</div>
 				<TemplateRecommendationV3 v-if="showTemplateRecommendationV3" />
 				<TemplateRecommendationV2 v-else-if="showTemplateRecommendationV2" />
@@ -2367,6 +2334,16 @@ const onNameSubmit = async (name: string) => {
 .actionsContainer {
 	display: flex;
 	justify-content: center;
+}
+
+.templatesContainer {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+
+	> section {
+		margin-top: var(--spacing--3xl);
+	}
 }
 
 .easy-ai-workflow-callout {

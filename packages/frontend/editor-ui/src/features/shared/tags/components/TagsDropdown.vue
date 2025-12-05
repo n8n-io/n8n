@@ -4,7 +4,7 @@ import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { MAX_TAG_NAME_LENGTH } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/app/composables/useToast';
 
@@ -21,6 +21,7 @@ interface TagsDropdownProps {
 	manageEnabled?: boolean;
 	createTag?: (name: string) => Promise<ITag>;
 	multipleLimit?: number;
+	createTagI18nKey?: BaseTextKey;
 }
 
 const i18n = useI18n();
@@ -35,6 +36,7 @@ const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	manageEnabled: true,
 	createTag: undefined,
 	multipleLimit: 0,
+	createTagI18nKey: 'tagsDropdown.createTag',
 });
 
 const emit = defineEmits<{
@@ -240,7 +242,7 @@ onClickOutside(
 			>
 				<N8nIcon icon="circle-plus" />
 				<span>
-					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+					{{ i18n.baseText(props.createTagI18nKey, { interpolate: { filter } }) }}
 				</span>
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>

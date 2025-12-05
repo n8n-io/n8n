@@ -8,6 +8,7 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import OAuthConnectionInstructions from '@/features/ai/mcpAccess/components/connectionInstructions/OAuthConnectionInstructions.vue';
 import AccessTokenConnectionInstructions from '@/features/ai/mcpAccess/components/connectionInstructions/AccessTokenConnectionInstructions.vue';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const MCP_ENDPOINT = 'mcp-server/http';
 
@@ -30,6 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const selectedTab = ref<ConnectionTabType>('oauth');
 
@@ -47,6 +49,23 @@ const tabs = ref<Array<TabOptions<ConnectionTabType>>>([
 const onTabSelected = (tab: ConnectionTabType) => {
 	selectedTab.value = tab;
 };
+
+const onClientRevoked = (client: OAuthClientResponseDto) => {
+	emit('revokeClient', client);
+	telemetry.track('User revoked access for MCP OAuth client', {
+		client_name: client.name,
+	});
+};
+
+const trackCopyEvent = (payload: {
+	item: 'server-url' | 'access-token' | 'mcp-json';
+	source: 'oauth-tab' | 'token-tab';
+}) => {
+	telemetry.track('User copied MCP connection parameter', {
+		parameter: payload.item,
+		source: payload.source,
+	});
+};
 </script>
 
 <template>
@@ -61,8 +80,9 @@ const onTabSelected = (tab: ConnectionTabType) => {
 				:server-url="`${props.baseUrl}${MCP_ENDPOINT}`"
 				:clients="props.oAuthClients"
 				:clients-loading="props.loadingOAuthClients"
-				@revoke-client="emit('revokeClient', $event)"
+				@revoke-client="onClientRevoked"
 				@refresh="emit('refreshClientList')"
+				@url-copied="trackCopyEvent({ item: 'server-url', source: 'oauth-tab' })"
 			/>
 			<AccessTokenConnectionInstructions
 				v-show="selectedTab === 'token'"
@@ -70,6 +90,9 @@ const onTabSelected = (tab: ConnectionTabType) => {
 				:api-key="props.apiKey"
 				:loading-api-key="props.loadingApiKey"
 				@rotate-key="emit('rotateKey')"
+				@connection-string-copied="trackCopyEvent({ item: 'mcp-json', source: 'token-tab' })"
+				@access-token-copied="trackCopyEvent({ item: 'access-token', source: 'token-tab' })"
+				@url-copied="trackCopyEvent({ item: 'server-url', source: 'token-tab' })"
 			/>
 			<N8nText size="small" data-test-id="mcp-connection-instructions-docs-text">
 				{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}

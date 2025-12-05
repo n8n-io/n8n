@@ -1,4 +1,5 @@
 import { CredentialsRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
 	IDataObject,
@@ -214,4 +215,29 @@ export function shouldRestartParentExecution(
 		return true; // Preserve existing behavior for executions started before the flag was introduced for backward compatibility.
 	}
 	return parentExecution.shouldResume;
+}
+
+/**
+ * Determines the value to set for a workflow's active version based on the provided parameters.
+ * Always updates the active version to the current version for active workflows, clears it when deactivating.
+ *
+ * @param dbWorkflow - The current workflow entity from the database, before the update
+ * @param updatedVersion - The workflow history version of the updated workflow
+ * @param updatedActive - Optional boolean indicating if the workflow's active status is being updated
+ * @returns The workflow history version to set as active, null if deactivating, or the existing active version if unchanged
+ */
+export function getActiveVersionUpdateValue(
+	dbWorkflow: WorkflowEntity,
+	updatedVersion: WorkflowHistory,
+	updatedActive?: boolean,
+) {
+	if (updatedActive) {
+		return updatedVersion;
+	}
+
+	if (updatedActive === false) {
+		return null;
+	}
+
+	return dbWorkflow.activeVersionId ? updatedVersion : null;
 }

@@ -41,6 +41,11 @@ const telemetry = useTelemetry();
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const availableActions = [
 		{
+			label: i18n.baseText('dataTable.download.csv'),
+			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
+			disabled: false,
+		},
+		{
 			label: i18n.baseText('generic.delete'),
 			value: DATA_TABLE_CARD_ACTIONS.DELETE,
 			disabled: !dataTableStore.projectPermissions.dataTable.delete || props.isReadOnly,
@@ -67,6 +72,10 @@ const onAction = async (action: string) => {
 			});
 			break;
 		}
+		case DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV: {
+			await downloadDataTableCsv();
+			break;
+		}
 		case DATA_TABLE_CARD_ACTIONS.DELETE: {
 			const promptResponse = await message.confirm(
 				i18n.baseText('dataTable.delete.confirm.message', {
@@ -83,6 +92,19 @@ const onAction = async (action: string) => {
 			}
 			break;
 		}
+	}
+};
+
+const downloadDataTableCsv = async () => {
+	try {
+		await dataTableStore.downloadDataTableCsv(props.dataTable.id, props.dataTable.projectId);
+
+		telemetry.track('User downloaded data table CSV', {
+			data_table_id: props.dataTable.id,
+			data_table_project_id: props.dataTable.projectId,
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataTable.download.error'));
 	}
 };
 

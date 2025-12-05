@@ -1,9 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, AIMessage, SystemMessage, trimMessages } from '@langchain/core/messages';
 import { mock } from 'jest-mock-extended';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 
-import { loadMemory, saveToMemory, saveToolResultsToMemory } from '../memoryManagement';
+import { loadMemory, saveToMemory, buildToolContext } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
 jest.mock('@langchain/core/messages', () => ({
@@ -134,10 +134,9 @@ describe('memoryManagement', () => {
 		});
 	});
 
-	describe('saveToolResultsToMemory', () => {
-		it('should save tool results to memory', async () => {
-			const input = 'Calculate 2+2';
-			const toolResults: ToolCallData[] = [
+	describe('buildToolContext', () => {
+		it('should build tool context string from single step', () => {
+			const steps: ToolCallData[] = [
 				{
 					action: {
 						tool: 'calculator',
@@ -150,19 +149,13 @@ describe('memoryManagement', () => {
 				},
 			];
 
-			await saveToolResultsToMemory(input, toolResults, mockMemory);
+			const result = buildToolContext(steps);
 
-			expect(mockMemory.saveContext).toHaveBeenCalledWith(
-				{ input },
-				{
-					output: 'Tool: calculator, Input: {"expression":"2+2"}, Result: 4',
-				},
-			);
+			expect(result).toBe('Tool: calculator, Input: {"expression":"2+2"}, Result: 4');
 		});
 
-		it('should save multiple tool results', async () => {
-			const input = 'Get weather and time';
-			const toolResults: ToolCallData[] = [
+		it('should build tool context string from multiple steps', () => {
+			const steps: ToolCallData[] = [
 				{
 					action: {
 						tool: 'weather',
@@ -185,57 +178,21 @@ describe('memoryManagement', () => {
 				},
 			];
 
-			await saveToolResultsToMemory(input, toolResults, mockMemory);
+			const result = buildToolContext(steps);
 
-			expect(mockMemory.saveContext).toHaveBeenCalledTimes(2);
-			expect(mockMemory.saveContext).toHaveBeenNthCalledWith(
-				1,
-				{ input },
-				{
-					output: 'Tool: weather, Input: {"location":"New York"}, Result: Sunny, 72°F',
-				},
-			);
-			expect(mockMemory.saveContext).toHaveBeenNthCalledWith(
-				2,
-				{ input },
-				{
-					output: 'Tool: time, Input: {"timezone":"EST"}, Result: 14:30',
-				},
+			expect(result).toBe(
+				'Tool: weather, Input: {"location":"New York"}, Result: Sunny, 72°F; Tool: time, Input: {"timezone":"EST"}, Result: 14:30',
 			);
 		});
 
-		it('should not save when memory is not provided', async () => {
-			const input = 'Calculate 2+2';
-			const toolResults: ToolCallData[] = [
-				{
-					action: {
-						tool: 'calculator',
-						toolInput: { expression: '2+2' },
-						log: 'Using calculator',
-						toolCallId: 'call_123',
-						type: 'tool_call',
-					},
-					observation: '4',
-				},
-			];
+		it('should return empty string for empty steps array', () => {
+			const result = buildToolContext([]);
 
-			await saveToolResultsToMemory(input, toolResults, undefined);
-
-			expect(mockMemory.saveContext).not.toHaveBeenCalled();
+			expect(result).toBe('');
 		});
 
-		it('should not save when toolResults is empty', async () => {
-			const input = 'Calculate 2+2';
-			const toolResults: ToolCallData[] = [];
-
-			await saveToolResultsToMemory(input, toolResults, mockMemory);
-
-			expect(mockMemory.saveContext).not.toHaveBeenCalled();
-		});
-
-		it('should handle complex tool inputs', async () => {
-			const input = 'Search for information';
-			const toolResults: ToolCallData[] = [
+		it('should handle complex tool inputs', () => {
+			const steps: ToolCallData[] = [
 				{
 					action: {
 						tool: 'search',
@@ -252,14 +209,10 @@ describe('memoryManagement', () => {
 				},
 			];
 
-			await saveToolResultsToMemory(input, toolResults, mockMemory);
+			const result = buildToolContext(steps);
 
-			expect(mockMemory.saveContext).toHaveBeenCalledWith(
-				{ input },
-				{
-					output:
-						'Tool: search, Input: {"query":"typescript testing","filters":{"language":"en","date":"2024"},"limit":10}, Result: Found 10 results',
-				},
+			expect(result).toBe(
+				'Tool: search, Input: {"query":"typescript testing","filters":{"language":"en","date":"2024"},"limit":10}, Result: Found 10 results',
 			);
 		});
 	});

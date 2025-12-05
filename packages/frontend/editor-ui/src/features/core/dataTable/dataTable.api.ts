@@ -133,6 +133,23 @@ export const moveDataTableColumnApi = async (
 	);
 };
 
+export const renameDataTableColumnApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	columnId: string,
+	name: string,
+) => {
+	return await makeRestApiRequest<DataTableColumn>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/rename`,
+		{
+			name,
+		},
+	);
+};
+
 export const getDataTableRowsApi = async (
 	context: IRestApiContext,
 	dataTableId: string,
@@ -223,6 +240,25 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 	);
 };
 
+export const downloadDataTableCsvApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+): Promise<{ csvContent: string; filename: string }> => {
+	const response = await makeRestApiRequest<{ csvContent: string; dataTableName: string }>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/download-csv`,
+	);
+
+	// Use just the data table name as filename
+	const filename = `${response.dataTableName}.csv`;
+
+	return {
+		csvContent: response.csvContent,
+		filename,
+	};
+};
 export const uploadCsvFileApi = async (
 	context: IRestApiContext,
 	file: File,

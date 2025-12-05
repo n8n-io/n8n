@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,9 +9,13 @@ import {
 	InstanceSettings,
 	UnrecognizedNodeTypeError,
 	type DirectoryLoader,
+	type ErrorReporter,
 } from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
+import { HttpBasicAuth } from 'n8n-nodes-base/credentials/HttpBasicAuth.credentials';
+import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.credentials';
+import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -60,6 +65,18 @@ export async function initCredentialsTypes(): Promise<void> {
 		},
 		ftp: {
 			type: new Ftp(),
+			sourcePath: '',
+		},
+		openAiApi: {
+			type: new OpenAiApi(),
+			sourcePath: '',
+		},
+		httpHeaderAuth: {
+			type: new HttpHeaderAuth(),
+			sourcePath: '',
+		},
+		httpBasicAuth: {
+			type: new HttpBasicAuth(),
 			sourcePath: '',
 		},
 	};
@@ -115,7 +132,9 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 		availableModes: [mode],
 		localStoragePath: '',
 	});
-	const binaryDataService = new BinaryDataService(config);
+	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
+	const binaryDataService = new BinaryDataService(config, errorReporter, logger);
 	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
@@ -194,6 +213,7 @@ export function makeWorkflow(options?: {
 
 	workflow.name = 'My Workflow';
 	workflow.active = false;
+	workflow.activeVersionId = null;
 	workflow.connections = {};
 	workflow.nodes = [node];
 

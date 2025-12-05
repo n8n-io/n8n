@@ -24,7 +24,7 @@ test.describe('Debug mode', () => {
 
 	// Helper function to create basic workflow
 	async function createBasicWorkflow(n8n: n8nPage, url = URLS.FAILING) {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+		await n8n.navigate.toWorkflow('new');
 		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.addNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', url);

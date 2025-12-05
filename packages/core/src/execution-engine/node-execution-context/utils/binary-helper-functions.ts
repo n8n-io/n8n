@@ -159,8 +159,7 @@ export async function setBinaryDataBuffer(
 	executionId: string,
 ): Promise<IBinaryData> {
 	return await Container.get(BinaryDataService).store(
-		workflowId,
-		executionId,
+		{ type: 'execution', workflowId, executionId },
 		bufferOrStream,
 		binaryData,
 	);
@@ -218,8 +217,7 @@ export async function copyBinaryFile(
 	}
 
 	return await Container.get(BinaryDataService).copyBinaryFile(
-		workflowId,
-		executionId,
+		{ type: 'execution', workflowId, executionId },
 		returnData,
 		filePath,
 	);
@@ -238,6 +236,7 @@ export async function prepareBinaryData(
 	mimeType?: string,
 ): Promise<IBinaryData> {
 	let fileExtension: string | undefined;
+	let fullUrl: string | undefined;
 	if (binaryData instanceof IncomingMessage) {
 		if (!filePath) {
 			try {
@@ -245,6 +244,7 @@ export async function prepareBinaryData(
 				filePath =
 					binaryData.contentDisposition?.filename ??
 					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
+				fullUrl = responseUrl;
 			} catch {}
 		}
 		if (!mimeType) {
@@ -298,9 +298,12 @@ export async function prepareBinaryData(
 	if (filePath) {
 		const filePathParts = path.parse(filePath);
 
-		if (filePathParts.dir !== '') {
+		if (fullUrl) {
+			returnData.directory = fullUrl;
+		} else if (filePathParts.dir !== '') {
 			returnData.directory = filePathParts.dir;
 		}
+
 		returnData.fileName = filePathParts.base;
 
 		// Remove the dot

@@ -1,4 +1,4 @@
-import { createWorkflow, newWorkflow } from '@n8n/backend-test-utils';
+import { createActiveWorkflow } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -361,8 +361,7 @@ describe('PrometheusMetricsService', () => {
 
 		expect(lines).toContain('n8n_test_active_workflow_count 0');
 
-		const workflow = newWorkflow({ active: true });
-		await createWorkflow(workflow);
+		await createActiveWorkflow({});
 
 		const workflowRepository = Container.get(WorkflowRepository);
 		const activeWorkflowCount = await workflowRepository.getActiveCount();

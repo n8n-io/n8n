@@ -3,7 +3,7 @@ import type { n8nPage } from '../../pages/n8nPage';
 
 test.describe('Data transformation expressions', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
+		await n8n.start.fromBlankCanvas();
 	});
 
 	async function addEditFields(n8n: n8nPage): Promise<void> {
@@ -16,8 +16,6 @@ test.describe('Data transformation expressions', () => {
 	}
 
 	test('$json + native string methods', async ({ n8n }) => {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
-
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myStr: 'Monday' }]);
 		await n8n.ndv.close();
@@ -38,8 +36,6 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + n8n string methods', async ({ n8n }) => {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
-
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
 		await n8n.ndv.close();
@@ -59,8 +55,6 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + native numeric methods', async ({ n8n }) => {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
-
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myNum: 9.123 }]);
 		await n8n.ndv.close();
@@ -80,8 +74,6 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + n8n numeric methods', async ({ n8n }) => {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
-
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
 		await n8n.ndv.close();
@@ -101,8 +93,6 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + native array access', async ({ n8n }) => {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
-
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myArr: [1, 2, 3] }]);
 		await n8n.ndv.close();
@@ -123,8 +113,6 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + n8n array methods', async ({ n8n }) => {
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
-
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myArr: [1, 2, 3] }]);
 		await n8n.ndv.close();

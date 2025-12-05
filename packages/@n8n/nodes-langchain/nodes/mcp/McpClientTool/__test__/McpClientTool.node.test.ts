@@ -229,6 +229,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
+				fetch: expect.any(Function),
 				requestInit: { headers: { 'my-header': 'header-value' } },
 			});
 
@@ -278,6 +279,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
+				fetch: expect.any(Function),
 				requestInit: { headers: { Authorization: 'Bearer my-token' } },
 			});
 

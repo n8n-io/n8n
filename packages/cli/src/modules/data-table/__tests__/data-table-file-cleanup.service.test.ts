@@ -66,6 +66,14 @@ describe('DataTableFileCleanupService', () => {
 
 			await expect(service.deleteFile(fileId)).rejects.toThrow('Permission denied');
 		});
+
+		it('should not allow path traversal when deleting file', async () => {
+			const maliciousFileId = '../some/other/directory/malicious-file.csv';
+
+			await expect(service.deleteFile(maliciousFileId)).rejects.toThrowError(
+				'Path traversal detected',
+			);
+		});
 	});
 
 	describe('start and shutdown', () => {

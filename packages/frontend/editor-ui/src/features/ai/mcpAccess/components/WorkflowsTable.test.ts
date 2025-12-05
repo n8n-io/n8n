@@ -24,6 +24,7 @@ const mockWorkflow = (id: string, overrides?: Partial<WorkflowListItem>): Workfl
 	id,
 	name: `Workflow ${id}`,
 	active: true,
+	activeVersionId: 'v1',
 	isArchived: false,
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-02T00:00:00.000Z',
