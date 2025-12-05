@@ -62,19 +62,11 @@ function handleEditClick() {
 	list-style: none;
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--3xs) 0;
+	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
 
 	&:hover {
 		color: var(--color--primary);
-	}
-
-	&:first-child {
-		padding-top: 0;
-	}
-
-	&:last-child {
-		padding-bottom: 0;
 	}
 }
 

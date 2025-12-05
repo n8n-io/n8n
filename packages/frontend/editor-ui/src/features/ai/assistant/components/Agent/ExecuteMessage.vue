@@ -354,7 +354,7 @@ onBeforeUnmount(() => {
 }
 
 .issuesBox {
-	padding: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
@@ -364,6 +364,9 @@ onBeforeUnmount(() => {
 	margin: 0;
 	padding: 0;
 	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .runButton {
