@@ -2,7 +2,6 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
-	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
@@ -454,111 +453,6 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 
 			expect(workflow?.active).toBeFalsy();
 			expect(workflow?.activeVersionId).toBeNull();
-
-			await context.queryRunner.release();
-		});
-	});
-
-	describe('Down Migration', () => {
-		const workflowIds = {
-			executeWorkflow: randomUUID(),
-			errorTrigger: randomUUID(),
-			normalWorkflow: randomUUID(),
-		};
-
-		beforeAll(async () => {
-			const context = createTestMigrationContext(dataSource);
-
-			// Insert workflows that are already active
-			await insertTestWorkflow(context, {
-				id: workflowIds.executeWorkflow,
-				name: 'Test Execute Workflow Trigger Rollback',
-				nodes: [
-					{
-						id: randomUUID(),
-						name: 'Execute Workflow Trigger',
-						type: 'n8n-nodes-base.executeWorkflowTrigger',
-						parameters: { inputSource: 'passthrough' },
-						typeVersion: 1,
-						position: [0, 0],
-					},
-				],
-				connections: {},
-				active: true,
-				versionId: randomUUID(),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-
-			await insertTestWorkflow(context, {
-				id: workflowIds.errorTrigger,
-				name: 'Test Error Trigger Rollback',
-				nodes: [
-					{
-						id: randomUUID(),
-						name: 'Error Trigger',
-						type: 'n8n-nodes-base.errorTrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 0],
-					},
-				],
-				connections: {},
-				active: true,
-				versionId: randomUUID(),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-
-			await insertTestWorkflow(context, {
-				id: workflowIds.normalWorkflow,
-				name: 'Test Normal Workflow Rollback',
-				nodes: [
-					{
-						id: randomUUID(),
-						name: 'Schedule Trigger',
-						type: 'n8n-nodes-base.scheduleTrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 0],
-					},
-				],
-				connections: {},
-				active: true,
-				versionId: randomUUID(),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-
-			await context.queryRunner.release();
-
-			await undoLastSingleMigration();
-		});
-
-		it('should deactivate workflows with Execute Workflow Trigger', async () => {
-			const context = createTestMigrationContext(dataSource);
-			const workflow = await getWorkflowById(context, workflowIds.executeWorkflow);
-
-			expect(workflow?.active).toBeFalsy();
-			expect(workflow?.activeVersionId).toBeNull();
-
-			await context.queryRunner.release();
-		});
-
-		it('should deactivate workflows with Error Trigger', async () => {
-			const context = createTestMigrationContext(dataSource);
-			const workflow = await getWorkflowById(context, workflowIds.errorTrigger);
-
-			expect(workflow?.active).toBeFalsy();
-
-			await context.queryRunner.release();
-		});
-
-		it('should NOT deactivate workflows without Execute Workflow or Error Trigger', async () => {
-			const context = createTestMigrationContext(dataSource);
-			const workflow = await getWorkflowById(context, workflowIds.normalWorkflow);
-
-			expect(workflow?.active).toBeTruthy();
 
 			await context.queryRunner.release();
 		});

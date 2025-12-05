@@ -1,7 +1,7 @@
 import { ERROR_TRIGGER_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import type { MigrationContext, ReversibleMigration } from '../migration-types';
+import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 type Node = {
 	type: string;
@@ -22,7 +22,7 @@ type Workflow = {
  * Activates all workflows that contain an executeWorkflowTrigger node with at least one parameter,
  * or an errorTrigger node. Also disables any other trigger nodes within those workflows.
  */
-export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements ReversibleMigration {
+export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements IrreversibleMigration {
 	private findExecuteWfAndErrorTriggers(nodes: Node[]): {
 		executeWorkflowTriggerNode: Node | undefined;
 		errorTriggerNode: Node | undefined;
@@ -176,42 +176,6 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 						},
 					);
 				}
-			}
-		});
-	}
-
-	async down({ escape, runQuery, runInBatches, parseJson }: MigrationContext) {
-		const tableName = escape.tableName('workflow_entity');
-		const id = escape.columnName('id');
-		const versionId = escape.columnName('versionId');
-		const nodes = escape.columnName('nodes');
-		const active = escape.columnName('active');
-		const activeVersionId = escape.columnName('activeVersionId');
-		const workflowsQuery = `SELECT ${id}, ${versionId}, ${nodes} FROM ${tableName} WHERE ${active} = true`;
-
-		await runInBatches<Workflow>(workflowsQuery, async (workflows) => {
-			for (const workflow of workflows) {
-				const nodes = parseJson(workflow.nodes);
-
-				const hasExecuteWorkflowTrigger = nodes.some(
-					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-				);
-
-				const hasErrorTrigger = nodes.some((node: Node) => node.type === ERROR_TRIGGER_NODE_TYPE);
-
-				if (!hasExecuteWorkflowTrigger && !hasErrorTrigger) {
-					continue;
-				}
-
-				// Deactivate the workflow
-				await runQuery(
-					`UPDATE ${tableName} SET ${active} = :active, ${activeVersionId} = :activeVersionId WHERE ${id} = :id`,
-					{
-						active: false,
-						activeVersionId: null,
-						id: workflow.id,
-					},
-				);
 			}
 		});
 	}
