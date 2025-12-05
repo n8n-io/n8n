@@ -139,7 +139,7 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	}
 
 	// Store the current workflow ID, but only if it's not a new workflow
-	if (to.params.name !== 'new' && typeof to.params.name === 'string') {
+	if (typeof to.params.name === 'string') {
 		workflowToReturnTo.value = to.params.name;
 	}
 
@@ -201,18 +201,17 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 }
 
 async function navigateToExecutionsView(openInNewTab: boolean) {
-	const routeWorkflowId = workflowId.value || 'new';
 	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
 
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: routeWorkflowId, executionId: executionToReturnToValue },
+				params: { name: workflowId.value, executionId: executionToReturnToValue },
 				query: route.query,
 			}
 		: {
 				name: VIEWS.EXECUTION_HOME,
-				params: { name: routeWorkflowId },
+				params: { name: workflowId.value },
 				query: route.query,
 			};
 
@@ -228,11 +227,9 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 }
 
 async function navigateToEvaluationsView(openInNewTab: boolean) {
-	const routeWorkflowId = workflowId.value || 'new';
-
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
-		params: { name: routeWorkflowId },
+		params: { name: workflowId.value },
 		query: route.query,
 	};
 
