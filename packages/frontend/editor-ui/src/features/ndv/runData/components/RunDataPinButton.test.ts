@@ -40,22 +40,22 @@ describe('RunDataPinButton.vue', () => {
 	beforeEach(cleanup);
 
 	it('shows default tooltip content only on button hover', async () => {
-		const { getByRole, queryByRole, emitted } = renderComponent();
-
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
+		const { getByRole, emitted, baseElement } = renderComponent();
 
 		expect(getByRole('button')).toBeEnabled();
 		await userEvent.hover(getByRole('button'));
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('More info');
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent('More info');
+		});
 
 		await userEvent.click(getByRole('button'));
 		expect(emitted().togglePinData).toBeDefined();
 	});
 
 	it('shows binary data tooltip content only on disabled button hover', async () => {
-		const { getByRole, queryByRole, emitted } = renderComponent({
+		const { getByRole, emitted, baseElement } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: true,
@@ -65,20 +65,21 @@ describe('RunDataPinButton.vue', () => {
 			},
 		});
 
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 		expect(getByRole('button')).toBeDisabled();
 
 		await userEvent.hover(getByRole('button'));
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('disabled');
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(/disabled/);
+		});
 
 		await userEvent.click(getByRole('button'));
 		expect(emitted().togglePinData).not.toBeDefined();
 	});
 
 	it('shows pin data discoverability tooltip immediately (not on hover)', async () => {
-		const { getByRole } = renderComponent({
+		const { getByRole, baseElement } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: false,
@@ -88,19 +89,19 @@ describe('RunDataPinButton.vue', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByRole('tooltip')).toBeVisible();
-			expect(getByRole('tooltip')).toHaveTextContent('instead of waiting');
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(/instead of waiting/);
 		});
 		expect(getByRole('button')).toBeEnabled();
 
 		await userEvent.hover(getByRole('button'));
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('instead of waiting');
+		const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+		expect(tooltip).toHaveTextContent(/instead of waiting/);
 	});
 
 	it('shows binary data tooltip content even if discoverability tooltip enabled', async () => {
-		const { getByRole } = renderComponent({
+		const { getByRole, baseElement } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: true,
@@ -111,29 +112,31 @@ describe('RunDataPinButton.vue', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByRole('tooltip')).toBeVisible();
-			expect(getByRole('tooltip')).toHaveTextContent('disabled');
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(/disabled/);
 		});
 		expect(getByRole('button')).toBeDisabled();
 
 		await userEvent.hover(getByRole('button'));
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('disabled');
+		const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+		expect(tooltip).toHaveTextContent(/disabled/);
 	});
 
 	it('pins data on button click', async () => {
-		const { getByTestId, getByRole, emitted } = renderComponent({});
+		const { getByTestId, emitted, baseElement } = renderComponent({});
 		// Should show 'Pin data' tooltip and emit togglePinData event
 		await userEvent.hover(getByTestId('ndv-pin-data'));
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip').textContent).toContain('Pin data');
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(/Pin data/);
+		});
 		await userEvent.click(getByTestId('ndv-pin-data'));
 		expect(emitted().togglePinData).toBeDefined();
 	});
 
 	it('should show correct tooltip and unpin data on button click', async () => {
-		const { getByTestId, getByRole, emitted } = renderComponent({
+		const { getByTestId, emitted, baseElement } = renderComponent({
 			props: {
 				pinnedData: {
 					hasData: { value: true },
@@ -142,8 +145,10 @@ describe('RunDataPinButton.vue', () => {
 		});
 		// Should show 'Unpin data' tooltip and emit togglePinData event
 		await userEvent.hover(getByTestId('ndv-pin-data'));
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip').textContent).toContain('Unpin data');
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(/Unpin data/);
+		});
 		await userEvent.click(getByTestId('ndv-pin-data'));
 		expect(emitted().togglePinData).toBeDefined();
 	});

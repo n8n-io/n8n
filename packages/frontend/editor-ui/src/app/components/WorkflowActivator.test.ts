@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
@@ -56,8 +57,9 @@ describe('WorkflowActivator', () => {
 
 	it('display an inactive tooltip when there are no nodes available', async () => {
 		mockWorkflowsStore.workflowId = '1';
+		mockWorkflowsStore.workflowTriggerNodes = [];
 
-		const { getByTestId, getByRole } = renderComponent({
+		const { getByTestId, getByRole, baseElement } = renderComponent({
 			props: {
 				isArchived: false,
 				workflowActive: false,
@@ -67,11 +69,13 @@ describe('WorkflowActivator', () => {
 		});
 
 		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
 
-		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow has no trigger nodes that require activation',
-		);
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(
+				'This workflow has no trigger nodes that require activation',
+			);
+		});
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 
@@ -81,7 +85,7 @@ describe('WorkflowActivator', () => {
 			{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, disabled: false } as never,
 		];
 
-		const { getByTestId, getByRole } = renderComponent({
+		const { getByTestId, getByRole, baseElement } = renderComponent({
 			props: {
 				isArchived: false,
 				workflowActive: false,
@@ -91,11 +95,13 @@ describe('WorkflowActivator', () => {
 		});
 
 		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
 
-		expect(getByRole('tooltip')).toHaveTextContent(
-			"Execute Workflow Trigger' doesn't require activation as it is triggered by another workflow",
-		);
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(
+				"Execute Workflow Trigger' doesn't require activation as it is triggered by another workflow",
+			);
+		});
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 
@@ -279,16 +285,17 @@ describe('WorkflowActivator', () => {
 			},
 		};
 
-		const { getByTestId, getByRole } = renderComponent(renderOptions);
+		const { getByTestId, getByRole, baseElement } = renderComponent(renderOptions);
 		expect(getByTestId('workflow-activator-status')).toBeInTheDocument();
 		expect(getByRole('switch')).toBeInTheDocument();
 		expect(getByRole('switch')).toBeDisabled();
 
 		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
-		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow is archived so it cannot be activated',
-		);
+
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent('This workflow is archived so it cannot be activated');
+		});
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 });

@@ -8,7 +8,8 @@ import {
 	createMockNodeTypes,
 	mockLoadedNodeType,
 } from '@/__tests__/mocks';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 
@@ -133,9 +134,9 @@ describe('ParameterInputList', () => {
 		expect(getAllByTestId('suspense-stub')).toHaveLength(FIXED_COLLECTION_PARAMETERS.length);
 	});
 
-	it('renders fixed collection inputs correctly with issues', () => {
+	it('renders fixed collection inputs correctly with issues', async () => {
 		ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-		const { getByText, getByTestId } = renderComponent({
+		const { getByText, getByTestId, container, baseElement } = renderComponent({
 			props: {
 				parameters: TEST_PARAMETERS,
 				nodeValues: TEST_NODE_VALUES,
@@ -150,7 +151,16 @@ describe('ParameterInputList', () => {
 		expect(
 			getByTestId(`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`),
 		).toBeInTheDocument();
-		expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+
+		// Hover over the issue icon to see tooltip content
+		const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
+		expect(issueIcon).toBeInTheDocument();
+		await userEvent.hover(issueIcon!);
+
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(TEST_ISSUE);
+		});
 	});
 
 	it('renders notice correctly', () => {
@@ -1134,16 +1144,24 @@ describe('ParameterInputList', () => {
 	 * Tests issue icons, tooltips, and hiddenIssuesInputs functionality.
 	 */
 	describe('Issues Display', () => {
-		it('should display issues for fixedCollection parameters', () => {
+		it('should display issues for fixedCollection parameters', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { getByText } = renderComponent({
+			const { container, baseElement } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,
 				},
 			});
 
-			expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+			// Hover over the issue icon to see tooltip content
+			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
+			expect(issueIcon).toBeInTheDocument();
+			await userEvent.hover(issueIcon!);
+
+			await waitFor(() => {
+				const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+				expect(tooltip).toHaveTextContent(TEST_ISSUE);
+			});
 		});
 
 		it('should display issue icon in label for supported parameter types', () => {
@@ -1159,9 +1177,9 @@ describe('ParameterInputList', () => {
 			expect(issueIcon).toBeInTheDocument();
 		});
 
-		it('should not display issues when parameter is in hiddenIssuesInputs', () => {
+		it('should not display issues when parameter is in hiddenIssuesInputs', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { getByText } = renderComponent({
+			const { container, baseElement } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,
@@ -1171,7 +1189,15 @@ describe('ParameterInputList', () => {
 
 			// Issue text still appears because hiddenIssuesInputs is passed to child component
 			// The actual hiding logic is in the child component (ParameterInputFull)
-			expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+			// Hover over the issue icon to see tooltip content
+			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
+			expect(issueIcon).toBeInTheDocument();
+			await userEvent.hover(issueIcon!);
+
+			await waitFor(() => {
+				const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+				expect(tooltip).toHaveTextContent(TEST_ISSUE);
+			});
 		});
 	});
 

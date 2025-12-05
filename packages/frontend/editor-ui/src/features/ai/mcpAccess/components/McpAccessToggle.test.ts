@@ -3,7 +3,7 @@ import McpAccessToggle from './McpAccessToggle.vue';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 
 const renderComponent = createComponentRenderer(McpAccessToggle);
 
@@ -111,7 +111,7 @@ describe('McpAccessToggle', () => {
 		});
 
 		it('should show tooltip when disabled', async () => {
-			const { container, queryByRole } = renderComponent({
+			const { getByTestId } = renderComponent({
 				pinia,
 				props: {
 					modelValue: false,
@@ -119,19 +119,15 @@ describe('McpAccessToggle', () => {
 				},
 			});
 
-			const tooltipTrigger = container.querySelector('.el-tooltip__trigger');
-			expect(tooltipTrigger).toBeInTheDocument();
-
-			await userEvent.hover(tooltipTrigger!);
+			const toggle = getByTestId('mcp-access-toggle');
+			await userEvent.hover(toggle);
 			await waitFor(() => {
-				const tooltip = queryByRole('tooltip');
-				expect(tooltip).toBeInTheDocument();
-				expect(tooltip).toHaveTextContent('Only instance admins can change this');
+				expect(screen.getByText('Only instance admins can change this')).toBeInTheDocument();
 			});
 		});
 
 		it('should not show tooltip when enabled', async () => {
-			const { container, queryByRole } = renderComponent({
+			const { getByTestId } = renderComponent({
 				pinia,
 				props: {
 					modelValue: false,
@@ -139,12 +135,10 @@ describe('McpAccessToggle', () => {
 				},
 			});
 
-			const tooltipTrigger = container.querySelector('.el-tooltip__trigger');
-			expect(tooltipTrigger).toBeInTheDocument();
+			const toggle = getByTestId('mcp-access-toggle');
+			await userEvent.hover(toggle);
 
-			await userEvent.hover(tooltipTrigger!);
-
-			expect(queryByRole('tooltip')).not.toBeInTheDocument();
+			expect(screen.queryByText('Only instance admins can change this')).not.toBeInTheDocument();
 		});
 	});
 

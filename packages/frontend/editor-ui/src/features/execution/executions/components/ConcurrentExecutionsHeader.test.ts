@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import ConcurrentExecutionsHeader from './ConcurrentExecutionsHeader.vue';
 
@@ -47,7 +48,7 @@ describe('ConcurrentExecutionsHeader', () => {
 	);
 
 	it('should show tooltip on hover with Upgrade link and emit "goToUpgrade" on click when on cloud', async () => {
-		const { container, getByText, getByRole, queryByRole, emitted } = renderComponent({
+		const { container, emitted } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
 				concurrencyCap: 5,
@@ -58,20 +59,20 @@ describe('ConcurrentExecutionsHeader', () => {
 		const tooltipTrigger = container.querySelector('svg') as SVGSVGElement;
 
 		expect(tooltipTrigger).toBeVisible();
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(tooltipTrigger);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByText('Upgrade now')).toBeVisible();
+		await waitFor(() => {
+			expect(screen.getByText('Upgrade now')).toBeVisible();
+		});
 
-		await userEvent.click(getByText('Upgrade now'));
+		await userEvent.click(screen.getByText('Upgrade now'));
 
 		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
 
 	it('should show tooltip on hover with Viev docs link when self-hosted', async () => {
-		const { container, getByText, getByRole, queryByRole } = renderComponent({
+		const { container } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
 				concurrencyCap: 5,
@@ -81,11 +82,11 @@ describe('ConcurrentExecutionsHeader', () => {
 		const tooltipTrigger = container.querySelector('svg') as SVGSVGElement;
 
 		expect(tooltipTrigger).toBeVisible();
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(tooltipTrigger);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByText('View docs')).toBeVisible();
+		await waitFor(() => {
+			expect(screen.getByText('View docs')).toBeVisible();
+		});
 	});
 });
