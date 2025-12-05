@@ -28,6 +28,7 @@ import {
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { inE2ETests } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -442,7 +443,14 @@ export class OidcService {
 			// TODO: validate Metadata against features
 			this.logger.debug(`Discovered OIDC metadata: ${JSON.stringify(discoveredMetadata)}`);
 		} catch (error) {
-			this.logger.error('Failed to discover OIDC metadata', { error });
+			this.logger.error('Failed to discover OIDC metadata', {
+				error,
+				discoveryUrl: discoveryEndpoint.toString(),
+				errorMessage: error instanceof Error ? error.message : String(error),
+				errorStack: error instanceof Error ? error.stack : undefined,
+				errorName: error instanceof Error ? error.name : undefined,
+				clientId: newConfig.clientId,
+			});
 			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
 		await this.settingsRepository.save({
@@ -499,6 +507,35 @@ export class OidcService {
 		| undefined;
 
 	/**
+	 * Transforms localhost URLs to Docker internal network hostname for server-to-server requests.
+	 * Discovery returns localhost:5556 for browser compatibility, but Docker containers need dex:5556.
+	 */
+	private transformDockerUrl(url: string): string {
+		// Only transform URLs that start with localhost:5556 to avoid unintended replacements
+		if (url.startsWith('http://localhost:5556')) {
+			return url.replace('http://localhost:5556', 'http://dex:5556');
+		}
+		return url;
+	}
+
+	/**
+	 * Discovers OIDC configuration with E2E test support for HTTP and Docker networking.
+	 */
+	private async discoverWithE2ESupport(
+		discoveryUrl: URL,
+		clientId: string,
+		clientSecret: string,
+	): Promise<client.Configuration> {
+		return await client.discovery(discoveryUrl, clientId, clientSecret, undefined, {
+			execute: [client.allowInsecureRequests],
+			[client.customFetch]: async (url: string, options?: any) => {
+				const transformedUrl = this.transformDockerUrl(url);
+				return await fetch(transformedUrl, options as RequestInit);
+			},
+		});
+	}
+
+	/**
 	 * Creates a proxy-aware configuration for openid-client.
 	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
 	 */
@@ -507,7 +544,9 @@ export class OidcService {
 		clientId: string,
 		clientSecret: string,
 	): Promise<client.Configuration> {
-		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
+		const configuration = inE2ETests
+			? await this.discoverWithE2ESupport(discoveryUrl, clientId, clientSecret)
+			: await client.discovery(discoveryUrl, clientId, clientSecret);
 
 		// Check if proxy environment variables are set
 		const hasProxyConfig =
@@ -532,6 +571,23 @@ export class OidcService {
 					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
 					dispatcher: proxyAgent,
 				});
+			};
+		}
+
+		// For E2E tests, transform localhost URLs to Docker network hostnames
+		if (inE2ETests) {
+			const existingFetch = configuration[client.customFetch];
+
+			configuration[client.customFetch] = async (...args) => {
+				const [url, options] = args;
+				const transformedUrl = this.transformDockerUrl(url.toString());
+
+				// If proxy fetch exists, chain it
+				if (existingFetch) {
+					return await existingFetch(transformedUrl, options);
+				}
+
+				return await fetch(transformedUrl, options as RequestInit);
 			};
 		}
 

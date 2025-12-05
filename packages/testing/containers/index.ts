@@ -20,3 +20,14 @@ export {
 	type MailpitMessage,
 	type MailpitQuery,
 } from './n8n-test-container-mailpit';
+export {
+	setupDex,
+	getDexEnvironment,
+	getDexDiscoveryUrl,
+	getDexIssuerUrl,
+	DEFAULT_DEX_PORT,
+	DEX_TEST_CLIENT_ID,
+	DEX_TEST_CLIENT_SECRET,
+	DEX_TEST_USER_EMAIL,
+	DEX_TEST_USER_PASSWORD,
+} from './n8n-test-container-dex';

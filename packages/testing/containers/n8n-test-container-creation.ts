@@ -27,6 +27,7 @@ import {
 	setupProxyServer,
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
+import { setupDex } from './n8n-test-container-dex';
 import { setupGitea } from './n8n-test-container-gitea';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
@@ -92,6 +93,7 @@ export interface N8NConfig {
 	sourceControl?: boolean;
 	taskRunner?: boolean;
 	email?: boolean;
+	oidc?: boolean;
 }
 
 export interface N8NStack {
@@ -135,11 +137,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		taskRunner = false,
 		sourceControl = false,
 		email = false,
+		oidc = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
+	const oidcEnabled = !!oidc;
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
@@ -155,7 +159,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled ||
 		taskRunnerEnabled ||
 		sourceControlEnabled ||
-		emailEnabled;
+		emailEnabled ||
+		oidcEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -247,7 +252,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			HTTP_PROXY: url,
 			HTTPS_PROXY: url,
 			// Ensure https requests can be proxied without SSL issues
-			...(proxyServerEnabled ? { NODE_TLS_REJECT_UNAUTHORIZED: '0' } : {}),
+			NODE_TLS_REJECT_UNAUTHORIZED: '0',
+		};
+	}
+
+	// Enable E2E test mode for OIDC URL rewriting
+	if (oidcEnabled) {
+		environment = {
+			...environment,
+			E2E_TESTS: 'true',
 		};
 	}
 
@@ -280,6 +293,23 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			...environment,
 			...getMailpitEnvironment(hostname, smtpPort),
 		};
+	}
+
+	// For OIDC: allocate port early so Dex can be configured with the correct n8n callback URL
+	// (Load balancer uses port 5678, so Dex's default redirect URIs work without early allocation)
+	let assignedPort: number | undefined;
+	if (oidcEnabled && !needsLoadBalancer) {
+		assignedPort = await getPort();
+	}
+
+	// Set up Dex OIDC provider before n8n instances so it's available on the Docker network
+	if (oidcEnabled && network) {
+		const dexContainer = await setupDex({
+			projectName: uniqueProjectName,
+			network,
+			n8nCallbackPort: assignedPort, // Adds http://localhost:{port}/rest/sso/oidc/callback to Dex config
+		});
+		containers.push(dexContainer);
 	}
 
 	let baseUrl: string;
@@ -320,12 +350,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
 		log('Load balancer is ready');
 	} else {
-		const assignedPort = await getPort();
+		// Reuse port if already allocated for OIDC, otherwise allocate now
+		assignedPort ??= await getPort();
 		baseUrl = `http://localhost:${assignedPort}`;
+
 		environment = {
 			...environment,
-			WEBHOOK_URL: baseUrl,
+			WEBHOOK_URL: baseUrl, // External access via localhost
 			N8N_PORT: '5678', // Internal port
+			// When OIDC enabled, use the external base URL so browser can access SSO endpoints
+			...(oidcEnabled ? { N8N_EDITOR_BASE_URL: baseUrl } : {}),
 		};
 
 		const instances = await createN8NInstances({
