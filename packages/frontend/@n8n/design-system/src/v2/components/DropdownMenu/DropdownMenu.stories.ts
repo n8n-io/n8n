@@ -494,3 +494,102 @@ export const Searchable: Story = {
 		searchDebounce: 300,
 	},
 };
+
+export const SearchableWithSubmenus: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const allItems: Array<DropdownMenuItemProps<string>> = [
+				{
+					id: 'fruits',
+					label: 'Fruits',
+					icon: 'folder',
+					children: [
+						{ id: 'apple', label: 'Apple' },
+						{ id: 'banana', label: 'Banana' },
+						{ id: 'cherry', label: 'Cherry' },
+					],
+				},
+				{
+					id: 'vegetables',
+					label: 'Vegetables',
+					icon: 'folder',
+					children: [
+						{ id: 'carrot', label: 'Carrot' },
+						{ id: 'broccoli', label: 'Broccoli' },
+						{ id: 'spinach', label: 'Spinach' },
+					],
+				},
+				{
+					id: 'dairy',
+					label: 'Dairy',
+					icon: 'folder',
+					children: [
+						{ id: 'milk', label: 'Milk' },
+						{ id: 'cheese', label: 'Cheese' },
+						{ id: 'yogurt', label: 'Yogurt' },
+					],
+				},
+				{ id: 'water', label: 'Water', divided: true },
+			];
+
+			const searchTerm = ref('');
+
+			// Recursive filter function that searches through nested items
+			const filterItems = (
+				items: Array<DropdownMenuItemProps<string>>,
+				term: string,
+			): Array<DropdownMenuItemProps<string>> => {
+				if (!term) return items;
+
+				return items.reduce<Array<DropdownMenuItemProps<string>>>((acc, item) => {
+					const labelMatches = item.label.toLowerCase().includes(term.toLowerCase());
+
+					if (item.children) {
+						const filteredChildren = filterItems(item.children, term);
+						// Include parent if it matches OR if any children match
+						if (labelMatches || filteredChildren.length > 0) {
+							acc.push({
+								...item,
+								children: filteredChildren.length > 0 ? filteredChildren : item.children,
+							});
+						}
+					} else if (labelMatches) {
+						acc.push(item);
+					}
+
+					return acc;
+				}, []);
+			};
+
+			const filteredItems = computed(() => filterItems(allItems, searchTerm.value));
+
+			const handleSearch = (term: string) => {
+				console.log('Search term (debounced):', term);
+				searchTerm.value = term;
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			return { args, filteredItems, handleSearch, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu
+				:items="filteredItems"
+				searchable
+				search-placeholder="Search all items..."
+				:search-debounce="200"
+				@search="handleSearch"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
