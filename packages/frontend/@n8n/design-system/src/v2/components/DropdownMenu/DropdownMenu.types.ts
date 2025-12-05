@@ -72,6 +72,8 @@ export interface DropdownMenuProps<T = string> {
 	extraPopperClass?: string;
 	/** Enable search functionality */
 	searchable?: boolean;
+	/** Whether to show the search icon */
+	showSearchIcon?: boolean;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */

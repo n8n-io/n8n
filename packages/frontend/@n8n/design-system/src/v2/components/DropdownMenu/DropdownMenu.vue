@@ -26,6 +26,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	loading: false,
 	loadingItemCount: 3,
 	searchable: false,
+	showSearchIcon: true,
 	searchPlaceholder: 'Search...',
 	searchDebounce: 300,
 });
@@ -201,7 +202,7 @@ defineExpose({ open, close });
 				<template v-else>
 					<!-- Search input -->
 					<div v-if="searchable" :class="$style.searchContainer">
-						<Icon icon="search" :class="$style.searchIcon" />
+						<Icon v-if="showSearchIcon" icon="search" :class="$style.searchIcon" />
 						<input
 							ref="searchInputRef"
 							type="text"

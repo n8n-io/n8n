@@ -581,6 +581,7 @@ export const SearchableWithSubmenus: Story = {
 			<DropdownMenu
 				:items="filteredItems"
 				searchable
+				:show-search-icon="false"
 				search-placeholder="Search all items..."
 				:search-debounce="200"
 				@search="handleSearch"
