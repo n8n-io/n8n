@@ -14,3 +14,8 @@ export type {
 	DocMetadataArgument,
 	DocMetadataExample,
 } from './extensions';
+
+export type {
+	Alias,
+	AliasCompletion,
+} from './extensions';
