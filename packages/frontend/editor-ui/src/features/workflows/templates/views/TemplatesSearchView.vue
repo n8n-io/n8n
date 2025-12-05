@@ -39,8 +39,6 @@ const errorLoadingWorkflows = ref(false);
 const { callDebounced } = useDebounce();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-
-const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const usersStore = useUsersStore();
 const i18n = useI18n();

@@ -66,8 +66,6 @@ const i18n = useI18n();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
-
-const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 
 const dataTable = ref<LdapSyncTable[]>([]);

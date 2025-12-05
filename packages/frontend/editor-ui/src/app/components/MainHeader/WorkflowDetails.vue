@@ -14,6 +14,7 @@ import {
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';

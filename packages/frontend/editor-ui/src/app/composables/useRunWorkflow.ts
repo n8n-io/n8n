@@ -43,7 +43,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import { useDocumentTitle } from './useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;

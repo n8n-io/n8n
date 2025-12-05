@@ -35,7 +35,6 @@ const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
-const settingsStore = useSettingsStore();
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {

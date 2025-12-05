@@ -8,7 +8,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useMCPStore } from './mcp.store';
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
