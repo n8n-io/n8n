@@ -20,7 +20,6 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -70,7 +69,6 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
