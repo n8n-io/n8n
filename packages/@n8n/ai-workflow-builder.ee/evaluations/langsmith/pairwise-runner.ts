@@ -269,6 +269,20 @@ function buildMultiGenerationLangsmithResults(
 	// Use first generation for backward-compatible metrics
 	const firstGen = aggregation.generationDetails[0];
 
+	// Aggregate counts across all generations
+	const totalJudgesPassed = aggregation.generationDetails.reduce(
+		(sum, g) => sum + g.primaryPasses,
+		0,
+	);
+	const totalViolations = aggregation.generationDetails.reduce(
+		(sum, g) => sum + g.judgeResults.reduce((jSum, r) => jSum + r.violations.length, 0),
+		0,
+	);
+	const totalPasses = aggregation.generationDetails.reduce(
+		(sum, g) => sum + g.judgeResults.reduce((jSum, r) => jSum + r.passes.length, 0),
+		0,
+	);
+
 	return [
 		// Primary aggregated metrics (new)
 		{
@@ -302,6 +316,22 @@ function buildMultiGenerationLangsmithResults(
 			key: 'pairwise_total_judge_calls',
 			score: totalGenerations * numJudges,
 			comment: `${totalGenerations} generations x ${numJudges} judges`,
+		},
+		// Aggregated detail metrics (across all generations)
+		{
+			key: 'pairwise_judges_passed',
+			score: totalJudgesPassed,
+			comment: `${totalJudgesPassed} of ${totalGenerations * numJudges} total judge calls passed`,
+		},
+		{
+			key: 'pairwise_total_violations',
+			score: totalViolations,
+			comment: `Total violations across all ${totalGenerations} generations`,
+		},
+		{
+			key: 'pairwise_total_passes',
+			score: totalPasses,
+			comment: `Total criteria passes across all ${totalGenerations} generations`,
 		},
 	];
 }
