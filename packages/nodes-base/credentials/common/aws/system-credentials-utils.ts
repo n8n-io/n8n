@@ -4,7 +4,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 
 type Resolvers = 'environment' | 'podIdentity' | 'containerMetadata' | 'instanceMetadata';
-type RetrunData = {
+type ReturnData = {
 	accessKeyId: string;
 	secretAccessKey: string;
 	sessionToken?: string;
@@ -12,7 +12,7 @@ type RetrunData = {
 
 export const envGetter = (key: string): string | undefined => process.env[key];
 
-export const credentialsResolver: Record<Resolvers, () => Promise<RetrunData | null>> = {
+export const credentialsResolver: Record<Resolvers, () => Promise<ReturnData | null>> = {
 	environment: getEnvironmentCredentials,
 	instanceMetadata: getInstanceMetadataCredentials,
 	containerMetadata: getContainerMetadataCredentials,
