@@ -10,8 +10,8 @@
         "contentType": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
+        "isInline": {
+            "type": "boolean"
         },
         "lastModifiedDateTime": {
             "type": "string"
@@ -23,5 +23,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

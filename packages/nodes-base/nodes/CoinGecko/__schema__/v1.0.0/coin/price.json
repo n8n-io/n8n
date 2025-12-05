@@ -1,16 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "nacho-the-kat": {
+        "bitcoin": {
             "type": "object",
             "properties": {
                 "usd": {
-                    "type": "number"
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "usd"
-            ]
+            }
         }
-    }
+    },
+    "version": 1
 }

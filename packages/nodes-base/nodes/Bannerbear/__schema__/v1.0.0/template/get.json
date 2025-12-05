@@ -1,29 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "available_modifications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "background": {
-                        "type": "null"
-                    },
-                    "color": {
-                        "type": "null"
-                    },
-                    "image_url": {
-                        "type": "null"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "text": {
-                        "type": "null"
-                    }
-                }
-            }
-        },
         "created_at": {
             "type": "string"
         },
@@ -34,9 +11,6 @@
             "type": "null"
         },
         "name": {
-            "type": "string"
-        },
-        "preview_url": {
             "type": "string"
         },
         "self": {
@@ -52,5 +26,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "agent": {
+            "type": "null"
+        },
         "badges": {
             "type": "object",
             "properties": {
@@ -64,9 +67,6 @@
                 }
             }
         },
-        "cardRole": {
-            "type": "null"
-        },
         "checkItemStates": {
             "type": "array",
             "items": {
@@ -90,11 +90,14 @@
                 "brightness": {
                     "type": "string"
                 },
-                "idUploadedBackground": {
+                "idPlugin": {
                     "type": "null"
                 },
                 "size": {
                     "type": "string"
+                },
+                "yPosition": {
+                    "type": "number"
                 }
             }
         },
@@ -137,12 +140,6 @@
                 "type": "string"
             }
         },
-        "idMembersVoted": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "idShort": {
             "type": "integer"
         },
@@ -178,9 +175,6 @@
         "manualCoverAttachment": {
             "type": "boolean"
         },
-        "mirrorSourceId": {
-            "type": "null"
-        },
         "name": {
             "type": "string"
         },
@@ -203,5 +197,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

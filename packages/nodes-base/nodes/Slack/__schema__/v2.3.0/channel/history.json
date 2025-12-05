@@ -24,9 +24,6 @@
                                                 "properties": {
                                                     "bold": {
                                                         "type": "boolean"
-                                                    },
-                                                    "italic": {
-                                                        "type": "boolean"
                                                     }
                                                 }
                                             },
@@ -51,9 +48,6 @@
                 }
             }
         },
-        "bot_id": {
-            "type": "string"
-        },
         "client_msg_id": {
             "type": "string"
         },
@@ -73,5 +67,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

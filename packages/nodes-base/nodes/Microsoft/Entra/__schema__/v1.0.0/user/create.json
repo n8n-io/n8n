@@ -10,9 +10,6 @@
                 "type": "string"
             }
         },
-        "department": {
-            "type": "string"
-        },
         "displayName": {
             "type": "string"
         },
@@ -26,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
