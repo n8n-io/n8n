@@ -14,7 +14,7 @@ import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 // - Controlled mode (open prop provided): respects open state
 // - Uncontrolled mode (no open prop): clicking trigger toggles visibility
 vi.mock('reka-ui', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('reka-ui')>();
+	const actual = await importOriginal<object>();
 	const { ref, provide, inject, computed, defineComponent, h } = await import('vue');
 
 	const POPOVER_OPEN_KEY = Symbol('popover-open');
