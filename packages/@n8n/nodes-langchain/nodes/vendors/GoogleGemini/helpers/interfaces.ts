@@ -110,5 +110,12 @@ export interface Tool {
 		description: string;
 		parameters: IDataObject;
 	}>;
+	googleSearch?: object;
+	googleMaps?: object;
+	urlContext?: object;
+	fileSearch?: {
+		fileSearchStoreNames?: string[];
+		metadataFilter?: string;
+	};
 	codeExecution?: object;
 }
