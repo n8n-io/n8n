@@ -5,6 +5,7 @@ import type { WorkflowListItem, UserAction } from '@/Interface';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
 	N8nActionToggle,
+	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
 	N8nLink,
@@ -98,6 +99,10 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 			break;
 	}
 };
+
+const navigateToWorkflowList = () => {
+	void router.push({ name: VIEWS.WORKFLOWS });
+};
 </script>
 
 <template>
@@ -126,6 +131,12 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 						>
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
 						</N8nText>
+						<N8nButton
+							data-test-id="mcp-workflow-table-empty-state-button"
+							type="primary"
+							:label="i18n.baseText('settings.mcp.workflows.table.empty.button.label')"
+							@click="navigateToWorkflowList"
+						/>
 					</div>
 				</template>
 				<template #[`item.workflow`]="{ item }">
