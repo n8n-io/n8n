@@ -102,6 +102,8 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 			passthrough: randomUUID(),
 			jsonExample: randomUUID(),
 			legacy: randomUUID(),
+			version1NoParams: randomUUID(),
+			version11MissingType: randomUUID(),
 			invalid: randomUUID(),
 			errorTrigger: randomUUID(),
 			multipleTriggers: randomUUID(),
@@ -186,8 +188,56 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 						id: randomUUID(),
 						name: 'Execute Workflow Trigger',
 						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						parameters: {
+							workflowInputs: {
+								values: [{ type: 'string' }], // missing 'name' field
+							},
+						},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: false,
+				versionId: randomUUID(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await insertTestWorkflow(context, {
+				id: workflowIds.version1NoParams,
+				name: 'Test Version 1 No Parameters',
+				nodes: [
+					{
+						id: randomUUID(),
+						name: 'Execute Workflow Trigger',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
 						parameters: {},
 						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: false,
+				versionId: randomUUID(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await insertTestWorkflow(context, {
+				id: workflowIds.version11MissingType,
+				name: 'Test Version 1.1 Missing Type',
+				nodes: [
+					{
+						id: randomUUID(),
+						name: 'Execute Workflow Trigger',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						parameters: {
+							workflowInputs: {
+								values: [{ name: 'chatInput' }, { name: 'sessionId' }, { name: 'env' }],
+							},
+						},
+						typeVersion: 1.1,
 						position: [0, 0],
 					},
 				],
@@ -372,6 +422,26 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 			const workflow = await getWorkflowById(context, workflowIds.legacy);
 
 			expect(workflow?.active).toBeTruthy();
+
+			await context.queryRunner.release();
+		});
+
+		it('should activate workflows with Version 1 Execute Workflow Trigger (no parameters)', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const workflow = await getWorkflowById(context, workflowIds.version1NoParams);
+
+			expect(workflow?.active).toBeTruthy();
+			expect(workflow?.activeVersionId).toBeTruthy();
+
+			await context.queryRunner.release();
+		});
+
+		it('should activate workflows with Version 1.1 Execute Workflow Trigger (missing type fields)', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const workflow = await getWorkflowById(context, workflowIds.version11MissingType);
+
+			expect(workflow?.active).toBeTruthy();
+			expect(workflow?.activeVersionId).toBeTruthy();
 
 			await context.queryRunner.release();
 		});

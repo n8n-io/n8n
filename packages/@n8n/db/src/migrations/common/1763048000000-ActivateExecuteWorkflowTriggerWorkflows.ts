@@ -93,21 +93,28 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 					const shouldActivateByInputSource =
 						inputSource === 'passthrough' || inputSource === 'jsonExample';
 
-					// For legacy nodes (no inputSource), check if they have parameters defined
-					let hasLegacyParameters = false;
+					// For nodes without inputSource (version 1 or legacy version 1.1)
+					let hasLegacyParametersOrIsVersion1 = false;
 					if (!inputSource) {
-						const workflowInputs = executeWorkflowTriggerNode.parameters?.workflowInputs;
-						hasLegacyParameters = Boolean(
-							workflowInputs &&
-								typeof workflowInputs === 'object' &&
-								'values' in workflowInputs &&
-								Array.isArray(workflowInputs.values) &&
-								workflowInputs.values.length > 0 &&
-								this.hasValidWorkflowInputs(workflowInputs.values),
-						);
+						const params = executeWorkflowTriggerNode.parameters;
+						// Version 1 nodes have no parameters at all - they should be activated
+						if (!params || Object.keys(params).length === 0) {
+							hasLegacyParametersOrIsVersion1 = true;
+						} else {
+							// Version 1.1 legacy: check if they have valid workflowInputs
+							const workflowInputs = params.workflowInputs;
+							hasLegacyParametersOrIsVersion1 = Boolean(
+								workflowInputs &&
+									typeof workflowInputs === 'object' &&
+									'values' in workflowInputs &&
+									Array.isArray(workflowInputs.values) &&
+									workflowInputs.values.length > 0 &&
+									this.hasValidWorkflowInputs(workflowInputs.values),
+							);
+						}
 					}
-
-					hasValidExecuteWorkflowTrigger = shouldActivateByInputSource || hasLegacyParameters;
+					hasValidExecuteWorkflowTrigger =
+						shouldActivateByInputSource || hasLegacyParametersOrIsVersion1;
 
 					if (!hasValidExecuteWorkflowTrigger && !errorTriggerNode) {
 						continue;
@@ -192,9 +199,8 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 				'name' in value &&
 				typeof value.name === 'string' &&
 				value.name.length > 0 &&
-				'type' in value &&
-				typeof value.type === 'string' &&
-				value.type.length > 0,
+				// type is optional (defaults to 'string' in version 1.1)
+				(!('type' in value) || (typeof value.type === 'string' && value.type.length > 0)),
 		);
 	}
 }
