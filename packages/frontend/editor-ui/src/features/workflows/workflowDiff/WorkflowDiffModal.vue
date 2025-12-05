@@ -69,7 +69,7 @@ const isClosed = ref(false);
 const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
 		if (props.data.direction === 'push' && props.data.workflowStatus === 'created') {
-			// a new workflow that is to be pushed cannot be on remote.
+			// a new workflow that has yet to be pushed cannot be on remote.
 			return { workflow: undefined, remote: true };
 		}
 

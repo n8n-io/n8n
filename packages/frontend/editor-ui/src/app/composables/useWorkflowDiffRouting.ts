@@ -59,7 +59,6 @@ export function useWorkflowDiffRouting() {
 			uiStore.openModalWithData({
 				name: WORKFLOW_DIFF_MODAL_KEY,
 				data: {
-					// this is where the props are set
 					eventBus: workflowDiffEventBus,
 					workflowId: diffWorkflowId,
 					workflowStatus: diffWorkflowStatus,
