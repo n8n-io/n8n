@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Folders - Basic Operations', () => {
 	const FOLDER_CREATED_NOTIFICATION = 'Folder created';
