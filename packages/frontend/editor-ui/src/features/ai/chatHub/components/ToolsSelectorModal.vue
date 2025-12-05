@@ -23,6 +23,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -38,6 +39,7 @@ const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectStore = useProjectsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
 
 const canCreateCredentials = computed(() => {
 	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
@@ -140,6 +142,13 @@ function onCredentialSelect(providerKey: ChatHubAgentTool, id: string) {
 function onCreateNewCredential(providerKey: ChatHubAgentTool) {
 	const provider = AVAILABLE_TOOLS[providerKey];
 	if (!provider.credentialType) return;
+
+	telemetry.track('User opened Credential modal', {
+		credential_type: provider.credentialType,
+		source: 'chat',
+		new_credential: true,
+		workflow_id: null,
+	});
 
 	uiStore.openNewCredential(provider.credentialType);
 }

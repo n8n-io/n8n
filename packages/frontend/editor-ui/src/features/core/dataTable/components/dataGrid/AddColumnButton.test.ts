@@ -45,7 +45,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'dataTable.addColumn.invalidName.description':
 					'Column names must start with a letter and contain only letters, numbers, and hyphens',
 				'dataTable.addColumn.error': 'Error adding column',
-				'dataTable.addColumn.alreadyExistsError': `Column "${options?.interpolate?.name}" already exists`,
+				'dataTable.column.alreadyExistsError': `Column "${options?.interpolate?.name}" already exists`,
 				'dataTable.addColumn.systemColumnDescription': 'This is a system column',
 				'dataTable.addColumn.testingColumnDescription': 'This is a testing column',
 				'dataTable.addColumn.alreadyExistsDescription': 'Column already exists',
