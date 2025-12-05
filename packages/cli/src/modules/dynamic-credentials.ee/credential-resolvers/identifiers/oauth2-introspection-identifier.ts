@@ -176,9 +176,9 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		const authHeaders: Record<string, string> = {};
 		const authParams: Record<string, string> = {};
 
-		const credentials = Buffer.from(`${options.clientId}:${options.clientSecret}`).toString(
-			'base64',
-		);
+		const credentials = Buffer.from(
+			`${encodeURIComponent(options.clientId)}:${encodeURIComponent(options.clientSecret)}`,
+		).toString('base64');
 		authHeaders['Authorization'] = `Basic ${credentials}`;
 
 		return { headers: authHeaders, params: authParams };
