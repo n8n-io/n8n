@@ -346,6 +346,13 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether hidden tasks are returned in the result',
 			},
 			{
+				displayName: 'Show Assigned',
+				name: 'showAssigned',
+				type: 'boolean',
+				default: false,
+				description: 'Whether tasks assigned to the current user are returned in the result',
+			},
+			{
 				displayName: 'Updated Min',
 				name: 'updatedMin',
 				type: 'dateTime',
