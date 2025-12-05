@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import type MarkdownIt from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
-import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
@@ -18,17 +15,21 @@ import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useI18n } from '@n8n/i18n';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
-const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
-	message: ChatMessage;
-	compact: boolean;
-	isEditing: boolean;
-	isStreaming: boolean;
-	/**
-	 * minHeight allows scrolling agent's response to the top while it is being generated
-	 */
-	minHeight?: number;
-}>();
+const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
+	defineProps<{
+		message: ChatMessage;
+		compact: boolean;
+		isEditing: boolean;
+		isStreaming: boolean;
+		cachedAgentDisplayName: string | null;
+		/**
+		 * minHeight allows scrolling agent's response to the top while it is being generated
+		 */
+		minHeight?: number;
+	}>();
 
 const emit = defineEmits<{
 	startEdit: [];
@@ -38,15 +39,16 @@ const emit = defineEmits<{
 	switchAlternative: [messageId: ChatMessageId];
 }>();
 
-const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
+const i18n = useI18n();
+const styles = useCssModule();
 
 const editedText = ref('');
+const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
-const justCopied = ref(false);
-const { markdownOptions, forceReRenderKey } = useChatHubMarkdownOptions();
+const markdown = useChatHubMarkdownOptions(styles.codeBlockActions);
 const messageContent = computed(() => message.content);
 
 const speech = useSpeechSynthesis(messageContent, {
@@ -58,7 +60,11 @@ const speech = useSpeechSynthesis(messageContent, {
 const agent = computed<ChatModelDto | null>(() => {
 	const model = unflattenModel(message);
 
-	return model ? chatStore.getAgent(model) : null;
+	if (!model) {
+		return null;
+	}
+
+	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
 });
 
 const attachments = computed(() =>
@@ -73,14 +79,15 @@ const attachments = computed(() =>
 	})),
 );
 
-async function handleCopy() {
-	const text = message.content;
-	await clipboard.copy(text);
-	justCopied.value = true;
-	setTimeout(() => {
-		justCopied.value = false;
-	}, 1000);
-}
+const hideMessage = computed(() => {
+	return message.status === 'success' && message.content === '';
+});
+
+const hoveredCodeBlockContent = computed(() => {
+	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
+
+	return idx ? markdown.codeBlockContents.value?.get(idx) : undefined;
+});
 
 function handleEdit() {
 	emit('startEdit');
@@ -125,14 +132,18 @@ function handleSwitchAlternative(messageId: ChatMessageId) {
 	emit('switchAlternative', messageId);
 }
 
-const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-	vueMarkdownItInstance.use(markdownLink, {
-		attrs: {
-			target: '_blank',
-			rel: 'noopener',
-		},
-	});
-};
+function handleMouseMove(e: MouseEvent | FocusEvent) {
+	const container =
+		e.target instanceof HTMLElement || e.target instanceof SVGElement
+			? e.target.closest('pre')?.querySelector(`.${styles.codeBlockActions}`)
+			: null;
+
+	hoveredCodeBlockActions.value = container instanceof HTMLElement ? container : null;
+}
+
+function handleMouseLeave() {
+	hoveredCodeBlockActions.value = null;
+}
 
 // Watch for isEditing prop changes to initialize edit mode
 watch(
@@ -162,6 +173,7 @@ onBeforeMount(() => {
 
 <template>
 	<div
+		v-if="!hideMessage"
 		:class="[
 			$style.message,
 			message.type === 'human' ? $style.user : $style.assistant,
@@ -197,19 +209,25 @@ onBeforeMount(() => {
 					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						{{ i18n.baseText('chatHub.message.edit.cancel') }}
+					</N8nButton>
 					<N8nButton
 						type="primary"
 						size="small"
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Send
+						{{ i18n.baseText('chatHub.message.edit.send') }}
 					</N8nButton>
 				</div>
 			</div>
 			<div v-else>
-				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+				<div
+					:class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]"
+					@mousemove="handleMouseMove"
+					@mouseleave="handleMouseLeave"
+				>
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
 							v-for="(attachment, index) in attachments"
@@ -222,27 +240,25 @@ onBeforeMount(() => {
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
 						v-else
-						:key="forceReRenderKey"
+						:key="markdown.forceReRenderKey.value"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
-								? 'Error: Unknown error occurred'
+								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
-						:options="markdownOptions"
-						:plugins="[linksNewTabPlugin]"
+						:options="markdown.options"
+						:plugins="markdown.plugins.value"
 					/>
 				</div>
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
 					:message="message"
 					:alternatives="message.alternatives"
-					@copy="handleCopy"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
@@ -250,6 +266,12 @@ onBeforeMount(() => {
 				/>
 			</div>
 		</div>
+		<Teleport
+			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
+			:to="hoveredCodeBlockActions"
+		>
+			<CopyButton :content="hoveredCodeBlockContent" />
+		</Teleport>
 	</div>
 </template>
 
@@ -300,13 +322,14 @@ onBeforeMount(() => {
 	position: relative;
 	max-width: fit-content;
 	overflow-wrap: break-word;
+	font-size: var(--font-size--sm);
+	line-height: 1.5;
 
 	.user & {
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 		white-space-collapse: preserve-breaks;
-		line-height: 1.8;
 	}
 }
 
@@ -331,49 +354,53 @@ onBeforeMount(() => {
 	}
 
 	& * {
-		font-size: var(--font-size--md);
-		line-height: 1.8;
+		font-size: var(--font-size--sm);
+		line-height: 1.5;
 	}
 
 	p {
 		margin: var(--spacing--xs) 0;
 	}
 
-	// Override heading sizes to be smaller
-	h1 {
-		font-size: var(--font-size--2xl);
-		font-weight: var(--font-weight--bold);
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		margin: 1em 0 0.8em;
 		line-height: var(--line-height--md);
 	}
 
-	h2 {
+	// Override heading sizes to be smaller
+	h1 {
 		font-size: var(--font-size--xl);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--lg);
+	}
+
+	h2 {
+		font-size: var(--font-size--lg);
+		font-weight: var(--font-weight--bold);
 	}
 
 	h3 {
-		font-size: var(--font-size--lg);
+		font-size: var(--font-size--md);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--lg);
 	}
 
 	h4 {
-		font-size: var(--font-size--md);
+		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--xl);
 	}
 
 	h5 {
 		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--xl);
 	}
 
 	h6 {
 		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--xl);
 	}
 
 	pre {
@@ -385,6 +412,22 @@ onBeforeMount(() => {
 		padding: var(--chat--spacing);
 		background: var(--chat--message--pre--background);
 		border-radius: var(--chat--border-radius);
+		position: relative;
+
+		code:last-of-type {
+			padding-bottom: 0;
+		}
+
+		& .codeBlockActions {
+			position: absolute;
+			top: 0;
+			right: 0;
+			margin: var(--spacing--2xs);
+		}
+
+		& ~ pre {
+			margin-bottom: 1em;
+		}
 	}
 
 	table {

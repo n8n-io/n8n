@@ -18,6 +18,7 @@ on:
           - minor
           - major
           - experimental
+          - rc
 
 jobs:
   create-release-pr:
