@@ -141,6 +141,11 @@ const userRoles = computed((): Array<{ value: Role; label: string; disabled?: bo
 			label: i18n.baseText('auth.roles.member'),
 		},
 		{
+			value: ROLE.ChatUser,
+			label: i18n.baseText('auth.roles.chatUser'),
+			disabled: !isAdvancedPermissionsEnabled.value,
+		},
+		{
 			value: ROLE.Admin,
 			label: i18n.baseText('auth.roles.admin'),
 			disabled: !isAdvancedPermissionsEnabled.value,
