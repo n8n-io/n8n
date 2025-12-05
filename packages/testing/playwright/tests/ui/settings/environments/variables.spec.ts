@@ -1,6 +1,6 @@
 import { customAlphabet } from 'nanoid';
 
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../../fixtures/base';
 
 const generateValidId = customAlphabet(
 	'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_',

@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Admin user', () => {
 	test('should see same Settings sub menu items as instance owner', async ({ n8n }) => {
