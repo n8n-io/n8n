@@ -4,7 +4,7 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -40,7 +40,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
@@ -54,7 +53,7 @@ export class CredentialsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -114,7 +113,7 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
-		const { shared, ...credential } = this.license.isSharingEnabled()
+		const { shared, ...credential } = this.licenseState.isSharingLicensed()
 			? await this.enterpriseCredentialsService.getOne(
 					req.user,
 					credentialId,
@@ -246,6 +245,10 @@ export class CredentialsController {
 		// Update isGlobal if provided in the payload and user has permission
 		const isGlobal = body.isGlobal;
 		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
+			if (!this.licenseState.isSharingLicensed()) {
+				throw new ForbiddenError('You are not licensed for sharing credentials');
+			}
+
 			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 			if (!canShareGlobally) {
 				throw new ForbiddenError(
