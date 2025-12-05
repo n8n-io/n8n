@@ -5,6 +5,16 @@ interface KeywordsConfig {
 	keywords: string[];
 }
 
+// \p{L}|\p{N}|_ - any unicode letter, number, or underscore. Alternative to \b
+const WORD_CHAR_CLASS = '[\\p{L}\\p{N}_]';
+const isWordChar = (() => {
+	const wordCharRegex = new RegExp(WORD_CHAR_CLASS, 'u');
+	return (char: string | undefined): boolean => {
+		if (!char) return false;
+		return wordCharRegex.test(char);
+	};
+})();
+
 /**
  * Keywords-based content filtering guardrail.
  *
@@ -21,9 +31,14 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	// Sanitize keywords by stripping trailing punctuation
 	const sanitizedKeywords = keywords.map((k: string) => k.replace(/[.,!?;:]+$/, ''));
 
-	const validKeywords = sanitizedKeywords.filter((k: string) => k.length > 0);
+	const keywordEntries = sanitizedKeywords
+		.map((sanitized) => ({
+			sanitized,
+			escaped: sanitized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+		}))
+		.filter(({ sanitized }) => sanitized.length > 0);
 
-	if (validKeywords.length === 0) {
+	if (keywordEntries.length === 0) {
 		return {
 			guardrailName: 'keywords',
 			tripwireTriggered: false,
@@ -33,13 +48,22 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 		};
 	}
 
-	// Create regex pattern with word boundaries
-	// Escape special regex characters and join with word boundaries
-	const escapedKeywords = validKeywords.map((k: string) =>
-		k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-	);
-	const patternText = `\\b(?:${escapedKeywords.join('|')})\\b`;
-	const pattern = new RegExp(patternText, 'gi'); // case-insensitive, global
+	// Apply unicode-aware word boundaries per keyword so tokens that start/end with punctuation still match.
+	const keywordPatterns = keywordEntries.map(({ sanitized, escaped }) => {
+		const keywordChars = Array.from(sanitized);
+		const firstChar = keywordChars[0];
+		const lastChar = keywordChars[keywordChars.length - 1];
+		const needsLeftBoundary = isWordChar(firstChar);
+		const needsRightBoundary = isWordChar(lastChar);
+		// not preceded by a word character
+		const leftBoundary = needsLeftBoundary ? `(?<!${WORD_CHAR_CLASS})` : '';
+		// not followed by a word character
+		const rightBoundary = needsRightBoundary ? `(?!${WORD_CHAR_CLASS})` : '';
+		return `${leftBoundary}${escaped}${rightBoundary}`;
+	});
+
+	const patternText = `(?:${keywordPatterns.join('|')})`;
+	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global, unicode aware
 
 	const matches: string[] = [];
 	let match;
