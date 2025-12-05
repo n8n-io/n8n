@@ -830,8 +830,10 @@ export function getNodeRole(
 	nodeTypes: INodeTypes,
 	nodes: INode[],
 ): NodeRole {
-	const hasOutgoingConnections = hasOutgoing(nodeName, connections);
-	const hasIncomingMainConnections = hasIncomingMain(nodeName, connections);
+	// partial executions of tools get a special name
+	if (nodeName === 'PartialExecutionToolExecutor') {
+		return 'internal';
+	}
 
 	// Check if node is a subnode based on its type description
 	const node = nodes.find((n) => n.name === nodeName);
@@ -844,6 +846,9 @@ export function getNodeRole(
 	if (isSubnode) {
 		return 'internal';
 	}
+
+	const hasOutgoingConnections = hasOutgoing(nodeName, connections);
+	const hasIncomingMainConnections = hasIncomingMain(nodeName, connections);
 
 	// A trigger has no incoming main connections
 	if (!hasIncomingMainConnections) {

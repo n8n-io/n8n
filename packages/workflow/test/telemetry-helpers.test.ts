@@ -3423,6 +3423,14 @@ describe('getNodeRole', () => {
 			const result = getNodeRole('Calculator', connections, nodeTypes, nodes);
 			expect(result).toBe('internal');
 		});
+
+		it('should return internal for PartialExecutionToolExecutor', () => {
+			const nodes: INode[] = [];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('PartialExecutionToolExecutor', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
 	});
 
 	describe('edge cases', () => {
