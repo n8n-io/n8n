@@ -4,8 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { computed, ref, useTemplateRef } from 'vue';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -13,9 +12,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import SaveButton from '@/app/components/SaveButton.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { useRouter } from 'vue-router';
 import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 
@@ -40,8 +38,6 @@ const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
-const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 // We're dropping the save button soon with the autosave so this will also be dropped
 const autoSaveForPublish = ref(false);
 
@@ -51,22 +47,8 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
-const onPublishButtonClick = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		autoSaveForPublish.value = true;
-		const saved = await saveCurrentWorkflow({}, true);
-		autoSaveForPublish.value = false;
-		if (!saved) {
-			// If save failed, don't open the modal
-			return;
-		}
-	}
-
-	uiStore.openModalWithData({
-		name: WORKFLOW_PUBLISH_MODAL_KEY,
-		data: {},
-	});
+const onPublishButtonClick = () => {
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const foundTriggers = computed(() =>
@@ -100,14 +82,6 @@ const latestPublishDate = computed(() => {
 	return latestPublish?.createdAt;
 });
 
-onMounted(() => {
-	nodeViewEventBus.on('publishWorkflow', onPublishButtonClick);
-});
-
-onBeforeUnmount(() => {
-	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
-});
-
 defineExpose({
 	importFileRef,
 });
@@ -130,15 +104,21 @@ defineExpose({
 			</N8nTooltip>
 		</div>
 		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
-			<N8nButton
-				:loading="autoSaveForPublish"
-				:disabled="isWorkflowSaving"
-				type="secondary"
-				data-test-id="workflow-open-publish-modal-button"
-				@click="onPublishButtonClick"
+			<KeyboardShortcutTooltip
+				v-if="!readOnly"
+				:label="i18n.baseText('workflows.publishModal.title')"
+				:shortcut="{ keys: ['p'], shiftKey: true }"
+				placement="bottom"
 			>
-				{{ locale.baseText('workflows.publish') }}
-			</N8nButton>
+				<N8nButton
+					type="secondary"
+					:disabled="readOnly"
+					data-test-id="workflow-open-publish-modal-button"
+					@click="onPublishButtonClick"
+				>
+					{{ locale.baseText('workflows.publish') }}
+				</N8nButton>
+			</KeyboardShortcutTooltip>
 			<span
 				v-if="showPublishIndicator"
 				:class="$style.publishButtonIndicator"

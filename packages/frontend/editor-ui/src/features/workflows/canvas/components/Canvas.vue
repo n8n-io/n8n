@@ -9,6 +9,7 @@ import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
+import { nodeViewEventBus } from '@/app/event-bus';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
@@ -352,6 +353,7 @@ const keyMap = computed(() => {
 		tab: () => emit('create:node', 'tab'),
 		shift_s: () => emit('create:sticky'),
 		shift_f: () => emit('toggle:focus-panel'),
+		shift_p: () => nodeViewEventBus.emit('publishWorkflow'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),

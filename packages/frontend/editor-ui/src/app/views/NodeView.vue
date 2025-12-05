@@ -69,6 +69,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -773,6 +774,29 @@ async function onSaveWorkflow() {
 	}
 }
 
+async function onPublishWorkflow() {
+	const workflowIsArchived = workflowsStore.workflow.isArchived;
+	const isReadOnly = isCanvasReadOnly.value;
+
+	if (workflowIsArchived || isReadOnly) {
+		return;
+	}
+
+	// If there are unsaved changes, save the workflow first
+	if (uiStore.stateIsDirty || workflowsStore.isNewWorkflow) {
+		const saved = await workflowSaving.saveCurrentWorkflow({}, true);
+		if (!saved) {
+			// If save failed, don't open the modal
+			return;
+		}
+	}
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_PUBLISH_MODAL_KEY,
+		data: {},
+	});
+}
+
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	canvasRef.value?.executeContextMenuAction(action, nodeIds);
 }
@@ -1051,12 +1075,14 @@ function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);
+	nodeViewEventBus.on('publishWorkflow', onPublishWorkflow);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.off('openChat', onOpenChat);
+	nodeViewEventBus.off('publishWorkflow', onPublishWorkflow);
 }
 
 /**
