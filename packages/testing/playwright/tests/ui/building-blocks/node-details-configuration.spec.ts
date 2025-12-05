@@ -1,6 +1,6 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('03 - Node Details Configuration', () => {
+test.describe('Node Details Configuration', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
