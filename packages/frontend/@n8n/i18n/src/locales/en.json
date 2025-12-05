@@ -140,6 +140,8 @@
 	"generic.search": "Search",
 	"generic.showMore": "Show more",
 	"generic.showLess": "Show less",
+	"generic.published": "Published",
+	"generic.notPublished": "Not published",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",

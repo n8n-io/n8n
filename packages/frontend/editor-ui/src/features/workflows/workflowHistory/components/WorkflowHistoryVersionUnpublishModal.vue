@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -21,6 +22,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const unpublishing = ref(false);
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
@@ -32,9 +34,14 @@ const onCancel = () => {
 };
 
 const onUnpublish = () => {
+	unpublishing.value = true;
 	props.data.eventBus.emit('unpublish');
 	// Modal will be closed by parent after API call completes
 };
+
+onBeforeUnmount(() => {
+	unpublishing.value = false;
+});
 </script>
 
 <template>
@@ -62,10 +69,10 @@ const onUnpublish = () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton size="medium" type="tertiary" @click="onCancel">
+				<N8nButton size="medium" type="tertiary" :disabled="unpublishing" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton size="medium" type="primary" @click="onUnpublish">
+				<N8nButton size="medium" type="primary" :loading="unpublishing" @click="onUnpublish">
 					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish') }}
 				</N8nButton>
 			</div>

@@ -11,8 +11,9 @@ import type { IUser } from 'n8n-workflow';
 
 import { N8nActionToggle, N8nTooltip, N8nBadge } from '@n8n/design-system';
 import {
-	getLastPublishedByUser,
+	getLastPublishedVersion,
 	formatTimestamp,
+	generateVersionName,
 } from '@/features/workflows/workflowHistory/utils';
 import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -67,7 +68,10 @@ const authors = computed<{ size: number; label: string }>(() => {
 });
 
 const versionName = computed(() => {
-	return props.item.name;
+	if (props.item.name) {
+		return props.item.name;
+	}
+	return props.isVersionActive ? generateVersionName(props.item.versionId) : '';
 });
 
 const lastPublishInfo = computed(() => {
@@ -75,7 +79,7 @@ const lastPublishInfo = computed(() => {
 		return null;
 	}
 
-	const lastPublishedByUser = getLastPublishedByUser(props.item.workflowPublishHistory);
+	const lastPublishedByUser = getLastPublishedVersion(props.item.workflowPublishHistory);
 	if (!lastPublishedByUser) {
 		return null;
 	}

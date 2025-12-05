@@ -648,18 +648,26 @@ const tags = computed(
 					:class="$style.publishIndicator"
 					data-test-id="workflow-card-publish-indicator"
 				>
-					<N8nIcon
-						v-if="isWorkflowPublished"
-						icon="circle-check"
-						size="large"
-						:class="$style.publishIndicatorColor"
-					/>
-					<N8nIcon
-						v-else
-						icon="circle-minus"
-						size="large"
-						:class="$style.notPublishedIndicatorColor"
-					/>
+					<N8nTooltip
+						:content="
+							isWorkflowPublished
+								? locale.baseText('generic.published')
+								: locale.baseText('generic.notPublished')
+						"
+					>
+						<N8nIcon
+							v-if="isWorkflowPublished"
+							icon="circle-check"
+							size="large"
+							:class="$style.publishIndicatorColor"
+						/>
+						<N8nIcon
+							v-else
+							icon="circle-minus"
+							size="large"
+							:class="$style.notPublishedIndicatorColor"
+						/>
+					</N8nTooltip>
 				</div>
 
 				<N8nActionToggle
