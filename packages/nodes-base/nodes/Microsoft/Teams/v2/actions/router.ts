@@ -8,6 +8,7 @@ import {
 
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chat from './chat';
 import * as chatMessage from './chatMessage';
 import type { MicrosoftTeamsType } from './node.type';
 import * as task from './task';
@@ -54,6 +55,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						nodeVersion,
 						instanceId,
 					);
+					break;
+				case 'chat':
+					responseData = await chat[microsoftTeamsTypeData.operation].execute.call(this, i);
 					break;
 				case 'chatMessage':
 					responseData = await chatMessage[microsoftTeamsTypeData.operation].execute.call(
