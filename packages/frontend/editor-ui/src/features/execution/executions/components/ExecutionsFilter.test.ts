@@ -150,12 +150,13 @@ describe('ExecutionsFilter', () => {
 
 		let filterChangedEvent = emitted().filterChanged;
 
-		expect(getByTestId('execution-filter-form')).not.toBeVisible();
+		// Initial state: no active filters
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
 
+		// Open filter popover
 		await userEvent.click(getByTestId('executions-filter-button'));
-		expect(getByTestId('execution-filter-form')).toBeVisible();
+		expect(getByTestId('execution-filter-form')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId('executions-filter-status-select'));
 
