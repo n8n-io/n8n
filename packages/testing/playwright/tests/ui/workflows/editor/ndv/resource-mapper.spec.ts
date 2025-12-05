@@ -1,5 +1,5 @@
-import { E2E_TEST_NODE_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import { E2E_TEST_NODE_NAME } from '../../../../../config/constants';
+import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Resource Mapper', () => {
 	test.beforeEach(async ({ n8n }) => {

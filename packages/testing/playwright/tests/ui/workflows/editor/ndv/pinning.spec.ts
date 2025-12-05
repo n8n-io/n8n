@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/base';
-import type { TestRequirements } from '../../Types';
+import { test, expect } from '../../../../../fixtures/base';
+import type { TestRequirements } from '../../../../../Types';
 
 const NODES = {
 	MANUAL_TRIGGER: 'Manual Trigger',
