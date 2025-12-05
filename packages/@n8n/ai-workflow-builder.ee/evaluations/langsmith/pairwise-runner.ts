@@ -579,6 +579,7 @@ export interface PairwiseEvaluationOptions {
 	experimentName?: string;
 	outputDir?: string;
 	concurrency?: number;
+	maxExamples?: number;
 }
 
 /** Log configuration for pairwise evaluation */
@@ -620,6 +621,7 @@ export async function runPairwiseLangsmithEvaluation(
 		experimentName = DEFAULT_EXPERIMENT_NAME,
 		outputDir,
 		concurrency = 5,
+		maxExamples,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -688,9 +690,7 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		// Filter examples based on notionId or maxExamples env var
-		const maxExamplesEnv = process.env.EVAL_MAX_EXAMPLES;
-		const maxExamples = maxExamplesEnv ? parseInt(maxExamplesEnv, 10) : undefined;
+		// Filter examples based on notionId or maxExamples
 		const data = filterExamples(allExamples, notionId, maxExamples, log);
 
 		// Create artifact saver if output directory is configured

@@ -251,9 +251,11 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 | `--dos <rules>` | Newline-separated "do" rules for local evaluation | - |
 | `--donts <rules>` | Newline-separated "don't" rules for local evaluation | - |
 | `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
+| `--max-examples <n>` | Limit number of examples to evaluate (useful for testing) | (no limit) |
 | `--repetitions <n>` | Number of times to repeat the entire evaluation | 1 |
 | `--generations <n>` | Number of workflow generations per prompt (for variance reduction) | 1 |
 | `--judges <n>` | Number of LLM judges per evaluation | 3 |
+| `--concurrency <n>` | Number of prompts to evaluate in parallel | 5 |
 | `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
 | `--output-dir <path>` | Save generated workflows and evaluation results to this directory | - |
 | `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
@@ -304,7 +306,7 @@ pnpm eval:pairwise --notion-id abc123 --verbose
 LANGSMITH_DATASET_NAME=my-pairwise-dataset pnpm eval:pairwise
 
 # Limit to specific number of examples (useful for testing)
-EVAL_MAX_EXAMPLES=2 pnpm eval:pairwise
+pnpm eval:pairwise --max-examples 2
 ```
 
 #### Multi-Generation Evaluation
@@ -421,7 +423,6 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `USE_LANGSMITH_EVAL` - Set to "true" to use Langsmith mode
 - `USE_PAIRWISE_EVAL` - Set to "true" to use pairwise evaluation mode
 - `LANGSMITH_DATASET_NAME` - Override default dataset name
-- `EVAL_MAX_EXAMPLES` - Limit number of examples to evaluate (useful for testing)
 - `EVALUATION_CONCURRENCY` - Number of parallel test executions (default: 5)
 - `GENERATE_TEST_CASES` - Set to "true" to generate additional test cases
 - `LLM_MODEL` - Model identifier for metadata tracking
