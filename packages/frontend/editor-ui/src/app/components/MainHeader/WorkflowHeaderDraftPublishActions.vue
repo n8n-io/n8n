@@ -15,7 +15,10 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
-import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
+import {
+	getLastPublishedVersion,
+	generateVersionName,
+} from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 
@@ -86,6 +89,10 @@ const showPublishIndicator = computed(() => {
 		return false;
 	}
 
+	if (workflowsStore.nodesIssuesExist) {
+		return false;
+	}
+
 	return (
 		(workflowsStore.workflow.versionId &&
 			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||
@@ -95,8 +102,15 @@ const showPublishIndicator = computed(() => {
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
+const activeVersionName = computed(() => {
+	if (!activeVersion.value) {
+		return '';
+	}
+	return activeVersion.value.name || generateVersionName(activeVersion.value.versionId);
+});
+
 const latestPublishDate = computed(() => {
-	const latestPublish = getLastPublishedByUser(activeVersion.value?.workflowPublishHistory ?? []);
+	const latestPublish = getLastPublishedVersion(activeVersion.value?.workflowPublishHistory ?? []);
 	return latestPublish?.createdAt;
 });
 
@@ -123,7 +137,7 @@ defineExpose({
 		>
 			<N8nTooltip>
 				<template #content>
-					{{ activeVersion.name }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
+					{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
 					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 				</template>
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />

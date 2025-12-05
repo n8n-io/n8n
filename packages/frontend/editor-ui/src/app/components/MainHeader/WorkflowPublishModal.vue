@@ -10,7 +10,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
 import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
@@ -53,8 +53,6 @@ const wfHasAnyChanges = computed(() => {
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
-
-const nodesWithIssuesCount = computed(() => workflowsStore.nodesWithIssuesCount);
 
 const inputsDisabled = computed(() => {
 	return (
@@ -243,18 +241,22 @@ async function handlePublish() {
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
-					<strong>
-						{{
-							i18n.baseText(
-								'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
-								{ interpolate: { count: nodesWithIssuesCount } },
-							)
-						}}
-					</strong>
-					<br />
 					{{
-						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message')
+						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+							interpolate: { count: workflowsStore.nodesWithIssues.length },
+							adjustToNumber: workflowsStore.nodesWithIssues.length,
+						})
 					}}
+					<ul :class="$style.nodeLinks">
+						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
+							<N8nLink
+								size="small"
+								:to="`/workflow/${workflowsStore.workflow.id}/${node.id}`"
+								@click="modalBus.emit('close')"
+								>{{ node.name }}</N8nLink
+							>
+						</li>
+					</ul>
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
@@ -300,5 +302,20 @@ async function handlePublish() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
+}
+
+.nodeLinks {
+	list-style-type: disc;
+	margin-top: var(--spacing--4xs);
+	padding-left: var(--spacing--sm);
+}
+
+.nodeLinks li {
+	margin-bottom: var(--spacing--4xs);
+}
+
+.nodeLinks a span {
+	text-decoration: underline;
+	color: var(--callout--color--text--danger);
 }
 </style>
