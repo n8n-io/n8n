@@ -53,6 +53,7 @@ describe('DynamicCredentialService', () => {
 	const createMockResolver = (
 		shouldSucceed = true,
 		shouldThrowDataNotFound = false,
+		customData?: ICredentialDataDecryptedObject,
 	): jest.Mocked<ICredentialResolver> => ({
 		metadata: {
 			name: 'stub-resolver-1.0',
@@ -65,7 +66,7 @@ describe('DynamicCredentialService', () => {
 			if (!shouldSucceed) {
 				throw new Error('Resolution failed');
 			}
-			return { token: 'dynamic-token', apiKey: 'dynamic-key' };
+			return customData ?? { token: 'dynamic-token', apiKey: 'dynamic-key' };
 		}),
 		setSecret: jest.fn(),
 		validateOptions: jest.fn(),
@@ -160,7 +161,7 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Resolver not found, falling back to static credentials',
 					expect.objectContaining({
 						credentialId: 'cred-123',
@@ -181,7 +182,7 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalled();
+				expect(mockLogger.debug).toHaveBeenCalled();
 			});
 
 			it('execution context is missing and fallback is allowed', async () => {
@@ -197,7 +198,7 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'No execution context available, falling back to static credentials',
 					expect.objectContaining({
 						credentialId: 'cred-123',
@@ -252,7 +253,7 @@ describe('DynamicCredentialService', () => {
 				);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed, falling back to static',
 					expect.objectContaining({
 						credentialId: 'cred-123',
@@ -282,7 +283,7 @@ describe('DynamicCredentialService', () => {
 				);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed, falling back to static',
 					expect.objectContaining({
 						isDataNotFound: true,
@@ -382,7 +383,7 @@ describe('DynamicCredentialService', () => {
 					service.resolveIfNeeded(credentialsEntity, staticData, executionContext),
 				).rejects.toThrow('Failed to resolve dynamic credentials for "Test Credential"');
 
-				expect(mockLogger.error).toHaveBeenCalledWith(
+				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed without fallback',
 					expect.any(Object),
 				);
@@ -390,12 +391,28 @@ describe('DynamicCredentialService', () => {
 		});
 
 		describe('should successfully resolve dynamic credentials when', () => {
-			it('all conditions are met and resolver returns data', async () => {
+			it('all conditions are met and merges static with dynamic data', async () => {
 				const credentialsEntity = createMockCredentialsEntity();
 				const resolverEntity = createMockResolverEntity();
-				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+
+				// Static data includes OAuth client config and old token
+				const staticOAuthData: ICredentialDataDecryptedObject = {
+					clientId: 'static-client-id',
+					clientSecret: 'static-client-secret',
+					token: 'static-token', // Will be overridden
+					apiKey: 'static-key', // Will be overridden
+				};
+
+				// Dynamic data includes new tokens (overrides token) and new fields
+				const dynamicData: ICredentialDataDecryptedObject = {
+					token: 'dynamic-token',
+					apiKey: 'dynamic-key',
+					refreshToken: 'dynamic-refresh-token',
+				};
+
+				const mockResolver = createMockResolver(true, false, dynamicData);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
@@ -403,13 +420,17 @@ describe('DynamicCredentialService', () => {
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
-					staticData,
+					staticOAuthData,
 					executionContext,
 				);
 
+				// Verify merge: static fields preserved, dynamic fields added/overridden
 				expect(result).toEqual({
-					token: 'dynamic-token',
-					apiKey: 'dynamic-key',
+					clientId: 'static-client-id', // From static (preserved)
+					clientSecret: 'static-client-secret', // From static (preserved)
+					token: 'dynamic-token', // From dynamic (overridden)
+					apiKey: 'dynamic-key', // From dynamic (overridden)
+					refreshToken: 'dynamic-refresh-token', // From dynamic (new field)
 				});
 				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
 					prefix: 'test',
@@ -525,7 +546,7 @@ describe('DynamicCredentialService', () => {
 				);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalled();
+				expect(mockLogger.debug).toHaveBeenCalled();
 			});
 
 			it('empty resolver config', async () => {
@@ -644,7 +665,7 @@ describe('DynamicCredentialService', () => {
 				);
 
 				expect(result).toBe(staticData);
-				expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Resolver not found, falling back to static credentials',
 					expect.objectContaining({
 						resolverId: 'workflow-resolver-789',

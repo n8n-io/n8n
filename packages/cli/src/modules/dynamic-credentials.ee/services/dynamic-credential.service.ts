@@ -94,7 +94,8 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				identity: credentialContext.identity,
 			});
 
-			return dynamicData;
+			// Adds and override static data with dynamically resolved data
+			return { ...staticData, ...dynamicData };
 		} catch (error) {
 			return this.handleResolutionError(credentialsEntity, staticData, error, resolverId);
 		}
@@ -132,7 +133,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		const isDataNotFound = error instanceof CredentialResolverDataNotFoundError;
 
 		if (credentialsEntity.resolvableAllowFallback) {
-			this.logger.warn('Dynamic credential resolution failed, falling back to static', {
+			this.logger.debug('Dynamic credential resolution failed, falling back to static', {
 				credentialId: credentialsEntity.id,
 				credentialName: credentialsEntity.name,
 				resolverId,
@@ -143,7 +144,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return staticData;
 		}
 
-		this.logger.error('Dynamic credential resolution failed without fallback', {
+		this.logger.debug('Dynamic credential resolution failed without fallback', {
 			credentialId: credentialsEntity.id,
 			credentialName: credentialsEntity.name,
 			resolverId,
@@ -166,7 +167,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		resolverId: string,
 	): ICredentialDataDecryptedObject {
 		if (credentialsEntity.resolvableAllowFallback) {
-			this.logger.warn('Resolver not found, falling back to static credentials', {
+			this.logger.debug('Resolver not found, falling back to static credentials', {
 				credentialId: credentialsEntity.id,
 				credentialName: credentialsEntity.name,
 				resolverId,
@@ -188,7 +189,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 	): ICredentialDataDecryptedObject {
 		if (credentialsEntity.resolvableAllowFallback) {
-			this.logger.warn('No execution context available, falling back to static credentials', {
+			this.logger.debug('No execution context available, falling back to static credentials', {
 				credentialId: credentialsEntity.id,
 				credentialName: credentialsEntity.name,
 			});
