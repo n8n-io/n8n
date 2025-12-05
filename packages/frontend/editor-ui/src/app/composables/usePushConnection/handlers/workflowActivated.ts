@@ -26,7 +26,7 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 
 		// Only update checksum if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {
-			await workflowsStore.fetchAndUpdateWorkflowChecksum(workflowId);
+			await workflowsStore.updateWorkflowChecksum();
 		}
 	}
 
