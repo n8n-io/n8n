@@ -258,6 +258,55 @@ export class EmbeddingsOpenAi implements INodeType {
 			};
 		}
 
+		// Build custom headers from credentials
+		const defaultHeaders: Record<string, string> = {};
+
+		// Legacy single header support (backward compatibility)
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
+		) {
+			defaultHeaders[credentials.headerName] = credentials.headerValue;
+		}
+
+		// New JSON-based custom headers support
+		if (credentials.customHeaders) {
+			try {
+				let customHeaders: Record<string, string> = {};
+
+				if (typeof credentials.customHeaders === 'string') {
+					const parsed = JSON.parse(credentials.customHeaders);
+					if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+						customHeaders = parsed;
+					}
+				} else if (typeof credentials.customHeaders === 'object' && credentials.customHeaders !== null) {
+					// Handle legacy fixedCollection format
+					const legacyFormat = credentials.customHeaders as {
+						headers?: Array<{ name: string; value: string }>;
+					};
+					if (Array.isArray(legacyFormat.headers)) {
+						for (const header of legacyFormat.headers) {
+							if (header.name && header.value) {
+								customHeaders[header.name] = header.value;
+							}
+						}
+					} else {
+						customHeaders = credentials.customHeaders as Record<string, string>;
+					}
+				}
+
+				Object.assign(defaultHeaders, customHeaders);
+			} catch (error) {
+				// Silently ignore JSON parsing errors
+			}
+		}
+
+		if (Object.keys(defaultHeaders).length > 0) {
+			configuration.defaultHeaders = defaultHeaders;
+		}
+
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
 			apiKey: credentials.apiKey as string,
