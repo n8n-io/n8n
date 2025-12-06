@@ -484,6 +484,7 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	skipLogging?: boolean;
 }
 
 /**
@@ -531,6 +532,8 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	skipLogging?: boolean;
 }
 
 export interface PaginationOptions {
@@ -937,6 +940,8 @@ export interface FunctionsBase {
 
 	getExecutionContext: () => IExecutionContext | undefined;
 
+	nodeLogger: INodeLogger;
+
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
 }
@@ -1239,6 +1244,7 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	nodeDebugLogs?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
@@ -2798,11 +2804,20 @@ export type LogMetadata = {
 	file?: string;
 	function?: string;
 };
+export type NodeLogMetadata = {
+	[key: string]: unknown;
+	tag?: string;
+};
 export type Logger = Record<
 	Exclude<LogLevel, 'silent'>,
 	(message: string, metadata?: LogMetadata) => void
 >;
 export type LogLocationMetadata = Pick<LogMetadata, 'file' | 'function'>;
+
+export type INodeLogger = Record<
+	Exclude<LogLevel, 'silent'>,
+	(message: string | object, metadata?: NodeLogMetadata) => void
+>;
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
@@ -3236,3 +3251,7 @@ export interface StructuredChunk {
 }
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
+
+export type IAuthDataSanitizeKeys = {
+	[key: string]: string[];
+};

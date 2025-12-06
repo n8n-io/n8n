@@ -13,6 +13,7 @@ import type {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeInputConfiguration,
+	INodeLogger,
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
@@ -45,6 +46,7 @@ import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
+import { NodeLogger } from './utils/node-logger';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
@@ -65,6 +67,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get nodeLogger(): INodeLogger {
+		return new NodeLogger(this.node, this.additionalData, this.mode);
 	}
 
 	getExecutionContext() {
