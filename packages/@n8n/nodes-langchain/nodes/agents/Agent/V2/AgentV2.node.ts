@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -24,7 +24,7 @@ export class AgentV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			version: [2, 2.1, 2.2, 2.3],
 			defaults: {
 				name: 'AI Agent',
 				color: '#404040',
@@ -58,7 +58,7 @@ export class AgentV2 implements INodeType {
 					},
 					default: '',
 				},
-				promptTypeOptions,
+				promptTypeOptionsDeprecated,
 				{
 					...textFromGuardrailsNode,
 					displayOptions: {
