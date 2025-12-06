@@ -120,9 +120,9 @@ export class n8nPage {
 	readonly breadcrumbs: Breadcrumbs;
 	readonly clipboard: ClipboardHelper;
 
-	constructor(page: Page) {
+	constructor(page: Page, api?: ApiHelpers) {
 		this.page = page;
-		this.api = new ApiHelpers(page.context().request);
+		this.api = api ?? new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
