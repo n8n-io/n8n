@@ -1,3 +1,3 @@
-export const getBrandOwner = (): 'MOH' | 'CORTEX' => {
+export const getBrandOwner = (): 'MOH' | 'CORTEX' | 'IN_CORTEX' => {
 	return 'CORTEX';
 };

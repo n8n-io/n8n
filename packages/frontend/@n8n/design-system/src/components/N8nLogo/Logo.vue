@@ -8,6 +8,8 @@ import CortexLogoIcon from './cortex-logo-icon.svg';
 import CortexLogoText from './cortex-logo-text.svg';
 import MOHLogoIcon from './moh-logo-icon.svg';
 import MOHLogoText from './moh-logo-text.svg';
+import IncortexLogoIcon from './incortex-logo-icon.svg';
+import IncortexLogoText from './incortex-logo-text.svg';
 
 const props = defineProps<
 	(
@@ -30,9 +32,14 @@ const showLogoText = computed(() => {
 	return !props.collapsed;
 });
 
+const isIncortex = computed(() => getBrandOwner() === 'IN_CORTEX');
+
 const getLogoText = () => {
 	if (getBrandOwner() === 'MOH') {
 		return MOHLogoText;
+	}
+	if (getBrandOwner() === 'IN_CORTEX') {
+		return IncortexLogoText;
 	}
 	return CortexLogoText;
 };
@@ -40,6 +47,9 @@ const getLogoText = () => {
 const getLogoIcon = () => {
 	if (getBrandOwner() === 'MOH') {
 		return MOHLogoIcon;
+	}
+	if (getBrandOwner() === 'IN_CORTEX') {
+		return IncortexLogoIcon;
 	}
 	return CortexLogoIcon;
 };
@@ -73,7 +83,11 @@ onMounted(() => {
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
 		<component :is="getLogoIcon()" ref="logo" :class="$style.logo" />
-		<component v-if="showLogoText" :is="getLogoText()" :class="$style.logoText" />
+		<component
+			v-if="showLogoText"
+			:is="getLogoText()"
+			:class="[$style.logoText, { [$style.noMargin]: isIncortex }]"
+		/>
 		<slot />
 	</div>
 </template>
@@ -89,6 +103,10 @@ onMounted(() => {
 	margin-left: var(--spacing--5xs);
 }
 
+.noMargin {
+	margin-left: 0 !important;
+}
+
 .large {
 	transform: scale(2);
 	margin-bottom: var(--spacing--xl);
@@ -99,8 +117,12 @@ onMounted(() => {
 	}
 
 	.logoText {
-		margin-left: var(--spacing--lg);
+		margin-left: var(--spacing--sm);
 		margin-right: var(--spacing--3xs);
+	}
+
+	.noMargin {
+		margin-left: 17px !important;
 	}
 }
 
