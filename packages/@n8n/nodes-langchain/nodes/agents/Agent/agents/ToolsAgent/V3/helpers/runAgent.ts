@@ -13,6 +13,7 @@ import {
 	processEventStream,
 	createEngineRequests,
 	saveToMemory,
+	extractToolResultsBinary,
 } from '@utils/agent-execution';
 
 import { SYSTEM_MESSAGE } from '../../prompt';
@@ -93,6 +94,11 @@ export async function runAgent(
 			result.intermediateSteps = steps;
 		}
 
+		const toolBinary = extractToolResultsBinary(response, itemIndex);
+		if (toolBinary && Object.keys(toolBinary).length > 0) {
+			result.binary = toolBinary;
+		}
+
 		return result;
 	} else {
 		// Handle regular execution
@@ -113,6 +119,12 @@ export async function runAgent(
 			if (options.returnIntermediateSteps && steps.length > 0) {
 				result.intermediateSteps = steps;
 			}
+
+			const toolBinary = extractToolResultsBinary(response, itemIndex);
+			if (toolBinary && Object.keys(toolBinary).length > 0) {
+				result.binary = toolBinary;
+			}
+
 			return result;
 		}
 
