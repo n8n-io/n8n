@@ -46,6 +46,7 @@ import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopes
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
+import { AddCreatorIdToProjectTable1764276827837 } from './1764276827837-AddCreatorIdToProjectTable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -115,6 +116,8 @@ import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-A
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
+import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
+import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -235,6 +238,9 @@ const sqliteMigrations: Migration[] = [
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
+	AddCreatorIdToProjectTable1764276827837,
+	CreateDynamicCredentialResolverTable1764682447000,
+	AddDynamicCredentialEntryTable1764689388394,
 ];
 
 export { sqliteMigrations };

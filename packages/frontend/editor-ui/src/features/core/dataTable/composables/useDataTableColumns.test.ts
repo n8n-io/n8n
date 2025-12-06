@@ -51,6 +51,7 @@ vi.mock('@/features/core/dataTable/utils/columnUtils', () => ({
 
 describe('useDataTableColumns', () => {
 	const mockOnDeleteColumn = vi.fn();
+	const mockOnRenameColumn = vi.fn();
 	const mockOnAddRowClick = vi.fn();
 	const mockOnAddColumn = vi.fn();
 	const isTextEditorOpen = ref(false);
@@ -62,6 +63,7 @@ describe('useDataTableColumns', () => {
 	const createComposable = () => {
 		return useDataTableColumns({
 			onDeleteColumn: mockOnDeleteColumn,
+			onRenameColumn: mockOnRenameColumn,
 			onAddRowClick: mockOnAddRowClick,
 			onAddColumn: mockOnAddColumn,
 			isTextEditorOpen,
