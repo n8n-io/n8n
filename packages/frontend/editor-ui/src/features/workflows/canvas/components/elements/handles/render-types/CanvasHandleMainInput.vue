@@ -1,11 +1,15 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '../../../../composables/useCanvasNodeHandle';
 import { computed, useCssModule } from 'vue';
-import CanvasHandleRectangle from './parts/CanvasHandleRectangle.vue';
+import CanvasHandleDot from './parts/CanvasHandleDot.vue';
+import { useCanvas } from '../../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 
 const $style = useCssModule();
 
 const { label, isRequired } = useCanvasNodeHandle();
+const { viewport } = useCanvas();
+const { calculateHandleLightness } = useZoomAdjustedValues(viewport);
 
 const classes = computed(() => ({
 	'canvas-node-handle-main-input': true,
@@ -13,12 +17,19 @@ const classes = computed(() => ({
 	[$style.required]: isRequired.value,
 }));
 
+const handleLightness = calculateHandleLightness();
+
+const handleStyles = computed(() => ({
+	'--handle--border--lightness--light': handleLightness.value.light,
+	'--handle--border--lightness--dark': handleLightness.value.dark,
+}));
+
 const handleClasses = 'target';
 </script>
 <template>
 	<div :class="classes">
 		<div :class="[$style.label]">{{ label }}</div>
-		<CanvasHandleRectangle :handle-classes="handleClasses" />
+		<CanvasHandleDot :handle-classes="handleClasses" :style="handleStyles" />
 	</div>
 </template>
 
@@ -34,6 +45,7 @@ const handleClasses = 'target';
 	position: absolute;
 	top: 50%;
 	left: calc(var(--spacing--xs) * -1);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1)) translate(-100%, 0);
 	transform-origin: center left;
 	font-size: var(--font-size--2xs);

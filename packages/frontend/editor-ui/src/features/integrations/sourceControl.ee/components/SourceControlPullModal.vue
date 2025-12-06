@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { useLoadingService } from '@/composables/useLoadingService';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { useLoadingService } from '@/app/composables/useLoadingService';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { VIEWS } from '@/app/constants';
 import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
 import { sourceControlEventBus } from '../sourceControl.eventBus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import {
@@ -24,7 +24,7 @@ import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 
 import {
 	N8nBadge,

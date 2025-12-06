@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 
-const releaseChannelSchema = z.enum(['stable', 'beta', 'nightly', 'dev']);
+const releaseChannelSchema = z.enum(['stable', 'beta', 'nightly', 'dev', 'rc']);
 type ReleaseChannel = z.infer<typeof releaseChannelSchema>;
 
 @Config

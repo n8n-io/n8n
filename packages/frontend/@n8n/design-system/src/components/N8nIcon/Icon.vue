@@ -43,6 +43,7 @@ const sizesInPixels: Record<IconSize, number> = {
 	medium: 14,
 	large: 16,
 	xlarge: 20,
+	xxlarge: 40,
 };
 
 const size = computed((): { height: string; width: string } => {

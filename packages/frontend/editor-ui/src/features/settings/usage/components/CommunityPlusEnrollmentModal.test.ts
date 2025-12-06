@@ -5,11 +5,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPlusEnrollmentModal from './CommunityPlusEnrollmentModal.vue';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsageStore } from '../usage.store';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
-vi.mock('@/composables/useToast', () => {
+vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -22,7 +22,7 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -33,8 +33,8 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),

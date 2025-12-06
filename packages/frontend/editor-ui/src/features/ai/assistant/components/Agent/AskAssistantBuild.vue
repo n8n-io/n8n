@@ -2,17 +2,17 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, watch, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
-import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
-import { nodeViewEventBus } from '@/event-bus';
+import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
@@ -34,7 +34,9 @@ const { goToUpgrade } = usePageRedirectionHelper();
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
+const trackedCategorizations = ref(new Set<string>());
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
@@ -61,16 +63,19 @@ const showExecuteMessage = computed(() => {
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
-	// Check if there's an error message after the last workflow update
-	const hasErrorAfterUpdate = builderStore.chatMessages
-		.slice(builderUpdatedWorkflowMessageIndex + 1)
-		.some((msg) => msg.type === 'error');
+	// Check if there's an error message or task aborted message after the last workflow update
+	const messagesAfterUpdate = builderStore.chatMessages.slice(
+		builderUpdatedWorkflowMessageIndex + 1,
+	);
+	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
+	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
-		!hasErrorAfterUpdate
+		!hasErrorAfterUpdate &&
+		!hasTaskAbortedAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
@@ -90,6 +95,9 @@ async function onUserMessage(content: string) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
 
+	// Reset tidy up flag for each new message exchange
+	shouldTidyUp.value = false;
+
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
@@ -100,7 +108,9 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	trackedCategorizations.value.clear();
 	workflowUpdated.value = undefined;
+	shouldTidyUp.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -122,6 +132,44 @@ function onFeedback(feedback: RatingFeedback) {
 
 function dedupeToolNames(toolNames: string[]): string[] {
 	return [...new Set(toolNames)];
+}
+
+function isCategorizationData(
+	data: unknown,
+): data is { techniques: string[]; confidence?: number } {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'techniques' in data &&
+		Array.isArray(data.techniques) &&
+		data.techniques.every((t) => typeof t === 'string')
+	);
+}
+
+function trackWorkflowCategorization() {
+	// Track categorization telemetry
+	builderStore.toolMessages.forEach((toolMsg) => {
+		if (toolMsg.toolName !== 'categorize_prompt') return;
+		if (toolMsg.status !== 'completed') return;
+		if (!toolMsg.toolCallId) return;
+		if (trackedCategorizations.value.has(toolMsg.toolCallId)) return;
+
+		const outputUpdate = toolMsg.updates.find((u) => u.type === 'output');
+		const categorizationData = outputUpdate?.data?.categorization;
+
+		if (!isCategorizationData(categorizationData)) return;
+
+		trackedCategorizations.value.add(toolMsg.toolCallId);
+
+		telemetry.track('Classifier labels user prompt', {
+			user_id: usersStore.currentUserId ?? undefined,
+			workflow_id: workflowsStore.workflowId,
+			classifier_labels: categorizationData.techniques,
+			confidence: categorizationData.confidence,
+			session_id: builderStore.trackingSessionId,
+			timestamp: new Date().toISOString(),
+		});
+	});
 }
 
 function trackWorkflowModifications() {
@@ -214,10 +262,14 @@ watch(
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
+						// Only tidy up if new nodes are added per user message
+						const hasNewNodes = Boolean(result.newNodeIds && result.newNodeIds.length > 0);
+						shouldTidyUp.value = shouldTidyUp.value || hasNewNodes;
+
 						// Import the updated workflow
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
-							tidyUp: true,
+							tidyUp: shouldTidyUp.value,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,
@@ -241,6 +293,7 @@ watch(
 	async (isStreaming) => {
 		if (!isStreaming) {
 			trackWorkflowModifications();
+			trackWorkflowCategorization();
 		}
 
 		if (
@@ -251,12 +304,7 @@ watch(
 			// Check if the generation completed successfully (no error or cancellation)
 			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
 			const successful =
-				lastMessage &&
-				lastMessage.type !== 'error' &&
-				!(
-					lastMessage.type === 'text' &&
-					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
-				);
+				lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
 
 			builderStore.initialGeneration = false;
 

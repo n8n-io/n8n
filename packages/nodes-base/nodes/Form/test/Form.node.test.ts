@@ -172,7 +172,10 @@ describe('Form Node', () => {
 		});
 
 		it('should return form data for POST request', async () => {
-			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as Request);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+			} as Request);
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
 				{
 					type: 'n8n-nodes-base.formTrigger',

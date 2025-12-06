@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { I18nT } from 'vue-i18n';
 
 const i18n = useI18n();

@@ -2,11 +2,11 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -20,8 +20,8 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import { getResourcePermissions } from '@n8n/permissions';
-import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import Modal from '@/components/Modal.vue';
+import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
+import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import ProjectMoveResourceModalCredentialsList from '@/features/collaboration/projects/components/ProjectMoveResourceModalCredentialsList.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
@@ -29,7 +29,7 @@ import {
 	ResourceType,
 	getTruncatedProjectName,
 } from '@/features/collaboration/projects/projects.utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';

@@ -1,17 +1,17 @@
 <script lang="ts" setup>
 import WorkflowExecutionAnnotationPanel from './WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowExecutionAnnotationTags from './WorkflowExecutionAnnotationTags.ee.vue';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useExecutionDebugging } from '../../composables/useExecutionDebugging';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';

@@ -10,18 +10,18 @@ import { ASSISTANT_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
-import { usePostHog } from '@/stores/posthog.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
-import { VIEWS } from '@/constants';
+import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
+import { VIEWS } from '@/app/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/ai';
-import * as telemetryModule from '@/composables/useTelemetry';
-import type { Telemetry } from '@/plugins/telemetry';
+import * as chatAPI from '@/features/ai/assistant/assistant.api';
+import * as telemetryModule from '@/app/composables/useTelemetry';
+import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;

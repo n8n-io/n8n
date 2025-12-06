@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 /**
  * This composable holds reusable logic that detects the current page type
  */

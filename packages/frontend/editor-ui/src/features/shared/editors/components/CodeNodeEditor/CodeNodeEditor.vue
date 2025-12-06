@@ -6,22 +6,22 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
-import { CODE_NODE_TYPE } from '@/constants';
-import { codeNodeEditorEventBus } from '@/event-bus';
+import { CODE_NODE_TYPE } from '@/app/constants';
+import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useCodeEditor } from '../../composables/useCodeEditor';
 import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { dropInCodeEditor } from '../../plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 import { ElTabPane, ElTabs } from 'element-plus';
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';

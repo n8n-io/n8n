@@ -7,9 +7,9 @@ import NodeIssueItem from './NodeIssueItem.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-vi.mock('@/components/NodeIcon.vue', () => ({
+vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
 		template: '<span />',
 	},

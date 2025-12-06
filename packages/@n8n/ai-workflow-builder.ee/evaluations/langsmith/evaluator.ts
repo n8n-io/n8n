@@ -122,7 +122,7 @@ export function createLangsmithEvaluator(
 			const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
 			// Run programmatic evaluation
-			const programmaticResult = programmaticEvaluation(evaluationInput, parsedNodeTypes);
+			const programmaticResult = await programmaticEvaluation(evaluationInput, parsedNodeTypes);
 
 			const results: LangsmithEvaluationResult[] = [];
 
@@ -239,6 +239,11 @@ export function createLangsmithEvaluator(
 			results.push(categoryToResult('programmatic.agentPrompt', programmaticResult.agentPrompt));
 			results.push(categoryToResult('programmatic.tools', programmaticResult.tools));
 			results.push(categoryToResult('programmatic.fromAi', programmaticResult.fromAi));
+
+			// Add workflow similarity if available
+			if (programmaticResult.similarity) {
+				results.push(categoryToResult('programmatic.similarity', programmaticResult.similarity));
+			}
 
 			return results;
 		} catch (error) {

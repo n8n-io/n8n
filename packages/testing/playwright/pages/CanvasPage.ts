@@ -164,7 +164,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	async saveWorkflow(): Promise<void> {
+		const responsePromise = this.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') &&
+				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
+		);
 		await this.clickSaveWorkflowButton();
+		await responsePromise;
 	}
 
 	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
@@ -290,21 +296,28 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	getWorkflowTags() {
-		return this.page.getByTestId('workflow-tags').locator('.el-tag');
-	}
-	async activateWorkflow() {
-		const switchElement = this.page.getByTestId('workflow-activate-switch');
-		const statusElement = this.page.getByTestId('workflow-activator-status');
-
+	async publishWorkflow(): Promise<void> {
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
-				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
+				response.url().includes('/rest/workflows/') &&
+				response.url().includes('/activate') &&
+				response.request().method() === 'POST',
 		);
 
-		await switchElement.click();
-		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
+		await this.getOpenPublishModalButton().click();
+		await this.getPublishButton().click();
+
 		await responsePromise;
+	}
+
+	async cancelPublishWorkflowModal(): Promise<void> {
+		await this.page.getByTestId('workflow-publish-cancel-button').click();
+	}
+
+	async openShareModal(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-share');
+		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -361,7 +374,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-container').click();
+		await this.page.getByTestId('workflow-tags-dropdown').click();
 	}
 
 	getTagPills(): Locator {
@@ -370,8 +383,24 @@ export class CanvasPage extends BasePage {
 			.locator('.el-tag:not(.count-container)');
 	}
 
+	getSavedWorkflowTagPills(): Locator {
+		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
+	}
+
 	getTagsDropdown(): Locator {
 		return this.page.getByTestId('tags-dropdown');
+	}
+
+	getWorkflowTagsDropdown(): Locator {
+		return this.page.getByTestId('workflow-tags-dropdown');
+	}
+
+	getWorkflowTags(): Locator {
+		return this.page.getByTestId('workflow-tags');
+	}
+
+	getTagCloseButton(): Locator {
+		return this.getWorkflowTagsDropdown().locator('.el-tag__close');
 	}
 
 	async typeInTagInput(text: string): Promise<void> {
@@ -412,8 +441,20 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-save-button');
 	}
 
-	getWorkflowActivatorSwitch(): Locator {
-		return this.page.getByTestId('workflow-activate-switch');
+	getOpenPublishModalButton(): Locator {
+		return this.page.getByTestId('workflow-open-publish-modal-button');
+	}
+
+	getPublishModalCallout(): Locator {
+		return this.page.getByTestId('workflowPublish-modal').locator('.n8n-callout');
+	}
+
+	getPublishButton(): Locator {
+		return this.page.getByTestId('workflow-publish-button');
+	}
+
+	getPublishedIndicator(): Locator {
+		return this.page.getByTestId('workflow-active-version-indicator');
 	}
 
 	getLoadingMask(): Locator {
@@ -517,8 +558,16 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-action-item');
 	}
 
+	nodeCreatorCategoryItem(categoryName: string): Locator {
+		return this.page.getByTestId('node-creator-category-item').getByText(categoryName);
+	}
+
 	nodeCreatorCategoryItems(): Locator {
 		return this.page.getByTestId('node-creator-category-item');
+	}
+
+	getFirstAction(): Locator {
+		return this.page.locator('[data-keyboard-nav-type="action"]').first();
 	}
 
 	selectedNodes(): Locator {
@@ -751,15 +800,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodesWithSpinner(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=refresh-cw]'),
-		});
+		return this.page.locator(
+			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
+		);
 	}
 
 	getWaitingNodes(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=clock]'),
-		});
+		return this.page.locator('[data-test-id="canvas-node"].waiting');
 	}
 
 	/**
@@ -897,7 +944,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
-		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+		return this.page.locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,
+		);
 	}
 
 	getSuccessEdges(): Locator {

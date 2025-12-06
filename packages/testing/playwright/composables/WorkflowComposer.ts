@@ -1,5 +1,6 @@
 import type { Request } from '@playwright/test';
 import { expect } from '@playwright/test';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -37,6 +38,23 @@ export class WorkflowComposer {
 	 */
 	async createWorkflow(workflowName = 'My New Workflow') {
 		await this.n8n.workflows.addResource.workflow();
+		await this.n8n.canvas.setWorkflowName(workflowName);
+
+		const responsePromise = this.n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') && response.request().method() === 'POST',
+		);
+		await this.n8n.canvas.saveWorkflow();
+
+		await responsePromise;
+	}
+
+	/**
+	 * Creates a new workflow by clicking the add workflow button
+	 * @param workflowName - The name of the workflow to create
+	 */
+	async createWorkflowFromSidebar(workflowName = 'My New Workflow') {
+		await this.n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 		await this.n8n.canvas.setWorkflowName(workflowName);
 
 		const responsePromise = this.n8n.page.waitForResponse(
@@ -139,6 +157,19 @@ export class WorkflowComposer {
 		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
+	}
+
+	/**
+	 * Get workflow by name via API
+	 * @param workflowName - Name of the workflow to find
+	 * @returns Workflow object with id, name, and other properties
+	 */
+	async getWorkflowByName(workflowName: string): Promise<IWorkflowBase> {
+		const response = await this.n8n.api.request.get('/rest/workflows', {
+			params: new URLSearchParams({ filter: JSON.stringify({ name: workflowName }) }),
+		});
+		const workflows = await response.json();
+		return workflows.data[0];
 	}
 
 	/**

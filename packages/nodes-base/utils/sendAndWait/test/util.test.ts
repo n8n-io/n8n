@@ -330,6 +330,7 @@ describe('Send and Wait utils tests', () => {
 		it('should handle customForm POST webhook', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
+				contentType: 'multipart/form-data',
 			} as any);
 			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
 import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -52,7 +52,13 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
 
 	if (latestName) {
-		await runWorkflow.runWorkflow({ destinationNode: latestName });
+		await runWorkflow.runWorkflow({
+			destinationNode: {
+				nodeName: latestName,
+				// TODO(CAT-1265): check that this is the right mode.
+				mode: 'inclusive',
+			},
+		});
 	}
 }
 

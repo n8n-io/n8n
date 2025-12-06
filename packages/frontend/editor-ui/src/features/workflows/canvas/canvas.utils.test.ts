@@ -16,7 +16,7 @@ import { CanvasConnectionMode } from './canvas.types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
-import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/constants';
+import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),

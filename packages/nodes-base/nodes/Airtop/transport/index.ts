@@ -1,9 +1,9 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import type { IAirtopResponse } from './types';
@@ -27,7 +27,7 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		method,
 		body,
 		qs: query,
-		url: `${BASE_URL}${endpoint}`,
+		url: endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`,
 		json: true,
 	};
 

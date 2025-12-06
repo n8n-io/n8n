@@ -25,6 +25,14 @@
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:integration": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },
 		"build:playwright": {

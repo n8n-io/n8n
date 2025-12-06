@@ -4,7 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { computed, ref } from 'vue';
-import { isAuthenticated } from '@/utils/rbac/checks';
+import { isAuthenticated } from '@/app/utils/rbac/checks';
 import type { CommunityPackageMap } from './communityNodes.types';
 
 const LOADER_DELAY = 300;

@@ -1,10 +1,10 @@
-import { useTelemetry } from '@/composables/useTelemetry';
-import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/constants';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';

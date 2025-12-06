@@ -1,4 +1,4 @@
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INode, IRunExecutionData } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 

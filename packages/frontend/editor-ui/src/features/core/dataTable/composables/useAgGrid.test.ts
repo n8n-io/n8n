@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref, type Ref } from 'vue';
 import { useAgGrid } from './useAgGrid';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import type {
 	GridApi,
 	GridReadyEvent,
@@ -15,7 +15,7 @@ import type {
 	IRowNode,
 } from 'ag-grid-community';
 
-vi.mock('@/composables/useClipboard', () => ({
+vi.mock('@/app/composables/useClipboard', () => ({
 	useClipboard: vi.fn((options) => {
 		return {
 			copy: vi.fn(async (text: string) => text),

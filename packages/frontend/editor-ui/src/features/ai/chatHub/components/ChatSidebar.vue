@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import ModalDrawer from '@/components/ModalDrawer.vue';
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/constants';
+import ModalDrawer from '@/app/components/ModalDrawer.vue';
+import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/app/constants';
 import ChatSidebarContent from '@/features/ai/chatHub/components/ChatSidebarContent.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { useMediaQuery } from '@vueuse/core';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useEventListener, useMediaQuery } from '@vueuse/core';
 import { onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
@@ -14,10 +14,18 @@ const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const route = useRoute();
 const sidebar = useChatHubSidebarState();
 
+const EDGE_TRIGGER_DISTANCE = 10; // pixels from left edge to trigger sidebar
+
 watch(
 	() => route.fullPath,
 	() => uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY),
 );
+
+useEventListener(window, 'mousemove', (event: MouseEvent) => {
+	if (sidebar.isCollapsed.value && event.clientX <= EDGE_TRIGGER_DISTANCE) {
+		sidebar.toggleOpen(true);
+	}
+});
 
 onBeforeUnmount(() => {
 	uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY);
@@ -49,6 +57,7 @@ onBeforeUnmount(() => {
 .drawer {
 	& :global(.el-drawer__header) {
 		padding: 0;
+		margin: 0;
 	}
 }
 

@@ -8,11 +8,11 @@ import {
 	MAX_CHAT_WIDTH,
 } from './chatPanel.store';
 import { useChatPanelStateStore } from './chatPanelState.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from './builder.store';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { reactive } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
@@ -21,7 +21,8 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });
-vi.mock('vue-router', () => ({
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
 	useRoute: () => mockRoute,
 }));
 

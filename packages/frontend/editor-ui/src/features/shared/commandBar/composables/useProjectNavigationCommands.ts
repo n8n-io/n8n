@@ -2,12 +2,11 @@ import { computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CommandBarItem } from '../types';
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
+import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 
 const ITEM_ID = {
 	CREATE_PROJECT: 'create-project',
@@ -40,24 +39,26 @@ export function useProjectNavigationCommands(options: {
 		);
 	});
 
-	const createProjectCommand = (project: ProjectListItem): CommandBarItem => {
-		const title =
+	const createProjectCommand = (project: ProjectListItem, isRoot: boolean): CommandBarItem => {
+		let title =
 			project.type === 'personal'
 				? i18n.baseText('projects.menu.personal')
 				: project.name
 					? project.name
 					: i18n.baseText('commandBar.projects.unnamed');
 
+		if (isRoot) {
+			title = i18n.baseText('generic.openResource', { interpolate: { resource: title } });
+		}
+
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.projects')
+			: i18n.baseText('commandBar.projects.open');
+
 		return {
 			id: project.id,
-			title: {
-				component: CommandBarItemTitle,
-				props: {
-					title,
-					actionText: i18n.baseText('generic.open'),
-				},
-			},
-			section: i18n.baseText('commandBar.sections.projects'),
+			title,
+			section,
 			keywords: [title],
 			handler: () => {
 				void router.push({
@@ -71,13 +72,13 @@ export function useProjectNavigationCommands(options: {
 	const openProjectCommands = computed<CommandBarItem[]>(() => {
 		const isInProjectParent = activeNodeId.value === ITEM_ID.OPEN_PROJECT;
 		if (!isInProjectParent) return [];
-		return filteredProjects.value.map((project) => createProjectCommand(project));
+		return filteredProjects.value.map((project) => createProjectCommand(project, false));
 	});
 
 	const rootProjectItems = computed<CommandBarItem[]>(() => {
 		const isRootWithQuery = activeNodeId.value === null && lastQuery.value.trim().length > 2;
 		if (!isRootWithQuery) return [];
-		return filteredProjects.value.map((project) => createProjectCommand(project));
+		return filteredProjects.value.map((project) => createProjectCommand(project, true));
 	});
 
 	const projectNavigationCommands = computed<CommandBarItem[]>(() => {

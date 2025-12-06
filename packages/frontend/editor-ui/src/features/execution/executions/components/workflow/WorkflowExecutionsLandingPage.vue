@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 

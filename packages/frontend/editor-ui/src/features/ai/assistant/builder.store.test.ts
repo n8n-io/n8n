@@ -14,26 +14,26 @@ import {
 import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
-import { usePostHog } from '@/stores/posthog.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
-import { DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
+import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/ai';
-import * as telemetryModule from '@/composables/useTelemetry';
+import * as chatAPI from '@/features/ai/assistant/assistant.api';
+import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
-} from '@/composables/useWorkflowState';
-import type { Telemetry } from '@/plugins/telemetry';
+} from '@/app/composables/useWorkflowState';
+import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
@@ -47,15 +47,15 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 // Mock useToast
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 	}),
 }));
 
 // Mock to inject workflowState
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),
@@ -647,9 +647,9 @@ describe('AI Builder store', () => {
 			expect(builderStore.chatMessages[0].role).toBe('user');
 			expect(builderStore.chatMessages[1].role).toBe('assistant');
 			expect(builderStore.chatMessages[1].type).toBe('text');
-			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
-				'aiAssistant.builder.streamAbortedMessage',
-			);
+			const abortedMessage = builderStore.chatMessages[1] as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage.content).toBe('aiAssistant.builder.streamAbortedMessage');
+			expect(abortedMessage.aborted).toBe(true);
 
 			// Verify streaming state was reset
 			expect(builderStore.streaming).toBe(false);
@@ -774,9 +774,9 @@ describe('AI Builder store', () => {
 			const assistantMessages = builderStore.chatMessages.filter((msg) => msg.role === 'assistant');
 			expect(assistantMessages).toHaveLength(1);
 			expect(assistantMessages[0].type).toBe('text');
-			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe(
-				'aiAssistant.builder.streamAbortedMessage',
-			);
+			const abortedMessage = assistantMessages[0] as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage.content).toBe('aiAssistant.builder.streamAbortedMessage');
+			expect(abortedMessage.aborted).toBe(true);
 		});
 	});
 
@@ -1166,6 +1166,322 @@ describe('AI Builder store', () => {
 					testApi: { id: 'existing', name: 'Existing Credential' },
 				});
 			});
+		});
+	});
+
+	describe('applyWorkflowUpdate with pinned data preservation', () => {
+		it('should preserve pinned data for nodes with matching names', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with nodes that have pinned data
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			};
+			const node2 = {
+				id: 'node2-id',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				position: [0, 0] as [number, number],
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1, node2];
+			workflowsStore.workflow.nodes = [node1, node2];
+
+			// Mock pinned data for these nodes
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+			const pinnedData2 = [{ json: { data: 'test2' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					if (nodeName === 'Set') return pinnedData2;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with the same node names but different IDs
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was preserved for nodes with matching names
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+				Set: pinnedData2,
+			});
+		});
+
+		it('should preserve pinned data only for nodes that still exist', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with three nodes
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+			const node2 = {
+				id: 'node2-id',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [450, 300] as [number, number],
+				parameters: {},
+			};
+			const node3 = {
+				id: 'node3-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [650, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1, node2, node3];
+			workflowsStore.workflow.nodes = [node1, node2, node3];
+
+			// Mock pinned data for all three nodes
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+			const pinnedData2 = [{ json: { data: 'test2' } }];
+			const pinnedData3 = [{ json: { data: 'test3' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					if (nodeName === 'Set') return pinnedData2;
+					if (nodeName === 'Code') return pinnedData3;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with only two of the three nodes
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [250, 300] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify only pinned data for existing nodes was preserved
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+				Set: pinnedData2,
+			});
+
+			// Code node's pinned data should not be included
+			expect(result.workflowData?.pinData).not.toHaveProperty('Code');
+		});
+
+		it('should not add pinData property if no pinned data exists', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow without pinned data
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock no pinned data
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(vi.fn(() => undefined));
+
+			// Create workflow update
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinData property is not added
+			expect(result.workflowData?.pinData).toBeUndefined();
+		});
+
+		it('should handle nodes with renamed names correctly', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock pinned data
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with renamed node
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request1',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was not preserved since the name changed
+			expect(result.workflowData?.pinData).toBeUndefined();
+		});
+
+		it('should preserve pinned data when adding new nodes', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with one node
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock pinned data for the existing node
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with existing node plus a new node
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was preserved only for the existing node
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+			});
+
+			// New node should not have pinned data
+			expect(result.workflowData?.pinData).not.toHaveProperty('Set');
 		});
 	});
 

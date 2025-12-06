@@ -63,12 +63,12 @@ const iconColor = computed(() => {
 			<template v-if="compact" #content>{{ item.label }}</template>
 
 			<N8nRoute
+				:id="item.id"
 				:to="to"
 				role="menuitem"
 				:class="[$style.menuItem, { [$style.active]: active }]"
 				:aria-label="props.ariaLabel"
 				data-test-id="menu-item"
-				:id="item.id"
 				@click="emit('click')"
 			>
 				<div
@@ -122,8 +122,8 @@ const iconColor = computed(() => {
 	}
 }
 
-.menuItem:hover {
-	background-color: var(--color--foreground);
+.menuItem:hover:not(.active) {
+	background-color: var(--color--background--light-1);
 	color: var(--color--text--shade-1);
 }
 
@@ -170,7 +170,7 @@ const iconColor = computed(() => {
 
 .menuItem.active {
 	.menuItemIcon {
-		color: var(--color--foreground--shade-2);
+		color: var(--color--text--shade-1);
 	}
 }
 </style>

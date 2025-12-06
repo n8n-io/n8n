@@ -24,10 +24,17 @@ import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
+import type {
+	IExecutionContext,
+	WorkflowExecuteModeValues as WorkflowExecuteMode,
+} from './execution-context';
 import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+
+export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -141,6 +148,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
+	isGlobal?: boolean;
 }
 
 export interface ICredentialsEncrypted {
@@ -329,6 +337,12 @@ export interface ICredentialType {
 	icon?: Icon;
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
+	/**
+	 * Base path for resolving file icons from expressions.
+	 * Used when icon is an expression that resolves to `file:filename.svg`
+	 * Format: `icons/${packageName}/${nodeDirPath}`
+	 */
+	iconBasePath?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -681,6 +695,7 @@ export interface BaseHelperFunctions {
 }
 
 export interface FileSystemHelperFunctions {
+	isFilePathBlocked(filePath: string): Promise<boolean>;
 	createReadStream(path: PathLike): Promise<Readable>;
 	getStoragePath(): string;
 	writeContentToFile(
@@ -819,6 +834,11 @@ export interface RequestHelperFunctions {
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	refreshOAuth2Token(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
 }
 
 export type SSHCredentials = {
@@ -914,6 +934,8 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
+
+	getExecutionContext: () => IExecutionContext | undefined;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -1030,6 +1052,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			settings: unknown,
 			itemIndex: number,
 		): Promise<Result<T, E>>;
+
+		getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string };
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -1071,6 +1095,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1425,6 +1450,7 @@ export interface INodePropertyTypeOptions {
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
+	dateOnly?: boolean; // Supported by: dateTime
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
 	assignment?: AssignmentTypeOptions;
@@ -1475,7 +1501,7 @@ type NonEmptyArray<T> = [T, ...T[]];
 export type FilterTypeCombinator = 'and' | 'or';
 
 export type FilterTypeOptions = {
-	version: 1 | 2 | {}; // required so nodes are pinned on a version
+	version: 1 | 2 | 3 | {}; // required so nodes are pinned on a version
 	caseSensitive?: boolean | string; // default = true
 	leftValue?: string; // when set, user can't edit left side of condition
 	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
@@ -1711,6 +1737,7 @@ export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
 	closeFunction?: CloseFunction;
+	hints?: NodeExecutionHint[];
 }
 
 export type NodeOutput =
@@ -1947,8 +1974,8 @@ export type ThemeIconColor =
 	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
 export type IconRef = `fa:${string}` | `node:${string}.${string}`;
-export type IconFile = `file:${string}.png` | `file:${string}.svg`;
-export type Icon = IconRef | Themed<IconFile>;
+export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
+export type Icon = IconRef | Themed<IconFile> | IconFile;
 
 type NodeGroupType = 'input' | 'output' | 'organization' | 'schedule' | 'transform' | 'trigger';
 
@@ -1958,6 +1985,12 @@ export interface INodeTypeBaseDescription {
 	icon?: Icon;
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
+	/**
+	 * Base path for resolving file icons from expressions.
+	 * Used when icon is an expression that resolves to `file:filename.svg`
+	 * Format: `icons/${packageName}/${nodeDirPath}`
+	 */
+	iconBasePath?: string;
 	badgeIconUrl?: Themed<string>;
 	group: NodeGroupType[];
 	description: string;
@@ -2382,48 +2415,6 @@ export interface IRun {
 	jobId?: string;
 }
 
-// Contains all the data which is needed to execute a workflow and so also to
-// start restart it again after it did fail.
-// The RunData, ExecuteData and WaitForExecution contain often the same data.
-export interface IRunExecutionData {
-	startData?: {
-		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
-		runNodeFilter?: string[];
-	};
-	resultData: {
-		error?: ExecutionError;
-		runData: IRunData;
-		pinData?: IPinData;
-		lastNodeExecuted?: string;
-		metadata?: Record<string, string>;
-	};
-	executionData?: {
-		contextData: IExecuteContextData;
-		nodeExecutionStack: IExecuteData[];
-		metadata: {
-			// node-name: metadata by runIndex
-			[key: string]: ITaskMetadata[];
-		};
-		waitingExecution: IWaitingForExecution;
-		waitingExecutionSource: IWaitingForExecutionSource | null;
-	};
-	parentExecution?: RelatedExecution;
-	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
-	 */
-	validateSignature?: boolean;
-	waitTill?: Date;
-	pushRef?: string;
-
-	/** Data needed for a worker to run a manual execution. */
-	manualData?: Pick<
-		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
-	>;
-}
 export type SchemaType =
 	| 'string'
 	| 'number'
@@ -2458,6 +2449,7 @@ export interface RelatedExecution {
 	workflowId: string;
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
+	executionContext?: IExecutionContext;
 }
 
 type SubNodeExecutionDataAction = {
@@ -2489,6 +2481,17 @@ export interface ITaskMetadata {
 	 * @see AI-1414
 	 */
 	nodeWasResumed?: boolean;
+
+	/**
+	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
+	 * dynamic time savings that can be calculated based on execution data (e.g., number of
+	 * items processed). The behavior determines how this value interacts with the workflow's
+	 * default timeSavedPerExecution setting.
+	 */
+	timeSaved?: {
+		/** Time saved in minutes */
+		minutes: number;
+	};
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2558,6 +2561,7 @@ export type WorkflowId = IWorkflowBase['id'];
 export interface IWorkflowBase {
 	id: string;
 	name: string;
+	description?: string | null;
 	active: boolean;
 	isArchived: boolean;
 	createdAt: Date;
@@ -2569,6 +2573,9 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId: string | null;
+	versionCounter?: number;
+	meta?: WorkflowFEMeta;
 }
 
 export interface IWorkflowCredentials {
@@ -2577,8 +2584,18 @@ export interface IWorkflowCredentials {
 	};
 }
 
+export interface IDestinationNode {
+	nodeName: string;
+	/**
+	 * Execution mode for the destination node:
+	 * - 'inclusive': Execute up to and including the destination node
+	 * - 'exclusive': Execute up to but excluding the destination node
+	 */
+	mode: 'inclusive' | 'exclusive';
+}
+
 export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
@@ -2697,18 +2714,8 @@ export interface IWorkflowExecuteAdditionalData {
 		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
+	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 }
-
-export type WorkflowExecuteMode =
-	| 'cli'
-	| 'error'
-	| 'integrated'
-	| 'internal'
-	| 'manual'
-	| 'retry'
-	| 'trigger'
-	| 'webhook'
-	| 'evaluation';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2735,11 +2742,15 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 }
 
 export interface WorkflowFEMeta {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 export interface WorkflowTestData {
@@ -2880,6 +2891,7 @@ export interface INodeGraphItem {
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	use_responses_api?: boolean; //@n8n/n8n-nodes-langchain.lmChatOpenAi
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
@@ -2890,6 +2902,7 @@ export interface INodeGraphItem {
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
+	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 }
 
 export interface INodeNameIndex {
@@ -2999,6 +3012,7 @@ export interface ResourceMapperField {
 	removed?: boolean;
 	options?: INodePropertyOptions[];
 	readOnly?: boolean;
+	defaultValue?: string | number | boolean | null;
 }
 
 export type FormFieldsParameter = Array<{
@@ -3013,6 +3027,7 @@ export type FormFieldsParameter = Array<{
 	formatDate?: string;
 	html?: string;
 	placeholder?: string;
+	defaultValue?: string;
 	fieldName?: string;
 	fieldValue?: string;
 	limitSelection?: 'exact' | 'range' | 'unlimited';
@@ -3084,7 +3099,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2;
+	version: 1 | 2 | 3;
 };
 
 export type FilterValue = {
