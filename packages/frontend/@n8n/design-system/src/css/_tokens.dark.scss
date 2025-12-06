@@ -12,12 +12,12 @@
 	--color--primary--tint-3: var(--p--color--primary-030);
 
 	// Text
-	--color--text--shade-1: var(--color--neutral-125);
-	--color--text: var(--color--neutral-250);
-	--color--text--tint-1: var(--color--neutral-300);
-	--color--text--tint-2: var(--color--neutral-600);
-	--color--text--tint-3: var(--color--neutral-800);
-	--color--text--danger: var(--color--red-400);
+	--color--text--shade-1: var(--p--color--dark-gray-300);
+	--color--text: var(--p--color--dark-gray-600);
+	--color--text--tint-1: var(--p--color--dark-gray-800);
+	--color--text--tint-2: var(--p--color--dark-gray-1400);
+	--color--text--tint-3: var(--p--color--dark-gray-1700);
+	--color--text--danger: var(--p--color--red-900);
 
 	// Foreground
 	--color--foreground--shade-2: var(--color--neutral-400);
@@ -197,13 +197,13 @@
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
 	--button--color--text--primary--disabled: var(--color--white-alpha-500);
 	--button--border-color--primary--disabled: transparent;
-	--button--color--background--primary--disabled: var(--color--orange-alpha-500);
+	--button--color--background--primary--disabled: var(--p--color--primary-220);
 
 	// Button secondary
 	--button--color--text--secondary: var(--color--neutral-150);
 	--button--border-color--secondary: var(--color--foreground);
 	--button--color--background--secondary: var(--color--background--light-2);
-	--button--color--text--secondary--hover-active-focus: var(--color--orange-250);
+	--button--color--text--secondary--hover-active-focus: var(--p--color--primary-050);
 	--button--color--background--secondary--hover: var(--color--background--light-2);
 	--button--color--background--secondary--active-focus: var(--color--orange-alpha-100);
 	--button--outline-color--secondary--focus: var(--color--orange-alpha-300);

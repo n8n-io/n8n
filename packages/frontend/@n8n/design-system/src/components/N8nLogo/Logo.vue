@@ -114,9 +114,11 @@ onMounted(() => {
 	padding: 0 var(--spacing--4xs);
 }
 .dark .logoContainer .logoText text {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	fill: var(--color-text-light, #fff);
 }
 .dark .logoContainer .logo path {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	fill: var(--color-text-light, #fff);
 }
 </style>
