@@ -216,7 +216,8 @@ async function sendWithFiles(
 	return await fetch(options.webhookUrl, {
 		method: 'POST',
 		headers: {
-			Accept: 'text/plain',
+			['Content-Type']: 'multipart/form-data',
+			['Accept']: 'text/plain',
 			...options.webhookConfig?.headers,
 		},
 		body: formData,
