@@ -1,4 +1,4 @@
-import { VALID_EMAIL_REGEX } from '@/constants';
+import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { i18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
@@ -57,7 +57,7 @@ import {
 	stripExcessParens,
 } from './utils';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
+import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 
 /**

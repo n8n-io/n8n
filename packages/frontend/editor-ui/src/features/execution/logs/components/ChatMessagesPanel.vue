@@ -8,8 +8,8 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
 import { computed, ref } from 'vue';
-import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useToast } from '@/app/composables/useToast';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 interface Props {
@@ -297,7 +297,7 @@ async function copySessionId() {
 	--chat--message--user--border: none;
 	--chat--input--padding: var(--spacing--xs);
 	--chat--color-typing: var(--color--text--tint-1);
-	--chat--textarea--max-height: calc(var(--logs-panel-height) * 0.3);
+	--chat--textarea--max-height: calc(var(--logs-panel--height) * 0.3);
 	--chat--message--pre--background: var(--color--foreground--tint-1);
 	--chat--textarea--height: calc(
 		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *

@@ -4,7 +4,12 @@ import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorat
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import { UnexpectedError, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	IRun,
+	UnexpectedError,
+	type ExecutionStatus,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
@@ -40,6 +45,9 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	internal: true,
 
 	manual: true,
+
+	// n8n Chat hub messages
+	chat: true,
 };
 
 const MIN_RUNTIME = 0;
@@ -68,6 +76,8 @@ export class InsightsCollectionService {
 
 	private flushesInProgress: Set<Promise<void>> = new Set();
 
+	private isInitialized = false;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
@@ -78,13 +88,18 @@ export class InsightsCollectionService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startFlushingTimer() {
+	init() {
+		this.isInitialized = true;
 		this.isAsynchronouslySavingInsights = true;
+
 		this.scheduleFlushing();
 		this.logger.debug('Started flushing timer');
 	}
 
 	scheduleFlushing() {
+		// Safe guard to prevent scheduling flushing when not initialized
+		if (!this.isInitialized) return;
+
 		this.cancelScheduledFlushing();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
@@ -115,10 +130,17 @@ export class InsightsCollectionService {
 		// Flush any remaining events
 		this.logger.debug('Flushing remaining insights before shutdown');
 		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
+
+		this.isInitialized = false;
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+		// Safe guard to prevent collecting events when not initialized
+		if (!this.isInitialized) {
+			return;
+		}
+
 		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
 			return;
 		}
@@ -153,12 +175,15 @@ export class InsightsCollectionService {
 		}
 
 		// time saved event
-		if (status === 'success' && ctx.workflow.settings?.timeSavedPerExecution) {
-			this.bufferedInsights.add({
-				...commonWorkflowData,
-				type: 'time_saved_min',
-				value: ctx.workflow.settings.timeSavedPerExecution,
-			});
+		if (status === 'success') {
+			const finalTimeSaved = this.calculateTimeSaved(ctx);
+			if (finalTimeSaved !== undefined) {
+				this.bufferedInsights.add({
+					...commonWorkflowData,
+					type: 'time_saved_min',
+					value: finalTimeSaved,
+				});
+			}
 		}
 
 		if (!this.isAsynchronouslySavingInsights) {
@@ -242,6 +267,11 @@ export class InsightsCollectionService {
 	}
 
 	async flushEvents() {
+		// Safe guard to prevent flushing when not initialized
+		if (!this.isInitialized) {
+			return;
+		}
+
 		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
 			// reschedule the timer to flush again
@@ -275,5 +305,46 @@ export class InsightsCollectionService {
 		// Add the flush promise to the set of flushes in progress for shutdown await
 		this.flushesInProgress.add(flushPromise);
 		await flushPromise;
+	}
+
+	/**
+	 * Calculate the final time saved value by extracting SavedTime node metadata
+	 * and combining it with workflow settings based on the node's behavior.
+	 */
+	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number {
+		const workflowTimeSaved = ctx.workflow.settings?.timeSavedPerExecution;
+
+		// backwards compatibility for legacy workflows with no time saved mode
+		if (ctx.workflow.settings?.timeSavedMode !== 'dynamic') {
+			return workflowTimeSaved ?? 0;
+		}
+
+		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
+
+		return nodeTimeSaved;
+	}
+
+	/**
+	 * Extract and sum time saved from all SavedTime nodes in the workflow execution.
+	 * Returns undefined if no SavedTime nodes were executed.
+	 */
+	private extractTimeSavedFromNodes(runData: IRun): number {
+		let totalMinutes = 0;
+
+		const resultData = runData.data.resultData?.runData ?? {};
+
+		// Iterate through all node metadata
+		for (const nodeName in resultData) {
+			const taskData = resultData[nodeName];
+
+			// Each node can have multiple run indexes
+			for (const taskDataEntry of taskData) {
+				if (taskDataEntry?.metadata?.timeSaved) {
+					totalMinutes += taskDataEntry?.metadata?.timeSaved.minutes;
+				}
+			}
+		}
+
+		return totalMinutes;
 	}
 }

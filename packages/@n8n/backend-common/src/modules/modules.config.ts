@@ -10,6 +10,8 @@ export const MODULE_NAMES = [
 	'mcp',
 	'chat-hub',
 	'provisioning',
+	'breaking-changes',
+	'dynamic-credentials',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

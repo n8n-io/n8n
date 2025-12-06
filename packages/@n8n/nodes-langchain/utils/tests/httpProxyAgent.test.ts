@@ -1,11 +1,14 @@
 import { ProxyAgent } from 'undici';
 
-import { getProxyAgent } from '../httpProxyAgent';
+import { getProxyAgent, proxyFetch } from '../httpProxyAgent';
 
 // Mock the dependencies
 jest.mock('undici', () => ({
-	ProxyAgent: jest.fn().mockImplementation((url) => ({ proxyUrl: url })),
+	ProxyAgent: jest.fn().mockImplementation((url: string) => ({ proxyUrl: url })),
 }));
+
+// Mock global fetch
+global.fetch = jest.fn();
 
 describe('getProxyAgent', () => {
 	// Store original environment variables
@@ -152,6 +155,173 @@ describe('getProxyAgent', () => {
 
 			expect(agent).toEqual({ proxyUrl });
 			expect(ProxyAgent).toHaveBeenCalledWith(proxyUrl);
+		});
+	});
+});
+
+describe('proxyFetch', () => {
+	// Store original environment variables
+	const originalEnv = { ...process.env };
+	const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+
+	// Reset environment variables and mocks before each test
+	beforeEach(() => {
+		jest.clearAllMocks();
+		process.env = { ...originalEnv };
+		delete process.env.HTTP_PROXY;
+		delete process.env.http_proxy;
+		delete process.env.HTTPS_PROXY;
+		delete process.env.https_proxy;
+		delete process.env.NO_PROXY;
+		delete process.env.no_proxy;
+
+		// Setup default fetch mock response
+		mockFetch.mockResolvedValue(
+			new Response('{}', {
+				status: 200,
+				statusText: 'OK',
+				headers: { 'Content-Type': 'application/json' },
+			}),
+		);
+	});
+
+	// Restore original environment after all tests
+	afterAll(() => {
+		process.env = originalEnv;
+	});
+
+	describe('with no proxy configured', () => {
+		it('should call fetch with undefined dispatcher when no proxy is set', async () => {
+			const url = 'https://api.openai.com/v1';
+			await proxyFetch(url);
+
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				dispatcher: undefined,
+			});
+		});
+
+		it('should pass through RequestInit options', async () => {
+			const url = 'https://api.openai.com/v1';
+			const init: RequestInit = {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ test: 'data' }),
+			};
+
+			await proxyFetch(url, init);
+
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				...init,
+				dispatcher: undefined,
+			});
+		});
+
+		it('should handle URL objects', async () => {
+			const url = new URL('https://api.openai.com/v1');
+			await proxyFetch(url);
+
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				dispatcher: undefined,
+			});
+		});
+	});
+
+	describe('with proxy configured', () => {
+		it('should call fetch with ProxyAgent dispatcher when proxy is set', async () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			const url = 'https://api.openai.com/v1';
+			await proxyFetch(url);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(proxyUrl);
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				dispatcher: { proxyUrl },
+			});
+		});
+
+		it('should pass through RequestInit options with proxy', async () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			const url = 'https://api.openai.com/v1';
+			const init: RequestInit = {
+				method: 'POST',
+				headers: { Authorization: 'Bearer token123' },
+			};
+
+			await proxyFetch(url, init);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(proxyUrl);
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				...init,
+				dispatcher: { proxyUrl },
+			});
+		});
+
+		it('should handle URL objects with proxy', async () => {
+			const proxyUrl = 'http://proxy.example.com:8080';
+			process.env.HTTP_PROXY = proxyUrl;
+
+			const url = new URL('http://api.example.com/data');
+			await proxyFetch(url);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(proxyUrl);
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				dispatcher: { proxyUrl },
+			});
+		});
+
+		it('should respect NO_PROXY environment variable', async () => {
+			const proxyUrl = 'http://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+			process.env.NO_PROXY = 'localhost,127.0.0.1';
+
+			const url = 'https://localhost:3000/api';
+			await proxyFetch(url);
+
+			// Should not create ProxyAgent for localhost
+			expect(mockFetch).toHaveBeenCalledWith(url, {
+				dispatcher: undefined,
+			});
+		});
+	});
+
+	describe('return value', () => {
+		it('should return the Response from fetch', async () => {
+			const expectedResponse = new Response('{"success":true}', {
+				status: 200,
+				statusText: 'OK',
+			});
+			mockFetch.mockResolvedValueOnce(expectedResponse);
+
+			const url = 'https://api.openai.com/v1';
+			const result = await proxyFetch(url);
+
+			expect(result).toBe(expectedResponse);
+		});
+
+		it('should propagate fetch errors', async () => {
+			const error = new Error('Network error');
+			mockFetch.mockRejectedValueOnce(error);
+
+			const url = 'https://api.openai.com/v1';
+
+			await expect(proxyFetch(url)).rejects.toThrow('Network error');
+		});
+
+		it('should return error responses without throwing', async () => {
+			const errorResponse = new Response('Not Found', {
+				status: 404,
+				statusText: 'Not Found',
+			});
+			mockFetch.mockResolvedValueOnce(errorResponse);
+
+			const url = 'https://api.openai.com/v1';
+			const result = await proxyFetch(url);
+
+			expect(result).toBe(errorResponse);
+			expect(result.status).toBe(404);
 		});
 	});
 });

@@ -4,7 +4,7 @@ import { useProjectNavigationCommands } from './useProjectNavigationCommands';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 const routerPushMock = vi.fn();
@@ -27,7 +27,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 const mockCreateProject = vi.fn();
-vi.mock('@/composables/useGlobalEntityCreation', () => ({
+vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		createProject: mockCreateProject,
 	}),
@@ -291,6 +291,7 @@ describe('useProjectNavigationCommands', () => {
 
 			const rootProjects = commands.value.filter((cmd) => cmd.id === 'project-1');
 			expect(rootProjects).toHaveLength(1);
+			expect(rootProjects[0].title).toEqual('generic.openResource');
 		});
 	});
 
@@ -341,12 +342,7 @@ describe('useProjectNavigationCommands', () => {
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
 			const personalProject = openCommand?.children?.[0];
 			expect(personalProject).toBeDefined();
-			expect(personalProject?.title).toEqual({
-				component: expect.any(Object),
-				props: expect.objectContaining({
-					title: 'projects.menu.personal',
-				}),
-			});
+			expect(personalProject?.title).toEqual('projects.menu.personal');
 		});
 
 		it('should show project name for team project', () => {
@@ -365,12 +361,7 @@ describe('useProjectNavigationCommands', () => {
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
 			const teamProject = openCommand?.children?.[0];
 			expect(teamProject).toBeDefined();
-			expect(teamProject?.title).toEqual({
-				component: expect.any(Object),
-				props: expect.objectContaining({
-					title: 'Marketing Team',
-				}),
-			});
+			expect(teamProject?.title).toEqual('Marketing Team');
 		});
 
 		it('should show unnamed text for team project without name', () => {
@@ -389,12 +380,7 @@ describe('useProjectNavigationCommands', () => {
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-project');
 			const unnamedProject = openCommand?.children?.[0];
 			expect(unnamedProject).toBeDefined();
-			expect(unnamedProject?.title).toEqual({
-				component: expect.any(Object),
-				props: expect.objectContaining({
-					title: 'commandBar.projects.unnamed',
-				}),
-			});
+			expect(unnamedProject?.title).toEqual('commandBar.projects.unnamed');
 		});
 	});
 

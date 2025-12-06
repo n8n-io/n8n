@@ -18,6 +18,7 @@ import type {
 	IBinaryData,
 	INodeProperties,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -63,8 +64,7 @@ const streamingResponseMode = {
 const respondNodesResponseMode = {
 	name: 'Using Response Nodes',
 	value: 'responseNodes',
-	description:
-		"Send responses to the chat by using 'Respond to Chat' or 'Respond to Webhook' nodes",
+	description: "Send responses to the chat by using 'Respond to Chat' node",
 };
 
 const commonOptionsFields: INodeProperties[] = [
@@ -219,8 +219,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -323,7 +323,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the ‘executions’ tab',
+					'Chat will be live at the URL above once this workflow is published. Live executions will show up in the ‘executions’ tab',
 				name: 'hostedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -336,7 +336,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
+					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you publish this workflow',
 				name: 'embeddedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -391,6 +391,61 @@ export class ChatTrigger extends Node {
 				},
 				default: 'Hi there! 👋\nMy name is Nathan. How can I assist you today?',
 				description: 'Default messages shown at the start of the chat, one per line',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Make Available in n8n Chat',
+				name: 'availableInChat',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether to make the agent available in n8n Chat',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				displayName:
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least viewer access to all users who should use it. Currently, only streaming response mode is supported.',
+				name: 'availableInChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Agent Name',
+				name: 'agentName',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description: 'The name of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+					},
+				},
+			},
+			{
+				displayName: 'Agent Description',
+				name: 'agentDescription',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+				noDataExpression: true,
+				description: 'The description of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -523,6 +578,7 @@ export class ChatTrigger extends Node {
 
 	private async handleFormData(context: IWebhookFunctions) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
+		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 

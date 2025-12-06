@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import { useToast } from '@/composables/useToast';
-import Modal from '@/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
+import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';

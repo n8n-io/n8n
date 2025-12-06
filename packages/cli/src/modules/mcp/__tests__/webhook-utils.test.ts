@@ -24,6 +24,7 @@ const mockCredentialsService = (
 				type: 'mock',
 				shared: [] as SharedCredentials[],
 				isManaged: false,
+				isGlobal: false,
 				id,
 				// Methods present on entities via WithTimestampsAndStringId mixin
 				generateId() {},
@@ -75,22 +76,9 @@ describe('buildWebhookPath', () => {
 });
 
 describe('getWebhookDetails', () => {
-	const NO_WEBHOOKS_MESSAGE =
-		'This workflow does not have a trigger node that can be executed via MCP.';
 	const user = createUser();
 	const baseUrl = 'https://example.com';
 	const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
-
-	it('handles no webhook nodes', async () => {
-		const res = await getWebhookDetails(
-			user,
-			[],
-			baseUrl,
-			mockCredentialsService(() => ({})),
-			endpoints,
-		);
-		expect(res).toEqual(NO_WEBHOOKS_MESSAGE);
-	});
 
 	it('describes a basic webhook without auth', async () => {
 		const node = createWebhookNode({

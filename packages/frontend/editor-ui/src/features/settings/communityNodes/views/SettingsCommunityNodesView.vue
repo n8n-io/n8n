@@ -4,20 +4,20 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted } from 'vue';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
-import { usePushConnection } from '@/composables/usePushConnection';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { usePushConnection } from '@/app/composables/usePushConnection';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;

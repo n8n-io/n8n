@@ -406,7 +406,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
-			.andWhere(`${this.escapeField('periodStart')} <= date_ranges.end_date`)
+			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
 			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 

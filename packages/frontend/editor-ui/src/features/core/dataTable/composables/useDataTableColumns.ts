@@ -37,6 +37,7 @@ import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappin
 
 export const useDataTableColumns = ({
 	onDeleteColumn,
+	onRenameColumn,
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
@@ -44,6 +45,7 @@ export const useDataTableColumns = ({
 	dataTableId,
 }: {
 	onDeleteColumn: (columnId: string) => void;
+	onRenameColumn: (columnId: string, columnName: string) => void;
 	onAddRowClick: () => void;
 	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	isTextEditorOpen: Ref<boolean>;
@@ -67,6 +69,7 @@ export const useDataTableColumns = ({
 			headerComponent: ColumnHeader,
 			headerComponentParams: {
 				onDelete: onDeleteColumn,
+				onRename: onRenameColumn,
 				allowMenuActions: true,
 			},
 			cellEditorPopup: false,

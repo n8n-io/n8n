@@ -3,13 +3,13 @@ import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, TIME } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, TIME } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import { useBeforeUnload } from '@/composables/useBeforeUnload';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 

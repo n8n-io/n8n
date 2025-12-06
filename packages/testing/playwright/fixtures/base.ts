@@ -39,6 +39,11 @@ interface ContainerConfig {
 	proxyServerEnabled?: boolean;
 	taskRunner?: boolean;
 	sourceControl?: boolean;
+	email?: boolean;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 /**
@@ -65,29 +70,29 @@ export const test = base.extend<
 	// Container configuration from the project use options
 	containerConfig: [
 		async ({ addContainerCapability }, use, workerInfo) => {
-			const baseConfig =
-				(workerInfo.project.use as unknown as { containerConfig?: ContainerConfig })
-					?.containerConfig ?? {};
+			const projectConfig = workerInfo.project.use as { containerConfig?: ContainerConfig };
+			const baseConfig = projectConfig?.containerConfig ?? {};
 
-			// Merge addContainerCapability with base config
-			const config: ContainerConfig = {
+			// Build merged configuration
+			const merged: ContainerConfig = {
 				...baseConfig,
 				...addContainerCapability,
 				env: {
 					...baseConfig.env,
 					...addContainerCapability.env,
 					E2E_TESTS: 'true',
+					N8N_RESTRICT_FILE_ACCESS_TO: '',
 				},
 			};
 
-			await use(config);
+			await use(merged);
 		},
 		{ scope: 'worker', box: true },
 	],
 
 	// Create a new n8n container if N8N_BASE_URL is not set, otherwise use the existing n8n instance
 	n8nContainer: [
-		async ({ containerConfig }, use) => {
+		async ({ containerConfig }, use, workerInfo) => {
 			const envBaseURL = process.env.N8N_BASE_URL;
 
 			if (envBaseURL) {
@@ -95,10 +100,22 @@ export const test = base.extend<
 				return;
 			}
 
-			console.log('Creating container with config:', containerConfig);
-			const container = await createN8NStack(containerConfig);
+			const startTime = Date.now();
+			console.log(
+				`[${new Date().toISOString()}] Creating container for project: ${workerInfo.project.name}, worker: ${workerInfo.workerIndex}`,
+			);
+			console.log('Container config:', JSON.stringify(containerConfig));
 
-			console.log(`Container URL: ${container.baseUrl}`);
+			const container = await createN8NStack(containerConfig);
+			const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+			console.log(
+				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
+			);
+
+			console.log(
+				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
+			);
 
 			await use(container);
 			await container.stop();

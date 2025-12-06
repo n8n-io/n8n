@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fetchInstalledPackageInfo } from './communityNodes.utils';
 import { useCommunityNodesStore } from './communityNodes.store';
-import { type NodeTypesStore, useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { type NodeTypesStore, useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
@@ -12,7 +12,7 @@ vi.mock('./communityNodes.store', () => ({
 	})),
 }));
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		communityNodeType: vi.fn(),
 	})),

@@ -1,4 +1,4 @@
-import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { TupleToUnion } from '@/app/utils/typeHelpers';
 
 export type SshKeyTypes = ['ed25519', 'rsa'];
 

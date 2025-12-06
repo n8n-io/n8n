@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 import type { LanguageServiceWorker, LanguageServiceWorkerInit } from '../types';
-import { indexedDbCache } from '@/plugins/cache';
+import { indexedDbCache } from '@/app/plugins/cache';
 import { bufferChangeSets, fnPrefix } from './utils';
 
 import type { CodeExecutionMode } from 'n8n-workflow';

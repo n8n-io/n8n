@@ -3,7 +3,7 @@ import { useExecutionNavigationCommands } from './useExecutionNavigationCommands
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 const routerPushMock = vi.fn();
 let mockRouteParams = { projectId: 'personal-1' };

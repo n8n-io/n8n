@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { useSetupWorkflowCredentialsModalState } from '../composables/useSetupWorkflowCredentialsModalState';
 import { useI18n } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import { onMounted, onUnmounted } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();

@@ -14,6 +14,20 @@ const IS_CI = !!process.env.CI;
 const MACBOOK_WINDOW_SIZE = { width: 1536, height: 960 };
 
 const USER_FOLDER = path.join(os.tmpdir(), `n8n-main-${Date.now()}`);
+
+// Helper to get environment variables from N8N_TEST_ENV
+const getTestEnv = () => {
+	const testEnv = process.env.N8N_TEST_ENV;
+	if (testEnv) {
+		try {
+			return JSON.parse(testEnv);
+		} catch {
+			return {};
+		}
+	}
+	return {};
+};
+
 // Calculate workers based on environment
 // The amount of workers to run, limited to 6 as higher causes instability in the local server
 // Use half the CPUs in local, full in CI (CI has no other processes so we can use more)
@@ -47,7 +61,9 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 					N8N_USER_FOLDER: USER_FOLDER,
 					N8N_LOG_LEVEL: 'debug',
 					N8N_METRICS: 'true',
-					N8N_ENABLED_MODULES: 'data-table', // Enable data-table module
+					N8N_RESTRICT_FILE_ACCESS_TO: '',
+					N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+					...getTestEnv(),
 				},
 			}
 		: undefined,
@@ -71,7 +87,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
 				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
-				currentsReporter(currentsConfig),
+				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
 			]
 		: [['html'], ['./reporters/metrics-reporter.ts'], ['list']],

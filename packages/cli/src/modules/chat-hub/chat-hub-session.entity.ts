@@ -1,13 +1,22 @@
 import { ChatHubProvider } from '@n8n/api-types';
-import { WithTimestamps, DateTimeColumn, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
+import {
+	JsonColumn,
+	WithTimestamps,
+	DateTimeColumn,
+	User,
+	CredentialsEntity,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	Column,
 	Entity,
 	ManyToOne,
 	OneToMany,
 	JoinColumn,
+	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
+import type { INode } from 'n8n-workflow';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
@@ -34,7 +43,7 @@ export class ChatHubSession extends WithTimestamps {
 	 */
 	@ManyToOne('User', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'ownerId' })
-	owner?: User;
+	owner?: Relation<User>;
 
 	/*
 	 * Timestamp of the last active message in the session.
@@ -54,7 +63,7 @@ export class ChatHubSession extends WithTimestamps {
 	 */
 	@ManyToOne('CredentialsEntity', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'credentialId' })
-	credential?: CredentialsEntity | null;
+	credential?: Relation<CredentialsEntity> | null;
 
 	/*
 	 * Enum value of the LLM provider to use, e.g. 'openai', 'anthropic', 'google', 'n8n' (if applicable).
@@ -79,11 +88,31 @@ export class ChatHubSession extends WithTimestamps {
 	 */
 	@ManyToOne('WorkflowEntity', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'workflowId' })
-	workflow?: WorkflowEntity | null;
+	workflow?: Relation<WorkflowEntity> | null;
+
+	/*
+	 * ID of the custom agent to use (if applicable).
+	 * Only set when provider is 'custom-agent'.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
+
+	/**
+	 * Cached display name of the agent/model.
+	 * Used for all providers (LLM providers, custom agents, and n8n workflows).
+	 */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	agentName: string | null;
 
 	/**
 	 * All messages that belong to this chat session.
 	 */
 	@OneToMany('ChatHubMessage', 'session')
-	messages?: ChatHubMessage[];
+	messages?: Array<Relation<ChatHubMessage>>;
+
+	/**
+	 * The tools available to the agent as JSON `INode` definitions.
+	 */
+	@JsonColumn({ default: '[]' })
+	tools: INode[];
 }

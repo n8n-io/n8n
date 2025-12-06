@@ -2,14 +2,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import DataTableDetailsView from '@/features/core/dataTable/DataTableDetailsView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useRouter } from 'vue-router';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
 
-vi.mock('@/composables/useToast');
+vi.mock('@/app/composables/useToast');
 vi.mock('vue-router');
-vi.mock('@/composables/useDocumentTitle', () => ({
+vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => ({
 		set: vi.fn(),
 	})),

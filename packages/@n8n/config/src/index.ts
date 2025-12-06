@@ -11,6 +11,7 @@ import { SupabaseStorageConfig } from './configs/supabase-storage.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
+import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
@@ -77,6 +78,9 @@ export class GlobalConfig {
 
 	@Nested
 	versionNotifications: VersionNotificationsConfig;
+
+	@Nested
+	dynamicBanners: DynamicBannersConfig;
 
 	@Nested
 	publicApi: PublicApiConfig;

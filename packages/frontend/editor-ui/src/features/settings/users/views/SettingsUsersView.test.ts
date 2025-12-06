@@ -5,17 +5,17 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY, DELETE_USER_MODAL_KEY } from '../users.constants';
 import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '../users.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import * as permissions from '@/utils/rbac/permissions';
+import * as permissions from '@/app/utils/rbac/permissions';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
@@ -57,21 +57,21 @@ const mockPageRedirectionHelper = {
 	goToUpgrade: vi.fn(),
 };
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
-vi.mock('@/composables/useClipboard', () => ({
+vi.mock('@/app/composables/useClipboard', () => ({
 	useClipboard: vi.fn(() => mockClipboard),
 }));
 
-vi.mock('@/composables/useDocumentTitle', () => ({
+vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => ({
 		set: vi.fn(),
 	})),
 }));
 
-vi.mock('@/composables/usePageRedirectionHelper', () => ({
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: vi.fn(() => mockPageRedirectionHelper),
 }));
 

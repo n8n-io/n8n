@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
-import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
-import { formatList } from '@/utils/formatters/listFormatter';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { getAppNameFromNodeName } from '@/app/utils/nodeTypesUtils';
+import { formatList } from '@/app/utils/formatters/listFormatter';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { BaseNode, CredentialUsages } from '../templates.types';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
 import { I18nT } from 'vue-i18n';
 

@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useLogsStore } from '@/stores/logs.store';
-import { useResizablePanel } from '@/composables/useResizablePanel';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import {
 	LOGS_PANEL_STATE,
@@ -118,11 +118,11 @@ export function useLogsPanelLayout(
 
 			if (state === LOGS_PANEL_STATE.FLOATING) {
 				popOutWindow?.value?.document.documentElement.style.setProperty(
-					'--logs-panel-height',
+					'--logs-panel--height',
 					'100vh',
 				);
 			} else {
-				document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
+				document.documentElement.style.setProperty('--logs-panel--height', `${updatedHeight}px`);
 			}
 
 			logsStore.setHeight(updatedHeight);

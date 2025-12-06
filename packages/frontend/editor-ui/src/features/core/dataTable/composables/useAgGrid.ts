@@ -10,7 +10,7 @@ import type {
 	SortDirection,
 	ColDef,
 } from 'ag-grid-community';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { onClickOutside } from '@vueuse/core';
 
 export type UseAgGridOptions = {

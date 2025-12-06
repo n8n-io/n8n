@@ -144,6 +144,15 @@ describe('evaluateConnections', () => {
 			outputs: [NodeConnectionTypes.Main],
 		},
 		{
+			name: 'n8n-nodes-test.agent',
+			displayName: 'AI Agent',
+			inputs: [
+				{ type: NodeConnectionTypes.AiTool, required: true, maxConnections: -1 },
+				{ type: NodeConnectionTypes.Main },
+			],
+			outputs: [NodeConnectionTypes.Main],
+		},
+		{
 			name: 'n8n-nodes-test.merge',
 			displayName: 'Merge',
 			inputs: `={{ Array.from({ length: $parameter.numberInputs || 2 }, (_, i) => ({ type: "${NodeConnectionTypes.Main}", displayName: \`Input $\{i + 1}\` })) }}`,
@@ -168,8 +177,32 @@ describe('evaluateConnections', () => {
 		{
 			name: 'n8n-nodes-test.vectorStore',
 			displayName: 'Vector Store',
-			inputs: `={{ (() => { const mode = $parameter.mode; if (mode === "retrieve") { return [{ type: "${NodeConnectionTypes.AiEmbedding}", required: true }]; } return [{ type: "${NodeConnectionTypes.Main}" }, { type: "${NodeConnectionTypes.AiDocument}" }]; })() }}`,
+			inputs: `={{
+			((parameters) => {
+				const mode = parameters?.mode;
+				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
+
+				if (mode === 'retrieve-as-tool') {
+					return inputs;
+				}
+
+				if (['insert', 'load', 'update'].includes(mode)) {
+					inputs.push({ displayName: "", type: "${NodeConnectionTypes.Main}"})
+				}
+
+				if (['insert'].includes(mode)) {
+					inputs.push({ displayName: "Document", type: "${NodeConnectionTypes.AiDocument}", required: true, maxConnections: 1})
+				}
+				return inputs
+			})($parameter)
+		}}`,
 			outputs: `={{ (() => { const mode = $parameter.mode; if (mode === "retrieve-as-tool") { return [{ type: "${NodeConnectionTypes.AiTool}" }]; } return [{ type: "${NodeConnectionTypes.AiVectorStore}" }]; })() }}`,
+		},
+		{
+			name: 'n8n-nodes-test.embeddingsOpenAi',
+			displayName: 'OpenAI Embeddings',
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiEmbedding],
 		},
 	]);
 
@@ -332,6 +365,111 @@ describe('evaluateConnections', () => {
 				}),
 			);
 		});
+
+		it('should detect AI sub-node not connected to a root node', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Chat Model',
+						type: 'n8n-nodes-test.chatOpenAi',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			});
+
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: expect.stringContaining(
+						'Sub-node Chat Model (n8n-nodes-test.chatOpenAi) provides ai_languageModel but is not connected to a root node.',
+					),
+				}),
+			);
+		});
+
+		it('should not report issues for nested sub-nodes properly connected to a root node', () => {
+			const workflow = mock<SimpleWorkflow>({
+				nodes: [
+					{
+						id: '0',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '1',
+						parameters: {
+							mode: 'retrieve-as-tool',
+						},
+						name: 'Vector Store Retrieval',
+						type: 'n8n-nodes-test.vectorStore',
+						typeVersion: 1.3,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						parameters: {},
+						name: 'AI Agent',
+						type: 'n8n-nodes-test.agent',
+						typeVersion: 3,
+						position: [0, 0],
+					},
+					{
+						id: '3',
+						parameters: {},
+						name: 'OpenAI Embeddings',
+						type: 'n8n-nodes-test.embeddingsOpenAi',
+						typeVersion: 1.2,
+						position: [0, 0],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'AI Agent',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					'Vector Store Retrieval': {
+						ai_tool: [
+							[
+								{
+									node: 'AI Agent',
+									type: 'ai_tool',
+									index: 0,
+								},
+							],
+						],
+					},
+					'OpenAI Embeddings': {
+						ai_embedding: [
+							[
+								{
+									node: 'Vector Store Retrieval',
+									type: 'ai_embedding',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			});
+
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toEqual([]);
+		});
 	});
 
 	describe('dynamic input/output resolution', () => {
@@ -431,16 +569,19 @@ describe('evaluateConnections', () => {
 						typeVersion: 1,
 						position: [400, 0],
 					},
+					{
+						id: '4',
+						name: 'Embeddings',
+						type: 'n8n-nodes-test.embeddingsOpenAi',
+						parameters: {},
+						typeVersion: 1,
+						position: [600, 0],
+					},
 				],
 				connections: {
 					'Manual Trigger': {
 						main: [
 							[
-								{
-									node: 'Vector Store',
-									type: 'main',
-									index: 0,
-								},
 								{
 									node: 'OpenAI',
 									type: 'main',
@@ -455,6 +596,17 @@ describe('evaluateConnections', () => {
 								{
 									node: 'OpenAI',
 									type: 'ai_tool',
+									index: 0,
+								},
+							],
+						],
+					},
+					Embeddings: {
+						ai_embedding: [
+							[
+								{
+									node: 'Vector Store',
+									type: 'ai_embedding',
 									index: 0,
 								},
 							],

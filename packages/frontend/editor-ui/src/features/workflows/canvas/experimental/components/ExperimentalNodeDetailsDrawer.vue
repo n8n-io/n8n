@@ -4,11 +4,11 @@ import {
 	type ContextMenuAction,
 	useContextMenuItems,
 } from '@/features/shared/contextMenu/composables/useContextMenuItems';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { type INodeUi } from '@/Interface';
 import { computed, provide, ref, watch } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';
 const { node, nodeIds, isReadOnly } = defineProps<{

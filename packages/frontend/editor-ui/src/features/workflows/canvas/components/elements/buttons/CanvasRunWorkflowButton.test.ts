@@ -8,7 +8,7 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import { createPinia, setActivePinia } from 'pinia';
 
 describe('CanvasRunWorkflowButton', () => {

@@ -1,20 +1,20 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useToast } from '@/composables/useToast';
-import Modal from '@/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
+import Modal from '@/app/components/Modal.vue';
 import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
 import type { IInviteResponse, InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/constants';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '../users.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
 import {
@@ -51,48 +51,6 @@ const role = ref<InvitableRoleName>(ROLE.Member);
 const showInviteUrls = ref<IInviteResponse[] | null>(null);
 const loading = ref(false);
 
-onMounted(() => {
-	config.value = [
-		{
-			name: 'emails',
-			properties: {
-				label: i18n.baseText('settings.users.newEmailsToInvite'),
-				required: true,
-				validationRules: [{ name: 'VALID_EMAILS' }],
-				validators: {
-					VALID_EMAILS: {
-						validate: validateEmails,
-					},
-				},
-				placeholder: 'name1@email.com, name2@email.com, ...',
-				capitalize: true,
-				focusInitially: true,
-			},
-		},
-		{
-			name: 'role',
-			initialValue: ROLE.Member,
-			properties: {
-				label: i18n.baseText('auth.role'),
-				required: true,
-				type: 'select',
-				options: [
-					{
-						value: ROLE.Member,
-						label: i18n.baseText('auth.roles.member'),
-					},
-					{
-						value: ROLE.Admin,
-						label: i18n.baseText('auth.roles.admin'),
-						disabled: !isAdvancedPermissionsEnabled.value,
-					},
-				],
-				capitalize: true,
-			},
-		},
-	];
-});
-
 const emailsCount = computed((): number => {
 	return emails.value.split(',').filter((email: string) => !!email.trim()).length;
 });
@@ -126,6 +84,17 @@ const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
+const isChatHubEnabled = computed((): boolean => {
+	return settingsStore.isChatFeatureEnabled;
+});
+
+const isChatUsersEnabled = computed((): boolean => {
+	return (
+		isChatHubEnabled.value &&
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions]
+	);
+});
+
 const validateEmails = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
 		return false;
@@ -148,7 +117,10 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 };
 
 function isInvitableRoleName(val: unknown): val is InvitableRoleName {
-	return typeof val === 'string' && [ROLE.Member, ROLE.Admin].includes(val as InvitableRoleName);
+	return (
+		typeof val === 'string' &&
+		[ROLE.Member, ROLE.Admin, ROLE.ChatUser].includes(val as InvitableRoleName)
+	);
 }
 
 function onInput(e: FormFieldValueUpdate) {
@@ -294,6 +266,57 @@ function getEmail(email: string): string {
 	}
 	return parsed;
 }
+
+onMounted(() => {
+	config.value = [
+		{
+			name: 'emails',
+			properties: {
+				label: i18n.baseText('settings.users.newEmailsToInvite'),
+				required: true,
+				validationRules: [{ name: 'VALID_EMAILS' }],
+				validators: {
+					VALID_EMAILS: {
+						validate: validateEmails,
+					},
+				},
+				placeholder: 'name1@email.com, name2@email.com, ...',
+				capitalize: true,
+				focusInitially: true,
+			},
+		},
+		{
+			name: 'role',
+			initialValue: ROLE.Member,
+			properties: {
+				label: i18n.baseText('auth.role'),
+				required: true,
+				type: 'select',
+				options: [
+					{
+						value: ROLE.Member,
+						label: i18n.baseText('auth.roles.member'),
+					},
+					...(isChatHubEnabled.value
+						? [
+								{
+									value: ROLE.ChatUser,
+									label: i18n.baseText('auth.roles.chatUser'),
+									disabled: !isChatUsersEnabled.value,
+								},
+							]
+						: []),
+					{
+						value: ROLE.Admin,
+						label: i18n.baseText('auth.roles.admin'),
+						disabled: !isAdvancedPermissionsEnabled.value,
+					},
+				],
+				capitalize: true,
+			},
+		},
+	];
+});
 </script>
 
 <template>

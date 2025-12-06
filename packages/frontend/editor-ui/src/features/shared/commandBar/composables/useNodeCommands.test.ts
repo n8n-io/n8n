@@ -1,14 +1,14 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 const mockEditableWorkflow = {
@@ -22,7 +22,7 @@ const mockEditableWorkflow = {
 	},
 };
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 
 const mockGenerateMergedNodesAndActionsFn = vi.fn().mockReturnValue({ mergedNodes: [] });
 
-vi.mock('@/components/Node/NodeCreator/composables/useActionsGeneration', () => ({
+vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: () => ({
 		generateMergedNodesAndActions: mockGenerateMergedNodesAndActionsFn,
 	}),
@@ -244,6 +244,7 @@ describe('useNodeCommands', () => {
 
 			const openCommand = commands.value.find((cmd) => cmd.id === 'open-node');
 			expect(openCommand?.children).toHaveLength(2);
+			expect(openCommand?.children?.[0].title).toEqual('Start');
 		});
 	});
 
@@ -297,15 +298,6 @@ describe('useNodeCommands', () => {
 				expect(commands.value.length).toBeLessThanOrEqual(3);
 			}
 		});
-
-		it('should show root add node items when query is longer than 2 characters', () => {
-			const { commands } = useNodeCommands({
-				lastQuery: ref('htt'),
-				activeNodeId: ref(null),
-			});
-
-			expect(commands.value).toBeDefined();
-		});
 	});
 
 	describe('root open node items', () => {
@@ -333,6 +325,7 @@ describe('useNodeCommands', () => {
 
 			const rootOpenNodes = commands.value.filter((cmd) => cmd.id === 'node-1');
 			expect(rootOpenNodes).toHaveLength(1);
+			expect(rootOpenNodes[0].title).toEqual('generic.openResource');
 		});
 	});
 });

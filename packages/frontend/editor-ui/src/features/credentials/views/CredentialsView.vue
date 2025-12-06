@@ -1,35 +1,35 @@
 <script setup lang="ts">
 import CredentialCard from '../components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useCredentialsStore } from '../credentials.store';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
+import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import { isCredentialsResource } from '@/utils/typeGuards';
+import { isCredentialsResource } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
+import { useCredentialsStore } from '../credentials.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -89,6 +89,7 @@ const allCredentials = computed<Resource[]>(() =>
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
+		isGlobal: credential.isGlobal,
 		type: credential.type,
 	})),
 );
@@ -192,11 +193,17 @@ const initialize = async () => {
 	const isVarsEnabled =
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
+	const isPersonalView =
+		!overview.isSharedSubPage &&
+		overview.isProjectsSubPage &&
+		route?.params?.projectId === projectsStore.personalProject?.id;
+
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials(
 			route?.params?.projectId as string | undefined,
 			true,
 			overview.isSharedSubPage,
+			!isPersonalView, // don't include global credentials if personal
 		),
 		credentialsStore.fetchCredentialTypes(false),
 		externalSecretsStore.fetchAllSecrets(),
@@ -327,7 +334,7 @@ onMounted(() => {
 			<N8nActionBox
 				v-else
 				data-test-id="empty-resources-list"
-				emoji="👋"
+				:icon="{ type: 'icon', value: 'lock' }"
 				:heading="
 					i18n.baseText(
 						usersStore.currentUser?.firstName
@@ -342,7 +349,7 @@ onMounted(() => {
 				:button-text="i18n.baseText('credentials.empty.button')"
 				button-type="secondary"
 				:button-disabled="readOnlyEnv || !projectPermissions.credential.create"
-				:button-icon="readOnlyEnv ? 'lock' : undefined"
+				:button-icon="readOnlyEnv || !projectPermissions.credential.create ? 'lock' : undefined"
 				@click:button="addCredential"
 			>
 				<template #disabledButtonTooltip>

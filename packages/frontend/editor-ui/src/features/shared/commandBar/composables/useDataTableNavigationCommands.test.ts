@@ -8,7 +8,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 
 const routerPushMock = vi.fn();
@@ -299,6 +299,14 @@ describe('useDataTableNavigationCommands', () => {
 			await vi.waitFor(() => {
 				const rootDataTables = commands.value.filter((cmd) => cmd.id === 'dt-1');
 				expect(rootDataTables).toHaveLength(1);
+				expect(rootDataTables[0].section).toBe('commandBar.sections.dataTables');
+				expect(rootDataTables[0].title).toEqual(
+					expect.objectContaining({
+						props: expect.objectContaining({
+							title: 'generic.openResource',
+						}),
+					}),
+				);
 			});
 		});
 	});
