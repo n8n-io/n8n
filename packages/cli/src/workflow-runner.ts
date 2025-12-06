@@ -248,6 +248,7 @@ export class WorkflowRunner {
 			workflowId: workflow.id,
 			executionTimeoutTimestamp:
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+			workflowSettings,
 		});
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;

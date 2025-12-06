@@ -550,5 +550,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(additionalData.executionTimeoutTimestamp).toBe(executionTimeoutTimestamp);
 		});
+
+		it('should include workflowSettings when provided', async () => {
+			const workflowSettings = {
+				executionTimeout: 300,
+				credentialResolverId: 'test-resolver-123',
+			};
+			const additionalData = await getBase({
+				workflowSettings,
+			});
+
+			expect(additionalData.workflowSettings).toBe(workflowSettings);
+		});
 	});
 });

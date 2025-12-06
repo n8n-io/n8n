@@ -42,12 +42,13 @@ import {
 	isExpression,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
+
+import type { ICredentialResolutionProvider } from '@/credential-resolution-provider.interface';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 
 const mockNode = {
 	name: '',
@@ -85,6 +86,8 @@ const mockNodeTypes: INodeTypes = {
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
+	private credentialResolutionProvider?: ICredentialResolutionProvider;
+
 	constructor(
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
@@ -93,6 +96,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly cacheService: CacheService,
 	) {
 		super();
+	}
+
+	/**
+	 * Registers a credential resolution provider (EE feature).
+	 * Called by the dynamic credentials module during initialization.
+	 */
+	setCredentialResolutionProvider(provider: ICredentialResolutionProvider): void {
+		this.credentialResolutionProvider = provider;
 	}
 
 	/**
@@ -254,6 +265,22 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredential: INodeCredentialsDetails,
 		type: string,
 	): Promise<Credentials> {
+		const credential = await this.getCredentialsEntity(nodeCredential, type);
+
+		return new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			credential.data,
+		);
+	}
+
+	/**
+	 * Loads the credentials entity from the database
+	 */
+	private async getCredentialsEntity(
+		nodeCredential: INodeCredentialsDetails,
+		type: string,
+	): Promise<CredentialsEntity> {
 		if (!nodeCredential.id) {
 			throw new UnexpectedError('Found credential with no ID.', {
 				extra: { credentialName: nodeCredential.name },
@@ -276,11 +303,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw error;
 		}
 
-		return new Credentials(
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			credential.data,
-		);
+		return credential;
 	}
 
 	/**
@@ -336,8 +359,23 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type);
-		const decryptedDataOriginal = credentials.getData();
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+		const credentials = new Credentials(
+			{ id: credentialsEntity.id, name: credentialsEntity.name },
+			credentialsEntity.type,
+			credentialsEntity.data,
+		);
+		let decryptedDataOriginal = credentials.getData();
+
+		// Resolve dynamic credentials if configured (EE feature)
+		if (this.credentialResolutionProvider) {
+			decryptedDataOriginal = await this.credentialResolutionProvider.resolveIfNeeded(
+				credentialsEntity,
+				decryptedDataOriginal,
+				additionalData.executionContext,
+				additionalData.workflowSettings,
+			);
+		}
 
 		if (raw === true) {
 			return decryptedDataOriginal;

@@ -238,7 +238,7 @@ describe('run', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
-			workflowData: { nodes: [], id: 'workflow-id' },
+			workflowData: { nodes: [], id: 'workflow-id', settings: undefined },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -256,6 +256,8 @@ describe('run', () => {
 		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 			userId: data.userId,
 			workflowId: 'workflow-id',
+			executionTimeoutTimestamp: undefined,
+			workflowSettings: {},
 		});
 		expect(ManualExecutionService.prototype.runManually).toHaveBeenCalledWith(
 			data,

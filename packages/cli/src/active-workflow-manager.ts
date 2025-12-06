@@ -263,7 +263,10 @@ export class ActiveWorkflowManager {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: workflowData.settings,
+		});
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -615,6 +618,7 @@ export class ActiveWorkflowManager {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
+				workflowSettings: dbWorkflow.settings,
 			});
 
 			if (shouldAddWebhooks) {

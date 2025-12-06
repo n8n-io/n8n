@@ -25,6 +25,8 @@ const mockCredentialsService = (
 				shared: [] as SharedCredentials[],
 				isManaged: false,
 				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 				id,
 				// Methods present on entities via WithTimestampsAndStringId mixin
 				generateId() {},

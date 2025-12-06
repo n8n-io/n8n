@@ -195,6 +195,56 @@ describe('NodeExecutionContext', () => {
 		});
 	});
 
+	describe('_getCredentials', () => {
+		it('should set executionContext on additionalData before retrieving credentials', async () => {
+			const credentialDetails = { id: 'cred123', name: 'Test Credential' };
+			const testNode = mock<INode>({
+				type: 'n8n-nodes-base.httpRequest',
+			});
+			testNode.credentials = { testCredential: credentialDetails };
+
+			const runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+			};
+			const testRunExecutionData = createRunExecutionData({
+				resultData: { runData: {} },
+				executionData: { runtimeData },
+			});
+
+			const mockCredentialsHelper = {
+				getDecrypted: jest.fn().mockResolvedValue({ token: 'test-token' }),
+				getCredentialsProperties: jest.fn(),
+			};
+
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mockCredentialsHelper,
+			});
+
+			const contextWithCredentials = new TestContext(
+				workflow,
+				testNode,
+				mockAdditionalData,
+				mode,
+				testRunExecutionData,
+			);
+
+			await contextWithCredentials['_getCredentials']('testCredential');
+
+			expect(mockAdditionalData.executionContext).toEqual(runtimeData);
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				mockAdditionalData,
+				credentialDetails,
+				'testCredential',
+				mode,
+				undefined,
+				false,
+				undefined,
+			);
+		});
+	});
+
 	describe('prepareOutputData', () => {
 		it('should return the input array wrapped in another array', async () => {
 			const outputData = [mock<INodeExecutionData>(), mock<INodeExecutionData>()];

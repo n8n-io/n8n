@@ -124,6 +124,7 @@ export class JobProcessor {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,
 			executionTimeoutTimestamp,
+			workflowSettings: execution.workflowData.settings,
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 
