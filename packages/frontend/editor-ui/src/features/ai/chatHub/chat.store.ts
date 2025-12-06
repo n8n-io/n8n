@@ -548,6 +548,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				tools,
 				attachments,
 				agentName,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -618,11 +619,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				messageId: promptId,
 				message: content,
 				credentials,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User edited chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+			chat_message_id: editId,
+		});
 	}
 
 	function regenerateMessage(
@@ -654,11 +663,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			{
 				model,
 				credentials,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User regenerated chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+			chat_message_id: retryId,
+		});
 	}
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {

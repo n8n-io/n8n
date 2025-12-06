@@ -25,6 +25,7 @@ import type {
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -35,6 +36,12 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+
+const SINGLE_WEBHOOK_TRIGGERS = [
+	'n8n-nodes-base.telegramTrigger',
+	'n8n-nodes-base.slackTrigger',
+	'n8n-nodes-base.facebookLeadAdsTrigger',
+];
 
 /**
  * Service for handling the execution of webhooks of manual executions
@@ -273,6 +280,7 @@ export class TestWebhooks implements IWebhookManager {
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
 		chatSessionId?: string;
+		workflowIsActive?: boolean;
 	}) {
 		const {
 			userId,
@@ -283,6 +291,7 @@ export class TestWebhooks implements IWebhookManager {
 			destinationNode,
 			triggerToStartFrom,
 			chatSessionId,
+			workflowIsActive,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -315,6 +324,17 @@ export class TestWebhooks implements IWebhookManager {
 		const timeoutDuration = TEST_WEBHOOK_TIMEOUT;
 
 		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
+		// Check if any webhook is a single webhook trigger and workflow is active
+		if (workflowIsActive) {
+			const singleWebhookTrigger = webhooks.find((w) =>
+				SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
+			);
+			if (singleWebhookTrigger) {
+				throw new SingleWebhookTriggerError(
+					workflow.getNode(singleWebhookTrigger.node)?.name ?? '',
+				);
+			}
+		}
 
 		for (const webhook of webhooks) {
 			webhook.path = removeTrailingSlash(webhook.path);

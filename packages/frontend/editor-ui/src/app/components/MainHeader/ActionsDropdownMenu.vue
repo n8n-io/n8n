@@ -15,6 +15,7 @@ import {
 	IS_DRAFT_PUBLISH_ENABLED,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
+	WORKFLOW_DESCRIPTION_MODAL_KEY,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -163,6 +164,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			label: locale.baseText('menuActions.duplicate'),
 			disabled: !onWorkflowPage.value || !props.id,
 		});
+		actions.unshift({
+			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+			label: locale.baseText('menuActions.editDescription'),
+			disabled: !onWorkflowPage.value || !props.id,
+		});
 
 		actions.push(
 			{
@@ -239,6 +245,20 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
+		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
+			const workflowId = getWorkflowId(props.id, route.params.name);
+			if (!workflowId) return;
+
+			const workflowDescription = workflowsStore.getWorkflowById(workflowId).description;
+			uiStore.openModalWithData({
+				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+				data: {
+					workflowId,
+					workflowDescription,
+				},
+			});
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
 				name: DUPLICATE_MODAL_KEY,

@@ -101,6 +101,9 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		// Check whether this workflow is active.
+		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
+
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -147,6 +150,7 @@ export class WorkflowExecutionService {
 					triggerToStartFrom: payload.triggerToStartFrom,
 					destinationNode: payload.destinationNode,
 					chatSessionId: payload.chatSessionId,
+					workflowIsActive,
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -183,6 +187,7 @@ export class WorkflowExecutionService {
 					}),
 					pushRef,
 					destinationNode: payload.destinationNode,
+					workflowIsActive,
 				}))
 			) {
 				return { waitingForWebhook: true };

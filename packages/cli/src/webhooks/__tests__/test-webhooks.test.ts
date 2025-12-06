@@ -278,6 +278,71 @@ describe('TestWebhooks', () => {
 			expect(registrations.register).toHaveBeenCalled();
 			expect(registrations.register.mock.calls[0][0].destinationNode).toEqual(destinationNodeObj);
 		});
+		test.each([
+			{ published: true, withSingleWebhookTrigger: true, shouldThrow: true },
+			{ published: true, withSingleWebhookTrigger: false, shouldThrow: false },
+			{ published: false, withSingleWebhookTrigger: true, shouldThrow: false },
+			{ published: false, withSingleWebhookTrigger: false, shouldThrow: false },
+		] satisfies Array<{
+			published: boolean;
+			withSingleWebhookTrigger: boolean;
+			shouldThrow: boolean;
+		}>)(
+			'handles single webhook trigger when workflowIsActive=%s',
+			async ({ published: workflowIsActive, withSingleWebhookTrigger, shouldThrow }) => {
+				const workflow = mock<Workflow>();
+				const regularWebhook = mock<IWebhookData>({
+					node: 'Webhook',
+					httpMethod,
+					path: 'regular-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+				const telegramWebhook = mock<IWebhookData>({
+					node: 'Telegram Trigger',
+					httpMethod,
+					path: 'telegram-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+				const webhookNode = mock<IWorkflowBase['nodes'][number]>({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+				});
+				const telegramNode = mock<IWorkflowBase['nodes'][number]>({
+					name: 'Telegram Trigger',
+					type: 'n8n-nodes-base.telegramTrigger',
+				});
+
+				jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+				jest
+					.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
+					.mockReturnValue([regularWebhook, telegramWebhook]);
+				jest.spyOn(workflow, 'getNode').mockImplementation((name: string) => {
+					if (name === 'Webhook') return webhookNode;
+					if (name === 'Telegram Trigger' && withSingleWebhookTrigger) return telegramNode;
+					return null;
+				});
+
+				if (shouldThrow) {
+					const promise = testWebhooks.needsWebhook({
+						...args,
+						workflowIsActive,
+					});
+
+					await expect(promise).rejects.toThrow(
+						"Because of limitations in Telegram Trigger, n8n can't listen for test executions at the same time as listening for production ones. Unpublish the workflow to execute.",
+					);
+				} else {
+					const needsWebhook = await testWebhooks.needsWebhook({
+						...args,
+						workflowIsActive,
+					});
+
+					expect(needsWebhook).toBe(true);
+				}
+			},
+		);
 	});
 
 	describe('executeWebhook()', () => {
