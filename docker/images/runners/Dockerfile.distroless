@@ -172,7 +172,8 @@ ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
 ENV NODE_ENV=production \
-    N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
+    N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
+    HOME=/home/runner
 
 # Copy everything from the prepared runtime filesystem
 COPY --from=runtime-prep --chown=root:root /runtime/ /
