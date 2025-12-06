@@ -10,6 +10,7 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
@@ -52,6 +53,7 @@ export class DataTableService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -627,6 +629,15 @@ export class DataTableService {
 	}
 
 	async getDataTablesSize(user: User): Promise<DataTablesSizeResult> {
+		// If size checks are disabled, return empty response immediately
+		if (this.globalConfig.dataTable.sizeCheckDisabled) {
+			return {
+				totalBytes: 0,
+				quotaStatus: 'ok',
+				dataTables: {},
+			};
+		}
+
 		const allSizeData = await this.dataTableSizeValidator.getCachedSizeData(
 			async () => await this.dataTableRepository.findDataTablesSize(),
 		);

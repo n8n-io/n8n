@@ -175,20 +175,8 @@ export async function initializeAuthenticatedFeatures(
 			});
 	}
 
-	if (settingsStore.isDataTableFeatureEnabled) {
-		void dataTableStore
-			.fetchDataTableSize()
-			.then(({ quotaStatus }) => {
-				if (quotaStatus === 'error') {
-					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
-				} else if (quotaStatus === 'warn') {
-					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
-				}
-			})
-			.catch((error) => {
-				console.error('Failed to fetch data table limits:', error);
-			});
-	}
+	// Data table size check moved to lazy loading in DataTableView.vue
+	// to prevent blocking app bootstrap with expensive pg_relation_size() queries
 
 	if (insightsStore.isSummaryEnabled) {
 		void insightsStore.weeklySummary.execute();

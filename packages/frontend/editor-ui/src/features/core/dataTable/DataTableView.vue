@@ -70,6 +70,21 @@ const initialize = async () => {
 	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
 		await dataTableStore.fetchDataTables(projectIdFilter ?? '', currentPage.value, pageSize.value);
+
+		// Lazy load size limits (moved from app bootstrap to prevent blocking)
+		void dataTableStore
+			.fetchDataTableSize()
+			.then(({ quotaStatus }) => {
+				if (quotaStatus === 'error') {
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_ERROR');
+				} else if (quotaStatus === 'warn') {
+					uiStore.pushBannerToStack('DATA_TABLE_STORAGE_LIMIT_WARNING');
+				}
+			})
+			.catch((error) => {
+				console.warn('Failed to fetch data table size limits:', error);
+				// Non-blocking - continue even if size check fails
+			});
 	} catch (error) {
 		toast.showError(error, 'Error loading data tables');
 	} finally {

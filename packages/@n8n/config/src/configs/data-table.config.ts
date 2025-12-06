@@ -17,7 +17,16 @@ export class DataTableConfig {
 	/**
 	 * The duration in milliseconds for which the data table size is cached.
 	 * This prevents excessive database queries for size validation.
+	 * Increased from 60s to 10 minutes to reduce load on large deployments.
 	 */
 	@Env('N8N_DATA_TABLES_SIZE_CHECK_CACHE_DURATION_MS')
-	sizeCheckCacheDuration: number = 60 * 1000;
+	sizeCheckCacheDuration: number = 10 * 60 * 1000; // 10 minutes
+
+	/**
+	 * Disable expensive pg_relation_size() queries entirely.
+	 * When true, size checks will always return 0 bytes (no limits enforced).
+	 * Useful for very large deployments with 100+ tables.
+	 */
+	@Env('N8N_DATA_TABLES_SIZE_CHECK_DISABLE')
+	sizeCheckDisabled: boolean = false;
 }
