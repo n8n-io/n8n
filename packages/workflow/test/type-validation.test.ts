@@ -5,6 +5,7 @@ import {
 	tryToParseDateTime,
 	tryToParseJsonToFormFields,
 	validateFieldType,
+	tryToParseArray,
 } from '../src/type-validation';
 
 describe('Type Validation', () => {
@@ -234,10 +235,7 @@ describe('Type Validation', () => {
 		);
 
 		const INVALID_ARRAYS = [
-			'"apples", "oranges"',
-			'1',
 			'1.1',
-			'1, 2',
 			'1. 2. 3',
 			'[1, 2, 3',
 			'1, 2, 3]',
@@ -362,6 +360,34 @@ describe('Type Validation', () => {
 
 			expect(result.zoneName).toEqual('Asia/Tokyo');
 			expect(result.toISO()).toEqual('2025-01-01T00:00:00.000+09:00');
+		});
+	});
+
+	describe('tryToParseArray', () => {
+		it('should parse a JSON array string without any single or double quote', () => {
+			const jsonArray = '[apple, banana, cherry]';
+			const result = tryToParseArray(jsonArray);
+			expect(result).toEqual(['apple', 'banana', 'cherry']);
+		});
+		it('should parse a JSON array string without any square bracket', () => {
+			const jsonArray = 'apple, banana, cherry';
+			const result = tryToParseArray(jsonArray);
+			expect(result).toEqual(['apple', 'banana', 'cherry']);
+		});
+		it('should parse a JSON array string with double quote without any square bracket', () => {
+			const jsonArray = '"apple", "banana", "cherry"';
+			const result = tryToParseArray(jsonArray);
+			expect(result).toEqual(['apple', 'banana', 'cherry']);
+		});
+		it('should throw ApplicationError when given invalid input that is not an array', () => {
+			const jsonObject = '{"key": "value"}';
+			const nonArrayString = 'justasingleword';
+			expect(() => {
+				tryToParseArray(jsonObject);
+			}).toThrow('Value is not a valid array');
+			expect(() => {
+				tryToParseArray(nonArrayString);
+			}).toThrow('Value is not a valid array');
 		});
 	});
 

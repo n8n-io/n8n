@@ -120,25 +120,73 @@ export const tryToParseTime = (value: unknown): string => {
 };
 
 export const tryToParseArray = (value: unknown): unknown[] => {
-	try {
-		if (typeof value === 'object' && Array.isArray(value)) {
-			return value;
-		}
-
-		let parsed: unknown[];
-		try {
-			parsed = JSON.parse(String(value)) as unknown[];
-		} catch (e) {
-			parsed = JSON.parse(String(value).replace(/'/g, '"')) as unknown[];
-		}
-
-		if (!Array.isArray(parsed)) {
-			throw new ApplicationError('Value is not a valid array', { extra: { value } });
-		}
-		return parsed;
-	} catch (e) {
-		throw new ApplicationError('Value is not a valid array', { extra: { value } });
+	// Direct array check
+	if (typeof value === 'object' && Array.isArray(value)) {
+		return value;
 	}
+	if (typeof value === 'object') {
+		throw new Error('');
+	}
+	const valueStr = String(value).trim();
+	// Comma-separated string check
+	if (
+		!valueStr.startsWith('[') &&
+		!valueStr.endsWith(']') &&
+		!valueStr.includes('{') &&
+		!valueStr.includes('}') &&
+		valueStr.includes(',')
+	) {
+		const parts = valueStr
+			.split(/\s*,\s*/)
+			.map((part) => part.replace(/^["']|["']$/g, '').trim())
+			.filter((part) => part.length > 0);
+
+		if (parts.length > 0) {
+			return parts as unknown[];
+		}
+	}
+
+	// JSON parsing attempt
+	try {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(valueStr);
+		} catch (e) {
+			const bracketedContent = valueStr.startsWith('[') && valueStr.endsWith(']');
+			if (bracketedContent) {
+				// Fix for unquoted elements (as detailed in section 1)
+				let fixedStr = valueStr.replace(/'/g, '"');
+				const content = fixedStr.substring(1, fixedStr.length - 1);
+
+				const quotedParts = content
+					.split(/\s*,\s*/)
+					.map((part) => part.trim())
+					.filter((part) => part.length > 0)
+					.map((part) => {
+						if (isNaN(Number(part)) && !part.startsWith('"') && !part.endsWith('"')) {
+							return `"${part}"`;
+						}
+						return part;
+					})
+					.join(', ');
+
+				fixedStr = `[${quotedParts}]`;
+				parsed = JSON.parse(fixedStr);
+			} else {
+				throw e;
+			}
+		}
+
+		// Final array check
+		if (Array.isArray(parsed)) {
+			return parsed as unknown[];
+		}
+	} catch (e) {
+		// Any error (JSON SyntaxError, etc.) lands here.
+	}
+
+	// Unified failure point
+	throw new ApplicationError('Value is not a valid array', { extra: { value: valueStr } });
 };
 
 export const tryToParseObject = (value: unknown): object => {
