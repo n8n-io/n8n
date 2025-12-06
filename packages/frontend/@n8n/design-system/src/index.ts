@@ -20,4 +20,6 @@ export { default as N8nLoading2 } from './v2/components/Loading/Loading.vue';
 export type * from './v2/components/Loading/Loading.types';
 export { default as N8nInputNumber2 } from './v2/components/InputNumber/InputNumber.vue';
 export type * from './v2/components/InputNumber/InputNumber.types';
+export { default as N8nPopover2 } from './v2/components/Popover/Popover.vue';
+export type * from './v2/components/Popover/Popover.types';
 export { locale };
