@@ -52,7 +52,8 @@ describe('evaluateWorkflowPairwise', () => {
 
 		expect(result).toEqual({
 			...mockResult,
-			score: 1,
+			primaryPass: true,
+			diagnosticScore: 1,
 		});
 		expect(baseEvaluator.createEvaluatorChain).toHaveBeenCalledWith(
 			mockLlm,
@@ -69,7 +70,7 @@ describe('evaluateWorkflowPairwise', () => {
 		);
 	});
 
-	it('should calculate score correctly with violations', async () => {
+	it('should calculate diagnosticScore correctly with violations', async () => {
 		const mockResult = {
 			violations: [{ rule: "Don't do that", justification: 'Did it' }],
 			passes: [{ rule: 'Do this', justification: 'Done' }],
@@ -79,10 +80,11 @@ describe('evaluateWorkflowPairwise', () => {
 
 		const result = await evaluateWorkflowPairwise(mockLlm, input);
 
-		expect(result.score).toBe(0.5);
+		expect(result.primaryPass).toBe(false);
+		expect(result.diagnosticScore).toBe(0.5);
 	});
 
-	it('should return score 0 when no rules evaluated', async () => {
+	it('should return diagnosticScore 0 when no rules evaluated', async () => {
 		const mockResult = {
 			violations: [],
 			passes: [],
@@ -92,6 +94,7 @@ describe('evaluateWorkflowPairwise', () => {
 
 		const result = await evaluateWorkflowPairwise(mockLlm, input);
 
-		expect(result.score).toBe(0);
+		expect(result.primaryPass).toBe(true);
+		expect(result.diagnosticScore).toBe(0);
 	});
 });

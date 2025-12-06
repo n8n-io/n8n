@@ -104,21 +104,29 @@ The Langsmith integration provides two key components:
 
 #### 6. Pairwise Evaluation
 
-Pairwise evaluation provides a simpler, criteria-based approach to workflow evaluation. Instead of using the complex multi-metric evaluation system, it evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset.
+Pairwise evaluation provides a criteria-based approach to workflow evaluation with hierarchical scoring and multi-judge consensus. It evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset.
 
 **Evaluator (`chains/pairwise-evaluator.ts`):**
 - Evaluates workflows against a checklist of criteria (dos and don'ts)
 - Uses an LLM to determine if each criterion passes or fails
 - Requires evidence-based justification for each decision
-- Calculates a simple pass/fail score (passes / total rules)
+- Returns `primaryPass` (true only if ALL criteria pass) and `diagnosticScore` (ratio of passes)
 
 **Runner (`langsmith/pairwise-runner.ts`):**
 - Generates workflows from prompts in the dataset
-- Applies pairwise evaluation to each generated workflow
-- Reports three metrics to Langsmith:
-  - `pairwise_score`: Overall score (0-1)
-  - `pairwise_passed_count`: Number of criteria passed
-  - `pairwise_failed_count`: Number of criteria violated
+- Runs multiple LLM judges in parallel for each evaluation (configurable via `--judges`)
+- Aggregates judge results using majority vote
+- Supports filtering by `notion_id` metadata for single-example runs
+- Reports five metrics to Langsmith:
+  - `pairwise_primary`: Majority vote result (0 or 1)
+  - `pairwise_diagnostic`: Average diagnostic score across judges
+  - `pairwise_judges_passed`: Count of judges that passed
+  - `pairwise_total_violations`: Sum of all violations
+  - `pairwise_total_passes`: Sum of all passes
+
+**Logger (`utils/logger.ts`):**
+- Simple evaluation logger with verbose mode support
+- Controls output verbosity via `--verbose` flag
 
 **Dataset Format:**
 The pairwise evaluation expects a Langsmith dataset with examples containing:
@@ -217,6 +225,9 @@ GENERATE_TEST_CASES=true pnpm eval
 
 # With custom concurrency
 EVALUATION_CONCURRENCY=10 pnpm eval
+
+# With feature flags enabled
+pnpm eval --multi-agent --template-examples
 ```
 
 ### Langsmith Evaluation
@@ -229,11 +240,59 @@ export LANGSMITH_DATASET_NAME=your_dataset_name
 
 # Run evaluation
 pnpm eval:langsmith
+
+# With feature flags enabled
+pnpm eval:langsmith --multi-agent
 ```
 
 ### Pairwise Evaluation
 
-Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt.
+Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt. It implements a hierarchical scoring system with multiple LLM judges per evaluation.
+
+#### CLI Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--prompt <text>` | Run local evaluation with this prompt (no LangSmith required) | - |
+| `--dos <rules>` | Newline-separated "do" rules for local evaluation | - |
+| `--donts <rules>` | Newline-separated "don't" rules for local evaluation | - |
+| `--notion-id <id>` | Filter to a single example by its `notion_id` metadata | (all examples) |
+| `--max-examples <n>` | Limit number of examples to evaluate (useful for testing) | (no limit) |
+| `--repetitions <n>` | Number of times to repeat the entire evaluation | 1 |
+| `--generations <n>` | Number of workflow generations per prompt (for variance reduction) | 1 |
+| `--judges <n>` | Number of LLM judges per evaluation | 3 |
+| `--concurrency <n>` | Number of prompts to evaluate in parallel | 5 |
+| `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
+| `--output-dir <path>` | Save generated workflows and evaluation results to this directory | - |
+| `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
+| `--multi-agent` | Enable multi-agent architecture (see [Feature Flags](#feature-flags)) | false |
+| `--template-examples` | Enable template-based examples (see [Feature Flags](#feature-flags)) | false |
+
+#### Local Mode (No LangSmith Required)
+
+Run a single pairwise evaluation locally without needing a LangSmith account:
+
+```bash
+# Basic local evaluation
+pnpm eval:pairwise --prompt "Create a workflow that sends Slack messages" --dos "Use Slack node"
+
+# With don'ts and multiple judges
+pnpm eval:pairwise \
+  --prompt "Create a workflow that fetches data from an API" \
+  --dos "Use HTTP Request node\nHandle errors" \
+  --donts "Don't hardcode URLs" \
+  --judges 5 \
+  --verbose
+```
+
+Local mode is useful for:
+- Testing prompts before adding them to a dataset
+- Quick iteration on evaluation criteria
+- Running evaluations without LangSmith setup
+
+#### LangSmith Mode
+
+For dataset-based evaluation with experiment tracking:
 
 ```bash
 # Set required environment variables
@@ -242,14 +301,104 @@ export LANGSMITH_API_KEY=your_api_key
 # Run pairwise evaluation (uses default dataset: notion-pairwise-workflows)
 pnpm eval:pairwise
 
+# Run a single example by notion_id
+pnpm eval:pairwise --notion-id 30d29454-b397-4a35-8e0b-74a2302fa81a
+
+# Run with 3 repetitions and 5 judges, custom experiment name
+pnpm eval:pairwise --repetitions 3 --judges 5 --name "my-experiment"
+
+# Enable verbose logging to see all judge details
+pnpm eval:pairwise --notion-id abc123 --verbose
+
 # Use a custom dataset
 LANGSMITH_DATASET_NAME=my-pairwise-dataset pnpm eval:pairwise
 
 # Limit to specific number of examples (useful for testing)
-EVAL_MAX_EXAMPLES=2 pnpm eval:pairwise
+pnpm eval:pairwise --max-examples 2
+```
 
-# Run with multiple repetitions
-pnpm eval:pairwise --repetitions 3
+#### Multi-Generation Evaluation
+
+The `--generations` flag enables multiple workflow generations per prompt, providing a **Generation Correctness** metric:
+
+```bash
+# Run 3 generations per prompt with 3 judges each
+pnpm eval:pairwise --generations 3 --judges 3 --verbose
+
+# Example output:
+# Gen 1: 2/3 judges → ✓ PASS (diag=85%)
+# Gen 2: 1/3 judges → ✗ FAIL (diag=60%)
+# Gen 3: 3/3 judges → ✓ PASS (diag=95%)
+# 📊 [#1] 2/3 gens → PASS (gen_corr=0.67, diag=80%)
+```
+
+**Generation Correctness** = (# passing generations) / total generations:
+- With `--generations 3`: Values are 0, 0.33, 0.67, or 1
+- With `--generations 5`: Values are 0, 0.2, 0.4, 0.6, 0.8, or 1
+
+#### Hierarchical Scoring System
+
+The pairwise evaluation uses a multi-level scoring hierarchy:
+
+| Level | Primary Score | Secondary Score |
+|-------|--------------|-----------------|
+| Individual do/don't | Binary (true/false) | 0 or 1 |
+| 1 LLM judge | false if ANY criterion fails | Average of criteria scores |
+| N judges on 1 generation | Majority vote (≥50% pass) | Average diagnostic across judges |
+| N generations on 1 prompt | (# passing gens) / N | Average diagnostic across generations |
+| Full dataset | Average across prompts | Average diagnostic across all |
+
+This approach reduces variance from LLM non-determinism by using multiple judges and generations.
+
+#### Saving Artifacts with --output-dir
+
+The `--output-dir` flag saves all generated workflows and evaluation results to disk:
+
+```bash
+# Save artifacts to ./eval-output directory
+pnpm eval:pairwise --generations 3 --output-dir ./eval-output --verbose
+```
+
+**Output structure:**
+```
+eval-output/
+├── prompt-1/
+│   ├── prompt.txt              # Original prompt text
+│   ├── criteria.json           # dos/donts criteria
+│   ├── gen-1/
+│   │   ├── workflow.json       # Importable n8n workflow
+│   │   └── evaluation.json     # Judge results for this generation
+│   ├── gen-2/
+│   │   ├── workflow.json
+│   │   └── evaluation.json
+│   └── gen-3/
+│       ├── workflow.json
+│       └── evaluation.json
+├── prompt-2/
+│   └── ...
+└── summary.json                # Overall results summary
+```
+
+**workflow.json**: Directly importable into n8n (File → Import from file)
+
+**evaluation.json**: Contains per-judge results including violations and passes:
+```json
+{
+  "generationIndex": 1,
+  "majorityPass": false,
+  "primaryPasses": 1,
+  "numJudges": 3,
+  "diagnosticScore": 0.35,
+  "judges": [
+    {
+      "judgeIndex": 1,
+      "primaryPass": false,
+      "diagnosticScore": 0.30,
+      "violations": [{"rule": "...", "justification": "..."}],
+      "passes": [{"rule": "...", "justification": "..."}]
+    }
+  ]
+}
 ```
 
 ## Configuration
@@ -282,10 +431,77 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `USE_LANGSMITH_EVAL` - Set to "true" to use Langsmith mode
 - `USE_PAIRWISE_EVAL` - Set to "true" to use pairwise evaluation mode
 - `LANGSMITH_DATASET_NAME` - Override default dataset name
-- `EVAL_MAX_EXAMPLES` - Limit number of examples to evaluate (useful for testing)
 - `EVALUATION_CONCURRENCY` - Number of parallel test executions (default: 5)
 - `GENERATE_TEST_CASES` - Set to "true" to generate additional test cases
 - `LLM_MODEL` - Model identifier for metadata tracking
+- `EVAL_FEATURE_MULTI_AGENT` - Set to "true" to enable multi-agent mode
+- `EVAL_FEATURE_TEMPLATE_EXAMPLES` - Set to "true" to enable template examples
+
+### Feature Flags
+
+Feature flags control experimental or optional behaviors in the AI Workflow Builder agent during evaluations. They can be set via environment variables or CLI arguments.
+
+#### Available Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `multiAgent` | Enables multi-agent architecture with specialized sub-agents (supervisor, builder, configurator, discovery) | `false` |
+| `templateExamples` | Enables template-based examples in agent prompts | `false` |
+
+#### Setting Feature Flags
+
+**Via Environment Variables:**
+```bash
+# Enable multi-agent mode
+EVAL_FEATURE_MULTI_AGENT=true pnpm eval
+
+# Enable template examples
+EVAL_FEATURE_TEMPLATE_EXAMPLES=true pnpm eval:pairwise
+
+# Enable both
+EVAL_FEATURE_MULTI_AGENT=true EVAL_FEATURE_TEMPLATE_EXAMPLES=true pnpm eval:langsmith
+```
+
+**Via CLI Arguments:**
+```bash
+# Enable multi-agent mode
+pnpm eval --multi-agent
+
+# Enable template examples
+pnpm eval:pairwise --template-examples
+
+# Enable both
+pnpm eval:langsmith --multi-agent --template-examples
+```
+
+#### Usage Across Evaluation Modes
+
+Feature flags work consistently across all evaluation modes:
+
+**CLI Evaluation:**
+```bash
+pnpm eval --multi-agent --template-examples
+```
+
+**Langsmith Evaluation:**
+```bash
+pnpm eval:langsmith --multi-agent
+```
+
+**Pairwise Evaluation (LangSmith mode):**
+```bash
+pnpm eval:pairwise --multi-agent --template-examples
+```
+
+**Pairwise Evaluation (Local mode):**
+```bash
+pnpm eval:pairwise --prompt "Create a Slack workflow" --dos "Use Slack node" --multi-agent
+```
+
+When feature flags are enabled, they are logged at the start of the evaluation:
+```
+➔ Feature flags enabled: multiAgent, templateExamples
+```
 
 ## Output
 
@@ -304,14 +520,22 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 ### Pairwise Evaluation Output
 
 - Results are stored in Langsmith dashboard
-- Experiment name format: `pairwise-evals-[uuid]`
-- Metrics reported:
-  - `pairwise_score`: Overall pass rate (0-1)
-  - `pairwise_passed_count`: Number of criteria that passed
-  - `pairwise_failed_count`: Number of criteria that were violated
+- Experiment name format: `<name>-[uuid]` (default: `pairwise-evals-[uuid]`)
+- Metrics reported (single generation mode):
+  - `pairwise_primary`: Binary pass/fail based on majority vote (0 or 1)
+  - `pairwise_diagnostic`: Average diagnostic score across judges (0-1)
+  - `pairwise_judges_passed`: Number of judges that returned primaryPass=true
+  - `pairwise_total_violations`: Sum of violations across all judges
+  - `pairwise_total_passes`: Sum of passes across all judges
+- Additional metrics reported (multi-generation mode with `--generations N`):
+  - `pairwise_generation_correctness`: (# passing generations) / N (0, 0.33, 0.67, 1 for N=3)
+  - `pairwise_aggregated_diagnostic`: Average diagnostic score across all generations
+  - `pairwise_generations_passed`: Count of generations that passed majority vote
+  - `pairwise_total_judge_calls`: Total judge invocations (generations × judges)
 - Each result includes detailed comments with:
-  - List of violations with justifications
-  - List of passes with justifications
+  - Majority vote summary
+  - List of violations with justifications (per judge)
+  - List of passes (per judge)
 
 ## Adding New Test Cases
 
