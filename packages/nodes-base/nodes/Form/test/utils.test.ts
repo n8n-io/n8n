@@ -1491,6 +1491,8 @@ describe('prepareFormReturnItem', () => {
 	});
 
 	it('should call rm to clean up temporary files after file processing', async () => {
+		// Using require() here for inline jest.spyOn() pattern - this is acceptable in tests
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const rmSpy = jest.spyOn(require('fs/promises'), 'rm').mockResolvedValue(undefined);
 
 		const mockFiles: Array<Partial<MultiPartFormData.File>> = [
