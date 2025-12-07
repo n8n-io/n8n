@@ -18,18 +18,26 @@ import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
-const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
-	defineProps<{
-		message: ChatMessage;
-		compact: boolean;
-		isEditing: boolean;
-		isStreaming: boolean;
-		cachedAgentDisplayName: string | null;
-		/**
-		 * minHeight allows scrolling agent's response to the top while it is being generated
-		 */
-		minHeight?: number;
-	}>();
+const {
+	message,
+	compact,
+	isEditing,
+	isStreaming,
+	minHeight,
+	cachedAgentDisplayName,
+	containerWidth,
+} = defineProps<{
+	message: ChatMessage;
+	compact: boolean;
+	isEditing: boolean;
+	isStreaming: boolean;
+	cachedAgentDisplayName: string | null;
+	/**
+	 * minHeight allows scrolling agent's response to the top while it is being generated
+	 */
+	minHeight?: number;
+	containerWidth: number;
+}>();
 
 const emit = defineEmits<{
 	startEdit: [];
@@ -48,7 +56,7 @@ const styles = useCssModule();
 const editedText = ref('');
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
-const markdown = useChatHubMarkdownOptions(styles.codeBlockActions);
+const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const messageContent = computed(() => message.content);
 
 const speech = useSpeechSynthesis(messageContent, {
@@ -106,6 +114,11 @@ function handleConfirmEdit() {
 }
 
 function handleKeydownTextarea(e: KeyboardEvent) {
+	if (e.key === 'Escape') {
+		emit('cancelEdit');
+		return;
+	}
+
 	const trimmed = editedText.value.trim();
 
 	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
@@ -181,7 +194,10 @@ onBeforeMount(() => {
 				[$style.compact]: compact,
 			},
 		]"
-		:style="minHeight ? { minHeight: `${minHeight}px` } : undefined"
+		:style="{
+			minHeight: minHeight ? `${minHeight}px` : undefined,
+			'--container--width': `${containerWidth}px`,
+		}"
 		:data-message-id="message.id"
 	>
 		<div :class="$style.avatar">
@@ -404,6 +420,7 @@ onBeforeMount(() => {
 	}
 
 	pre {
+		width: 100%;
 		font-family: inherit;
 		font-size: inherit;
 		margin: 0;
@@ -430,18 +447,27 @@ onBeforeMount(() => {
 		}
 	}
 
+	.tableContainer {
+		width: var(--container--width);
+		padding-bottom: 1em;
+		padding-left: calc((var(--container--width) - 100%) / 2);
+		padding-right: var(--spacing--lg);
+		margin-left: calc(-1 * (var(--container--width) - 100%) / 2);
+		overflow-x: auto;
+	}
+
 	table {
-		width: 100%;
+		width: fit-content;
 		border-bottom: var(--border);
 		border-top: var(--border);
 		border-width: 2px;
-		margin-bottom: 1em;
 		border-color: var(--color--text--shade-1);
 	}
 
 	th,
 	td {
 		padding: 0.25em 1em 0.25em 0;
+		min-width: 12em;
 	}
 
 	th {

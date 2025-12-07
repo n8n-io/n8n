@@ -44,6 +44,7 @@ const { any } = expect;
 
 const testServer = setupTestServer({
 	endpointGroups: ['credentials'],
+	enabledFeatures: ['feat:sharing'],
 });
 
 let owner: User;
