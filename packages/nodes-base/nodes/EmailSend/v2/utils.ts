@@ -54,7 +54,12 @@ export async function smtpConnectionTest(
 	const credentials = credential.data!;
 	const transporter = configureTransport(credentials, {});
 	try {
-		await transporter.verify();
+		// Add 10-second timeout to prevent hanging forever
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			setTimeout(() => reject(new Error('Connection timeout after 10 seconds')), 10000);
+		});
+
+		await Promise.race([transporter.verify(), timeoutPromise]);
 		return {
 			status: 'OK',
 			message: 'Connection successful!',

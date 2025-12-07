@@ -237,7 +237,12 @@ export class CredentialsTester {
 			const context = new CredentialTestContext();
 			const functionResult = credentialTestFunction.call(context, credentialsDecrypted);
 			if (functionResult instanceof Promise) {
-				const result = await functionResult;
+				// Add 30-second timeout to prevent credential tests from hanging forever
+				const timeoutPromise = new Promise<never>((_, reject) => {
+					setTimeout(() => reject(new Error('Credential test timeout after 30 seconds')), 30000);
+				});
+
+				const result = await Promise.race([functionResult, timeoutPromise]);
 				if (typeof result?.message === 'string') {
 					// Anonymize secret values in the error message
 					result.message = this.redactSecrets(
