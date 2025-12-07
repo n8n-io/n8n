@@ -37,6 +37,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';

@@ -59,6 +59,45 @@
 			],
 			"type": "node",
 			"request": "launch"
+		},
+		{
+			"name": "Build: Check for Errors (Quick)",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": [
+				"build",
+				"--filter",
+				"@n8n/api-types",
+				"--filter",
+				"n8n"
+			],
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"name": "Build: Full Validation",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["build"],
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"],
+			"cwd": "${workspaceFolder}",
+			"env": {
+				"NODE_ENV": "production"
+			}
+		},
+		{
+			"name": "TypeCheck: All Packages",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["typecheck"],
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"],
+			"cwd": "${workspaceFolder}"
 		}
 	]
 
