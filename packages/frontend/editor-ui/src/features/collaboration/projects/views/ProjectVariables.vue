@@ -280,7 +280,6 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 const unavailableNoticeProps = computed(() => ({
-	emoji: '👋',
 	heading: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.title),
 	description: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.description),
 	buttonText: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.button),
@@ -391,7 +390,6 @@ onMounted(() => {
 			<N8nActionBox
 				v-else-if="!canCreateVariables"
 				data-test-id="cannot-create-variables"
-				emoji="👋"
 				:heading="
 					i18n.baseText('variables.empty.notAllowedToCreate.heading', {
 						interpolate: { name: usersStore.currentUser?.firstName ?? '' },

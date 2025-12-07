@@ -163,27 +163,22 @@ describe('Execution Context Propagation Integration Tests', () => {
 			const result = await workflowExecutionService.executeManually(
 				{
 					workflowData: parentWorkflow,
-					startNodes: [
-						{
-							name: 'Trigger',
-							sourceData: null,
-						},
-					],
-					destinationNode: undefined,
+					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
 			);
 
+			hasExecutionId(result);
 			expect(result).toBeDefined();
 			expect(result.executionId).toBeDefined();
 
 			// Wait for parent execution to complete
-			await waitForExecution(result.executionId!);
+			await waitForExecution(result.executionId);
 
 			// ============================================================
 			// VERIFY: Fetch Parent Execution and Context
 			// ============================================================
-			const parentExecution = await getExecutionWithData(result.executionId!);
+			const parentExecution = await getExecutionWithData(result.executionId);
 
 			const parentContext = parentExecution.data.executionData?.runtimeData as IExecutionContext;
 
@@ -208,7 +203,7 @@ describe('Execution Context Propagation Integration Tests', () => {
 			const childContext = childExecution.data.executionData?.runtimeData as IExecutionContext;
 
 			// Validate child context properly inherits from parent
-			validateChildContextInheritance(childContext, parentContext, result.executionId!);
+			validateChildContextInheritance(childContext, parentContext, result.executionId);
 
 			// Verify execution finished successfully
 			expect(parentExecution.status).toBe('success');
@@ -257,27 +252,22 @@ describe('Execution Context Propagation Integration Tests', () => {
 			const result = await workflowExecutionService.executeManually(
 				{
 					workflowData: grandparentWorkflow,
-					startNodes: [
-						{
-							name: 'Trigger',
-							sourceData: null,
-						},
-					],
-					destinationNode: undefined,
+					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
 			);
 
+			hasExecutionId(result);
 			expect(result).toBeDefined();
 			expect(result.executionId).toBeDefined();
 
 			// Wait for grandparent execution to complete
-			await waitForExecution(result.executionId!);
+			await waitForExecution(result.executionId);
 
 			// ============================================================
 			// VERIFY: Fetch All Execution Contexts
 			// ============================================================
-			const grandparentExecution = await getExecutionWithData(result.executionId!);
+			const grandparentExecution = await getExecutionWithData(result.executionId);
 			const grandparentContext = grandparentExecution.data.executionData
 				?.runtimeData as IExecutionContext;
 
@@ -354,50 +344,40 @@ describe('Execution Context Propagation Integration Tests', () => {
 			const result1 = await workflowExecutionService.executeManually(
 				{
 					workflowData: workflow1,
-					startNodes: [
-						{
-							name: 'Trigger',
-							sourceData: null,
-						},
-					],
-					destinationNode: undefined,
+					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
 			);
+			hasExecutionId(result1);
 
 			expect(result1).toBeDefined();
 			expect(result1.executionId).toBeDefined();
 
 			// Wait for first execution to complete
-			await waitForExecution(result1.executionId!);
+			await waitForExecution(result1.executionId);
 
 			const result2 = await workflowExecutionService.executeManually(
 				{
 					workflowData: workflow2,
-					startNodes: [
-						{
-							name: 'Trigger',
-							sourceData: null,
-						},
-					],
-					destinationNode: undefined,
+					triggerToStartFrom: { name: 'Trigger' },
 				},
 				owner,
 			);
 
+			hasExecutionId(result2);
 			expect(result2).toBeDefined();
 			expect(result2.executionId).toBeDefined();
 
 			// Wait for second execution to complete
-			await waitForExecution(result2.executionId!);
+			await waitForExecution(result2.executionId);
 
 			// ============================================================
 			// VERIFY: Fetch Both Execution Contexts
 			// ============================================================
-			const execution1 = await getExecutionWithData(result1.executionId!);
+			const execution1 = await getExecutionWithData(result1.executionId);
 			const context1 = execution1.data.executionData?.runtimeData as IExecutionContext;
 
-			const execution2 = await getExecutionWithData(result2.executionId!);
+			const execution2 = await getExecutionWithData(result2.executionId);
 			const context2 = execution2.data.executionData?.runtimeData as IExecutionContext;
 
 			// ============================================================
@@ -441,3 +421,13 @@ describe('Execution Context Propagation Integration Tests', () => {
 		});
 	});
 });
+
+function hasExecutionId(
+	data: Awaited<ReturnType<WorkflowExecutionService['executeManually']>>,
+): asserts data is { executionId: string } {
+	if ('executionId' in data) {
+		return;
+	}
+
+	throw new Error(`Expected an '{executionId: string}', instead got ${JSON.stringify(data)}`);
+}

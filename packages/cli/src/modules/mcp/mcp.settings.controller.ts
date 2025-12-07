@@ -1,6 +1,15 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope, Param } from '@n8n/decorators';
+import {
+	Body,
+	Post,
+	Get,
+	Patch,
+	RestController,
+	GlobalScope,
+	Param,
+	ProjectScope,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
@@ -57,7 +66,7 @@ export class McpSettingsController {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 
-	@GlobalScope('mcp:manage')
+	@ProjectScope('workflow:update')
 	@Patch('/workflows/:workflowId/toggle-access')
 	async toggleWorkflowMCPAccess(
 		req: AuthenticatedRequest,
@@ -65,9 +74,12 @@ export class McpSettingsController {
 		@Param('workflowId') workflowId: string,
 		@Body dto: UpdateWorkflowAvailabilityDto,
 	) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:update',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			req.user,
+			['workflow:update'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to update MCP availability without permissions', {
@@ -79,16 +91,18 @@ export class McpSettingsController {
 			);
 		}
 
-		if (!workflow.active && dto.availableInMCP) {
-			throw new BadRequestError('MCP access can only be set for active workflows');
-		}
+		if (dto.availableInMCP) {
+			if (!workflow.activeVersionId) {
+				throw new BadRequestError('MCP access can only be set for active workflows');
+			}
+			const nodes = workflow.activeVersion?.nodes ?? [];
+			const supportedTrigger = findMcpSupportedTrigger(nodes);
 
-		const supportedTrigger = findMcpSupportedTrigger(workflow);
-
-		if (!supportedTrigger) {
-			throw new BadRequestError(
-				`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
-			);
+			if (!supportedTrigger) {
+				throw new BadRequestError(
+					`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+				);
+			}
 		}
 
 		const workflowUpdate = new WorkflowEntity();
@@ -99,14 +113,7 @@ export class McpSettingsController {
 		};
 		workflowUpdate.versionId = workflow.versionId;
 
-		const updatedWorkflow = await this.workflowService.update(
-			req.user,
-			workflowUpdate,
-			workflowId,
-			undefined, // tags
-			undefined, // parentFolderId
-			false, // forceSave
-		);
+		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
 
 		return {
 			id: updatedWorkflow.id,

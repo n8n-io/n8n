@@ -86,7 +86,7 @@ export default {
 	'promptInput.askAdminToUpgrade': 'Ask your admin to upgrade the instance to get more credits',
 	'promptInput.characterLimitReached': "You've reached the {limit} character limit",
 	'promptInput.remainingCredits': 'Remaining builder AI credits: <b>{count}</b>',
-	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b>',
+	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
 } as N8nLocale;

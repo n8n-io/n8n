@@ -7,6 +7,7 @@ export const ROLE = {
 	Owner: 'global:owner',
 	Member: 'global:member',
 	Admin: 'global:admin',
+	ChatUser: 'global:chatUser',
 	Default: 'default', // default user with no email when setting up instance
 } as const;
 

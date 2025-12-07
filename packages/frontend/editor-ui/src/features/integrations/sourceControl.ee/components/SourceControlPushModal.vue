@@ -654,6 +654,7 @@ function castProject(project: ProjectListItem): WorkflowResource {
 		id: '',
 		name: '',
 		active: false,
+		activeVersionId: null,
 		createdAt: '',
 		updatedAt: '',
 		isArchived: false,

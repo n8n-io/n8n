@@ -9,6 +9,8 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
+
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
@@ -17,6 +19,7 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'wrap-1',
+					activeVersionId: uuid(),
 					name: 'Wrapper',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
@@ -49,13 +52,14 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'a',
+					activeVersionId: uuid(),
 					name: 'Alpha',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
 				createWorkflow({
 					id: 'b',
 					name: 'Beta',
-					active: true,
+					activeVersionId: 'version-b',
 					nodes: [
 						{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
 					],
@@ -72,7 +76,8 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'a',
 					name: 'Alpha',
-					active: false,
+					description: null,
+					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
@@ -81,6 +86,7 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'b',
 					name: 'Beta',
+					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
@@ -91,7 +97,7 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('applies provided filters and clamps high limit', async () => {
-			const workflows = [createWorkflow({ id: 'x', active: true })];
+			const workflows = [createWorkflow({ id: 'x', activeVersionId: uuid() })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
@@ -123,7 +129,9 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('formats nodes as empty array when missing', async () => {
-			const workflows = [createWorkflow({ id: 'no-nodes', nodes: undefined })];
+			const workflows = [
+				createWorkflow({ id: 'no-nodes', activeVersionId: 'version-no-nodes', nodes: [] }),
+			];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});

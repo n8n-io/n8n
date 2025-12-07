@@ -18,6 +18,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	createRunExecutionData,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
@@ -104,7 +105,7 @@ export class WorkflowRunner {
 		}
 
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error: {
 						...error,
@@ -113,7 +114,7 @@ export class WorkflowRunner {
 					},
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -235,7 +236,7 @@ export class WorkflowRunner {
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
-			active: data.workflowData.active,
+			active: data.workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
