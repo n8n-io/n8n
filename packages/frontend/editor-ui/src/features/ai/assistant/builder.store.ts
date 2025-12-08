@@ -186,17 +186,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
-	}
-
-	function incrementManualExecutionStats(type: 'success' | 'error') {
-		manualExecStatsInBetweenMessages.value[type]++;
-	}
-
-	function resetManualExecutionStats() {
-		manualExecStatsInBetweenMessages.value = {
-			success: 0,
-			error: 0,
-		};
+		hadTodosTracked.value = false;
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -452,6 +442,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			executionStatus,
 		});
 
+		hadTodosTracked.value = false;
 		resetManualExecutionStats();
 
 		prepareForStreaming(text, userMessageId);
@@ -783,11 +774,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowTodos,
 		(newTodos, oldTodos) => {
 			// Only track if we had todos before and now we don't
-			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0 && hadTodosTracked.value) {
+			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0 && !hadTodosTracked.value) {
 				trackWorkflowBuilderJourney('no_placeholder_values_left');
-			}
-			// Mark that we've seen todos (for tracking purposes)
-			if (newTodos.length > 0) {
 				hadTodosTracked.value = true;
 			}
 		},
