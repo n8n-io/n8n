@@ -35,4 +35,19 @@ export const commonOptions: INodeProperties[] = [
 		description:
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
+	{
+		displayName: "Make Model Aware of Tool's Binaries",
+		name: 'modelAwareOfToolBinaries',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether the language model is aware of the binary outputs from tools when generating responses. This allows the model, if capable, to describe images or the contents of text files returned by those tools. Enabling this option will increase token usage.',
+	},
+	{
+		displayName: "Include Binaries From Tools in Agent's Ouput",
+		name: 'includeToolBinariesInOutput',
+		type: 'boolean',
+		default: false,
+		description: "Whether to include binaries produced by tools in the agent's final output",
+	},
 ];

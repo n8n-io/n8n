@@ -94,9 +94,11 @@ export async function runAgent(
 			result.intermediateSteps = steps;
 		}
 
-		const toolBinary = extractToolResultsBinary(response, itemIndex);
-		if (toolBinary && Object.keys(toolBinary).length > 0) {
-			result.binary = toolBinary;
+		if (options.includeToolBinariesInOutput) {
+			const toolBinary = extractToolResultsBinary(response, itemIndex);
+			if (toolBinary && Object.keys(toolBinary).length > 0) {
+				result.binary = toolBinary;
+			}
 		}
 
 		return result;
@@ -120,9 +122,11 @@ export async function runAgent(
 				result.intermediateSteps = steps;
 			}
 
-			const toolBinary = extractToolResultsBinary(response, itemIndex);
-			if (toolBinary && Object.keys(toolBinary).length > 0) {
-				result.binary = toolBinary;
+			if (options.includeToolBinariesInOutput) {
+				const toolBinary = extractToolResultsBinary(response, itemIndex);
+				if (toolBinary && Object.keys(toolBinary).length > 0) {
+					result.binary = toolBinary;
+				}
 			}
 
 			return result;

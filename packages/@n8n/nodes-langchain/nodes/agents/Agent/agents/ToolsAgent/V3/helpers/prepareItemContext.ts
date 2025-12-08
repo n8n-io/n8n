@@ -1,7 +1,12 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	EngineResponse,
+	IBinaryKeyData,
+} from 'n8n-workflow';
 
 import { buildSteps, extractToolResultsBinary, type ToolCallData } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
@@ -58,7 +63,11 @@ export async function prepareItemContext(
 		options.enableStreaming = true;
 	}
 
-	const toolBinaryData = extractToolResultsBinary(response, itemIndex);
+	let toolBinaryData: IBinaryKeyData | undefined = undefined;
+
+	if (options.modelAwareOfToolBinaries) {
+		toolBinaryData = extractToolResultsBinary(response, itemIndex);
+	}
 
 	const messages = await prepareMessages(ctx, itemIndex, {
 		systemMessage: options.systemMessage,
