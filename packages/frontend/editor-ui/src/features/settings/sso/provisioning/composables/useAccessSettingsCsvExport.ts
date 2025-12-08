@@ -55,6 +55,12 @@ async function fetchUsers(context: IRestApiContext): Promise<AccessSettingsUserD
 
 export function useAccessSettingsCsvExport() {
 	const cachedUserData = ref<AccessSettingsUserData | undefined>();
+	/**
+	 * Since users can click the "download project roles" and "download instance roles"
+	 * buttons right after one another, we're tracking the active request here
+	 * to not have to fetch the users list twice.
+	 */
+	const pendingUserDataRequest = ref<Promise<AccessSettingsUserData> | undefined>();
 	const rootStore = useRootStore();
 
 	const formatDateForFilename = (): string => {
@@ -88,10 +94,24 @@ export function useAccessSettingsCsvExport() {
 			return cachedUserData.value;
 		}
 
-		const userData = await fetchUsers(rootStore.restApiContext);
+		// Return existing pending promise if one is in flight
+		if (pendingUserDataRequest.value) {
+			return await pendingUserDataRequest.value;
+		}
 
-		cachedUserData.value = userData;
-		return cachedUserData.value;
+		const userDataRequest = fetchUsers(rootStore.restApiContext)
+			.then((userData) => {
+				cachedUserData.value = userData;
+				pendingUserDataRequest.value = undefined; // reset pendingUserDataRequest
+				return userData;
+			})
+			.catch((error) => {
+				pendingUserDataRequest.value = undefined; // reset pendingUserDataRequest
+				throw error;
+			});
+
+		pendingUserDataRequest.value = userDataRequest;
+		return await userDataRequest;
 	};
 
 	const hasDownloadedProjectRoleCsv = ref(false);
@@ -148,6 +168,7 @@ export function useAccessSettingsCsvExport() {
 		hasDownloadedProjectRoleCsv.value = false;
 		// ensure user data is loaded freshly whenever dialog is opened the next time
 		cachedUserData.value = undefined;
+		pendingUserDataRequest.value = undefined;
 	};
 
 	return {
