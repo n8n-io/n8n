@@ -18,7 +18,7 @@ test.describe('Chat session ID reset', () => {
 		const sessionIdButton = n8n.page.getByTestId('chat-session-id');
 		await sessionIdButton.click();
 
-		let initialSessionId = await n8n.page.locator('[role="tooltip"]')?.textContent();
+		let initialSessionId = await n8n.page.locator('.n8n-tooltip')?.textContent();
 		expect(initialSessionId).toBeTruthy();
 		initialSessionId = (initialSessionId as string).split(' ')[0]; // Split text "SESSIONID (Click to copy)"
 
@@ -36,7 +36,7 @@ test.describe('Chat session ID reset', () => {
 
 		// Step 5: Get the new session ID
 		await sessionIdButton.click();
-		let newSessionId = await n8n.page.locator('[role="tooltip"]')?.textContent();
+		let newSessionId = await n8n.page.locator('.n8n-tooltip')?.textContent();
 		expect(newSessionId).toBeTruthy();
 		newSessionId = (newSessionId as string).split(' ')[0]; // Split text "SESSIONID (Click to copy)"
 
