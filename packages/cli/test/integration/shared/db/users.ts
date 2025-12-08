@@ -43,13 +43,14 @@ async function handlePasswordSetup(password: string | null | undefined): Promise
 
 /** Store a new user object, defaulting to a `member` */
 export async function newUser(attributes: DeepPartial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, role, ...rest } = attributes;
+	const { email, password, firstName, lastName, role, lastActiveAt, ...rest } = attributes;
 	return Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
 		password: await handlePasswordSetup(password),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		role: role ?? GLOBAL_MEMBER_ROLE,
+		lastActiveAt: lastActiveAt ?? new Date(),
 		...rest,
 	});
 }
