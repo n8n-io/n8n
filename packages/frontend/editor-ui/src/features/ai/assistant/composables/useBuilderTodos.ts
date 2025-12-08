@@ -71,6 +71,14 @@ export function formatPlaceholderPath(path: string[]): string {
 }
 
 /**
+ * Checks if a value is a placeholder value
+ */
+export function isPlaceholderValue(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	return value.startsWith(PLACEHOLDER_PREFIX) && value.endsWith(PLACEHOLDER_SUFFIX);
+}
+
+/**
  * Composable for managing workflow todos (validation issues and placeholders)
  * used by the AI builder.
  */

@@ -93,14 +93,14 @@ export class McpSettingsController {
 
 		if (dto.availableInMCP) {
 			if (!workflow.activeVersionId) {
-				throw new BadRequestError('MCP access can only be set for active workflows');
+				throw new BadRequestError('MCP access can only be set for published workflows');
 			}
 			const nodes = workflow.activeVersion?.nodes ?? [];
 			const supportedTrigger = findMcpSupportedTrigger(nodes);
 
 			if (!supportedTrigger) {
 				throw new BadRequestError(
-					`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+					`MCP access can only be set for published workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
 				);
 			}
 		}
