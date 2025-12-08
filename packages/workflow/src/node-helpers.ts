@@ -339,11 +339,10 @@ const checkConditions = (
 		) {
 			const [key, targetValue] = Object.entries(condition._cnd)[0];
 
-			// Special case: empty array handling for 'eq' and 'not' conditions
-			// Empty array means the value is definitely not present
+			// Special case: empty array handling
 			if (actualValues.length === 0) {
 				if (key === 'not') return true; // Value is not present, so 'not' is true
-				if (key === 'eq') return false; // Value is not present, so 'eq' is false
+				return false; // For all other keys, empty array means condition is not met
 			}
 
 			return actualValues.every((propertyValue) => {
