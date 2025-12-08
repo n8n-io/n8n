@@ -698,18 +698,11 @@ When you need to reference “now”, use this date and time.`;
 							const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
 
 							for (const attachment of attachments) {
-								if (!attachment.id) {
-									if (attachment.data) {
-										blocks.push({ type: 'image_url', image_url: attachment.data });
-									}
+								const url = this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment);
 
-									continue;
+								if (url) {
+									blocks.push({ type: 'image_url', image_url: url });
 								}
-
-								blocks.push({
-									type: 'image_url',
-									image_url: this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment),
-								});
 							}
 
 							return {

@@ -130,17 +130,19 @@ export class ChatHubAttachmentService {
 		);
 	}
 
-	getPubliclyAccessibleUrl(binaryData: IBinaryData): string {
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-
+	getPubliclyAccessibleUrl(binaryData: IBinaryData): string | undefined {
 		if (binaryData.data.startsWith('data:')) {
 			return binaryData.data;
 		}
 
+		if (!binaryData.id) {
+			return undefined;
+		}
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
 		if (!baseUrl.startsWith('https://')) {
-			throw Error(
-				'n8n instance does not expose publicly accessible URL. Therefore, cannot create file URL',
-			);
+			return undefined;
 		}
 
 		const token = this.binaryDataService.createSignedToken(binaryData, '1 hour');

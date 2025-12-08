@@ -139,6 +139,10 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
+				const mockBaseUrl = 'https://example.com';
+
+				urlService.getInstanceBaseUrl.mockReturnValue(mockBaseUrl);
+
 				const result = await service.createChatWorkflow(
 					'user-123',
 					'session-456',
@@ -154,7 +158,6 @@ describe('ChatHubWorkflowService', () => {
 				);
 
 				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
-				expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
 					(node) => node.name === 'Restore Chat Memory',
