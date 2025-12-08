@@ -82,6 +82,31 @@ describe('Credential Resolvers API', () => {
 		});
 	});
 
+	describe('GET /credential-resolvers/types', () => {
+		it('should return available resolver types', async () => {
+			const response = await ownerAgent.get('/credential-resolvers/types').expect(200);
+
+			expect(response.body.data).toBeInstanceOf(Array);
+			expect(response.body.data.length).toBeGreaterThan(0);
+
+			// Verify the stub resolver is present
+			const stubResolver = response.body.data.find(
+				(type: { name: string }) => type.name === 'credential-resolver.stub-1.0',
+			);
+			expect(stubResolver).toBeDefined();
+			expect(stubResolver).toMatchObject({
+				name: 'credential-resolver.stub-1.0',
+				displayName: 'Stub Resolver',
+				description: 'A stub credential resolver for testing purposes',
+				options: expect.any(Array),
+			});
+		});
+
+		it('should reject access for members', async () => {
+			await memberAgent.get('/credential-resolvers/types').expect(403);
+		});
+	});
+
 	describe('POST /credential-resolvers', () => {
 		it('should create a resolver', async () => {
 			const payload = {
