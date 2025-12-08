@@ -31,11 +31,11 @@ const hasChildren = computed(() => props.children && props.children.length > 0);
 const hasSubMenu = computed(() => hasChildren.value || props.loading);
 
 const leadingProps = computed(() => ({
-	class: $style.itemLeading,
+	class: $style['item-leading'],
 }));
 
 const trailingProps = computed(() => ({
-	class: $style.itemTrailing,
+	class: $style['item-trailing'],
 }));
 
 const handleSelect = (value: T) => {
@@ -57,31 +57,31 @@ const handleItemSelect = () => {
 		<DropdownMenuSub v-if="hasSubMenu">
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
-				:class="[$style.item, $style.subTrigger, props.class]"
+				:class="[$style.item, $style['sub-trigger'], props.class]"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
-					<Icon v-if="icon" :icon="icon" :class="$style.itemLeading" />
+					<Icon v-if="icon" :icon="icon" :class="$style['item-leading']" />
 				</slot>
 
-				<span :class="$style.itemLabel">
+				<span :class="$style['item-label']">
 					<slot name="item-label" :item="props">
 						{{ label }}
 					</slot>
 				</span>
 
-				<Icon icon="chevron-right" :class="$style.subIndicator" />
+				<Icon icon="chevron-right" :class="$style['sub-indicator']" />
 			</DropdownMenuSubTrigger>
 
 			<DropdownMenuPortal>
-				<DropdownMenuSubContent :class="$style.subContent" :side-offset="4">
+				<DropdownMenuSubContent :class="$style['sub-content']" :side-offset="4">
 					<!-- Loading state -->
-					<div v-if="loading" :class="$style.loadingContainer">
+					<div v-if="loading" :class="$style['loading-container']">
 						<N8nLoading
 							v-for="i in loadingItemCount"
 							:key="i"
 							variant="p"
 							:rows="1"
-							:class="$style.loadingItem"
+							:class="$style['loading-item']"
 						/>
 					</div>
 					<!-- Children items -->
@@ -103,10 +103,10 @@ const handleItemSelect = () => {
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
-				<Icon v-if="icon" :icon="icon" :class="$style.itemLeading" />
+				<Icon v-if="icon" :icon="icon" :class="$style['item-leading']" />
 			</slot>
 
-			<span :class="$style.itemLabel">
+			<span :class="$style['item-label']">
 				<slot name="item-label" :item="props">
 					{{ label }}
 				</slot>
@@ -114,7 +114,7 @@ const handleItemSelect = () => {
 
 			<slot name="item-trailing" :item="props" :ui="trailingProps" />
 
-			<Icon v-if="checked" icon="check" :class="$style.itemCheck" />
+			<Icon v-if="checked" icon="check" :class="$style['item-check']" />
 		</DropdownMenuItem>
 	</div>
 </template>
@@ -152,19 +152,19 @@ const handleItemSelect = () => {
 	}
 }
 
-.subTrigger {
+.sub-trigger {
 	&[data-state='open'] {
 		background-color: var(--color--background--light-1);
 	}
 }
 
-.subIndicator {
+.sub-indicator {
 	margin-left: auto;
 	flex-shrink: 0;
 	color: var(--color--text--tint-1);
 }
 
-.subContent {
+.sub-content {
 	min-width: 160px;
 	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
@@ -174,16 +174,16 @@ const handleItemSelect = () => {
 	z-index: 999999;
 }
 
-.itemLeading {
+.item-leading {
 	flex-shrink: 0;
 }
 
-.itemLabel {
+.item-label {
 	flex-grow: 1;
 }
 
-.itemCheck,
-.itemTrailing {
+.item-check,
+.item-trailing {
 	margin-left: auto;
 	flex-shrink: 0;
 }
@@ -194,11 +194,11 @@ const handleItemSelect = () => {
 	margin: var(--spacing--4xs) var(--spacing--2xs);
 }
 
-.loadingContainer {
+.loading-container {
 	padding: var(--spacing--4xs);
 }
 
-.loadingItem {
+.loading-item {
 	margin-bottom: var(--spacing--4xs);
 
 	&:last-child {

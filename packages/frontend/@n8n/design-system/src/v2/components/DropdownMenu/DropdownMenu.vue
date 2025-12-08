@@ -201,12 +201,12 @@ defineExpose({ open, close });
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
 					<!-- Search input -->
-					<div v-if="searchable" :class="$style.searchContainer">
-						<Icon v-if="showSearchIcon" icon="search" :class="$style.searchIcon" />
+					<div v-if="searchable" :class="$style['search-container']">
+						<Icon v-if="showSearchIcon" icon="search" :class="$style['search-icon']" />
 						<input
 							ref="searchInputRef"
 							type="text"
-							:class="$style.searchInput"
+							:class="$style['search-input']"
 							:placeholder="searchPlaceholder"
 							:value="searchTerm"
 							@input="handleSearchInput"
@@ -216,20 +216,20 @@ defineExpose({ open, close });
 
 					<template v-if="loading">
 						<slot name="loading">
-							<div :class="$style.loadingContainer">
+							<div :class="$style['loading-container']">
 								<N8nLoading
 									v-for="i in loadingItemCount"
 									:key="i"
 									variant="p"
 									:rows="1"
-									:class="$style.loadingItem"
+									:class="$style['loading-item']"
 								/>
 							</div>
 						</slot>
 					</template>
 					<template v-else-if="items.length === 0">
 						<slot name="empty">
-							<div :class="$style.emptyState">No items</div>
+							<div :class="$style['empty-state']">No items</div>
 						</slot>
 					</template>
 					<template v-else>
@@ -316,11 +316,11 @@ defineExpose({ open, close });
 	display: none;
 }
 
-.loadingContainer {
+.loading-container {
 	padding: var(--spacing--4xs);
 }
 
-.loadingItem {
+.loading-item {
 	margin-bottom: var(--spacing--4xs);
 
 	&:last-child {
@@ -328,7 +328,7 @@ defineExpose({ open, close });
 	}
 }
 
-.searchContainer {
+.search-container {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
@@ -337,12 +337,12 @@ defineExpose({ open, close });
 	gap: var(--spacing--3xs);
 }
 
-.searchIcon {
+.search-icon {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
-.searchInput {
+.search-input {
 	flex: 1;
 	min-width: 0;
 	border: none;
@@ -358,7 +358,7 @@ defineExpose({ open, close });
 	}
 }
 
-.emptyState {
+.empty-state {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
