@@ -4,6 +4,7 @@ import {
 	credentialResolverTypeSchema,
 	credentialResolverConfigSchema,
 	credentialResolverSchema,
+	credentialResolversSchema,
 } from '../credential-resolver.schema';
 
 describe('credential-resolver.schema', () => {
@@ -196,6 +197,65 @@ describe('credential-resolver.schema', () => {
 				expect(result.data.createdAt).toBeInstanceOf(Date);
 				expect(result.data.updatedAt).toBeInstanceOf(Date);
 			}
+		});
+	});
+
+	describe('credentialResolversSchema', () => {
+		const validResolver1 = {
+			id: 'resolver-1',
+			name: 'Test Resolver 1',
+			type: 'credential-resolver.stub-1.0',
+			config: 'encrypted-config-1',
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+		};
+
+		const validResolver2 = {
+			id: 'resolver-2',
+			name: 'Test Resolver 2',
+			type: 'credential-resolver.stub-2.0',
+			config: 'encrypted-config-2',
+			decryptedConfig: { prefix: 'test-' },
+			createdAt: new Date('2024-01-03T00:00:00.000Z'),
+			updatedAt: new Date('2024-01-04T00:00:00.000Z'),
+		};
+
+		test('should validate empty array', () => {
+			const result = credentialResolversSchema.safeParse([]);
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data).toEqual([]);
+			}
+		});
+
+		test('should validate array with single resolver', () => {
+			const result = credentialResolversSchema.safeParse([validResolver1]);
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data).toHaveLength(1);
+			}
+		});
+
+		test('should validate array with multiple resolvers', () => {
+			const result = credentialResolversSchema.safeParse([validResolver1, validResolver2]);
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data).toHaveLength(2);
+			}
+		});
+
+		test('should fail if any resolver is invalid', () => {
+			const invalidResolver = { ...validResolver1, name: '' };
+			const result = credentialResolversSchema.safeParse([validResolver1, invalidResolver]);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].path).toEqual([1, 'name']);
+			}
+		});
+
+		test('should fail for non-array input', () => {
+			const result = credentialResolversSchema.safeParse(validResolver1);
+			expect(result.success).toBe(false);
 		});
 	});
 });

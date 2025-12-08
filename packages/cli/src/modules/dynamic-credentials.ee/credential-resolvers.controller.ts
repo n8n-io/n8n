@@ -2,6 +2,7 @@ import {
 	CreateCredentialResolverDto,
 	CredentialResolver,
 	credentialResolverSchema,
+	credentialResolversSchema,
 	UpdateCredentialResolverDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -36,9 +37,7 @@ export class CredentialResolversController {
 		_res: Response,
 	): Promise<Array<CredentialResolver>> {
 		try {
-			return (await this.service.findAll()).map((resolver) =>
-				credentialResolverSchema.parse(resolver),
-			);
+			return credentialResolversSchema.parse(await this.service.findAll());
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);

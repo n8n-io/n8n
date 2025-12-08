@@ -15,4 +15,6 @@ export const credentialResolverSchema = z.object({
 	updatedAt: z.coerce.date(),
 });
 
+export const credentialResolversSchema = z.array(credentialResolverSchema);
+
 export type CredentialResolver = z.infer<typeof credentialResolverSchema>;

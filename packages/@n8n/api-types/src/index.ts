@@ -62,6 +62,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
 export {
 	credentialResolverSchema,
+	credentialResolversSchema,
 	type CredentialResolver,
 } from './schemas/credential-resolver.schema';
 
