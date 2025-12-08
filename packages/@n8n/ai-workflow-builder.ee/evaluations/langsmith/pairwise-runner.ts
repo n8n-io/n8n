@@ -9,7 +9,7 @@ import * as os from 'os';
 import * as path from 'path';
 import pc from 'picocolors';
 
-import type { ChatPayload } from '../../src/workflow-builder-agent';
+import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import {
 	evaluateWorkflowPairwise,
@@ -207,6 +207,28 @@ function getNotionId(metadata: unknown): string | undefined {
 	return undefined;
 }
 
+/** Parse feature flags from environment variables or CLI arguments */
+function parseFeatureFlags(): BuilderFeatureFlags | undefined {
+	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
+	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
+
+	const templateExamplesFromCli = process.argv.includes('--template-examples');
+	const multiAgentFromCli = process.argv.includes('--multi-agent');
+
+	const templateExamples = templateExamplesFromEnv || templateExamplesFromCli;
+	const multiAgent = multiAgentFromEnv || multiAgentFromCli;
+
+	// Only return feature flags object if at least one flag is set
+	if (templateExamples || multiAgent) {
+		return {
+			templateExamples: templateExamples || undefined,
+			multiAgent: multiAgent || undefined,
+		};
+	}
+
+	return undefined;
+}
+
 /** Build LangSmith-compatible evaluation results from judge panel output */
 function buildLangsmithResults(
 	judgeResults: PairwiseEvaluationResult[],
@@ -323,18 +345,19 @@ async function runSingleGeneration(
 	generationIndex: number,
 	log: EvalLogger,
 	tracer?: LangChainTracer,
+	featureFlags?: BuilderFeatureFlags,
 	exampleContext?: ChatPayload['exampleContext'],
 ): Promise<GenerationResult> {
 	const startTime = Date.now();
 	const runId = generateRunId();
 
 	// Create dedicated agent for this generation
-	const agent = createAgent(parsedNodeTypes, llm, tracer);
+	const agent = createAgent(parsedNodeTypes, llm, tracer, featureFlags);
 
 	// Generate workflow
 	await consumeGenerator(
 		agent.chat(
-			getChatPayload(inputs.prompt, runId, undefined, exampleContext),
+			getChatPayload(inputs.prompt, runId, featureFlags, exampleContext),
 			`pairwise-gen-${generationIndex}`,
 		),
 	);
@@ -401,6 +424,7 @@ function createPairwiseWorkflowGenerator(
 	log: EvalLogger,
 	artifactSaver: ArtifactSaver | null,
 	tracer?: LangChainTracer,
+	featureFlags?: BuilderFeatureFlags,
 	exampleContextMap?: Map<string, ChatPayload['exampleContext']>,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
@@ -432,6 +456,7 @@ function createPairwiseWorkflowGenerator(
 					i,
 					log,
 					tracer,
+					featureFlags,
 					exampleContext,
 				);
 			}),
@@ -680,6 +705,9 @@ export async function runPairwiseLangsmithEvaluation(
 			}
 		}
 
+		// Parse feature flags from environment variables or CLI arguments
+		const featureFlags = parseFeatureFlags();
+
 		const generateWorkflow = createPairwiseWorkflowGenerator(
 			parsedNodeTypes,
 			llm,
@@ -688,6 +716,7 @@ export async function runPairwiseLangsmithEvaluation(
 			log,
 			artifactSaver,
 			tracer,
+			featureFlags,
 			exampleContextMap,
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
@@ -745,6 +774,7 @@ export interface LocalPairwiseOptions {
 	numGenerations?: number;
 	verbose?: boolean;
 	outputDir?: string;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 /** Log configuration for local pairwise evaluation */
@@ -781,6 +811,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
 		outputDir,
+		featureFlags,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -806,8 +837,10 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 			Array.from({ length: numGenerations }, async (_, genIndex) => {
 				const genStartTime = Date.now();
 				const runId = generateRunId();
-				const agent = createAgent(parsedNodeTypes, llm);
-				await consumeGenerator(agent.chat(getChatPayload(prompt, runId), `local-gen-${genIndex}`));
+				const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
+				await consumeGenerator(
+					agent.chat(getChatPayload(prompt, runId, featureFlags), `local-gen-${genIndex}`),
+				);
 				const state = await agent.getState(runId, `local-gen-${genIndex}`);
 
 				if (!state.values || !isWorkflowStateValues(state.values)) {
