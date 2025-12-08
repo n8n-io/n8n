@@ -754,7 +754,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function updateWorkflowChecksum() {
-		const checksum = await calculateWorkflowChecksum(workflow.value);
+		const updatedWorkflow = await fetchWorkflow(workflow.value.id);
+		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 		setWorkflowChecksum(checksum);
 	}
 
