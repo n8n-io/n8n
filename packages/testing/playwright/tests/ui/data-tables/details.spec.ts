@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 
-import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
+import { test, expect } from '../../../fixtures/base';
+import type { n8nPage } from '../../../pages/n8nPage';
 
 test.describe('Data Table details view', () => {
 	let testDataTableName: string;

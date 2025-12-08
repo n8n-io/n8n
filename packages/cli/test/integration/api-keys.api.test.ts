@@ -326,7 +326,6 @@ describe('Member', () => {
 			password: memberPassword,
 			role: GLOBAL_MEMBER_ROLE,
 		});
-		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {

@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('04 - Credentials', () => {
+test.describe('Credentials', () => {
 	test('composer: createFromList creates credential', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProject();
 		const credentialName = `credential-${nanoid()}`;
