@@ -16,10 +16,10 @@ import {
 	type ChatHubUpdateConversationRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
@@ -41,13 +41,6 @@ import {
 	ExecutionStatus,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
@@ -64,6 +57,13 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+
+import { ActiveExecutions } from '@/active-executions';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const EXECUTION_POLL_INTERVAL = 1000;
 const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = ['canceled', 'crashed', 'error', 'success'];
@@ -540,7 +540,7 @@ export class ChatHubService {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:read'],
+			['workflow:execute-chat'],
 			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
 		);
 
@@ -981,7 +981,7 @@ export class ChatHubService {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:read'],
+			['workflow:execute-chat'],
 			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
 		);
 
@@ -1447,7 +1447,7 @@ export class ChatHubService {
 			const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 				model.workflowId,
 				user,
-				['workflow:read'],
+				['workflow:execute-chat'],
 				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
 			);
 
