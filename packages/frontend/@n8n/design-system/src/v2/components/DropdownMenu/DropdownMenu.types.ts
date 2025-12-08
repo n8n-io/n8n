@@ -1,4 +1,4 @@
-import type { IconName } from '../../../components/N8nIcon/icons';
+import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
@@ -26,8 +26,8 @@ export type DropdownMenuItemProps<T = string> = {
 	id: T;
 	/** Display text for the item */
 	label: string;
-	/** Icon displayed before the label */
-	icon?: IconName;
+	/** Icon or emoji displayed before the label */
+	icon?: IconOrEmoji;
 	/** Whether the item is disabled */
 	disabled?: boolean;
 	/** Whether to show a separator above the item */
@@ -57,8 +57,8 @@ export interface DropdownMenuProps<T = string> {
 	placement?: Placement;
 	/** How the dropdown is triggered */
 	trigger?: DropdownMenuTrigger;
-	/** Icon for the default trigger button */
-	activatorIcon?: IconName;
+	/** Icon or emoji for the default trigger button */
+	activatorIcon?: IconOrEmoji;
 	/** When true, prevents the user from interacting with dropdown */
 	disabled?: boolean;
 	/** Whether to teleport the dropdown to body */

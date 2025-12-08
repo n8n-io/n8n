@@ -8,7 +8,6 @@ import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortc
 
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
-import { tr } from 'element-plus/es/locale';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -46,15 +45,15 @@ export const Basic: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'tags', label: 'Tags', icon: 'tags' },
-			{ id: 'credentials', label: 'Credentials', icon: 'lock' },
-			{ id: 'variables', label: 'Variables', icon: 'variable' },
-			{ id: 'executions', label: 'Executions', icon: 'list' },
-			{ id: 'created', label: 'Created', icon: 'calendar' },
-			{ id: 'updated', label: 'Updated', icon: 'calendar' },
-			{ id: 'dataTables', label: 'Data tables', icon: 'table' },
-			{ id: 'settings', label: 'Settings', icon: 'settings' },
-			{ id: 'thrash', label: 'Delete', icon: 'trash-2', divided: true },
+			{ id: 'tags', label: 'Tags', icon: { type: 'icon', value: 'tags' } },
+			{ id: 'credentials', label: 'Credentials', icon: { type: 'icon', value: 'lock' } },
+			{ id: 'variables', label: 'Variables', icon: { type: 'icon', value: 'variable' } },
+			{ id: 'executions', label: 'Executions', icon: { type: 'icon', value: 'list' } },
+			{ id: 'created', label: 'Created', icon: { type: 'icon', value: 'calendar' } },
+			{ id: 'updated', label: 'Updated', icon: { type: 'icon', value: 'calendar' } },
+			{ id: 'dataTables', label: 'Data tables', icon: { type: 'icon', value: 'table' } },
+			{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'settings' } },
+			{ id: 'thrash', label: 'Delete', icon: { type: 'icon', value: 'trash-2' }, divided: true },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -89,9 +88,42 @@ export const WithCustomTrigger: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'profile', label: 'Profile', icon: 'user' },
-			{ id: 'settings', label: 'Settings', icon: 'cog' },
-			{ id: 'logout', label: 'Sign out', icon: 'sign-out-alt', divided: true },
+			{ id: 'profile', label: 'Profile', icon: { type: 'icon', value: 'user' } },
+			{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'cog' } },
+			{
+				id: 'logout',
+				label: 'Sign out',
+				icon: { type: 'icon', value: 'sign-out-alt' },
+				divided: true,
+			},
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const EmojiActivator: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu
+				:items="args.items"
+				:activator-icon="{ type: 'emoji', value: '✨' }"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'option1', label: 'Option 1' },
+			{ id: 'option2', label: 'Option 2' },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -139,9 +171,14 @@ export const WithDisabledItems: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'edit', label: 'Edit', icon: 'pen' },
-			{ id: 'duplicate', label: 'Duplicate', icon: 'copy', disabled: true },
-			{ id: 'delete', label: 'Delete', icon: 'trash' },
+			{ id: 'edit', label: 'Edit', icon: { type: 'icon', value: 'pen' } },
+			{
+				id: 'duplicate',
+				label: 'Duplicate',
+				icon: { type: 'icon', value: 'copy' },
+				disabled: true,
+			},
+			{ id: 'delete', label: 'Delete', icon: { type: 'icon', value: 'trash' } },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -188,9 +225,9 @@ export const WithBadgesAndShortcuts: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'save', label: 'Save', icon: 'save' },
-			{ id: 'share', label: 'Share', icon: 'share-alt' },
-			{ id: 'pro', label: 'Pro Feature', icon: 'star', disabled: true },
+			{ id: 'save', label: 'Save', icon: { type: 'icon', value: 'save' } },
+			{ id: 'share', label: 'Share', icon: { type: 'icon', value: 'share-alt' } },
+			{ id: 'pro', label: 'Pro Feature', icon: { type: 'icon', value: 'star' }, disabled: true },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -317,7 +354,7 @@ export const NestedMenu: Story = {
 			<DropdownMenu
 				:items="args.items"
 				placement="bottom-start"
-				activator-icon="plus"
+				:activator-icon="{ type: 'icon', value: 'plus' }"
 				@select="handleSelect"
 			/>
 		</div>
@@ -328,27 +365,27 @@ export const NestedMenu: Story = {
 			{
 				id: 'workflow',
 				label: 'Workflow',
-				icon: 'tags',
+				icon: { type: 'icon', value: 'tags' },
 				children: [
-					{ id: 'personal', label: 'Personal' },
-					{ id: 'adore', label: 'Adore' },
-					{ id: 'assistant', label: 'AI Assistant' },
-					{ id: 'cloud', label: 'Cloud' },
-					{ id: 'Design', label: 'Design' },
-					{ id: 'studies', label: 'Diary studies' },
-					{ id: 'evals', label: 'Evaluations workshop', icon: 'layers' },
+					{ id: 'personal', label: 'Personal', icon: { type: 'icon', value: 'user' } },
+					{ id: 'adore', label: 'Adore', icon: { type: 'emoji', value: '😍' } },
+					{ id: 'assistant', label: 'AI Assistant', icon: { type: 'emoji', value: '🔮' } },
+					{ id: 'cloud', label: 'Cloud', icon: { type: 'emoji', value: '🌏' } },
+					{ id: 'Design', label: 'Design', icon: { type: 'emoji', value: '🎨' } },
+					{ id: 'studies', label: 'Diary studies', icon: { type: 'emoji', value: '📖' } },
+					{ id: 'evals', label: 'Evaluations workshop', icon: { type: 'icon', value: 'layers' } },
 				],
 			},
 			{
 				id: 'credential',
 				label: 'Credential',
-				icon: 'lock',
+				icon: { type: 'icon', value: 'lock' },
 				children: [
-					{ id: 'gmail', label: 'Gmail' },
-					{ id: 'airtable', label: 'Airtable' },
+					{ id: 'gmail', label: 'Gmail', icon: { type: 'icon', value: 'mail' } },
+					{ id: 'airtable', label: 'Airtable', icon: { type: 'icon', value: 'table' } },
 				],
 			},
-			{ id: 'project', label: 'Project', icon: 'layers', disabled: true },
+			{ id: 'project', label: 'Project', icon: { type: 'icon', value: 'layers' }, disabled: true },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -371,11 +408,11 @@ export const MoreLevels: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'new', label: 'New', icon: 'plus' },
+			{ id: 'new', label: 'New', icon: { type: 'icon', value: 'plus' } },
 			{
 				id: 'open',
 				label: 'Open',
-				icon: 'folder-open',
+				icon: { type: 'icon', value: 'folder-open' },
 				children: [
 					{ id: 'open-recent', label: 'Recent Files' },
 					{ id: 'open-folder', label: 'Open Folder...' },
@@ -390,19 +427,19 @@ export const MoreLevels: Story = {
 					},
 				],
 			},
-			{ id: 'save', label: 'Save', icon: 'save' },
+			{ id: 'save', label: 'Save', icon: { type: 'icon', value: 'save' } },
 			{
 				id: 'export',
 				label: 'Export As',
-				icon: 'download',
+				icon: { type: 'icon', value: 'download' },
 				divided: true,
 				children: [
-					{ id: 'export-pdf', label: 'PDF', icon: 'file' },
-					{ id: 'export-png', label: 'PNG', icon: 'file' },
-					{ id: 'export-json', label: 'JSON', icon: 'file' },
+					{ id: 'export-pdf', label: 'PDF', icon: { type: 'icon', value: 'file' } },
+					{ id: 'export-png', label: 'PNG', icon: { type: 'icon', value: 'file' } },
+					{ id: 'export-json', label: 'JSON', icon: { type: 'icon', value: 'file' } },
 				],
 			},
-			{ id: 'settings', label: 'Settings', icon: 'cog', divided: true },
+			{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'cog' }, divided: true },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -425,19 +462,19 @@ export const SubMenuLoading: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'new', label: 'New', icon: 'plus' },
+			{ id: 'new', label: 'New', icon: { type: 'icon', value: 'plus' } },
 			{
 				id: 'open',
 				label: 'Open Recent',
-				icon: 'folder-open',
+				icon: { type: 'icon', value: 'folder-open' },
 				loading: true,
 				loadingItemCount: 4,
 			},
-			{ id: 'save', label: 'Save', icon: 'save' },
+			{ id: 'save', label: 'Save', icon: { type: 'icon', value: 'save' } },
 			{
 				id: 'export',
 				label: 'Export As',
-				icon: 'download',
+				icon: { type: 'icon', value: 'download' },
 				children: [
 					{ id: 'export-pdf', label: 'PDF' },
 					{
@@ -458,14 +495,14 @@ export const Searchable: Story = {
 		components: { DropdownMenu },
 		setup() {
 			const allItems: Array<DropdownMenuItemProps<string>> = [
-				{ id: 'tags', label: 'Tags', icon: 'tags' },
-				{ id: 'credentials', label: 'Credentials', icon: 'lock' },
-				{ id: 'variables', label: 'Variables', icon: 'variable' },
-				{ id: 'executions', label: 'Executions', icon: 'list' },
-				{ id: 'created', label: 'Created', icon: 'calendar' },
-				{ id: 'updated', label: 'Updated', icon: 'calendar' },
-				{ id: 'dataTables', label: 'Data tables', icon: 'table' },
-				{ id: 'settings', label: 'Settings', icon: 'settings' },
+				{ id: 'tags', label: 'Tags', icon: { type: 'icon', value: 'tags' } },
+				{ id: 'credentials', label: 'Credentials', icon: { type: 'icon', value: 'lock' } },
+				{ id: 'variables', label: 'Variables', icon: { type: 'icon', value: 'variable' } },
+				{ id: 'executions', label: 'Executions', icon: { type: 'icon', value: 'list' } },
+				{ id: 'created', label: 'Created', icon: { type: 'icon', value: 'calendar' } },
+				{ id: 'updated', label: 'Updated', icon: { type: 'icon', value: 'calendar' } },
+				{ id: 'dataTables', label: 'Data tables', icon: { type: 'icon', value: 'table' } },
+				{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'settings' } },
 			];
 
 			const searchTerm = ref('');
@@ -518,7 +555,7 @@ export const SearchableWithSubmenus: Story = {
 				{
 					id: 'fruits',
 					label: 'Fruits',
-					icon: 'folder',
+					icon: { type: 'icon', value: 'folder' },
 					children: [
 						{ id: 'apple', label: 'Apple' },
 						{ id: 'banana', label: 'Banana' },
@@ -528,7 +565,7 @@ export const SearchableWithSubmenus: Story = {
 				{
 					id: 'vegetables',
 					label: 'Vegetables',
-					icon: 'folder',
+					icon: { type: 'icon', value: 'folder' },
 					children: [
 						{ id: 'carrot', label: 'Carrot' },
 						{ id: 'broccoli', label: 'Broccoli' },
@@ -538,7 +575,7 @@ export const SearchableWithSubmenus: Story = {
 				{
 					id: 'dairy',
 					label: 'Dairy',
-					icon: 'folder',
+					icon: { type: 'icon', value: 'folder' },
 					children: [
 						{ id: 'milk', label: 'Milk' },
 						{ id: 'cheese', label: 'Cheese' },

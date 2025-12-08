@@ -20,7 +20,7 @@ defineOptions({ inheritAttrs: false });
 const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	placement: 'bottom',
 	trigger: 'click',
-	activatorIcon: 'ellipsis',
+	activatorIcon: () => ({ type: 'icon', value: 'ellipsis' }),
 	disabled: false,
 	teleported: true,
 	loading: false,
@@ -167,7 +167,10 @@ defineExpose({ open, close });
 		</DropdownMenuTrigger>
 		<!-- Default trigger without as-child for proper attribute forwarding -->
 		<DropdownMenuTrigger v-else :class="$style.activator" :disabled="disabled">
-			<Icon :icon="activatorIcon" />
+			<Icon v-if="activatorIcon?.type === 'icon'" :icon="activatorIcon.value" />
+			<span v-else-if="activatorIcon?.type === 'emoji'" :class="$style['activator-emoji']">
+				{{ activatorIcon.value }}
+			</span>
 		</DropdownMenuTrigger>
 
 		<component :is="teleported ? DropdownMenuPortal : 'template'">
@@ -267,6 +270,11 @@ defineExpose({ open, close });
 		color: var(--color--text--tint-1);
 		cursor: not-allowed;
 	}
+}
+
+.activator-emoji {
+	font-size: var(--font-size--md);
+	line-height: 1;
 }
 
 .content {

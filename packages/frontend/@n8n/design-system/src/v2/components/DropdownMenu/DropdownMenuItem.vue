@@ -61,12 +61,15 @@ const handleItemSelect = () => {
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon
-						v-if="icon"
-						:icon="icon"
+						v-if="icon?.type === 'icon'"
+						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
 						:color="disabled ? 'text-xlight' : 'text-light'"
 						size="large"
 					/>
+					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
+						{{ icon.value }}
+					</span>
 				</slot>
 				<N8nText
 					:class="$style['item-label']"
@@ -112,12 +115,15 @@ const handleItemSelect = () => {
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
 				<Icon
-					v-if="icon"
-					:icon="icon"
+					v-if="icon?.type === 'icon'"
+					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					size="large"
 					:color="disabled ? 'text-xlight' : 'text-light'"
 				/>
+				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
+					{{ icon.value }}
+				</span>
 			</slot>
 			<N8nText
 				:class="$style['item-label']"
@@ -195,6 +201,11 @@ const handleItemSelect = () => {
 
 .item-leading {
 	flex-shrink: 0;
+}
+
+.emoji {
+	font-size: var(--font-size--xs);
+	line-height: 1;
 }
 
 .item-label {
