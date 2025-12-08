@@ -60,8 +60,8 @@ beforeEach(async () => {
 		'TagEntity',
 		'Project',
 		'ProjectRelation',
-		'WorkflowHistory',
-		'WorkflowPublishHistory',
+		// 'WorkflowHistory',
+		// 'WorkflowPublishHistory',
 	]);
 
 	projectRepository = Container.get(ProjectRepository);
