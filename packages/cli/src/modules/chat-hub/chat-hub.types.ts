@@ -60,7 +60,7 @@ const ChatTriggerResponseModeSchema = z.enum([
 export type ChatTriggerResponseMode = z.infer<typeof ChatTriggerResponseModeSchema>;
 
 export const chatTriggerParamsShape = z.object({
-	availableInChat: z.boolean(),
+	availableInChat: z.boolean().optional().default(false),
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
 	options: z

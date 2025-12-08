@@ -571,7 +571,7 @@ export class ChatHubService {
 
 		const chatTrigger = chatTriggers[0];
 
-		if (chatTrigger.typeVersion < 1.2) {
+		if (chatTrigger.typeVersion < 1.4) {
 			throw new BadRequestError(
 				'Chat Trigger node version is too old to support Chat. Please update the node.',
 			);
@@ -586,14 +586,12 @@ export class ChatHubService {
 			throw new BadRequestError('Chat Trigger node must be made available in Chat');
 		}
 
-		if (chatTriggerParams.options?.responseMode !== 'streaming') {
+		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
+		if (responseMode !== 'streaming') {
 			throw new BadRequestError(
 				'Chat Trigger node response mode must be set to streaming to use the workflow on Chat',
 			);
 		}
-
-		// TODO: Support other response modes
-		const responseMode = chatTriggerParams.options?.responseMode;
 
 		const chatResponseNodes = workflow.activeVersion.nodes.filter(
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
