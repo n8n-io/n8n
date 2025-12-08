@@ -8,7 +8,6 @@
 		"build": "tsc",
 		"dev": "tsx watch src/server.ts",
 		"start": "node dist/server.js",
-		"lint": "eslint . --ext .ts",
 		"format": "prettier --write \"src/**/*.ts\""
 	},
 	"keywords": [
@@ -30,7 +29,6 @@
 		"zod": "3.25.67"
 	},
 	"devDependencies": {
-		"@n8n/eslint-config": "workspace:*",
 		"@types/node": "20.19.21",
 		"tsx": "4.19.3",
 		"typescript": "5.9.2"

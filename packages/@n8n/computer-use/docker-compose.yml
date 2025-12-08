@@ -9,7 +9,6 @@ services:
     ports:
       - '8765:8765' # API server
       - '5900:5900' # VNC server
-      - '6080:6080' # noVNC
     environment:
       - DISPLAY=:1
       - WIDTH=1280

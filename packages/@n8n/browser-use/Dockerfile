@@ -9,7 +9,7 @@ RUN npm install -g pnpm
 # Copy package files
 COPY package.json tsconfig.json ./
 
-# Install all dependencies (including dev for build)
+# Install dependencies
 RUN pnpm install --no-lockfile
 
 # Copy source and build

@@ -36,19 +36,10 @@ echo "Starting VNC server on port 5900..."
 x11vnc -display ${DISPLAY} -forever -shared -rfbport 5900 -nopw -q &
 PIDS="$PIDS $!"
 
-# Optional: Start noVNC web viewer
-# This allows viewing the desktop via a web browser
-if command -v websockify >/dev/null 2>&1; then
-    echo "Starting noVNC on port 6080..."
-    websockify --web=/usr/share/novnc 6080 localhost:5900 &
-    PIDS="$PIDS $!"
-fi
-
 echo "All services started"
 echo "  - Display: ${DISPLAY}"
 echo "  - Resolution: ${WIDTH}x${HEIGHT}"
 echo "  - VNC: port 5900"
-echo "  - noVNC: port 6080 (if available)"
 
 # Keep services running - wait for any child to exit
 wait
