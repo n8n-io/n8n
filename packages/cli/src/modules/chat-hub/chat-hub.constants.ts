@@ -500,13 +500,6 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'openai/o3-deep-research': {
 			available: false,
 		},
-		// Geo-restricted - availability depends on location
-		'meta/llama-3.2-11b': {
-			available: false,
-		},
-		'meta/llama-3.2-90b': {
-			available: false,
-		},
 		// Model not found - may have been deprecated
 		'meituan/longcat-flash-thinking': {
 			available: false,
