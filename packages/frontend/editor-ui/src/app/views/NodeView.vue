@@ -2141,7 +2141,7 @@ onBeforeUnmount(() => {
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop
-				@stop="builderStore.stopStreaming"
+				@stop="builderStore.abortStreaming"
 			/>
 
 			<Suspense>
