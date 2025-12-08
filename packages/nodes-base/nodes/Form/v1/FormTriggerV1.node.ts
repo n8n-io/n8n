@@ -29,7 +29,6 @@ const descriptionV1: INodeTypeDescription = {
 	},
 	features: {
 		allowRespondToWebhook: { '@version': [1] }, // v1 allows respond to webhook
-		useFieldLabel: { '@version': [1] }, // v1 uses fieldLabel
 		useLegacyMultiselect: { '@version': [1] }, // v1 shows multiselect
 	},
 	inputs: [],

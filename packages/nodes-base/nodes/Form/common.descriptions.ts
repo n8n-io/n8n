@@ -69,7 +69,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['html'],
 						},
 						show: {
-							'@feature': ['useFieldName'],
+							'@feature': [{ _cnd: { eq: 'useFieldName' } }],
 						},
 					},
 				},
@@ -86,7 +86,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['hiddenField', 'html'],
 						},
 						show: {
-							'@feature': ['useFieldName'],
+							'@feature': [{ _cnd: { eq: 'useFieldName' } }],
 						},
 					},
 				},
@@ -103,7 +103,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['hiddenField', 'html'],
 						},
 						show: {
-							'@feature': ['useFieldLabel'],
+							'@feature': [{ _cnd: { not: 'useFieldName' } }],
 						},
 					},
 				},
@@ -117,7 +117,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['hiddenField'],
-							'@feature': ['useFieldLabel'],
+							'@feature': [{ _cnd: { not: 'useFieldName' } }],
 						},
 					},
 				},
@@ -377,7 +377,7 @@ export const formFields: INodeProperties = {
 						show: {
 							multiselect: [true],
 							fieldType: ['dropdown'],
-							'@feature': ['useLegacyMultiselect'],
+							'@feature': [{ _cnd: { eq: 'useLegacyMultiselect' } }],
 						},
 					},
 				},
@@ -391,7 +391,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
-							'@feature': ['useLegacyMultiselect'],
+							'@feature': [{ _cnd: { eq: 'useLegacyMultiselect' } }],
 						},
 					},
 				},

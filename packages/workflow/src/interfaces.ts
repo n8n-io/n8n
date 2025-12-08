@@ -1576,7 +1576,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
-		'@feature'?: string[];
+		'@feature'?: Array<string | DisplayCondition>;
 		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};

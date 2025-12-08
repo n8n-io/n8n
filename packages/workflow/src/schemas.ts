@@ -302,7 +302,7 @@ export const IDisplayOptionsSchema: z.ZodType<IDisplayOptions> = z.object({
 	show: z
 		.object({
 			'@version': z.array(z.union([z.number(), DisplayConditionSchema])).optional(),
-			'@feature': z.array(z.string()).optional(),
+			'@feature': z.array(z.union([z.string(), DisplayConditionSchema])).optional(),
 			'@tool': z.array(z.boolean()).optional(),
 		})
 		.catchall(

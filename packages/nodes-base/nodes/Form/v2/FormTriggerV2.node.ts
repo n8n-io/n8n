@@ -48,7 +48,6 @@ const descriptionV2: INodeTypeDescription = {
 		defaultUseWorkflowTimezone: { '@version': [{ _cnd: { gt: 2 } }] }, // v2.1+ defaults to true
 		allowRespondToWebhook: { '@version': [{ _cnd: { lte: 2.1 } }] }, // v2.2+ doesn't allow
 		useFieldName: { '@version': [{ _cnd: { gte: 2.4 } }] }, // v2.4+ uses fieldName
-		useFieldLabel: { '@version': [{ _cnd: { lt: 2.4 } }] }, // v2.3 and below uses fieldLabel
 		useWebhookPath: { '@version': [{ _cnd: { lte: 2.1 } }] }, // Show in main properties for v2.1 and below
 		useWebhookPathInOptions: { '@version': [{ _cnd: { gte: 2.2 } }] }, // Show in options for v2.2+
 		useResponseNodeOption: { '@version': [{ _cnd: { gte: 2.2 } }] }, // Show 'responseNode' option for v2.2+
@@ -110,20 +109,23 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		{ ...webhookPath, displayOptions: { show: { '@feature': ['useWebhookPath'] } } },
+		{
+			...webhookPath,
+			displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useWebhookPath' } }] } },
+		},
 		formTitle,
 		formDescription,
 		formFields,
 		{
 			...formRespondMode,
-			displayOptions: { show: { '@feature': ['useWebhookPath'] } },
+			displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useWebhookPath' } }] } },
 		},
 		{
 			...formRespondMode,
 			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
 				(option) => option.value !== 'responseNode',
 			),
-			displayOptions: { show: { '@feature': ['useResponseNodeOption'] } },
+			displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useResponseNodeOption' } }] } },
 		},
 		{
 			displayName:
@@ -160,7 +162,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...webhookPath,
 					required: false,
-					displayOptions: { show: { '@feature': ['useWebhookPathInOptions'] } },
+					displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useWebhookPathInOptions' } }] } },
 				},
 				{
 					...respondWithOptions,
@@ -183,7 +185,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': ['useWorkflowTimezone'],
+							'@feature': [{ _cnd: { eq: 'useWorkflowTimezone' } }],
 						},
 					},
 				},
@@ -193,7 +195,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': ['defaultUseWorkflowTimezone'],
+							'@feature': [{ _cnd: { eq: 'defaultUseWorkflowTimezone' } }],
 						},
 					},
 				},
@@ -207,7 +209,7 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					displayOptions: {
 						show: {
-							'@feature': ['defaultUseWorkflowTimezone'],
+							'@feature': [{ _cnd: { eq: 'defaultUseWorkflowTimezone' } }],
 						},
 					},
 					default: cssVariables.trim(),
