@@ -310,7 +310,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('applyTriggerNodeTypeFilter', () => {
-		it('should left join activeVersion and filter with fallback for PostgreSQL', async () => {
+		it('should left join activeVersion and use COALESCE for PostgreSQL', async () => {
 			const workflowIds = ['workflow1'];
 			const options = {
 				filter: { triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
@@ -319,19 +319,14 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
-			// Should check activeVersion.nodes if workflow has active version,
-			// otherwise fall back to workflow.nodes
+			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('activeVersion.nodes::text LIKE :triggerNodeType'),
-				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
-			);
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('workflow.nodes::text LIKE :triggerNodeType'),
+				'COALESCE(activeVersion.nodes::text, workflow.nodes::text) LIKE :triggerNodeType',
 				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
 			);
 		});
 
-		it('should left join activeVersion and filter with fallback for SQLite', async () => {
+		it('should left join activeVersion and use COALESCE for SQLite', async () => {
 			const sqliteConfig = mockInstance(GlobalConfig, {
 				database: { type: 'sqlite' },
 			});
@@ -351,19 +346,14 @@ describe('WorkflowRepository', () => {
 			await sqliteWorkflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
-			// Should check activeVersion.nodes if workflow has active version,
-			// otherwise fall back to workflow.nodes
+			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('activeVersion.nodes LIKE :triggerNodeType'),
-				{ triggerNodeType: '%n8n-nodes-base.errorTrigger%' },
-			);
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('workflow.nodes LIKE :triggerNodeType'),
+				'COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType',
 				{ triggerNodeType: '%n8n-nodes-base.errorTrigger%' },
 			);
 		});
 
-		it('should left join activeVersion and filter with fallback for MySQL', async () => {
+		it('should left join activeVersion and use COALESCE for MySQL', async () => {
 			const mysqlConfig = mockInstance(GlobalConfig, {
 				database: { type: 'mysqldb' },
 			});
@@ -383,14 +373,9 @@ describe('WorkflowRepository', () => {
 			await mysqlWorkflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
-			// Should check activeVersion.nodes if workflow has active version,
-			// otherwise fall back to workflow.nodes
+			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('activeVersion.nodes LIKE :triggerNodeType'),
-				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
-			);
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('workflow.nodes LIKE :triggerNodeType'),
+				'COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType',
 				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
 			);
 		});
@@ -419,7 +404,7 @@ describe('WorkflowRepository', () => {
 
 			// But the filter should still be applied
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('activeVersion.nodes::text LIKE :triggerNodeType'),
+				'COALESCE(activeVersion.nodes::text, workflow.nodes::text) LIKE :triggerNodeType',
 				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
 			);
 		});
@@ -433,7 +418,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
-				call[0]?.includes('triggerNodeType'),
+				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(triggerFilterCalls).toHaveLength(0);
 		});
@@ -447,7 +432,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
-				call[0]?.includes('triggerNodeType'),
+				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(triggerFilterCalls).toHaveLength(0);
 		});
@@ -466,10 +451,10 @@ describe('WorkflowRepository', () => {
 
 			// Should have called andWhere for both name and triggerNodeType filters
 			const nameFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
-				call[0]?.includes('workflow.name'),
+				call[0]?.includes?.('workflow.name'),
 			);
 			const triggerFilterCalls = (queryBuilder.andWhere as jest.Mock).mock.calls.filter((call) =>
-				call[0]?.includes('triggerNodeType'),
+				call[0]?.includes?.('triggerNodeType'),
 			);
 			expect(nameFilterCalls.length).toBeGreaterThan(0);
 			expect(triggerFilterCalls.length).toBeGreaterThan(0);
