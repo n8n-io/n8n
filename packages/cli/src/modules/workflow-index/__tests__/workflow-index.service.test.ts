@@ -242,6 +242,76 @@ describe('WorkflowIndexService', () => {
 				}),
 			);
 		});
+
+		it('should skip disabled nodes', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.httpRequest',
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.webhook',
+					parameters: { path: 'test-path' },
+					disabled: true,
+				}),
+			]);
+
+			await service.updateIndexFor(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dependencies = call[1].dependencies;
+
+			// Only node-1 dependency should be present
+			expect(dependencies).toHaveLength(1);
+			expect(dependencies).toEqual([
+				expect.objectContaining({
+					dependencyType: 'nodeType',
+					dependencyKey: 'n8n-nodes-base.httpRequest',
+					dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+				}),
+			]);
+		});
+
+		it('should skip credentials with null or empty id', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.httpRequest',
+					credentials: {
+						httpAuth: { id: 'cred-1', name: 'Valid Auth' },
+						apiKey: { id: null, name: 'Invalid API Key' },
+						oAuth2: { id: '', name: 'Empty OAuth2' },
+					},
+				}),
+			]);
+
+			await service.updateIndexFor(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dependencies = call[1].dependencies;
+
+			// Should have nodeType + only 1 credential (cred-1)
+			expect(dependencies).toHaveLength(2);
+			expect(dependencies).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'nodeType',
+						dependencyKey: 'n8n-nodes-base.httpRequest',
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+					}),
+					expect.objectContaining({
+						dependencyType: 'credentialId',
+						dependencyKey: 'cred-1',
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+					}),
+				]),
+			);
+		});
 	});
 
 	describe('init()', () => {
