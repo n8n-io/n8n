@@ -6,6 +6,7 @@ import type {
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
+	WorkflowHistory,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -26,6 +27,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
+import type { INode, INodes } from 'n8n-workflow';
 import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -37,10 +39,12 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { NodeTypes } from '@/node-types';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
@@ -48,6 +52,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowValidationService } from './workflow-validation.service';
 
 @Service()
 export class WorkflowService {
@@ -71,6 +77,8 @@ export class WorkflowService {
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowValidationService: WorkflowValidationService,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	async getMany(
@@ -519,13 +527,19 @@ export class WorkflowService {
 			);
 		}
 
-		const versionToActivate = options?.versionId ?? workflow.versionId;
+		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const wasActive = workflow.activeVersionId !== null;
 
+		let versionToActivate: WorkflowHistory;
 		try {
-			await this.workflowHistoryService.getVersion(user, workflow.id, versionToActivate, {
-				includePublishHistory: false,
-			});
+			versionToActivate = await this.workflowHistoryService.getVersion(
+				user,
+				workflow.id,
+				versionIdToActivate,
+				{
+					includePublishHistory: false,
+				},
+			);
 		} catch (error) {
 			if (error instanceof WorkflowHistoryVersionNotFoundError) {
 				throw new NotFoundError('Version not found');
@@ -537,6 +551,8 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
+		this._validateNodes(workflowId, versionToActivate.nodes);
+
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
@@ -544,7 +560,7 @@ export class WorkflowService {
 		const activationMode = wasActive ? 'update' : 'activate';
 
 		await this.workflowRepository.update(workflowId, {
-			activeVersionId: versionToActivate,
+			activeVersionId: versionIdToActivate,
 			active: true,
 			// workflow content did not change, so we keep updatedAt as is
 			updatedAt: workflow.updatedAt,
@@ -578,7 +594,11 @@ export class WorkflowService {
 			const updateFields: WorkflowHistoryUpdate = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
-			await this.workflowHistoryService.updateVersion(versionToActivate, workflowId, updateFields);
+			await this.workflowHistoryService.updateVersion(
+				versionIdToActivate,
+				workflowId,
+				updateFields,
+			);
 		}
 
 		// Fetch workflow again with workflowPublishHistory after activation to include the new entry
@@ -888,6 +908,25 @@ export class WorkflowService {
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 				100,
 			);
+		}
+	}
+
+	_validateNodes(workflowId: string, nodes: INode[]) {
+		const nodesToValidate = nodes.reduce<INodes>((acc, node) => {
+			acc[node.name] = node;
+			return acc;
+		}, {});
+		const validation = this.workflowValidationService.validateForActivation(
+			nodesToValidate,
+			this.nodeTypes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
 		}
 	}
 }

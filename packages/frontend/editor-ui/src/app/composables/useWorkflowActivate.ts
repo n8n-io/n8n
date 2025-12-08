@@ -214,7 +214,10 @@ export function useWorkflowActivate() {
 					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
-			workflowsStore.setWorkflowInactive(workflowId);
+			// Only update workflow state to inactive if this is not a validation error
+			if (!error.meta?.validationError) {
+				workflowsStore.setWorkflowInactive(workflowId);
+			}
 			return false;
 		} finally {
 			updatingWorkflowActivation.value = false;

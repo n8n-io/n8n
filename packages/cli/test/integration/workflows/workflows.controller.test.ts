@@ -29,6 +29,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
@@ -67,6 +68,7 @@ const testServer = utils.setupTestServer({
 const { objectContaining, arrayContaining, any } = expect;
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
+const workflowValidationService = mockInstance(WorkflowValidationService);
 
 let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
@@ -97,6 +99,8 @@ beforeEach(async () => {
 	member = await createMember();
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
+
+	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
 		roleType: 'project',
@@ -3113,14 +3117,14 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 		const emitSpy = jest.spyOn(eventService, 'emit');
 
-		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
+		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Activation failed'));
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: newVersionId });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Validation failed');
+		expect(response.body.message).toBe('Activation failed');
 
 		const updatedWorkflow = await workflowRepository.findOne({
 			where: { id: workflow.id },
