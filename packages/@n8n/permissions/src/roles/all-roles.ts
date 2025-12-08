@@ -41,8 +41,7 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 		'Full control of settings, members, workflows, credentials and executions',
 	[PROJECT_EDITOR_ROLE_SLUG]: 'Create, edit, and delete workflows, credentials, and executions',
 	[PROJECT_VIEWER_ROLE_SLUG]: 'Read-only access to workflows, credentials, and executions',
-	[PROJECT_CHAT_USER_ROLE_SLUG]:
-		'Access to chat with workflows within the project without access to workflows, credentials, or executions',
+	[PROJECT_CHAT_USER_ROLE_SLUG]: 'Chat-only access to chatting with workflows that allow n8n Chat',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
