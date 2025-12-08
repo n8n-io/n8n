@@ -10,7 +10,6 @@ type Props = {
 	value: string;
 	infoTip?: string;
 	allowCopy?: boolean;
-	maxWidth?: number;
 };
 
 const { copy, copied, isSupported } = useClipboard();
@@ -33,10 +32,7 @@ const handleCopy = async (value: string) => {
 </script>
 
 <template>
-	<div
-		:class="$style.container"
-		:style="{ maxWidth: props.maxWidth ? props.maxWidth + 'px' : 'none' }"
-	>
+	<div :class="$style.container">
 		<div :class="$style['label-wrapper']">
 			<label :class="$style.label" :for="`connection-parameter-${props.id}`">
 				{{ props.label }}

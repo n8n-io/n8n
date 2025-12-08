@@ -137,7 +137,6 @@ onMounted(async () => {
 				:value="apiKey.apiKey"
 				:label="i18n.baseText('settings.mcp.connectPopover.tab.accessToken')"
 				:info-tip="i18n.baseText('settings.mcp.instructions.apiKey.tip')"
-				:max-width="MCP_CONNECT_POPOVER_WIDTH"
 				:allow-copy="!isKeyRedacted"
 				@copy="handleAccessTokenCopy"
 			>
