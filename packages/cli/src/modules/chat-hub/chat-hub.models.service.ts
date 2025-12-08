@@ -10,22 +10,21 @@ import {
 import { In, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
-	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	type INodeCredentials,
 	type INodePropertyOptions,
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { chatTriggerParamsShape } from './chat-hub.types';
+
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { validChatTriggerParamsShape } from './chat-hub.types';
 
 @Service()
 export class ChatHubModelsService {
@@ -747,17 +746,8 @@ export class ChatHubModelsService {
 				continue;
 			}
 
-			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-			if (!chatTriggerParams) {
-				continue;
-			}
-
-			const agentNodes = activeVersion.nodes?.filter(
-				(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
-			);
-
-			// Agents older than this can't do streaming
-			if (agentNodes.some((node) => node.typeVersion < 2.1)) {
+			const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+			if (!chatTriggerParams?.availableInChat) {
 				continue;
 			}
 
