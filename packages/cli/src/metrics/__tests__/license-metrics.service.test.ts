@@ -43,6 +43,7 @@ describe('LicenseMetricsService', () => {
 			);
 
 			const mockRenewalMetrics = {
+				activeTriggers: 150,
 				activeWorkflows: 100,
 				totalWorkflows: 200,
 				enabledUsers: 300,
