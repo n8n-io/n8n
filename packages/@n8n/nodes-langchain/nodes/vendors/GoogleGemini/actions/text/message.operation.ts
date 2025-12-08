@@ -185,6 +185,19 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Include Merged Response',
+				name: 'includeMergedResponse',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to include a single output string merging all text parts of the response',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			{
 				displayName: 'System Message',
 				name: 'systemMessage',
 				type: 'string',
@@ -343,6 +356,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	validateNodeParameters(
 		options,
 		{
+			includeMergedResponse: { type: 'boolean', required: false },
 			systemMessage: { type: 'string', required: false },
 			codeExecution: { type: 'boolean', required: false },
 			frequencyPenalty: { type: 'number', required: false },
@@ -542,16 +556,30 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		currentIteration++;
 	}
 
+	const mergedResponse = options.includeMergedResponse
+		? response.candidates
+				.flatMap((candidate) => candidate.content.parts)
+				.filter((part) => 'text' in part)
+				.map((part) => (part as { text: string }).text)
+				.join('')
+		: undefined;
+
 	if (simplify) {
 		return response.candidates.map((candidate) => ({
-			json: candidate,
+			json: {
+				...candidate,
+				merged_response: mergedResponse,
+			},
 			pairedItem: { item: i },
 		}));
 	}
 
 	return [
 		{
-			json: { ...response },
+			json: {
+				...response,
+				merged_response: mergedResponse,
+			},
 			pairedItem: { item: i },
 		},
 	];
