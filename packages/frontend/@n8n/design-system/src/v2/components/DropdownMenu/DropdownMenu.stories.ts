@@ -45,9 +45,15 @@ export const Basic: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 'edit', label: 'Edit', icon: 'pen' },
-			{ id: 'duplicate', label: 'Duplicate', icon: 'copy' },
-			{ id: 'delete', label: 'Delete', icon: 'trash', divided: true },
+			{ id: 'tags', label: 'Tags', icon: 'tags' },
+			{ id: 'credentials', label: 'Credentials', icon: 'lock' },
+			{ id: 'variables', label: 'Variables', icon: 'variable' },
+			{ id: 'executions', label: 'Executions', icon: 'list' },
+			{ id: 'created', label: 'Created', icon: 'calendar' },
+			{ id: 'updated', label: 'Updated', icon: 'calendar' },
+			{ id: 'dataTables', label: 'Data tables', icon: 'tags' },
+			{ id: 'settings', label: 'Settings', icon: 'settings' },
+			{ id: 'thrash', label: 'Delete', icon: 'trash-2', divided: true },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -445,14 +451,14 @@ export const Searchable: Story = {
 		components: { DropdownMenu },
 		setup() {
 			const allItems: Array<DropdownMenuItemProps<string>> = [
-				{ id: 'apple', label: 'Apple' },
-				{ id: 'banana', label: 'Banana' },
-				{ id: 'cherry', label: 'Cherry' },
-				{ id: 'date', label: 'Date' },
-				{ id: 'elderberry', label: 'Elderberry' },
-				{ id: 'fig', label: 'Fig' },
-				{ id: 'grape', label: 'Grape' },
-				{ id: 'honeydew', label: 'Honeydew' },
+				{ id: 'tags', label: 'Tags', icon: 'tags' },
+				{ id: 'credentials', label: 'Credentials', icon: 'lock' },
+				{ id: 'variables', label: 'Variables', icon: 'variable' },
+				{ id: 'executions', label: 'Executions', icon: 'list' },
+				{ id: 'created', label: 'Created', icon: 'calendar' },
+				{ id: 'updated', label: 'Updated', icon: 'calendar' },
+				{ id: 'dataTables', label: 'Data tables', icon: 'tags' },
+				{ id: 'settings', label: 'Settings', icon: 'settings' },
 			];
 
 			const searchTerm = ref('');
@@ -482,6 +488,7 @@ export const Searchable: Story = {
 				searchable
 				:search-placeholder="args.searchPlaceholder"
 				:search-debounce="args.searchDebounce"
+				:show-search-icon="false"
 				@search="handleSearch"
 				@select="handleSelect"
 			/>
@@ -490,7 +497,7 @@ export const Searchable: Story = {
 	}),
 	args: {
 		items: [] as Array<DropdownMenuItemProps<string>>,
-		searchPlaceholder: 'Search fruits...',
+		searchPlaceholder: 'Search items',
 		searchDebounce: 300,
 	},
 };
@@ -581,7 +588,6 @@ export const SearchableWithSubmenus: Story = {
 			<DropdownMenu
 				:items="filteredItems"
 				searchable
-				:show-search-icon="false"
 				search-placeholder="Search all items..."
 				:search-debounce="200"
 				@search="handleSearch"
