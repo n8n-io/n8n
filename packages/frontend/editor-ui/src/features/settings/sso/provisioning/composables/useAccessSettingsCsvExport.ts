@@ -22,32 +22,33 @@ async function fetchUsers(context: IRestApiContext): Promise<AccessSettingsUserD
 		expand: ['projectRelations'],
 	};
 
-	let skip = 0;
-	const take = 50;
-	let totalCount: number | undefined;
+	const PAGE_SIZE = 50;
+	let currentPage = 0;
+	let totalCount = 0;
+	let hasMorePages = true;
 
-	while (totalCount === undefined || allUsers.length < totalCount) {
+	while (hasMorePages) {
 		const filter: UsersListFilterDto = {
 			...fieldsNeededForAccessSettingExport,
 			sortBy: ['email:desc'],
-			take,
-			skip,
+			take: PAGE_SIZE,
+			skip: currentPage * PAGE_SIZE,
 		};
+
 		const response = await usersApi.getUsers(context, filter);
 
-		totalCount = response.count;
+		if (currentPage === 0) {
+			totalCount = response.count;
+		}
 
 		allUsers.push(...response.items);
 
-		if (allUsers.length >= totalCount) {
-			break;
-		}
-
-		skip += take;
+		hasMorePages = response.items.length === PAGE_SIZE && allUsers.length < totalCount;
+		currentPage++;
 	}
 
 	return {
-		count: totalCount ?? 0,
+		count: totalCount,
 		items: allUsers,
 	};
 }
