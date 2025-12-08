@@ -5,6 +5,7 @@ import {
 	CHAT_WAIT_USER_REPLY,
 	NodeConnectionTypes,
 	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -109,25 +110,21 @@ const limitWaitTimeOption: INodeProperties = {
 			values: limitWaitTimeProperties,
 		},
 	],
-	displayOptions: {
-		show: {
-			[`/${CHAT_WAIT_USER_REPLY}`]: [true],
-		},
-	},
 };
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
 		usableAsTool: true,
-		displayName: 'Respond to Chat',
+		displayName: 'Chat',
 		name: 'chat',
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Send a message to a chat',
 		defaults: {
-			name: 'Respond to Chat',
+			name: 'Chat',
 		},
 		codex: {
 			categories: ['Core Nodes', 'HITL'],
@@ -154,6 +151,30 @@ export class Chat implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				default: 'sendMessage',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Send Message',
+						value: 'sendMessage',
+						action: 'Send a message',
+					},
+					{
+						name: 'Send and Wait for Response',
+						value: SEND_AND_WAIT_OPERATION,
+						action: 'Send message and wait for response',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
@@ -169,6 +190,11 @@ export class Chat implements INodeType {
 				type: 'boolean',
 				default: true,
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -188,7 +214,22 @@ export class Chat implements INodeType {
 						type: 'boolean',
 						default: false,
 					},
-					limitWaitTimeOption,
+					{
+						...limitWaitTimeOption,
+						displayOptions: {
+							show: {
+								[`/${CHAT_WAIT_USER_REPLY}`]: [true],
+							},
+						},
+					},
+					{
+						...limitWaitTimeOption,
+						displayOptions: {
+							show: {
+								'/operation': [SEND_AND_WAIT_OPERATION],
+							},
+						},
+					},
 				],
 			},
 			{
@@ -205,6 +246,20 @@ export class Chat implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [limitWaitTimeOption],
+				displayOptions: {
+					show: {
+						'@tool': [true],
+						'/operation': [SEND_AND_WAIT_OPERATION],
+					},
+				},
+			},
 		],
 	};
 
@@ -216,7 +271,14 @@ export class Chat implements INodeType {
 			memoryConnection?: boolean;
 		};
 
-		const waitForReply = context.getNodeParameter(CHAT_WAIT_USER_REPLY, 0, true) as boolean;
+		const nodeVersion = context.getNode().typeVersion;
+		let waitForReply;
+		if (nodeVersion >= 1.1) {
+			const operation = context.getNodeParameter('operation', 0, 'sendMessage');
+			waitForReply = operation === SEND_AND_WAIT_OPERATION;
+		} else {
+			waitForReply = context.getNodeParameter(CHAT_WAIT_USER_REPLY, 0, true) as boolean;
+		}
 
 		if (!waitForReply) {
 			const inputData = context.getInputData();
