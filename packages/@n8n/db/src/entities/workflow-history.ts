@@ -23,10 +23,10 @@ export class WorkflowHistory extends WithTimestamps {
 	@Column()
 	authors: string;
 
-	@Column({ nullable: true })
+	@Column({ type: 'text', nullable: true })
 	name: string | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'text', nullable: true })
 	description: string | null;
 
 	@ManyToOne('WorkflowEntity', {
