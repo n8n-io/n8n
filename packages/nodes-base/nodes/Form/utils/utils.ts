@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
 import type {
@@ -422,6 +423,9 @@ export async function prepareFormReturnItem(
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
 		}
 	}
 
