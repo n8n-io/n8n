@@ -286,10 +286,13 @@ export function getChatPayload(
 ): ChatPayload {
 	return {
 		id: `${evalType}-${uuid()}`,
+		featureFlags: featureFlags ?? {
+			multiAgent: true,
+			templateExamples: false,
+		},
 		message,
 		workflowContext: {
 			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
 		},
-		featureFlags,
 	};
 }

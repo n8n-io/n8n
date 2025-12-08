@@ -6,7 +6,6 @@ import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
-import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import { License } from '@/license';
@@ -112,7 +111,6 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
