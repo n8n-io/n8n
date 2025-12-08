@@ -218,17 +218,15 @@ defineExpose({ open, close });
 						<template v-for="item in items" :key="item.id">
 							<slot name="item" :item="item">
 								<N8nDropdownMenuItem v-bind="item" @select="handleItemSelect">
-									<template #item-leading="{ ui }">
-										<slot name="item-leading" :item="item" :ui="ui">
-											<Icon v-if="item.icon" :icon="item.icon" :class="ui.class" />
-										</slot>
+									<template v-if="slots['item-leading']" #item-leading="{ ui }">
+										<slot name="item-leading" :item="item" :ui="ui" />
 									</template>
 									<template #item-label>
 										<slot name="item-label" :item="item">
 											{{ item.label }}
 										</slot>
 									</template>
-									<template #item-trailing="{ ui }">
+									<template v-if="slots['item-trailing']" #item-trailing="{ ui }">
 										<slot name="item-trailing" :item="item" :ui="ui" />
 									</template>
 								</N8nDropdownMenuItem>
