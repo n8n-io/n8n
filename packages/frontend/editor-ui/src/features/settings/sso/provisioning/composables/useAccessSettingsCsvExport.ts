@@ -1,6 +1,7 @@
 import { type UsersListFilterDto } from '@n8n/api-types';
 import { ref } from 'vue';
 import * as usersApi from '@n8n/rest-api-client/api/users';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 interface AccessSettingsUserData {
@@ -39,6 +40,50 @@ function isAccessSettingsUserData(response: unknown): response is AccessSettings
 	return isValidItem;
 }
 
+/**
+ * Fetches all users in batches of 50 until all items are retrieved
+ */
+async function fetchUsers(
+	context: IRestApiContext,
+	baseFilter: Omit<UsersListFilterDto, 'take' | 'skip'>,
+): Promise<AccessSettingsUserData> {
+	const allUsers: AccessSettingsUserData['items'] = [];
+	let skip = 0;
+	const take = 50;
+	let totalCount: number | undefined;
+
+	while (totalCount === undefined || allUsers.length < totalCount) {
+		const filter: UsersListFilterDto = {
+			...baseFilter,
+			take,
+			skip,
+		};
+
+		const response = await usersApi.getUsers(context, filter);
+
+		if (!isAccessSettingsUserData(response)) {
+			// This case should never happen (as that would mean a breaking backend change)
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any
+			return response as any;
+		}
+
+		totalCount = response.count;
+
+		allUsers.push(...response.items);
+
+		if (allUsers.length >= totalCount) {
+			break;
+		}
+
+		skip += take;
+	}
+
+	return {
+		count: totalCount ?? 0,
+		items: allUsers,
+	};
+}
+
 export function useAccessSettingsCsvExport() {
 	const cachedUserData = ref<AccessSettingsUserData | undefined>();
 	const rootStore = useRootStore();
@@ -73,22 +118,15 @@ export function useAccessSettingsCsvExport() {
 		if (cachedUserData.value) {
 			return cachedUserData.value;
 		}
-		// TODO: add pagination
-		const filter: UsersListFilterDto = {
-			take: -1,
+
+		const userData = await fetchUsers(rootStore.restApiContext, {
 			select: ['email', 'role'],
 			sortBy: ['email:desc'],
 			expand: ['projectRelations'],
-			skip: 0,
-		};
-		const getUsersResponse = await usersApi.getUsers(rootStore.restApiContext, filter);
-		if (isAccessSettingsUserData(getUsersResponse)) {
-			cachedUserData.value = getUsersResponse;
-			return cachedUserData.value;
-		}
-		// This case should never happen (as that would mean a breaking backend change)
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any
-		return getUsersResponse as any;
+		});
+
+		cachedUserData.value = userData;
+		return cachedUserData.value;
 	};
 
 	const hasDownloadedProjectRoleCsv = ref(false);
