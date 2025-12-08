@@ -36,6 +36,7 @@ const isClipboardSupported = computed(() => {
 const isExpanded = ref(false);
 const userContentRef = ref<HTMLElement | null>(null);
 const isOverflowing = ref(false);
+// Should match --assistant--text-message--collapsed--max-height in _tokens.scss
 const MAX_HEIGHT = 200;
 
 function checkOverflow() {
@@ -95,7 +96,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					type="button"
 					@click="toggleExpanded"
 				>
-					{{ isExpanded ? t('assistantChat.showLess') : t('assistantChat.showMore') }}
+					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
 			</div>
 			<!-- Assistant message - simple text without container -->
@@ -158,7 +159,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 .userContent {
 	&.collapsed {
-		max-height: 200px;
+		max-height: var(--assistant--text-message--collapsed--max-height);
 		overflow: hidden;
 	}
 }

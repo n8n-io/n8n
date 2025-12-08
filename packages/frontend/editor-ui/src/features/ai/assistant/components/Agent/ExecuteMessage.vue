@@ -4,13 +4,12 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
-import CanvasRunWorkflowButton
-	from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { useToast } from '@/app/composables/useToast';
@@ -78,20 +77,38 @@ const triggerNodes = computed(() =>
 );
 
 /**
+ * Converts a locale string pattern with placeholders into a regex.
+ * E.g., "Credentials for {type} are not set." → /Credentials for .+ are not set\./i
+ */
+function localePatternToRegex(localeKey: BaseTextKey): RegExp {
+	const pattern = i18n.baseText(localeKey, { interpolate: { type: '.+' } });
+	const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const withPlaceholder = escaped.replace('\\.\\+', '.+');
+	return new RegExp(withPlaceholder, 'i');
+}
+
+const credentialsNotSetPattern = localePatternToRegex('nodeIssues.credentials.notSet');
+const parameterRequiredPattern = /Parameter\s+".+"\s+is\s+required/i;
+
+/**
  * Custom formatter for issue messages in the execute panel.
  * Transforms verbose validation messages into user-friendly action prompts.
  */
 function formatIssueMessage(issue: string | string[]): string {
 	const baseMessage = workflowsStore.formatIssueMessage(issue);
 
-	// Transform "Parameter "Model" is required" → "Choose model"
-	if (/Parameter\s+"Model"\s+is\s+required/i.test(baseMessage)) {
-		return i18n.baseText('aiAssistant.builder.executeMessage.chooseModel');
+	// Transform "Parameter "X" is required" → "Choose model" (for Model) or keep original
+	if (parameterRequiredPattern.test(baseMessage)) {
+		// Extract parameter name and check if it's "Model"
+		const match = baseMessage.match(/Parameter\s+"(.+)"\s+is\s+required/i);
+		if (match?.[1]?.toLowerCase() === 'model') {
+			return i18n.baseText('aiAssistant.builder.executeMessage.chooseModel' as BaseTextKey);
+		}
 	}
 
 	// Transform "Credentials for '...' are not set" → "Choose credentials"
-	if (/Credentials\s+for\s+.+\s+are\s+not\s+set/i.test(baseMessage)) {
-		return i18n.baseText('aiAssistant.builder.executeMessage.chooseCredentials');
+	if (credentialsNotSetPattern.test(baseMessage)) {
+		return i18n.baseText('aiAssistant.builder.executeMessage.chooseCredentials' as BaseTextKey);
 	}
 
 	return baseMessage;

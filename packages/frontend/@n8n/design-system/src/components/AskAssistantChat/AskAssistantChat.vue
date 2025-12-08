@@ -18,6 +18,7 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
+const $style = useCssModule();
 
 interface Props {
 	user?: {
@@ -347,7 +348,6 @@ onUnmounted(() => {
 });
 
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
-	const $style = useCssModule();
 	const isToolOrThinking = message.type === 'tool' || message.type === 'thinking-group';
 	const nextMsg = normalizedMessages.value[messageCount + 1];
 	const nextIsToolOrThinking = nextMsg?.type === 'tool' || nextMsg?.type === 'thinking-group';
@@ -598,11 +598,6 @@ defineExpose({
 	position: relative;
 	line-height: var(--line-height--xl);
 
-	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
-	:global(p) {
-		line-height: var(--line-height--xl);
-	}
-
 	pre,
 	code {
 		text-wrap: wrap;
@@ -637,6 +632,11 @@ defineExpose({
 .messagesContent {
 	padding: var(--spacing--xs);
 	padding-bottom: var(--spacing--xl); // Extra padding for fade area
+
+	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
+	:global(p) {
+		line-height: var(--line-height--xl);
+	}
 }
 
 .message {
