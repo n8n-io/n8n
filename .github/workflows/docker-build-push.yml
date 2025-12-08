@@ -42,18 +42,6 @@ on:
         required: false
         type: string
 
-  pull_request:
-    types:
-      - opened
-      - ready_for_review
-    paths:
-      - '.github/workflows/docker-build-push.yml'
-      - '.github/scripts/docker/docker-config.mjs'
-      - '.github/scripts/docker/docker-tags.mjs'
-      - 'docker/images/n8n/Dockerfile'
-      - 'docker/images/runners/Dockerfile'
-      - 'docker/images/runners/Dockerfile.distroless'
-
 jobs:
   determine-build-context:
     name: Determine Build Context

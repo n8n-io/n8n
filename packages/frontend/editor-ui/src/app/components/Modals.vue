@@ -23,6 +23,7 @@ import {
 	WORKFLOW_DIFF_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -30,6 +31,9 @@ import {
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	BINARY_DATA_VIEW_MODAL_KEY,
+	WORKFLOW_DESCRIPTION_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -102,6 +106,7 @@ import WhatsNewModal from '@/app/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/app/components/WorkflowActivationConflictingWebhookModal.vue';
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
+import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
 import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
@@ -112,6 +117,9 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
+import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
+import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
+import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
 </script>
 
 <template>
@@ -309,6 +317,16 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_UNPUBLISH">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryVersionUnpublishModal
+					data-test-id="workflow-history-version-unpublish-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="SETUP_CREDENTIALS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SetupWorkflowCredentialsModal
@@ -405,12 +423,32 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 			</template>
 		</ModalRoot>
 
+		<<<<<<< HEAD
 		<ModalRoot :name="BINARY_DATA_VIEW_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<BinaryDataViewModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
+		=======
+		<ModalRoot :name="WORKFLOW_DESCRIPTION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowDescriptionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_PUBLISH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowPublishModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryPublishModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+		>>>>>>> 85d9465ad9110d0a07623aaf08adb256d4009325
 		<!-- Dynamic modals from modules -->
 		<DynamicModalLoader />
 	</div>

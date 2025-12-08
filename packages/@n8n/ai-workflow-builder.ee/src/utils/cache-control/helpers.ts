@@ -160,3 +160,53 @@ export function applyCacheControlMarkers(
 		}
 	}
 }
+
+/**
+ * Apply cache markers for subgraph internal tool loops.
+ *
+ * This is a simpler version of applyCacheControlMarkers designed for subgraphs:
+ * - First removes all existing cache markers from messages
+ * - Then marks the last user/tool message (no workflow context appending)
+ * - Ensures we stay within the 4 breakpoint limit
+ *
+ * @param messages - Array of LangChain messages to modify
+ */
+export function applySubgraphCacheMarkers(messages: BaseMessage[]): void {
+	const userToolIndices = findUserToolMessageIndices(messages);
+	if (userToolIndices.length === 0) {
+		return;
+	}
+
+	// First, remove ALL existing cache_control markers from messages
+	let removedCount = 0;
+	for (const idx of userToolIndices) {
+		const message = messages[idx];
+		if (Array.isArray(message.content)) {
+			for (const block of message.content) {
+				if (hasCacheControl(block) && block.cache_control) {
+					delete block.cache_control;
+					removedCount++;
+				}
+			}
+		}
+	}
+
+	// Now apply marker to the last user/tool message only
+	const lastIdx = userToolIndices[userToolIndices.length - 1];
+	const lastMessage = messages[lastIdx];
+
+	if (typeof lastMessage.content === 'string') {
+		lastMessage.content = [
+			{
+				type: 'text',
+				text: lastMessage.content,
+				cache_control: { type: 'ephemeral' },
+			},
+		];
+	} else if (Array.isArray(lastMessage.content)) {
+		const lastBlock = lastMessage.content[lastMessage.content.length - 1];
+		if (isTextBlock(lastBlock)) {
+			lastBlock.cache_control = { type: 'ephemeral' };
+		}
+	}
+}

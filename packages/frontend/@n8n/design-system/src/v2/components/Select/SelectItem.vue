@@ -15,11 +15,11 @@ function isAcceptable(value?: SelectValue) {
 }
 
 const leadingProps = computed(() => ({
-	class: $style.ItemLeading,
+	class: $style.itemLeading,
 	strokeWidth: props.strokeWidth,
 }));
 const trailingProps = computed(() => ({
-	class: $style.ItemTrailing,
+	class: $style.itemTrailing,
 	strokeWidth: props.strokeWidth,
 }));
 </script>
@@ -35,7 +35,7 @@ const trailingProps = computed(() => ({
 			<Icon v-if="props.icon" :icon="props.icon" v-bind="leadingProps" />
 		</slot>
 
-		<SelectItemText :class="$style.ItemText">
+		<SelectItemText :class="$style.itemText">
 			<slot name="item-label" :item="props">
 				{{ props.label }}
 			</slot>
@@ -43,22 +43,22 @@ const trailingProps = computed(() => ({
 
 		<slot name="item-trailing" :item="props" :ui="trailingProps" />
 		<SelectItemIndicator as-child>
-			<Icon icon="check" :class="$style.ItemIndicator" />
+			<Icon icon="check" :class="$style.itemIndicator" />
 		</SelectItemIndicator>
 	</SelectItem>
 </template>
 
 <style module>
-.ItemLeading {
+.itemLeading {
 	flex-shrink: 0;
 }
 
-.ItemText {
+.itemText {
 	flex-grow: 1;
 }
 
-.ItemIndicator,
-.ItemTrailing {
+.itemIndicator,
+.itemTrailing {
 	margin-left: auto;
 	flex-shrink: 0;
 }
