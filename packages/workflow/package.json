@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.118.0",
+  "version": "1.120.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -51,7 +51,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
-    "@n8n/errors": "workspace:^",
+    "@n8n/errors": "workspace:*",
     "@n8n/tournament": "1.0.6",
     "ast-types": "0.16.1",
     "callsites": "catalog:",
@@ -67,6 +67,7 @@
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "xml2js": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "jsonrepair": "catalog:"
   }
 }

@@ -256,7 +256,7 @@ describe('processRunExecutionData', () => {
 			const executionData = createRunExecutionData({
 				startData: {
 					startNodes: [{ name: node1.name, sourceData: null }],
-					destinationNode: node1.name,
+					destinationNode: { nodeName: node1.name, mode: 'inclusive' },
 				},
 				executionData: {
 					nodeExecutionStack: [{ data: taskDataConnection, node: node1, source: null }],

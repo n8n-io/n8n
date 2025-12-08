@@ -1798,7 +1798,7 @@ export function useCanvasOperations() {
 		// In this object all that nodes get saved in the format:
 		//   old-name -> new-name
 		const nodeNameTable: {
-			[key: string]: string;
+			[key: string]: string | undefined;
 		} = {};
 		const newNodeNames = new Set<string>((data.nodes ?? []).map((node) => node.name));
 
@@ -1900,11 +1900,12 @@ export function useCanvasOperations() {
 
 		// Rename all the nodes of which the name changed
 		for (oldName in nodeNameTable) {
-			if (oldName === nodeNameTable[oldName]) {
+			const nameToChangeTo = nodeNameTable[oldName];
+			if (!nameToChangeTo || oldName === nameToChangeTo) {
 				// Name did not change so skip
 				continue;
 			}
-			tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+			tempWorkflow.renameNode(oldName, nameToChangeTo);
 		}
 
 		if (data.pinData) {
@@ -1919,14 +1920,16 @@ export function useCanvasOperations() {
 					continue;
 				}
 
-				const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
-				try {
-					const pinnedDataForNode = usePinnedData(node);
-					pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
-					pinDataSuccess = true;
-				} catch (error) {
-					pinDataSuccess = false;
-					console.error(error);
+				const node = tempWorkflow.nodes[nodeNameTable[nodeName] ?? nodeName];
+				if (node) {
+					try {
+						const pinnedDataForNode = usePinnedData(node);
+						pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
+						pinDataSuccess = true;
+					} catch (error) {
+						pinDataSuccess = false;
+						console.error(error);
+					}
 				}
 			}
 		}
@@ -2102,6 +2105,7 @@ export function useCanvasOperations() {
 
 			return workflowData;
 		} catch (error) {
+			console.error(error); // leaving to help make debugging future issues easier
 			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));
 			return {};
 		}
