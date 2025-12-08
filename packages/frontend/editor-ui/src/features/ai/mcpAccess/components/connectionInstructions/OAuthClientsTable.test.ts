@@ -57,7 +57,7 @@ describe('OAuthClientsTable', () => {
 			});
 
 			expect(getByTestId('empty-oauth-clients-list-box')).toBeInTheDocument();
-			expect(getByText('Connected oAuth clients (0)')).toBeInTheDocument();
+			expect(getByText('Connected OAuth clients (0)')).toBeInTheDocument();
 		});
 
 		it('should render clients table with correct data', () => {
@@ -74,7 +74,7 @@ describe('OAuthClientsTable', () => {
 			const table = getByTestId('oauth-clients-data-table');
 			expect(table).toBeInTheDocument();
 
-			expect(getByText(`Connected oAuth clients (${clients.length})`)).toBeInTheDocument();
+			expect(getByText(`Connected OAuth clients (${clients.length})`)).toBeInTheDocument();
 
 			clients.forEach((client) => {
 				expect(getByText(client.name)).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe('OAuthClientsTable', () => {
 				},
 			});
 
-			expect(getByText('Connected oAuth clients (50)')).toBeInTheDocument();
+			expect(getByText('Connected OAuth clients (50)')).toBeInTheDocument();
 			expect(getByTestId('oauth-clients-data-table')).toBeInTheDocument();
 		});
 	});

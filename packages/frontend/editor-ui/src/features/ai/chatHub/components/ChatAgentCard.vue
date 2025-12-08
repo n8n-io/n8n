@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import TimeAgo from '@/app/components/TimeAgo.vue';
+import { computed } from 'vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nBadge, N8nIconButton, N8nText } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
 
 const { agent } = defineProps<{
@@ -14,6 +16,29 @@ const emit = defineEmits<{
 	edit: [];
 	delete: [];
 }>();
+
+const i18n = useI18n();
+
+type MenuAction = 'edit' | 'delete';
+
+const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
+	return [
+		{ id: 'edit' as const, label: i18n.baseText('chatHub.agent.card.menu.edit') },
+		...(agent.model.provider === 'custom-agent'
+			? [{ id: 'delete' as const, label: i18n.baseText('chatHub.agent.card.menu.delete') }]
+			: []),
+	];
+});
+
+function handleSelectMenu(action: MenuAction) {
+	switch (action) {
+		case 'delete':
+			emit('delete');
+			return;
+		case 'edit':
+			emit('edit');
+	}
+}
 </script>
 
 <template>
@@ -25,37 +50,43 @@ const emit = defineEmits<{
 				{{ agent.name }}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.description">
-				{{ agent.description || 'No description' }}
+				{{ agent.description || i18n.baseText('chatHub.agent.card.noDescription') }}
 			</N8nText>
-			<div :class="$style.metadata">
-				<N8nText size="small" color="text-light">
-					{{ agent.model.provider === 'n8n' ? 'n8n workflow' : 'Custom agent' }}
-				</N8nText>
-				<N8nText v-if="agent.updatedAt" size="small" color="text-light">
-					Last updated <TimeAgo :date="agent.updatedAt" />
-				</N8nText>
-				<N8nText v-if="agent.createdAt" size="small" color="text-light">
-					Created <TimeAgo :date="agent.createdAt" />
-				</N8nText>
-			</div>
 		</div>
+
+		<N8nBadge theme="tertiary" show-border :class="$style.badge">
+			{{
+				agent.model.provider === 'n8n'
+					? i18n.baseText('chatHub.agent.card.badge.n8nWorkflow')
+					: i18n.baseText('chatHub.agent.card.badge.customAgent')
+			}}
+		</N8nBadge>
 
 		<div :class="$style.actions">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"
 				size="medium"
-				title="Edit"
+				:title="i18n.baseText('chatHub.agent.card.button.edit')"
 				@click.prevent="emit('edit')"
 			/>
-			<N8nIconButton
-				v-if="agent.model.provider === 'custom-agent'"
-				icon="trash-2"
-				type="tertiary"
-				size="medium"
-				title="More options"
-				@click.prevent="emit('delete')"
-			/>
+			<N8nActionDropdown
+				:items="menuItems"
+				placement="bottom-end"
+				@select="handleSelectMenu"
+				@click.stop.prevent
+			>
+				<template #activator>
+					<N8nIconButton
+						icon="ellipsis-vertical"
+						type="tertiary"
+						size="medium"
+						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
+						text
+						:class="$style.actionDropdownTrigger"
+					/>
+				</template>
+			</N8nActionDropdown>
 		</div>
 	</RouterLink>
 </template>
@@ -90,6 +121,10 @@ const emit = defineEmits<{
 	min-width: 0;
 }
 
+.badge {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+}
+
 .title {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -102,28 +137,14 @@ const emit = defineEmits<{
 	white-space: nowrap;
 }
 
-.metadata {
-	display: flex;
-	align-items: center;
-
-	& > * {
-		display: flex;
-		align-items: center;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: pre;
-	}
-
-	& > *:not(:last-child):after {
-		content: '|';
-		display: block;
-		padding-inline: var(--spacing--3xs);
-	}
-}
-
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.actionDropdownTrigger {
+	box-shadow: none !important;
+	outline: none !important;
 }
 </style>

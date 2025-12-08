@@ -15,6 +15,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
 	refresh: [];
+	urlCopied: [url: string];
 }>();
 
 const i18n = useI18n();
@@ -25,6 +26,10 @@ const onRefreshOAuthClients = () => {
 
 const onRevokeClientAccess = (client: OAuthClientResponseDto) => {
 	emit('revokeClient', client);
+};
+
+const onUrlCopied = (url: string) => {
+	emit('urlCopied', url);
 };
 </script>
 
@@ -43,7 +48,7 @@ const onRevokeClientAccess = (client: OAuthClientResponseDto) => {
 					<span :class="$style.label">
 						{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
 					</span>
-					<ConnectionParameter :value="props.serverUrl" />
+					<ConnectionParameter :value="props.serverUrl" @copy="onUrlCopied" />
 				</div>
 			</li>
 		</ol>

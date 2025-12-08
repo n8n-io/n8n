@@ -63,5 +63,4 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}
             ghcr.io/${{ github.repository_owner }}/base:${{ matrix.node_version }}-${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/base:${{ matrix.node_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true

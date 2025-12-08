@@ -6,6 +6,13 @@ on:
       - '**'
       - '!release/*'
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  COVERAGE_ENABLED: 'true' # Set globally for all jobs - ensures Turbo cache consistency
+
 jobs:
   install-and-build:
     name: Install & Build
@@ -16,7 +23,7 @@ jobs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
@@ -43,10 +50,6 @@ jobs:
         if: steps.paths-filter.outputs.non-python == 'true'
         run: pnpm format:check
 
-      - name: Run typecheck
-        if: steps.paths-filter.outputs.non-python == 'true'
-        run: pnpm typecheck
-
       - name: Upload Frontend Build Artifacts
         if: steps.paths-filter.outputs.frontend == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -61,7 +64,7 @@ jobs:
     if: needs.install-and-build.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
@@ -97,6 +100,21 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  typecheck:
+    name: Typecheck
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Setup Node.js
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        with:
+          build-command: pnpm typecheck
+
   lint:
     name: Lint
     if: needs.install-and-build.outputs.non_python_changed == 'true'
@@ -104,3 +122,27 @@ jobs:
     needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+  e2e-tests:
+    name: E2E Tests
+    needs: [install-and-build]
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    uses: ./.github/workflows/playwright-test-ci.yml
+    secrets: inherit
+
+  # This job is required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  # If you add/remove jobs that should block merging, update the 'needs' array below.
+  required-checks:
+    name: Required Checks
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - name: Fail if any required job failed or was skipped unexpectedly
+        # The non_python_changed check allows jobs to be skipped for python-only changes,
+        # since those jobs don't run when only python files are modified.
+        if: |
+          contains(needs.*.result, 'failure') ||
+          (needs.install-and-build.outputs.non_python_changed == 'true' && contains(needs.*.result, 'skipped'))
+        run: exit 1

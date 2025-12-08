@@ -80,7 +80,7 @@ const onAddButtonClicked = async () => {
 		let errorDescription = response.errorMessage;
 		// Provide custom error message for conflict (column already exists)
 		if (response.httpStatus === 409) {
-			errorMessage = i18n.baseText('dataTable.addColumn.alreadyExistsError', {
+			errorMessage = i18n.baseText('dataTable.column.alreadyExistsError', {
 				interpolate: { name: columnName.value },
 			});
 			errorDescription = response.errorMessage?.includes('system')

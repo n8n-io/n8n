@@ -46,9 +46,11 @@ describe('validateWorkflow tool', () => {
 
 	const sampleValidationResult: ProgrammaticChecksResult = {
 		connections: [],
+		nodes: [],
 		trigger: [],
 		agentPrompt: [
 			{
+				name: 'agent-static-prompt',
 				type: 'minor',
 				description: 'Agent prompt is missing required expression.',
 				pointsDeducted: 5,
@@ -118,6 +120,7 @@ describe('validateWorkflow tool', () => {
 			...sampleValidationResult,
 			connections: [
 				{
+					name: 'node-missing-required-input',
 					type: 'critical',
 					description: 'Node HTTP Request is missing required main input.',
 					pointsDeducted: 50,

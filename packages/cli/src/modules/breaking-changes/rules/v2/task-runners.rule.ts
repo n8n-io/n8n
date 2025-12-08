@@ -1,4 +1,4 @@
-import { TaskRunnersConfig } from '@n8n/config';
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
@@ -10,7 +10,10 @@ import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class TaskRunnersRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly taskRunnersConfig: TaskRunnersConfig) {}
+	constructor(
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	id: string = 'task-runners-v2';
 
@@ -27,6 +30,15 @@ export class TaskRunnersRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
+		// Not relevant for cloud deployments - cloud manages task runner infrastructure
+		if (this.globalConfig.deployment.type === 'cloud') {
+			return {
+				isAffected: false,
+				instanceIssues: [],
+				recommendations: [],
+			};
+		}
+
 		const result: InstanceDetectionReport = {
 			isAffected: false,
 			instanceIssues: [],

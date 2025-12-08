@@ -1,4 +1,4 @@
-import { type ASTAfterHook, astBuilders as b, astVisit } from '@n8n/tournament';
+import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
 import { ExpressionError } from './errors';
 import { isSafeObjectProperty } from './utils';
@@ -7,6 +7,10 @@ export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
 
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
+
+const EMPTY_CONTEXT = b.objectExpression([
+	b.property('init', b.identifier('process'), b.objectExpression([])),
+]);
 
 /**
  * Helper to check if an expression is a valid property access with $ as the property.
@@ -47,6 +51,69 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 		(object.type === 'Identifier' || object.type === 'MemberExpression');
 
 	return isPropertyDollar && !isObjectDollar && isObjectValid;
+};
+
+/**
+ * Prevents regular functions from binding their `this` to the Node.js global.
+ */
+export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
+	astVisit(ast, {
+		visitCallExpression(path) {
+			const { node } = path;
+
+			if (node.callee.type !== 'FunctionExpression') {
+				this.traverse(path);
+				return;
+			}
+
+			const fnExpression = node.callee;
+
+			/**
+			 * Called function expressions (IIFEs) - both anonymous and named:
+			 *
+			 * ```js
+			 * (function(x) { return x * 2; })(5)
+			 * (function factorial(n) { return n <= 1 ? 1 : n * factorial(n-1); })(5)
+			 *
+			 * // become
+			 *
+			 * (function(x) { return x * 2; }).call({ process: {} }, 5)
+			 * (function factorial(n) { return n <= 1 ? 1 : n * factorial(n-1); }).call({ process: {} }, 5)
+			 * ```
+			 */
+			this.traverse(path); // depth first to transform inside out
+			const callExpression = b.callExpression(
+				b.memberExpression(fnExpression, b.identifier('call')),
+				[EMPTY_CONTEXT, ...node.arguments],
+			);
+			path.replace(callExpression);
+			return false;
+		},
+
+		visitFunctionExpression(path) {
+			const { node } = path;
+
+			/**
+			 * Callable function expressions (callbacks) - both anonymous and named:
+			 *
+			 * ```js
+			 * [1, 2, 3].map(function(n) { return n * 2; })
+			 * [1, 2, 3].map(function factorial(n) { return n <= 1 ? 1 : n * factorial(n-1); })
+			 *
+			 * // become
+			 *
+			 * [1, 2, 3].map((function(n) { return n * 2; }).bind({ process: {} }))
+			 * [1, 2, 3].map((function factorial(n) { return n <= 1 ? 1 : n * factorial(n-1); }).bind({ process: {} }))
+			 * ```
+			 */
+			this.traverse(path);
+			const boundFunction = b.callExpression(b.memberExpression(node, b.identifier('bind')), [
+				EMPTY_CONTEXT,
+			]);
+			path.replace(boundFunction);
+			return false;
+		},
+	});
 };
 
 /**

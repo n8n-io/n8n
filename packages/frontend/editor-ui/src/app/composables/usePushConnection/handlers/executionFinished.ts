@@ -9,8 +9,7 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
-import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
-import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -30,7 +29,11 @@ import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
 import { parse } from 'flatted';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	TelemetryHelpers,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -55,8 +58,7 @@ export async function executionFinished(
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
-	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
-	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+	const readyToRunStore = useReadyToRunStore();
 
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 
@@ -83,18 +85,17 @@ export async function executionFinished(
 				templateId.split('-').pop() ?? '',
 				data.status,
 			);
-		} else if (templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
-			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
 		} else if (
+			templateId === 'ready-to-run-ai-workflow' ||
 			templateId === 'ready-to-run-ai-workflow-v1' ||
 			templateId === 'ready-to-run-ai-workflow-v2' ||
 			templateId === 'ready-to-run-ai-workflow-v3' ||
 			templateId === 'ready-to-run-ai-workflow-v4'
 		) {
 			if (data.status === 'success') {
-				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();
+				readyToRunStore.trackExecuteAiWorkflowSuccess();
 			} else {
-				readyToRunWorkflowsV2Store.trackExecuteAiWorkflow(data.status);
+				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
 		} else if (isPrebuiltAgentTemplateId(templateId)) {
 			telemetry.track('User executed pre-built Agent', {
@@ -217,12 +218,12 @@ export async function fetchExecutionData(
  * Returns the run execution data from the execution object in a normalized format
  */
 export function getRunExecutionData(execution: SimplifiedExecution): IRunExecutionData {
-	return {
+	return createRunExecutionData({
 		...execution.data,
 		startData: execution.data?.startData,
 		resultData: execution.data?.resultData ?? { runData: {} },
 		executionData: execution.data?.executionData,
-	};
+	});
 }
 
 /**

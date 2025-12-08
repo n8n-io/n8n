@@ -1,46 +1,66 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
-	provider: ChatHubLLMProvider;
-	initialValue: string | null;
+	modalName: string;
+	data: {
+		provider: ChatHubLLMProvider;
+		initialValue: string | null;
+		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
+	};
 }>();
 
-const emit = defineEmits<{
-	select: [provider: ChatHubLLMProvider, credentialId: string];
-	createNew: [provider: ChatHubLLMProvider];
-}>();
+const i18n = useI18n();
+const telemetry = useTelemetry();
 
-const credentialsStore = useCredentialsStore();
 const modalBus = ref(createEventBus());
-const selectedCredentialId = ref<string | null>(props.initialValue);
+const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
-const availableCredentials = computed<ICredentialsResponse[]>(() => {
-	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.provider]);
-});
+const credentialType = computed(() => PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
 
 function onCredentialSelect(credentialId: string) {
 	selectedCredentialId.value = credentialId;
 }
 
-function onConfirm() {
-	if (selectedCredentialId.value) {
-		emit('select', props.provider, selectedCredentialId.value);
-		modalBus.value.emit('close');
+function onCredentialDeselect() {
+	selectedCredentialId.value = null;
+}
+
+function onDeleteCredential(credentialId: string) {
+	if (!selectedCredentialId.value || credentialId !== selectedCredentialId.value) {
+		return;
+	}
+
+	selectedCredentialId.value = null;
+
+	if (credentialId === props.data.initialValue) {
+		props.data.onSelect(props.data.provider, null);
 	}
 }
 
-function onCreateNew() {
-	emit('createNew', props.provider);
-	modalBus.value.emit('close');
+function onCredentialModalOpened(credentialId?: string) {
+	telemetry.track('User opened Credential modal', {
+		credential_type: credentialType.value,
+		source: 'chat',
+		new_credential: !credentialId,
+		workflow_id: null,
+	});
+}
+
+function onConfirm() {
+	if (selectedCredentialId.value) {
+		props.data.onSelect(props.data.provider, selectedCredentialId.value);
+		modalBus.value.emit('close');
+	}
 }
 
 function onCancel() {
@@ -50,7 +70,7 @@ function onCancel() {
 
 <template>
 	<Modal
-		name="chatCredentialSelector"
+		:name="modalName"
 		:event-bus="modalBus"
 		width="50%"
 		:center="true"
@@ -60,54 +80,62 @@ function onCancel() {
 		<template #header>
 			<div :class="$style.header">
 				<CredentialIcon
-					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[provider]"
+					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[data.provider]"
 					:size="24"
 					:class="$style.icon"
 				/>
-				<h2 :class="$style.title">Select {{ providerDisplayNames[provider] }} Credential</h2>
+				<N8nHeading size="medium" tag="h2" :class="$style.title">
+					{{
+						i18n.baseText('chatHub.credentials.selector.title', {
+							interpolate: {
+								provider: providerDisplayNames[data.provider],
+							},
+						})
+					}}
+				</N8nHeading>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
 				<N8nText size="small" color="text-base">
-					Choose an existing credential or create a new one
+					{{
+						i18n.baseText('chatHub.credentials.selector.chooseOrCreate', {
+							interpolate: {
+								provider: providerDisplayNames[data.provider],
+							},
+						})
+					}}
 				</N8nText>
-				<N8nSelect
-					:model-value="selectedCredentialId"
-					size="large"
-					placeholder="Select credential..."
-					@update:model-value="onCredentialSelect"
-				>
-					<N8nOption
-						v-for="credential in availableCredentials"
-						:key="credential.id"
-						:value="credential.id"
-						:label="credential.name"
+				<div :class="$style.credentialContainer">
+					<CredentialPicker
+						:class="$style.credentialPicker"
+						:app-name="providerDisplayNames[data.provider]"
+						:credential-type="credentialType"
+						:selected-credential-id="selectedCredentialId"
+						:show-delete="true"
+						:hide-create-new="true"
+						@credential-selected="onCredentialSelect"
+						@credential-deselected="onCredentialDeselect"
+						@credential-deleted="onDeleteCredential"
+						@credential-modal-opened="onCredentialModalOpened"
 					/>
-				</N8nSelect>
+				</div>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCreateNew"> Create New </N8nButton>
-				<div :class="$style.footerRight">
-					<N8nButton type="tertiary" @click="onCancel"> Cancel </N8nButton>
-					<N8nButton type="primary" :disabled="!selectedCredentialId" @click="onConfirm">
-						Select
-					</N8nButton>
-				</div>
+				<N8nButton type="tertiary" @click="onCancel">
+					{{ i18n.baseText('chatHub.credentials.selector.cancel') }}
+				</N8nButton>
+				<N8nButton type="primary" :disabled="!selectedCredentialId" @click="onConfirm">
+					{{ i18n.baseText('chatHub.credentials.selector.confirm') }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style lang="scss" module>
-.title {
-	font-size: var(--font-size--lg);
-	line-height: var(--line-height--md);
-	margin: 0;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
@@ -117,14 +145,10 @@ function onCancel() {
 
 .footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
-	width: 100%;
-}
-
-.footerRight {
-	display: flex;
 	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .header {
@@ -136,5 +160,16 @@ function onCancel() {
 .icon {
 	flex-shrink: 0;
 	flex-grow: 0;
+}
+
+.credentialContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.credentialPicker {
+	width: 100%;
 }
 </style>

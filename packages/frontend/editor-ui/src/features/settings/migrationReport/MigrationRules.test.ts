@@ -181,7 +181,7 @@ describe('MigrationRules', () => {
 			await waitFor(() => {
 				// Title, description, and workflow count
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
-				expect(screen.getByText('This is a test rule description')).toBeInTheDocument();
+				expect(screen.getByText('This is a test rule description.')).toBeInTheDocument();
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Severity tag
@@ -272,7 +272,7 @@ describe('MigrationRules', () => {
 			await waitFor(() => {
 				// Title and description
 				expect(screen.getByText('Instance Rule 1')).toBeInTheDocument();
-				expect(screen.getByText('This is an instance rule description')).toBeInTheDocument();
+				expect(screen.getByText('This is an instance rule description.')).toBeInTheDocument();
 
 				// Severity tag
 				expect(screen.getByText('Medium')).toBeInTheDocument();
@@ -395,6 +395,45 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Updated Rule')).toBeInTheDocument();
 				expect(screen.getByText('10 Workflows')).toBeInTheDocument();
 			});
+		});
+	});
+
+	it('should keep refresh button visible during refresh operation', async () => {
+		// Mock a slow refresh to test that button stays visible
+		let resolveRefresh: (value: BreakingChangeLightReportResult) => void;
+		const refreshPromise = new Promise((resolve) => {
+			resolveRefresh = resolve;
+		});
+
+		vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(
+			refreshPromise as Promise<BreakingChangeLightReportResult>,
+		);
+
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByText('Refresh')).toBeInTheDocument();
+		});
+
+		// Click refresh
+		await userEvent.click(screen.getByText('Refresh'));
+
+		// Button should still be visible (with loading state) during refresh
+		await waitFor(() => {
+			const button = screen.getByText('Refresh');
+			expect(button).toBeInTheDocument();
+			// Button should be disabled during loading
+			expect(button.closest('button')).toBeDisabled();
+		});
+
+		// Resolve the refresh
+		resolveRefresh!(mockReport);
+
+		// Button should still be visible after refresh completes
+		await waitFor(() => {
+			const button = screen.getByText('Refresh');
+			expect(button).toBeInTheDocument();
+			expect(button.closest('button')).not.toBeDisabled();
 		});
 	});
 

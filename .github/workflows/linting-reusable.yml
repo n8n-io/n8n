@@ -7,7 +7,7 @@ on:
         description: GitHub ref to lint.
         required: false
         type: string
-        default: master
+        default: ''
       nodeVersion:
         description: Version of node to use.
         required: false
@@ -22,7 +22,7 @@ jobs:
     name: Lint
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ inputs.ref }}
 

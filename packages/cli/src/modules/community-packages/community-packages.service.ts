@@ -6,7 +6,7 @@ import axios from 'axios';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -56,7 +56,7 @@ const {
 	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR,
 } = NPM_COMMAND_TOKENS;
 
-const asyncExec = promisify(exec);
+const asyncExecFile = promisify(execFile);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
@@ -156,7 +156,7 @@ export class CommunityPackagesService {
 	}
 
 	/** @deprecated */
-	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
+	async executeNpmCommand(args: string[], options?: { doNotHandleError?: boolean }) {
 		const execOptions = {
 			cwd: this.downloadFolder,
 			env: {
@@ -168,8 +168,7 @@ export class CommunityPackagesService {
 		};
 
 		try {
-			const commandResult = await asyncExec(command, execOptions);
-
+			const commandResult = await asyncExecFile('npm', args, execOptions);
 			return commandResult.stdout;
 		} catch (error) {
 			if (options?.doNotHandleError) throw error;
@@ -376,9 +375,7 @@ export class CommunityPackagesService {
 	}
 
 	private getNpmInstallArgs() {
-		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`].join(
-			' ',
-		);
+		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`];
 	}
 
 	private checkInstallPermissions(checksumProvided: boolean) {
@@ -497,18 +494,20 @@ export class CommunityPackagesService {
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-
-		const { stdout: tarOutput } = await asyncExec(
-			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
+		const { stdout: tarOutput } = await asyncExecFile(
+			'npm',
+			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
 			{ cwd: this.downloadFolder },
 		);
 
 		const tarballName = tarOutput?.trim();
 
 		try {
-			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
-				cwd: this.downloadFolder,
-			});
+			await asyncExecFile(
+				'tar',
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+				{ cwd: this.downloadFolder },
+			);
 
 			// Strip dev, optional, and peer dependencies before running `npm install`
 			const packageJsonPath = `${packageDirectory}/package.json`;
@@ -527,7 +526,9 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+			await asyncExecFile('npm', ['install', ...this.getNpmInstallArgs()], {
+				cwd: packageDirectory,
+			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));
