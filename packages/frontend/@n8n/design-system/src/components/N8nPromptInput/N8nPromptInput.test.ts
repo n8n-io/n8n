@@ -1077,7 +1077,7 @@ describe('N8nPromptInput', () => {
 
 	describe('autofocus', () => {
 		it('should be focused if enabled', async () => {
-			const { container, emitted } = renderComponent({
+			const { emitted } = renderComponent({
 				props: {
 					autofocus: true,
 				},
@@ -1090,7 +1090,7 @@ describe('N8nPromptInput', () => {
 		});
 
 		it('should not be focused if disabled', () => {
-			const { container, emitted } = renderComponent({
+			const { emitted } = renderComponent({
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
 				},
