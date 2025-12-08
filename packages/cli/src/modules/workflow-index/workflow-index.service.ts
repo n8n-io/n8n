@@ -94,9 +94,6 @@ export class WorkflowIndexService {
 		const dependencyUpdates = new WorkflowDependencies(workflow.id, workflow.versionCounter);
 
 		workflow.nodes.forEach((node) => {
-			if (node.disabled) {
-				return; // skip disabled nodes.
-			}
 			this.addNodeTypeDependencies(node, dependencyUpdates);
 			this.addCredentialDependencies(node, dependencyUpdates);
 			this.addWorkflowCallDependencies(node, dependencyUpdates);
