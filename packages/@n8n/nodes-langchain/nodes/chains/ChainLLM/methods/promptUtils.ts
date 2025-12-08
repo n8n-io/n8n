@@ -1,16 +1,18 @@
-import { HumanMessage } from '@langchain/core/messages';
+import type { AgentAction, AgentFinish } from '@langchain/core/agents';
+import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import {
 	AIMessagePromptTemplate,
+	ChatPromptTemplate,
+	HumanMessagePromptTemplate,
 	PromptTemplate,
 	SystemMessagePromptTemplate,
-	HumanMessagePromptTemplate,
-	ChatPromptTemplate,
 } from '@langchain/core/prompts';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
 import { isChatInstance } from '@utils/helpers';
+import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import { createImageMessage } from './imageUtils';
 import type { MessageTemplate, PromptParams } from './types';
@@ -143,3 +145,59 @@ export async function createPromptTemplate({
 		query,
 	});
 }
+
+const isMessage = (message: unknown): message is BaseMessage => {
+	return message instanceof BaseMessage;
+};
+
+export const getAgentStepsParser =
+	(outputParser: N8nOutputParser) =>
+	async (
+		steps: AgentFinish | BaseMessage | AgentAction[] | string,
+	): Promise<string | Record<string, unknown>> => {
+		if (typeof steps === 'string') {
+			return (await outputParser.parse(steps)) as Record<string, unknown>;
+		}
+
+		// Check if the steps contain the 'format_final_json_response' tool invocation.
+		if (Array.isArray(steps)) {
+			const responseParserTool = steps.find((step) => step.tool === 'format_final_json_response');
+			if (responseParserTool) {
+				const toolInput = responseParserTool.toolInput;
+				// Ensure the tool input is a string
+				const parserInput = toolInput instanceof Object ? JSON.stringify(toolInput) : toolInput;
+				const returnValues = (await outputParser.parse(parserInput)) as Record<string, unknown>;
+				return returnValues;
+			}
+		}
+
+		if (typeof steps === 'object' && isMessage(steps)) {
+			let output: string;
+			if (steps.text) {
+				output = steps.text;
+			} else if (Array.isArray(steps.content) && steps.content.length > 0) {
+				output = steps.content.find((content) => content.type === 'text' && content.text)
+					?.text as string;
+			} else if (typeof steps.content === 'string') {
+				output = steps.content;
+			} else if (typeof steps.content === 'object' && 'text' in steps.content) {
+				output = steps.content.text as string;
+			} else {
+				throw new Error('Invalid content type');
+			}
+
+			const parsedOutput = (await outputParser.parse(output)) as Record<string, unknown>;
+			return parsedOutput;
+		}
+
+		if (typeof steps === 'object' && (steps as AgentFinish).returnValues) {
+			const returnValues = (steps as AgentFinish).returnValues;
+			const parsedOutput = (await outputParser.parse(JSON.stringify(returnValues))) as Record<
+				string,
+				unknown
+			>;
+			return parsedOutput;
+		}
+
+		throw new Error('Failed to parse agent steps');
+	};
