@@ -2390,7 +2390,7 @@
 	"settings.mcp.oAuthClients.revoke.error": "Error revoking client access",
 	"settings.mcp.refresh.tooltip": "Refresh list",
 	"settings.mcp.connectPopover.tab.oauth": "OAuth",
-	"settings.mcp.connectPopover.tab.accessToken": "Access Token",
+	"settings.mcp.connectPopover.tab.accessToken": "Access token",
 	"settings.mcp.connectPopover.serverUrl": "Server URL",
 	"settings.mcp.connectPopover.jsonConfig": "Configuration JSON",
 	"settings.chatHub": "Chat",
