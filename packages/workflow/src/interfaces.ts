@@ -702,9 +702,18 @@ export type ResolvedFilePath = string & {
 
 export interface FileSystemHelperFunctions {
 	resolvePath(path: PathLike): Promise<ResolvedFilePath>;
+	/**
+	 * Use {@link resolvePath} to resolve the path first.
+	 */
 	isFilePathBlocked(filePath: ResolvedFilePath): boolean;
+	/**
+	 * Use {@link resolvePath} to resolve the path first.
+	 */
 	createReadStream(filePath: ResolvedFilePath): Promise<Readable>;
 	getStoragePath(): string;
+	/**
+	 * Use {@link resolvePath} to resolve the path first.
+	 */
 	writeContentToFile(
 		path: ResolvedFilePath,
 		content: string | Buffer | Readable,
