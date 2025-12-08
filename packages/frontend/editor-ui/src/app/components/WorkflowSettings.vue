@@ -9,7 +9,6 @@ import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	// TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
@@ -131,16 +130,7 @@ const isEligibleForMcp = computed(() => {
 	return isEligibleForMcpAccess(workflow.value);
 });
 
-const isTimeSavedNodeExperimentEnabled = computed(() => {
-	return true;
-	// return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
-});
-
 const savedTimeNodes = computed(() => {
-	if (!isTimeSavedNodeExperimentEnabled.value) {
-		return [];
-	}
-
 	if (!workflow?.value?.nodes) return [];
 	return workflow.value.nodes.filter(
 		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
@@ -148,10 +138,6 @@ const savedTimeNodes = computed(() => {
 });
 
 const hasSavedTimeNodes = computed(() => {
-	if (!isTimeSavedNodeExperimentEnabled.value) {
-		return false;
-	}
-
 	return savedTimeNodes.value.length > 0;
 });
 
@@ -974,19 +960,7 @@ onBeforeUnmount(() => {
 						</label>
 					</ElCol>
 					<ElCol :span="14">
-						<div v-if="!isTimeSavedNodeExperimentEnabled" :class="$style['time-saved']">
-							<N8nInput
-								id="timeSavedPerExecution"
-								v-model="workflowSettings.timeSavedPerExecution"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
-								@update:model-value="updateTimeSavedPerExecution"
-							/>
-							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
-						</div>
-						<div v-else :class="$style['time-saved-mode-container']">
+						<div :class="$style['time-saved-mode-container']">
 							<div :class="$style['time-saved-mode-selector']" class="ignore-key-press-canvas">
 								<N8nSelect
 									v-model="workflowSettings.timeSavedMode"
@@ -1022,13 +996,7 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<ElRow
-					v-if="
-						isTimeSavedNodeExperimentEnabled &&
-						workflowSettings.timeSavedMode === 'fixed' &&
-						hasSavedTimeNodes
-					"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed' && hasSavedTimeNodes">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-content']">
 							<div :class="$style['time-saved-warning']">
@@ -1047,13 +1015,7 @@ onBeforeUnmount(() => {
 				</ElRow>
 				<!-- Minutes saved section (only shown in fixed mode) -->
 				<!-- Active nodes section (only shown in dynamic mode when nodes exist) -->
-				<ElRow
-					v-if="
-						isTimeSavedNodeExperimentEnabled &&
-						workflowSettings.timeSavedMode === 'dynamic' &&
-						hasSavedTimeNodes
-					"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'dynamic' && hasSavedTimeNodes">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-content']">
 							<div :class="$style['time-saved-nodes-active']">
@@ -1084,13 +1046,7 @@ onBeforeUnmount(() => {
 					</ElCol>
 				</ElRow>
 				<!-- No nodes detected section (only shown in dynamic mode when no nodes) -->
-				<ElRow
-					v-if="
-						isTimeSavedNodeExperimentEnabled &&
-						workflowSettings.timeSavedMode === 'dynamic' &&
-						!hasSavedTimeNodes
-					"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'dynamic' && !hasSavedTimeNodes">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-content']">
 							<div :class="$style['time-saved-no-nodes']">

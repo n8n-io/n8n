@@ -16,7 +16,6 @@ import {
 	EVALUATIONS_DOCS_URL,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
-	// TIME_SAVED_NODE_EXPERIMENT,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
@@ -68,10 +67,6 @@ const hasErrorWorkflow = computed(() => {
 });
 
 const hasSavedTimeNodes = computed(() => {
-	// if (!posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name)) {
-	// 	return false;
-	// }
-
 	if (!props.workflow?.nodes) return false;
 	return props.workflow.nodes.some(
 		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
