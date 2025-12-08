@@ -316,13 +316,11 @@ export class InsightsCollectionService {
 
 		// backwards compatibility for legacy workflows with no time saved mode
 		if (ctx.workflow.settings?.timeSavedMode !== 'dynamic') {
-			console.log('workflowTimeSaved', workflowTimeSaved);
 			return workflowTimeSaved ?? 0;
 		}
 
 		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
 
-		console.log('nodeTimeSaved', nodeTimeSaved);
 		return nodeTimeSaved;
 	}
 
