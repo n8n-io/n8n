@@ -16,6 +16,9 @@ export type Placement =
 	| 'right-start'
 	| 'right-end';
 
+export type Side = 'top' | 'bottom' | 'left' | 'right';
+export type Align = 'start' | 'end' | 'center';
+
 export type DropdownMenuTrigger = 'click' | 'hover';
 
 export type DropdownMenuItemProps<T = string> = {

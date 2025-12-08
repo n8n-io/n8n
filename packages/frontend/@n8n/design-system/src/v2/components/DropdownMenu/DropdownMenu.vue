@@ -11,6 +11,7 @@ import { computed, ref, watch, useCssModule, nextTick } from 'vue';
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
+import { isAlign, isSide } from './DropdownMenu.typeguards';
 import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 
@@ -38,16 +39,16 @@ const emit = defineEmits<{
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T>>();
-
 const $style = useCssModule();
 
 // Handle controlled/uncontrolled state
 const internalOpen = ref(props.defaultOpen ?? false);
-
-// Determine if we're in controlled mode (modelValue is explicitly passed)
 const isControlled = computed(() => props.modelValue !== undefined);
 
-// Watch for external modelValue changes in controlled mode
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+const searchTerm = ref('');
+
 watch(
 	() => props.modelValue,
 	(newValue) => {
@@ -58,18 +59,7 @@ watch(
 	{ immediate: true },
 );
 
-// Pass undefined when uncontrolled to let Reka UI manage its own state
 const openState = computed(() => (isControlled.value ? internalOpen.value : undefined));
-
-// Convert placement to Reka UI side + align
-type Side = 'top' | 'bottom' | 'left' | 'right';
-type Align = 'start' | 'end' | 'center';
-
-const VALID_SIDES: Side[] = ['top', 'bottom', 'left', 'right'];
-const VALID_ALIGNS: Align[] = ['start', 'end', 'center'];
-
-const isSide = (value: string): value is Side => VALID_SIDES.includes(value as Side);
-const isAlign = (value: string): value is Align => VALID_ALIGNS.includes(value as Align);
 
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
@@ -83,7 +73,7 @@ const contentStyle = computed(() => {
 	if (props.maxHeight) {
 		const maxHeightValue =
 			typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight;
-		return { maxHeight: maxHeightValue, overflowY: 'auto' as const };
+		return { maxHeight: maxHeightValue, overflowY: 'auto' };
 	}
 	return {};
 });
@@ -92,25 +82,17 @@ const handleOpenChange = (open: boolean) => {
 	internalOpen.value = open;
 	emit('update:modelValue', open);
 
-	// Clear search when dropdown closes
 	if (props.searchable) {
 		if (open) {
-			// Focus search input when dropdown opens
 			void nextTick(() => {
 				searchInputRef.value?.focus();
 			});
 		} else {
-			// Clear search when dropdown closes
 			searchTerm.value = '';
 			emit('search', '');
 		}
 	}
 };
-
-// Search functionality
-const searchInputRef = ref<HTMLInputElement | null>(null);
-const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
-const searchTerm = ref('');
 
 const debouncedEmitSearch = useDebounceFn((term: string) => {
 	emit('search', term);
@@ -122,6 +104,9 @@ const handleSearchInput = (event: Event) => {
 	debouncedEmitSearch(target.value);
 };
 
+/**
+ * Keyboard handlers that enabled smooth navigation between search input and menu items
+ */
 const handleSearchKeydown = (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
 		close();
@@ -162,7 +147,6 @@ const handleItemSelect = (value: T) => {
 	emit('select', value);
 };
 
-// Expose methods for programmatic control
 const open = () => {
 	internalOpen.value = true;
 	emit('update:modelValue', true);
@@ -200,7 +184,6 @@ defineExpose({ open, close });
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
-					<!-- Search input -->
 					<div v-if="searchable" :class="$style['search-container']">
 						<Icon v-if="showSearchIcon" icon="search" :class="$style['search-icon']" />
 						<input
@@ -266,8 +249,8 @@ defineExpose({ open, close });
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 30px;
-	height: 30px;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	padding: 0;
 	border: none;
 	border-radius: var(--radius);
@@ -281,7 +264,7 @@ defineExpose({ open, close });
 	}
 
 	&:focus-visible {
-		box-shadow: 0 0 0 2px var(--color--primary);
+		box-shadow: 0 0 0 var(--spacing--5xs) var(--color--primary);
 	}
 
 	&[data-disabled] {
@@ -298,8 +281,7 @@ defineExpose({ open, close });
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow);
 	/**
-	 * High z-index to ensure dropdown is above other elements
-	 * TODO: Replace with design system z-index variable when available
+	 * TODO: do we have a better way to manage z-indexes globally?
 	 */
 	z-index: 999999;
 }
@@ -311,8 +293,6 @@ defineExpose({ open, close });
 	transform: translateX(-50%);
 	color: var(--color--background--light-2);
 	filter: drop-shadow(0 -1px 0 var(--color--foreground));
-
-	/* Hide by default, shown based on hideArrow prop */
 	display: none;
 }
 

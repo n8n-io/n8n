@@ -14,7 +14,7 @@ import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 
-defineOptions({ inheritAttrs: false, name: 'N8nDropdownMenuItem' });
+defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
 const props = withDefaults(defineProps<DropdownMenuItemProps<T>>(), {
 	loadingItemCount: 3,
@@ -53,7 +53,6 @@ const handleItemSelect = () => {
 	<div :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
-		<!-- Sub-menu item with children or loading state -->
 		<DropdownMenuSub v-if="hasSubMenu">
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
@@ -74,7 +73,6 @@ const handleItemSelect = () => {
 
 			<DropdownMenuPortal>
 				<DropdownMenuSubContent :class="$style['sub-content']" :side-offset="4">
-					<!-- Loading state -->
 					<div v-if="loading" :class="$style['loading-container']">
 						<N8nLoading
 							v-for="i in loadingItemCount"
@@ -84,7 +82,6 @@ const handleItemSelect = () => {
 							:class="$style['loading-item']"
 						/>
 					</div>
-					<!-- Children items -->
 					<template v-else-if="hasChildren">
 						<template v-for="child in props.children" :key="child.id">
 							<!-- eslint-disable-next-line vue/no-undef-components - recursive component -->
