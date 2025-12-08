@@ -8,6 +8,8 @@ import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-type
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
+import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -16,6 +18,8 @@ export class ChatHubAttachmentService {
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
+		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -124,6 +128,24 @@ export class ChatHubAttachmentService {
 		await this.binaryDataService.deleteManyByBinaryDataId(
 			attachments.flatMap((attachment) => (attachment.id ? [attachment.id] : [])),
 		);
+	}
+
+	getPubliclyAccessibleUrl(binaryData: IBinaryData): string {
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
+		if (binaryData.data.startsWith('data:')) {
+			return binaryData.data;
+		}
+
+		if (!baseUrl.startsWith('https://')) {
+			throw Error(
+				'n8n instance does not expose publicly accessible URL. Therefore, cannot create file URL',
+			);
+		}
+
+		const token = this.binaryDataService.createSignedToken(binaryData, '1 hour');
+
+		return `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
 	}
 
 	/**

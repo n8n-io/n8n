@@ -9,6 +9,8 @@ import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import type { UrlService } from '@/services/url.service';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
+import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -17,18 +19,27 @@ describe('ChatHubWorkflowService', () => {
 	const binaryDataService = mock<BinaryDataService>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>();
+	const messageRepository = mock<ChatHubMessageRepository>();
 
+	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+
+		// Create real ChatHubAttachmentService with mocked dependencies
+		chatHubAttachmentService = new ChatHubAttachmentService(
+			binaryDataService,
+			messageRepository,
+			urlService,
+			globalConfig,
+		);
+
 		service = new ChatHubWorkflowService(
 			logger,
 			workflowRepository,
 			sharedWorkflowRepository,
-			binaryDataService,
-			urlService,
-			globalConfig,
+			chatHubAttachmentService,
 		);
 
 		// Default mock values
@@ -227,7 +238,7 @@ describe('ChatHubWorkflowService', () => {
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
 				const mockToken = 'signed-token-xyz';
-				const mockBaseUrl = 'http://localhost:5678';
+				const mockBaseUrl = 'https://example.com';
 
 				binaryDataService.createSignedToken.mockReturnValue(mockToken);
 				urlService.getInstanceBaseUrl.mockReturnValue(mockBaseUrl);

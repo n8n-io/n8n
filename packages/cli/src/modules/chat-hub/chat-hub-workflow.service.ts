@@ -33,9 +33,7 @@ import { ChatHubMessage } from './chat-hub-message.entity';
 import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { MessageRecord, type ContentBlock } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
-import { BinaryDataService } from 'n8n-core';
-import { UrlService } from '@/services/url.service';
-import { GlobalConfig } from '@n8n/config';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -43,9 +41,7 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly binaryDataService: BinaryDataService,
-		private readonly urlService: UrlService,
-		private readonly globalConfig: GlobalConfig,
+		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
 
 	async createChatWorkflow(
@@ -710,11 +706,10 @@ When you need to reference “now”, use this date and time.`;
 									continue;
 								}
 
-								const token = this.binaryDataService.createSignedToken(attachment, '1 hour');
-								const baseUrl = this.urlService.getInstanceBaseUrl();
-								const imageUrl = `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
-
-								blocks.push({ type: 'image_url', image_url: imageUrl });
+								blocks.push({
+									type: 'image_url',
+									image_url: this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment),
+								});
 							}
 
 							return {
