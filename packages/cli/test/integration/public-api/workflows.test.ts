@@ -80,6 +80,7 @@ beforeEach(async () => {
 		'WorkflowEntity',
 		'CredentialsEntity',
 		'WorkflowHistory',
+		'WorkflowPublishHistory',
 	]);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
