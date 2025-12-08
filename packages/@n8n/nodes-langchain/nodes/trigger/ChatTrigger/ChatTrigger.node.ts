@@ -278,7 +278,7 @@ export class ChatTrigger extends Node {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode:
-					'={{$parameter.options?.["responseMode"] || $parameter.availableInChat ? "streaming" : "lastNode" }}',
+					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
 				ndvHideUrl: '={{ !$parameter.public }}',
