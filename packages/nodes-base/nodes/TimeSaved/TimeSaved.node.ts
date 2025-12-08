@@ -13,7 +13,7 @@ export class TimeSaved implements INodeType {
 		icon: 'fa:timer',
 		group: ['organization'],
 		version: 1,
-		description: 'Track dynamic time savings for this workflow execution',
+		description: 'Track time savings for workflow executions dynamically',
 		defaults: {
 			name: 'Time Saved',
 			color: '#1E90FF',
@@ -23,7 +23,7 @@ export class TimeSaved implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Calculate time saved dynamically based on execution data. This allows you to track variable time savings (e.g., 5 minutes per item processed) instead of using a fixed value in workflow settings.',
+					'For each run, time saved is the sum of all Time Saved nodes that execute. Use this when different execution paths or items save different amounts of time.',
 				name: 'notice',
 				type: 'notice',
 				default: '',

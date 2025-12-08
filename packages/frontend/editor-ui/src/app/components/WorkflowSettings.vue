@@ -161,7 +161,7 @@ const timeSavedModeOptions = computed(() => [
 		value: 'fixed' as const,
 	},
 	{
-		label: 'Dynamic (node based)',
+		label: 'Dynamic (uses time saved nodes)',
 		value: 'dynamic' as const,
 	},
 ]);
@@ -985,41 +985,39 @@ onBeforeUnmount(() => {
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
 						</div>
-						<div v-else class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="workflowSettings.timeSavedMode"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-time-saved-mode"
-								size="medium"
-								filterable
-								:limit-popper-width="true"
+						<div v-else :class="$style['time-saved-mode-container']">
+							<div :class="$style['time-saved-mode-selector']" class="ignore-key-press-canvas">
+								<N8nSelect
+									v-model="workflowSettings.timeSavedMode"
+									:disabled="readOnlyEnv || !workflowPermissions.update"
+									data-test-id="workflow-settings-time-saved-mode"
+									size="medium"
+									filterable
+									:limit-popper-width="true"
+								>
+									<N8nOption
+										v-for="option in timeSavedModeOptions"
+										:key="option.value"
+										:label="option.label"
+										:value="option.value"
+									/>
+								</N8nSelect>
+							</div>
+							<div
+								v-if="workflowSettings.timeSavedMode === 'fixed'"
+								:class="$style['time-saved-input-inline']"
 							>
-								<N8nOption
-									v-for="option in timeSavedModeOptions"
-									:key="option.value"
-									:label="option.label"
-									:value="option.value"
+								<N8nInput
+									id="timeSavedPerExecution"
+									v-model="workflowSettings.timeSavedPerExecution"
+									:disabled="readOnlyEnv || !workflowPermissions.update"
+									data-test-id="workflow-settings-time-saved-per-execution"
+									type="number"
+									min="0"
+									@update:model-value="updateTimeSavedPerExecution"
 								/>
-							</N8nSelect>
-						</div>
-					</ElCol>
-				</ElRow>
-				<!-- Fixed mode warning section (only shown in fixed mode when nodes exist) -->
-				<ElRow
-					v-if="isTimeSavedNodeExperimentEnabled && workflowSettings.timeSavedMode === 'fixed'"
-				>
-					<ElCol :span="14" :offset="10">
-						<div :class="$style['time-saved']">
-							<N8nInput
-								id="timeSavedPerExecution"
-								v-model="workflowSettings.timeSavedPerExecution"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
-								@update:model-value="updateTimeSavedPerExecution"
-							/>
-							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+								<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+							</div>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -1166,6 +1164,31 @@ onBeforeUnmount(() => {
 .time-saved {
 	display: flex;
 	align-items: center;
+
+	:global(.el-input) {
+		width: var(--spacing--3xl);
+	}
+
+	span {
+		margin-left: var(--spacing--2xs);
+	}
+}
+
+.time-saved-mode-container {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.time-saved-mode-selector {
+	flex: 0 0 25%;
+	min-width: 260px;
+}
+
+.time-saved-input-inline {
+	display: flex;
+	align-items: center;
+	flex: 1;
 
 	:global(.el-input) {
 		width: var(--spacing--3xl);
