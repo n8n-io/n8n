@@ -217,15 +217,8 @@ export async function createWorkflowWithTriggerAndHistory(
 	attributes: Partial<IWorkflowDb> = {},
 	userOrProject?: User | Project,
 	withPublishHistory?: Partial<WorkflowPublishHistory>,
-	activate = false,
 ) {
 	const workflow = await createWorkflowWithTrigger(attributes, userOrProject);
-
-	if (activate) {
-		await setActiveVersion(workflow.id, workflow.versionId);
-
-		workflow.activeVersionId = workflow.versionId;
-	}
 
 	// Create workflow history for the initial version
 	await createWorkflowHistory(workflow, userOrProject, withPublishHistory);
@@ -303,7 +296,10 @@ export async function createActiveWorkflow(
 		{ active: true, ...attributes },
 		userOrProject,
 		{},
-		true,
 	);
+
+	await setActiveVersion(workflow.id, workflow.versionId);
+
+	workflow.activeVersionId = workflow.versionId;
 	return workflow;
 }
