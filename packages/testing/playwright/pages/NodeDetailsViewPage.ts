@@ -47,7 +47,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickBackToCanvasButton() {
-		await this.clickByTestId('back-to-canvas');
+		await this.clickByTestId('ndv-close-button');
 	}
 
 	getParameterByLabel(labelName: string) {
