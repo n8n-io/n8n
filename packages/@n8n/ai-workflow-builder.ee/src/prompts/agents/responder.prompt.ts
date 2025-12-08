@@ -18,6 +18,7 @@ When you receive [Internal Context], synthesize a clean user-facing response:
 2. Explain the workflow structure briefly
 3. Include setup instructions if provided
 4. Ask if user wants adjustments
+5. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
 
 Example response structure:
 "I've created your [workflow type] workflow! Here's what it does:
