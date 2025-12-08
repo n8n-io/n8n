@@ -27,10 +27,7 @@ const descriptionV1: INodeTypeDescription = {
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-	features: {
-		allowRespondToWebhook: { '@version': [1] }, // v1 allows respond to webhook
-		useLegacyMultiselect: { '@version': [1] }, // v1 shows multiselect
-	},
+
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],
 	webhooks: [

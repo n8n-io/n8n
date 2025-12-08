@@ -139,12 +139,13 @@ export function createDescriptionMetadata(description: string) {
 		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
 }
 
-function getFieldIdentifier(
-	field: FormFieldsParameter[number],
-	context: IWebhookFunctions,
-): string {
-	const useFieldName = context.isFeatureEnabled('useFieldName');
-	if (useFieldName && field.fieldName) {
+/**
+ * Gets the field identifier to use based on node version.
+ * For v2.4+, uses fieldName as the primary identifier.
+ * For earlier versions, falls back to fieldLabel.
+ */
+function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: number): string {
+	if (nodeVersion && nodeVersion >= 2.4 && field.fieldName) {
 		return field.fieldName;
 	}
 
@@ -165,7 +166,7 @@ export function prepareFormData({
 	appendAttribution = true,
 	buttonLabel,
 	customCss,
-	context,
+	nodeVersion,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -180,7 +181,7 @@ export function prepareFormData({
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
 	customCss?: string;
-	context: IWebhookFunctions;
+	nodeVersion?: number;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -213,7 +214,7 @@ export function prepareFormData({
 
 	for (const [index, field] of formFields.entries()) {
 		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
-		const queryParam = getFieldIdentifier(field, context);
+		const queryParam = getFieldIdentifier(field, nodeVersion);
 
 		const input: FormField = {
 			id: `field-${index}`,
@@ -272,12 +273,11 @@ export function prepareFormData({
 export const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
+	const nodeVersion = context.getNode().typeVersion;
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
-
-	const allowRespondToWebhook = context.isFeatureEnabled('allowRespondToWebhook');
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
 		throw new NodeOperationError(
@@ -290,18 +290,18 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 		);
 	}
 
-	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && allowRespondToWebhook) {
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
 			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
-					'Set the "Respond When" parameter to "Using Respond to Webhook Node" or remove the Respond to Webhook node',
+					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
 			},
 		);
 	}
 
-	if (isRespondToWebhookConnected && !allowRespondToWebhook) {
+	if (isRespondToWebhookConnected && nodeVersion > 2.1) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(
@@ -319,11 +319,11 @@ export function addFormResponseDataToReturnItem(
 	returnItem: INodeExecutionData,
 	formFields: FormFieldsParameter,
 	bodyData: IDataObject,
-	context: IWebhookFunctions,
+	nodeVersion?: number,
 ) {
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
-		const name = getFieldIdentifier(field, context);
+		const name = getFieldIdentifier(field, nodeVersion);
 		let value = bodyData[key] ?? null;
 
 		if (value === null) {
@@ -371,7 +371,7 @@ export async function prepareFormReturnItem(
 	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
-): Promise<INodeExecutionData> {
+) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
@@ -408,7 +408,7 @@ export async function prepareFormReturnItem(
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
 		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
-		const fieldLabel = field ? getFieldIdentifier(field, context) : key;
+		const fieldLabel = field ? getFieldIdentifier(field, context.getNode().typeVersion) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
@@ -429,7 +429,7 @@ export async function prepareFormReturnItem(
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context);
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context.getNode().typeVersion);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
@@ -513,7 +513,7 @@ export function renderForm({
 		appendAttribution,
 		buttonLabel,
 		customCss,
-		context,
+		nodeVersion: context.getNode().typeVersion,
 	});
 
 	res.render('form-trigger', data);
@@ -530,6 +530,7 @@ export async function formWebhook(
 	context: IWebhookFunctions,
 	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
 ) {
+	const node = context.getNode();
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
 		respondWithOptions?: {
@@ -552,7 +553,7 @@ export async function formWebhook(
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (context.isFeatureEnabled('requireAuth')) {
+		if (node.typeVersion > 1) {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -635,7 +636,7 @@ export async function formWebhook(
 
 	let { useWorkflowTimezone } = options;
 
-	if (useWorkflowTimezone === undefined && context.isFeatureEnabled('defaultUseWorkflowTimezone')) {
+	if (useWorkflowTimezone === undefined && node.typeVersion > 2) {
 		useWorkflowTimezone = true;
 	}
 

@@ -43,17 +43,7 @@ const descriptionV2: INodeTypeDescription = {
 	defaults: {
 		name: 'On form submission',
 	},
-	features: {
-		requireAuth: { '@version': [{ _cnd: { gte: 2 } }] }, // v2+ always requires auth
-		defaultUseWorkflowTimezone: { '@version': [{ _cnd: { gt: 2 } }] }, // v2.1+ defaults to true
-		allowRespondToWebhook: { '@version': [{ _cnd: { lte: 2.1 } }] }, // v2.2+ doesn't allow
-		useFieldName: { '@version': [{ _cnd: { gte: 2.4 } }] }, // v2.4+ uses fieldName
-		useWebhookPath: { '@version': [{ _cnd: { lte: 2.1 } }] }, // Show in main properties for v2.1 and below
-		useWebhookPathInOptions: { '@version': [{ _cnd: { gte: 2.2 } }] }, // Show in options for v2.2+
-		useResponseNodeOption: { '@version': [{ _cnd: { gte: 2.2 } }] }, // Show 'responseNode' option for v2.2+
-		useWorkflowTimezone: { '@version': [2] }, // Show useWorkflowTimezone with default false only for v2
-		useLegacyMultiselect: { '@version': [{ _cnd: { lt: 2.3 } }] }, // Show multiselect option for v2.2 and below
-	},
+
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
@@ -109,23 +99,17 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		{
-			...webhookPath,
-			displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useWebhookPath' } }] } },
-		},
+		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
 		formFields,
-		{
-			...formRespondMode,
-			displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useWebhookPath' } }] } },
-		},
+		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		{
 			...formRespondMode,
 			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
 				(option) => option.value !== 'responseNode',
 			),
-			displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useResponseNodeOption' } }] } },
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
 		},
 		{
 			displayName:
@@ -162,7 +146,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...webhookPath,
 					required: false,
-					displayOptions: { show: { '@feature': [{ _cnd: { eq: 'useWebhookPathInOptions' } }] } },
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
 				},
 				{
 					...respondWithOptions,
@@ -185,7 +169,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': [{ _cnd: { eq: 'useWorkflowTimezone' } }],
+							'@version': [2],
 						},
 					},
 				},
@@ -195,7 +179,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@feature': [{ _cnd: { eq: 'defaultUseWorkflowTimezone' } }],
+							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
 				},
@@ -209,7 +193,7 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					displayOptions: {
 						show: {
-							'@feature': [{ _cnd: { eq: 'defaultUseWorkflowTimezone' } }],
+							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
 					default: cssVariables.trim(),
