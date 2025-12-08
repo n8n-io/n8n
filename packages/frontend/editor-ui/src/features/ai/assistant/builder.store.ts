@@ -199,6 +199,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
+	function incrementManualExecutionStats(type: 'success' | 'error') {
+		manualExecStatsInBetweenMessages.value[type]++;
+	}
+
+	function resetManualExecutionStats() {
+		manualExecStatsInBetweenMessages.value = {
+			success: 0,
+			error: 0,
+		};
+	}
+
 	// Message handling functions
 	function addLoadingAssistantMessage(message: string) {
 		builderThinkingMessage.value = message;
