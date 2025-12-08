@@ -14,7 +14,7 @@ import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
@@ -48,7 +48,9 @@ const systemPrompt = ref('');
 const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
+const isOpened = ref(false);
 const tools = ref<INode[]>([]);
+const nameInputRef = useTemplateRef('nameInput');
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -91,6 +93,10 @@ const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
 
+modalBus.value.once('opened', () => {
+	isOpened.value = true;
+});
+
 // If the agent doesn't support tools anymore, reset tools
 watch(
 	selectedAgent,
@@ -118,6 +124,18 @@ watch(
 		}
 	},
 	{ immediate: true },
+);
+
+watch(
+	[isOpened, isLoadingAgent, nameInputRef],
+	async ([opened, isLoading, name]) => {
+		if (opened && !isLoading) {
+			// autofocus attribute doesn't work in modal
+			// https://github.com/element-plus/element-plus/issues/15250
+			name?.focus();
+		}
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
@@ -249,6 +267,7 @@ function onSelectTools() {
 					:required="true"
 				>
 					<N8nInput
+						ref="nameInput"
 						id="agent-name"
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
@@ -374,6 +393,7 @@ function onSelectTools() {
 .row {
 	display: flex;
 	flex-direction: row;
+	gap: var(--spacing--sm);
 }
 
 .footer {

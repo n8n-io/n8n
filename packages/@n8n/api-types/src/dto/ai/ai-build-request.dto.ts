@@ -60,6 +60,7 @@ export class AiBuilderChatRequestDto extends Z.class({
 		featureFlags: z
 			.object({
 				templateExamples: z.boolean().optional(),
+				multiAgent: z.boolean().optional(),
 			})
 			.optional(),
 	}),
