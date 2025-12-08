@@ -20,10 +20,11 @@ import {
 	getSessionsMetadata,
 } from '@/features/ai/assistant/assistant.api';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
+import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { type INodeExecutionData, jsonParse } from 'n8n-workflow';
+import { type ITelemetryTrackProperties, type INodeExecutionData, jsonParse } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -31,9 +32,33 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { dedupe } from 'n8n-workflow';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
+
+interface EndOfStreamingTrackingPayload {
+	userMessageId: string;
+	startWorkflowJson: string;
+}
+
+interface UserSubmittedBuilderMessageTrackingPayload
+	extends ITelemetryTrackProperties,
+		TodosTrackingPayload {
+	source: 'chat' | 'canvas';
+	message: string;
+	session_id: string;
+	start_workflow_json: string;
+	workflow_id: string;
+	type: 'message' | 'execution';
+	manual_exec_success_count_since_prev_msg: number;
+	manual_exec_error_count_since_prev_msg: number;
+	user_message_id: string;
+	execution_data?: string;
+	execution_status?: string;
+	error_message?: string;
+	error_node_type?: string;
+}
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
@@ -45,6 +70,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const hasMessages = ref<boolean>(false);
+	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
+		success: 0,
+		error: 0,
+	});
+
+	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -69,6 +100,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		clearRatingLogic,
 		getRunningTools,
 	} = useBuilderMessages();
+
+	const { workflowTodos, getTodosToTrack } = useBuilderTodos();
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
@@ -124,17 +157,74 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 	}
 
+	function incrementManualExecutionStats(type: 'success' | 'error') {
+		manualExecStatsInBetweenMessages.value[type]++;
+	}
+
+	function resetManualExecutionStats() {
+		manualExecStatsInBetweenMessages.value = {
+			success: 0,
+			error: 0,
+		};
+	}
+
 	// Message handling functions
 	function addLoadingAssistantMessage(message: string) {
 		builderThinkingMessage.value = message;
 	}
 
-	function stopStreaming() {
+	function getWorkflowModifications({
+		userMessageId,
+		startWorkflowJson,
+	}: EndOfStreamingTrackingPayload) {
+		const newToolMessages = toolMessages.value.filter((toolMsg) =>
+			toolMsg.id?.startsWith(userMessageId),
+		);
+		const endWorkflowJson = getWorkflowSnapshot();
+
+		return {
+			tools_called: dedupe(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			start_workflow_json: startWorkflowJson,
+			end_workflow_json: endWorkflowJson,
+		};
+	}
+
+	type StopStreamingPayload =
+		| {
+				error: string;
+		  }
+		| { aborted: true };
+	function trackEndBuilderResponse(payload?: StopStreamingPayload) {
+		if (!currentStreamingMessage.value) {
+			return;
+		}
+
+		const { userMessageId } = currentStreamingMessage.value;
+
+		telemetry.track('End of response from builder', {
+			// todo user_id available as trait already?
+			user_message_id: userMessageId,
+			workflow_id: workflowsStore.workflowId,
+			session_id: trackingSessionId.value,
+			...getWorkflowModifications(currentStreamingMessage.value),
+			...payload,
+			...getTodosToTrack(),
+		});
+	}
+
+	function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
 		}
+
+		trackEndBuilderResponse(payload);
+		currentStreamingMessage.value = undefined;
+	}
+
+	function abortStreaming() {
+		stopStreaming({ aborted: true });
 	}
 
 	// Error handling
@@ -144,10 +234,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * The retry function, if provided, will remove the error message before retrying.
 	 * Tracks error telemetry
 	 */
-	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
+	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
-		stopStreaming();
+		stopStreaming({
+			error: e.message,
+		});
 		builderThinkingMessage.value = undefined;
 
 		if (e.name === 'AbortError') {
@@ -163,17 +255,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
-			id,
+			userMessageId,
 			retry,
 		);
 
 		chatMessages.value = [...chatMessages.value, errorMessage];
-
-		telemetry.track('Workflow generation errored', {
-			error: e.message,
-			session_id: trackingSessionId.value,
-			workflow_id: workflowsStore.workflowId,
-		});
 	}
 
 	// Helper functions
@@ -201,6 +287,68 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== messageId);
 			await retryFn();
 		};
+	}
+
+	// Telemetry functions
+	/**
+	 * Tracks when a user submits a message to the builder.
+	 * Captures workflow state, execution data, and todo counts for analytics.
+	 */
+	function trackUserSubmittedBuilderMessage(options: {
+		text: string;
+		source: 'chat' | 'canvas';
+		type: 'message' | 'execution';
+		userMessageId: string;
+		currentWorkflowJson: string;
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
+	}) {
+		const {
+			text,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		} = options;
+
+		const trackingPayload: UserSubmittedBuilderMessageTrackingPayload = {
+			source,
+			message: text,
+			session_id: trackingSessionId.value,
+			start_workflow_json: currentWorkflowJson,
+			workflow_id: workflowsStore.workflowId,
+			type,
+			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
+			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
+			user_message_id: userMessageId,
+			...getTodosToTrack(),
+		};
+
+		if (type === 'execution') {
+			let resultData = '{}';
+			let resultDataSizeKb = 0;
+
+			try {
+				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+			} catch (error) {
+				// Handle circular structure errors gracefully
+				console.warn('Failed to stringify execution data for telemetry:', error);
+			}
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
+			trackingPayload.execution_status = executionStatus ?? '';
+			if (executionStatus === 'error') {
+				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_node_type = errorNodeType ?? '';
+			}
+		}
+
+		telemetry.track('User submitted builder message', trackingPayload);
 	}
 
 	// Core API functions
@@ -242,51 +390,38 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (options.initialGeneration !== undefined) {
 			initialGeneration.value = options.initialGeneration;
 		}
-		const messageId = generateMessageId();
-
+		const userMessageId = generateMessageId();
 		const currentWorkflowJson = getWorkflowSnapshot();
-		const trackingPayload: Record<string, string> = {
-			source,
-			message: text,
-			session_id: trackingSessionId.value,
-			start_workflow_json: currentWorkflowJson,
-			workflow_id: workflowsStore.workflowId,
-			type,
+
+		currentStreamingMessage.value = {
+			userMessageId,
+			startWorkflowJson: currentWorkflowJson,
 		};
 
-		if (type === 'execution') {
-			let resultData = '{}';
-			let resultDataSizeKb = 0;
+		trackUserSubmittedBuilderMessage({
+			text,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		});
 
-			try {
-				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
-				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
-			} catch (error) {
-				// Handle circular structure errors gracefully
-				console.warn('Failed to stringify execution data for telemetry:', error);
-			}
+		resetManualExecutionStats();
 
-			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
-			trackingPayload.execution_status = executionStatus ?? '';
-			if (executionStatus === 'error') {
-				trackingPayload.error_message = errorMessage ?? '';
-				trackingPayload.error_node_type = errorNodeType ?? '';
-			}
-		}
-
-		telemetry.track('User submitted builder message', trackingPayload);
-
-		prepareForStreaming(text, messageId);
+		prepareForStreaming(text, userMessageId);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
-		const payload = createBuilderPayload(text, {
+		const payload = createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
-		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
+		const retry = createRetryHandler(userMessageId, async () => sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
@@ -302,7 +437,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
-						generateMessageId(),
+						userMessageId,
 						retry,
 					);
 					chatMessages.value = result.messages;
@@ -315,11 +450,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					}
 				},
 				() => stopStreaming(),
-				(e) => handleServiceError(e, messageId, retry),
+				(e) => handleServiceError(e, userMessageId, retry),
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
-			handleServiceError(e, messageId, retry);
+			handleServiceError(e, userMessageId, retry);
 		}
 	}
 
@@ -574,9 +709,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsRemaining,
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
+		workflowTodos,
 
 		// Methods
-		stopStreaming,
+		abortStreaming,
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,
@@ -586,5 +722,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		updateBuilderCredits,
 		getRunningTools,
 		fetchSessionsMetadata,
+		incrementManualExecutionStats,
+		resetManualExecutionStats,
 	};
 });
