@@ -21,6 +21,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
 import { InstanceSettings } from 'n8n-core';
+import { UserService } from '@/services/user.service';
 
 @Service()
 export class ProvisioningService {
@@ -34,6 +35,7 @@ export class ProvisioningService {
 		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
+		private readonly userService: UserService,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -109,7 +111,7 @@ export class ProvisioningService {
 
 		// No need to update record if the role hasn't changed
 		if (user.role.slug !== dbRole.slug) {
-			await this.userRepository.update(user.id, { role: { slug: dbRole.slug } });
+			await this.userService.changeUserRole(user, { newRoleName: dbRole.slug });
 
 			this.eventService.emit('sso-user-instance-role-updated', {
 				userId: user.id,

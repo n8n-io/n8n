@@ -7,7 +7,7 @@ import InsightsSummary from '@/features/execution/insights/components/InsightsSu
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, now, toCalendarDateTime, today } from '@internationalized/date';
-import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
+import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
 	computed,
@@ -80,7 +80,6 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 
 const sortTableBy = ref([{ id: props.insightType, desc: true }]);
 
-const selectedDateRange = ref<InsightsDateRange['key']>('week');
 const granularity = computed(() => {
 	const { start, end } = range.value;
 	if (!start || !end) return 'day';
@@ -164,7 +163,7 @@ const fetchPaginatedTableData = ({
 };
 
 watch(
-	() => [props.insightType, selectedDateRange.value, selectedProject.value, range.value],
+	() => [props.insightType, selectedProject.value, range.value],
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
@@ -244,7 +243,8 @@ const projects = computed(() =>
 				v-if="insightsStore.isSummaryEnabled"
 				:summary="insightsStore.summary.state"
 				:loading="insightsStore.summary.isLoading"
-				:time-range="selectedDateRange"
+				:start-date="range.start"
+				:end-date="range.end"
 				:class="$style.insightsBanner"
 			/>
 			<div :class="$style.insightsContent">

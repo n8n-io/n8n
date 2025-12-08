@@ -728,7 +728,13 @@ onBeforeUnmount(() => {
 			:style="{ zIndex: APP_Z_INDEXES.NDV }"
 		>
 			<NDVFloatingNodes :root-node="activeNode" @switch-selected-node="onSwitchSelectedNode" />
-			<div ref="containerRef" :class="$style.container">
+			<div
+				ref="containerRef"
+				:class="{
+					[$style.container]: true,
+					[$style.webhookWaiting]: isExecutionWaitingForWebhook,
+				}"
+			>
 				<NDVHeader
 					:class="$style.header"
 					:node-name="activeNode.name"
@@ -789,7 +795,10 @@ onBeforeUnmount(() => {
 						:min-width="260"
 						:supported-directions="supportedResizeDirections"
 						:grid-size="8"
-						:class="$style.column"
+						:class="{
+							[$style.column]: !isExecutionWaitingForWebhook,
+							[$style.webhookWaiting]: isExecutionWaitingForWebhook,
+						}"
 						:style="{ width: `${panelWidthPercentage.main}%` }"
 						outset
 						@resize="onResize"
@@ -944,5 +953,9 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable--height);
+}
+
+.webhookWaiting {
+	border: none;
 }
 </style>

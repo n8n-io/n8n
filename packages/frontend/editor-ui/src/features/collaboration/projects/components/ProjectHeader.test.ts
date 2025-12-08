@@ -168,6 +168,22 @@ describe('ProjectHeader', () => {
 		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
 	});
 
+	it('Personal: should render the correct title when currentProject is null but personalProject exists', async () => {
+		settingsStore.isDataTableFeatureEnabled = false;
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const { getByTestId, rerender } = renderComponent();
+		const personalSubtitle = 'Workflows and credentials owned by you';
+
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = { type: ProjectTypes.Personal } as Project;
+
+		await rerender({});
+
+		expect(getByTestId('project-name')).toHaveTextContent('Personal');
+		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
+	});
+
 	it('Team project: should render the correct title and no subtitle if there is no description', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
