@@ -703,11 +703,11 @@ When you need to reference “now”, use this date and time.`;
 								type,
 								message: [{ type: 'text', text: message.content } as ContentBlock].concat(
 									attachments.flatMap<ContentBlock>((attachment) => {
-										if (attachment.data) {
-											return [{ type: 'image_url', image_url: attachment.data }];
-										}
-
 										if (!attachment.id) {
+											if (attachment.data) {
+												return [{ type: 'image_url', image_url: attachment.data }];
+											}
+
 											return [];
 										}
 
