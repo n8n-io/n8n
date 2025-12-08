@@ -4,6 +4,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
 	PUSH = 'push',
+	EDIT_DESCRIPTION = 'edit-description',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 	ARCHIVE = 'archive',

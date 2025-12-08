@@ -847,11 +847,11 @@ export type CloudUpdateLinkSourceType =
 	| 'evaluations'
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
-	| 'custom-roles';
+	| 'custom-roles'
+	| 'main-sidebar';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
-	| 'upgrade-canvas-nav'
 	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
@@ -874,7 +874,9 @@ export type UTMCampaign =
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
 	| 'upgrade-builder'
-	| 'upgrade-custom-roles';
+	| 'upgrade-custom-roles'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-main-sidebar';
 
 export type AddedNode = {
 	type: string;

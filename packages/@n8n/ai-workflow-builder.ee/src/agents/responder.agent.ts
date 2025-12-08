@@ -3,49 +3,12 @@ import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
+import { buildResponderPrompt } from '@/prompts/agents/responder.prompt';
+
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow } from '../types/workflow';
 import { getErrorEntry, getBuilderOutput, getConfiguratorOutput } from '../utils/coordination-log';
-
-/**
- * Responder Agent Prompt
- *
- * Synthesizes final user-facing responses from workflow building context.
- * Also handles conversational queries.
- */
-const RESPONDER_PROMPT = `You are a helpful AI assistant for n8n workflow automation.
-
-You have access to context about what has been built, including:
-- Discovery results (nodes found)
-- Builder output (workflow structure)
-- Configuration summary (setup instructions)
-
-FOR WORKFLOW COMPLETION RESPONSES:
-When you receive [Internal Context], synthesize a clean user-facing response:
-1. Summarize what was built in a friendly way
-2. Explain the workflow structure briefly
-3. Include setup instructions if provided
-4. Ask if user wants adjustments
-
-Example response structure:
-"I've created your [workflow type] workflow! Here's what it does:
-[Brief explanation of the flow]
-
-**Setup Required:**
-[List any configuration steps from the context]
-
-Let me know if you'd like to adjust anything."
-
-FOR QUESTIONS/CONVERSATIONS:
-- Be friendly and concise
-- Explain n8n capabilities when asked
-- Provide practical examples when helpful
-
-RESPONSE STYLE:
-- Keep responses focused and not overly long
-- Use markdown formatting for readability
-- Be conversational and helpful`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -53,7 +16,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
 		[
 			{
 				type: 'text',
-				text: RESPONDER_PROMPT,
+				text: buildResponderPrompt(),
 				cache_control: { type: 'ephemeral' },
 			},
 		],
