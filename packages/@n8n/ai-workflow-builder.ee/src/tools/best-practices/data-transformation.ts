@@ -16,7 +16,7 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 ### Design Best Practices
 - Plan transformation requirements in plain language before building
 - Use Modular Design: Create reusable sub-workflows for common tasks like "Data Cleaning" or "Error Handler"
-- Batch datasets over 100 items using splitOut node to prevent timeouts
+- Batch datasets over 100 items using Split In Batches node to prevent timeouts
 
 ## Recommended Nodes
 
