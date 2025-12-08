@@ -48,9 +48,9 @@ describe('Credential Resolvers API', () => {
 		await repository.delete({});
 	});
 
-	describe('GET /resolvers', () => {
+	describe('GET /credential-resolvers', () => {
 		it('should return empty list when no resolvers exist', async () => {
-			const response = await ownerAgent.get('/resolvers').expect(200);
+			const response = await ownerAgent.get('/credential-resolvers').expect(200);
 			expect(response.body.data).toEqual([]);
 		});
 
@@ -67,7 +67,7 @@ describe('Credential Resolvers API', () => {
 				config: { prefix: 'test2-' },
 			});
 
-			const response = await ownerAgent.get('/resolvers').expect(200);
+			const response = await ownerAgent.get('/credential-resolvers').expect(200);
 
 			expect(response.body.data).toHaveLength(2);
 			expect(response.body.data[0]).toMatchObject({
@@ -78,11 +78,11 @@ describe('Credential Resolvers API', () => {
 		});
 
 		it('should reject access for members', async () => {
-			await memberAgent.get('/resolvers').expect(403);
+			await memberAgent.get('/credential-resolvers').expect(403);
 		});
 	});
 
-	describe('POST /resolvers', () => {
+	describe('POST /credential-resolvers', () => {
 		it('should create a resolver', async () => {
 			const payload = {
 				name: 'Test Resolver',
@@ -90,7 +90,7 @@ describe('Credential Resolvers API', () => {
 				config: { prefix: 'test-' },
 			};
 
-			const response = await ownerAgent.post('/resolvers').send(payload).expect(200);
+			const response = await ownerAgent.post('/credential-resolvers').send(payload).expect(200);
 
 			expect(response.body.data).toMatchObject({
 				id: expect.any(String),
@@ -111,7 +111,7 @@ describe('Credential Resolvers API', () => {
 				config: {},
 			};
 
-			const response = await ownerAgent.post('/resolvers').send(payload).expect(400);
+			const response = await ownerAgent.post('/credential-resolvers').send(payload).expect(400);
 			expect(response.body.message).toContain('Unknown resolver type');
 		});
 
@@ -122,7 +122,7 @@ describe('Credential Resolvers API', () => {
 				config: { prefix: 'test-' },
 			};
 
-			await memberAgent.post('/resolvers').send(payload).expect(403);
+			await memberAgent.post('/credential-resolvers').send(payload).expect(403);
 		});
 	});
 
@@ -134,7 +134,7 @@ describe('Credential Resolvers API', () => {
 				config: { prefix: 'test-' },
 			});
 
-			const response = await ownerAgent.get(`/resolvers/${resolver.id}`).expect(200);
+			const response = await ownerAgent.get(`/credential-resolvers/${resolver.id}`).expect(200);
 
 			expect(response.body.data).toMatchObject({
 				id: resolver.id,
@@ -144,7 +144,7 @@ describe('Credential Resolvers API', () => {
 		});
 
 		it('should return 404 for non-existent resolver', async () => {
-			await ownerAgent.get('/resolvers/non-existent-id').expect(404);
+			await ownerAgent.get('/credential-resolvers/non-existent-id').expect(404);
 		});
 	});
 
@@ -157,7 +157,7 @@ describe('Credential Resolvers API', () => {
 			});
 
 			const response = await ownerAgent
-				.patch(`/resolvers/${resolver.id}`)
+				.patch(`/credential-resolvers/${resolver.id}`)
 				.send({ name: 'Updated Name' })
 				.expect(200);
 
@@ -165,7 +165,10 @@ describe('Credential Resolvers API', () => {
 		});
 
 		it('should return 404 for non-existent resolver', async () => {
-			await ownerAgent.patch('/resolvers/non-existent-id').send({ name: 'New Name' }).expect(404);
+			await ownerAgent
+				.patch('/credential-resolvers/non-existent-id')
+				.send({ name: 'New Name' })
+				.expect(404);
 		});
 	});
 
@@ -177,7 +180,7 @@ describe('Credential Resolvers API', () => {
 				config: { prefix: 'test-' },
 			});
 
-			const response = await ownerAgent.delete(`/resolvers/${resolver.id}`).expect(200);
+			const response = await ownerAgent.delete(`/credential-resolvers/${resolver.id}`).expect(200);
 			expect(response.body.data).toEqual({ success: true });
 
 			// Verify it was actually deleted
@@ -186,7 +189,7 @@ describe('Credential Resolvers API', () => {
 		});
 
 		it('should return 404 for non-existent resolver', async () => {
-			await ownerAgent.delete('/resolvers/non-existent-id').expect(404);
+			await ownerAgent.delete('/credential-resolvers/non-existent-id').expect(404);
 		});
 	});
 });

@@ -11,8 +11,8 @@ export const credentialResolverSchema = z.object({
 	type: credentialResolverTypeSchema,
 	config: z.string(), // Encrypted config
 	decryptedConfig: credentialResolverConfigSchema.optional(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
 });
 
 export type CredentialResolver = z.infer<typeof credentialResolverSchema>;

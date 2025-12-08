@@ -1,4 +1,9 @@
-import { CreateCredentialResolverDto, UpdateCredentialResolverDto } from '@n8n/api-types';
+import {
+	CreateCredentialResolverDto,
+	CredentialResolver,
+	credentialResolverSchema,
+	UpdateCredentialResolverDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -20,15 +25,20 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
 import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
-@RestController('/resolvers')
+@RestController('/credential-resolvers')
 export class CredentialResolversController {
 	constructor(private readonly service: DynamicCredentialResolverService) {}
 
 	@Get('/')
 	@GlobalScope('credentialResolver:list')
-	async listResolvers(_req: AuthenticatedRequest, _res: Response) {
+	async listResolvers(
+		_req: AuthenticatedRequest,
+		_res: Response,
+	): Promise<Array<CredentialResolver>> {
 		try {
-			return await this.service.findAll();
+			return (await this.service.findAll()).map((resolver) =>
+				credentialResolverSchema.parse(resolver),
+			);
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -43,13 +53,14 @@ export class CredentialResolversController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreateCredentialResolverDto,
-	) {
+	): Promise<CredentialResolver> {
 		try {
-			return await this.service.create({
+			const createdResolver = await this.service.create({
 				name: dto.name,
 				type: dto.type,
 				config: dto.config,
 			});
+			return credentialResolverSchema.parse(createdResolver);
 		} catch (e: unknown) {
 			if (e instanceof CredentialResolverValidationError) {
 				throw new BadRequestError(e.message);
@@ -63,9 +74,13 @@ export class CredentialResolversController {
 
 	@Get('/:id')
 	@GlobalScope('credentialResolver:read')
-	async getResolver(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
+	async getResolver(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<CredentialResolver> {
 		try {
-			return await this.service.findById(id);
+			return credentialResolverSchema.parse(await this.service.findById(id));
 		} catch (e: unknown) {
 			if (e instanceof DynamicCredentialResolverNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -84,12 +99,14 @@ export class CredentialResolversController {
 		_res: Response,
 		@Param('id') id: string,
 		@Body dto: UpdateCredentialResolverDto,
-	) {
+	): Promise<CredentialResolver> {
 		try {
-			return await this.service.update(id, {
-				name: dto.name,
-				config: dto.config,
-			});
+			return credentialResolverSchema.parse(
+				await this.service.update(id, {
+					name: dto.name,
+					config: dto.config,
+				}),
+			);
 		} catch (e: unknown) {
 			if (e instanceof DynamicCredentialResolverNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -106,7 +123,11 @@ export class CredentialResolversController {
 
 	@Delete('/:id')
 	@GlobalScope('credentialResolver:delete')
-	async deleteResolver(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
+	async deleteResolver(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<{ success: true }> {
 		try {
 			await this.service.delete(id);
 			return { success: true };
