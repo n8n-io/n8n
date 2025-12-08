@@ -164,6 +164,7 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(scopes).toEqual(
 			[
+				'workflow:chat',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:move',
@@ -808,6 +809,7 @@ describe('GET /workflows', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:delete',
 					'workflow:execute',
 					'workflow:move',
@@ -818,7 +820,9 @@ describe('GET /workflows', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
+			expect(wf2.scopes).toEqual(
+				['workflow:chat', 'workflow:read', 'workflow:update', 'workflow:execute'].sort(),
+			);
 		}
 
 		{
@@ -834,6 +838,7 @@ describe('GET /workflows', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual([
+				'workflow:chat',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:read',
@@ -844,6 +849,7 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:delete',
 					'workflow:execute',
 					'workflow:move',
@@ -868,6 +874,7 @@ describe('GET /workflows', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
@@ -883,6 +890,7 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
@@ -1850,6 +1858,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:delete',
 					'workflow:execute',
 					'workflow:move',
@@ -1860,7 +1869,9 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
+			expect(wf2.scopes).toEqual(
+				['workflow:chat', 'workflow:read', 'workflow:update', 'workflow:execute'].sort(),
+			);
 
 			expect(f1.id).toBe(savedFolder1.id);
 		}
@@ -1881,6 +1892,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual([
+				'workflow:chat',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:read',
@@ -1891,6 +1903,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:delete',
 					'workflow:execute',
 					'workflow:move',
@@ -1920,6 +1933,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
@@ -1935,6 +1949,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'workflow:chat',
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
