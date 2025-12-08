@@ -43,7 +43,7 @@ jobs:
           pnpm add --global wrangler
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@707f63750981584eb6abc365a50d441516fb04b8
+        uses: cloudflare/wrangler-action@v3
         id: cloudflare_deployment
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
