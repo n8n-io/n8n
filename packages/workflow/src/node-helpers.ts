@@ -339,6 +339,13 @@ const checkConditions = (
 		) {
 			const [key, targetValue] = Object.entries(condition._cnd)[0];
 
+			// Special case: empty array handling for 'eq' and 'not' conditions
+			// Empty array means the value is definitely not present
+			if (actualValues.length === 0) {
+				if (key === 'not') return true; // Value is not present, so 'not' is true
+				if (key === 'eq') return false; // Value is not present, so 'eq' is false
+			}
+
 			return actualValues.every((propertyValue) => {
 				if (key === 'eq') {
 					return isEqual(propertyValue, targetValue);
@@ -424,7 +431,7 @@ export function displayParameter(
 				return true;
 			}
 
-			if (values.length === 0 || !checkConditions(show[propertyName]!, values)) {
+			if (!checkConditions(show[propertyName]!, values)) {
 				return false;
 			}
 		}
