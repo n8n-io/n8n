@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+enableRedisDebug();
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { readFileSync } from 'fs';
@@ -14,6 +15,24 @@ type RedisEventMap = {
 	'connection-lost': number;
 	'connection-recovered': never;
 };
+
+/**
+ * Enable ioredis debug logging if QUEUE_BULL_REDIS_DEBUG is set to 'true'.
+ * Based on npm package 'debug', setting the DEBUG env var to 'ioredis:*' enables
+ * Must be called before any ioredis client is created.
+ */
+function enableRedisDebug() {
+	const debug = process.env.QUEUE_BULL_REDIS_DEBUG === 'true';
+	if (debug) {
+		// get existing DEBUG namspaces and add 'ioredis:* debug option'"
+		const debuggers = (process.env.DEBUG ?? '')
+			.split(',')
+			.map((d) => d.trim())
+			.filter((d) => d && !d.includes('ioredis'));
+		debuggers.push('ioredis:*');
+		process.env['DEBUG'] = debuggers.join(',');
+	}
+}
 
 @Service()
 export class RedisClientService extends TypedEmitter<RedisEventMap> {
@@ -53,6 +72,22 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			this.clusterNodes().length > 0
 				? this.createClusterClient(arg)
 				: this.createRegularClient(arg);
+
+		client.on('wait', (...args: any[]) => {
+			this.logger.info(`[Redis client] wait ${args.join('')}`);
+		});
+
+		client.on('close', (...args: any[]) => {
+			this.logger.info(`[Redis client] close ${args.join('')}`);
+		});
+
+		client.on('reconnecting', (...args: any[]) => {
+			this.logger.info(`[Redis client] reconnecting ${args.join('')}`);
+		});
+
+		client.on('end', (...args: any[]) => {
+			this.logger.info(`[Redis client] end ${args.join('')}`);
+		});
 
 		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
@@ -157,6 +192,15 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (dualStack) options.family = 0;
 
+		const {
+			caFile = '',
+			certFile = '',
+			certKeyFile = '',
+			certKeyFilePassphrase = '',
+			serverName = '',
+			rejectUnauthorized = true,
+		} = tlsConfig;
+
 		if (tls) {
 			const readCertFileSync = (path: string) => {
 				try {
@@ -168,13 +212,23 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				}
 			};
 
-			const { ca = '', cert = '', serverName = '', rejectUnauthorized = true } = tlsConfig;
 			options.tls = {
-				ca: ca ? readCertFileSync(ca) : undefined,
-				cert: cert ? readCertFileSync(cert) : undefined,
+				ca: caFile ? readCertFileSync(caFile) : undefined,
+				cert: certFile ? readCertFileSync(certFile) : undefined,
+				key: certKeyFile ? readCertFileSync(certKeyFile) : undefined,
+				passphrase: certKeyFilePassphrase || undefined,
 				servername: serverName || undefined,
 				rejectUnauthorized: rejectUnauthorized ? undefined : false,
 			};
+		} else if (
+			caFile !== '' ||
+			certFile !== '' ||
+			certKeyFile !== '' ||
+			serverName !== '' ||
+			!rejectUnauthorized
+		) {
+			this.logger.error('Redis TLS config found but TLS disabled. Set QUEUE_BULL_REDIS_TLS=true.');
+			process.exit(1);
 		}
 
 		return options;
