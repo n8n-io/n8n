@@ -1,71 +1,39 @@
-import { type UsersListFilterDto } from '@n8n/api-types';
+import { type UsersListFilterDto, type User } from '@n8n/api-types';
 import { ref } from 'vue';
 import * as usersApi from '@n8n/rest-api-client/api/users';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-interface AccessSettingsUserData {
-	count: number;
-	items: Array<{
-		id: string;
-		email: string;
-		role: string;
-		projectRelations: Array<{
-			id: string;
-			role: string;
-			name: string;
-		}>;
-	}>;
-}
-
-function isAccessSettingsUserData(response: unknown): response is AccessSettingsUserData {
-	const topLevelsPropertiesMatch =
-		typeof response === 'object' && response !== null && 'count' in response && 'items' in response;
-	if (!topLevelsPropertiesMatch) {
-		return false;
-	}
-	if (!Array.isArray(response.items)) {
-		return false;
-	}
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const item: object = response.items.length ? response.items[0] : null;
-	if (!item) {
-		return true;
-	}
-	const isValidItem =
-		Object.hasOwn(item, 'id') &&
-		Object.hasOwn(item, 'email') &&
-		Object.hasOwn(item, 'role') &&
-		Object.hasOwn(item, 'projectRelations');
-	return isValidItem;
-}
-
 /**
- * Fetches all users in batches of 50 until all items are retrieved
+ * Special type since we use the "select" and "expand" filter
+ * properties to change what is fetched in the users query.
  */
-async function fetchUsers(
-	context: IRestApiContext,
-	baseFilter: Omit<UsersListFilterDto, 'take' | 'skip'>,
-): Promise<AccessSettingsUserData> {
+type AccessSettingsUser = Pick<User, 'id' | 'email' | 'role' | 'projectRelations'>;
+
+type AccessSettingsUserData = {
+	count: number;
+	items: AccessSettingsUser[];
+};
+
+async function fetchUsers(context: IRestApiContext): Promise<AccessSettingsUserData> {
 	const allUsers: AccessSettingsUserData['items'] = [];
+	const fieldsNeededForAccessSettingExport: Partial<UsersListFilterDto> = {
+		select: ['email', 'role'],
+		expand: ['projectRelations'],
+	};
+
 	let skip = 0;
 	const take = 50;
 	let totalCount: number | undefined;
 
 	while (totalCount === undefined || allUsers.length < totalCount) {
 		const filter: UsersListFilterDto = {
-			...baseFilter,
+			...fieldsNeededForAccessSettingExport,
+			sortBy: ['email:desc'],
 			take,
 			skip,
 		};
-
 		const response = await usersApi.getUsers(context, filter);
-
-		if (!isAccessSettingsUserData(response)) {
-			// This case should never happen (as that would mean a breaking backend change)
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any
-			return response as any;
-		}
 
 		totalCount = response.count;
 
@@ -119,11 +87,7 @@ export function useAccessSettingsCsvExport() {
 			return cachedUserData.value;
 		}
 
-		const userData = await fetchUsers(rootStore.restApiContext, {
-			select: ['email', 'role'],
-			sortBy: ['email:desc'],
-			expand: ['projectRelations'],
-		});
+		const userData = await fetchUsers(rootStore.restApiContext);
 
 		cachedUserData.value = userData;
 		return cachedUserData.value;
