@@ -39,6 +39,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -925,7 +926,7 @@ export class WorkflowService {
 				workflowId,
 				error: validation.error,
 			});
-			throw new BadRequestError(validation.error ?? 'Workflow validation failed');
+			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
 		}
 	}
 }
