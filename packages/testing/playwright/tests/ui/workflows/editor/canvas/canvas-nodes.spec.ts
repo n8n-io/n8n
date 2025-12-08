@@ -120,9 +120,10 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(n8n.canvas.stopExecutionButton()).toBeHidden();
 
+		// Each Edit Fields node passes through 1 item from the Manual Trigger
 		await expect(
 			n8n.canvas.getConnectionLabelBetweenNodes('Edit Fields1', MERGE_NODE_NAME).first(),
-		).toContainText('2 items');
+		).toContainText('1 item');
 	});
 
 	test('should add nodes and check execution success', async ({ n8n }) => {
