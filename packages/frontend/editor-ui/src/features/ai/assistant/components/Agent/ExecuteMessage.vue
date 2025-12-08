@@ -16,6 +16,7 @@ import { useToast } from '@/app/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import type { WorkflowValidationIssue } from '@/Interface';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
