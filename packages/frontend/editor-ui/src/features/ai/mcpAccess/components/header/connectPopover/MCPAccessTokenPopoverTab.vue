@@ -26,6 +26,7 @@ const toast = useToast();
 const mcpStore = useMCPStore();
 
 const loadingApiKey = ref(true);
+const keyRotating = ref(false);
 const apiKey = computed(() => mcpStore.currentUserMCPKey);
 
 const { copy, copied, isSupported } = useClipboard();
@@ -61,7 +62,7 @@ const connectionCode = computed(() => {
 });
 
 const apiKeyText = computed(() => {
-	if (loadingApiKey.value) {
+	if (keyRotating.value) {
 		return `<${i18n.baseText('generic.loading')}...>`;
 	}
 	return isKeyRedacted.value ? '<YOUR_ACCESS_TOKEN_HERE>' : apiKey.value?.apiKey;
@@ -82,13 +83,13 @@ const fetchApiKey = async () => {
 
 const rotateKey = async () => {
 	try {
-		loadingApiKey.value = true;
+		keyRotating.value = true;
 		await mcpStore.generateNewApiKey();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
 	} finally {
 		setTimeout(() => {
-			loadingApiKey.value = false;
+			keyRotating.value = false;
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
 };
@@ -134,6 +135,7 @@ onMounted(async () => {
 			<ConnectionParameter
 				id="access-token"
 				:value="apiKey.apiKey"
+				:value-loading="keyRotating"
 				:label="i18n.baseText('settings.mcp.connectPopover.tab.accessToken')"
 				:info-tip="i18n.baseText('settings.mcp.instructions.apiKey.tip')"
 				:allow-copy="!isKeyRedacted"
@@ -144,7 +146,13 @@ onMounted(async () => {
 						:content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')"
 						:show-after="MCP_TOOLTIP_DELAY"
 					>
-						<N8nButton type="tertiary" icon="refresh-cw" :square="true" @click="rotateKey" />
+						<N8nButton
+							type="tertiary"
+							icon="refresh-cw"
+							:square="true"
+							:disabled="keyRotating"
+							@click="rotateKey"
+						/>
 					</N8nTooltip>
 				</template>
 			</ConnectionParameter>
@@ -162,7 +170,7 @@ onMounted(async () => {
 					:show-after="MCP_TOOLTIP_DELAY"
 				>
 					<N8nButton
-						v-if="isSupported && !loadingApiKey"
+						v-if="isSupported && !loadingApiKey && !keyRotating"
 						type="tertiary"
 						:icon="copied ? 'check' : 'copy'"
 						:square="true"

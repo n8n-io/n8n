@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
-import { N8nButton, N8nTooltip, N8nInfoTip, N8nInput } from '@n8n/design-system';
+import { N8nButton, N8nTooltip, N8nInfoTip, N8nInput, N8nLoading } from '@n8n/design-system';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
 	id: string;
 	label: string;
 	value: string;
+	valueLoading?: boolean;
 	infoTip?: string;
 	allowCopy?: boolean;
 };
@@ -19,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
 	allowCopy: true,
 	maxWidth: undefined,
 	infoTip: undefined,
+	valueLoading: false,
 });
 
 const emit = defineEmits<{
@@ -45,11 +47,20 @@ const handleCopy = async (value: string) => {
 		</div>
 		<div
 			:id="`connection-parameter-${props.id}`"
-			:class="$style['parameter-value']"
+			:class="{
+				[$style['parameter-value']]: true,
+				[$style['parameter-value--loading']]: props.valueLoading,
+			}"
 			data-test-id="connection-parameter-value"
 		>
 			<div :class="$style['input-wrapper']">
-				<N8nInput v-model="props.value" type="text" :readonly="true" />
+				<N8nLoading
+					v-if="props.valueLoading"
+					:loading="props.valueLoading"
+					variant="h1"
+					:class="$style['parameter-skeleton']"
+				/>
+				<N8nInput v-else v-model="props.value" type="text" :readonly="true" />
 			</div>
 			<div :class="$style['copy-button-wrapper']">
 				<slot name="customActions" />
@@ -65,6 +76,7 @@ const handleCopy = async (value: string) => {
 						:icon="copied ? 'check' : 'copy'"
 						:square="true"
 						:class="$style['copy-button']"
+						:disabled="props.valueLoading"
 						@click="handleCopy(props.value)"
 					/>
 				</N8nTooltip>
@@ -111,6 +123,10 @@ const handleCopy = async (value: string) => {
 	border-radius: var(--radius);
 	overflow: hidden;
 
+	&--loading {
+		gap: 0;
+	}
+
 	.input-wrapper {
 		flex: 1;
 		min-width: 0;
@@ -130,6 +146,12 @@ const handleCopy = async (value: string) => {
 			min-height: var(--spacing--md);
 			height: var(--spacing--md);
 		}
+	}
+
+	.parameter-skeleton div {
+		margin: 0;
+		height: calc(var(--spacing--xl) - 2 * var(--border-width));
+		border-radius: 0 0 var(--radius) var(--radius);
 	}
 
 	button {
