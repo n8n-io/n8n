@@ -310,7 +310,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('applyTriggerNodeTypeFilter', () => {
-		it('should left join activeVersion and use COALESCE for PostgreSQL', async () => {
+		it('should left join activeVersion with addSelect and use COALESCE for PostgreSQL', async () => {
 			const workflowIds = ['workflow1'];
 			const options = {
 				filter: { triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
@@ -319,14 +319,17 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
+			// addSelect ensures TypeORM includes the join when using raw SQL in andWhere
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith('activeVersion.versionId');
 			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
+			// PostgreSQL uses quoted identifiers
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				'COALESCE(activeVersion.nodes::text, workflow.nodes::text) LIKE :triggerNodeType',
+				'COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :triggerNodeType',
 				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
 			);
 		});
 
-		it('should left join activeVersion and use COALESCE for SQLite', async () => {
+		it('should left join activeVersion with addSelect and use COALESCE for SQLite', async () => {
 			const sqliteConfig = mockInstance(GlobalConfig, {
 				database: { type: 'sqlite' },
 			});
@@ -346,6 +349,7 @@ describe('WorkflowRepository', () => {
 			await sqliteWorkflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith('activeVersion.versionId');
 			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType',
@@ -353,7 +357,7 @@ describe('WorkflowRepository', () => {
 			);
 		});
 
-		it('should left join activeVersion and use COALESCE for MySQL', async () => {
+		it('should left join activeVersion with addSelect and use COALESCE for MySQL', async () => {
 			const mysqlConfig = mockInstance(GlobalConfig, {
 				database: { type: 'mysqldb' },
 			});
@@ -373,6 +377,7 @@ describe('WorkflowRepository', () => {
 			await mysqlWorkflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith('activeVersion.versionId');
 			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType',
@@ -402,9 +407,9 @@ describe('WorkflowRepository', () => {
 			);
 			expect(activeVersionJoinCalls).toHaveLength(0);
 
-			// But the filter should still be applied
+			// But the filter should still be applied (with quoted identifiers for PostgreSQL)
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				'COALESCE(activeVersion.nodes::text, workflow.nodes::text) LIKE :triggerNodeType',
+				'COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :triggerNodeType',
 				{ triggerNodeType: '%n8n-nodes-base.executeWorkflowTrigger%' },
 			);
 		});

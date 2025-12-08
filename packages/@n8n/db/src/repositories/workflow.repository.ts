@@ -508,8 +508,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			const dbType = this.globalConfig.database.type;
 
 			// Left join the activeVersion relation if not already joined
+			// We must also addSelect to ensure TypeORM includes the join when using raw SQL in andWhere
 			if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
-				qb.leftJoin('workflow.activeVersion', 'activeVersion');
+				qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect('activeVersion.versionId');
 			}
 
 			// Use COALESCE to check activeVersion.nodes if exists (workflow is active),
@@ -517,7 +518,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			// In PostgreSQL, cast JSON column to text for LIKE operator
 			if (['postgresdb'].includes(dbType)) {
 				qb.andWhere(
-					'COALESCE(activeVersion.nodes::text, workflow.nodes::text) LIKE :triggerNodeType',
+					'COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :triggerNodeType',
 					{ triggerNodeType: `%${triggerNodeType}%` },
 				);
 			} else {
