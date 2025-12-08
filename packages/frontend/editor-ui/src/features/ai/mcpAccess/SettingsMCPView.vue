@@ -3,18 +3,21 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import type { WorkflowListItem } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import MCPConnectionInstructions from '@/features/ai/mcpAccess/components/MCPConnectionInstructions.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
-import WorkflowsTable from '@/features/ai/mcpAccess/components/WorkflowsTable.vue';
-import McpAccessToggle from '@/features/ai/mcpAccess/components/McpAccessToggle.vue';
-import { N8nHeading } from '@n8n/design-system';
+import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
+import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
+import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
+import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
+import { N8nHeading, N8nTabs, N8nTooltip, N8nButton } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
+
+type MCPTabs = 'workflows' | 'oauth';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -24,15 +27,25 @@ const mcp = useMcp();
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
-const rootStore = useRootStore();
 
 const mcpStatusLoading = ref(false);
-const workflowsLoading = ref(false);
-const mcpKeyLoading = ref(false);
-const oAuthClientsLoading = ref(false);
+const selectedTab = ref<MCPTabs>('workflows');
 
+const tabs = ref<Array<TabOptions<MCPTabs>>>([
+	{
+		label: i18n.baseText('settings.mcp.tabs.workflows'),
+		value: 'workflows',
+	},
+	{
+		label: i18n.baseText('settings.mcp.tabs.oauth'),
+		value: 'oauth',
+	},
+]);
+
+const workflowsLoading = ref(false);
 const availableWorkflows = ref<WorkflowListItem[]>([]);
-const apiKey = computed(() => mcpStore.currentUserMCPKey);
+
+const oAuthClientsLoading = ref(false);
 const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
@@ -40,13 +53,21 @@ const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
 
+const onTabSelected = async (tab: MCPTabs) => {
+	selectedTab.value = tab;
+	if (tab === 'workflows' && availableWorkflows.value.length === 0) {
+		await fetchAvailableWorkflows();
+	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
+		await fetchoAuthCLients();
+	}
+};
+
 const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
 		mcpStatusLoading.value = true;
 		const updated = await mcpStore.setMcpAccessEnabled(enabled);
 		if (updated) {
 			await fetchAvailableWorkflows();
-			await fetchApiKey();
 			await fetchoAuthCLients();
 		} else {
 			workflowsLoading.value = false;
@@ -69,6 +90,22 @@ const onRemoveMCPAccess = async (workflow: WorkflowListItem) => {
 	}
 };
 
+const onTableRefresh = async () => {
+	if (selectedTab.value === 'workflows') {
+		await fetchAvailableWorkflows();
+	} else if (selectedTab.value === 'oauth') {
+		await fetchoAuthCLients();
+	}
+};
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.mcp'));
+	if (!mcpStore.mcpAccessEnabled) {
+		return;
+	}
+	await fetchAvailableWorkflows();
+});
+
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
 	try {
@@ -83,30 +120,8 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
-const fetchApiKey = async () => {
-	try {
-		mcpKeyLoading.value = true;
-		await mcpStore.getOrCreateApiKey();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
-	} finally {
-		setTimeout(() => {
-			mcpKeyLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
-	}
-};
-
-const rotateKey = async () => {
-	try {
-		mcpKeyLoading.value = true;
-		await mcpStore.generateNewApiKey();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
-	} finally {
-		setTimeout(() => {
-			mcpKeyLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
-	}
+const onRefreshWorkflows = async () => {
+	await fetchAvailableWorkflows();
 };
 
 const fetchoAuthCLients = async () => {
@@ -138,58 +153,60 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
 	}
 };
-
-const onRefreshOAuthClients = async () => {
-	await fetchoAuthCLients();
-};
-
-const onRefreshWorkflows = async () => {
-	await fetchAvailableWorkflows();
-};
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.mcp'));
-	if (!mcpStore.mcpAccessEnabled) {
-		return;
-	}
-	await fetchAvailableWorkflows();
-	await fetchApiKey();
-	await fetchoAuthCLients();
-});
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-		<McpAccessToggle
-			data-test-id="mcp-toggle-section"
-			:model-value="mcpStore.mcpAccessEnabled"
+		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
+			<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+			<MCpHeaderActions
+				:access-enabled="mcpStore.mcpAccessEnabled"
+				:toggle-disabled="!canToggleMCP"
+				:loading="mcpStatusLoading"
+				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
+			/>
+		</header>
+		<MCPEmptyState
+			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
-			@toggle-mcp-access="onToggleMCPAccess"
+			@turn-on-mcp="onToggleMCPAccess(true)"
 		/>
 		<div
 			v-if="mcpStore.mcpAccessEnabled"
 			:class="$style.container"
 			data-test-id="mcp-enabled-section"
 		>
-			<MCPConnectionInstructions
-				v-if="apiKey"
-				:loading-api-key="mcpKeyLoading"
-				:base-url="rootStore.urlBaseEditor"
-				:api-key="apiKey"
-				:o-auth-clients="connectedOAuthClients"
-				:loading-o-auth-clients="oAuthClientsLoading"
-				@rotate-key="rotateKey"
-				@revoke-client="revokeClientAccess"
-				@refresh-client-list="onRefreshOAuthClients"
-			/>
-			<WorkflowsTable
-				:data-test-id="'mcp-workflow-table'"
-				:workflows="availableWorkflows"
-				:loading="workflowsLoading"
-				@remove-mcp-access="onRemoveMCPAccess"
-				@refresh="onRefreshWorkflows"
-			/>
+			<header :class="$style['tabs-header']">
+				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
+				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+					<N8nButton
+						data-test-id="mcp-workflows-refresh-button"
+						size="small"
+						type="tertiary"
+						icon="refresh-cw"
+						:square="true"
+						@click="onTableRefresh"
+					/>
+				</N8nTooltip>
+			</header>
+			<main>
+				<WorkflowsTable
+					v-if="selectedTab === 'workflows'"
+					:data-test-id="'mcp-workflow-table'"
+					:workflows="availableWorkflows"
+					:loading="workflowsLoading"
+					@remove-mcp-access="onRemoveMCPAccess"
+					@refresh="onRefreshWorkflows"
+				/>
+				<OAuthClientsTable
+					v-else-if="selectedTab === 'oauth'"
+					:data-test-id="'mcp-oauth-clients-table'"
+					:clients="connectedOAuthClients"
+					:loading="oAuthClientsLoading"
+					@revoke-client="revokeClientAccess"
+					@refresh="onTableRefresh"
+				/>
+			</main>
 		</div>
 	</div>
 </template>
@@ -198,6 +215,17 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+}
+
+.main-header {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: var(--spacing--lg);
+}
+
+.tabs-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 </style>

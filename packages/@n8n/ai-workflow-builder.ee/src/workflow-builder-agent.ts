@@ -143,6 +143,8 @@ export interface WorkflowBuilderAgentConfig {
 	onGenerationSuccess?: () => Promise<void>;
 	/** Metadata to include in LangSmith traces */
 	runMetadata?: Record<string, unknown>;
+	/** Feature flags for enabling/disabling features */
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export interface ExpressionValue {
@@ -157,6 +159,7 @@ export interface BuilderFeatureFlags {
 }
 
 export interface ChatPayload {
+	id: string;
 	message: string;
 	workflowContext?: {
 		executionSchema?: NodeExecutionSchema[];
