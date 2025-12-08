@@ -81,6 +81,7 @@ beforeEach(async () => {
 		'Folder',
 		'WorkflowEntity',
 		'WorkflowHistory',
+		'WorkflowPublishHistory',
 		'TagEntity',
 		'Project',
 		'User',
