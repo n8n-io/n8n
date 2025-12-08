@@ -416,6 +416,7 @@ defineExpose({
 								:max-length="maxCharacterLength"
 								:min-lines="2"
 								data-test-id="chat-suggestions-input"
+								autofocus
 								@upgrade-click="emit('upgrade-click')"
 								@submit="onSendMessage"
 								@stop="emit('stop')"
@@ -466,6 +467,7 @@ defineExpose({
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
+				autofocus
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
