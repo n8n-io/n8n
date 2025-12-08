@@ -1490,6 +1490,31 @@ describe('prepareFormReturnItem', () => {
 		expect(result.binary!.Multiple_Files_1).toEqual({});
 	});
 
+	it('should call rm to clean up temporary files after file processing', async () => {
+		// Using require() here for inline jest.spyOn() pattern - this is acceptable in tests
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const rmSpy = jest.spyOn(require('fs/promises'), 'rm').mockResolvedValue(undefined);
+
+		const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+			{ filepath: '/tmp/file1', originalFilename: 'file1.txt', mimetype: 'text/plain', size: 1024 },
+			{ filepath: '/tmp/file2', originalFilename: 'file2.txt', mimetype: 'text/plain', size: 2048 },
+		];
+
+		mockContext.getBodyData.mockReturnValue({
+			data: {},
+			files: { 'field-0': mockFiles },
+		});
+
+		const formFields = [{ fieldLabel: 'Multiple Files', fieldType: 'file', multipleFiles: true }];
+		await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(rmSpy).toHaveBeenCalledTimes(2);
+		expect(rmSpy).toHaveBeenCalledWith('/tmp/file1', { force: true });
+		expect(rmSpy).toHaveBeenCalledWith('/tmp/file2', { force: true });
+
+		rmSpy.mockRestore();
+	});
+
 	it('should format date fields', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '2023-04-01' },

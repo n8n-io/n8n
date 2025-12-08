@@ -99,7 +99,10 @@ export async function runSingleTest(
 		// Generate workflow
 		const startTime = Date.now();
 		await consumeGenerator(
-			agent.chat(getChatPayload(testCase.prompt, testCase.id, opts?.featureFlags), userId),
+			agent.chat(
+				getChatPayload('single-eval', testCase.prompt, testCase.id, opts?.featureFlags),
+				userId,
+			),
 		);
 		const generationTime = Date.now() - startTime;
 
