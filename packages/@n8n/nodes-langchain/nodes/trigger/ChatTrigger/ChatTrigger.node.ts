@@ -64,8 +64,7 @@ const streamingResponseMode = {
 const respondNodesResponseMode = {
 	name: 'Using Response Nodes',
 	value: 'responseNodes',
-	description:
-		"Send responses to the chat by using 'Respond to Chat' or 'Respond to Webhook' nodes",
+	description: "Send responses to the chat by using 'Respond to Chat' node",
 };
 
 const commonOptionsFields: INodeProperties[] = [
@@ -324,7 +323,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Chat will be live at the URL above once you activate this workflow. Live executions will show up in the ‘executions’ tab',
+					'Chat will be live at the URL above once this workflow is published. Live executions will show up in the ‘executions’ tab',
 				name: 'hostedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -337,7 +336,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you activate this workflow',
+					'Follow the instructions <a href="https://www.npmjs.com/package/@n8n/chat" target="_blank">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you publish this workflow',
 				name: 'embeddedChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -406,6 +405,18 @@ export class ChatTrigger extends Node {
 						'@version': [{ _cnd: { gte: 1.4 } }],
 					},
 				},
+			},
+			{
+				displayName:
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least viewer access to all users who should use it. Currently, only streaming response mode is supported.',
+				name: 'availableInChatNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+					},
+				},
+				default: '',
 			},
 			{
 				displayName: 'Agent Name',
