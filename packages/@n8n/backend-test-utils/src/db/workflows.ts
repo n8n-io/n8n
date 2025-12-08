@@ -261,6 +261,7 @@ export async function createWorkflowHistory(
 		await Container.get(WorkflowPublishHistoryRepository).insert({
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
+			event: 'activated',
 			userId: userOrProject instanceof User ? userOrProject.id : undefined,
 			...withPublishHistory,
 		});
