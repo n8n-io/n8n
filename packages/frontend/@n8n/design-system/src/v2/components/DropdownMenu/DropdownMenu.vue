@@ -23,7 +23,6 @@ const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	activatorIcon: 'ellipsis',
 	disabled: false,
 	teleported: true,
-	hideArrow: false,
 	loading: false,
 	loadingItemCount: 3,
 	searchable: false,
@@ -98,10 +97,10 @@ const debouncedEmitSearch = useDebounceFn((term: string) => {
 	emit('search', term);
 }, props.searchDebounce);
 
-const handleSearchInput = (event: Event) => {
+const handleSearchInput = async (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	searchTerm.value = target.value;
-	debouncedEmitSearch(target.value);
+	await debouncedEmitSearch(target.value);
 };
 
 /**
@@ -237,8 +236,6 @@ defineExpose({ open, close });
 						</template>
 					</template>
 				</template>
-
-				<Icon v-if="!hideArrow" icon="chevron-up" :class="$style.arrow" />
 			</DropdownMenuContent>
 		</component>
 	</DropdownMenuRoot>
@@ -284,16 +281,6 @@ defineExpose({ open, close });
 	 * TODO: do we have a better way to manage z-indexes globally?
 	 */
 	z-index: 999999;
-}
-
-.arrow {
-	position: absolute;
-	top: -8px;
-	left: 50%;
-	transform: translateX(-50%);
-	color: var(--color--background--light-2);
-	filter: drop-shadow(0 -1px 0 var(--color--foreground));
-	display: none;
 }
 
 .loading-container {
