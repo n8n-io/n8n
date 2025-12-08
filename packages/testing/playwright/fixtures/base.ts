@@ -1,6 +1,6 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
-import { test as base, expect, request } from '@playwright/test';
+import { test as base, expect, request, type APIRequestContext } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
@@ -194,36 +194,78 @@ export const test = base.extend<
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 
-		// Create a separate API context with backend URL for API calls
-		const apiContext = await request.newContext({ baseURL: backendUrl });
-		const api = new ApiHelpers(apiContext);
+		// Only create a separate API context when backend and frontend URLs differ
+		const useSeparateApiContext = backendUrl !== frontendUrl;
+		let apiContext: APIRequestContext | undefined;
+		let api: ApiHelpers;
+
+		if (useSeparateApiContext) {
+			// Create a separate API context with backend URL for API calls
+			apiContext = await request.newContext({ baseURL: backendUrl });
+			api = new ApiHelpers(apiContext);
+		} else {
+			// Use the page's context when URLs are the same (default behavior)
+			api = new ApiHelpers(context.request);
+		}
 
 		const n8nInstance = new n8nPage(page, api);
 		await n8nInstance.api.setupFromTags(testInfo.tags);
 
+		// Default to owner authentication if no explicit auth tag is provided
+		// This maintains backward compatibility with tests that expect to be authenticated by default
+		const authContextToCheck = apiContext ?? context;
+		let apiCookies = await authContextToCheck.storageState();
+		let authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+
+		const hasExplicitNoAuth = testInfo.tags.some((tag) => tag.includes('@auth:none'));
+		if (!authCookie && !hasExplicitNoAuth) {
+			// No auth cookie and no explicit @auth:none tag, so authenticate as owner by default
+			await api.signin('owner');
+			apiCookies = await authContextToCheck.storageState();
+			authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+		}
+
 		// Transfer authentication cookies from API context (backend) to browser context (frontend)
-		// This is needed when backend and frontend are on different ports
-		const apiCookies = await apiContext.storageState();
-		const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-		if (authCookie) {
-			// Parse frontend URL to get domain
+		// This is only needed when backend and frontend are on different URLs
+		if (useSeparateApiContext && authCookie) {
+			// Parse both URLs to handle domain correctly
+			const backendUrlParsed = new URL(backendUrl);
 			const frontendUrlParsed = new URL(frontendUrl);
 
-			// Add the auth cookie to the browser context with the frontend domain
-			await context.addCookies([
-				{
-					...authCookie,
-					domain: frontendUrlParsed.hostname,
-					// Remove sameSite if it causes issues across different ports
-					sameSite: 'Lax',
-				},
-			]);
+			// When backend and frontend are on the same host (e.g., localhost but different ports),
+			// we can transfer the cookie. If they're on different hosts, we need special handling.
+			if (backendUrlParsed.hostname === frontendUrlParsed.hostname) {
+				// Add the auth cookie to the browser context with proper domain and path
+				await context.addCookies([
+					{
+						...authCookie,
+						domain: frontendUrlParsed.hostname,
+						path: '/',
+						sameSite: 'Lax',
+					},
+				]);
+			} else {
+				// If hosts are different, use URL-based cookie setting
+				await context.addCookies([
+					{
+						name: authCookie.name,
+						value: authCookie.value,
+						url: frontendUrl,
+						path: '/',
+						httpOnly: authCookie.httpOnly,
+						secure: authCookie.secure,
+						sameSite: 'Lax',
+					},
+				]);
+			}
 		}
 
 		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
 		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
-		await apiContext.dispose();
+		if (apiContext) {
+			await apiContext.dispose();
+		}
 	},
 
 	// This is a completely isolated API context for tests that don't need the browser
@@ -231,6 +273,18 @@ export const test = base.extend<
 		const context = await request.newContext({ baseURL: backendUrl });
 		const api = new ApiHelpers(context);
 		await api.setupFromTags(testInfo.tags);
+
+		// Default to owner authentication if no explicit auth tag is provided
+		// This maintains backward compatibility with tests that expect to be authenticated by default
+		const apiCookies = await context.storageState();
+		const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+
+		const hasExplicitNoAuth = testInfo.tags.some((tag) => tag.includes('@auth:none'));
+		if (!authCookie && !hasExplicitNoAuth) {
+			// No auth cookie and no explicit @auth:none tag, so authenticate as owner by default
+			await api.signin('owner');
+		}
+
 		await use(api);
 		await context.dispose();
 	},
