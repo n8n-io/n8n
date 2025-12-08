@@ -27,6 +27,11 @@ on:
         required: false
         default: 'n8nio/n8n:nightly'
         type: string
+      report-name:
+        description: 'Unique name for the report artifact (e.g., multi-main-ui)'
+        required: false
+        default: 'default'
+        type: string
       workers:
         description: 'Number of parallel workers'
         required: false
@@ -50,6 +55,8 @@ on:
       N8N_LICENSE_ACTIVATION_KEY:
         required: false
       N8N_ENCRYPTION_KEY:
+        required: false
+      TESTDINO_TOKEN:
         required: false
 
 env:
@@ -109,8 +116,16 @@ jobs:
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          # CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+
+      - name: Upload Blob Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ inputs.report-name }}-shard-${{ matrix.shard }}
+          path: packages/testing/playwright/blob-report
+          retention-days: 1

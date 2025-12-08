@@ -35,4 +35,30 @@ jobs:
       shards: ${{ inputs.shards }}
       docker-image: ${{ inputs.image }}
       test-command: pnpm --filter=n8n-playwright test:container:standard
+      report-name: docker-pull
     secrets: inherit
+
+  upload-testdino:
+    name: 'Upload to TestDino'
+    runs-on: ubuntu-slim
+    needs: [build-and-test]
+    if: always()
+    steps:
+      - name: Download all blob report artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Merge reports
+        run: |
+          npm install -g playwright
+          mkdir -p merged-report
+          # Generate HTML report
+          PLAYWRIGHT_HTML_REPORT=merged-report npx playwright merge-reports --reporter=html ./all-blob-reports
+          # Generate JSON report
+          npx playwright merge-reports --reporter=json ./all-blob-reports > merged-report/report.json
+
+      - name: Upload to TestDino
+        run: npx tdpw upload merged-report --token="${{ secrets.TESTDINO_TOKEN }}" --upload-html

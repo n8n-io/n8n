@@ -85,8 +85,9 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				['list'],
 				['github'],
 				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
-				['html', { open: 'never' }],
-				['json', { outputFile: 'test-results.json' }],
+				['html', { open: 'never', outputFolder: 'playwright-report' }],
+				['json', { outputFile: 'playwright-report/report.json' }],
+				['blob', { outputDir: 'blob-report' }],
 				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
 			]

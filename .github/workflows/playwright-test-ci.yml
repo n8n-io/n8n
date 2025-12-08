@@ -14,6 +14,7 @@ jobs:
       shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
       runner: blacksmith-4vcpu-ubuntu-2204
       workers: '1'
+      report-name: multi-main-ui
     secrets: inherit
 
   multi-main-isolated:
@@ -25,7 +26,33 @@ jobs:
       shards: '[1]'
       runner: blacksmith-4vcpu-ubuntu-2204
       workers: '1'
+      report-name: multi-main-isolated
     secrets: inherit
+
+  upload-testdino:
+    name: 'Upload to TestDino'
+    runs-on: ubuntu-slim
+    needs: [multi-main-ui, multi-main-isolated]
+    if: always()
+    steps:
+      - name: Download all blob report artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Merge reports
+        run: |
+          npm install -g playwright
+          mkdir -p merged-report
+          # Generate HTML report
+          PLAYWRIGHT_HTML_REPORT=merged-report npx playwright merge-reports --reporter=html ./all-blob-reports
+          # Generate JSON report
+          npx playwright merge-reports --reporter=json ./all-blob-reports > merged-report/report.json
+
+      - name: Upload to TestDino
+        run: npx tdpw upload merged-report --token="${{ secrets.TESTDINO_TOKEN }}" --upload-html
 
   # Standard: Single n8n instance with SQLite
   # TODO: Enable after confirmed costs with currents/blacksmith
