@@ -950,18 +950,11 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
-
+	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
-
-	/**
-	 * Checks if a feature is enabled for the current node version.
-	 * Uses the node type's features property to evaluate declarative feature conditions.
-	 * Reads the node type and version from the current context.
-	 */
-	isFeatureEnabled(featureName: string): boolean;
 }
 
 type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
@@ -1552,22 +1545,8 @@ export type DisplayCondition =
 	| { _cnd: { regex: string } }
 	| { _cnd: { exists: true } };
 
-/**
- * Type for node feature flags.
- * Maps feature names to boolean values indicating if features are enabled.
- */
 export type NodeFeatures = Record<string, boolean>;
-
-/**
- * Condition for evaluating a feature flag.
- * Uses the same format as '@version' in IDisplayOptions.
- */
 export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
-
-/**
- * Definition of feature flags for a node type.
- * Each feature maps to a condition that determines if it's enabled.
- */
 export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
 
 export interface IDisplayOptions {
@@ -2252,10 +2231,6 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
-	/**
-	 * Declarative feature flag definitions.
-	 * Features are evaluated based on node version using comparison operators.
-	 */
 	features?: NodeFeaturesDefinition;
 }
 

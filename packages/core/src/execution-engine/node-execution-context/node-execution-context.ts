@@ -182,12 +182,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	/**
 	 * Checks if a feature is enabled for the current node version.
-	 * Uses declarative features from the node type description.
-	 * Reads the node type and version from the current context.
 	 * @param featureName - The name of the feature to check
 	 * @returns true if the feature is enabled, false otherwise
 	 */
-	isFeatureEnabled(featureName: string): boolean {
+	isNodeFeatureEnabled(featureName: string): boolean {
 		return this.nodeFeatures[featureName] ?? false;
 	}
 

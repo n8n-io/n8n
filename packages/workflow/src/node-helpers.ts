@@ -257,7 +257,6 @@ export function isSubNodeType(
 
 /**
  * Evaluates a feature condition against a node version.
- * Uses the same logic as '@version' in displayOptions.
  * @param featureDef The feature condition definition
  * @param nodeVersion The node version to evaluate against
  * @returns true if the feature is enabled, false otherwise
