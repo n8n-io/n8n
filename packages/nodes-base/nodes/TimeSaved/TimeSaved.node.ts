@@ -69,8 +69,6 @@ export class TimeSaved implements INodeType {
 				location: 'outputPane',
 			},
 		],
-		// TODO: see if we can use posthog here
-		// hidden: true,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
