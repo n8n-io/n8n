@@ -854,10 +854,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function archiveWorkflow(id: string) {
+		const isCurrentWorkflow = id === workflow.value.id;
+		const currentChecksum = isCurrentWorkflow ? workflowChecksum.value : undefined;
+		const options = currentChecksum ? { expectedChecksum: currentChecksum } : {};
+
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
 			`/workflows/${id}/archive`,
+			options,
 		);
 		if (workflowsById.value[id]) {
 			workflowsById.value[id].isArchived = true;

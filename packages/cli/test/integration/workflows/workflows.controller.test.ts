@@ -29,11 +29,18 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { DateTime } from 'luxon';
+import {
+	PROJECT_ROOT,
+	calculateWorkflowChecksum,
+	type INode,
+	type IPinData,
+	type IWorkflowBase,
+} from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
-import { DateTime } from 'luxon';
-import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -3415,6 +3422,65 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(historyRecord).not.toBeNull();
 		expect(historyRecord!.nodes).toEqual(workflow.nodes);
 		expect(historyRecord!.connections).toEqual(workflow.connections);
+	});
+
+	test('should accept valid expectedChecksum when archiving', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const getResponse = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const checksum = await calculateWorkflowChecksum(getResponse.body.data);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send({ expectedChecksum: checksum })
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(versionId).not.toBe(workflow.versionId);
+	});
+
+	test('should block archiving with invalid expectedChecksum', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const getResponse = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const originalChecksum = await calculateWorkflowChecksum(getResponse.body.data);
+
+		// Update workflow to change the checksum
+		await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Updated workflow name', versionId: workflow.versionId })
+			.expect(200);
+
+		// Try to archive with old checksum - should fail
+		const archiveResponse = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send({ expectedChecksum: originalChecksum })
+			.expect(400);
+
+		expect(archiveResponse.body.code).toBe(100);
+		expect(archiveResponse.body.message).toContain('someone else just updated this workflow');
+
+		// Verify workflow was not archived
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(false);
+	});
+
+	test('should archive without expectedChecksum', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
 	});
 });
 

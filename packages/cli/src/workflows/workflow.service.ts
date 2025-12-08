@@ -732,6 +732,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		skipArchived: boolean = false,
+		expectedChecksum?: string,
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -747,6 +748,10 @@ export class WorkflowService {
 			}
 
 			throw new BadRequestError('Workflow is already archived.');
+		}
+
+		if (expectedChecksum) {
+			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
 		if (workflow.activeVersionId !== null) {

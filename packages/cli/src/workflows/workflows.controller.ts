@@ -1,5 +1,6 @@
 import {
 	ActivateWorkflowDto,
+	ArchiveWorkflowDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
@@ -477,8 +478,15 @@ export class WorkflowsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
+		@Body body: ArchiveWorkflowDto,
 	) {
-		const workflow = await this.workflowService.archive(req.user, workflowId);
+		const { expectedChecksum } = body;
+		const workflow = await this.workflowService.archive(
+			req.user,
+			workflowId,
+			false,
+			expectedChecksum,
+		);
 		if (!workflow) {
 			this.logger.warn('User attempted to archive a workflow without permissions', {
 				workflowId,

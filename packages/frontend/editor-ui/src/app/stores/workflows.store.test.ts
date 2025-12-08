@@ -47,6 +47,8 @@ import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
 
+import { v4 as uuid } from 'uuid';
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
 		activeNode: null,
@@ -1475,8 +1477,8 @@ describe('useWorkflowsStore', () => {
 	describe('archiveWorkflow', () => {
 		it('should call the API to archive the workflow', async () => {
 			const workflowId = '1';
-			const versionId = '00000000-0000-0000-0000-000000000000';
-			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+			const versionId = uuid();
+			const updatedVersionId = uuid();
 
 			workflowsStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
@@ -1507,6 +1509,72 @@ describe('useWorkflowsStore', () => {
 				}),
 				'POST',
 				`/workflows/${workflowId}/archive`,
+				undefined,
+			);
+		});
+
+		it('should send expectedChecksum when archiving current workflow', async () => {
+			const workflowId = '1';
+			const versionId = uuid();
+			const updatedVersionId = uuid();
+			const checksum = 'test-checksum-123';
+
+			workflowsStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.active = true;
+			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+			workflowsStore.workflowChecksum = checksum;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum: checksum },
+			);
+		});
+
+		it('should not send expectedChecksum when archiving different workflow', async () => {
+			const workflowId = '2';
+			const versionId = uuid();
+			const updatedVersionId = uuid();
+			const checksum = 'test-checksum-123';
+
+			workflowsStore.workflowsById = {
+				'2': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.id = '1'; // Different workflow is currently open
+			workflowsStore.workflowChecksum = checksum;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+				undefined,
 			);
 		});
 	});
