@@ -499,7 +499,7 @@ export class ChatHubService {
 		}
 
 		const systemMessage =
-			agent.systemPrompt + '\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
+			agent.systemPrompt + '\n\n' + this.chatHubWorkflowService.getSystemMessageMetadata(timeZone);
 
 		const model: ChatHubBaseLLMModel = {
 			provider: agent.provider,
