@@ -356,7 +356,10 @@ async function runSingleGeneration(
 
 	// Generate workflow
 	await consumeGenerator(
-		agent.chat(getChatPayload(inputs.prompt, runId, featureFlags), `pairwise-gen-${generationIndex}`),
+		agent.chat(
+			getChatPayload('pairewise-gen', inputs.prompt, runId, featureFlags),
+			`pairwise-gen-${generationIndex}`,
+		),
 	);
 
 	const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
@@ -441,7 +444,16 @@ function createPairwiseWorkflowGenerator(
 		// Run all generations in parallel
 		const generationResults = await Promise.all(
 			Array.from({ length: numGenerations }, async (_, i) => {
-				return await runSingleGeneration(parsedNodeTypes, llm, numJudges, inputs, i, log, featureFlags, tracer);
+				return await runSingleGeneration(
+					parsedNodeTypes,
+					llm,
+					numJudges,
+					inputs,
+					i,
+					log,
+					featureFlags,
+					tracer,
+				);
 			}),
 		);
 
@@ -838,7 +850,12 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				const genStartTime = Date.now();
 				const runId = generateRunId();
 				const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
-				await consumeGenerator(agent.chat(getChatPayload(prompt, runId, featureFlags), `local-gen-${genIndex}`));
+				await consumeGenerator(
+					agent.chat(
+						getChatPayload('pairwise-local', prompt, runId, featureFlags),
+						`local-gen-${genIndex}`,
+					),
+				);
 				const state = await agent.getState(runId, `local-gen-${genIndex}`);
 
 				if (!state.values || !isWorkflowStateValues(state.values)) {
