@@ -63,7 +63,10 @@ export { passwordSchema } from './schemas/password.schema';
 export {
 	credentialResolverSchema,
 	credentialResolversSchema,
+	credentialResolverTypeSchema,
+	credentialResolverTypesSchema,
 	type CredentialResolver,
+	type CredentialResolverType,
 } from './schemas/credential-resolver.schema';
 
 export type {

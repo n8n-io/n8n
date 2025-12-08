@@ -214,6 +214,7 @@ export interface ChatModelMetadataDto {
 	capabilities: {
 		functionCalling: boolean;
 	};
+	available: boolean;
 }
 
 export interface ChatModelDto {
