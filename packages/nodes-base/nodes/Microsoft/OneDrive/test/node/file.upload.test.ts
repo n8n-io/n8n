@@ -1,6 +1,6 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { IHttpRequestMethods, IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
