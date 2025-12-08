@@ -1,4 +1,9 @@
-import { createWorkflowWithHistory, testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	createWorkflowWithHistory,
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
@@ -12,19 +17,24 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
 let globalConfig: GlobalConfig;
+let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
+let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
-const workflowHistoryService = mockInstance(WorkflowHistoryService);
+const workflowValidationService = mockInstance(WorkflowValidationService);
+const nodeTypes = mockInstance(NodeTypes);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -32,11 +42,13 @@ beforeAll(async () => {
 	await testDb.init();
 
 	globalConfig = Container.get(GlobalConfig);
+	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
+	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
 		mock(),
 		Container.get(SharedWorkflowRepository),
-		Container.get(WorkflowRepository),
+		workflowRepository,
 		mock(),
 		mock(),
 		mock(),
@@ -53,7 +65,13 @@ beforeAll(async () => {
 		mock(),
 		Container.get(WorkflowFinderService),
 		workflowPublishHistoryRepository,
+		workflowValidationService,
+		nodeTypes,
 	);
+});
+
+beforeEach(() => {
+	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 });
 
 afterEach(async () => {
@@ -189,5 +207,38 @@ describe('activateWorkflow()', () => {
 			versionId: newVersionId,
 			userId: owner.id,
 		});
+	});
+
+	test('should not activate workflow if validation fails and keep old active version', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const oldActiveVersionId = workflow.activeVersionId;
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
+		// Create a new version to try to activate
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		// Mock validation to fail
+		workflowValidationService.validateForActivation.mockReturnValue({
+			isValid: false,
+			error: 'Workflow cannot be activated because it has no trigger node.',
+		});
+
+		await expect(
+			workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: newVersionId,
+			}),
+		).rejects.toThrow('Workflow cannot be activated because it has no trigger node.');
+
+		// Verify no publish history was added
+		expect(addRecordSpy).not.toBeCalled();
+
+		// Verify the workflow still has the old active version
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.activeVersionId).toBe(oldActiveVersionId);
+		expect(workflowAfter?.active).toBe(true);
 	});
 });
