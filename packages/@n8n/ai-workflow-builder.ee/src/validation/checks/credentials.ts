@@ -67,29 +67,60 @@ interface SetNodeAssignment {
 }
 
 /**
+ * Type guard for checking if an array contains valid parameter objects
+ */
+function isParameterArray(arr: unknown): arr is Array<{ name?: string; value?: unknown }> {
+	return (
+		Array.isArray(arr) &&
+		arr.every((item) => typeof item === 'object' && item !== null && !Array.isArray(item))
+	);
+}
+
+/**
+ * Type guard for checking if a value is a parameters container (headerParameters or queryParameters)
+ */
+function isParametersContainer(
+	value: unknown,
+): value is { parameters?: Array<{ name?: string; value?: unknown }> } {
+	if (typeof value !== 'object' || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	return !('parameters' in obj) || isParameterArray(obj.parameters);
+}
+
+/**
+ * Type guard for checking if a value is an assignments container (Set node)
+ */
+function isAssignmentsContainer(value: unknown): value is { assignments?: SetNodeAssignment[] } {
+	if (typeof value !== 'object' || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	return !('assignments' in obj) || isParameterArray(obj.assignments);
+}
+
+/**
  * Extracts header parameters from HTTP Request node parameters
  */
 function getHeaderParameters(parameters: Record<string, unknown>): HeaderParameter[] {
-	const headerParams = parameters.headerParameters as
-		| { parameters?: HeaderParameter[] }
-		| undefined;
-	return headerParams?.parameters ?? [];
+	const headerParams = parameters.headerParameters;
+	if (!isParametersContainer(headerParams)) return [];
+	return headerParams.parameters ?? [];
 }
 
 /**
  * Extracts query parameters from HTTP Request node parameters
  */
 function getQueryParameters(parameters: Record<string, unknown>): QueryParameter[] {
-	const queryParams = parameters.queryParameters as { parameters?: QueryParameter[] } | undefined;
-	return queryParams?.parameters ?? [];
+	const queryParams = parameters.queryParameters;
+	if (!isParametersContainer(queryParams)) return [];
+	return queryParams.parameters ?? [];
 }
 
 /**
  * Extracts assignments from Set node parameters
  */
 function getSetNodeAssignments(parameters: Record<string, unknown>): SetNodeAssignment[] {
-	const assignments = parameters.assignments as { assignments?: SetNodeAssignment[] } | undefined;
-	return assignments?.assignments ?? [];
+	const assignments = parameters.assignments;
+	if (!isAssignmentsContainer(assignments)) return [];
+	return assignments.assignments ?? [];
 }
 
 /**
