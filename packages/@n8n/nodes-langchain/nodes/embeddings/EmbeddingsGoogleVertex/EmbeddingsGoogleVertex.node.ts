@@ -72,7 +72,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				},
 			},
 			{
-				name: 'googleApiAdc',
+				name: 'googleApiAdcApi',
 				required: true,
 				displayOptions: {
 					show: {
@@ -189,8 +189,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 		let region: string;
 
 		if (authentication === 'adc') {
-			// Use Application Default Credentials
-			const credentials = await this.getCredentials('googleApiAdc');
+			const credentials = await this.getCredentials('googleApiAdcApi');
 			region = credentials.region as string;
 			const projectId =
 				(this.getNodeParameter('projectIdAdc', itemIndex, '') as string) ||
