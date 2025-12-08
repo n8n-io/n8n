@@ -22,8 +22,8 @@ catalogs:
       specifier: 0.3.20-15
       version: 0.3.20-15
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.18.0
-      version: 1.18.0
+      specifier: 1.19.0
+      version: 1.19.0
     '@sentry/node':
       specifier: ^9.42.1
       version: 9.42.1
@@ -396,7 +396,7 @@ importers:
         version: link:../utils
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.18.0
+        version: 1.19.0
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -1534,7 +1534,7 @@ importers:
         version: link:../@n8n/utils
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.18.0
+        version: 1.19.0
       '@n8n_io/license-sdk':
         specifier: 2.24.1
         version: 2.24.1
@@ -6339,8 +6339,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.18.0':
-    resolution: {integrity: sha512-lWsGJ5AniMd/s6FqtQuCS5YJ/iWIA53GjdLieQWgpjwmc52zOAIhfpPGbI5tmm0kpvExYpGDvVRH8UzOHlt9QA==}
+  '@n8n_io/ai-assistant-sdk@1.19.0':
+    resolution: {integrity: sha512-IBqW1Cwot3YSiC37du7k0hA0SjN7qVZQq1ibZzQdSA5HsFajQPuIlmN99cY5WOKXwXThK5ijB4soCxvomwCznw==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.24.1':
@@ -21101,7 +21101,7 @@ snapshots:
       sharp: 0.33.5
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       zod: 3.25.67
-      zod-to-json-schema: 3.24.6(zod@3.25.67)
+      zod-to-json-schema: 3.25.0(zod@3.25.67)
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -22728,7 +22728,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.18.0': {}
+  '@n8n_io/ai-assistant-sdk@1.19.0': {}
 
   '@n8n_io/license-sdk@2.24.1':
     dependencies:
