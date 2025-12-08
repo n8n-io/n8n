@@ -60,6 +60,11 @@ export type { SendWorkerStatusMessage } from './push/worker';
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
+export {
+	credentialResolverSchema,
+	credentialResolversSchema,
+	type CredentialResolver,
+} from './schemas/credential-resolver.schema';
 
 export type {
 	ProjectType,
@@ -68,6 +73,8 @@ export type {
 } from './schemas/project.schema';
 
 export {
+	isSourceControlledFileStatus,
+	type SourceControlledFileStatus,
 	type SourceControlledFile,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,

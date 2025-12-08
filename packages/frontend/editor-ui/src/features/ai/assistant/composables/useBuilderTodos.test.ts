@@ -3,6 +3,7 @@ import {
 	extractPlaceholderLabel,
 	findPlaceholderDetails,
 	formatPlaceholderPath,
+	isPlaceholderValue,
 } from './useBuilderTodos';
 
 describe('useBuilderTodos', () => {
@@ -178,6 +179,42 @@ describe('useBuilderTodos', () => {
 
 		it('formats path with consecutive array indices', () => {
 			expect(formatPlaceholderPath(['matrix', '[0]', '[1]'])).toBe('matrix[0][1]');
+		});
+	});
+
+	describe('isPlaceholderValue', () => {
+		it('returns true for placeholder values', () => {
+			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__API endpoint URL__>')).toBe(true);
+			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__label__>')).toBe(true);
+			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE____>')).toBe(true);
+		});
+
+		it('returns false for non-placeholder strings', () => {
+			expect(isPlaceholderValue('regular string')).toBe(false);
+			expect(isPlaceholderValue('')).toBe(false);
+			expect(isPlaceholderValue('https://api.example.com')).toBe(false);
+			expect(isPlaceholderValue('={{ $json.field }}')).toBe(false);
+		});
+
+		it('returns false for malformed placeholders missing suffix', () => {
+			// Has prefix but missing suffix - should be false
+			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__missing suffix')).toBe(false);
+			expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__some text without end')).toBe(false);
+		});
+
+		it('returns false for malformed placeholders missing prefix', () => {
+			// Has suffix but missing prefix - should be false
+			expect(isPlaceholderValue('missing prefix__>')).toBe(false);
+			expect(isPlaceholderValue('some text without start__>')).toBe(false);
+		});
+
+		it('returns false for non-string values', () => {
+			expect(isPlaceholderValue(123)).toBe(false);
+			expect(isPlaceholderValue(null)).toBe(false);
+			expect(isPlaceholderValue(undefined)).toBe(false);
+			expect(isPlaceholderValue({ key: 'value' })).toBe(false);
+			expect(isPlaceholderValue(['array'])).toBe(false);
+			expect(isPlaceholderValue(true)).toBe(false);
 		});
 	});
 });
