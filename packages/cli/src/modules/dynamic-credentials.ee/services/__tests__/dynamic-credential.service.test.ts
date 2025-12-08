@@ -44,7 +44,7 @@ describe('DynamicCredentialService', () => {
 			id: 'resolver-456',
 			name: 'test-resolver',
 			type: 'stub-resolver-1.0',
-			config: JSON.stringify({ prefix: 'test' }),
+			config: 'encrypted-resolver-config', // Simulates encrypted config
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			...overrides,
@@ -217,7 +217,7 @@ describe('DynamicCredentialService', () => {
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
 				mockCipher.decrypt.mockImplementation(() => {
-					throw new Error('Decryption failed');
+					throw new Error('Decryption failed'); // Fails on first call (execution context)
 				});
 
 				const result = await service.resolveIfNeeded(
@@ -244,7 +244,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt credential context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
@@ -274,7 +276,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
@@ -373,7 +377,11 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First invocation: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })) // First invocation: decrypt resolver config
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // Second invocation: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second invocation: decrypt resolver config
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, executionContext),
@@ -416,7 +424,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
@@ -447,12 +457,13 @@ describe('DynamicCredentialService', () => {
 
 			it('resolver config is parsed correctly', async () => {
 				const credentialsEntity = createMockCredentialsEntity();
+				const customConfig = {
+					prefix: 'custom',
+					timeout: 5000,
+					retries: 3,
+				};
 				const resolverEntity = createMockResolverEntity({
-					config: JSON.stringify({
-						prefix: 'custom',
-						timeout: 5000,
-						retries: 3,
-					}),
+					config: 'encrypted-custom-resolver-config', // Simulates encrypted config
 				});
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
@@ -460,15 +471,17 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify(customConfig)); // Second call: decrypt resolver config
 
 				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
 
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					prefix: 'custom',
-					timeout: 5000,
-					retries: 3,
-				});
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					customConfig,
+				);
 			});
 
 			it('credential context with metadata is properly decrypted', async () => {
@@ -487,7 +500,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
 				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
 
@@ -552,7 +567,7 @@ describe('DynamicCredentialService', () => {
 			it('empty resolver config', async () => {
 				const credentialsEntity = createMockCredentialsEntity();
 				const resolverEntity = createMockResolverEntity({
-					config: '{}',
+					config: 'encrypted-empty-config', // Simulates encrypted empty config
 				});
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
@@ -560,7 +575,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce('{}'); // Second call: decrypt resolver config (empty object)
 
 				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
 
@@ -585,7 +602,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
@@ -623,7 +642,9 @@ describe('DynamicCredentialService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify(credentialContext));
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,

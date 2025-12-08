@@ -213,8 +213,15 @@ describe('NodeExecutionContext', () => {
 				executionData: { runtimeData },
 			});
 
+			let capturedExecutionContext: unknown;
 			const mockCredentialsHelper = {
-				getDecrypted: jest.fn().mockResolvedValue({ token: 'test-token' }),
+				getDecrypted: jest
+					.fn()
+					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
+						// Capture the executionContext value at the moment getDecrypted is called
+						capturedExecutionContext = additionalData.executionContext;
+						return { token: 'test-token' };
+					}),
 				getCredentialsProperties: jest.fn(),
 			};
 
@@ -232,7 +239,8 @@ describe('NodeExecutionContext', () => {
 
 			await contextWithCredentials['_getCredentials']('testCredential');
 
-			expect(mockAdditionalData.executionContext).toEqual(runtimeData);
+			// Assert that executionContext was already set when getDecrypted was called
+			expect(capturedExecutionContext).toEqual(runtimeData);
 			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
 				mockAdditionalData,
 				credentialDetails,

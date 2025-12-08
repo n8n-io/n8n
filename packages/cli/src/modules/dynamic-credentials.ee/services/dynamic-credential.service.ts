@@ -76,8 +76,9 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return this.handleMissingContext(credentialsEntity, staticData);
 		}
 
-		// Parse resolver configuration
-		const resolverConfig = jsonParse<Record<string, unknown>>(resolverEntity.config);
+		// Decrypt and parse resolver configuration
+		const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+		const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 		try {
 			// Attempt dynamic resolution
@@ -115,7 +116,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return toCredentialContext(decrypted);
 		} catch (error) {
 			this.logger.error('Failed to decrypt credential context from execution context', {
-				error: (error as Error).message,
+				error: error instanceof Error ? error.message : String(error),
 			});
 			return undefined;
 		}
