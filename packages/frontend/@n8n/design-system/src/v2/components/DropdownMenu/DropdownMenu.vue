@@ -186,8 +186,8 @@ defineExpose({ open, close });
 					<div v-if="searchable" :class="$style['search-container']">
 						<Icon
 							v-if="showSearchIcon"
-							icon="search"
 							:class="$style['search-icon']"
+							icon="search"
 							size="large"
 							color="text-light"
 						/>
@@ -208,9 +208,9 @@ defineExpose({ open, close });
 								<N8nLoading
 									v-for="i in loadingItemCount"
 									:key="i"
-									variant="p"
 									:rows="1"
 									:class="$style['loading-item']"
+									variant="p"
 								/>
 							</div>
 						</slot>
@@ -271,7 +271,7 @@ defineExpose({ open, close });
 
 .content {
 	min-width: 160px;
-	padding: var(--spacing--4xs);
+	padding-top: var(--spacing--4xs);
 	border-radius: var(--radius);
 	border: var(--border);
 	background-color: var(--color--background--light-2);

@@ -84,14 +84,14 @@ const handleItemSelect = () => {
 			</DropdownMenuSubTrigger>
 
 			<DropdownMenuPortal>
-				<DropdownMenuSubContent :class="$style['sub-content']" :side-offset="4">
+				<DropdownMenuSubContent :class="$style['sub-content']" :side-offset="1">
 					<div v-if="loading" :class="$style['loading-container']">
 						<N8nLoading
 							v-for="i in loadingItemCount"
 							:key="i"
-							variant="p"
 							:rows="1"
 							:class="$style['loading-item']"
+							variant="p"
 						/>
 					</div>
 					<template v-else-if="hasChildren">
@@ -150,7 +150,7 @@ const handleItemSelect = () => {
 	display: flex;
 	align-items: center;
 	min-height: var(--spacing--lg);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 	position: relative;
 	user-select: none;
 	color: var(--color--text--shade-1);
@@ -210,7 +210,7 @@ const handleItemSelect = () => {
 .separator {
 	height: 1px;
 	background-color: var(--color--foreground);
-	margin: var(--spacing--4xs) var(--spacing--2xs);
+	margin: var(--spacing--4xs) 0;
 }
 
 .loading-container {

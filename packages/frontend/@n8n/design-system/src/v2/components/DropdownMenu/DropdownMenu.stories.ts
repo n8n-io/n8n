@@ -8,6 +8,7 @@ import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortc
 
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
+import { tr } from 'element-plus/es/locale';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -51,7 +52,7 @@ export const Basic: Story = {
 			{ id: 'executions', label: 'Executions', icon: 'list' },
 			{ id: 'created', label: 'Created', icon: 'calendar' },
 			{ id: 'updated', label: 'Updated', icon: 'calendar' },
-			{ id: 'dataTables', label: 'Data tables', icon: 'tags' },
+			{ id: 'dataTables', label: 'Data tables', icon: 'table' },
 			{ id: 'settings', label: 'Settings', icon: 'settings' },
 			{ id: 'thrash', label: 'Delete', icon: 'trash-2', divided: true },
 		] as Array<DropdownMenuItemProps<string>>,
@@ -301,7 +302,58 @@ export const ControlledState: Story = {
 	},
 };
 
-export const NestedMenus: Story = {
+export const NestedMenu: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu
+				:items="args.items"
+				placement="bottom-start"
+				activator-icon="plus"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{
+				id: 'workflow',
+				label: 'Workflow',
+				icon: 'tags',
+				children: [
+					{ id: 'personal', label: 'Personal' },
+					{ id: 'adore', label: 'Adore' },
+					{ id: 'assistant', label: 'AI Assistant' },
+					{ id: 'cloud', label: 'Cloud' },
+					{ id: 'Design', label: 'Design' },
+					{ id: 'studies', label: 'Diary studies' },
+					{ id: 'evals', label: 'Evaluations workshop', icon: 'layers' },
+				],
+			},
+			{
+				id: 'credential',
+				label: 'Credential',
+				icon: 'lock',
+				children: [
+					{ id: 'gmail', label: 'Gmail' },
+					{ id: 'airtable', label: 'Airtable' },
+				],
+			},
+			{ id: 'project', label: 'Project', icon: 'layers', disabled: true },
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const MoreLevels: Story = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
@@ -351,51 +403,6 @@ export const NestedMenus: Story = {
 				],
 			},
 			{ id: 'settings', label: 'Settings', icon: 'cog', divided: true },
-		] as Array<DropdownMenuItemProps<string>>,
-	},
-};
-
-export const DeeplyNestedMenus: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
-	render: (args) => ({
-		components: { DropdownMenu },
-		setup() {
-			const handleSelect = (action: string) => {
-				console.log('Selected:', action);
-			};
-			return { args, handleSelect };
-		},
-		template: `
-		<div style="padding: 40px;">
-			<DropdownMenu :items="args.items" @select="handleSelect" />
-		</div>
-		`,
-	}),
-	args: {
-		items: [
-			{
-				id: 'level-1',
-				label: 'Level 1',
-				children: [
-					{
-						id: 'level-2',
-						label: 'Level 2',
-						children: [
-							{
-								id: 'level-3',
-								label: 'Level 3',
-								children: [
-									{ id: 'level-4-a', label: 'Level 4 - Item A' },
-									{ id: 'level-4-b', label: 'Level 4 - Item B' },
-								],
-							},
-							{ id: 'level-3-sibling', label: 'Level 3 Sibling' },
-						],
-					},
-					{ id: 'level-2-sibling', label: 'Level 2 Sibling' },
-				],
-			},
-			{ id: 'regular-item', label: 'Regular Item' },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -457,7 +464,7 @@ export const Searchable: Story = {
 				{ id: 'executions', label: 'Executions', icon: 'list' },
 				{ id: 'created', label: 'Created', icon: 'calendar' },
 				{ id: 'updated', label: 'Updated', icon: 'calendar' },
-				{ id: 'dataTables', label: 'Data tables', icon: 'tags' },
+				{ id: 'dataTables', label: 'Data tables', icon: 'table' },
 				{ id: 'settings', label: 'Settings', icon: 'settings' },
 			];
 
