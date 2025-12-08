@@ -14,6 +14,7 @@ import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
+import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -34,7 +35,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 const emit = defineEmits<{
 	'update:modelValue': [open: boolean];
 	select: [value: T];
-	search: [searchTerm: string];
+	search: [searchTerm: string, itemId?: T];
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T>>();
@@ -44,7 +45,8 @@ const $style = useCssModule();
 const internalOpen = ref(props.defaultOpen ?? false);
 const isControlled = computed(() => props.modelValue !== undefined);
 
-const searchInputRef = ref<HTMLInputElement | null>(null);
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+const searchRef = ref<InstanceType<typeof N8nDropdownMenuSearch> | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
 
@@ -84,7 +86,7 @@ const handleOpenChange = (open: boolean) => {
 	if (props.searchable) {
 		if (open) {
 			void nextTick(() => {
-				searchInputRef.value?.focus();
+				searchRef.value?.focus();
 			});
 		} else {
 			searchTerm.value = '';
@@ -97,35 +99,15 @@ const debouncedEmitSearch = useDebounceFn((term: string) => {
 	emit('search', term);
 }, props.searchDebounce);
 
-const handleSearchInput = async (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	searchTerm.value = target.value;
-	await debouncedEmitSearch(target.value);
+const handleSearchUpdate = async (value: string) => {
+	searchTerm.value = value;
+	await debouncedEmitSearch(value);
 };
 
-/**
- * Keyboard handlers that enabled smooth navigation between search input and menu items
- */
-const handleSearchKeydown = (event: KeyboardEvent) => {
-	if (event.key === 'Escape') {
-		close();
-	} else if (event.key === 'Tab' && !event.shiftKey) {
-		// Move focus to the first menu item
-		event.preventDefault();
-		const contentEl = contentRef.value?.$el as HTMLElement | undefined;
-		const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
-		firstItem?.focus();
-	} else if (event.key === 'ArrowDown') {
-		// Move focus to first menu item only if cursor is at the end of input
-		const input = event.target as HTMLInputElement;
-		const isAtEnd = input.selectionStart === input.value.length;
-		if (isAtEnd) {
-			event.preventDefault();
-			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
-			const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
-			firstItem?.focus();
-		}
-	}
+const focusFirstItem = () => {
+	const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+	const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
+	firstItem?.focus();
 };
 
 const handleContentKeydown = (event: KeyboardEvent) => {
@@ -137,13 +119,17 @@ const handleContentKeydown = (event: KeyboardEvent) => {
 		// If the first menu item is focused, move focus to search input
 		if (firstItem && document.activeElement === firstItem) {
 			event.preventDefault();
-			searchInputRef.value?.focus();
+			searchRef.value?.focus();
 		}
 	}
 };
 
 const handleItemSelect = (value: T) => {
 	emit('select', value);
+};
+
+const handleItemSearch = (term: string, itemId: T) => {
+	emit('search', term, itemId);
 };
 
 const open = () => {
@@ -186,24 +172,16 @@ defineExpose({ open, close });
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
-					<div v-if="searchable" :class="$style['search-container']">
-						<Icon
-							v-if="showSearchIcon"
-							:class="$style['search-icon']"
-							icon="search"
-							size="large"
-							color="text-light"
-						/>
-						<input
-							ref="searchInputRef"
-							type="text"
-							:class="$style['search-input']"
-							:placeholder="searchPlaceholder"
-							:value="searchTerm"
-							@input="handleSearchInput"
-							@keydown.stop="handleSearchKeydown"
-						/>
-					</div>
+					<N8nDropdownMenuSearch
+						v-if="searchable"
+						ref="searchRef"
+						:model-value="searchTerm"
+						:placeholder="searchPlaceholder"
+						:show-icon="showSearchIcon"
+						@update:model-value="handleSearchUpdate"
+						@escape="close"
+						@focus-first-item="focusFirstItem"
+					/>
 
 					<template v-if="loading">
 						<slot name="loading">
@@ -226,7 +204,11 @@ defineExpose({ open, close });
 					<template v-else>
 						<template v-for="item in items" :key="item.id">
 							<slot name="item" :item="item">
-								<N8nDropdownMenuItem v-bind="item" @select="handleItemSelect">
+								<N8nDropdownMenuItem
+									v-bind="item"
+									@select="handleItemSelect"
+									@search="handleItemSearch"
+								>
 									<template v-if="slots['item-leading']" #item-leading="{ ui }">
 										<slot name="item-leading" :item="item" :ui="ui" />
 									</template>
@@ -299,36 +281,6 @@ defineExpose({ open, close });
 
 	&:last-child {
 		margin-bottom: 0;
-	}
-}
-
-.search-container {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-bottom: var(--border);
-	margin-bottom: var(--spacing--4xs);
-	gap: var(--spacing--3xs);
-}
-
-.search-icon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.search-input {
-	flex: 1;
-	min-width: 0;
-	border: none;
-	background: transparent;
-	outline: none;
-	font-family: inherit;
-	font-size: var(--font-size--sm);
-	color: var(--color--text--base);
-	padding: var(--spacing--4xs) 0;
-
-	&::placeholder {
-		color: var(--color--text--tint-1);
 	}
 }
 

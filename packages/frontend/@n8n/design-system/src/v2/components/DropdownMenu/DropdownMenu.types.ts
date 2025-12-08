@@ -42,6 +42,12 @@ export type DropdownMenuItemProps<T = string> = {
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */
 	loadingItemCount?: number;
+	/** Enable search functionality for this item's children */
+	searchable?: boolean;
+	/** Search input placeholder */
+	searchPlaceholder?: string;
+	/** Whether to show the search icon */
+	showSearchIcon?: boolean;
 };
 
 export interface DropdownMenuProps<T = string> {
@@ -88,8 +94,8 @@ export interface DropdownMenuEmits<T = string> {
 	(e: 'update:modelValue', open: boolean): void;
 	/** Emitted when a menu item is selected */
 	(e: 'select', value: T): void;
-	/** Emitted when search input value changes (debounced) */
-	(e: 'search', searchTerm: string): void;
+	/** Emitted when search input value changes (debounced). itemId is undefined for root-level search, or the item's ID for sub-menu search */
+	(e: 'search', searchTerm: string, itemId?: T): void;
 }
 
 type SlotUiProps = { class: string };

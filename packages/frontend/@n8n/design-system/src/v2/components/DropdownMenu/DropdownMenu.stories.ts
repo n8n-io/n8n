@@ -489,7 +489,7 @@ export const SubMenuLoading: Story = {
 	},
 };
 
-export const Searchable: Story = {
+export const SearchableRoot: Story = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
@@ -546,7 +546,7 @@ export const Searchable: Story = {
 	},
 };
 
-export const SearchableWithSubmenus: Story = {
+export const SearchableRootWithSubmenus: Story = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
@@ -634,6 +634,81 @@ export const SearchableWithSubmenus: Story = {
 				searchable
 				search-placeholder="Search all items..."
 				:search-debounce="200"
+				@search="handleSearch"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const SearchableSubmenu: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const allProjects = [
+				{ id: 'personal', label: 'Personal', icon: { type: 'icon', value: 'user' } },
+				{ id: 'adore', label: 'Adore', icon: { type: 'emoji', value: '😍' } },
+				{ id: 'assistant', label: 'AI Assistant', icon: { type: 'emoji', value: '🔮' } },
+				{ id: 'cloud', label: 'Cloud', icon: { type: 'emoji', value: '🌏' } },
+				{ id: 'Design', label: 'Design', icon: { type: 'emoji', value: '🎨' } },
+				{ id: 'studies', label: 'Diary studies', icon: { type: 'emoji', value: '📖' } },
+				{ id: 'evals', label: 'Evaluations workshop', icon: { type: 'icon', value: 'layers' } },
+			];
+
+			const filteredProjects = ref(allProjects);
+
+			const handleSearch = (term: string, itemId?: string) => {
+				console.log('Search event:', { term, itemId });
+				if (itemId === 'workflow') {
+					filteredProjects.value = term
+						? allProjects.filter((tag) => tag.label.toLowerCase().includes(term.toLowerCase()))
+						: allProjects;
+				}
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			const items = computed(() => [
+				{
+					id: 'workflow',
+					label: 'Workflow',
+					icon: { type: 'icon', value: 'tags' },
+					searchable: true,
+					searchPlaceholder: 'Search projects',
+					children: filteredProjects.value,
+				},
+				{
+					id: 'credential',
+					label: 'Credential',
+					icon: { type: 'icon', value: 'lock' },
+					children: [
+						{ id: 'gmail', label: 'Gmail', icon: { type: 'icon', value: 'mail' } },
+						{ id: 'airtable', label: 'Airtable', icon: { type: 'icon', value: 'table' } },
+					],
+				},
+				{
+					id: 'project',
+					label: 'Project',
+					icon: { type: 'icon', value: 'layers' },
+					disabled: true,
+				},
+			]);
+
+			return { items, handleSearch, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu
+				:items="items"
+				:activator-icon="{ type: 'icon', value: 'plus' }"
+				placement="bottom-start"
 				@search="handleSearch"
 				@select="handleSelect"
 			/>

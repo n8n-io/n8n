@@ -7,13 +7,14 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import { computed, ref, useCssModule, nextTick } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
+import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -24,12 +25,60 @@ defineSlots<DropdownMenuItemSlots<T>>();
 
 const emit = defineEmits<{
 	select: [value: T];
+	search: [searchTerm: string, itemId: T];
 }>();
 
 const $style = useCssModule();
 
+const searchTerm = ref('');
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+const searchRef = ref<InstanceType<typeof N8nDropdownMenuSearch> | null>(null);
+const subContentRef = ref<InstanceType<typeof DropdownMenuSubContent> | null>(null);
+
+const handleSearchUpdate = (value: string) => {
+	searchTerm.value = value;
+	emit('search', value, props.id);
+};
+
+const handleChildSearch = (term: string, itemId: T) => {
+	emit('search', term, itemId);
+};
+
+const focusFirstItem = () => {
+	const contentEl = subContentRef.value?.$el as HTMLElement | undefined;
+	const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
+	firstItem?.focus();
+};
+
+const handleSubContentKeydown = (event: KeyboardEvent) => {
+	if (!props.searchable) return;
+
+	if (event.key === 'ArrowUp') {
+		const contentEl = subContentRef.value?.$el as HTMLElement | undefined;
+		const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
+		// If the first menu item is focused, move focus to search input
+		if (firstItem && document.activeElement === firstItem) {
+			event.preventDefault();
+			searchRef.value?.focus();
+		}
+	}
+};
+
 const hasChildren = computed(() => props.children && props.children.length > 0);
-const hasSubMenu = computed(() => hasChildren.value || props.loading);
+const hasSubMenu = computed(() => hasChildren.value || props.loading || props.searchable);
+
+const handleSubMenuOpenChange = (open: boolean) => {
+	if (props.searchable) {
+		if (open) {
+			void nextTick(() => {
+				searchRef.value?.focus();
+			});
+		} else {
+			// Clear search term when sub-menu closes
+			searchTerm.value = '';
+		}
+	}
+};
 
 const leadingProps = computed(() => ({
 	class: $style['item-leading'],
@@ -54,7 +103,7 @@ const handleItemSelect = () => {
 	<div :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
-		<DropdownMenuSub v-if="hasSubMenu">
+		<DropdownMenuSub v-if="hasSubMenu" @update:open="handleSubMenuOpenChange">
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
 				:class="[$style.item, $style['sub-trigger'], props.class]"
@@ -87,7 +136,22 @@ const handleItemSelect = () => {
 			</DropdownMenuSubTrigger>
 
 			<DropdownMenuPortal>
-				<DropdownMenuSubContent :class="$style['sub-content']" :side-offset="1">
+				<DropdownMenuSubContent
+					ref="subContentRef"
+					:class="$style['sub-content']"
+					:side-offset="1"
+					@keydown="handleSubContentKeydown"
+				>
+					<N8nDropdownMenuSearch
+						v-if="searchable && !loading"
+						ref="searchRef"
+						:model-value="searchTerm"
+						:placeholder="searchPlaceholder ?? 'Search...'"
+						:show-icon="showSearchIcon !== false"
+						@update:model-value="handleSearchUpdate"
+						@focus-first-item="focusFirstItem"
+					/>
+
 					<div v-if="loading" :class="$style['loading-container']">
 						<N8nLoading
 							v-for="i in loadingItemCount"
@@ -99,9 +163,16 @@ const handleItemSelect = () => {
 					</div>
 					<template v-else-if="hasChildren">
 						<template v-for="child in props.children" :key="child.id">
-							<N8nDropdownMenuItem v-bind="child" @select="handleSelect" />
+							<N8nDropdownMenuItem
+								v-bind="child"
+								@select="handleSelect"
+								@search="handleChildSearch"
+							/>
 						</template>
 					</template>
+
+					<!-- Empty state when search returns no results -->
+					<div v-else-if="searchable && searchTerm" :class="$style['empty-state']">No results</div>
 				</DropdownMenuSubContent>
 			</DropdownMenuPortal>
 		</DropdownMenuSub>
@@ -234,5 +305,12 @@ const handleItemSelect = () => {
 	&:last-child {
 		margin-bottom: 0;
 	}
+}
+
+.empty-state {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	text-align: center;
 }
 </style>
