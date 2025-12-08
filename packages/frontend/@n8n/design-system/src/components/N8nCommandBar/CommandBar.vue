@@ -67,6 +67,13 @@ const filteredItems = computed(() => {
 				.join(' ')
 				.toLowerCase();
 
+			if (item.matchAnySearchTerm) {
+				return query
+					.split(' ')
+					.filter(Boolean)
+					.some((word) => searchText.includes(word));
+			}
+
 			return searchText.includes(query);
 		});
 	}

@@ -16,7 +16,12 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
+	NodeConnectionTypes,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
@@ -247,7 +252,7 @@ describe('useWorkflowHelpers', () => {
 			initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith(true);
+			expect(setActiveSpy).toHaveBeenCalledWith('v1');
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Test Workflow',
@@ -258,7 +263,7 @@ describe('useWorkflowHelpers', () => {
 				timezone: 'DEFAULT',
 			});
 			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('1');
+			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('v1');
 			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
 			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
@@ -1140,7 +1145,7 @@ describe(resolveParameter, () => {
 					workflow: createTestWorkflowObject(workflowData),
 					execution: createTestWorkflowExecutionResponse({
 						workflowData,
-						data: {
+						data: createRunExecutionData({
 							resultData: {
 								runData: {
 									n0: [
@@ -1150,7 +1155,7 @@ describe(resolveParameter, () => {
 									],
 								},
 							},
-						},
+						}),
 					}),
 					nodeName: 'n1',
 					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },

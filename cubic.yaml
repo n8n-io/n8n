@@ -1,0 +1,115 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+
+# cubic.yaml
+# This file configures AI review behavior, ignore patterns, PR descriptions, and custom rules.
+# Place this file in your repository root to version-control your AI review settings.
+# Settings defined here take precedence over UI-configured settings.
+# See https://docs.cubic.dev/configure/cubic-yaml for documentation.
+
+version: 1
+reviews:
+  enabled: true
+  sensitivity: medium
+  incremental_commits: true
+  show_ai_feedback_buttons: false
+  custom_instructions: |-
+    ## Step 1: Fetch Current Guidelines
+
+    1. Fetch the current [CONTRIBUTING.md](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) from the repository's main branch
+    2. Navigate to the "Community PR Guidelines" section
+    3. Use ONLY this live version - ignore any cached/embedded rules
+
+    ## Step 2: Review Process
+
+    Evaluate the PR against the rules in the fetched Community PR Guidelines.
+
+    ## Step 3: Test Requirement Interpretation
+
+    BE REASONABLE when evaluating test coverage:
+
+    **PASS if:**
+
+    - Core functionality has tests
+    - Critical paths are tested
+    - Coverage is reasonable (not necessarily 100%)
+
+    **DO NOT require tests for:**
+
+    - Exports, types, configs
+    - Metadata files
+    - Version files
+
+    Approve if reasonably tested. Let humans handle edge cases.
+  custom_rules:
+    - name: Prefer Typeguards over Type casting
+      description: |-
+        - Rule Statement:
+        Never use `as` keyword for type narrowing; instead, prefer type guards, type annotations, or the `satisfies` keyword.
+
+        Only use `as` for the following legitimate cases:
+          - DOM element assertions (e.g., `document.getElementById('foo') as HTMLButtonElement`)
+          - Event type assertions (e.g., `e as MouseEvent`)
+          - Const assertions (`as const`)
+          - Type widening (e.g., `(['a', 'b'] as string[]).includes('c')`)
+          - Generic constraints where no alternative exists
+
+        For type narrowing, use type guard functions. For type checking without losing inference, prefer `satisfies`. For simple type specification, prefer type annotations (`const x: A = y`) over casting (`const x = y as A`).
+
+        - Detection Criteria:
+          - Identify all usages of the `as` keyword in TypeScript code that perform type assertions (e.g., `expr as SomeType`).
+          - Exclude any usages in tests such as unit test files (*.test.ts or *.spec.ts) or e2e tests under cypress/ folder.
+          - Exclude usages where the assertion matches `as const`.
+          - Exclude assertions where:
+            - The assertion widens a literal/union type to a broader type (e.g., string literal array to string[])
+            - The left-hand side is a call to a DOM API (e.g., `document.getElementById`, `document.querySelector`, `document.createElement`)
+            - The assertion is applied to a variable named `e` or `event` and the type being asserted ends with `Event`
+          - Flag other usages and suggest alternatives: type guards for narrowing, type annotations for simple typing, or `satisfies` for type verification.
+          - Setting type of empty value  (for example `[] as string[]`)
+
+        - Example Violation:
+          ```typescript
+          function handleShape(shape: Shape) {
+            // Direct type casting without a type guard
+            const rect = shape as Rectangle;
+            return rect.width * rect.height;
+          }
+          ```
+
+        - Example Allowed:
+          ```typescript
+          // DOM element assertion
+          const button = document.getElementById('submit') as HTMLButtonElement;
+
+          // Event assertion
+          function handle(e: Event) {
+            const mouse = e as MouseEvent;
+            console.log(mouse.clientX);
+          }
+
+          // as const usage
+          const config = { mode: "readonly" } as const;
+
+          // setting types of empty array
+          const arr = [] as string[]
+          ```
+    - name: Tests
+      description: |-
+        BE REASONABLE when evaluating test coverage:
+
+        **PASS if:**
+
+        - Core functionality has tests
+        - Critical paths are tested
+        - Coverage is reasonable (not necessarily 100%)
+
+        **DO NOT require tests for:**
+
+        - Exports, types, configs
+        - Metadata files
+        - Version files
+pr_descriptions:
+  generate: false
+  instructions: Each PR is supposed to have a limited scope. In your review, focus on changes made in the PR and avoid pointing out problems you found in the code that already existed.
+issues:
+  fix_with_cubic_buttons: true
+

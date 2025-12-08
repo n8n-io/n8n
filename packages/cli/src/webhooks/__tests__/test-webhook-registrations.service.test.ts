@@ -13,6 +13,7 @@ describe('TestWebhookRegistrationsService', () => {
 	);
 
 	const registration = mock<TestWebhookRegistration>({
+		version: 1,
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
 	});
 
@@ -72,6 +73,15 @@ describe('TestWebhookRegistrationsService', () => {
 
 			await expect(promise).resolves.toBeUndefined();
 		});
+
+		test('should skip registrations with outdated version', async () => {
+			const { version, ...outdatedRegistration } = registration; // remove the version property to simulate outdated registration
+			cacheService.getHashValue.mockResolvedValueOnce(outdatedRegistration);
+
+			const promise = registrations.get(webhookKey);
+
+			await expect(promise).resolves.toBeUndefined();
+		});
 	});
 
 	describe('getAllKeys()', () => {
@@ -86,7 +96,10 @@ describe('TestWebhookRegistrationsService', () => {
 
 	describe('getAllRegistrations()', () => {
 		test('should retrieve all test webhook registrations', async () => {
-			cacheService.getHash.mockResolvedValueOnce({ [webhookKey]: registration });
+			cacheService.getHash.mockResolvedValueOnce({
+				[webhookKey]: registration,
+				ANOTHER_KEY: { invalid: 'data' }, // invalid registration to test filtering
+			});
 
 			const result = await registrations.getAllRegistrations();
 

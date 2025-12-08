@@ -3,7 +3,7 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
-import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import { ensureError, Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -46,14 +46,28 @@ export class WebhookService {
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
-		const cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		let cachedStaticWebhook;
+		try {
+			cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		} catch (error) {
+			this.logger.warn('Failed to query webhook cache', {
+				error: ensureError(error).message,
+			});
+			cachedStaticWebhook = undefined;
+		}
 
 		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
 		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbStaticWebhook) {
-			void this.cacheService.set(cacheKey, dbStaticWebhook);
+			try {
+				await this.cacheService.set(cacheKey, dbStaticWebhook);
+			} catch (error) {
+				this.logger.warn('Failed to cache webhook', {
+					error: ensureError(error).message,
+				});
+			}
 			return dbStaticWebhook;
 		}
 
@@ -112,7 +126,13 @@ export class WebhookService {
 	}
 
 	async storeWebhook(webhook: WebhookEntity) {
-		void this.cacheService.set(webhook.cacheKey, webhook);
+		try {
+			await this.cacheService.set(webhook.cacheKey, webhook);
+		} catch (error) {
+			this.logger.warn('Failed to cache webhook', {
+				error: ensureError(error).message,
+			});
+		}
 
 		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 	}

@@ -1,18 +1,6 @@
 import { request } from '@playwright/test';
-import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 
 import { ApiHelpers } from './services/api-helper';
-
-async function pullImagesForCI() {
-	console.log(`🔄 Pulling images for ${process.env.N8N_DOCKER_IMAGE}...`);
-	const stack = await createN8NStack({
-		postgres: true,
-	});
-
-	console.log(`🔄 Images pulled for ${process.env.N8N_DOCKER_IMAGE}...`);
-
-	await stack.stop();
-}
 
 async function globalSetup() {
 	console.log('🚀 Starting global setup...');
@@ -21,9 +9,6 @@ async function globalSetup() {
 	const n8nBaseUrl = process.env.N8N_BASE_URL;
 	if (!n8nBaseUrl) {
 		console.log('⚠️  N8N_BASE_URL environment variable is not set, skipping database reset');
-		if (process.env.CI && process.env.N8N_DOCKER_IMAGE) {
-			await pullImagesForCI();
-		}
 		return;
 	}
 

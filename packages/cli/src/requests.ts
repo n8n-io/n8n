@@ -72,6 +72,7 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;

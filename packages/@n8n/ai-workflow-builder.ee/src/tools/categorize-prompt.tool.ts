@@ -68,6 +68,7 @@ export function createCategorizePromptTool(llm: BaseChatModel, logger?: Logger):
 
 				return createSuccessResponse(config, buildCategorizationMessage(categorization), {
 					categorization,
+					techniqueCategories: categorization.techniques,
 				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {

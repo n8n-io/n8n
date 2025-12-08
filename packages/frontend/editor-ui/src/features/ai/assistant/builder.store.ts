@@ -23,7 +23,7 @@ import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { jsonParse } from 'n8n-workflow';
+import { type INodeExecutionData, jsonParse } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -369,15 +369,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function captureCurrentWorkflowState() {
 		const nodePositions = new Map<string, [number, number]>();
 		const existingNodeIds = new Set<string>();
+		const pinnedDataByNodeName = new Map<string, INodeExecutionData[]>();
 
 		workflowsStore.allNodes.forEach((node) => {
 			nodePositions.set(node.id, [...node.position]);
 			existingNodeIds.add(node.id);
+
+			// Capture pinned data by node name
+			const pinData = workflowsStore.pinDataByNodeName(node.name);
+			if (pinData) {
+				pinnedDataByNodeName.set(node.name, pinData);
+			}
 		});
 
 		return {
 			nodePositions,
 			existingNodeIds,
+			pinnedDataByNodeName,
 			currentWorkflowJson: JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections'])),
 		};
 	}
@@ -438,7 +446,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Capture current state before clearing
-		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
+		const { nodePositions, existingNodeIds, pinnedDataByNodeName } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
 		workflowState.removeAllConnections({ setStateDirty: false });
@@ -470,6 +478,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		setDefaultNodesCredentials(workflowData);
+
+		// Restore pinned data for nodes with matching names
+		const restoredPinData: Record<string, INodeExecutionData[]> = {};
+		workflowData.nodes?.forEach((node) => {
+			const savedPinData = pinnedDataByNodeName.get(node.name);
+			if (savedPinData) {
+				restoredPinData[node.name] = savedPinData;
+			}
+		});
+
+		if (Object.keys(restoredPinData).length > 0) {
+			workflowData.pinData = restoredPinData;
+		}
 
 		return {
 			success: true,
@@ -521,11 +542,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	watch(
 		() => workflowsStore.workflowId,
 		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
+			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
 				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
+				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
+				isAIBuilderEnabled.value
 			) {
 				void fetchSessionsMetadata();
 			} else {
