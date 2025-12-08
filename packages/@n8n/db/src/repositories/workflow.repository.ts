@@ -507,16 +507,27 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (triggerNodeType) {
 			const dbType = this.globalConfig.database.type;
 
+			// Left join the activeVersion relation if not already joined
+			if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
+				qb.leftJoin('workflow.activeVersion', 'activeVersion');
+			}
+
+			// Filter on the active version's nodes from workflow_history table if exists,
+			// otherwise fall back to workflow.nodes for workflows without an active version
 			// In PostgreSQL, cast JSON column to text for LIKE operator
 			if (['postgresdb'].includes(dbType)) {
-				qb.andWhere('workflow.nodes::text LIKE :triggerNodeType', {
-					triggerNodeType: `%${triggerNodeType}%`,
-				});
+				qb.andWhere(
+					`((workflow.activeVersionId IS NOT NULL AND activeVersion.nodes::text LIKE :triggerNodeType) OR
+					(workflow.activeVersionId IS NULL AND workflow.nodes::text LIKE :triggerNodeType))`,
+					{ triggerNodeType: `%${triggerNodeType}%` },
+				);
 			} else {
 				// SQLite and MySQL store nodes as text
-				qb.andWhere('workflow.nodes LIKE :triggerNodeType', {
-					triggerNodeType: `%${triggerNodeType}%`,
-				});
+				qb.andWhere(
+					`((workflow.activeVersionId IS NOT NULL AND activeVersion.nodes LIKE :triggerNodeType) OR
+					(workflow.activeVersionId IS NULL AND workflow.nodes LIKE :triggerNodeType))`,
+					{ triggerNodeType: `%${triggerNodeType}%` },
+				);
 			}
 		}
 	}
