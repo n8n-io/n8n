@@ -58,11 +58,6 @@ interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
 	last_user_message_id?: string;
 }
 
-interface PlaceholderDetail {
-	path: string[];
-	label: string;
-}
-
 interface EndOfStreamingTrackingPayload {
 	userMessageId: string;
 	startWorkflowJson: string;
@@ -787,7 +782,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		},
 		{ deep: true },
 	);
-
 
 	// Public API
 	return {
