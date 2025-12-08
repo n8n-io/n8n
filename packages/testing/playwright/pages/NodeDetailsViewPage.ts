@@ -757,7 +757,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+		return this.page.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {

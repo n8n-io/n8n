@@ -27,6 +27,7 @@ import {
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
+import { ndvEventBus } from '../ndv.eventBus';
 import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -81,7 +82,7 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
+const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
 const selectedInput = ref<string | undefined>();
 const triggerWaitingWarningEnabled = ref(false);
@@ -346,6 +347,10 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
 
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
+};
+
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
 		onSaveWorkflow(e);
@@ -453,7 +458,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
+	ndvStore.setOutputRunIndex(runInputIndex.value);
 	isLinkingEnabled.value = true;
 	trackLinking('input');
 };
@@ -516,14 +521,14 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
 	runInputIndex.value = run;
 	if (linked.value) {
-		runOutputIndex.value = run;
+		ndvStore.setOutputRunIndex(run);
 	}
 	trackRunChange(run, 'input');
 };
@@ -593,7 +598,7 @@ watch(
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
+			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
@@ -647,7 +652,7 @@ watch(
 );
 
 watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
+	ndvStore.setOutputRunIndex(-1);
 });
 
 watch(maxInputRun, () => {
@@ -698,10 +703,12 @@ watch(mainPanelRef, (mainPanel) => {
 onMounted(() => {
 	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>
