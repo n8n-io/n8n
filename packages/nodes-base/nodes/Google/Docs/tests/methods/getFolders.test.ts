@@ -71,7 +71,7 @@ describe('GoogleDocs loadOptions.getFolders', () => {
 		expect(qsArg.corpora).toBe('user');
 	});
 
-	it('should list folders from share drive', async () => {
+	it('should list folders from shared drive', async () => {
 		const node = new GoogleDocs();
 		const driveId = '1A2B3C4D5E6F';
 
