@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	STARTING_NODES,
+	TRIGGER_COUNT_EXCLUDED_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
@@ -746,11 +747,13 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Count all triggers in the workflow, excluding Manual Trigger.
+	 * Count all triggers in the workflow, excluding Manual Trigger and other n8n-internal triggers.
 	 */
 	private countTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const triggerFilter = (nodeType: INodeType) =>
-			!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
+			!!nodeType.trigger &&
+			!nodeType.description.name.includes('manualTrigger') &&
+			!TRIGGER_COUNT_EXCLUDED_NODES.some((x) => x.endsWith(nodeType.description.name));
 
 		// Retrieve unique webhooks as some nodes have multiple webhooks
 		const workflowWebhooks = WebhookHelpers.getWorkflowWebhooks(
