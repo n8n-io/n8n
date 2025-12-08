@@ -164,7 +164,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		};
 
 		if (workflowsStore.chatPartialExecutionDestinationNode) {
-			runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
+			runWorkflowOptions.destinationNode = {
+				nodeName: workflowsStore.chatPartialExecutionDestinationNode,
+				mode: 'inclusive',
+			};
 			workflowsStore.chatPartialExecutionDestinationNode = null;
 		}
 
