@@ -38,6 +38,7 @@ describe('API: ai', () => {
 		it('should call streamRequest with the correct parameters', () => {
 			const payload: ChatRequest.RequestPayload = {
 				payload: {
+					id: '12345',
 					role: 'user',
 					type: 'message',
 					text: 'Build me a workflow',
@@ -62,6 +63,7 @@ describe('API: ai', () => {
 		it('should pass abort signal when provided', () => {
 			const payload: ChatRequest.RequestPayload = {
 				payload: {
+					id: '12345',
 					role: 'user',
 					type: 'message',
 					text: 'Build me a workflow',
@@ -177,6 +179,7 @@ describe('API: ai', () => {
 
 			const payload: ChatRequest.RequestPayload = {
 				payload: {
+					id: '12345',
 					role: 'user',
 					type: 'message',
 					text: 'Build me a workflow',
@@ -211,6 +214,7 @@ describe('API: ai', () => {
 
 			const payload: ChatRequest.RequestPayload = {
 				payload: {
+					id: '12345',
 					role: 'user',
 					type: 'message',
 					text: 'Build me a workflow',
@@ -228,6 +232,7 @@ describe('API: ai', () => {
 		it('should handle complex workflow context in payload', () => {
 			const payload: ChatRequest.RequestPayload = {
 				payload: {
+					id: '12345',
 					role: 'user',
 					type: 'message',
 					text: 'Improve my workflow',
@@ -271,6 +276,7 @@ describe('API: ai', () => {
 		it('should handle undefined parameters correctly', () => {
 			const payload: ChatRequest.RequestPayload = {
 				payload: {
+					id: '12345',
 					role: 'user',
 					type: 'message',
 					text: 'Build me a workflow',

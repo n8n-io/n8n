@@ -144,7 +144,6 @@ describe('Member', () => {
 			role: { slug: 'global:member' },
 		});
 		authMemberAgent = testServer.authAgentFor(member);
-		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -286,7 +285,6 @@ describe('Chat User', () => {
 			role: { slug: 'global:chatUser' },
 		});
 		authMemberAgent = testServer.authAgentFor(member);
-		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
