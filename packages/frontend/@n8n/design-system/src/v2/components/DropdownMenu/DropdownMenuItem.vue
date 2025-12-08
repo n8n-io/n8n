@@ -171,13 +171,15 @@ const handleItemSelect = () => {
 						/>
 					</div>
 					<template v-else-if="hasChildren">
-						<template v-for="child in props.children" :key="child.id">
-							<N8nDropdownMenuItem
-								v-bind="child"
-								@select="handleSelect"
-								@search="handleChildSearch"
-							/>
-						</template>
+						<div :class="$style['children-container']">
+							<template v-for="child in props.children" :key="child.id">
+								<N8nDropdownMenuItem
+									v-bind="child"
+									@select="handleSelect"
+									@search="handleChildSearch"
+								/>
+							</template>
+						</div>
 					</template>
 
 					<!-- Empty state when search returns no results -->
@@ -229,6 +231,10 @@ const handleItemSelect = () => {
 	display: contents;
 }
 
+.children-container {
+	padding: var(--spacing--4xs);
+}
+
 .item {
 	font-size: var(--font-size--2xs);
 	line-height: 1;
@@ -271,7 +277,6 @@ const handleItemSelect = () => {
 
 .sub-content {
 	min-width: 160px;
-	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
 	border: var(--border);
 	background-color: var(--color--background--light-2);
