@@ -104,6 +104,7 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "workflow:move",
   "workflow:activate",
   "workflow:deactivate",
+  "workflow:chat",
   "workflow:create",
   "workflow:read",
   "workflow:update",
