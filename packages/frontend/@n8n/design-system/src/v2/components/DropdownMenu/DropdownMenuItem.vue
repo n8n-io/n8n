@@ -84,7 +84,6 @@ const handleItemSelect = () => {
 					</div>
 					<template v-else-if="hasChildren">
 						<template v-for="child in props.children" :key="child.id">
-							<!-- eslint-disable-next-line vue/no-undef-components - recursive component -->
 							<N8nDropdownMenuItem v-bind="child" @select="handleSelect" />
 						</template>
 					</template>
