@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: 'feat:externalSecrets' })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
+		await import('./credential-resolvers.controller');
 		await import('./context-establishment-hooks');
 		await import('./credential-resolvers');
 		const { DynamicCredentialResolverRegistry } = await import('./services');
