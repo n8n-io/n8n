@@ -312,6 +312,81 @@ describe('WorkflowIndexService', () => {
 				]),
 			);
 		});
+
+		it('should skip nodes with missing type', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.httpRequest',
+				}),
+				{
+					id: 'node-2',
+					name: 'node-2',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				} as INode,
+			]);
+
+			await service.updateIndexFor(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dependencies = call[1].dependencies;
+
+			expect(dependencies).toHaveLength(1);
+			expect(dependencies[0]).toEqual(
+				expect.objectContaining({
+					dependencyType: 'nodeType',
+					dependencyKey: 'n8n-nodes-base.httpRequest',
+					dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+				}),
+			);
+		});
+
+		it('should skip webhook nodes with missing path', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.webhook',
+					parameters: { path: 'valid-path' },
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.webhook',
+					parameters: {},
+				}),
+			]);
+
+			await service.updateIndexFor(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dependencies = call[1].dependencies;
+
+			expect(dependencies).toHaveLength(3);
+			expect(dependencies).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'nodeType',
+						dependencyKey: 'n8n-nodes-base.webhook',
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+					}),
+					expect.objectContaining({
+						dependencyType: 'nodeType',
+						dependencyKey: 'n8n-nodes-base.webhook',
+						dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 },
+					}),
+					expect.objectContaining({
+						dependencyType: 'webhookPath',
+						dependencyKey: 'valid-path',
+						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+					}),
+				]),
+			);
+		});
 	});
 
 	describe('init()', () => {
