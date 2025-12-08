@@ -78,8 +78,8 @@ const handleSubMenuOpenChange = (open: boolean) => {
 				searchRef.value?.focus();
 			}, SUBMENU_FOCUS_DELAY);
 		} else {
-			// Clear search term when sub-menu closes
 			searchTerm.value = '';
+			emit('search', '', props.id);
 		}
 	}
 };
