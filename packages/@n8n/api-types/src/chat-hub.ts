@@ -207,13 +207,22 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
+export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
+
+export interface ChatModelMetadataDto {
+	inputModalities: ChatHubInputModality[];
+	capabilities: {
+		functionCalling: boolean;
+	};
+}
+
 export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
 	updatedAt: string | null;
 	createdAt: string | null;
-	allowFileUploads?: boolean;
+	metadata: ChatModelMetadataDto;
 }
 
 /**
@@ -258,6 +267,27 @@ export const chatAttachmentSchema = z.object({
 	fileName: z.string(),
 });
 
+export const isValidTimeZone = (tz: string): boolean => {
+	try {
+		// Throws if invalid timezone
+		new Intl.DateTimeFormat('en-US', { timeZone: tz });
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+export const StrictTimeZoneSchema = z
+	.string()
+	.min(1)
+	.max(50)
+	.regex(/^[A-Za-z0-9_/+-]+$/)
+	.refine(isValidTimeZone, {
+		message: 'Unknown or invalid time zone',
+	});
+
+export const TimeZoneSchema = StrictTimeZoneSchema.optional().catch(undefined);
+
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
 export class ChatHubSendMessageRequest extends Z.class({
@@ -274,7 +304,8 @@ export class ChatHubSendMessageRequest extends Z.class({
 	),
 	tools: z.array(INodeSchema),
 	attachments: z.array(chatAttachmentSchema),
-	agentName: z.string(),
+	agentName: z.string().optional(),
+	timeZone: TimeZoneSchema,
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
@@ -285,6 +316,7 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	timeZone: TimeZoneSchema,
 }) {}
 
 export class ChatHubEditMessageRequest extends Z.class({
@@ -297,6 +329,7 @@ export class ChatHubEditMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	timeZone: TimeZoneSchema,
 }) {}
 
 export class ChatHubUpdateConversationRequest extends Z.class({

@@ -36,6 +36,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ type: 'text', nullable: true })
 	description: string | null;
 
+	/** @deprecated Please rely on `activeVersionId` being not `null` instead. */
 	@Column()
 	active: boolean;
 

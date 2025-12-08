@@ -32,6 +32,11 @@ on:
         required: false
         default: ''
         type: string
+      runner:
+        description: 'GitHub runner to use'
+        required: false
+        default: 'blacksmith-2vcpu-ubuntu-2204'
+        type: string
 
     secrets:
       CURRENTS_RECORD_KEY:
@@ -42,6 +47,10 @@ on:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD:
         required: false
+      N8N_LICENSE_ACTIVATION_KEY:
+        required: false
+      N8N_ENCRYPTION_KEY:
+        required: false
 
 env:
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
@@ -49,10 +58,13 @@ env:
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers || '2' }} # Configurable workers, defaults to 2 to reduce resource contention
+  # Must match CI's COVERAGE_ENABLED to ensure Turbo cache hits (it's a globalEnv in turbo.json)
+  COVERAGE_ENABLED: 'true'
 
 jobs:
   test:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -101,3 +113,4 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}

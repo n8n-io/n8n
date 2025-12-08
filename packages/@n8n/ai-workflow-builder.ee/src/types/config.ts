@@ -29,6 +29,7 @@ export interface NodePromptConfig {
 	nodeTypePatterns: {
 		set: string[];
 		if: string[];
+		switch: string[];
 		httpRequest: string[];
 		tool: string[];
 	};

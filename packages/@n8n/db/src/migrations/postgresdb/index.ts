@@ -119,6 +119,9 @@ import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-A
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
+import { AddCreatorIdToProjectTable1764276827837 } from '../common/1764276827837-AddCreatorIdToProjectTable';
+import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
+import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -243,4 +246,7 @@ export const postgresMigrations: Migration[] = [
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
+	AddCreatorIdToProjectTable1764276827837,
+	CreateDynamicCredentialResolverTable1764682447000,
+	AddDynamicCredentialEntryTable1764689388394,
 ];

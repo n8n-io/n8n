@@ -1,8 +1,8 @@
 import type { Document } from '@langchain/core/documents';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
-import type { SummarizationChainParams } from 'langchain/chains';
-import { loadSummarizationChain } from 'langchain/chains';
+import type { SummarizationChainParams } from '@langchain/classic/chains';
+import { loadSummarizationChain } from '@langchain/classic/chains';
 import {
 	NodeConnectionTypes,
 	type INodeTypeBaseDescription,

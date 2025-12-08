@@ -93,6 +93,11 @@ export namespace ChatRequest {
 		error?: ErrorContext['error'];
 	}
 
+	export interface BuilderFeatureFlags {
+		templateExamples?: boolean;
+		multiAgent?: boolean;
+	}
+
 	export interface UserChatMessage {
 		role: 'user';
 		type: 'message';
@@ -100,6 +105,7 @@ export namespace ChatRequest {
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
+		featureFlags?: BuilderFeatureFlags;
 	}
 
 	export interface UserContext {

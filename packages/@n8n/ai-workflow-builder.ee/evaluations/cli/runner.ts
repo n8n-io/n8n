@@ -2,6 +2,7 @@ import pLimit from 'p-limit';
 import pc from 'picocolors';
 
 import { createProgressBar, updateProgress, displayResults, displayError } from './display.js';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { basicTestCases, generateTestCases } from '../chains/test-case-generator.js';
 import {
 	setupTestEnvironment,
@@ -25,6 +26,7 @@ type CliEvaluationOptions = {
 	testCaseFilter?: string; // Optional test case ID to run only a specific test
 	testCases?: TestCase[]; // Optional array of test cases to run (if not provided, uses defaults and generation)
 	repetitions?: number; // Number of times to run each test (e.g. for cache warming analysis)
+	featureFlags?: BuilderFeatureFlags; // Optional feature flags to pass to the agent (e.g. templateExamples, multiAgent)
 };
 
 /**
@@ -32,11 +34,19 @@ type CliEvaluationOptions = {
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
  */
 export async function runCliEvaluation(options: CliEvaluationOptions = {}): Promise<void> {
-	const { repetitions = 1, testCaseFilter } = options;
+	const { repetitions = 1, testCaseFilter, featureFlags } = options;
 
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
 	if (repetitions > 1) {
 		console.log(pc.yellow(`➔ Each test will be run ${repetitions} times for cache analysis`));
+	}
+	if (featureFlags) {
+		const enabledFlags = Object.entries(featureFlags)
+			.filter(([, v]) => v === true)
+			.map(([k]) => k);
+		if (enabledFlags.length > 0) {
+			console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+		}
 	}
 	console.log();
 	try {
@@ -105,7 +115,9 @@ export async function runCliEvaluation(options: CliEvaluationOptions = {}): Prom
 
 						// Create a dedicated agent for this test to avoid state conflicts
 						const testAgent = createAgent(parsedNodeTypes, llm, tracer);
-						const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes);
+						const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes, {
+							featureFlags,
+						});
 
 						testResults[testCase.id] = result.error ? 'fail' : 'pass';
 						completed++;
