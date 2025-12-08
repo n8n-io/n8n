@@ -100,6 +100,7 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -804,11 +805,7 @@ function selectInput() {
 }
 
 function trackBuilderPlaceholders() {
-	if (
-		node.value &&
-		builderStore.isPlaceholderValue(props.modelValue) &&
-		builderStore.isAIBuilderEnabled
-	) {
+	if (node.value && isPlaceholderValue(props.modelValue) && builderStore.isAIBuilderEnabled) {
 		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
 			node_type: node.value.type,
 		});

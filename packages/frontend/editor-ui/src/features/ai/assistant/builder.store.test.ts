@@ -1837,55 +1837,6 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	describe('isPlaceholderValue', () => {
-		it('returns true for placeholder values', () => {
-			const builderStore = useBuilderStore();
-
-			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE__API endpoint URL__>')).toBe(
-				true,
-			);
-			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE__label__>')).toBe(true);
-			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE____>')).toBe(true);
-		});
-
-		it('returns false for non-placeholder strings', () => {
-			const builderStore = useBuilderStore();
-
-			expect(builderStore.isPlaceholderValue('regular string')).toBe(false);
-			expect(builderStore.isPlaceholderValue('')).toBe(false);
-			expect(builderStore.isPlaceholderValue('https://api.example.com')).toBe(false);
-			expect(builderStore.isPlaceholderValue('={{ $json.field }}')).toBe(false);
-		});
-
-		it('returns false for malformed placeholders missing suffix', () => {
-			const builderStore = useBuilderStore();
-
-			// Has prefix but missing suffix - should be false
-			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE__missing suffix')).toBe(false);
-			expect(builderStore.isPlaceholderValue('<__PLACEHOLDER_VALUE__some text without end')).toBe(
-				false,
-			);
-		});
-
-		it('returns false for malformed placeholders missing prefix', () => {
-			const builderStore = useBuilderStore();
-
-			// Has suffix but missing prefix - should be false
-			expect(builderStore.isPlaceholderValue('missing prefix__>')).toBe(false);
-			expect(builderStore.isPlaceholderValue('some text without start__>')).toBe(false);
-		});
-
-		it('returns false for non-string values', () => {
-			const builderStore = useBuilderStore();
-
-			expect(builderStore.isPlaceholderValue(123)).toBe(false);
-			expect(builderStore.isPlaceholderValue(null)).toBe(false);
-			expect(builderStore.isPlaceholderValue(undefined)).toBe(false);
-			expect(builderStore.isPlaceholderValue({ key: 'value' })).toBe(false);
-			expect(builderStore.isPlaceholderValue(['array'])).toBe(false);
-			expect(builderStore.isPlaceholderValue(true)).toBe(false);
-		});
-	});
 	describe('abortStreaming telemetry', () => {
 		it('tracks end of response with aborted flag when aborting', () => {
 			const builderStore = useBuilderStore();
