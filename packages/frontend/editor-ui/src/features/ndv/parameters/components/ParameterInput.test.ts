@@ -62,7 +62,7 @@ beforeEach(() => {
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
-	mockBuilderState.isPlaceholderValue.mockClear();
+	mockIsPlaceholderValue.mockClear();
 	mockBuilderState.isAIBuilderEnabled = true;
 });
 
@@ -100,13 +100,20 @@ vi.mock('vue-router', () => {
 
 const mockBuilderState = {
 	trackWorkflowBuilderJourney: vi.fn(),
-	isPlaceholderValue: vi.fn(),
 	isAIBuilderEnabled: true,
 };
 
 vi.mock('@/features/ai/assistant/builder.store', () => {
 	return {
 		useBuilderStore: vi.fn(() => mockBuilderState),
+	};
+});
+
+const mockIsPlaceholderValue = vi.fn();
+
+vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
+	return {
+		isPlaceholderValue: (value: unknown) => mockIsPlaceholderValue(value),
 	};
 });
 
@@ -776,7 +783,7 @@ describe('ParameterInput.vue', () => {
 
 	describe('placeholder tracking', () => {
 		it('tracks field_focus_placeholder_in_ndv when focusing placeholder value', async () => {
-			mockBuilderState.isPlaceholderValue.mockReturnValue(true);
+			mockIsPlaceholderValue.mockReturnValue(true);
 			mockNdvState = {
 				...getNdvStateMock(),
 				activeNode: {
@@ -810,7 +817,7 @@ describe('ParameterInput.vue', () => {
 		});
 
 		it('does not track when value is not a placeholder', async () => {
-			mockBuilderState.isPlaceholderValue.mockReturnValue(false);
+			mockIsPlaceholderValue.mockReturnValue(false);
 			mockNdvState = {
 				...getNdvStateMock(),
 				activeNode: {
@@ -841,7 +848,7 @@ describe('ParameterInput.vue', () => {
 		});
 
 		it('does not track when AI builder is disabled', async () => {
-			mockBuilderState.isPlaceholderValue.mockReturnValue(true);
+			mockIsPlaceholderValue.mockReturnValue(true);
 			mockBuilderState.isAIBuilderEnabled = false;
 			mockNdvState = {
 				...getNdvStateMock(),
