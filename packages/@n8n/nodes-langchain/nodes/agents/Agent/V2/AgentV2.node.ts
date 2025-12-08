@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -58,7 +58,7 @@ export class AgentV2 implements INodeType {
 					},
 					default: '',
 				},
-				promptTypeOptions,
+				promptTypeOptionsDeprecated,
 				{
 					...textFromGuardrailsNode,
 					displayOptions: {
