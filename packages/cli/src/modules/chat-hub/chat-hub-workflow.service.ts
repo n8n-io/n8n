@@ -712,12 +712,10 @@ When you need to reference “now”, use this date and time.`;
 										}
 
 										const token = this.binaryDataService.createSignedToken(attachment, '1 hour');
-										const baseUrl = this.urlService.getWebhookBaseUrl();
+										const baseUrl = this.urlService.getInstanceBaseUrl();
+										const imageUrl = `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
 
-										return {
-											type: 'image_url',
-											image_url: `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`,
-										};
+										return [{ type: 'image_url', image_url: imageUrl }];
 									}),
 								),
 								hideFromUI: false,
