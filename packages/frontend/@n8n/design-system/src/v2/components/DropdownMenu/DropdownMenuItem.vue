@@ -7,7 +7,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, ref, useCssModule, nextTick } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
@@ -15,6 +15,8 @@ import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
+
+const SUBMENU_FOCUS_DELAY = 50;
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -31,6 +33,7 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const searchTerm = ref('');
+const subMenuOpen = ref(false);
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const searchRef = ref<InstanceType<typeof N8nDropdownMenuSearch> | null>(null);
 const subContentRef = ref<InstanceType<typeof DropdownMenuSubContent> | null>(null);
@@ -68,16 +71,21 @@ const hasChildren = computed(() => props.children && props.children.length > 0);
 const hasSubMenu = computed(() => hasChildren.value || props.loading || props.searchable);
 
 const handleSubMenuOpenChange = (open: boolean) => {
+	subMenuOpen.value = open;
 	if (props.searchable) {
 		if (open) {
-			void nextTick(() => {
+			setTimeout(() => {
 				searchRef.value?.focus();
-			});
+			}, SUBMENU_FOCUS_DELAY);
 		} else {
 			// Clear search term when sub-menu closes
 			searchTerm.value = '';
 		}
 	}
+};
+
+const closeSubMenu = () => {
+	subMenuOpen.value = false;
 };
 
 const leadingProps = computed(() => ({
@@ -103,7 +111,7 @@ const handleItemSelect = () => {
 	<div :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
-		<DropdownMenuSub v-if="hasSubMenu" @update:open="handleSubMenuOpenChange">
+		<DropdownMenuSub v-if="hasSubMenu" :open="subMenuOpen" @update:open="handleSubMenuOpenChange">
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
 				:class="[$style.item, $style['sub-trigger'], props.class]"
@@ -149,6 +157,7 @@ const handleItemSelect = () => {
 						:placeholder="searchPlaceholder ?? 'Search...'"
 						:show-icon="showSearchIcon !== false"
 						@update:model-value="handleSearchUpdate"
+						@escape="closeSubMenu"
 						@focus-first-item="focusFirstItem"
 					/>
 
