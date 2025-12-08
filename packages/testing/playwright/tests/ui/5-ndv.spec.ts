@@ -29,7 +29,7 @@ test.describe('NDV', () => {
 		const canvasNodes = n8n.canvas.getCanvasNodes();
 		await canvasNodes.last().dblclick();
 		await expect(n8n.ndv.getContainer()).toBeVisible();
-		await expect(n8n.ndv.inputPanel.get()).toContainText('Wire me up');
+		await expect(n8n.ndv.inputPanel.get()).toContainText('No input connected');
 	});
 
 	test('should test webhook node', async ({ n8n }) => {
@@ -237,12 +237,13 @@ test.describe('NDV', () => {
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.openNode('Set');
 
-			await expect(n8n.ndv.outputPanel.get().getByText('20 items')).toBeVisible();
-			await expect(n8n.ndv.outputPanel.get().locator('[class*="_pagination"]')).toBeVisible();
+			// 26 items with page size 25 = 2 pages, so pagination is visible
+			await expect(n8n.ndv.outputPanel.get().getByText('26 items')).toBeVisible();
+			await expect(n8n.ndv.getOutputPagination()).toBeVisible();
 
 			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
-			await expect(n8n.ndv.outputPanel.get().locator('[class*="_pagination"]')).toBeHidden();
+			await expect(n8n.ndv.getOutputPagination()).toBeHidden();
 		});
 	});
 
@@ -514,6 +515,7 @@ test.describe('NDV', () => {
 
 				await n8n.canvas.getSelectedNodes().first().dblclick();
 				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
 			}
 
 			await n8n.ndv.clickFloatingNodeByPosition('outputMain');
@@ -552,6 +554,7 @@ test.describe('NDV', () => {
 
 				await n8n.canvas.getSelectedNodes().first().dblclick();
 				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
 			}
 
 			await n8n.ndv.navigateToNextFloatingNodeWithKeyboard();
@@ -580,7 +583,7 @@ test.describe('NDV', () => {
 			await n8n.ndv.connectAISubNode('ai_memory', 'Simple Memory');
 			await n8n.ndv.connectAISubNode('ai_tool', 'HTTP Request Tool');
 
-			expect(await n8n.ndv.getNodesWithIssuesCount()).toBeGreaterThanOrEqual(2);
+			await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(2);
 		});
 
 		test('should have the floating nodes in correct order', async ({ n8n }) => {
