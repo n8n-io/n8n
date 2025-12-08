@@ -729,6 +729,272 @@ describe('GoogleGemini Node', () => {
 					}),
 				);
 			});
+
+			describe('includeMergedResponse', () => {
+				it('should include mergedResponse per candidate when enabled and simplify is true', async () => {
+					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+						switch (parameter) {
+							case 'modelId':
+								return 'models/gemini-2.5-flash';
+							case 'messages.values':
+								return [{ role: 'user', content: 'Hello' }];
+							case 'simplify':
+								return true;
+							case 'jsonOutput':
+								return false;
+							case 'builtInTools':
+								return {};
+							case 'options':
+								return {
+									includeMergedResponse: true,
+								};
+							case 'options.maxToolsIterations':
+								return 15;
+							default:
+								return undefined;
+						}
+					});
+					executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+					apiRequestMock.mockResolvedValue({
+						candidates: [
+							{
+								content: {
+									parts: [{ text: 'Hello' }, { text: ' World' }],
+									role: 'model',
+								},
+							},
+						],
+					});
+
+					const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+					expect(result).toEqual([
+						{
+							json: {
+								content: {
+									parts: [{ text: 'Hello' }, { text: ' World' }],
+									role: 'model',
+								},
+								mergedResponse: 'Hello World',
+							},
+							pairedItem: { item: 0 },
+						},
+					]);
+				});
+
+				it('should include mergedResponse per candidate when enabled and simplify is false', async () => {
+					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+						switch (parameter) {
+							case 'modelId':
+								return 'models/gemini-2.5-flash';
+							case 'messages.values':
+								return [{ role: 'user', content: 'Hello' }];
+							case 'simplify':
+								return false;
+							case 'jsonOutput':
+								return false;
+							case 'builtInTools':
+								return {};
+							case 'options':
+								return {
+									includeMergedResponse: true,
+								};
+							case 'options.maxToolsIterations':
+								return 15;
+							default:
+								return undefined;
+						}
+					});
+					executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+					apiRequestMock.mockResolvedValue({
+						candidates: [
+							{
+								content: {
+									parts: [{ text: 'Response' }, { text: ' text' }],
+									role: 'model',
+								},
+							},
+						],
+					});
+
+					const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+					expect(result).toEqual([
+						{
+							json: {
+								candidates: [
+									{
+										content: {
+											parts: [{ text: 'Response' }, { text: ' text' }],
+											role: 'model',
+										},
+										mergedResponse: 'Response text',
+									},
+								],
+							},
+							pairedItem: { item: 0 },
+						},
+					]);
+				});
+
+				it('should not include mergedResponse when disabled', async () => {
+					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+						switch (parameter) {
+							case 'modelId':
+								return 'models/gemini-2.5-flash';
+							case 'messages.values':
+								return [{ role: 'user', content: 'Hello' }];
+							case 'simplify':
+								return true;
+							case 'jsonOutput':
+								return false;
+							case 'builtInTools':
+								return {};
+							case 'options':
+								return {
+									includeMergedResponse: false,
+								};
+							case 'options.maxToolsIterations':
+								return 15;
+							default:
+								return undefined;
+						}
+					});
+					executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+					apiRequestMock.mockResolvedValue({
+						candidates: [
+							{
+								content: {
+									parts: [{ text: 'Hello' }, { text: ' World' }],
+									role: 'model',
+								},
+							},
+						],
+					});
+
+					const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+					expect(result).toEqual([
+						{
+							json: {
+								content: {
+									parts: [{ text: 'Hello' }, { text: ' World' }],
+									role: 'model',
+								},
+							},
+							pairedItem: { item: 0 },
+						},
+					]);
+					expect(result[0].json).not.toHaveProperty('mergedResponse');
+				});
+
+				it('should handle multiple candidates with different merged responses', async () => {
+					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+						switch (parameter) {
+							case 'modelId':
+								return 'models/gemini-2.5-flash';
+							case 'messages.values':
+								return [{ role: 'user', content: 'Hello' }];
+							case 'simplify':
+								return true;
+							case 'jsonOutput':
+								return false;
+							case 'builtInTools':
+								return {};
+							case 'options':
+								return {
+									includeMergedResponse: true,
+									candidateCount: 2,
+								};
+							case 'options.maxToolsIterations':
+								return 15;
+							default:
+								return undefined;
+						}
+					});
+					executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+					apiRequestMock.mockResolvedValue({
+						candidates: [
+							{
+								content: {
+									parts: [{ text: 'First' }, { text: ' candidate' }],
+									role: 'model',
+								},
+							},
+							{
+								content: {
+									parts: [{ text: 'Second' }, { text: ' candidate' }],
+									role: 'model',
+								},
+							},
+						],
+					});
+
+					const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+					expect(result).toHaveLength(2);
+					expect(result[0].json).toEqual({
+						content: {
+							parts: [{ text: 'First' }, { text: ' candidate' }],
+							role: 'model',
+						},
+						mergedResponse: 'First candidate',
+					});
+					expect(result[1].json).toEqual({
+						content: {
+							parts: [{ text: 'Second' }, { text: ' candidate' }],
+							role: 'model',
+						},
+						mergedResponse: 'Second candidate',
+					});
+				});
+
+				it('should only merge text parts and ignore non-text parts', async () => {
+					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+						switch (parameter) {
+							case 'modelId':
+								return 'models/gemini-2.5-flash';
+							case 'messages.values':
+								return [{ role: 'user', content: 'Hello' }];
+							case 'simplify':
+								return true;
+							case 'jsonOutput':
+								return false;
+							case 'builtInTools':
+								return {};
+							case 'options':
+								return {
+									includeMergedResponse: true,
+								};
+							case 'options.maxToolsIterations':
+								return 15;
+							default:
+								return undefined;
+						}
+					});
+					executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+					apiRequestMock.mockResolvedValue({
+						candidates: [
+							{
+								content: {
+									parts: [{ text: 'Text' }, { executableCode: {} }, { text: ' more text' }],
+									role: 'model',
+								},
+							},
+						],
+					});
+
+					const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+					expect(result[0].json).toEqual({
+						content: {
+							parts: [{ text: 'Text' }, { executableCode: {} }, { text: ' more text' }],
+							role: 'model',
+						},
+						mergedResponse: 'Text more text',
+					});
+				});
+			});
 		});
 	});
 
