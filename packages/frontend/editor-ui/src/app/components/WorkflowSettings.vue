@@ -504,6 +504,7 @@ onMounted(async () => {
 
 	try {
 		await Promise.all([
+			workflowsStore.fetchWorkflow(workflowId.value),
 			loadWorkflows(),
 			loadSaveDataErrorExecutionOptions(),
 			loadSaveDataSuccessExecutionOptions(),
