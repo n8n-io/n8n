@@ -18,6 +18,51 @@ export {
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
 
+const VALID_FLAGS = [
+	'--test-case',
+	'--prompts-csv',
+	'--repetitions',
+	'--notion-id',
+	'--judges',
+	'--generations',
+	'--concurrency',
+	'--max-examples',
+	'--verbose',
+	'-v',
+	'--name',
+	'--output-dir',
+	'--prompt',
+	'--dos',
+	'--donts',
+	'--template-examples',
+	'--multi-agent',
+] as const;
+
+function validateFlags(): void {
+	const invalidFlags: string[] = [];
+	for (let i = 2; i < process.argv.length; i++) {
+		const arg = process.argv[i];
+		if (arg.startsWith('--')) {
+			const flagName = arg.includes('=') ? arg.split('=')[0] : arg;
+			if (!VALID_FLAGS.includes(flagName as any) && !invalidFlags.includes(flagName)) {
+				invalidFlags.push(flagName);
+			}
+		} else if (arg.startsWith('-') && arg.length === 2 && arg !== '-v') {
+			if (!invalidFlags.includes(arg)) {
+				invalidFlags.push(arg);
+			}
+		}
+	}
+	if (invalidFlags.length > 0) {
+		console.error('Invalid command-line flag(s) detected:');
+		invalidFlags.forEach((flag) => console.error(`  ${flag}`));
+		console.error('');
+		console.error('Valid flags are:');
+		VALID_FLAGS.forEach((flag) => console.error(`  ${flag}`));
+		process.exit(1);
+	}
+}
+
 /** Parse an integer flag with default value */
 function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 	const arg = getFlagValue(flag);
@@ -30,9 +75,7 @@ function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 /** Parse all CLI arguments */
 function parseCliArgs() {
 	return {
-		testCaseId: process.argv.includes('--test-case')
-			? process.argv[process.argv.indexOf('--test-case') + 1]
-			: undefined,
+		testCaseId: getFlagValue('--test-case'),
 		promptsCsvPath: getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE,
 		repetitions: getIntFlag('--repetitions', 1),
 		notionId: getFlagValue('--notion-id'),
@@ -54,6 +97,9 @@ function parseCliArgs() {
  * Determines which evaluation mode to run based on environment variables
  */
 async function main(): Promise<void> {
+	// Validate flags before proceeding
+	validateFlags();
+
 	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
 	const usePairwiseEval = process.env.USE_PAIRWISE_EVAL === 'true';
 	const args = parseCliArgs();

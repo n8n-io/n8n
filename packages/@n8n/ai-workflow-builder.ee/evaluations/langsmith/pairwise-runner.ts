@@ -5,11 +5,12 @@ import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import * as os from 'os';
 import * as path from 'path';
 import pc from 'picocolors';
 
+import type { ChatPayload } from '../../src/workflow-builder-agent';
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import {
 	evaluateWorkflowPairwise,
 	type PairwiseEvaluationResult,
@@ -79,7 +80,13 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 
 const DEFAULT_NUM_JUDGES = 3;
 const DEFAULT_NUM_GENERATIONS = 1;
-const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
+
+/** Get default experiment name with username */
+function getDefaultExperimentName(): string {
+	const username = os.userInfo()?.username || process.env.USERNAME || process.env.USER || 'unknown';
+	const sanitized = username.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+	return `pairwise-evals-${sanitized}`;
+}
 
 // ============================================================================
 // Artifact Saver
@@ -270,20 +277,6 @@ function buildMultiGenerationLangsmithResults(
 	// Use first generation for backward-compatible metrics
 	const firstGen = aggregation.generationDetails[0];
 
-	// Aggregate counts across all generations
-	const totalJudgesPassed = aggregation.generationDetails.reduce(
-		(sum, g) => sum + g.primaryPasses,
-		0,
-	);
-	const totalViolations = aggregation.generationDetails.reduce(
-		(sum, g) => sum + g.judgeResults.reduce((jSum, r) => jSum + r.violations.length, 0),
-		0,
-	);
-	const totalPasses = aggregation.generationDetails.reduce(
-		(sum, g) => sum + g.judgeResults.reduce((jSum, r) => jSum + r.passes.length, 0),
-		0,
-	);
-
 	return [
 		// Primary aggregated metrics (new)
 		{
@@ -318,22 +311,6 @@ function buildMultiGenerationLangsmithResults(
 			score: totalGenerations * numJudges,
 			comment: `${totalGenerations} generations x ${numJudges} judges`,
 		},
-		// Aggregated detail metrics (across all generations)
-		{
-			key: 'pairwise_judges_passed',
-			score: totalJudgesPassed,
-			comment: `${totalJudgesPassed} of ${totalGenerations * numJudges} total judge calls passed`,
-		},
-		{
-			key: 'pairwise_total_violations',
-			score: totalViolations,
-			comment: `Total violations across all ${totalGenerations} generations`,
-		},
-		{
-			key: 'pairwise_total_passes',
-			score: totalPasses,
-			comment: `Total criteria passes across all ${totalGenerations} generations`,
-		},
 	];
 }
 
@@ -345,18 +322,21 @@ async function runSingleGeneration(
 	inputs: PairwiseDatasetInput,
 	generationIndex: number,
 	log: EvalLogger,
-	featureFlags?: BuilderFeatureFlags,
 	tracer?: LangChainTracer,
+	exampleContext?: ChatPayload['exampleContext'],
 ): Promise<GenerationResult> {
 	const startTime = Date.now();
 	const runId = generateRunId();
 
 	// Create dedicated agent for this generation
-	const agent = createAgent(parsedNodeTypes, llm, tracer, featureFlags);
+	const agent = createAgent(parsedNodeTypes, llm, tracer);
 
 	// Generate workflow
 	await consumeGenerator(
-		agent.chat(getChatPayload(inputs.prompt, runId, featureFlags), `pairwise-gen-${generationIndex}`),
+		agent.chat(
+			getChatPayload(inputs.prompt, runId, undefined, exampleContext),
+			`pairwise-gen-${generationIndex}`,
+		),
 	);
 
 	const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
@@ -420,8 +400,8 @@ function createPairwiseWorkflowGenerator(
 	numGenerations: number,
 	log: EvalLogger,
 	artifactSaver: ArtifactSaver | null,
-	featureFlags?: BuilderFeatureFlags,
 	tracer?: LangChainTracer,
+	exampleContextMap?: Map<string, ChatPayload['exampleContext']>,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
 		const startTime = Date.now();
@@ -438,10 +418,22 @@ function createPairwiseWorkflowGenerator(
 		// Save prompt artifacts if output dir is configured
 		artifactSaver?.savePrompt(promptId, inputs.prompt, inputs.evals);
 
+		// Get example context from map for verbose error messages
+		const exampleContext = exampleContextMap?.get(inputs.prompt);
+
 		// Run all generations in parallel
 		const generationResults = await Promise.all(
 			Array.from({ length: numGenerations }, async (_, i) => {
-				return await runSingleGeneration(parsedNodeTypes, llm, numJudges, inputs, i, log, featureFlags, tracer);
+				return await runSingleGeneration(
+					parsedNodeTypes,
+					llm,
+					numJudges,
+					inputs,
+					i,
+					log,
+					tracer,
+					exampleContext,
+				);
 			}),
 		);
 
@@ -560,15 +552,6 @@ function filterExamples(
 	return allExamples;
 }
 
-/** Create repeated data array for LangSmith evaluation */
-function createRepeatedData(data: Example[], repetitions: number): Example[] {
-	const repeatedData: Example[] = [];
-	for (let i = 0; i < repetitions; i++) {
-		repeatedData.push(...data);
-	}
-	return repeatedData;
-}
-
 // ============================================================================
 // Public API
 // ============================================================================
@@ -581,20 +564,6 @@ export interface PairwiseEvaluationOptions {
 	verbose?: boolean;
 	experimentName?: string;
 	outputDir?: string;
-	concurrency?: number;
-	maxExamples?: number;
-	featureFlags?: BuilderFeatureFlags;
-}
-
-/** Log enabled feature flags */
-function logFeatureFlags(featureFlags?: BuilderFeatureFlags): void {
-	if (!featureFlags) return;
-	const enabledFlags = Object.entries(featureFlags)
-		.filter(([, v]) => v === true)
-		.map(([k]) => k);
-	if (enabledFlags.length > 0) {
-		console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
-	}
 }
 
 /** Log configuration for pairwise evaluation */
@@ -604,12 +573,11 @@ function logPairwiseConfig(
 	numGenerations: number,
 	numJudges: number,
 	repetitions: number,
-	concurrency: number,
 	verbose: boolean,
 ): void {
 	log.info(`➔ Experiment: ${experimentName}`);
 	log.info(
-		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps (concurrency: ${concurrency})${verbose ? ' (verbose)' : ''}`,
+		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps${verbose ? ' (verbose)' : ''}`,
 	);
 	if (numGenerations > 1) {
 		log.verbose('   Generation Correctness: (# passing gens) / total gens');
@@ -633,30 +601,17 @@ export async function runPairwiseLangsmithEvaluation(
 		numJudges = DEFAULT_NUM_JUDGES,
 		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
-		experimentName = DEFAULT_EXPERIMENT_NAME,
+		experimentName = getDefaultExperimentName(),
 		outputDir,
-		concurrency = 5,
-		maxExamples,
-		featureFlags,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
-	logPairwiseConfig(
-		log,
-		experimentName,
-		numGenerations,
-		numJudges,
-		repetitions,
-		concurrency,
-		verbose,
-	);
+	logPairwiseConfig(log, experimentName, numGenerations, numJudges, repetitions, verbose);
 
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
 	}
-
-	logFeatureFlags(featureFlags);
 
 	if (!process.env.LANGSMITH_API_KEY) {
 		log.error('✗ LANGSMITH_API_KEY environment variable not set');
@@ -708,17 +663,22 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		// Filter examples based on notionId or maxExamples
+		// Filter examples based on notionId or maxExamples env var
+		const maxExamplesEnv = process.env.EVAL_MAX_EXAMPLES;
+		const maxExamples = maxExamplesEnv ? parseInt(maxExamplesEnv, 10) : undefined;
 		const data = filterExamples(allExamples, notionId, maxExamples, log);
 
 		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);
 
-		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
-		// (it only works with dataset names). We manually duplicate examples to work around this.
-		const repeatedData = createRepeatedData(data, repetitions);
-
-		log.info(`➔ Running ${data.length} × ${repetitions} = ${repeatedData.length} generations`);
+		// Create a map of prompt to example context for verbose error messages
+		const exampleContextMap = new Map<string, ChatPayload['exampleContext']>();
+		for (const example of data) {
+			const prompt = (example.inputs as PairwiseDatasetInput).prompt;
+			if (prompt !== undefined && prompt !== null) {
+				exampleContextMap.set(prompt, { notionId: getNotionId(example.metadata) });
+			}
+		}
 
 		const generateWorkflow = createPairwiseWorkflowGenerator(
 			parsedNodeTypes,
@@ -727,24 +687,35 @@ export async function runPairwiseLangsmithEvaluation(
 			numGenerations,
 			log,
 			artifactSaver,
-			featureFlags,
 			tracer,
+			exampleContextMap,
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
+
+		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
+		// (it only works with dataset names). We manually duplicate examples to work around this.
+		const repeatedData: Example[] = [];
+		for (let i = 0; i < repetitions; i++) {
+			repeatedData.push(...data);
+		}
+
+		const totalWorkflowGenerations = data.length * repetitions * numGenerations;
+		log.info(
+			`➔ Running ${data.length} examples × ${repetitions} repetition(s) × ${numGenerations} generation(s) = ${totalWorkflowGenerations} total workflow generations`,
+		);
 
 		const evalStartTime = Date.now();
 
 		await evaluate(generateWorkflow, {
 			data: repeatedData,
 			evaluators: [evaluator],
-			maxConcurrency: concurrency,
+			maxConcurrency: 5,
 			experimentPrefix: experimentName,
 			// numRepetitions not used - we manually duplicate examples above
 			metadata: {
 				numJudges,
 				numGenerations,
 				repetitions,
-				concurrency,
 				scoringMethod: numGenerations > 1 ? 'hierarchical-multi-generation' : 'hierarchical',
 			},
 		});
@@ -774,7 +745,6 @@ export interface LocalPairwiseOptions {
 	numGenerations?: number;
 	verbose?: boolean;
 	outputDir?: string;
-	featureFlags?: BuilderFeatureFlags;
 }
 
 /** Log configuration for local pairwise evaluation */
@@ -811,7 +781,6 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		numGenerations = DEFAULT_NUM_GENERATIONS,
 		verbose = false,
 		outputDir,
-		featureFlags,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -837,8 +806,8 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 			Array.from({ length: numGenerations }, async (_, genIndex) => {
 				const genStartTime = Date.now();
 				const runId = generateRunId();
-				const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
-				await consumeGenerator(agent.chat(getChatPayload(prompt, runId, featureFlags), `local-gen-${genIndex}`));
+				const agent = createAgent(parsedNodeTypes, llm);
+				await consumeGenerator(agent.chat(getChatPayload(prompt, runId), `local-gen-${genIndex}`));
 				const state = await agent.getState(runId, `local-gen-${genIndex}`);
 
 				if (!state.values || !isWorkflowStateValues(state.values)) {

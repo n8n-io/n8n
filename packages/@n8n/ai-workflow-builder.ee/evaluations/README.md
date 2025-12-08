@@ -262,7 +262,7 @@ Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt
 | `--generations <n>` | Number of workflow generations per prompt (for variance reduction) | 1 |
 | `--judges <n>` | Number of LLM judges per evaluation | 3 |
 | `--concurrency <n>` | Number of prompts to evaluate in parallel | 5 |
-| `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals` |
+| `--name <name>` | Custom experiment name in LangSmith | `pairwise-evals-{username}` |
 | `--output-dir <path>` | Save generated workflows and evaluation results to this directory | - |
 | `--verbose`, `-v` | Enable verbose logging (shows judge details, violations, etc.) | false |
 | `--multi-agent` | Enable multi-agent architecture (see [Feature Flags](#feature-flags)) | false |
@@ -520,7 +520,7 @@ When feature flags are enabled, they are logged at the start of the evaluation:
 ### Pairwise Evaluation Output
 
 - Results are stored in Langsmith dashboard
-- Experiment name format: `<name>-[uuid]` (default: `pairwise-evals-[uuid]`)
+- Experiment name format: `<name>-[uuid]` (default: `pairwise-evals-{username}-[uuid]`)
 - Metrics reported (single generation mode):
   - `pairwise_primary`: Binary pass/fail based on majority vote (0 or 1)
   - `pairwise_diagnostic`: Average diagnostic score across judges (0-1)

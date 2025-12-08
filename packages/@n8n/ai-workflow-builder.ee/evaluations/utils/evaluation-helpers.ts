@@ -281,6 +281,7 @@ export function getChatPayload(
 	message: string,
 	id: string,
 	featureFlags?: BuilderFeatureFlags,
+	exampleContext?: ChatPayload['exampleContext'],
 ): ChatPayload {
 	return {
 		featureFlags: featureFlags ?? {
@@ -291,5 +292,6 @@ export function getChatPayload(
 		workflowContext: {
 			currentWorkflow: { id, nodes: [], connections: {} },
 		},
+		exampleContext,
 	};
 }

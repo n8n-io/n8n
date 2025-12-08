@@ -31,6 +31,7 @@ export interface NodePromptConfig {
 		if: string[];
 		switch: string[];
 		httpRequest: string[];
+		gmail: string[];
 		tool: string[];
 	};
 

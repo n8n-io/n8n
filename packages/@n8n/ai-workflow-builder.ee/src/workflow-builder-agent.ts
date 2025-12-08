@@ -167,6 +167,8 @@ export interface ChatPayload {
 		expressionValues?: Record<string, ExpressionValue[]>;
 	};
 	featureFlags?: BuilderFeatureFlags;
+	/** Example context for verbose error messages when --verbose is enabled */
+	exampleContext?: { notionId?: string; templateId?: number; url?: string };
 }
 
 export class WorkflowBuilderAgent {
@@ -471,7 +473,7 @@ export class WorkflowBuilderAgent {
 	}
 
 	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		this.validateMessageLength(payload.message);
+		this.validateMessageLength(payload.message, payload.exampleContext);
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,
@@ -487,7 +489,28 @@ export class WorkflowBuilderAgent {
 		}
 	}
 
-	private validateMessageLength(message: string): void {
+	private validateMessageLength(
+		message: string,
+		exampleContext?: ChatPayload['exampleContext'],
+	): void {
+		if (message.trim().length === 0) {
+			const isVerbose =
+				exampleContext && (process.env.VERBOSE === 'true' || process.argv.includes('--verbose'));
+			const parts = isVerbose
+				? [
+						exampleContext.notionId && `notion_id: ${exampleContext.notionId}`,
+						exampleContext.templateId && `template_id: ${exampleContext.templateId}`,
+						exampleContext.url && `url: ${exampleContext.url}`,
+					].filter(Boolean)
+				: [];
+			throw new ValidationError(
+				parts.length > 0
+					? `Message cannot be empty (Example: ${parts.join(', ')})`
+					: 'Message cannot be empty',
+			);
+		}
+
+		// Check message length
 		if (message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
 			this.logger?.warn('Message exceeds maximum length', {
 				messageLength: message.length,
