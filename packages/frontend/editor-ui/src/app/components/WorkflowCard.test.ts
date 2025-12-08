@@ -6,13 +6,16 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import type { WorkflowResource } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -73,6 +76,7 @@ describe('WorkflowCard', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let settingsStore: MockedStore<typeof useSettingsStore>;
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let usersStore: MockedStore<typeof useUsersStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
 
@@ -81,6 +85,7 @@ describe('WorkflowCard', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
 		toast = useToast();
 
@@ -629,6 +634,144 @@ describe('WorkflowCard', () => {
 		const { queryByTestId } = renderComponent({ props: { data } });
 
 		expect(queryByTestId('workflow-card-archived')).not.toBeInTheDocument();
-		expect(queryByTestId('workflow-card-activator')).toBeInTheDocument();
+	});
+
+	it("should show 'Duplicate' action when user has read permission and can create workflows", async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:read'],
+			isArchived: false,
+		});
+
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		// Mock user with global workflow create permission
+		usersStore.currentUser = {
+			id: '1',
+			email: 'test@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+			isDefaultUser: false,
+			isPendingUser: false,
+			mfaEnabled: false,
+			globalScopes: ['workflow:create'],
+		} as IUser;
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Duplicate');
+	});
+
+	it("should show 'Duplicate' action when user has project-level create workflow permission", async () => {
+		const projectId = 'project-123';
+		const data = createWorkflow({
+			scopes: ['workflow:read'],
+			isArchived: false,
+			homeProject: {
+				id: projectId,
+				name: 'Test Project',
+			},
+		});
+
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		// Mock user without global workflow create permission
+		usersStore.currentUser = {
+			id: '1',
+			email: 'test@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+			isDefaultUser: false,
+			isPendingUser: false,
+			mfaEnabled: false,
+			globalScopes: [],
+		} as IUser;
+
+		// Mock project with workflow create permission
+		projectsStore.myProjects = [
+			{
+				id: projectId,
+				name: 'Test Project',
+				icon: null,
+				type: 'team',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				role: 'project:editor',
+				scopes: ['workflow:create'],
+			} as ProjectListItem,
+		];
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Duplicate');
+	});
+
+	it("should not show 'Duplicate' action when user does not have create workflow permission", async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:read'],
+			isArchived: false,
+		});
+
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		// Mock user without workflow create permission
+		usersStore.currentUser = {
+			id: '1',
+			email: 'test@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+			isDefaultUser: false,
+			isPendingUser: false,
+			mfaEnabled: false,
+			globalScopes: [],
+		} as IUser;
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Duplicate');
 	});
 });

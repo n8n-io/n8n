@@ -1419,53 +1419,6 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(historyVersion!.nodes).toEqual(payload.nodes);
 		});
 	});
-
-	describe('activate workflow', () => {
-		test('should activate workflow without changing version ID', async () => {
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: true,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).toBeCalled();
-
-			const {
-				data: { id, versionId, active, activeVersionId },
-			} = response.body;
-
-			expect(id).toBe(workflow.id);
-			expect(versionId).toBe(workflow.versionId);
-			expect(active).toBe(true);
-			expect(activeVersionId).toBe(workflow.versionId);
-		});
-
-		test('should deactivate workflow without changing version ID', async () => {
-			const workflow = await createActiveWorkflow({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: false,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).not.toBeCalled();
-			expect(activeWorkflowManager.remove).toBeCalled();
-
-			const {
-				data: { id, versionId, active, activeVersionId },
-			} = response.body;
-
-			expect(id).toBe(workflow.id);
-			expect(versionId).toBe(workflow.versionId);
-			expect(active).toBe(false);
-			expect(activeVersionId).toBeNull();
-		});
-	});
 });
 
 describe('PUT /:workflowId/transfer', () => {

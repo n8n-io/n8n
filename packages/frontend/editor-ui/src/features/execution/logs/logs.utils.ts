@@ -210,54 +210,75 @@ function createLogTreeRec(
 ): LogEntry[] {
 	const runData = context.data.resultData.runData;
 
-	return Object.entries(runData)
-		.flatMap<{
-			node: INode;
-			task?: ITaskData;
-			runIndex?: number;
-			nodeHasMultipleRuns: boolean;
-		}>(([nodeName, taskData]) => {
-			const node = context.workflow.getNode(nodeName);
+	const intermediateResult = Object.entries(runData).flatMap<{
+		node: INode;
+		task?: ITaskData;
+		runIndex?: number;
+		nodeHasMultipleRuns: boolean;
+	}>(([nodeName, taskData]) => {
+		const node = context.workflow.getNode(nodeName);
 
-			if (node === null || (filter && filter.rootNodeId !== node.id)) {
-				return [];
-			}
+		if (node === null || (filter && filter.rootNodeId !== node.id)) {
+			return [];
+		}
 
-			const childNodes = context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN');
+		const childNodes = context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN');
 
-			if (childNodes.length === 0) {
-				// The node is root node
-				const taskDataList = taskData.map((task, runIndex) => ({
-					node,
-					task,
-					runIndex,
-					nodeHasMultipleRuns: taskData.length > 1,
-				}));
+		if (childNodes.length === 0) {
+			// The node is root node
+			const taskDataList = taskData.map((task, runIndex) => ({
+				node,
+				task,
+				runIndex,
+				nodeHasMultipleRuns: taskData.length > 1,
+			}));
 
-				return filter
-					? taskDataList.filter((item) => item.runIndex === filter.rootNodeRunIndex)
-					: taskDataList;
-			}
+			return filter
+				? taskDataList.filter((item) => item.runIndex === filter.rootNodeRunIndex)
+				: taskDataList;
+		}
 
-			// The node is sub node
-			if (childNodes.some((child) => (runData[child] ?? []).length > 0)) {
-				return [];
-			}
+		// The node is sub node
+		if (childNodes.some((child) => (runData[child] ?? []).length > 0)) {
+			return [];
+		}
 
-			// The sub node has data but its children don't: this can happen for partial execution of tools.
-			// In this case, we insert first child as placeholder so that the node is included in the tree.
-			const firstChild = context.workflow.getNode(childNodes[0]);
+		// The sub node has data but its children don't: this can happen for partial execution of tools.
+		// In this case, we insert first child as placeholder so that the node is included in the tree.
+		const firstChild = context.workflow.getNode(childNodes[0]);
 
-			if (firstChild === null) {
-				return [];
-			}
+		if (firstChild === null) {
+			return [];
+		}
 
-			return [{ node: firstChild, nodeHasMultipleRuns: false }];
-		})
+		return [{ node: firstChild, nodeHasMultipleRuns: false }];
+	});
+
+	// Deduplicate placeholder entries (entries without task data)
+	// This prevents duplicate parent nodes when multiple child nodes try to insert the same placeholder
+	const seenPlaceholders = new Set<string>();
+	const deduplicated = intermediateResult.filter((entry) => {
+		// Keep all entries with actual task data
+		if (entry.task !== undefined) {
+			return true;
+		}
+
+		// For placeholders, keep only the first occurrence of each node
+		if (seenPlaceholders.has(entry.node.id)) {
+			return false;
+		}
+
+		seenPlaceholders.add(entry.node.id);
+		return true;
+	});
+
+	const result = deduplicated
 		.flatMap(({ node, runIndex, task, nodeHasMultipleRuns }) =>
 			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
+
+	return result;
 }
 
 export function createLogTree(
@@ -396,16 +417,26 @@ export function mergeStartData(
 	const runData = Object.fromEntries(
 		nodeNames.map<[string, ITaskData[]]>((nodeName) => {
 			const tasks = response.data?.resultData.runData[nodeName] ?? [];
+
 			const mergedTasks = tasks.concat(
 				(startData[nodeName] ?? [])
-					.filter((task) =>
-						// To remove duplicate runs, we check start time in addition to execution index
-						// because nodes such as Wait and Form emits multiple websocket events with
-						// different execution index for a single run
-						tasks.every(
-							(t) => t.startTime < task.startTime && t.executionIndex !== task.executionIndex,
-						),
-					)
+					.filter((task) => {
+						// To remove duplicate runs, we check if there's an exact match in the final tasks
+						// An exact match means the task has the same executionIndex AND startTime
+						// This handles AI agent cases where the same execution appears in both
+						// startData (from nodeExecuteBefore events) and final results
+						const hasExactMatch = tasks.some(
+							(t) => t.executionIndex === task.executionIndex && t.startTime === task.startTime,
+						);
+
+						if (hasExactMatch) {
+							return false; // Filter out duplicates
+						}
+
+						// Keep tasks from startData that started after all existing tasks
+						// This handles cases like Wait and Form nodes that emit multiple websocket events
+						return tasks.every((t) => t.startTime < task.startTime);
+					})
 					.map<ITaskData>((task) => ({
 						...task,
 						executionTime: 0,
