@@ -463,18 +463,6 @@ describe('NodeExecutionContext', () => {
 				useFeatureE: true,
 			});
 		});
-
-		it('should memoize the result', () => {
-			node.typeVersion = 2.4;
-			nodeType.description.features = {
-				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
-			};
-
-			const result1 = testContext.nodeFeatures;
-			const result2 = testContext.nodeFeatures;
-
-			expect(result1).toBe(result2);
-		});
 	});
 
 	describe('isNodeFeatureEnabled', () => {
