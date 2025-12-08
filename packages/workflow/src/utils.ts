@@ -89,8 +89,8 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 			return expression.elements.map((exp) => syntaxNodeToValue(exp));
 		case Syntax.UnaryExpression:
 			const value = syntaxNodeToValue(expression.argument);
-			if (value !== undefined && expression.operator === '-') {
-				return -(value as number);
+			if (typeof value === 'number' && expression.operator === '-') {
+				return -value;
 			}
 			return value;
 		default:
