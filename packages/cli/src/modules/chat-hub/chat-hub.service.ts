@@ -540,7 +540,7 @@ export class ChatHubService {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:chat'],
+			['workflow:execute-chat'],
 			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
 		);
 
@@ -981,7 +981,7 @@ export class ChatHubService {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:chat'],
+			['workflow:execute-chat'],
 			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
 		);
 
@@ -1447,7 +1447,7 @@ export class ChatHubService {
 			const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 				model.workflowId,
 				user,
-				['workflow:chat'],
+				['workflow:execute-chat'],
 				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
 			);
 

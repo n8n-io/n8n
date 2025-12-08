@@ -724,8 +724,8 @@ export class ChatHubModelsService {
 		);
 
 		const activeWorkflows = workflowsWithChatTrigger
-			// Ensure the user has chat access to the workflow
-			.filter((workflow) => workflow.scopes.includes('workflow:chat'))
+			// Ensure the user has chat execution access to the workflow
+			.filter((workflow) => workflow.scopes.includes('workflow:execute-chat'))
 			// The workflow has to be active
 			.filter((workflow) => !!workflow.activeVersionId);
 

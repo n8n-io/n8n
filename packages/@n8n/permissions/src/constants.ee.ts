@@ -26,10 +26,10 @@ export const RESOURCES = {
 	workflow: [
 		'share',
 		'execute',
+		'execute-chat',
 		'move',
 		'activate',
 		'deactivate',
-		'chat',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
