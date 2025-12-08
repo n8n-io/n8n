@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/base';
-import type { TestRequirements } from '../../Types';
+import { test, expect } from '../../../fixtures/base';
+import type { TestRequirements } from '../../../Types';
 
 test.describe('Become creator CTA', () => {
 	test('should not show the CTA if user is not eligible', async ({ n8n, setupRequirements }) => {
