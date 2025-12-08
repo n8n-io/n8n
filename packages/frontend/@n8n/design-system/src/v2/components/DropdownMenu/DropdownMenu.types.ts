@@ -104,8 +104,6 @@ export interface DropdownMenuSlots<T = string> {
 	/** Pass-through to N8nDropdownMenuItem */
 	'item-leading': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
-	'item-label': (props: { item: DropdownMenuItemProps<T> }) => void;
-	/** Pass-through to N8nDropdownMenuItem */
 	'item-trailing': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 	/** Custom loading state */
 	loading: () => void;
@@ -116,8 +114,6 @@ export interface DropdownMenuSlots<T = string> {
 export interface DropdownMenuItemSlots<T = string> {
 	/** Content before the label (default: icon if provided) */
 	'item-leading': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
-	/** Custom label content (default: label text) */
-	'item-label': (props: { item: DropdownMenuItemProps<T> }) => void;
 	/** Content after the label (badges, shortcuts, etc.) */
 	'item-trailing': (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
 }

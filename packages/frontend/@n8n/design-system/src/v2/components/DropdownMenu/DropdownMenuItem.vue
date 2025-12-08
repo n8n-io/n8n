@@ -10,6 +10,7 @@ import {
 import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
@@ -59,16 +60,27 @@ const handleItemSelect = () => {
 				:class="[$style.item, $style['sub-trigger'], props.class]"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
-					<Icon v-if="icon" :icon="icon" :class="$style['item-leading']" />
+					<Icon
+						v-if="icon"
+						:icon="icon"
+						:class="[$style['item-leading'], $style.icon]"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+						size="large"
+					/>
 				</slot>
-
-				<span :class="$style['item-label']">
-					<slot name="item-label" :item="props">
-						{{ label }}
-					</slot>
-				</span>
-
-				<Icon icon="chevron-right" :class="$style['sub-indicator']" />
+				<N8nText
+					:class="$style['item-label']"
+					size="medium"
+					:color="disabled ? 'text-light' : 'text-dark'"
+				>
+					{{ label }}
+				</N8nText>
+				<Icon
+					icon="chevron-right"
+					:class="$style['sub-indicator']"
+					:color="disabled ? 'text-xlight' : 'text-light'"
+					size="large"
+				/>
 			</DropdownMenuSubTrigger>
 
 			<DropdownMenuPortal>
@@ -99,18 +111,29 @@ const handleItemSelect = () => {
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
-				<Icon v-if="icon" :icon="icon" :class="$style['item-leading']" />
+				<Icon
+					v-if="icon"
+					:icon="icon"
+					:class="[$style['item-leading'], $style.icon]"
+					size="large"
+					:color="disabled ? 'text-xlight' : 'text-light'"
+				/>
 			</slot>
-
-			<span :class="$style['item-label']">
-				<slot name="item-label" :item="props">
-					{{ label }}
-				</slot>
-			</span>
-
+			<N8nText
+				:class="$style['item-label']"
+				size="medium"
+				:color="disabled ? 'text-light' : 'text-dark'"
+			>
+				{{ label }}
+			</N8nText>
 			<slot name="item-trailing" :item="props" :ui="trailingProps" />
-
-			<Icon v-if="checked" icon="check" :class="$style['item-check']" />
+			<Icon
+				v-if="checked"
+				icon="check"
+				:class="$style['item-check']"
+				size="large"
+				:color="disabled ? 'text-xlight' : 'text-light'"
+			/>
 		</DropdownMenuItem>
 	</div>
 </template>

@@ -184,7 +184,13 @@ defineExpose({ open, close });
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
 					<div v-if="searchable" :class="$style['search-container']">
-						<Icon v-if="showSearchIcon" icon="search" :class="$style['search-icon']" />
+						<Icon
+							v-if="showSearchIcon"
+							icon="search"
+							:class="$style['search-icon']"
+							size="large"
+							color="text-light"
+						/>
 						<input
 							ref="searchInputRef"
 							type="text"
@@ -220,11 +226,6 @@ defineExpose({ open, close });
 								<N8nDropdownMenuItem v-bind="item" @select="handleItemSelect">
 									<template v-if="slots['item-leading']" #item-leading="{ ui }">
 										<slot name="item-leading" :item="item" :ui="ui" />
-									</template>
-									<template #item-label>
-										<slot name="item-label" :item="item">
-											{{ item.label }}
-										</slot>
 									</template>
 									<template v-if="slots['item-trailing']" #item-trailing="{ ui }">
 										<slot name="item-trailing" :item="item" :ui="ui" />
@@ -314,8 +315,8 @@ defineExpose({ open, close });
 	background: transparent;
 	outline: none;
 	font-family: inherit;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
+	color: var(--color--text--base);
 	padding: var(--spacing--4xs) 0;
 
 	&::placeholder {
@@ -326,7 +327,7 @@ defineExpose({ open, close });
 .empty-state {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	text-align: center;
 }
 </style>
