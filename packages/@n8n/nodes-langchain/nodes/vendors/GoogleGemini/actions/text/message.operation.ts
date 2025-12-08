@@ -556,20 +556,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		currentIteration++;
 	}
 
-	const mergedResponse = options.includeMergedResponse
-		? response.candidates
-				.flatMap((candidate) => candidate.content.parts)
-				.filter((part) => 'text' in part)
-				.map((part) => (part as { text: string }).text)
-				.join('')
-		: undefined;
+	const candidatesWithMergedResponse = options.includeMergedResponse
+		? response.candidates.map((candidate) => ({
+				...candidate,
+				mergedResponse: candidate.content.parts
+					.filter((part) => 'text' in part)
+					.map((part) => (part as { text: string }).text)
+					.join(''),
+			}))
+		: response.candidates;
 
 	if (simplify) {
-		return response.candidates.map((candidate) => ({
-			json: {
-				...candidate,
-				merged_response: mergedResponse,
-			},
+		return candidatesWithMergedResponse.map((candidate) => ({
+			json: candidate,
 			pairedItem: { item: i },
 		}));
 	}
@@ -578,7 +577,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		{
 			json: {
 				...response,
-				merged_response: mergedResponse,
+				candidates: candidatesWithMergedResponse,
 			},
 			pairedItem: { item: i },
 		},
