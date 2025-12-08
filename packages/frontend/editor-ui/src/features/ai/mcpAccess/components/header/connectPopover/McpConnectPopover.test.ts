@@ -95,7 +95,7 @@ describe('McpConnectPopover', () => {
 
 		it('should reset current user MCP key when popover closes', async () => {
 			const user = userEvent.setup();
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 
 			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
 
@@ -103,11 +103,14 @@ describe('McpConnectPopover', () => {
 				expect(getByTestId('mcp-connect-popover-content')).toBeVisible();
 			});
 
-			await user.keyboard('{Escape}');
+			// Click trigger again to close popover (toggle behavior)
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
 
 			await waitFor(() => {
-				expect(mockResetCurrentUserMCPKey).toHaveBeenCalled();
+				expect(queryByTestId('mcp-connect-popover-content')).not.toBeInTheDocument();
 			});
+
+			expect(mockResetCurrentUserMCPKey).toHaveBeenCalled();
 		});
 	});
 
