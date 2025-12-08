@@ -27,7 +27,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import type { IUser } from 'n8n-workflow';
+import { calculateWorkflowChecksum, type IUser } from 'n8n-workflow';
 
 import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -265,6 +265,11 @@ const restoreWorkflowVersion = async (
 		id,
 		deactivateAndRestore,
 	);
+
+	if (workflowId.value === workflowsStore.workflowId) {
+		workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(activeWorkflow.value));
+	}
+
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
 	});
