@@ -221,7 +221,7 @@ export class MicrosoftOneDrive implements INodeType {
 								encodedFilename = encodeURIComponent(fileName);
 							}
 
-							if (binaryData.fileName !== undefined) {
+							if (fileName == '' && binaryData.fileName !== undefined) {
 								encodedFilename = encodeURIComponent(binaryData.fileName);
 							}
 
