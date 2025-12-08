@@ -41,7 +41,7 @@ const props = defineProps<{
 		eventBus: EventBus;
 		workflowId: string;
 		direction: 'push' | 'pull';
-		workflowStatus: SourceControlledFileStatus;
+		workflowStatus?: SourceControlledFileStatus;
 	};
 }>();
 
