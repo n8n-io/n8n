@@ -20,10 +20,11 @@ import {
 	getSessionsMetadata,
 } from '@/features/ai/assistant/assistant.api';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
+import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { type INodeExecutionData, jsonParse } from 'n8n-workflow';
+import { type ITelemetryTrackProperties, type INodeExecutionData, jsonParse } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -31,21 +32,32 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import type { WorkflowValidationIssue } from '@/Interface';
+import { dedupe } from 'n8n-workflow';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
-const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
-const PLACEHOLDER_SUFFIX = '__>';
-
-interface PlaceholderDetail {
-	path: string[];
-	label: string;
-}
 
 interface EndOfStreamingTrackingPayload {
 	userMessageId: string;
 	startWorkflowJson: string;
+}
+
+interface UserSubmittedBuilderMessageTrackingPayload
+	extends ITelemetryTrackProperties,
+		TodosTrackingPayload {
+	source: 'chat' | 'canvas';
+	message: string;
+	session_id: string;
+	start_workflow_json: string;
+	workflow_id: string;
+	type: 'message' | 'execution';
+	manual_exec_success_count_since_prev_msg: number;
+	manual_exec_error_count_since_prev_msg: number;
+	user_message_id: string;
+	execution_data?: string;
+	execution_status?: string;
+	error_message?: string;
+	error_node_type?: string;
 }
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
@@ -89,6 +101,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getRunningTools,
 	} = useBuilderMessages();
 
+	const { workflowTodos, getTodosToTrack } = useBuilderTodos();
+
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
 	const workflowPrompt = computed(() => {
@@ -131,91 +145,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
-	function extractPlaceholderLabel(value: unknown): string | null {
-		if (typeof value !== 'string') return null;
-		if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) return null;
-
-		const label = value
-			.slice(PLACEHOLDER_PREFIX.length, value.length - PLACEHOLDER_SUFFIX.length)
-			.trim();
-		return label.length > 0 ? label : null;
-	}
-
-	function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
-		const label = extractPlaceholderLabel(value);
-		if (label) return [{ path, label }];
-
-		if (Array.isArray(value)) {
-			return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
-		}
-
-		if (value !== null && typeof value === 'object') {
-			return Object.entries(value).flatMap(([key, nested]) =>
-				findPlaceholderDetails(nested, [...path, key]),
-			);
-		}
-
-		return [];
-	}
-
-	function formatPlaceholderPath(path: string[]): string {
-		if (path.length === 0) return 'parameters';
-
-		return path
-			.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
-			.join('');
-	}
-
-	// Workflow validation from store
-	const baseWorkflowIssues = computed(() =>
-		workflowsStore.workflowValidationIssues.filter((issue) =>
-			['credentials', 'parameters'].includes(issue.type),
-		),
-	);
-
-	const placeholderIssues = computed(() => {
-		const issues: WorkflowValidationIssue[] = [];
-		const seen = new Set<string>();
-
-		for (const node of workflowsStore.workflow.nodes) {
-			if (!node?.parameters) continue;
-
-			const placeholders = findPlaceholderDetails(node.parameters);
-			if (placeholders.length === 0) continue;
-
-			const existingParameterIssues = node.issues?.parameters ?? {};
-
-			for (const placeholder of placeholders) {
-				const path = formatPlaceholderPath(placeholder.path);
-				const message = locale.baseText('aiAssistant.builder.executeMessage.fillParameter', {
-					interpolate: { label: placeholder.label },
-				});
-				const rawMessages = existingParameterIssues[path];
-				const existingMessages = rawMessages
-					? Array.isArray(rawMessages)
-						? rawMessages
-						: [rawMessages]
-					: [];
-
-				if (existingMessages.includes(message)) continue;
-
-				const key = `${node.name}|${path}|${placeholder.label}`;
-				if (seen.has(key)) continue;
-				seen.add(key);
-
-				issues.push({
-					node: node.name,
-					type: 'parameters',
-					value: message,
-				});
-			}
-		}
-
-		return issues;
-	});
-
-	const workflowTodos = computed(() => [...baseWorkflowIssues.value, ...placeholderIssues.value]);
-
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -244,10 +173,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = message;
 	}
 
-	function dedupeToolNames(toolNames: string[]): string[] {
-		return [...new Set(toolNames)];
-	}
-
 	function getWorkflowModifications({
 		userMessageId,
 		startWorkflowJson,
@@ -258,7 +183,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const endWorkflowJson = getWorkflowSnapshot();
 
 		return {
-			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			tools_called: dedupe(newToolMessages.map((toolMsg) => toolMsg.toolName)),
 			start_workflow_json: startWorkflowJson,
 			end_workflow_json: endWorkflowJson,
 		};
@@ -364,22 +289,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
-	function getTodosToTrack() {
-		const credentials_todo_count = workflowsStore.workflowValidationIssues.filter(
-			(issue) => issue.type === 'credentials',
-		).length;
-		const placeholders_todo_count = placeholderIssues.value.length;
-		return {
-			credentials_todo_count,
-			placeholders_todo_count,
-			todos: workflowTodos.value.map((todo) => ({
-				type: todo.type,
-				node_type: workflowsStore.getNodeByName(todo.node)?.type,
-				label: todo.value,
-			})),
-		};
-	}
-
 	// Telemetry functions
 	/**
 	 * Tracks when a user submits a message to the builder.
@@ -406,7 +315,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			executionStatus,
 		} = options;
 
-		const trackingPayload: Record<string, string | number | object[]> = {
+		const trackingPayload: UserSubmittedBuilderMessageTrackingPayload = {
 			source,
 			message: text,
 			session_id: trackingSessionId.value,
