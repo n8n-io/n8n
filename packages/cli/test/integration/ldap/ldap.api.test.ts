@@ -64,8 +64,6 @@ beforeEach(async () => {
 
 	jest.mock('@/telemetry');
 
-	config.set('userManagement.isInstanceOwnerSetUp', true);
-
 	await setCurrentAuthenticationMethod('email');
 });
 

@@ -283,10 +283,13 @@ export function getChatPayload(
 	featureFlags?: BuilderFeatureFlags,
 ): ChatPayload {
 	return {
+		featureFlags: featureFlags ?? {
+			multiAgent: true,
+			templateExamples: false,
+		},
 		message,
 		workflowContext: {
 			currentWorkflow: { id, nodes: [], connections: {} },
 		},
-		featureFlags,
 	};
 }
