@@ -423,14 +423,12 @@ import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/co
 			</template>
 		</ModalRoot>
 
-		<<<<<<< HEAD
 		<ModalRoot :name="BINARY_DATA_VIEW_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<BinaryDataViewModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
-		=======
 		<ModalRoot :name="WORKFLOW_DESCRIPTION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowDescriptionModal :modal-name="modalName" :data="data" />
@@ -448,7 +446,7 @@ import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/co
 				<WorkflowHistoryPublishModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
-		>>>>>>> 85d9465ad9110d0a07623aaf08adb256d4009325
+
 		<!-- Dynamic modals from modules -->
 		<DynamicModalLoader />
 	</div>
