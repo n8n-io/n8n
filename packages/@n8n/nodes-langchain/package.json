@@ -178,6 +178,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@aws-sdk/credential-providers": "3.808.0",
     "@azure/identity": "4.3.0",
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",

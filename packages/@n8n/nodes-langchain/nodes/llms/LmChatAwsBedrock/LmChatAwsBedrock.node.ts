@@ -1,5 +1,6 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent } from '@utils/httpProxyAgent';
@@ -226,9 +227,11 @@ export class LmChatAwsBedrock implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<{
 			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
+			authenticationType?: 'accessKey' | 'profile';
+			secretAccessKey?: string;
+			accessKeyId?: string;
+			sessionToken?: string;
+			awsProfile?: string;
 		}>('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -240,12 +243,49 @@ export class LmChatAwsBedrock implements INodeType {
 		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region: credentials.region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
-			},
 		};
+
+		// Handle authentication based on type
+		if (credentials.authenticationType === 'profile' && credentials.awsProfile) {
+			// Use AWS profile authentication
+			const profileName = credentials.awsProfile || 'default';
+
+			// Set up environment variables for the profile
+			const previousEnv = {
+				AWS_PROFILE: process.env.AWS_PROFILE,
+				AWS_REGION: process.env.AWS_REGION,
+			};
+
+			try {
+				process.env.AWS_PROFILE = profileName;
+				process.env.AWS_REGION = credentials.region;
+
+				// Use credential provider from AWS SDK
+				clientConfig.credentials = fromNodeProviderChain({
+					profile: profileName,
+					ignoreCache: true,
+				});
+			} finally {
+				// Restore previous environment variables
+				if (previousEnv.AWS_PROFILE !== undefined) {
+					process.env.AWS_PROFILE = previousEnv.AWS_PROFILE;
+				} else {
+					delete process.env.AWS_PROFILE;
+				}
+				if (previousEnv.AWS_REGION !== undefined) {
+					process.env.AWS_REGION = previousEnv.AWS_REGION;
+				} else {
+					delete process.env.AWS_REGION;
+				}
+			}
+		} else {
+			// Use access key authentication (default, backwards compatible)
+			clientConfig.credentials = {
+				secretAccessKey: credentials.secretAccessKey!,
+				accessKeyId: credentials.accessKeyId!,
+				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+			};
+		}
 
 		if (proxyAgent) {
 			clientConfig.requestHandler = new NodeHttpHandler({
