@@ -25,29 +25,6 @@ describe('Phantombuster Node', () => {
 		});
 	});
 
-	describe('Launch Agent With Arguments', () => {
-		beforeAll(() => {
-			const mock = nock('https://api.phantombuster.com');
-
-			mock
-				.post('/api/v2/agents/launch', (body) => {
-					return (
-						body.id === 'test-agent-123' &&
-						body.arguments &&
-						body.arguments.testKey === 'testValue' &&
-						body.arguments.anotherKey === 'anotherValue' &&
-						!body.bonusArgument
-					);
-				})
-				.reply(200, { containerId: 'container-456' });
-		});
-
-		new NodeTestHarness().setupTests({
-			credentials,
-			workflowFiles: ['launch-with-arguments.workflow.json'],
-		});
-	});
-
 	describe('Launch Agent With Arguments No Bonus', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.phantombuster.com');
