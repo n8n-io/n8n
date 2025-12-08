@@ -330,7 +330,7 @@ describe('components/N8nTooltip', () => {
 	});
 
 	describe('buttons', () => {
-		it('should render buttons when provided', async () => {
+		it('should render buttons when provided and handle click', async () => {
 			const buttonSpy = vi.fn();
 			render(Tooltip, {
 				props: {
@@ -355,6 +355,10 @@ describe('components/N8nTooltip', () => {
 			const button = document.querySelector('[data-dismissable-layer] button');
 			expect(button).toBeInTheDocument();
 			expect(button).toHaveTextContent('Button 1');
+
+			// Verify click handler is called
+			await userEvent.click(button!);
+			expect(buttonSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should not render buttons section when buttons array is empty', async () => {

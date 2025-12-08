@@ -88,6 +88,7 @@ const handleOpenChange = (open: boolean) => {
 
 			<TooltipPortal v-if="teleported" :to="appendTo ?? 'body'">
 				<TooltipContent
+					v-bind="$attrs"
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
@@ -115,6 +116,7 @@ const handleOpenChange = (open: boolean) => {
 			</TooltipPortal>
 			<TooltipContent
 				v-else
+				v-bind="$attrs"
 				:side="placementParts.side"
 				:align="placementParts.align"
 				:side-offset="offset"

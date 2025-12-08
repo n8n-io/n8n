@@ -43,6 +43,11 @@ describe('RunDataPinButton.vue', () => {
 		const { getByRole, emitted, baseElement } = renderComponent();
 
 		expect(getByRole('button')).toBeEnabled();
+		// Verify tooltip is not visible before hover
+		expect(
+			baseElement.ownerDocument.querySelector('[data-dismissable-layer]'),
+		).not.toBeInTheDocument();
+
 		await userEvent.hover(getByRole('button'));
 
 		await waitFor(() => {
@@ -66,6 +71,10 @@ describe('RunDataPinButton.vue', () => {
 		});
 
 		expect(getByRole('button')).toBeDisabled();
+		// Verify tooltip is not visible before hover
+		expect(
+			baseElement.ownerDocument.querySelector('[data-dismissable-layer]'),
+		).not.toBeInTheDocument();
 
 		await userEvent.hover(getByRole('button'));
 
