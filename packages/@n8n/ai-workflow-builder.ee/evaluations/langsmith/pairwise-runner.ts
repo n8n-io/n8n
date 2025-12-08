@@ -357,7 +357,7 @@ async function runSingleGeneration(
 	// Generate workflow
 	await consumeGenerator(
 		agent.chat(
-			getChatPayload(inputs.prompt, runId, featureFlags, exampleContext),
+			getChatPayload('pairwise-gen', inputs.prompt, runId, featureFlags, exampleContext),
 			`pairwise-gen-${generationIndex}`,
 		),
 	);
@@ -839,7 +839,10 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				const runId = generateRunId();
 				const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
 				await consumeGenerator(
-					agent.chat(getChatPayload(prompt, runId, featureFlags), `local-gen-${genIndex}`),
+					agent.chat(
+						getChatPayload('pairwise-local', prompt, runId, featureFlags),
+						`local-gen-${genIndex}`,
+					),
 				);
 				const state = await agent.getState(runId, `local-gen-${genIndex}`);
 
