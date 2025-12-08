@@ -80,6 +80,7 @@ describe('ChainLlm Node', () => {
 			expect(node.description.name).toBe('chainLlm');
 			expect(node.description.displayName).toBe('Basic LLM Chain');
 			expect(node.description.version).toContain(1.5);
+			expect(node.description.version).toContain(1.9);
 			expect(node.description.properties).toBeDefined();
 			expect(node.description.inputs).toBeDefined();
 			expect(node.description.outputs).toEqual([NodeConnectionTypes.Main]);
