@@ -326,7 +326,7 @@ watch(
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
-				toast.showError(error, 'Error fetching a conversation');
+				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
@@ -473,7 +473,7 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 		try {
 			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected model');
+			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
 		defaultModel.value = { ...selection, cachedDisplayName: agentName };
@@ -507,7 +507,7 @@ async function handleUpdateTools(newTools: INode[]) {
 		try {
 			await chatStore.updateToolsInSession(sessionId.value, newTools);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected tools');
+			toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
 		}
 	}
 }
