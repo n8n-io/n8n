@@ -699,25 +699,27 @@ When you need to reference “now”, use this date and time.`;
 								};
 							}
 
+							const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
+
+							for (const attachment of attachments) {
+								if (!attachment.id) {
+									if (attachment.data) {
+										blocks.push({ type: 'image_url', image_url: attachment.data });
+									}
+
+									continue;
+								}
+
+								const token = this.binaryDataService.createSignedToken(attachment, '1 hour');
+								const baseUrl = this.urlService.getInstanceBaseUrl();
+								const imageUrl = `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
+
+								blocks.push({ type: 'image_url', image_url: imageUrl });
+							}
+
 							return {
 								type,
-								message: [{ type: 'text', text: message.content } as ContentBlock].concat(
-									attachments.flatMap<ContentBlock>((attachment) => {
-										if (!attachment.id) {
-											if (attachment.data) {
-												return [{ type: 'image_url', image_url: attachment.data }];
-											}
-
-											return [];
-										}
-
-										const token = this.binaryDataService.createSignedToken(attachment, '1 hour');
-										const baseUrl = this.urlService.getInstanceBaseUrl();
-										const imageUrl = `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
-
-										return [{ type: 'image_url', image_url: imageUrl }];
-									}),
-								),
+								message: blocks,
 								hideFromUI: false,
 							};
 						}),
