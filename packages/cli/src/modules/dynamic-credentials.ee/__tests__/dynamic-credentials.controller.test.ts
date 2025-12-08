@@ -66,6 +66,7 @@ describe('DynamicCredentialsController', () => {
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
+				headers: { authorization: 'Bearer token123' },
 			});
 			const res = mock<Response>();
 
@@ -94,6 +95,10 @@ describe('DynamicCredentialsController', () => {
 					clientId: 'client_id',
 					authUrl: 'https://example.domain/oauth2/auth',
 				}),
+				{
+					cid: '1',
+					authorizationHeader: 'Bearer token123',
+				},
 			);
 		});
 
@@ -104,6 +109,7 @@ describe('DynamicCredentialsController', () => {
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
+				headers: {},
 			});
 			const res = mock<Response>();
 
@@ -121,6 +127,47 @@ describe('DynamicCredentialsController', () => {
 			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('1');
 			expect(oauthService.getOAuthCredentials).toHaveBeenCalledWith(mockCredential);
 			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('should handle request without authorization header', async () => {
+			const mockCredential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleOAuth2Api',
+			});
+			const req = mock<Request>({
+				params: { id: '1' },
+				headers: { authorization: undefined },
+			});
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.getOAuthCredentials.mockResolvedValueOnce({
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				scope: 'openid',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+			});
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth?client_id=client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid',
+			);
+
+			const authUri = await controller.authorizeCredential(req, res);
+
+			expect(authUri).toContain('https://example.domain/oauth2/auth');
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({
+					clientId: 'client_id',
+					authUrl: 'https://example.domain/oauth2/auth',
+				}),
+				{
+					cid: '1',
+					authorizationHeader: undefined,
+				},
+			);
 		});
 	});
 });

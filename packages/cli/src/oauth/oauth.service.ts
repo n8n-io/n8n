@@ -279,7 +279,7 @@ export class OauthService {
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		oauthCredentials: OAuth2CredentialData,
-		userId?: string,
+		csrfData: CreateCsrfStateData,
 	): Promise<string> {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
@@ -357,10 +357,7 @@ export class OauthService {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState({
-			cid: credential.id,
-			userId: skipAuthOnOAuthCallback ? undefined : userId,
-		});
+		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -390,7 +387,7 @@ export class OauthService {
 		const returnUri = oAuthObj.code.getUri();
 
 		this.logger.debug('OAuth2 authorization url created for credential', {
-			userId,
+			csrfData,
 			credentialId: credential.id,
 		});
 

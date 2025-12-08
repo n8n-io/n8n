@@ -23,7 +23,6 @@ export class DynamicCredentialsController {
 		}
 
 		if (!credential.type.includes('OAuth2') && !credential.type.includes('OAuth1')) {
-			console.log('Credential type not supported', credential.type);
 			throw new BadRequestError('Credential type not supported');
 		}
 
@@ -31,7 +30,10 @@ export class DynamicCredentialsController {
 			await this.oauthService.getOAuthCredentials<OAuth2CredentialData>(credential);
 
 		if (credential.type.includes('OAuth2')) {
-			return this.oauthService.generateAOauth2AuthUri(credential, oauthCredentials);
+			return this.oauthService.generateAOauth2AuthUri(credential, oauthCredentials, {
+				cid: credential.id,
+				authorizationHeader: req.headers.authorization,
+			});
 		}
 
 		throw new BadRequestError('Credential type not supported');

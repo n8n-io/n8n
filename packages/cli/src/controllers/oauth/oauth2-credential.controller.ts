@@ -27,11 +27,10 @@ export class OAuth2CredentialController {
 		const oauthCredentials: OAuth2CredentialData =
 			await this.oauthService.getOAuthCredentials<OAuth2CredentialData>(credential);
 
-		const uri = await this.oauthService.generateAOauth2AuthUri(
-			credential,
-			oauthCredentials,
-			req.user.id,
-		);
+		const uri = await this.oauthService.generateAOauth2AuthUri(credential, oauthCredentials, {
+			cid: credential.id,
+			userId: req.user.id,
+		});
 		return uri;
 	}
 
