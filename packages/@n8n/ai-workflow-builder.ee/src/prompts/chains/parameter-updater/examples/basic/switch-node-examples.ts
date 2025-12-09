@@ -1,6 +1,9 @@
-import type { ExamplesConfig } from '../../types';
+import type { NodeTypeExamples } from '../../types';
 
-export const SWITCH_NODE_EXAMPLES = `
+export const SWITCH_NODE_EXAMPLES: NodeTypeExamples = {
+	patterns: ['n8n-nodes-base.switch', '.switch'],
+	priority: 20,
+	content: `
 ### Switch Node Examples
 
 #### Example 1: Route by Amount Tiers (Purchase Approval)
@@ -123,9 +126,5 @@ Expected Output:
     ]
   }
 }
-`;
-
-export const SWITCH_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
-	patterns: ['n8n-nodes-base.switch', '.switch'],
-	priority: 20,
+`,
 };

@@ -1,6 +1,9 @@
-import type { GuideConfig } from '../types';
+import type { NodeTypeGuide } from '../types';
 
-export const SET_NODE_GUIDE = `
+export const SET_NODE_GUIDE: NodeTypeGuide = {
+	patterns: ['n8n-nodes-base.set', '.set'],
+	priority: 30,
+	content: `
 ### Set Node Updates - Comprehensive Type Handling Guide
 
 The Set node uses assignments to create or modify data fields. Each assignment has a specific type that determines how the value is formatted and processed.
@@ -86,9 +89,5 @@ The Set node uses assignments to create or modify data fields. Each assignment h
    - WRONG: Using type-specific field names: \`{ "booleanValue": true, "type": "boolean" }\`
    - CORRECT: \`{ "value": true, "type": "boolean" }\`
    - WRONG: Setting array without stringification: \`{ "value": [1,2,3], "type": "array" }\`
-   - CORRECT: \`{ "value": "[1,2,3]", "type": "array" }\``;
-
-export const SET_NODE_CONFIG: GuideConfig = {
-	patterns: ['n8n-nodes-base.set', '.set'],
-	priority: 30,
+   - CORRECT: \`{ "value": "[1,2,3]", "type": "array" }\``,
 };

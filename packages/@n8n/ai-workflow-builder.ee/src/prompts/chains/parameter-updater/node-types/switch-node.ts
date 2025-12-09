@@ -1,6 +1,9 @@
-import type { GuideConfig } from '../types';
+import type { NodeTypeGuide } from '../types';
 
-export const SWITCH_NODE_GUIDE = `
+export const SWITCH_NODE_GUIDE: NodeTypeGuide = {
+	patterns: ['n8n-nodes-base.switch', '.switch'],
+	priority: 30,
+	content: `
 ### Switch Node Configuration Guide
 
 The Switch node routes items to different outputs based on conditions. Uses the same filter structure as IF node but for multi-way branching.
@@ -67,9 +70,5 @@ Use two conditions with combinator: "and":
 **String-Based Routing** (status/type values):
 - Use type: "string" with operation: "equals"
 - Set caseSensitive: false in options for case-insensitive matching
-`;
-
-export const SWITCH_NODE_CONFIG: GuideConfig = {
-	patterns: ['n8n-nodes-base.switch', '.switch'],
-	priority: 30,
+`,
 };

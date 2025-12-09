@@ -1,6 +1,10 @@
-import type { ExamplesConfig } from '../../types';
+import type { NodeTypeExamples } from '../../types';
 
-export const SIMPLE_UPDATE_EXAMPLES = `
+/** Generic examples for nodes that don't have specific examples */
+export const SIMPLE_UPDATE_EXAMPLES: NodeTypeExamples = {
+	patterns: ['*'],
+	priority: 100, // Low priority - used as fallback
+	content: `
 ## Examples of Parameter Updates
 
 ### Example 1: Update HTTP Request URL
@@ -46,10 +50,5 @@ Updated parameters: {
     ],
     "combinator": "and"
   }
-}`;
-
-/** Generic examples for nodes that don't have specific examples */
-export const SIMPLE_UPDATE_EXAMPLES_CONFIG: ExamplesConfig = {
-	patterns: ['*'],
-	priority: 100, // Low priority - used as fallback
+}`,
 };

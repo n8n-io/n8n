@@ -1,6 +1,10 @@
-import type { GuideConfig } from '../types';
+import type { NodeTypeGuide } from '../types';
 
-export const RESOURCE_LOCATOR_GUIDE = `
+export const RESOURCE_LOCATOR_GUIDE: NodeTypeGuide = {
+	patterns: ['*'],
+	priority: 50,
+	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+	content: `
 ## IMPORTANT: ResourceLocator Parameter Handling
 
 ResourceLocator parameters are special fields used for selecting resources like Slack channels, Google Drive files, Notion pages, etc. They MUST have a specific structure:
@@ -90,10 +94,5 @@ Output:
     "value": "={{ $('Previous Node').item.json.channelId }}"
   }
 }
-\`\`\``;
-
-export const RESOURCE_LOCATOR_CONFIG: GuideConfig = {
-	patterns: ['*'],
-	priority: 50,
-	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+\`\`\``,
 };

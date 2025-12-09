@@ -5,67 +5,52 @@
  * Pattern matching is used to find relevant content based on node type.
  */
 
-import {
-	RESOURCE_LOCATOR_EXAMPLES,
-	RESOURCE_LOCATOR_EXAMPLES_CONFIG,
-} from './examples/advanced/resource-locator-examples';
-import {
-	TOOL_NODE_EXAMPLES,
-	TOOL_NODE_EXAMPLES_CONFIG,
-} from './examples/advanced/tool-node-examples';
-import { IF_NODE_EXAMPLES, IF_NODE_EXAMPLES_CONFIG } from './examples/basic/if-node-examples';
-import { SET_NODE_EXAMPLES, SET_NODE_EXAMPLES_CONFIG } from './examples/basic/set-node-examples';
-import {
-	SIMPLE_UPDATE_EXAMPLES,
-	SIMPLE_UPDATE_EXAMPLES_CONFIG,
-} from './examples/basic/simple-updates';
-import {
-	SWITCH_NODE_EXAMPLES,
-	SWITCH_NODE_EXAMPLES_CONFIG,
-} from './examples/basic/switch-node-examples';
-import { HTTP_REQUEST_GUIDE, HTTP_REQUEST_CONFIG } from './node-types/http-request';
-import { IF_NODE_GUIDE, IF_NODE_CONFIG } from './node-types/if-node';
-import { SET_NODE_GUIDE, SET_NODE_CONFIG } from './node-types/set-node';
-import { SWITCH_NODE_GUIDE, SWITCH_NODE_CONFIG } from './node-types/switch-node';
-import { TOOL_NODES_GUIDE, TOOL_NODES_CONFIG } from './node-types/tool-nodes';
-import {
-	RESOURCE_LOCATOR_GUIDE,
-	RESOURCE_LOCATOR_CONFIG,
-} from './parameter-types/resource-locator';
-import { SYSTEM_MESSAGE_GUIDE, SYSTEM_MESSAGE_CONFIG } from './parameter-types/system-message';
-import { TEXT_FIELDS_GUIDE, TEXT_FIELDS_CONFIG } from './parameter-types/text-fields';
-import type { NodeTypeGuide, NodeTypeExamples, NodeTypePattern, PromptContext } from './types';
+import { RESOURCE_LOCATOR_EXAMPLES } from './examples/advanced/resource-locator-examples';
+import { TOOL_NODE_EXAMPLES } from './examples/advanced/tool-node-examples';
+import { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
+import { SET_NODE_EXAMPLES } from './examples/basic/set-node-examples';
+import { SIMPLE_UPDATE_EXAMPLES } from './examples/basic/simple-updates';
+import { SWITCH_NODE_EXAMPLES } from './examples/basic/switch-node-examples';
+import { HTTP_REQUEST_GUIDE } from './node-types/http-request';
+import { IF_NODE_GUIDE } from './node-types/if-node';
+import { SET_NODE_GUIDE } from './node-types/set-node';
+import { SWITCH_NODE_GUIDE } from './node-types/switch-node';
+import { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
+import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
+import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
+import { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
+import type { NodeTypeExamples, NodeTypeGuide, NodeTypePattern, PromptContext } from './types';
 
 // ============================================================================
 // Centralized Registration
 // ============================================================================
 
 /**
- * All registered guides, built from imported configs.
+ * All registered guides.
  */
 const guides: NodeTypeGuide[] = [
 	// Node-type guides
-	{ ...SET_NODE_CONFIG, content: SET_NODE_GUIDE },
-	{ ...IF_NODE_CONFIG, content: IF_NODE_GUIDE },
-	{ ...SWITCH_NODE_CONFIG, content: SWITCH_NODE_GUIDE },
-	{ ...HTTP_REQUEST_CONFIG, content: HTTP_REQUEST_GUIDE },
-	{ ...TOOL_NODES_CONFIG, content: TOOL_NODES_GUIDE },
+	SET_NODE_GUIDE,
+	IF_NODE_GUIDE,
+	SWITCH_NODE_GUIDE,
+	HTTP_REQUEST_GUIDE,
+	TOOL_NODES_GUIDE,
 	// Parameter-type guides
-	{ ...RESOURCE_LOCATOR_CONFIG, content: RESOURCE_LOCATOR_GUIDE },
-	{ ...SYSTEM_MESSAGE_CONFIG, content: SYSTEM_MESSAGE_GUIDE },
-	{ ...TEXT_FIELDS_CONFIG, content: TEXT_FIELDS_GUIDE },
+	RESOURCE_LOCATOR_GUIDE,
+	SYSTEM_MESSAGE_GUIDE,
+	TEXT_FIELDS_GUIDE,
 ];
 
 /**
- * All registered examples, built from imported configs.
+ * All registered examples.
  */
 const examples: NodeTypeExamples[] = [
-	{ ...SET_NODE_EXAMPLES_CONFIG, content: SET_NODE_EXAMPLES },
-	{ ...IF_NODE_EXAMPLES_CONFIG, content: IF_NODE_EXAMPLES },
-	{ ...SWITCH_NODE_EXAMPLES_CONFIG, content: SWITCH_NODE_EXAMPLES },
-	{ ...SIMPLE_UPDATE_EXAMPLES_CONFIG, content: SIMPLE_UPDATE_EXAMPLES },
-	{ ...TOOL_NODE_EXAMPLES_CONFIG, content: TOOL_NODE_EXAMPLES },
-	{ ...RESOURCE_LOCATOR_EXAMPLES_CONFIG, content: RESOURCE_LOCATOR_EXAMPLES },
+	SET_NODE_EXAMPLES,
+	IF_NODE_EXAMPLES,
+	SWITCH_NODE_EXAMPLES,
+	SIMPLE_UPDATE_EXAMPLES,
+	TOOL_NODE_EXAMPLES,
+	RESOURCE_LOCATOR_EXAMPLES,
 ];
 
 // ============================================================================

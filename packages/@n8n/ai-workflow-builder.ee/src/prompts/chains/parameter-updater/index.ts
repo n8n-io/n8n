@@ -5,8 +5,6 @@ export type {
 	NodeTypeExamples,
 	NodeTypePattern,
 	PromptContext,
-	GuideConfig,
-	ExamplesConfig,
 } from './types';
 
 // Legacy exports (kept for backwards compatibility)
@@ -29,19 +27,19 @@ export { EXPRESSION_RULES } from './base/expression-rules';
 export { COMMON_PATTERNS } from './base/common-patterns';
 export { OUTPUT_FORMAT } from './base/output-format';
 
-// Node type guides (import for side effects - registration)
+// Node type guides
 export { SET_NODE_GUIDE } from './node-types/set-node';
 export { IF_NODE_GUIDE } from './node-types/if-node';
 export { SWITCH_NODE_GUIDE } from './node-types/switch-node';
 export { HTTP_REQUEST_GUIDE } from './node-types/http-request';
 export { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
 
-// Parameter type guides (import for side effects - registration)
+// Parameter type guides
 export { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
 export { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
 export { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
 
-// Examples (import for side effects - registration)
+// Examples
 export { SET_NODE_EXAMPLES } from './examples/basic/set-node-examples';
 export { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
 export { SWITCH_NODE_EXAMPLES } from './examples/basic/switch-node-examples';

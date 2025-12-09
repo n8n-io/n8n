@@ -1,6 +1,9 @@
-import type { ExamplesConfig } from '../../types';
+import type { NodeTypeExamples } from '../../types';
 
-export const SET_NODE_EXAMPLES = `
+export const SET_NODE_EXAMPLES: NodeTypeExamples = {
+	patterns: ['n8n-nodes-base.set', '.set'],
+	priority: 20,
+	content: `
 ### Set Node Examples
 
 #### Example 1: Simple String Assignment
@@ -143,9 +146,5 @@ Expected Output:
   },
   "options": {}
 }
-`;
-
-export const SET_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
-	patterns: ['n8n-nodes-base.set', '.set'],
-	priority: 20,
+`,
 };

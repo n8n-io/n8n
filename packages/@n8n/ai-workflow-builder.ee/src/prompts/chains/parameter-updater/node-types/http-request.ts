@@ -1,6 +1,9 @@
-import type { GuideConfig } from '../types';
+import type { NodeTypeGuide } from '../types';
 
-export const HTTP_REQUEST_GUIDE = `
+export const HTTP_REQUEST_GUIDE: NodeTypeGuide = {
+	patterns: ['n8n-nodes-base.httpRequest', 'httprequest', 'n8n-nodes-base.webhook', '.webhook'],
+	priority: 30,
+	content: `
 ### HTTP Request Node Updates
 
 #### Common Parameters
@@ -108,9 +111,5 @@ Expected Output:
     ]
   },
   "options": {}
-}`;
-
-export const HTTP_REQUEST_CONFIG: GuideConfig = {
-	patterns: ['n8n-nodes-base.httpRequest', 'httprequest', 'n8n-nodes-base.webhook', '.webhook'],
-	priority: 30,
+}`,
 };

@@ -1,6 +1,9 @@
-import type { GuideConfig } from '../types';
+import type { NodeTypeGuide } from '../types';
 
-export const TOOL_NODES_GUIDE = `
+export const TOOL_NODES_GUIDE: NodeTypeGuide = {
+	patterns: ['*Tool'],
+	priority: 40,
+	content: `
 ## CRITICAL: $fromAI Expression Support for Tool Nodes
 
 Tool nodes (nodes ending with "Tool" like Gmail Tool, Google Calendar Tool, etc.) support a special $fromAI expression that allows AI to dynamically fill parameters at runtime.
@@ -68,9 +71,5 @@ You can combine $fromAI with regular text:
 - Email subjects: "={{ $fromAI('subject') }}"
 - Message content: "={{ $fromAI('message_html') }}" or "={{ $fromAI('message') }}"
 - Date ranges: "={{ $fromAI('After', '', 'string') }}"
-- Channel IDs: "={{ $fromAI('channel') }}"`;
-
-export const TOOL_NODES_CONFIG: GuideConfig = {
-	patterns: ['*Tool'],
-	priority: 40,
+- Channel IDs: "={{ $fromAI('channel') }}"`,
 };

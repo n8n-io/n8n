@@ -1,6 +1,10 @@
-import type { ExamplesConfig } from '../../types';
+import type { NodeTypeExamples } from '../../types';
 
-export const RESOURCE_LOCATOR_EXAMPLES = `
+export const RESOURCE_LOCATOR_EXAMPLES: NodeTypeExamples = {
+	patterns: ['*'],
+	priority: 30,
+	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+	content: `
 ### ResourceLocator Examples
 
 #### Example 1: Slack Node - Channel by ID
@@ -74,10 +78,5 @@ Expected Output:
     "mode": "id",
     "value": "={{ $('Previous Node').item.json.pageId }}"
   }
-}`;
-
-export const RESOURCE_LOCATOR_EXAMPLES_CONFIG: ExamplesConfig = {
-	patterns: ['*'],
-	priority: 30,
-	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+}`,
 };

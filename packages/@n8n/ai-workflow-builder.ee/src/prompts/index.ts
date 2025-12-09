@@ -80,6 +80,4 @@ export type {
 	NodeTypeExamples,
 	NodeTypePattern,
 	PromptContext,
-	GuideConfig,
-	ExamplesConfig,
 } from './chains/parameter-updater';

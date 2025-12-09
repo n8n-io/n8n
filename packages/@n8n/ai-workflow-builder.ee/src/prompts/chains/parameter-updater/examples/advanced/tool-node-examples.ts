@@ -1,6 +1,9 @@
-import type { ExamplesConfig } from '../../types';
+import type { NodeTypeExamples } from '../../types';
 
-export const TOOL_NODE_EXAMPLES = `
+export const TOOL_NODE_EXAMPLES: NodeTypeExamples = {
+	patterns: ['*Tool'],
+	priority: 20,
+	content: `
 ### Tool Node Examples
 
 #### Example 1: Gmail Tool - Send Email with AI
@@ -66,9 +69,5 @@ Expected Output:
 {
   "sendTo": "=admin@company.com, {{ $fromAI('additional_recipients') }}",
   "subject": "={{ $fromAI('subject') }} - Automated Report"
-}`;
-
-export const TOOL_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
-	patterns: ['*Tool'],
-	priority: 20,
+}`,
 };

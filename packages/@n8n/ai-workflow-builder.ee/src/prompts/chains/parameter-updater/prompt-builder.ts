@@ -121,23 +121,23 @@ function selectRelevantExamples(context: PromptBuilderContext): string[] {
 
 	// Priority order for example selection
 	if (isToolNode(context.nodeType)) {
-		examples.push(TOOL_NODE_EXAMPLES);
+		examples.push(TOOL_NODE_EXAMPLES.content);
 	} else if (isSetNode(context.nodeType)) {
-		examples.push(SET_NODE_EXAMPLES);
+		examples.push(SET_NODE_EXAMPLES.content);
 	} else if (isIfNode(context.nodeType)) {
-		examples.push(IF_NODE_EXAMPLES);
+		examples.push(IF_NODE_EXAMPLES.content);
 	} else if (isSwitchNode(context.nodeType)) {
-		examples.push(SWITCH_NODE_EXAMPLES);
+		examples.push(SWITCH_NODE_EXAMPLES.content);
 	}
 
 	// Add resource locator examples if needed
 	if (context.hasResourceLocatorParams) {
-		examples.push(RESOURCE_LOCATOR_EXAMPLES);
+		examples.push(RESOURCE_LOCATOR_EXAMPLES.content);
 	}
 
 	// Add simple examples if we have room
 	if (examples.length === 0) {
-		examples.push(SIMPLE_UPDATE_EXAMPLES);
+		examples.push(SIMPLE_UPDATE_EXAMPLES.content);
 	}
 
 	return examples.slice(0, maxExamples);
@@ -177,15 +177,19 @@ export function buildParameterUpdatePrompt(context: PromptBuilderContext): strin
 			.section('core_instructions', CORE_INSTRUCTIONS, { priority: 10 })
 			.section('expression_rules', EXPRESSION_RULES, { priority: 20 })
 			// Node-type specific guides (mutually exclusive)
-			.sectionIf(hasSystemMessage, 'system_message_guide', SYSTEM_MESSAGE_GUIDE, { priority: 30 })
-			.sectionIf(!hasSystemMessage && isSet, 'set_node_guide', SET_NODE_GUIDE, { priority: 30 })
-			.sectionIf(!hasSystemMessage && !isSet && isIf, 'if_node_guide', IF_NODE_GUIDE, {
+			.sectionIf(hasSystemMessage, 'system_message_guide', SYSTEM_MESSAGE_GUIDE.content, {
+				priority: 30,
+			})
+			.sectionIf(!hasSystemMessage && isSet, 'set_node_guide', SET_NODE_GUIDE.content, {
+				priority: 30,
+			})
+			.sectionIf(!hasSystemMessage && !isSet && isIf, 'if_node_guide', IF_NODE_GUIDE.content, {
 				priority: 30,
 			})
 			.sectionIf(
 				!hasSystemMessage && !isSet && !isIf && isSwitch,
 				'switch_node_guide',
-				SWITCH_NODE_GUIDE,
+				SWITCH_NODE_GUIDE.content,
 				{
 					priority: 30,
 				},
@@ -193,15 +197,15 @@ export function buildParameterUpdatePrompt(context: PromptBuilderContext): strin
 			.sectionIf(
 				!hasSystemMessage && !isSet && !isIf && !isSwitch && isHttpRequest,
 				'http_request_guide',
-				HTTP_REQUEST_GUIDE,
+				HTTP_REQUEST_GUIDE.content,
 				{ priority: 30 },
 			)
 			// Additional guides (can be combined)
-			.sectionIf(isTool, 'tool_nodes_guide', TOOL_NODES_GUIDE, { priority: 40 })
-			.sectionIf(needsResourceLocator, 'resource_locator_guide', RESOURCE_LOCATOR_GUIDE, {
+			.sectionIf(isTool, 'tool_nodes_guide', TOOL_NODES_GUIDE.content, { priority: 40 })
+			.sectionIf(needsResourceLocator, 'resource_locator_guide', RESOURCE_LOCATOR_GUIDE.content, {
 				priority: 50,
 			})
-			.sectionIf(hasText, 'text_fields_guide', TEXT_FIELDS_GUIDE, { priority: 60 })
+			.sectionIf(hasText, 'text_fields_guide', TEXT_FIELDS_GUIDE.content, { priority: 60 })
 			// Common patterns
 			.section('common_patterns', COMMON_PATTERNS, { priority: 70 })
 			// Examples (conditional with lazy evaluation)

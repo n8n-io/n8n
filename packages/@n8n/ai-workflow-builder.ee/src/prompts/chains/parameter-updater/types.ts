@@ -31,12 +31,13 @@ export interface PromptContext {
 }
 
 /**
- * Configuration for a guide (without content).
- * Exported by each guide file for centralized registration.
+ * A registered guide for specific node types.
  */
-export interface GuideConfig {
+export interface NodeTypeGuide {
 	/** Patterns to match against node type (any match triggers inclusion) */
 	patterns: NodeTypePattern[];
+	/** Guide content string */
+	content: string;
 	/** Priority for ordering (lower = earlier, default: 50) */
 	priority?: number;
 	/**
@@ -47,32 +48,17 @@ export interface GuideConfig {
 }
 
 /**
- * Configuration for examples (without content).
- * Exported by each examples file for centralized registration.
+ * Registered examples for specific node types.
  */
-export interface ExamplesConfig {
+export interface NodeTypeExamples {
 	/** Patterns to match against node type (any match triggers inclusion) */
 	patterns: NodeTypePattern[];
+	/** Examples content string */
+	content: string;
 	/** Priority for ordering (lower = earlier, default: 50) */
 	priority?: number;
 	/**
 	 * Optional condition function for more complex matching logic.
 	 */
 	condition?: (context: PromptContext) => boolean;
-}
-
-/**
- * A registered guide for specific node types.
- */
-export interface NodeTypeGuide extends GuideConfig {
-	/** Guide content string */
-	content: string;
-}
-
-/**
- * Registered examples for specific node types.
- */
-export interface NodeTypeExamples extends ExamplesConfig {
-	/** Examples content string */
-	content: string;
 }
