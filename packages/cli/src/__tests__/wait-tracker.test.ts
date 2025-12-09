@@ -487,6 +487,41 @@ describe('WaitTracker', () => {
 					childExecution.id,
 				);
 			});
+
+			it('should not resume parent execution when child execution status is "waiting"', async () => {
+				// ARRANGE
+				const { postExecutePromise, subworkflowResults } = setupParentExecutionTest(true);
+
+				// Modify subworkflowResults to have status 'waiting'
+				const waitingSubworkflowResults: IRun = {
+					...subworkflowResults,
+					status: 'waiting',
+				};
+
+				// ACT 1 - Start child execution
+				await waitTracker.startExecution(execution.id);
+
+				// ASSERT 1 - Child execution should be started
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({
+						executionMode: execution.mode,
+						workflowData: execution.workflowData,
+					}),
+					false,
+					false,
+					execution.id,
+				);
+
+				// ACT 2 - Child execution goes into waiting state
+				postExecutePromise.resolve(waitingSubworkflowResults);
+				await jest.advanceTimersToNextTimerAsync();
+
+				// ASSERT 2 - Parent execution should NOT be resumed
+				expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 
