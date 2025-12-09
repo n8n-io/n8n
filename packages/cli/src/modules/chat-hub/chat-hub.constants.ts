@@ -86,6 +86,7 @@ const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
 	capabilities: {
 		functionCalling: true,
 	},
+	available: true,
 };
 
 const MODEL_METADATA_REGISTRY: Partial<
@@ -127,29 +128,67 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 	},
 	openai: {
+		// Search models - specialized for search, not general chat
 		'gpt-4o-mini-search-preview': {
-			inputModalities: ['text'],
-			capabilities: {
-				functionCalling: false,
-			},
+			available: false,
 		},
 		'gpt-4o-mini-search-preview-2025-03-11': {
-			inputModalities: ['text'],
-			capabilities: {
-				functionCalling: false,
-			},
+			available: false,
 		},
 		'gpt-4o-search-preview': {
-			inputModalities: ['text'],
-			capabilities: {
-				functionCalling: false,
-			},
+			available: false,
 		},
 		'gpt-4o-search-preview-2025-03-11': {
-			inputModalities: ['text'],
-			capabilities: {
-				functionCalling: false,
-			},
+			available: false,
+		},
+		'gpt-5-search-api': {
+			available: false,
+		},
+		'gpt-5-search-api-2025-10-14': {
+			available: false,
+		},
+		// Transcription models - for speech-to-text, not chat
+		'gpt-4o-transcribe': {
+			available: false,
+		},
+		'gpt-4o-mini-transcribe': {
+			available: false,
+		},
+		'gpt-4o-transcribe-diarize': {
+			available: false,
+		},
+		// Image generation models - for creating images, not chat
+		'gpt-image-1': {
+			available: false,
+		},
+		'gpt-image-1-mini': {
+			available: false,
+		},
+		// Deep research models - long-running research, not interactive chat
+		'o4-mini-deep-research': {
+			available: false,
+		},
+		'o4-mini-deep-research-2025-06-26': {
+			available: false,
+		},
+		// Audio models - designed for audio I/O, not text chat
+		'gpt-4o-audio-preview': {
+			available: false,
+		},
+		'gpt-4o-audio-preview-2024-10-01': {
+			available: false,
+		},
+		'gpt-4o-audio-preview-2024-12-17': {
+			available: false,
+		},
+		'gpt-4o-audio-preview-2025-06-03': {
+			available: false,
+		},
+		'gpt-4o-mini-audio-preview': {
+			available: false,
+		},
+		'gpt-4o-mini-audio-preview-2024-12-17': {
+			available: false,
 		},
 		'gpt-3.5-turbo': {
 			inputModalities: ['text'],
@@ -198,6 +237,21 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'o3-pro-2025-06-10': {
 			inputModalities: ['text'],
+		},
+		'gpt-audio': {
+			available: false,
+		},
+		'gpt-audio-2025-08-28': {
+			available: false,
+		},
+		'gpt-audio-mini': {
+			available: false,
+		},
+		'gpt-audio-mini-2025-10-06': {
+			available: false,
+		},
+		'gpt-3.5-turbo-16k': {
+			available: false,
 		},
 	},
 	mistralCloud: {
@@ -262,21 +316,33 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'ministral-8b-latest': {
 			inputModalities: ['text'],
 		},
+		'mistral-moderation-2411': {
+			available: false,
+		},
+		'mistral-moderation-latest': {
+			available: false,
+		},
+		'mistral-ocr-2503': {
+			available: false,
+		},
+		'mistral-ocr-2505': {
+			available: false,
+		},
+		'mistral-ocr-latest': {
+			available: false,
+		},
+		'voxtral-mini-transcribe-2507': {
+			available: false,
+		},
 	},
 	// Reference: https://ai.google.dev/gemini-api/docs/models
 	google: {
 		// Gemini 3 series - latest models with advanced multimodal understanding
-		'models/gemini-3-pro-preview': {},
 		'models/gemini-3-pro-image-preview': {
 			inputModalities: ['text', 'image'],
 			capabilities: { functionCalling: false },
 		},
 		// Gemini 2.5 Pro series
-		'models/gemini-2.5-pro': {},
-		'models/gemini-2.5-pro-exp-03-25': {},
-		'models/gemini-2.5-pro-preview-03-25': {},
-		'models/gemini-2.5-pro-preview-05-06': {},
-		'models/gemini-2.5-pro-preview-06-05': {},
 		'models/gemini-2.5-pro-preview-tts': {
 			inputModalities: ['text'],
 			capabilities: { functionCalling: false },
@@ -312,12 +378,6 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'models/gemini-live-2.5-flash-preview': {
 			inputModalities: ['text', 'audio', 'video'],
 		},
-		// Gemini 2.5 Flash-Lite series
-		'models/gemini-2.5-flash-lite': {},
-		'models/gemini-2.5-flash-lite-preview-06-17': {},
-		'models/gemini-2.5-flash-lite-preview-09-2025': {},
-		// Gemini 2.0 Pro series
-		'models/gemini-2.0-pro-exp-02-05': {},
 		// Gemini 2.0 Flash series
 		'models/gemini-2.0-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -354,6 +414,133 @@ const MODEL_METADATA_REGISTRY: Partial<
 			inputModalities: ['text', 'image', 'video', 'audio'],
 		},
 	},
+	groq: {
+		'meta-llama/llama-prompt-guard-2-22m': {
+			available: false,
+		},
+		'meta-llama/llama-prompt-guard-2-86m': {
+			available: false,
+		},
+		'whisper-large-v3': {
+			available: false,
+		},
+		'whisper-large-v3-turbo': {
+			available: false,
+		},
+	},
+	vercelAiGateway: {
+		'alibaba/qwen3-embedding-0.6b': {
+			available: false,
+		},
+		'alibaba/qwen3-embedding-4b': {
+			available: false,
+		},
+		'alibaba/qwen3-embedding-8b': {
+			available: false,
+		},
+		'amazon/titan-embed-text-v2': {
+			available: false,
+		},
+		'cohere/embed-v4.0': {
+			available: false,
+		},
+		'google/gemini-embedding-001': {
+			available: false,
+		},
+		'google/text-embedding-005': {
+			available: false,
+		},
+		'google/text-multilingual-embedding-002': {
+			available: false,
+		},
+		'mistral/codestral-embed': {
+			available: false,
+		},
+		'mistral/mistral-embed': {
+			available: false,
+		},
+		'openai/text-embedding-3-large': {
+			available: false,
+		},
+		'openai/text-embedding-3-small': {
+			available: false,
+		},
+		'openai/text-embedding-ada-002': {
+			available: false,
+		},
+		'bfl/flux-kontext-max': {
+			available: false,
+		},
+		'bfl/flux-kontext-pro': {
+			available: false,
+		},
+		'bfl/flux-pro-1.0-fill': {
+			available: false,
+		},
+		'bfl/flux-pro-1.1': {
+			available: false,
+		},
+		'bfl/flux-pro-1.1-ultra': {
+			available: false,
+		},
+		'google/imagen-4.0-fast-generate-001': {
+			available: false,
+		},
+		'google/imagen-4.0-generate-001': {
+			available: false,
+		},
+		'google/imagen-4.0-ultra-generate-001': {
+			available: false,
+		},
+		// Instruct models - not suitable for chat
+		'openai/gpt-3.5-turbo-instruct': {
+			available: false,
+		},
+		// Deep research models - require specific tools
+		'openai/o3-deep-research': {
+			available: false,
+		},
+		// Model not found - may have been deprecated
+		'meituan/longcat-flash-thinking': {
+			available: false,
+		},
+		// Voyage models - language model method not implemented
+		'voyage/voyage-3-large': {
+			available: false,
+		},
+		'voyage/voyage-3.5': {
+			available: false,
+		},
+		'voyage/voyage-3.5-lite': {
+			available: false,
+		},
+		'voyage/voyage-code-2': {
+			available: false,
+		},
+		'voyage/voyage-code-3': {
+			available: false,
+		},
+		'voyage/voyage-finance-2': {
+			available: false,
+		},
+		'voyage/voyage-law-2': {
+			available: false,
+		},
+	},
+	openRouter: {
+		'openai/gpt-4o-audio-preview': {
+			available: false, // "Provider returned error"
+		},
+		'morph/morph-v3-fast': {
+			available: false, // Not supporting multi-turn conversations
+		},
+		'morph/morph-v3-large': {
+			available: false, // Not supporting multi-turn conversations
+		},
+		'relace/relace-apply-3': {
+			available: false, // Not supporting multi-turn conversations
+		},
+	},
 };
 
 export function getModelMetadata(
@@ -375,5 +562,6 @@ export function getModelMetadata(
 				modelOverride.capabilities?.functionCalling ??
 				DEFAULT_MODEL_METADATA.capabilities.functionCalling,
 		},
+		available: modelOverride.available ?? true,
 	};
 }

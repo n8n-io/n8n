@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	CredentialResolverConfiguration,
 	CredentialResolverValidationError,
+	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -58,7 +59,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(resolver);
 		this.logger.debug(`Created credential resolver "${saved.name}" (${saved.id})`);
 
-		return saved;
+		return this.withDecryptedConfig(saved);
 	}
 
 	/**
@@ -68,6 +69,13 @@ export class DynamicCredentialResolverService {
 	async findAll(): Promise<DynamicCredentialResolver[]> {
 		const resolvers = await this.repository.find();
 		return resolvers.map((resolver) => this.withDecryptedConfig(resolver));
+	}
+
+	/**
+	 * Retrieves all available resolver types.
+	 */
+	getAvailableTypes(): ICredentialResolver[] {
+		return this.registry.getAllResolvers();
 	}
 
 	/**
