@@ -1,3 +1,5 @@
+import { registerExamples } from '../../registry';
+
 export const TOOL_NODE_EXAMPLES = `
 ### Tool Node Examples
 
@@ -65,3 +67,9 @@ Expected Output:
   "sendTo": "=admin@company.com, {{ $fromAI('additional_recipients') }}",
   "subject": "={{ $fromAI('subject') }} - Automated Report"
 }`;
+
+registerExamples({
+	patterns: ['*Tool'],
+	content: TOOL_NODE_EXAMPLES,
+	priority: 20,
+});

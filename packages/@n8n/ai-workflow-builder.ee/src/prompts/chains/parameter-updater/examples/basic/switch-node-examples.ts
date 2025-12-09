@@ -1,3 +1,5 @@
+import { registerExamples } from '../../registry';
+
 export const SWITCH_NODE_EXAMPLES = `
 ### Switch Node Examples
 
@@ -122,3 +124,9 @@ Expected Output:
   }
 }
 `;
+
+registerExamples({
+	patterns: ['n8n-nodes-base.switch', '.switch'],
+	content: SWITCH_NODE_EXAMPLES,
+	priority: 20,
+});

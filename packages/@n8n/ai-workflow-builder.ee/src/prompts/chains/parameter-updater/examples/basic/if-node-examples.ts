@@ -1,3 +1,5 @@
+import { registerExamples } from '../../registry';
+
 export const IF_NODE_EXAMPLES = `
 ### IF Node Examples
 
@@ -132,3 +134,9 @@ Expected Output:
   }
 }
 `;
+
+registerExamples({
+	patterns: ['n8n-nodes-base.if', '.if'],
+	content: IF_NODE_EXAMPLES,
+	priority: 20,
+});

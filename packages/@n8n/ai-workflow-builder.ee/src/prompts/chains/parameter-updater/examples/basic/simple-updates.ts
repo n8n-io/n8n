@@ -1,3 +1,5 @@
+import { registerExamples } from '../../registry';
+
 export const SIMPLE_UPDATE_EXAMPLES = `
 ## Examples of Parameter Updates
 
@@ -45,3 +47,10 @@ Updated parameters: {
     "combinator": "and"
   }
 }`;
+
+// Generic examples for nodes that don't have specific examples
+registerExamples({
+	patterns: ['*'],
+	content: SIMPLE_UPDATE_EXAMPLES,
+	priority: 100, // Low priority - used as fallback
+});

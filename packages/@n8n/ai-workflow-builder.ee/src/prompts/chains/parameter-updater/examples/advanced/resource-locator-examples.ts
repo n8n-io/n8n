@@ -1,3 +1,5 @@
+import { registerExamples } from '../../registry';
+
 export const RESOURCE_LOCATOR_EXAMPLES = `
 ### ResourceLocator Examples
 
@@ -73,3 +75,10 @@ Expected Output:
     "value": "={{ $('Previous Node').item.json.pageId }}"
   }
 }`;
+
+registerExamples({
+	patterns: ['*'],
+	content: RESOURCE_LOCATOR_EXAMPLES,
+	priority: 30,
+	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+});

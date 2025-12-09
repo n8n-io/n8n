@@ -1,3 +1,5 @@
+import { registerExamples } from '../../registry';
+
 export const SET_NODE_EXAMPLES = `
 ### Set Node Examples
 
@@ -142,3 +144,9 @@ Expected Output:
   "options": {}
 }
 `;
+
+registerExamples({
+	patterns: ['n8n-nodes-base.set', '.set'],
+	content: SET_NODE_EXAMPLES,
+	priority: 20,
+});
