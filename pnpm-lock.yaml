@@ -2510,6 +2510,361 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))
 
+  packages/frontend/albertsons:
+    dependencies:
+      '@codemirror/autocomplete':
+        specifier: ^6.16.0
+        version: 6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.2.1)
+      '@codemirror/commands':
+        specifier: ^6.5.0
+        version: 6.5.0
+      '@codemirror/lang-css':
+        specifier: ^6.0.1
+        version: 6.0.1(@codemirror/view@6.26.3)(@lezer/common@1.2.1)
+      '@codemirror/lang-javascript':
+        specifier: ^6.2.2
+        version: 6.2.2
+      '@codemirror/lang-json':
+        specifier: ^6.0.1
+        version: 6.0.1
+      '@codemirror/lang-python':
+        specifier: ^6.1.6
+        version: 6.1.6(@codemirror/view@6.26.3)
+      '@codemirror/language':
+        specifier: ^6.10.1
+        version: 6.10.1
+      '@codemirror/lint':
+        specifier: ^6.8.0
+        version: 6.8.0
+      '@codemirror/search':
+        specifier: ^6.5.6
+        version: 6.5.6
+      '@codemirror/state':
+        specifier: ^6.4.1
+        version: 6.4.1
+      '@codemirror/view':
+        specifier: ^6.26.3
+        version: 6.26.3
+      '@dagrejs/dagre':
+        specifier: ^1.1.4
+        version: 1.1.4
+      '@lezer/common':
+        specifier: ^1.2.0
+        version: 1.2.1
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../@n8n/api-types
+      '@n8n/chat':
+        specifier: workspace:*
+        version: link:../@n8n/chat
+      '@n8n/codemirror-lang':
+        specifier: workspace:*
+        version: link:../../@n8n/codemirror-lang
+      '@n8n/codemirror-lang-sql':
+        specifier: workspace:*
+        version: link:../../@n8n/codemirror-lang-sql
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../@n8n/composables
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../@n8n/constants
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../@n8n/design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../@n8n/i18n
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../@n8n/permissions
+      '@n8n/rest-api-client':
+        specifier: workspace:*
+        version: link:../@n8n/rest-api-client
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../@n8n/stores
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../@n8n/utils
+      '@replit/codemirror-indentation-markers':
+        specifier: ^6.5.3
+        version: 6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)
+      '@sentry/vue':
+        specifier: catalog:frontend
+        version: 9.42.1(pinia@2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.50.4-build1
+        version: 3.50.4-build1
+      '@types/semver':
+        specifier: ^7.7.0
+        version: 7.7.0
+      '@typescript/vfs':
+        specifier: ^1.6.0
+        version: 1.6.0(typescript@5.9.2)
+      '@vue-flow/background':
+        specifier: 1.3.2
+        version: 1.3.2(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/controls':
+        specifier: 1.1.3
+        version: 1.1.3(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/core':
+        specifier: 1.48.0
+        version: 1.48.0(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/minimap':
+        specifier: 1.5.4
+        version: 1.5.4(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/node-resizer':
+        specifier: 1.5.0
+        version: 1.5.0(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+      '@vueuse/components':
+        specifier: ^10.11.0
+        version: 10.11.0(vue@3.5.13(typescript@5.9.2))
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 10.11.0(vue@3.5.13(typescript@5.9.2))
+      ag-grid-vue3:
+        specifier: ^34.1.1
+        version: 34.1.1(vue@3.5.13(typescript@5.9.2))
+      array.prototype.tosorted:
+        specifier: 1.1.4
+        version: 1.1.4
+      axios:
+        specifier: 1.12.0
+        version: 1.12.0(debug@4.4.1)
+      bowser:
+        specifier: 2.11.0
+        version: 2.11.0
+      change-case:
+        specifier: ^5.4.4
+        version: 5.4.4
+      chart.js:
+        specifier: ^4.4.0
+        version: 4.4.0
+      codemirror-lang-html-n8n:
+        specifier: ^1.0.0
+        version: 1.0.0
+      comlink:
+        specifier: ^4.4.1
+        version: 4.4.1
+      core-js:
+        specifier: ^3.40.0
+        version: 3.46.0
+      curlconverter:
+        specifier: ^4.12.0
+        version: 4.12.0
+      dateformat:
+        specifier: ^3.0.3
+        version: 3.0.3
+      element-plus:
+        specifier: catalog:frontend
+        version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.13(typescript@5.9.2))
+      email-providers:
+        specifier: ^2.0.1
+        version: 2.0.1
+      esprima-next:
+        specifier: 5.8.4
+        version: 5.8.4
+      fast-json-stable-stringify:
+        specifier: ^2.1.0
+        version: 2.1.0
+      file-saver:
+        specifier: ^2.0.2
+        version: 2.0.5
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
+      highlight.js:
+        specifier: catalog:frontend
+        version: 11.8.0
+      humanize-duration:
+        specifier: ^3.27.2
+        version: 3.27.3
+      jsonpath:
+        specifier: ^1.1.1
+        version: 1.1.1
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
+      luxon:
+        specifier: 'catalog:'
+        version: 3.4.4
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
+      prettier:
+        specifier: ^3.3.3
+        version: 3.6.2
+      qrcode.vue:
+        specifier: ^3.3.4
+        version: 3.3.4(vue@3.5.13(typescript@5.9.2))
+      semver:
+        specifier: ^7.5.4
+        version: 7.7.3
+      stream-browserify:
+        specifier: ^3.0.0
+        version: 3.0.0
+      timeago.js:
+        specifier: ^4.0.2
+        version: 4.0.2
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+      uuid:
+        specifier: 'catalog:'
+        version: 10.0.0
+      v-code-diff:
+        specifier: ^1.13.1
+        version: 1.13.1(patch_hash=21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9)(vue@3.5.13(typescript@5.9.2))
+      v3-infinite-loading:
+        specifier: ^1.2.2
+        version: 1.2.2
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.9.2)
+      vue-agile:
+        specifier: ^2.0.0
+        version: 2.0.0
+      vue-chartjs:
+        specifier: ^5.2.0
+        version: 5.2.0(chart.js@4.4.0)(vue@3.5.13(typescript@5.9.2))
+      vue-component-type-helpers:
+        specifier: ^2.2.10
+        version: 2.2.12
+      vue-github-button:
+        specifier: ^3.1.3
+        version: 3.1.3
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.1.10(vue@3.5.13(typescript@5.9.2))
+      vue-json-pretty:
+        specifier: 2.6.0
+        version: 2.6.0(vue@3.5.13(typescript@5.9.2))
+      vue-markdown-render:
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.5.13(typescript@5.9.2))
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.13(typescript@5.9.2))
+      vue-virtual-scroller:
+        specifier: 2.0.0-beta.8
+        version: 2.0.0-beta.8(vue@3.5.13(typescript@5.9.2))
+      vue3-touch-events:
+        specifier: ^4.1.3
+        version: 4.1.3
+      vuedraggable:
+        specifier: 4.1.0
+        version: 4.1.0(vue@3.5.13(typescript@5.9.2))
+      web-tree-sitter:
+        specifier: 0.24.3
+        version: 0.24.3
+      xss:
+        specifier: 'catalog:'
+        version: 1.0.15
+    devDependencies:
+      '@faker-js/faker':
+        specifier: ^8.0.2
+        version: 8.4.1
+      '@iconify/json':
+        specifier: ^2.2.349
+        version: 2.2.354
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/stylelint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../@n8n/vitest-config
+      '@pinia/testing':
+        specifier: ^0.1.6
+        version: 0.1.6(pinia@2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+      '@sentry/vite-plugin':
+        specifier: ^4.3.0
+        version: 4.3.0(encoding@0.1.13)
+      '@storybook/types':
+        specifier: ^8.6.14
+        version: 8.6.14(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(utf-8-validate@5.0.10))
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
+      '@types/dateformat':
+        specifier: ^3.0.0
+        version: 3.0.1
+      '@types/file-saver':
+        specifier: ^2.0.1
+        version: 2.0.5
+      '@types/humanize-duration':
+        specifier: ^3.27.1
+        version: 3.27.1
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
+      '@types/jsonpath':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/uuid':
+        specifier: 'catalog:'
+        version: 10.0.0
+      '@vitejs/plugin-legacy':
+        specifier: ^7.2.1
+        version: 7.2.1(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(terser@5.16.1)
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      browserslist-to-esbuild:
+        specifier: ^2.1.1
+        version: 2.1.1(browserslist@4.27.0)
+      fake-indexeddb:
+        specifier: ^6.0.0
+        version: 6.0.0
+      miragejs:
+        specifier: ^0.1.48
+        version: 0.1.48
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 0.19.0(@vue/compiler-sfc@3.5.13)
+      vite:
+        specifier: 'catalog:'
+        version: rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vite-plugin-istanbul:
+        specifier: ^7.2.0
+        version: 7.2.0(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      vite-plugin-node-polyfills:
+        specifier: ^0.24.0
+        version: 0.24.0(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(rollup@4.52.4)
+      vite-plugin-static-copy:
+        specifier: 2.2.0
+        version: 2.2.0(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      vite-svg-loader:
+        specifier: 5.1.0
+        version: 5.1.0(vue@3.5.13(typescript@5.9.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@5.9.2)(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)
+      z-vue-scan:
+        specifier: ^0.0.35
+        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.13(typescript@5.9.2))
+
   packages/frontend/editor-ui:
     dependencies:
       '@codemirror/autocomplete':
@@ -3975,10 +4330,6 @@ packages:
 
   '@babel/core@7.28.4':
     resolution: {integrity: sha512-2BCOP7TN8M+gVDj7/ht3hsaO/B/n5oDbiAyyvnRlNOs+u1o+JWNYTQrmpuNp1/Wq2gcFrI01JAW+paEKDMx/CA==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/generator@7.28.3':
-    resolution: {integrity: sha512-3lSpxGgvnmZznmBkCRnVREPUFJv2wrv9iAoFDvADJc0ypmdOxdUtcLeBgBJ6zE0PMeTKnxeQzyk0xTBq4Ep7zw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/generator@7.28.5':
@@ -8363,9 +8714,6 @@ packages:
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
 
-  '@types/aria-query@5.0.1':
-    resolution: {integrity: sha512-XTIieEY+gvJ39ChLcB4If5zHtPxt3Syj5rgZR+e1ctpmK8NjPf0zFqsz4JpLJT0xla9GFDKjy8Cpu331nrmE1Q==}
-
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
 
@@ -11089,9 +11437,6 @@ packages:
 
   doctypes@1.1.0:
     resolution: {integrity: sha512-LLBi6pEqS6Do3EKQ3J0NqHWV5hhb78Pi8vvESYwyOy2c31ZEZVdtitdzsQsKb7878PEERhzUk0ftqGhG6Mz+pQ==}
-
-  dom-accessibility-api@0.5.15:
-    resolution: {integrity: sha512-8o+oVqLQZoruQPYy3uAAQtc6YbtSiRq5aPJBhJ82YTJRHvI6ofhYAkC81WmjFTnfUbqg6T3aCglIpU9p/5e7Cw==}
 
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
@@ -17915,8 +18260,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.1.5:
-    resolution: {integrity: sha512-7V3yJuNWW7/1jxCcI1CswnpDsvs02Qcx/N43LkV+ZqhLj2PKj50slUflHAroNkN4UWiYfzMUUUXiNuv9khmSpQ==}
+  vue-component-type-helpers@3.1.6:
+    resolution: {integrity: sha512-lqPXjac98uz7zh8fxHxJPJDP4SKeaYn2Fx4kQLCBthMXm9VsmPdzUWOGWMcXN7reJ9IkcBiOFxsFS/Po7dARiw==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -20274,14 +20619,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/generator@7.28.3':
-    dependencies:
-      '@babel/parser': 7.28.5
-      '@babel/types': 7.28.5
-      '@jridgewell/gen-mapping': 0.3.13
-      '@jridgewell/trace-mapping': 0.3.31
-      jsesc: 3.1.0
-
   '@babel/generator@7.28.5':
     dependencies:
       '@babel/parser': 7.28.5
@@ -21101,7 +21438,7 @@ snapshots:
       sharp: 0.33.5
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       zod: 3.25.67
-      zod-to-json-schema: 3.24.6(zod@3.25.67)
+      zod-to-json-schema: 3.25.0(zod@3.25.67)
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -21279,7 +21616,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -22060,7 +22397,7 @@ snapshots:
       istanbul-lib-instrument: 5.2.1
       istanbul-lib-report: 3.0.1
       istanbul-lib-source-maps: 4.0.1
-      istanbul-reports: 3.1.7
+      istanbul-reports: 3.2.0
       jest-message-util: 29.6.2
       jest-util: 29.6.2
       jest-worker: 29.6.2
@@ -23606,7 +23943,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -24887,6 +25224,10 @@ snapshots:
     dependencies:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(utf-8-validate@5.0.10)
 
+  '@storybook/types@8.6.14(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(utf-8-validate@5.0.10))':
+    dependencies:
+      storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(utf-8-validate@5.0.10)
+
   '@storybook/vue3-vite@9.1.7(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
       '@storybook/builder-vite': 9.1.7(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
@@ -24907,7 +25248,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.1.5
+      vue-component-type-helpers: 3.1.6
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -25019,11 +25360,11 @@ snapshots:
   '@testing-library/dom@9.3.4':
     dependencies:
       '@babel/code-frame': 7.27.1
-      '@babel/runtime': 7.26.10
-      '@types/aria-query': 5.0.1
+      '@babel/runtime': 7.28.4
+      '@types/aria-query': 5.0.4
       aria-query: 5.1.3
       chalk: 4.1.2
-      dom-accessibility-api: 0.5.15
+      dom-accessibility-api: 0.5.16
       lz-string: 1.5.0
       pretty-format: 27.5.1
 
@@ -25043,7 +25384,7 @@ snapshots:
 
   '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      '@babel/runtime': 7.26.10
+      '@babel/runtime': 7.28.4
       '@testing-library/dom': 9.3.4
       '@vue/test-utils': 2.4.6
       vue: 3.5.13(typescript@5.9.2)
@@ -25107,8 +25448,6 @@ snapshots:
       '@types/node': 20.17.57
 
   '@types/argparse@1.0.38': {}
-
-  '@types/aria-query@5.0.1': {}
 
   '@types/aria-query@5.0.4': {}
 
@@ -25922,12 +26261,12 @@ snapshots:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
       ast-v8-to-istanbul: 0.3.3
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
       istanbul-lib-source-maps: 5.0.6
-      istanbul-reports: 3.1.7
-      magic-string: 0.30.17
+      istanbul-reports: 3.2.0
+      magic-string: 0.30.21
       magicast: 0.3.5
       std-env: 3.9.0
       test-exclude: 7.0.1
@@ -26694,7 +27033,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.12.0):
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.1)):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
@@ -27106,7 +27445,7 @@ snapshots:
   bundlemon@3.1.0(typescript@5.9.2):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
       bytes: 3.1.2
@@ -28304,8 +28643,6 @@ snapshots:
       esutils: 2.0.3
 
   doctypes@1.1.0: {}
-
-  dom-accessibility-api@0.5.15: {}
 
   dom-accessibility-api@0.5.16: {}
 
@@ -31814,7 +32151,7 @@ snapshots:
       mkdirp: 0.5.6
       nopt: 4.0.3
       read-installed: 4.0.3
-      semver: 7.7.2
+      semver: 7.7.3
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
       spdx-satisfies: 4.0.1
@@ -31861,7 +32198,7 @@ snapshots:
 
   lightningcss@1.30.2:
     dependencies:
-      detect-libc: 2.0.4
+      detect-libc: 2.1.2
     optionalDependencies:
       lightningcss-android-arm64: 1.30.2
       lightningcss-darwin-arm64: 1.30.2
@@ -33052,7 +33389,7 @@ snapshots:
       ignore-by-default: 1.0.1
       minimatch: 3.1.2
       pstree.remy: 1.1.8
-      semver: 7.7.2
+      semver: 7.7.3
       simple-update-notifier: 2.0.0
       supports-color: 5.5.0
       touch: 3.1.0
@@ -35452,6 +35789,30 @@ snapshots:
       - utf-8-validate
       - vite
 
+  storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(utf-8-validate@5.0.10):
+    dependencies:
+      '@storybook/global': 5.0.0
+      '@testing-library/jest-dom': 6.6.3
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.0)
+      '@vitest/expect': 3.2.4
+      '@vitest/mocker': 3.2.4(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+      '@vitest/spy': 3.2.4
+      better-opn: 3.0.2
+      esbuild: 0.25.9
+      esbuild-register: 3.5.0(esbuild@0.25.9)
+      recast: 0.23.6
+      semver: 7.7.2
+      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      prettier: 3.6.2
+    transitivePeerDependencies:
+      - '@testing-library/dom'
+      - bufferutil
+      - msw
+      - supports-color
+      - utf-8-validate
+      - vite
+
   storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
     dependencies:
       '@storybook/global': 5.0.0
@@ -36156,7 +36517,7 @@ snapshots:
       json5: 2.2.3
       lodash.memoize: 4.1.2
       make-error: 1.3.6
-      semver: 7.7.2
+      semver: 7.7.3
       typescript: 5.9.2
       yargs-parser: 21.1.1
     optionalDependencies:
@@ -36556,7 +36917,7 @@ snapshots:
       '@antfu/install-pkg': 0.3.3
       '@antfu/utils': 0.7.10
       '@iconify/utils': 2.1.25
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.11.0
@@ -36776,7 +37137,7 @@ snapshots:
 
   vite-plugin-istanbul@7.2.0(rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
     dependencies:
-      '@babel/generator': 7.28.3
+      '@babel/generator': 7.28.5
       '@istanbuljs/load-nyc-config': 1.1.0
       espree: 10.4.0
       istanbul-lib-instrument: 6.0.3
@@ -36924,7 +37285,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.1.5: {}
+  vue-component-type-helpers@3.1.6: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
