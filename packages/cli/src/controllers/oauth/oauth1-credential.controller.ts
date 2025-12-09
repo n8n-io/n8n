@@ -133,8 +133,6 @@ export class OAuth1CredentialController {
 
 			const oauthTokenData = Object.fromEntries(paramParser.entries());
 
-			console.log('oauthTokenData', oauthTokenData);
-
 			await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
 			this.logger.debug('OAuth1 callback successful for new credential', {

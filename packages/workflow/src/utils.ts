@@ -87,6 +87,13 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 			return expression.value;
 		case Syntax.ArrayExpression:
 			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		case Syntax.UnaryExpression: {
+			const value = syntaxNodeToValue(expression.argument);
+			if (typeof value === 'number' && expression.operator === '-') {
+				return -value;
+			}
+			return value;
+		}
 		default:
 			return undefined;
 	}
