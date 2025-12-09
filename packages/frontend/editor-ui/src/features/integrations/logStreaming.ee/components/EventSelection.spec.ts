@@ -253,9 +253,7 @@ describe('EventSelection.ee.vue', () => {
 			});
 
 			// The anonymization checkbox should be checked
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
@@ -287,9 +285,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
@@ -309,9 +305,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
@@ -384,9 +378,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');

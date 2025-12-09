@@ -43,8 +43,8 @@ const onCreateNewCredential = async () => {
 		ref="selectRefs"
 		size="small"
 		:model-value="props.selectedCredentialId"
-		@update:model-value="onCredentialSelected"
 		:popper-class="$style.selectPopper"
+		@update:model-value="onCredentialSelected"
 	>
 		<N8nOption
 			v-for="item in props.credentialOptions"

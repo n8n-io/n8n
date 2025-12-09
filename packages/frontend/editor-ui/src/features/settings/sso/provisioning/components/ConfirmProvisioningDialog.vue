@@ -105,12 +105,12 @@ const onConfirmProvisioningSetting = () => {
 			</div>
 			<div class="mb-s">
 				<N8nText
-					color="text-base"
 					v-n8n-html="
 						locale.baseText(
 							'settings.provisioningConfirmDialog.breakingChangeDescription.secondLine',
 						)
 					"
+					color="text-base"
 				></N8nText>
 			</div>
 			<ul :class="$style.list" class="mb-s">

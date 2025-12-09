@@ -104,7 +104,7 @@ const menu = computed(() => {
 	if (includeCustomAgents) {
 		const customAgents = isLoading.value
 			? []
-			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => {
+			: [...agents.value['custom-agent'].models, ...agents.value.n8n.models].map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {

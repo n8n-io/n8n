@@ -170,8 +170,8 @@ onMounted(() => {
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>
 				<div
-					v-else
 					v-for="(group, index) in groupedConversations"
+					v-else
 					:key="group.group"
 					:class="$style.group"
 				>

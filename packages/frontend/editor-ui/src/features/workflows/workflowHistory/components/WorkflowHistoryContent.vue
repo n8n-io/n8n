@@ -123,7 +123,7 @@ watch(
 			>
 				<template #default="{ formattedCreatedAt }">
 					<div v-if="isDraftPublishEnabled" :class="$style.descriptionBox">
-						<N8nTooltip :content="versionNameDisplay" v-if="versionNameDisplay">
+						<N8nTooltip v-if="versionNameDisplay" :content="versionNameDisplay">
 							<N8nText :class="$style.mainLine" bold color="text-dark">{{
 								versionNameDisplay
 							}}</N8nText>

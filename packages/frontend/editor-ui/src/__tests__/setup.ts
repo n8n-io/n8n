@@ -37,13 +37,15 @@ afterEach(() => {
 	}
 });
 
-window.ResizeObserver =
-	window.ResizeObserver ||
-	vi.fn().mockImplementation(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		unobserve: vi.fn(),
-	}));
+if (!window.ResizeObserver) {
+	// Use function constructor instead of class to allow vi.spyOn to work
+	function MockResizeObserver(this: ResizeObserver, _cb: ResizeObserverCallback) {
+		this.disconnect = vi.fn();
+		this.observe = vi.fn();
+		this.unobserve = vi.fn();
+	}
+	window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+}
 
 Element.prototype.scrollIntoView = vi.fn();
 
@@ -149,17 +151,29 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 
 class SpeechSynthesisUtterance {
 	text = '';
+
 	lang = '';
+
 	voice = null;
+
 	volume = 1;
+
 	rate = 1;
+
 	pitch = 1;
+
 	onstart = null;
+
 	onend = null;
+
 	onerror = null;
+
 	onpause = null;
+
 	onresume = null;
+
 	onmark = null;
+
 	onboundary = null;
 
 	constructor(text?: string) {
@@ -169,7 +183,9 @@ class SpeechSynthesisUtterance {
 	}
 
 	addEventListener = vi.fn();
+
 	removeEventListener = vi.fn();
+
 	dispatchEvent = vi.fn(() => true);
 }
 

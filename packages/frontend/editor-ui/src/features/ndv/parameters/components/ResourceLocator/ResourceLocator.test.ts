@@ -4,7 +4,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { mockedStore } from '@/__tests__/utils';
 import {
 	TEST_MODEL_VALUE,
@@ -130,8 +130,10 @@ describe('ResourceLocator', () => {
 		const { getByTestId, getByText, getAllByTestId } = renderComponent();
 
 		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
-		// Click on the input to fetch resources
-		await userEvent.click(getByTestId('rlc-input'));
+		// Click and focus on the input to fetch resources (focus is needed for readonly inputs)
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		await fireEvent.focus(input);
 		// Wait for the resources to be fetched
 		await waitFor(() => {
 			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
@@ -243,7 +245,9 @@ describe('ResourceLocator', () => {
 
 		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('rlc-input'));
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		await fireEvent.focus(input);
 
 		expect(getByTestId('rlc-error-container')).toBeInTheDocument();
 		expect(getByTestId('permission-error-link')).toBeInTheDocument();
@@ -289,7 +293,9 @@ describe('ResourceLocator', () => {
 			getByTestId(`resource-locator-${TEST_PARAMETER_SKIP_CREDENTIALS_CHECK.name}`),
 		).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('rlc-input'));
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		await fireEvent.focus(input);
 
 		await waitFor(() => {
 			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
@@ -360,7 +366,9 @@ describe('ResourceLocator', () => {
 
 			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-			await userEvent.click(getByTestId('rlc-input'));
+			const input = getByTestId('rlc-input');
+			await userEvent.click(input);
+			await fireEvent.focus(input);
 			await waitFor(() => {
 				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
 			});
@@ -386,7 +394,9 @@ describe('ResourceLocator', () => {
 
 			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-			await userEvent.click(getByTestId('rlc-input'));
+			const input = getByTestId('rlc-input');
+			await userEvent.click(input);
+			await fireEvent.focus(input);
 
 			await waitFor(() => {
 				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();

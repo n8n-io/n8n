@@ -122,8 +122,8 @@ watch(isNodeDefined, () => {
 				<N8nButton
 					icon="external-link"
 					type="secondary"
-					@click="onViewDetailsClick"
 					data-test-id="view-details-button"
+					@click="onViewDetailsClick"
 				>
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.viewDetailsButton.label') }}
 				</N8nButton>
