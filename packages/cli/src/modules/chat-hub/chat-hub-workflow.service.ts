@@ -1,4 +1,9 @@
-import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
+import {
+	ChatHubConversationModel,
+	ChatSessionId,
+	type ChatHubInputModality,
+	type ChatHubProvider,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
@@ -63,7 +68,7 @@ export class ChatHubWorkflowService {
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const { nodes, connections, executionData } = this.buildChatWorkflow({
+			const { nodes, connections, executionData } = await this.buildChatWorkflow({
 				userId,
 				sessionId,
 				history,
@@ -253,7 +258,7 @@ export class ChatHubWorkflowService {
 		return uniqueName;
 	}
 
-	private buildChatWorkflow({
+	private async buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
@@ -280,7 +285,7 @@ export class ChatHubWorkflowService {
 		const toolsAgentNode = this.buildToolsAgentNode(model, timeZone, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(model.provider, history);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 
@@ -667,50 +672,18 @@ When you need to reference “now”, use this date and time.`;
 		};
 	}
 
-	private buildRestoreMemoryNode(history: ChatHubMessage[]): INode {
+	private async buildRestoreMemoryNode(
+		provider: ChatHubProvider,
+		history: ChatHubMessage[],
+	): Promise<INode> {
+		const messageValues = await this.buildMessageValuesWithAttachments(provider, history);
+
 		return {
 			parameters: {
 				mode: 'insert',
 				insertMode: 'override',
 				messages: {
-					messageValues: history
-						// Empty messages can't be restored by the memory manager
-						.filter((message) => message.content.length > 0)
-						.map((message) => {
-							const typeMap: Record<string, MessageRecord['type']> = {
-								human: 'user',
-								ai: 'ai',
-								system: 'system',
-							};
-							const attachments = message.attachments ?? [];
-							const type = typeMap[message.type] || 'system';
-
-							// TODO: Tool messages etc?
-
-							if (attachments.length === 0) {
-								return {
-									type,
-									message: message.content,
-									hideFromUI: false,
-								};
-							}
-
-							const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
-
-							for (const attachment of attachments) {
-								const url = this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment);
-
-								if (url) {
-									blocks.push({ type: 'image_url', image_url: url });
-								}
-							}
-
-							return {
-								type,
-								message: blocks,
-								hideFromUI: false,
-							};
-						}),
+					messageValues: messageValues as any,
 				},
 			},
 			type: MEMORY_MANAGER_NODE_TYPE,
@@ -719,6 +692,79 @@ When you need to reference “now”, use this date and time.`;
 			id: uuidv4(),
 			name: NODE_NAMES.RESTORE_CHAT_MEMORY,
 		};
+	}
+
+	private async buildMessageValuesWithAttachments(
+		provider: ChatHubProvider,
+		history: ChatHubMessage[],
+	): Promise<MessageRecord[]> {
+		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
+		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
+
+		const typeMap: Record<string, MessageRecord['type']> = {
+			human: 'user',
+			ai: 'ai',
+			system: 'system',
+		};
+
+		const messageValues: MessageRecord[] = [];
+		let currentTotalSize = 0;
+
+		for (const message of history.slice().reverse()) {
+			// Empty messages can't be restored by the memory manager
+			if (message.content.length === 0) {
+				continue;
+			}
+
+			const attachments = message.attachments ?? [];
+			const type = typeMap[message.type] || 'system';
+
+			// TODO: Tool messages etc?
+
+			const textSize = message.content.length;
+			currentTotalSize += textSize;
+
+			if (attachments.length === 0) {
+				messageValues.push({
+					type,
+					message: message.content,
+					hideFromUI: false,
+				});
+				continue;
+			}
+
+			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
+
+			// Add attachments if within size limit
+			for (const attachment of attachments) {
+				if (currentTotalSize >= maxTotalPayloadSize) {
+					break;
+				}
+
+				const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment, {
+					// langchain doesn't allow to send URLs with https:// schema in image_url to google
+					// https://github.com/langchain-ai/langchainjs/blob/72795fe76b515d9edc7d78fb28db59df844ce0c3/libs/providers/langchain-google-genai/src/utils/common.ts#L291
+					mustBeDataUrl: provider === 'google',
+				});
+				const dataUrlSize = url.length;
+
+				if (currentTotalSize + dataUrlSize <= maxTotalPayloadSize) {
+					blocks.push({ type: 'image_url', image_url: url });
+					currentTotalSize += dataUrlSize;
+				}
+			}
+
+			messageValues.push({
+				type,
+				message: blocks,
+				hideFromUI: false,
+			});
+		}
+
+		// Reverse to restore original order
+		messageValues.reverse();
+
+		return messageValues;
 	}
 
 	private buildClearMemoryNode(): INode {

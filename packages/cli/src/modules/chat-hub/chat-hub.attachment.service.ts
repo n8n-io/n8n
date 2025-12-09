@@ -130,24 +130,29 @@ export class ChatHubAttachmentService {
 		);
 	}
 
-	getPubliclyAccessibleUrl(binaryData: IBinaryData): string | undefined {
+	async getPubliclyAccessibleUrl(
+		binaryData: IBinaryData,
+		{ mustBeDataUrl }: { mustBeDataUrl: boolean },
+	): Promise<string> {
 		if (binaryData.data.startsWith('data:')) {
 			return binaryData.data;
 		}
 
-		if (!binaryData.id) {
-			return undefined;
+		if (!mustBeDataUrl) {
+			const baseUrl = this.urlService.getInstanceBaseUrl();
+
+			if (baseUrl.startsWith('https://')) {
+				const token = this.binaryDataService.createSignedToken(binaryData, '1 hour');
+
+				return `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
+			}
 		}
 
-		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const buffer = await this.binaryDataService.getAsBuffer(binaryData);
+		const base64Data = buffer.toString(BINARY_ENCODING);
+		const mimeType = binaryData.mimeType || 'application/octet-stream';
 
-		if (!baseUrl.startsWith('https://')) {
-			return undefined;
-		}
-
-		const token = this.binaryDataService.createSignedToken(binaryData, '1 hour');
-
-		return `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
+		return `data:${mimeType};base64,${base64Data}`;
 	}
 
 	/**
