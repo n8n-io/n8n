@@ -874,8 +874,11 @@ export class CredentialsService {
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
 			if (property.required && displayParameter(data, property, null, null)) {
+				// Check if value is present in data, if not, check if default value exists
 				const value = data[property.name];
-				if (value === undefined || value === null || value === '') {
+				const hasDefault =
+					property.default !== undefined && property.default !== null && property.default !== '';
+				if ((value === undefined || value === null || value === '') && !hasDefault) {
 					throw new BadRequestError(
 						`The field "${property.name}" is mandatory for credentials of type "${type}"`,
 					);

@@ -221,6 +221,11 @@ export class License implements LicenseProvider {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
+	/** @deprecated Use `LicenseState.isDynamicCredentialsLicensed` instead. */
+	isDynamicCredentialsEnabled() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
+
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
 	isSharingEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.SHARING);
