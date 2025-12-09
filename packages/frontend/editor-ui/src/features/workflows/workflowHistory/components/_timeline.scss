@@ -1,0 +1,11 @@
+// Shared timeline styles for workflow history components
+
+@mixin timeline-gap-line {
+	content: '';
+	position: absolute;
+	left: calc(var(--spacing--3xs) + var(--spacing--lg) / 2);
+	bottom: calc(100% + var(--spacing--4xs));
+	height: var(--spacing--sm);
+	width: var(--border-width);
+	background-color: var(--color--foreground--tint-1);
+}
