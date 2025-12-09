@@ -130,22 +130,9 @@ export class ChatHubAttachmentService {
 		);
 	}
 
-	async getPubliclyAccessibleUrl(
-		binaryData: IBinaryData,
-		{ mustBeDataUrl }: { mustBeDataUrl: boolean },
-	): Promise<string> {
+	async getPubliclyAccessibleUrl(binaryData: IBinaryData): Promise<string> {
 		if (binaryData.data.startsWith('data:')) {
 			return binaryData.data;
-		}
-
-		if (!mustBeDataUrl) {
-			const baseUrl = this.urlService.getInstanceBaseUrl();
-
-			if (baseUrl.startsWith('https://')) {
-				const token = this.binaryDataService.createSignedToken(binaryData, '1 hour');
-
-				return `${baseUrl}/${this.globalConfig.endpoints.rest}/binary-data/signed?token=${token}`;
-			}
 		}
 
 		const buffer = await this.binaryDataService.getAsBuffer(binaryData);

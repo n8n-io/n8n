@@ -168,7 +168,7 @@ describe('ChatHubWorkflowService', () => {
 		});
 
 		describe('attachment files', () => {
-			it('should generate binary data URL using getInstanceBaseUrl when attachment has id', async () => {
+			it('should convert binary data to data URL when attachment has id', async () => {
 				const mockAttachment: IBinaryData = {
 					id: 'filesystem-v2:chat-hub/sessions/session-456/messages/msg-1/binary_data/bin-1',
 					data: 'filesystem-v2',
@@ -189,11 +189,8 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
-				const mockToken = 'signed-token-abc';
-				const mockBaseUrl = 'https://example.com';
-
-				binaryDataService.createSignedToken.mockReturnValue(mockToken);
-				urlService.getInstanceBaseUrl.mockReturnValue(mockBaseUrl);
+				const mockImageBuffer = Buffer.from('fake-image-data', 'base64');
+				binaryDataService.getAsBuffer.mockResolvedValue(mockImageBuffer);
 
 				const result = await service.createChatWorkflow(
 					'user-123',
@@ -209,18 +206,17 @@ describe('ChatHubWorkflowService', () => {
 					'UTC',
 				);
 
-				expect(binaryDataService.createSignedToken).toHaveBeenCalledWith(mockAttachment, '1 hour');
-				expect(urlService.getInstanceBaseUrl).toHaveBeenCalled();
+				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
+				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
 
-				const expectedUrl = `${mockBaseUrl}/rest/binary-data/signed?token=${mockToken}`;
+				const expectedDataUrl = `data:${mockAttachment.mimeType};base64,${mockImageBuffer.toString('base64')}`;
 				const restoreMemoryNode = result.workflowData.nodes.find(
 					(node) => node.name === 'Restore Chat Memory',
 				);
 				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
 				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Check this image' },
-					{ type: 'image_url', image_url: expectedUrl },
+					{ type: 'image_url', image_url: expectedDataUrl },
 				]);
 			});
 
@@ -299,11 +295,8 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
-				const mockToken = 'signed-token-xyz';
-				const mockBaseUrl = 'https://example.com';
-
-				binaryDataService.createSignedToken.mockReturnValue(mockToken);
-				urlService.getInstanceBaseUrl.mockReturnValue(mockBaseUrl);
+				const mockImageBuffer = Buffer.from('fake-image-data-1', 'base64');
+				binaryDataService.getAsBuffer.mockResolvedValue(mockImageBuffer);
 
 				const result = await service.createChatWorkflow(
 					'user-123',
@@ -319,73 +312,19 @@ describe('ChatHubWorkflowService', () => {
 					'UTC',
 				);
 
-				expect(binaryDataService.createSignedToken).toHaveBeenCalledTimes(1);
-				expect(binaryDataService.createSignedToken).toHaveBeenCalledWith(
-					mockAttachmentWithId,
-					'1 hour',
-				);
+				expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
+				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachmentWithId);
+				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
 
-				const expectedUrl = `${mockBaseUrl}/rest/binary-data/signed?token=${mockToken}`;
+				const expectedDataUrl = `data:${mockAttachmentWithId.mimeType};base64,${mockImageBuffer.toString('base64')}`;
 				const restoreMemoryNode = result.workflowData.nodes.find(
 					(node) => node.name === 'Restore Chat Memory',
 				);
 				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
 				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Check these images' },
-					{ type: 'image_url', image_url: expectedUrl },
+					{ type: 'image_url', image_url: expectedDataUrl },
 					{ type: 'image_url', image_url: mockAttachmentWithData.data },
-				]);
-			});
-
-			it('should use custom rest endpoint from config', async () => {
-				globalConfig.endpoints = { rest: 'api/v1' } as any;
-
-				const mockAttachment: IBinaryData = {
-					id: 'filesystem-v2:chat-hub/sessions/session-456/messages/msg-1/binary_data/bin-3',
-					data: 'filesystem-v2',
-					mimeType: 'image/png',
-					fileName: 'test.png',
-				};
-
-				const mockMessage = new ChatHubMessage();
-				mockMessage.id = 'msg-1';
-				mockMessage.content = 'Image test';
-				mockMessage.type = 'human';
-				mockMessage.attachments = [mockAttachment];
-				mockMessage.sessionId = 'session-456';
-				mockMessage.session = new ChatHubSession();
-				mockMessage.status = 'running';
-
-				const mockHistory: ChatHubMessage[] = [mockMessage];
-
-				const mockToken = 'token-custom';
-				const mockBaseUrl = 'https://api.example.com';
-
-				binaryDataService.createSignedToken.mockReturnValue(mockToken);
-				urlService.getInstanceBaseUrl.mockReturnValue(mockBaseUrl);
-
-				const result = await service.createChatWorkflow(
-					'user-123',
-					'session-456',
-					'project-789',
-					mockHistory,
-					'Hello',
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
-					undefined,
-					[],
-					'UTC',
-				);
-
-				const expectedUrl = `${mockBaseUrl}/api/v1/binary-data/signed?token=${mockToken}`;
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0].message).toEqual([
-					{ type: 'text', text: 'Image test' },
-					{ type: 'image_url', image_url: expectedUrl },
 				]);
 			});
 

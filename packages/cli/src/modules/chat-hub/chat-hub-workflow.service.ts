@@ -1,9 +1,4 @@
-import {
-	ChatHubConversationModel,
-	ChatSessionId,
-	type ChatHubInputModality,
-	type ChatHubProvider,
-} from '@n8n/api-types';
+import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
@@ -288,7 +283,7 @@ export class ChatHubWorkflowService {
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = await this.buildRestoreMemoryNode(model.provider, history);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(history);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 
@@ -681,11 +676,8 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		};
 	}
 
-	private async buildRestoreMemoryNode(
-		provider: ChatHubProvider,
-		history: ChatHubMessage[],
-	): Promise<INode> {
-		const messageValues = await this.buildMessageValuesWithAttachments(provider, history);
+	private async buildRestoreMemoryNode(history: ChatHubMessage[]): Promise<INode> {
+		const messageValues = await this.buildMessageValuesWithAttachments(history);
 
 		return {
 			parameters: {
@@ -704,7 +696,6 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 	}
 
 	private async buildMessageValuesWithAttachments(
-		provider: ChatHubProvider,
 		history: ChatHubMessage[],
 	): Promise<MessageRecord[]> {
 		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
@@ -748,7 +739,6 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 			for (const attachment of attachments) {
 				const block = await this.buildContentBlockForAttachment(
 					attachment,
-					provider,
 					currentTotalSize,
 					maxTotalPayloadSize,
 				);
@@ -771,7 +761,6 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 	private async buildContentBlockForAttachment(
 		attachment: IBinaryData,
-		provider: ChatHubProvider,
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
 	): Promise<ContentBlock> {
@@ -796,11 +785,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				};
 			}
 
-			const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment, {
-				// langchain doesn't allow to send URLs with https:// schema in image_url to google
-				// https://github.com/langchain-ai/langchainjs/blob/72795fe76b515d9edc7d78fb28db59df844ce0c3/libs/providers/langchain-google-genai/src/utils/common.ts#L291
-				mustBeDataUrl: provider === 'google',
-			});
+			const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment);
 
 			if (currentTotalSize + url.length > maxTotalPayloadSize) {
 				throw new TotalFileSizeExceededError();
