@@ -218,8 +218,6 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
-				const mockBaseUrl = 'https://example.com';
-
 				const result = await service.createChatWorkflow(
 					'user-123',
 					'session-456',
