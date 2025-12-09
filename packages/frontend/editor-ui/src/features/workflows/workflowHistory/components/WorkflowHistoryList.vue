@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -39,6 +39,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const listElement = ref<Element | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
 const expandedGroups = reactive<Set<string>>(new Set());
 
@@ -54,12 +55,26 @@ const toggleGroup = (groupId: string) => {
 	}
 };
 
+const hasMoreItems = computed(() => props.lastReceivedItemsLength === props.requestNumberOfItems);
+
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: listElement,
 	threshold: 0.01,
-	onIntersect: () =>
-		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
+	onIntersect: () => {
+		shouldAutoScroll.value = false;
+		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length });
+	},
 });
+
+watch(
+	[loadMoreSentinel, hasMoreItems, () => props.items.length],
+	([sentinel, canLoadMore]) => {
+		if (sentinel && canLoadMore) {
+			observeForLoadMore(sentinel);
+		}
+	},
+	{ immediate: true },
+);
 
 const getActions = (item: WorkflowHistory, index: number) => {
 	let filteredActions = props.actions;
@@ -88,7 +103,6 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 };
 
 const onItemMounted = ({
-	index,
 	offsetTop,
 	isSelected,
 }: {
@@ -99,13 +113,6 @@ const onItemMounted = ({
 	if (isSelected && shouldAutoScroll.value) {
 		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
-	}
-
-	if (
-		index === props.items.length - 1 &&
-		props.lastReceivedItemsLength === props.requestNumberOfItems
-	) {
-		observeForLoadMore(listElement.value?.children[index]);
 	}
 };
 </script>
@@ -171,6 +178,12 @@ const onItemMounted = ({
 				@mounted="onItemMounted"
 			/>
 		</template>
+		<li
+			v-if="props.items.length && hasMoreItems"
+			ref="loadMoreSentinel"
+			:class="$style.sentinel"
+			aria-hidden="true"
+		/>
 		<li v-if="!props.items.length && !props.isListLoading" :class="$style.empty">
 			{{ i18n.baseText('workflowHistory.empty') }}
 			<br />
@@ -235,6 +248,10 @@ const onItemMounted = ({
 
 .loader {
 	padding: 0 var(--spacing--sm);
+}
+
+.sentinel {
+	height: 1px;
 }
 
 .retention {
