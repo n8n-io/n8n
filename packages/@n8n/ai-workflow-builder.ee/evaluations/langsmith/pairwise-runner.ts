@@ -55,11 +55,7 @@ interface MultiGenerationAggregation {
 
 interface PairwiseGeneratorOutput {
 	workflow: SimpleWorkflow;
-	evalCriteria: PairwiseDatasetInput['evals'];
-	prompt: string;
 	evaluationResults: LangsmithEvaluationResult[];
-	/** Multi-generation aggregation data (present when numGenerations > 1) */
-	multiGenerationAggregation?: MultiGenerationAggregation;
 }
 
 function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGeneratorOutput {
@@ -68,7 +64,6 @@ function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGenerat
 	const obj = outputs as Record<string, unknown>;
 
 	if (!obj.workflow || typeof obj.workflow !== 'object') return false;
-	if (!obj.evalCriteria || typeof obj.evalCriteria !== 'object') return false;
 	if (!obj.evaluationResults || !Array.isArray(obj.evaluationResults)) return false;
 
 	return true;
@@ -531,12 +526,10 @@ function createPairwiseWorkflowGenerator(
 						generationResults[0].avgDiagnosticScore,
 					);
 
+		// Only return essential outputs - avoid extra fields that might create columns in LangSmith UI
 		return {
 			workflow: generationResults[0].workflow,
-			evalCriteria: inputs.evals,
-			prompt: inputs.prompt,
 			evaluationResults,
-			multiGenerationAggregation: numGenerations > 1 ? multiGenerationAggregation : undefined,
 		};
 	};
 }
