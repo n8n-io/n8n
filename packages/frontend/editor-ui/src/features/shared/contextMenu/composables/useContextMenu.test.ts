@@ -1,6 +1,11 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
-import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
+import {
+	BASIC_CHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	NO_OP_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants';
 import { faker } from '@faker-js/faker';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -10,6 +15,7 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
+	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 
@@ -206,6 +212,112 @@ describe('useContextMenu', () => {
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(targetNodeIds.value).toEqual([node.id]);
+	});
+
+	describe('Webhook URL copy actions', () => {
+		it('should show copy test URL for regular webhook node when workflow is inactive', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
+			workflowsStore.workflow.active = false;
+
+			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([webhookNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeDefined();
+			expect(copyTestUrlAction?.disabled).toBe(false);
+			expect(copyTestUrlAction?.divided).toBe(true);
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeUndefined();
+		});
+
+		it('should show both test and production URLs for regular webhook node when workflow is active', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
+			workflowsStore.workflow.active = true;
+
+			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([webhookNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeDefined();
+			expect(copyTestUrlAction?.disabled).toBe(false);
+			expect(copyTestUrlAction?.divided).toBe(true);
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeDefined();
+			expect(copyProductionUrlAction?.disabled).toBe(false);
+			expect(copyProductionUrlAction?.divided).toBe(false);
+		});
+
+		it('should not show any webhook URL actions for production-only webhook when workflow is inactive', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const chatTriggerNode = nodeFactory({
+				type: CHAT_TRIGGER_NODE_TYPE,
+				webhookId: 'chat-webhook',
+			});
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
+			workflowsStore.workflow.active = false;
+
+			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([chatTriggerNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeUndefined();
+		});
+
+		it('should show only production URL for production-only webhook when workflow is active', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const chatTriggerNode = nodeFactory({
+				type: CHAT_TRIGGER_NODE_TYPE,
+				webhookId: 'chat-webhook',
+			});
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
+			workflowsStore.workflow.active = true;
+
+			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([chatTriggerNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeDefined();
+			expect(copyProductionUrlAction?.disabled).toBe(false);
+			expect(copyProductionUrlAction?.divided).toBe(true);
+		});
+
+		it('should not show webhook URL actions for non-webhook node', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const regularNode = nodeFactory({ type: NO_OP_NODE_TYPE });
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(regularNode);
+			workflowsStore.workflow.active = true;
+
+			open(mockEvent, { source: 'node-right-click', nodeId: regularNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([regularNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeUndefined();
+		});
 	});
 
 	it('should return the correct actions opening the menu from the button', () => {

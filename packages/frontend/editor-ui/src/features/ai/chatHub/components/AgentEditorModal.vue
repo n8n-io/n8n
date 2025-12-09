@@ -4,17 +4,24 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { ChatHubBaseLLMModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
+import type {
+	ChatHubBaseLLMModel,
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatModelDto,
+} from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useUIStore } from '@/app/stores/ui.store';
+import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const props = defineProps<{
 	modalName: string;
@@ -30,6 +37,8 @@ const chatStore = useChatStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
+const uiStore = useUIStore();
+
 const modalBus = ref(createEventBus());
 const customAgent = useCustomAgent(props.data.agentId);
 
@@ -39,7 +48,9 @@ const systemPrompt = ref('');
 const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
+const isOpened = ref(false);
 const tools = ref<INode[]>([]);
+const nameInputRef = useTemplateRef('nameInput');
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -78,6 +89,25 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 	};
 });
 
+const canSelectTools = computed(
+	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
+);
+
+modalBus.value.once('opened', () => {
+	isOpened.value = true;
+});
+
+// If the agent doesn't support tools anymore, reset tools
+watch(
+	selectedAgent,
+	(agent) => {
+		if (agent && !agent.metadata.capabilities.functionCalling) {
+			tools.value = [];
+		}
+	},
+	{ immediate: true },
+);
+
 watch(
 	customAgent,
 	(agent) => {
@@ -96,6 +126,18 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	[isOpened, isLoadingAgent, nameInputRef],
+	async ([opened, isLoading, name]) => {
+		if (opened && !isLoading) {
+			// autofocus attribute doesn't work in modal
+			// https://github.com/element-plus/element-plus/issues/15250
+			name?.focus();
+		}
+	},
+	{ immediate: true, flush: 'post' },
+);
+
 function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
 	agentSelectedCredentials.value = {
 		...agentSelectedCredentials.value,
@@ -103,9 +145,9 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string | 
 	};
 }
 
-function onModelChange(agent: ChatModelDto) {
-	assert(isLlmProviderModel(agent.model));
-	selectedModel.value = agent.model;
+function onModelChange(model: ChatHubConversationModel) {
+	assert(isLlmProviderModel(model));
+	selectedModel.value = model;
 }
 
 async function onSave() {
@@ -182,8 +224,16 @@ async function onDelete() {
 	}
 }
 
-function onSelectTools(newTools: INode[]) {
-	tools.value = newTools;
+function onSelectTools() {
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: tools.value,
+			onConfirm: (newTools: INode[]) => {
+				tools.value = newTools;
+			},
+		},
+	});
 }
 </script>
 
@@ -217,6 +267,7 @@ function onSelectTools(newTools: INode[]) {
 					:required="true"
 				>
 					<N8nInput
+						ref="nameInput"
 						id="agent-name"
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
@@ -283,7 +334,16 @@ function onSelectTools(newTools: INode[]) {
 						:required="false"
 					>
 						<div>
-							<ToolsSelector :disabled="isLoadingAgent" :selected="tools" @select="onSelectTools" />
+							<ToolsSelector
+								:disabled="isLoadingAgent || !canSelectTools"
+								:disabled-tooltip="
+									isLoadingAgent || canSelectTools
+										? undefined
+										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+								"
+								:selected="tools"
+								@click="onSelectTools"
+							/>
 						</div>
 					</N8nInputLabel>
 				</div>
@@ -333,6 +393,7 @@ function onSelectTools(newTools: INode[]) {
 .row {
 	display: flex;
 	flex-direction: row;
+	gap: var(--spacing--sm);
 }
 
 .footer {

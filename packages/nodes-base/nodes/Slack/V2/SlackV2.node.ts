@@ -30,6 +30,7 @@ import {
 	getTarget,
 	createSendAndWaitMessageBody,
 	processThreadOptions,
+	slackApiRequestAllItemsWithRateLimit,
 } from './GenericFunctions';
 import {
 	channelRLC,
@@ -190,16 +191,15 @@ export class SlackV2 implements INodeType {
 					limit: 1000,
 					cursor: paginationToken,
 				};
-				const { channels, response_metadata } = (await slackApiRequest.call(
-					this,
-					'GET',
-					'/conversations.list',
-					{},
-					qs,
-				)) as {
-					channels: Array<{ id: string; name: string }>;
-					response_metadata?: { next_cursor?: string };
-				};
+				// in case of too many rate limit errors, return cursor and allow user to lazy load by scrolling
+				const { data: channels, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+				}>(this, 'channels', 'GET', '/conversations.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = channels
 					.map((c) => ({
 						name: c.name,
@@ -216,8 +216,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				const nextPaginationToken = response_metadata?.next_cursor || undefined;
-				return { results, paginationToken: nextPaginationToken };
+				return { results, paginationToken: cursor };
 			},
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const users = (await slackApiRequestAllItems.call(

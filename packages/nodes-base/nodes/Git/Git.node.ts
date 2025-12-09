@@ -287,7 +287,8 @@ export class Git implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const isFilePathBlocked = await this.helpers.isFilePathBlocked(repositoryPath);
+				const resolvedRepositoryPath = await this.helpers.resolvePath(repositoryPath);
+				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
 				if (isFilePathBlocked) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -300,9 +301,9 @@ export class Git implements INodeType {
 				if (operation === 'clone') {
 					// Create repository folder if it does not exist
 					try {
-						await access(repositoryPath);
+						await access(resolvedRepositoryPath);
 					} catch (error) {
-						await mkdir(repositoryPath);
+						await mkdir(resolvedRepositoryPath);
 					}
 				}
 
@@ -321,7 +322,7 @@ export class Git implements INodeType {
 				}
 
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir: repositoryPath,
+					baseDir: resolvedRepositoryPath,
 					config: gitConfig,
 				};
 
