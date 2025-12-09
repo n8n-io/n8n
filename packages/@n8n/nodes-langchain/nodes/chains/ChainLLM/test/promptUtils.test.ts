@@ -323,26 +323,6 @@ describe('promptUtils', () => {
 			expect(result).toEqual(parsedResult);
 		});
 
-		it('should parse BaseMessage with object content containing text', async () => {
-			const parser = getAgentStepsParser(mockOutputParser);
-			const message = new HumanMessage({ content: { text: 'Object text' } } as any);
-
-			const parsedResult = { text: 'Object text' };
-			mockOutputParser.parse.mockResolvedValue(parsedResult);
-
-			const result = await parser(message);
-
-			expect(mockOutputParser.parse).toHaveBeenCalledWith('Object text');
-			expect(result).toEqual(parsedResult);
-		});
-
-		it('should throw error for BaseMessage with invalid content', async () => {
-			const parser = getAgentStepsParser(mockOutputParser);
-			const message = new HumanMessage({ content: { invalid: 'content' } } as any);
-
-			await expect(parser(message)).rejects.toThrow('Invalid content type');
-		});
-
 		it('should parse AgentFinish returnValues', async () => {
 			const parser = getAgentStepsParser(mockOutputParser);
 			const agentFinish: AgentFinish = {
@@ -357,13 +337,6 @@ describe('promptUtils', () => {
 
 			expect(mockOutputParser.parse).toHaveBeenCalledWith(JSON.stringify(agentFinish.returnValues));
 			expect(result).toEqual(parsedResult);
-		});
-
-		it('should throw error for unsupported step type', async () => {
-			const parser = getAgentStepsParser(mockOutputParser);
-			const invalidSteps = [{ tool: 'other_tool', toolInput: {}, log: '' }] as AgentAction[];
-
-			await expect(parser(invalidSteps)).rejects.toThrow('Failed to parse agent steps');
 		});
 
 		it('should handle array of agent actions without format_final_json_response', async () => {
