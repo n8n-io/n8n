@@ -2,24 +2,22 @@
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { N8nButton, N8nIcon, N8nNotice, N8nSelect, N8nOption } from '@n8n/design-system';
+import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
+import { N8nButton, N8nNotice } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref } from 'vue';
 
-type SelectRef = InstanceType<typeof N8nSelect>;
-type SelectOption = { value: string; label: string };
+type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
 
 const i18n = useI18n();
-const mcpStore = useMCPStore();
 
 const isSaving = ref(false);
-const isLoading = ref(false);
-const canSave = ref(true);
+const selectedWorkflowId = ref<string>();
 const selectRef = ref<SelectRef | null>(null);
-const workflowOptions = ref<SelectOption[]>([]);
 
 const modalBus = createEventBus();
+
+const canSave = computed(() => !!selectedWorkflowId.value);
 
 const noticeText = computed(() => {
 	return `
@@ -39,22 +37,7 @@ function save() {
 	isSaving.value = true;
 }
 
-async function loadEligibleWorkflows() {
-	isLoading.value = true;
-	try {
-		const response = await mcpStore.getMcpEligibleWorkflows({ take: 10 });
-		const workflows = response?.data ?? [];
-		workflowOptions.value = workflows.map((workflow) => ({
-			value: workflow.id,
-			label: workflow.name,
-		}));
-	} finally {
-		isLoading.value = false;
-	}
-}
-
-onMounted(async () => {
-	await loadEligibleWorkflows();
+onMounted(() => {
 	setTimeout(() => {
 		selectRef.value?.focusOnInput();
 	}, 150);
@@ -71,24 +54,12 @@ onMounted(async () => {
 		<template #content>
 			<div :class="$style.content">
 				<N8nNotice data-test-id="mcp-connect-workflows-info-notice" :content="noticeText" />
-				<N8nSelect
+				<MCPWorkflowsSelect
 					ref="selectRef"
-					data-test-id="mcp-connect-workflows-select"
+					v-model="selectedWorkflowId"
 					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
 					:disabled="isSaving"
-					:loading="isLoading"
-					:filterable="true"
-				>
-					<template #prepend>
-						<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
-					</template>
-					<N8nOption
-						v-for="option in workflowOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
+				/>
 			</div>
 		</template>
 		<template #footer>
@@ -124,10 +95,6 @@ onMounted(async () => {
 	ul {
 		margin: var(--spacing--3xs);
 	}
-}
-
-.search-icon {
-	min-width: var(--spacing--lg);
 }
 
 .footer {
