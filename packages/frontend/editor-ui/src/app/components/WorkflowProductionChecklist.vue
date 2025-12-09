@@ -16,7 +16,6 @@ import {
 	EVALUATIONS_DOCS_URL,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
-	TIME_SAVED_NODE_EXPERIMENT,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
@@ -28,7 +27,6 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -46,7 +44,6 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const { isEligibleForMcpAccess } = useMcp();
 const usersStore = useUsersStore();
-const posthogStore = usePostHog();
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -68,10 +65,6 @@ const hasErrorWorkflow = computed(() => {
 });
 
 const hasSavedTimeNodes = computed(() => {
-	if (!posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name)) {
-		return false;
-	}
-
 	if (!props.workflow?.nodes) return false;
 	return props.workflow.nodes.some(
 		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
