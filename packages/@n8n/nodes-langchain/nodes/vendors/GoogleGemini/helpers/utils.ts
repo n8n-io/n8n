@@ -145,6 +145,54 @@ async function getFileStreamFromUrlOrBinary(
 	};
 }
 
+interface ResumableUploadConfig {
+	endpoint: string;
+	mimeType: string;
+	body?: IDataObject;
+	headers?: IDataObject;
+	fileSize?: number;
+}
+
+async function performResumableUpload(
+	this: IExecuteFunctions,
+	stream: Stream,
+	config: ResumableUploadConfig,
+): Promise<{ body: IDataObject }> {
+	const { endpoint, mimeType, body, headers = {}, fileSize } = config;
+
+	// Initialize the upload
+	const uploadInitResponse = (await apiRequest.call(this, 'POST', endpoint, {
+		headers: {
+			'X-Goog-Upload-Protocol': 'resumable',
+			'X-Goog-Upload-Command': 'start',
+			'X-Goog-Upload-Header-Content-Type': mimeType,
+			'Content-Type': 'application/json',
+			...headers,
+		},
+		body,
+		option: { returnFullResponse: true },
+	})) as { headers: IDataObject };
+
+	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
+	if (!uploadUrl) {
+		throw new NodeOperationError(this.getNode(), 'Failed to get upload URL');
+	}
+
+	// Upload the file
+	return (await this.helpers.httpRequest({
+		method: 'POST',
+		url: uploadUrl,
+		headers: {
+			'X-Goog-Upload-Offset': '0',
+			'X-Goog-Upload-Command': 'upload, finalize',
+			'Content-Type': mimeType,
+			...(fileSize && fileSize > 0 && { 'Content-Length': fileSize.toString() }),
+		},
+		body: stream,
+		returnFullResponse: true,
+	})) as { body: IDataObject };
+}
+
 export async function transferFile(
 	this: IExecuteFunctions,
 	i: number,
@@ -194,54 +242,6 @@ interface Operation {
 	done: boolean;
 	error?: { message: string };
 	response?: IDataObject;
-}
-
-interface ResumableUploadConfig {
-	endpoint: string;
-	mimeType: string;
-	body?: IDataObject;
-	headers?: IDataObject;
-	fileSize?: number;
-}
-
-async function performResumableUpload(
-	this: IExecuteFunctions,
-	stream: Stream,
-	config: ResumableUploadConfig,
-): Promise<{ body: IDataObject }> {
-	const { endpoint, mimeType, body, headers = {}, fileSize } = config;
-
-	// Initialize the upload
-	const uploadInitResponse = (await apiRequest.call(this, 'POST', endpoint, {
-		headers: {
-			'X-Goog-Upload-Protocol': 'resumable',
-			'X-Goog-Upload-Command': 'start',
-			'X-Goog-Upload-Header-Content-Type': mimeType,
-			'Content-Type': 'application/json',
-			...headers,
-		},
-		body,
-		option: { returnFullResponse: true },
-	})) as { headers: IDataObject };
-
-	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
-	if (!uploadUrl) {
-		throw new NodeOperationError(this.getNode(), 'Failed to get upload URL');
-	}
-
-	// Upload the file
-	return (await this.helpers.httpRequest({
-		method: 'POST',
-		url: uploadUrl,
-		headers: {
-			'X-Goog-Upload-Offset': '0',
-			'X-Goog-Upload-Command': 'upload, finalize',
-			'Content-Type': mimeType,
-			...(fileSize && fileSize > 0 && { 'Content-Length': fileSize.toString() }),
-		},
-		body: stream,
-		returnFullResponse: true,
-	})) as { body: IDataObject };
 }
 
 export async function createFileSearchStore(
