@@ -22,6 +22,7 @@ export interface N8nPromptInputProps {
 	creditsRemaining?: number;
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
+	autofocus?: boolean;
 }
 
 const INFINITE_CREDITS = -1;
@@ -38,6 +39,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	creditsRemaining: undefined,
 	showAskOwnerTooltip: false,
 	refocusAfterSend: false,
+	autofocus: false,
 });
 
 const emit = defineEmits<{
@@ -314,6 +316,10 @@ function focusInput() {
 onMounted(() => {
 	// Adjust height on mount to respect minLines or initial content
 	void nextTick(() => adjustHeight());
+
+	if (props.autofocus) {
+		focusInput();
+	}
 });
 
 defineExpose({

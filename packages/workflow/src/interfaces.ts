@@ -1607,6 +1607,15 @@ export interface INodePropertyModeTypeOptions {
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
 	/**
+	 * If provided, a slow load notice will be shown to the user if the resource locator takes longer than the timeout to load.
+	 * @example
+	 * {
+	 *   message: 'If loading takes longer than expected, try selecting a resource using "By ID"',
+	 *   timeout: 10000,
+	 * }
+	 */
+	slowLoadNotice?: { message: string; timeout: number };
+	/**
 	 * If true, the resource locator will not show an error if the credentials are not selected
 	 */
 	skipCredentialsCheckInRLC?: boolean;

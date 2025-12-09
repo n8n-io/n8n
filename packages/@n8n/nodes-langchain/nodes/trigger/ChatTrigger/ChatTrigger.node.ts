@@ -277,7 +277,8 @@ export class ChatTrigger extends Node {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: '={{$parameter.options?.["responseMode"] || "lastNode" }}',
+				responseMode:
+					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
 				ndvHideUrl: '={{ !$parameter.public }}',
@@ -408,7 +409,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least \'workflow:execute-chat\' access to all users who should use it. Currently, only streaming response mode is supported.',
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it. Currently, only streaming response mode is supported.',
 				name: 'availableInChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -424,7 +425,8 @@ export class ChatTrigger extends Node {
 				type: 'string',
 				default: '',
 				noDataExpression: true,
-				description: 'The name of the agent on n8n Chat',
+				description:
+					'The name of the agent on n8n Chat. Name of the workflow is used if left empty.',
 				displayOptions: {
 					show: {
 						availableInChat: [true],
@@ -532,9 +534,19 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondNodesResponseMode],
+						options: [lastNodeResponseMode, respondNodesResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
 					},
 				],
 			},
@@ -557,10 +569,19 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
 						options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
-						displayOptions: { show: { '/mode': ['webhook'] } },
+						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [false] } },
 					},
 					{
 						displayName: 'Response Mode',
@@ -569,7 +590,7 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, streamingResponseMode, respondNodesResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
-						displayOptions: { show: { '/mode': ['hostedChat'] } },
+						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [false] } },
 					},
 				],
 			},
@@ -655,6 +676,7 @@ export class ChatTrigger extends Node {
 			};
 		}
 
+		const availableInChat = ctx.getNodeParameter('availableInChat', false);
 		const options = ctx.getNodeParameter('options', {});
 		validateNodeParameters(
 			options,
@@ -676,7 +698,9 @@ export class ChatTrigger extends Node {
 		const loadPreviousSession = options.loadPreviousSession;
 		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
 
-		const enableStreaming = options.responseMode === 'streaming';
+		const enableStreaming = availableInChat
+			? !options.responseMode || options.responseMode === 'streaming'
+			: options.responseMode === 'streaming';
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();

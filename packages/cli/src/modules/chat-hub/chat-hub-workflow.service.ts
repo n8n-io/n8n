@@ -31,7 +31,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { MessageRecord } from './chat-hub.types';
+import { MessageRecord, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 
 @Service()
@@ -55,7 +55,11 @@ export class ChatHubWorkflowService {
 		tools: INode[],
 		timeZone: string,
 		trx?: EntityManager,
-	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
+	): Promise<{
+		workflowData: IWorkflowBase;
+		executionData: IRunExecutionData;
+		responseMode: ChatTriggerResponseMode;
+	}> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
@@ -69,9 +73,8 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage,
+				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
-				timeZone,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -103,6 +106,7 @@ export class ChatHubWorkflowService {
 			return {
 				workflowData: workflow,
 				executionData,
+				responseMode: 'streaming',
 			};
 		});
 	}
@@ -261,7 +265,6 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
-		timeZone,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -270,12 +273,11 @@ export class ChatHubWorkflowService {
 		attachments: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
-		systemMessage?: string;
+		systemMessage: string;
 		tools: INode[];
-		timeZone: string;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const toolsAgentNode = this.buildToolsAgentNode(model, timeZone, systemMessage);
+		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
 		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
@@ -489,20 +491,20 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 	private buildToolsAgentNode(
 		model: ChatHubConversationModel,
-		timeZone: string,
-		systemMessage?: string,
+		systemMessage: string,
+		enableStreaming = true,
 	): INode {
 		return {
 			parameters: {
 				promptType: 'define',
 				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
 				options: {
-					enableStreaming: true,
+					enableStreaming,
 					maxTokensFromMemory:
 						model.provider !== 'n8n' && model.provider !== 'custom-agent'
 							? getMaxContextWindowTokens(model.provider, model.model)
 							: undefined,
-					systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
+					systemMessage,
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
