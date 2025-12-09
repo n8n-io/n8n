@@ -19,7 +19,7 @@ export class MicrosoftOneDrive implements INodeType {
 		name: 'microsoftOneDrive',
 		icon: 'file:oneDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft OneDrive API',
 		defaults: {
@@ -63,6 +63,7 @@ export class MicrosoftOneDrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
+		const nodeVersion = this.getNode().typeVersion;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -217,12 +218,17 @@ export class MicrosoftOneDrive implements INodeType {
 							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							let encodedFilename;
 
-							if (fileName !== '') {
-								encodedFilename = encodeURIComponent(fileName);
-							}
-
-							if (fileName == '' && binaryData.fileName !== undefined) {
+							if (nodeVersion == 1 && binaryData.fileName !== undefined) {
+								// pre-fix behavior, filename provided in node parameters is always ignored
 								encodedFilename = encodeURIComponent(binaryData.fileName);
+							} else {
+								if (fileName !== '') {
+									encodedFilename = encodeURIComponent(fileName);
+								}
+
+								if (fileName == '' && binaryData.fileName !== undefined) {
+									encodedFilename = encodeURIComponent(binaryData.fileName);
+								}
 							}
 
 							responseData = await microsoftApiRequest.call(
