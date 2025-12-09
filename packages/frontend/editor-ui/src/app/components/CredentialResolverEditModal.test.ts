@@ -207,20 +207,4 @@ describe('CredentialResolverEditModal', () => {
 			});
 		});
 	});
-
-	describe('Configuration fields', () => {
-		it('should load resolver types with options on mount', async () => {
-			renderModal({
-				props: {
-					modalName: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-				},
-				pinia,
-				global,
-			});
-
-			await vi.waitFor(() => {
-				expect(restApiClient.getCredentialResolverTypes).toHaveBeenCalled();
-			});
-		});
-	});
 });

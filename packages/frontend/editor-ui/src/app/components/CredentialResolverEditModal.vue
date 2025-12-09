@@ -25,7 +25,11 @@ import {
 	updateCredentialResolver,
 	deleteCredentialResolver,
 } from '@n8n/rest-api-client';
-import type { INodeProperties, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type {
+	INodeProperties,
+	ICredentialDataDecryptedObject,
+	CredentialInformation,
+} from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 
@@ -56,27 +60,57 @@ const hasUnsavedChanges = ref(false);
 
 const isEditMode = computed(() => !!props.data?.resolverId);
 
+// Type guard to validate and convert resolver config to credential data
+const isCredentialInformation = (value: unknown): value is CredentialInformation => {
+	return (
+		typeof value === 'string' || (Array.isArray(value) && value.every((v) => typeof v === 'string'))
+	);
+};
+
+const toCredentialData = (config: Record<string, unknown>): ICredentialDataDecryptedObject => {
+	const result: ICredentialDataDecryptedObject = {};
+	for (const [key, value] of Object.entries(config)) {
+		if (isCredentialInformation(value)) {
+			result[key] = value;
+		} else if (
+			typeof value === 'string' ||
+			typeof value === 'number' ||
+			typeof value === 'boolean'
+		) {
+			// Convert primitive values to string for compatibility
+			result[key] = String(value);
+		}
+	}
+	return result;
+};
+
 const selectedType = computed(() => {
 	return availableTypes.value.find((t) => t.name === resolverType.value);
 });
+
+// Helper function to convert resolver option to INodeProperties
+// The explicit return type provides type narrowing from unknown to INodeProperties
+const toNodeProperty = (option: Record<string, unknown>): INodeProperties => {
+	return {
+		name: typeof option.name === 'string' ? option.name : '',
+		type: (typeof option.type === 'string' ? option.type : 'string') as INodeProperties['type'],
+		displayName: typeof option.displayName === 'string' ? option.displayName : '',
+		default: (option.default ?? '') as INodeProperties['default'],
+		...(typeof option.required === 'boolean' && { required: option.required }),
+		...(typeof option.description === 'string' && { description: option.description }),
+		...(typeof option.placeholder === 'string' && { placeholder: option.placeholder }),
+	};
+};
 
 const credentialProperties = computed<INodeProperties[]>(() => {
 	if (!selectedType.value?.options) return [];
 
 	// Transform resolver options to INodeProperties format
-	return selectedType.value.options.map((option: Record<string, unknown>) => ({
-		name: option.name as string,
-		type: option.type as string,
-		displayName: option.displayName as string,
-		default: option.default,
-		required: option.required as boolean,
-		description: option.description as string,
-		placeholder: option.placeholder as string,
-	})) as INodeProperties[];
+	return selectedType.value.options.map(toNodeProperty);
 });
 
 const credentialData = computed<ICredentialDataDecryptedObject>(() => {
-	return resolverConfig.value as ICredentialDataDecryptedObject;
+	return toCredentialData(resolverConfig.value);
 });
 
 const canSave = computed(() => {
@@ -151,15 +185,16 @@ const save = async () => {
 			props.data.onSave(savedResolver.id);
 		}
 
+		toast.showMessage({
+			title: i18n.baseText('credentialResolverEdit.saveSuccess.title'),
+			type: 'success',
+		});
+
 		hasUnsavedChanges.value = false;
 		modalBus.emit('close');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('credentialResolverEdit.error.save'));
 	} finally {
-		toast.showMessage({
-			title: i18n.baseText('credentialResolverEdit.saveSuccess.title'),
-			type: 'success',
-		});
 		isSaving.value = false;
 	}
 };

@@ -65,6 +65,7 @@ describe('WorkflowSettingsVue', () => {
 			envFeatureFlags: {
 				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
 			},
+			releaseChannel: 'stable',
 		});
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
