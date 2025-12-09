@@ -32,7 +32,7 @@ STEP 4: RESPOND TO USER
 
 const NODE_CREATION = `NODE CREATION:
 Each add_nodes call creates ONE node. You must provide:
-- nodeType: The exact type from discovery (e.g., "HTTP Request node")
+- nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest" for the "HTTP Request node")
 - name: Descriptive name (e.g., "Fetch Weather Data")
 - connectionParametersReasoning: Explain your thinking about connection parameters
 - connectionParameters: Parameters that affect connections (or {{}} if none needed)`;
