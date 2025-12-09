@@ -56,15 +56,15 @@ export {
 	getMatchingExamples,
 	matchesPattern,
 	clearRegistry,
-	// Legacy exports
-	buildParameterUpdatePrompt,
-	estimatePromptTokens,
+	// Utilities
 	hasResourceLocatorParameters,
 	instanceUrlPrompt,
+	// Base prompts
 	CORE_INSTRUCTIONS,
 	EXPRESSION_RULES,
 	COMMON_PATTERNS,
 	OUTPUT_FORMAT,
+	// Node-type guides
 	SET_NODE_GUIDE,
 	IF_NODE_GUIDE,
 	SWITCH_NODE_GUIDE,

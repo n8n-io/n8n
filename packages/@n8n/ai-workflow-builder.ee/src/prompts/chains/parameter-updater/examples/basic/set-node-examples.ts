@@ -1,7 +1,7 @@
 import type { NodeTypeExamples } from '../../types';
 
 export const SET_NODE_EXAMPLES: NodeTypeExamples = {
-	patterns: ['n8n-nodes-base.set', '.set'],
+	patterns: ['n8n-nodes-base.set'],
 	priority: 20,
 	content: `
 ### Set Node Examples

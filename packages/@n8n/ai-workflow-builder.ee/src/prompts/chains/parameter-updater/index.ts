@@ -7,19 +7,9 @@ export type {
 	PromptContext,
 } from './types';
 
-// Legacy exports (kept for backwards compatibility)
-export {
-	buildParameterUpdatePrompt,
-	hasResourceLocatorParameters,
-	estimatePromptTokens,
-} from './prompt-builder';
+// Utilities
+export { hasResourceLocatorParameters } from './utils';
 export { instanceUrlPrompt } from './instance-url';
-export {
-	DEFAULT_PROMPT_CONFIG,
-	getNodeTypeCategory,
-	mentionsResourceKeywords,
-	mentionsTextKeywords,
-} from './prompt-config';
 
 // Base prompts
 export { CORE_INSTRUCTIONS } from './base/core-instructions';

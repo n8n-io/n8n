@@ -1,7 +1,7 @@
 import type { NodeTypeGuide } from '../types';
 
 export const SET_NODE_GUIDE: NodeTypeGuide = {
-	patterns: ['n8n-nodes-base.set', '.set'],
+	patterns: ['n8n-nodes-base.set'],
 	priority: 30,
 	content: `
 ### Set Node Updates - Comprehensive Type Handling Guide

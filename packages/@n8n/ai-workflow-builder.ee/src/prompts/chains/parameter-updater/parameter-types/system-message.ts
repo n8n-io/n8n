@@ -67,12 +67,12 @@ Use for DYNAMIC, EXECUTION-SPECIFIC content:
 
 ### Common Mistakes to Avoid
 
-❌ **WRONG - Everything in text field:**
+**WRONG - Everything in text field:**
 {
   "text": "=You are an orchestrator agent that coordinates specialized agents. Your task is to: 1) Call Research Agent Tool, 2) Call Fact-Check Agent Tool, 3) Generate report. Research topic: {{ $json.researchTopic }}"
 }
 
-✅ **CORRECT - Properly separated:**
+**CORRECT - Properly separated:**
 {
   "text": "=The research topic is: {{ $json.researchTopic }}",
   "options": {

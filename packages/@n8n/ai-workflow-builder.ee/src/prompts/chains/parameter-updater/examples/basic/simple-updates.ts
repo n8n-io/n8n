@@ -13,7 +13,7 @@ Current parameters: { "url": "https://api.example.com", "method": "GET" }
 Updated parameters: { "url": "https://api.openweathermap.org/data/2.5/weather?q=London", "method": "GET" }
 
 ### Example 2: Add a header
-Change: "Add an API key header with value from credentials"
+Change: "Add an ABC key header with value 123"
 Current parameters: { "url": "...", "sendHeaders": false }
 Updated parameters: {
   "url": "...",
@@ -21,8 +21,8 @@ Updated parameters: {
   "headerParameters": {
     "parameters": [
       {
-        "name": "X-API-Key",
-        "value": "={{ $credentials.apiKey }}"
+        "name": "ABC",
+        "value": "123"
       }
     ]
   }

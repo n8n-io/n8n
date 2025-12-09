@@ -1,12 +1,10 @@
 import type { NodeTypeGuide } from '../types';
 
 export const IF_NODE_GUIDE: NodeTypeGuide = {
-	patterns: ['n8n-nodes-base.if', '.if'],
+	patterns: ['n8n-nodes-base.if'],
 	priority: 30,
 	content: `
-### IF Node Updates - Comprehensive Guide
-
-The IF node uses a complex filter structure for conditional logic. Understanding the correct operator format is crucial.
+### The IF node uses a complex filter structure for conditional logic. Understanding the correct operator format is crucial.
 
 #### IF Node Structure
 \`\`\`json
