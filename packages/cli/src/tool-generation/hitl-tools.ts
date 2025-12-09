@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { deepCopy, LoggerProxy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils';
 
@@ -212,21 +212,12 @@ export function convertNodeToHitlTool<
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		const originalExecute = nodeItem.execute;
 		nodeItem.execute = async function (this: IExecuteFunctions) {
-			LoggerProxy.debug('[HITL] convertNodeToHitlTool execute wrapper called');
-
 			const node = this.getNode();
 
 			// Ensure output is logged with ai_tool connection type
 			// This makes the HITL node appear in the Agent's logs panel
 			node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 
-			LoggerProxy.debug('[HITL] convertNodeToHitlTool wrapper set rewireOutputLogTo', {
-				nodeName: node.name,
-				nodeType: node.type,
-				rewireOutputLogTo: node.rewireOutputLogTo,
-			});
-
-			// Call original execute (the underlying sendAndWait handler)
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return await originalExecute.call(this);
 		};
@@ -260,8 +251,4 @@ export function createHitlTools(types: Types, known: KnownNodesAndCredentials): 
 
 		copyCredentialSupport(known, sendAndWaitNode.name, wrapped.name);
 	}
-
-	LoggerProxy.debug('[HITL] Generated HITL tool variants', {
-		count: sendAndWaitNodes.length,
-	});
 }

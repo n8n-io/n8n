@@ -11,7 +11,6 @@ import {
 	type Workflow,
 	type EngineResponse,
 	UnexpectedError,
-	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '../errors/error-reporter';
@@ -57,15 +56,9 @@ function prepareRequestedNodesForExecution(
 			// tools always have only one input
 			index: 0,
 		};
-		// For gated tools (HITL approval follow-ups), use the HITL node as the parent
-		// so the gated tool appears under the HITL node in the logs panel
-		const hitlApprovalFollowUp = (
-			action.metadata as
-				| { hitlApprovalFollowUp?: { hitlNodeName: string; hitlNodeRunIndex: number } }
-				| undefined
-		)?.hitlApprovalFollowUp;
-		const parentNode = hitlApprovalFollowUp?.hitlNodeName ?? currentNode.name;
-		const hitlRunIndex = hitlApprovalFollowUp?.hitlNodeRunIndex;
+		// Gated tools (from HITL approval) are children of the AI Agent (currentNode),
+		// just like HITL tools themselves. This ensures consistent display in the logs panel.
+		const parentNode = currentNode.name;
 		const parentSourceData = executionData.source?.main?.[runIndex];
 		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
 		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
@@ -105,29 +98,17 @@ function prepareRequestedNodesForExecution(
 		const nodeRunData = runData[node.name];
 		const nodeRunIndex = nodeRunData.length;
 
-		// Debug: log what input data we're setting for the node
-		Logger.debug('[EngineRequest] Setting up input data for node', {
-			nodeName: node.name,
-			nodeRunIndex,
-			actionInput: action.input,
-			mergedJsonKeys: Object.keys(mergedJson),
-			hasParentOutputData: parentOutputData.length > 0,
-			isHitlFollowUp: !!hitlApprovalFollowUp,
-			parentNodeForSource: parentNode,
-		});
-
 		// TODO: Remove when AI-723 lands.
 		nodeRunData.push({
 			// Necessary for the log on the canvas.
 			inputOverride: { ai_tool: parentOutputData },
-			// Source must point to the parent node for the frontend logs panel
+			// Source must point to the parent node (AI Agent) for the frontend logs panel
 			// to correctly display this sub-node under the parent.
-			// For HITL follow-ups, use the HITL node's run index instead of the agent's.
 			source: [
 				{
 					previousNode: parentNode,
 					previousNodeOutput: parentOutputIndex,
-					previousNodeRun: hitlRunIndex ?? runIndex,
+					previousNodeRun: runIndex,
 				},
 			],
 			executionIndex: 0,

@@ -29,7 +29,6 @@ import {
 	ApplicationError,
 	UserError,
 	sleepWithAbort,
-	LoggerProxy,
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
@@ -111,13 +110,6 @@ function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 		hitlNode.typeVersion,
 	);
 
-	LoggerProxy.debug('[HITL] Creating HITL node type', {
-		hitlNodeName: hitlNode.name,
-		hitlNodeType: hitlNode.type,
-		originalNodeTypeName,
-		parentNodeName: parentNode?.name,
-	});
-
 	// Create a dynamic INodeType with supplyData and execute methods
 	const hitlNodeType: INodeType = {
 		description: originalNodeType.description,
@@ -132,11 +124,6 @@ function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 		 */
 		async supplyData(this: ISupplyDataFunctions, itemIdx: number): Promise<SupplyData> {
 			const node = this.getNode();
-
-			LoggerProxy.debug('[HITL] supplyData called', {
-				hitlNodeName: node.name,
-				itemIdx,
-			});
 
 			// Create context for getting connected tools
 			const context = new SupplyDataContext(
@@ -167,23 +154,10 @@ function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 					? [connectedTools]
 					: [];
 
-			LoggerProxy.debug('[HITL] Found connected tools', {
-				hitlNodeName: node.name,
-				toolCount: toolsArray.length,
-				toolNames: toolsArray.map((t) => t.name),
-				// Debug: log original tool metadata to see what's available
-				originalToolMetadata: toolsArray.map((t) => t.metadata),
-			});
-
 			// Wrap each gated tool to route through HITL node
 			// The tool keeps its original name/schema, but sourceNodeName points to HITL
 			const gatedTools = toolsArray.map((originalTool) => {
 				const originalSourceNodeName = originalTool.metadata?.sourceNodeName as string | undefined;
-				LoggerProxy.debug('[HITL] Wrapping original tool', {
-					toolName: originalTool.name,
-					originalMetadata: originalTool.metadata,
-					originalSourceNodeName,
-				});
 
 				return new DynamicStructuredTool({
 					name: originalTool.name,
@@ -198,13 +172,6 @@ function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 						originalSourceNodeName,
 					},
 				});
-			});
-
-			LoggerProxy.debug('[HITL] Created gated tools with HITL routing', {
-				hitlNodeName: node.name,
-				gatedToolCount: gatedTools.length,
-				gatedToolNames: gatedTools.map((t) => t.name),
-				gatedToolMetadata: gatedTools.map((t) => t.metadata),
 			});
 
 			// Return tools array or single tool based on count
