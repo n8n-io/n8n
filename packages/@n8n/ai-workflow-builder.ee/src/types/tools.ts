@@ -190,3 +190,12 @@ export interface GetWorkflowExamplesOutput {
 	totalResults: number;
 	nodeConfigurations: NodeConfigurationsMap;
 }
+
+/**
+ * Output type for get node configuration examples tool
+ */
+export interface GetNodeConfigurationExamplesOutput {
+	nodeType: string;
+	totalFound: number;
+	message: string;
+}

@@ -1,5 +1,9 @@
-import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
 import type { NodeConfigurationsMap, WorkflowMetadata } from '@/types';
+
+import {
+	collectSingleNodeConfiguration,
+	addNodeConfigurationToMap,
+} from './node-configuration.utils';
 
 /**
  * Options for mermaid diagram generation
@@ -144,23 +148,15 @@ function buildConnectionLines(
 
 /**
  * Collect node configuration if it meets size requirements
+ * Uses utility function from node-configuration.utils.ts
  */
 function maybeCollectNodeConfiguration(
 	node: WorkflowNode,
 	nodeConfigurations: NodeConfigurationsMap,
 ): void {
-	const hasParams = Object.keys(node.parameters).length > 0;
-	if (!hasParams) return;
-
-	const parametersStr = JSON.stringify(node.parameters);
-	if (parametersStr.length <= MAX_NODE_EXAMPLE_CHARS) {
-		if (!nodeConfigurations[node.type]) {
-			nodeConfigurations[node.type] = [];
-		}
-		nodeConfigurations[node.type].push({
-			version: node.typeVersion,
-			parameters: node.parameters,
-		});
+	const config = collectSingleNodeConfiguration(node);
+	if (config) {
+		addNodeConfigurationToMap(node.type, config, nodeConfigurations);
 	}
 }
 

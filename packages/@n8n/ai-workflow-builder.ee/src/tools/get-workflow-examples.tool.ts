@@ -13,7 +13,7 @@ import {
 	createErrorResponse,
 } from './helpers';
 import { processWorkflowExamples } from './utils/markdown-workflow.utils';
-import { fetchTemplateList, fetchTemplateByID } from './web/templates';
+import { fetchWorkflowsFromTemplates } from './web/templates';
 
 /**
  * Workflow example query schema
@@ -31,67 +31,6 @@ const getWorkflowExamplesSchema = z.object({
 		.min(1)
 		.describe('Array of search queries to find workflow examples'),
 });
-
-/**
- * Inferred types from schemas
- */
-type WorkflowExampleQuery = z.infer<typeof workflowExampleQuerySchema>;
-
-/**
- * Result of fetching workflow examples including template IDs for telemetry
- */
-interface FetchWorkflowExamplesResult {
-	workflows: WorkflowMetadata[];
-	totalFound: number;
-	templateIds: number[];
-}
-
-/**
- * Fetch workflow examples from the API
- */
-async function fetchWorkflowExamples(
-	query: WorkflowExampleQuery,
-	logger?: Logger,
-): Promise<FetchWorkflowExamplesResult> {
-	logger?.debug('Fetching workflow examples with query', { query });
-
-	// First, fetch the list of workflow templates (metadata)
-	const response = await fetchTemplateList({
-		search: query.search,
-	});
-
-	// Then fetch complete workflow data for each template
-	const workflowResults: Array<{ metadata: WorkflowMetadata; templateId: number } | undefined> =
-		await Promise.all(
-			response.workflows.map(async (workflow) => {
-				try {
-					const fullWorkflow = await fetchTemplateByID(workflow.id);
-					return {
-						metadata: {
-							name: workflow.name,
-							description: workflow.description,
-							workflow: fullWorkflow.workflow,
-						},
-						templateId: workflow.id,
-					};
-				} catch (error) {
-					// failed to fetch a workflow, ignore it for now
-					logger?.warn(`Failed to fetch full workflow for template ${workflow.id}`, { error });
-					return undefined;
-				}
-			}),
-		);
-
-	const validResults = workflowResults.filter(
-		(result): result is { metadata: WorkflowMetadata; templateId: number } => result !== undefined,
-	);
-
-	return {
-		workflows: validResults.map((r) => r.metadata),
-		totalFound: response.totalWorkflows,
-		templateIds: validResults.map((r) => r.templateId),
-	};
-}
 
 /**
  * Build a human-readable identifier for a query
@@ -182,8 +121,8 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 						// Report progress
 						batchReporter.next(identifier);
 
-						// Fetch workflow examples
-						const result = await fetchWorkflowExamples(query, logger);
+						// Fetch workflow examples using shared utility
+						const result = await fetchWorkflowsFromTemplates({ search: query.search }, { logger });
 
 						// Add to results
 						allResults = allResults.concat(result.workflows);

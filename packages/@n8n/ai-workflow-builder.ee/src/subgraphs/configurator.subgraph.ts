@@ -12,6 +12,7 @@ import { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from '@/prompts/agents/c
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-configuration-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
@@ -19,6 +20,7 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
+import type { NodeConfigurationsMap } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
@@ -27,6 +29,7 @@ import {
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { nodeConfigurationsReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
@@ -82,6 +85,12 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 		},
 		default: () => [],
 	}),
+
+	// Input: Node configurations from discovery (passed from parent)
+	nodeConfigurations: Annotation<NodeConfigurationsMap>({
+		reducer: nodeConfigurationsReducer,
+		default: () => ({}),
+	}),
 });
 
 export interface ConfiguratorSubgraphConfig {
@@ -115,6 +124,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			createGetNodeConfigurationExamplesTool(config.logger),
 		];
 		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
@@ -213,6 +223,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			instanceUrl: this.instanceUrl,
 			userRequest,
 			discoveryContext: parentState.discoveryContext,
+			nodeConfigurations: parentState.nodeConfigurations,
 			messages: [contextMessage],
 		};
 	}

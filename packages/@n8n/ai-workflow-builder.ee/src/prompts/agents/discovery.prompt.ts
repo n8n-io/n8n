@@ -242,7 +242,8 @@ const CRITICAL_RULES = `CRITICAL RULES:
 - NEVER guess node versions - always use search_nodes to find exact versions
 - ONLY flag connectionChangingParameters if they appear in <input> or <output> expressions
 - If no parameters appear in connection expressions, return empty array []
-- Output ONLY: nodesFound with {{ nodeName, version, reasoning, connectionChangingParameters }}`;
+- Output ONLY: nodesFound with {{ nodeName, version, reasoning, connectionChangingParameters }}
+- When user specifies a model name (e.g., 'gpt-4.1-mini'), use it EXACTLY as written - no corrections or substitutions`;
 
 const RESTRICTIONS = `DO NOT:
 - Output text commentary between tool calls
