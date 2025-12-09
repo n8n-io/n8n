@@ -40,6 +40,9 @@ const KEY_DISTINCTION = `- "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT 
 const OUTPUT_FORMAT = `- reasoning: One sentence explaining your routing decision
 - next: Agent name`;
 
+const INSTRUCTION =
+	'Given the conversation above, which agent should act next? Provide your reasoning and selection.';
+
 export function buildSupervisorPrompt(): string {
 	return prompt()
 		.section('role', SUPERVISOR_ROLE)
@@ -47,8 +50,6 @@ export function buildSupervisorPrompt(): string {
 		.section('routing_decision_tree', ROUTING_DECISION_TREE)
 		.section('key_distinction', KEY_DISTINCTION)
 		.section('output', OUTPUT_FORMAT)
+		.section('instruction', INSTRUCTION)
 		.build();
 }
-
-export const SUPERVISOR_PROMPT_SUFFIX =
-	'\n\nGiven the conversation above, which agent should act next? Provide your reasoning and selection.';

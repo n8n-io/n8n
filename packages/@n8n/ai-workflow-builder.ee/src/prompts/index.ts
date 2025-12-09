@@ -29,7 +29,7 @@ export {
 	type DiscoveryPromptOptions,
 } from './agents/discovery.prompt';
 export { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from './agents/configurator.prompt';
-export { buildSupervisorPrompt, SUPERVISOR_PROMPT_SUFFIX } from './agents/supervisor.prompt';
+export { buildSupervisorPrompt } from './agents/supervisor.prompt';
 export { buildResponderPrompt } from './agents/responder.prompt';
 
 // Legacy agent prompt (single-agent mode)
