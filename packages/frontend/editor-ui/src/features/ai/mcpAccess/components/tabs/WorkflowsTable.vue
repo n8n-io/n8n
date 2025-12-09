@@ -14,6 +14,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
+import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -82,13 +83,6 @@ const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<Workf
 			disabled: !permissions.workflow.update,
 		},
 	];
-};
-
-const getProjectName = (workflow: WorkflowListItem): string => {
-	if (workflow.homeProject?.type === 'personal') {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return workflow.homeProject?.name ?? '';
 };
 
 const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
@@ -160,60 +154,11 @@ const onConnectClick = () => {
 				</template>
 				<template #[`item.location`]="{ item }">
 					<div :class="$style['location-cell']" data-test-id="mcp-workflow-location-cell">
-						<span v-if="item.homeProject">
-							<N8nLink
-								data-test-id="mcp-workflow-project-link"
-								:to="
-									router.resolve({
-										name: VIEWS.PROJECTS_WORKFLOWS,
-										params: { projectId: item.homeProject.id },
-									}).fullPath
-								"
-								:theme="'text'"
-								:class="[$style['table-link'], $style['project-link']]"
-								:new-window="true"
-							>
-								<N8nText data-test-id="mcp-workflow-project-name">
-									{{ getProjectName(item) }}
-								</N8nText>
-							</N8nLink>
-						</span>
-						<span
-							v-if="item.parentFolder"
-							:class="$style.separator"
-							data-test-id="mcp-workflow-ellipsis-separator"
-							>/</span
-						>
-						<span
-							v-if="item.parentFolder?.parentFolderId"
-							:class="$style['parent-folder']"
-							data-test-id="mcp-workflow-grandparent-folder"
-						>
-							<span :class="$style.ellipsis">...</span>
-							<span :class="$style.separator" data-test-id="mcp-workflow-ellipsis-separator"
-								>/</span
-							>
-						</span>
-						<span v-if="item.parentFolder" :class="$style['parent-folder']">
-							<N8nLink
-								v-if="item.homeProject"
-								data-test-id="mcp-workflow-folder-link"
-								:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
-								:theme="'text'"
-								:class="$style['table-link']"
-								:new-window="true"
-							>
-								<N8nText data-test-id="mcp-workflow-folder-name">
-									{{ item.parentFolder.name }}
-								</N8nText>
-							</N8nLink>
-							<span v-else>
-								<N8nIcon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
-								<N8nText data-test-id="mcp-workflow-folder-name">
-									{{ item.parentFolder.name }}
-								</N8nText>
-							</span>
-						</span>
+						<WorkflowLocation
+							:home-project="item.homeProject"
+							:parent-folder="item.parentFolder"
+							:as-links="true"
+						/>
 					</div>
 				</template>
 				<template #[`item.description`]="{ item }">
@@ -289,27 +234,10 @@ const onConnectClick = () => {
 .workflow-cell {
 	display: flex;
 	padding: var(--spacing--2xs) 0;
-	.separator,
-	.ellipsis {
-		padding-bottom: 1px;
-		color: var(--color--text--tint-1);
-	}
 }
 
 .location-cell {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.ellipsis {
-	padding-right: var(--spacing--4xs);
-}
-
-.ellipsis,
-.separator {
-	user-select: none;
-	color: var(--color--text--tint-1);
+	padding: var(--spacing--2xs) 0;
 }
 
 .description-cell {

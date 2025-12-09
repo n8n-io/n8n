@@ -3,9 +3,10 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nIcon, N8nSelect, N8nOption } from '@n8n/design-system';
 import { onMounted, ref } from 'vue';
+import type { WorkflowListItem } from '@/Interface';
+import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
-type SelectOption = { value: string; label: string };
 
 defineProps<{
 	placeholder?: string;
@@ -18,7 +19,7 @@ const mcpStore = useMCPStore();
 
 const isLoading = ref(false);
 const selectRef = ref<SelectRef | null>(null);
-const workflowOptions = ref<SelectOption[]>([]);
+const workflowOptions = ref<WorkflowListItem[]>([]);
 
 async function searchWorkflows(query?: string) {
 	isLoading.value = true;
@@ -27,15 +28,11 @@ async function searchWorkflows(query?: string) {
 			take: 10,
 			query: query || undefined,
 		});
-		const workflows = response?.data ?? [];
-		workflowOptions.value = workflows.map((workflow) => ({
-			value: workflow.id,
-			label: workflow.name,
-		}));
+		workflowOptions.value = response?.data ?? [];
 	} finally {
 		setTimeout(() => {
 			isLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		}, 2 * LOADING_INDICATOR_TIMEOUT);
 	}
 }
 
@@ -44,7 +41,7 @@ function focusOnInput() {
 }
 
 function removeOption(value: string) {
-	workflowOptions.value = workflowOptions.value.filter((option) => option.value !== value);
+	workflowOptions.value = workflowOptions.value.filter((option) => option.id !== value);
 }
 
 onMounted(async () => {
@@ -73,11 +70,17 @@ defineExpose({
 			<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
 		</template>
 		<N8nOption
-			v-for="option in workflowOptions"
-			:key="option.value"
-			:value="option.value"
-			:label="option.label"
-		/>
+			v-for="workflow in workflowOptions"
+			:key="workflow.id"
+			:value="workflow.id"
+			:label="workflow.name"
+		>
+			<WorkflowLocation
+				:workflow-name="workflow.name"
+				:home-project="workflow.homeProject"
+				:parent-folder="workflow.parentFolder"
+			/>
+		</N8nOption>
 	</N8nSelect>
 </template>
 
