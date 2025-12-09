@@ -1,16 +1,13 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { MemorySaver } from '@langchain/langgraph';
 import { mkdirSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 import pc from 'picocolors';
 import { v4 as uuid } from 'uuid';
 
 import { anthropicClaudeSonnet45 } from '../../src/llm-config';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
-import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import type { Violation } from '../types/evaluation';
 import type { TestResult } from '../types/test-result';
 
@@ -42,28 +39,6 @@ export function createTracer(projectName: string): LangChainTracer | undefined {
 	return new LangChainTracer({
 		client: tracingClient,
 		projectName,
-	});
-}
-
-/**
- * Creates a new WorkflowBuilderAgent instance
- * @param parsedNodeTypes - Array of parsed node type descriptions
- * @param llm - Language model instance
- * @param tracer - Optional LangChain tracer
- * @returns Configured WorkflowBuilderAgent
- */
-export function createAgent(
-	parsedNodeTypes: INodeTypeDescription[],
-	llm: BaseChatModel,
-	tracer?: LangChainTracer,
-	checkpointer?: MemorySaver,
-): WorkflowBuilderAgent {
-	return new WorkflowBuilderAgent({
-		parsedNodeTypes,
-		llmSimpleTask: llm,
-		llmComplexTask: llm,
-		checkpointer: checkpointer ?? new MemorySaver(),
-		tracer,
 	});
 }
 

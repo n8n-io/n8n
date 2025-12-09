@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
 import { createEvaluatorChain, invokeEvaluatorChain } from './evaluators/base';
@@ -88,15 +89,20 @@ export function createPairwiseEvaluatorChain(llm: BaseChatModel) {
 export async function evaluateWorkflowPairwise(
 	llm: BaseChatModel,
 	input: PairwiseEvaluationInput,
+	config?: RunnableConfig,
 ): Promise<PairwiseEvaluationResult> {
 	const dos = input.evalCriteria?.dos ?? '';
 	const donts = input.evalCriteria?.donts ?? '';
 	const criteriaList = `[DO]\n${dos}\n\n[DONT]\n${donts}`;
 
-	const result = await invokeEvaluatorChain(createPairwiseEvaluatorChain(llm), {
-		userPrompt: criteriaList,
-		generatedWorkflow: input.workflowJSON,
-	});
+	const result = await invokeEvaluatorChain(
+		createPairwiseEvaluatorChain(llm),
+		{
+			userPrompt: criteriaList,
+			generatedWorkflow: input.workflowJSON,
+		},
+		config,
+	);
 
 	const totalRules = result.passes.length + result.violations.length;
 	const diagnosticScore = totalRules > 0 ? result.passes.length / totalRules : 0;

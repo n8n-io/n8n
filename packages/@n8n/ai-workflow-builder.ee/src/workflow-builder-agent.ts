@@ -1,3 +1,4 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, isAIMessage, RemoveMessage } from '@langchain/core/messages';
@@ -471,13 +472,19 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	async *chat(
+		payload: ChatPayload,
+		userId?: string,
+		abortSignal?: AbortSignal,
+		externalCallbacks?: Callbacks,
+	) {
 		this.validateMessageLength(payload.message);
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,
 			userId,
 			abortSignal,
+			externalCallbacks,
 		);
 
 		try {
@@ -501,7 +508,12 @@ export class WorkflowBuilderAgent {
 		}
 	}
 
-	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	private setupAgentAndConfigs(
+		payload: ChatPayload,
+		userId?: string,
+		abortSignal?: AbortSignal,
+		externalCallbacks?: Callbacks,
+	) {
 		const agent = this.createWorkflow(payload.featureFlags);
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
@@ -517,7 +529,9 @@ export class WorkflowBuilderAgent {
 			streamMode: ['updates', 'custom'] as const,
 			recursionLimit: 50,
 			signal: abortSignal,
-			callbacks: this.tracer ? [this.tracer] : undefined,
+			// Use external callbacks if provided (e.g., from LangSmith traceable context),
+			// otherwise fall back to the instance tracer
+			callbacks: externalCallbacks ?? (this.tracer ? [this.tracer] : undefined),
 			metadata: this.runMetadata,
 			// Enable subgraph streaming when using multi-agent architecture
 			subgraphs: payload.featureFlags?.multiAgent ?? false,

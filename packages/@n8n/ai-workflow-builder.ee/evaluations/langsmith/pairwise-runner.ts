@@ -1,9 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import * as fs from 'fs';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
+import { getLangchainCallbacks } from 'langsmith/langchain';
 import type { Run, Example } from 'langsmith/schemas';
+import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 import pc from 'picocolors';
@@ -337,76 +338,104 @@ function buildMultiGenerationLangsmithResults(
 	];
 }
 
-/** Run a single generation and its judge panel */
-async function runSingleGeneration(
-	parsedNodeTypes: INodeTypeDescription[],
-	llm: BaseChatModel,
-	numJudges: number,
-	inputs: PairwiseDatasetInput,
-	generationIndex: number,
-	log: EvalLogger,
-	featureFlags?: BuilderFeatureFlags,
-	tracer?: LangChainTracer,
-): Promise<GenerationResult> {
-	const startTime = Date.now();
-	const runId = generateRunId();
+/** Run a single judge evaluation - wrapped with traceable for separate LangSmith run */
+const runJudgeEvaluation = traceable(
+	async (
+		llm: BaseChatModel,
+		workflow: SimpleWorkflow,
+		evalCriteria: PairwiseDatasetInput['evals'],
+		judgeIndex: number,
+		generationIndex: number,
+	): Promise<PairwiseEvaluationResult> => {
+		const callbacks = await getLangchainCallbacks();
+		return await evaluateWorkflowPairwise(
+			llm,
+			{ workflowJSON: workflow, evalCriteria },
+			{
+				callbacks,
+				runName: `judge_${judgeIndex + 1}_gen_${generationIndex + 1}`,
+			},
+		);
+	},
+	{ name: 'judge_evaluation', run_type: 'chain' },
+);
 
-	// Create dedicated agent for this generation
-	const agent = createAgent(parsedNodeTypes, llm, tracer, featureFlags);
+/** Run a single generation and its judge panel - wrapped with traceable for LangSmith context propagation */
+const runSingleGeneration = traceable(
+	async (
+		parsedNodeTypes: INodeTypeDescription[],
+		llm: BaseChatModel,
+		numJudges: number,
+		inputs: PairwiseDatasetInput,
+		generationIndex: number,
+		log: EvalLogger,
+		featureFlags?: BuilderFeatureFlags,
+		runName?: string,
+	): Promise<GenerationResult> => {
+		const startTime = Date.now();
+		const runId = generateRunId();
 
-	// Generate workflow
-	await consumeGenerator(
-		agent.chat(
-			getChatPayload('pairewise-gen', inputs.prompt, runId, featureFlags),
-			`pairwise-gen-${generationIndex}`,
-		),
-	);
+		// Get LangChain callbacks linked to current traceable context.
+		// This is the official bridge between LangSmith's traceable and LangChain callbacks.
+		const callbacks = await getLangchainCallbacks();
 
-	const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
+		// Create dedicated agent for this generation (no tracer - callbacks passed at invocation)
+		const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags, runName);
 
-	if (!state.values || !isWorkflowStateValues(state.values)) {
-		throw new Error(`Invalid workflow state for generation ${generationIndex + 1}`);
-	}
+		// Generate workflow - pass callbacks for proper trace linking
+		await consumeGenerator(
+			agent.chat(
+				getChatPayload('pairewise-gen', inputs.prompt, runId, featureFlags),
+				`pairwise-gen-${generationIndex}`,
+				undefined, // abortSignal
+				callbacks, // externalCallbacks for LangSmith tracing
+			),
+		);
 
-	const workflow = state.values.workflowJSON;
-	const genTime = (Date.now() - startTime) / 1000;
+		const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
 
-	log.verbose(
-		`  Gen ${generationIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
-	);
+		if (!state.values || !isWorkflowStateValues(state.values)) {
+			throw new Error(`Invalid workflow state for generation ${generationIndex + 1}`);
+		}
 
-	// Run judges for this generation in parallel
-	const judgeResults = await Promise.all(
-		Array.from({ length: numJudges }, async () => {
-			return await evaluateWorkflowPairwise(llm, {
-				workflowJSON: workflow,
-				evalCriteria: inputs.evals,
-			});
-		}),
-	);
+		const workflow = state.values.workflowJSON;
+		const genTime = (Date.now() - startTime) / 1000;
 
-	// Aggregate judge results for this generation
-	const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
-	const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
-	const avgDiagnosticScore =
-		judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+		log.verbose(
+			`  Gen ${generationIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
+		);
 
-	// Log per-generation judge results
-	const totalViolations = judgeResults.reduce((sum, r) => sum + r.violations.length, 0);
-	log.verbose(
-		`  Gen ${generationIndex + 1}: ${primaryPasses}/${numJudges} judges → ` +
-			`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%` +
-			`${totalViolations > 0 ? `, ${totalViolations} violations` : ''})`,
-	);
+		// Run judges for this generation in parallel - each wrapped in traceable for separate runs
+		const judgeResults = await Promise.all(
+			Array.from({ length: numJudges }, async (_, judgeIndex) => {
+				return await runJudgeEvaluation(llm, workflow, inputs.evals, judgeIndex, generationIndex);
+			}),
+		);
 
-	return {
-		workflow,
-		judgeResults,
-		primaryPasses,
-		majorityPass,
-		avgDiagnosticScore,
-	};
-}
+		// Aggregate judge results for this generation
+		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+		const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
+		const avgDiagnosticScore =
+			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+
+		// Log per-generation judge results
+		const totalViolations = judgeResults.reduce((sum, r) => sum + r.violations.length, 0);
+		log.verbose(
+			`  Gen ${generationIndex + 1}: ${primaryPasses}/${numJudges} judges → ` +
+				`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%` +
+				`${totalViolations > 0 ? `, ${totalViolations} violations` : ''})`,
+		);
+
+		return {
+			workflow,
+			judgeResults,
+			primaryPasses,
+			majorityPass,
+			avgDiagnosticScore,
+		};
+	},
+	{ name: 'workflow_generation', run_type: 'chain' },
+);
 
 // ============================================================================
 // Workflow Generator (for LangSmith)
@@ -424,7 +453,7 @@ function createPairwiseWorkflowGenerator(
 	log: EvalLogger,
 	artifactSaver: ArtifactSaver | null,
 	featureFlags?: BuilderFeatureFlags,
-	tracer?: LangChainTracer,
+	runName?: string,
 ) {
 	return async (inputs: PairwiseDatasetInput) => {
 		const startTime = Date.now();
@@ -442,6 +471,7 @@ function createPairwiseWorkflowGenerator(
 		artifactSaver?.savePrompt(promptId, inputs.prompt, inputs.evals);
 
 		// Run all generations in parallel
+		// runSingleGeneration is wrapped with traceable for automatic context propagation
 		const generationResults = await Promise.all(
 			Array.from({ length: numGenerations }, async (_, i) => {
 				return await runSingleGeneration(
@@ -452,7 +482,7 @@ function createPairwiseWorkflowGenerator(
 					i,
 					log,
 					featureFlags,
-					tracer,
+					runName,
 				);
 			}),
 		);
@@ -574,6 +604,7 @@ function filterExamples(
 
 /** Create repeated data array for LangSmith evaluation */
 function createRepeatedData(data: Example[], repetitions: number): Example[] {
+	if (repetitions <= 1) return data;
 	const repeatedData: Example[] = [];
 	for (let i = 0; i < repetitions; i++) {
 		repeatedData.push(...data);
@@ -675,11 +706,21 @@ export async function runPairwiseLangsmithEvaluation(
 		process.exit(1);
 	}
 
+	// Ensure LANGSMITH_TRACING is enabled for automatic LangChain tracing
+	// Note: LANGCHAIN_TRACING is deprecated, use LANGSMITH_TRACING instead
+	if (!process.env.LANGSMITH_TRACING) {
+		process.env.LANGSMITH_TRACING = 'true';
+		log.verbose('➔ Enabled LANGSMITH_TRACING=true');
+	}
+
 	// Reset counter for this run
 	generationCounter = 0;
 
 	try {
-		const { parsedNodeTypes, llm, tracer, lsClient } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
+		// Note: Don't use the tracer from setupTestEnvironment() here.
+		// LangSmith's evaluate() manages its own tracing context - passing a separate
+		// tracer would create disconnected runs in a different project.
 
 		if (!lsClient) {
 			throw new Error('Langsmith client not initialized');
@@ -721,16 +762,17 @@ export async function runPairwiseLangsmithEvaluation(
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
 		// Filter examples based on notionId or maxExamples
-		const data = filterExamples(allExamples, notionId, maxExamples, log);
+		const filteredData = filterExamples(allExamples, notionId, maxExamples, log);
 
 		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);
 
-		// NOTE: LangSmith's numRepetitions doesn't work when passing Example[] array directly
-		// (it only works with dataset names). We manually duplicate examples to work around this.
-		const repeatedData = createRepeatedData(data, repetitions);
+		// Create repeated data for evaluation (manual repetition since we pass Example[] not dataset name)
+		const repeatedData = createRepeatedData(filteredData, repetitions);
 
-		log.info(`➔ Running ${data.length} × ${repetitions} = ${repeatedData.length} generations`);
+		log.info(
+			`➔ Running ${filteredData.length} example(s) × ${repetitions} rep(s) = ${repeatedData.length} total evaluations`,
+		);
 
 		const generateWorkflow = createPairwiseWorkflowGenerator(
 			parsedNodeTypes,
@@ -740,7 +782,7 @@ export async function runPairwiseLangsmithEvaluation(
 			log,
 			artifactSaver,
 			featureFlags,
-			tracer,
+			experimentName,
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
 
@@ -751,7 +793,6 @@ export async function runPairwiseLangsmithEvaluation(
 			evaluators: [evaluator],
 			maxConcurrency: concurrency,
 			experimentPrefix: experimentName,
-			// numRepetitions not used - we manually duplicate examples above
 			metadata: {
 				numJudges,
 				numGenerations,

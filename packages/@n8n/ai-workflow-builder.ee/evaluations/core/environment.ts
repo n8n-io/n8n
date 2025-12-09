@@ -85,6 +85,7 @@ export function createAgent(
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
 	featureFlags?: BuilderFeatureFlags,
+	experimentName?: string,
 ): WorkflowBuilderAgent {
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
@@ -93,6 +94,10 @@ export function createAgent(
 		checkpointer: new MemorySaver(),
 		tracer,
 		featureFlags,
+		runMetadata: {
+			featureFlags: featureFlags ?? {},
+			experimentName,
+		},
 	});
 }
 
