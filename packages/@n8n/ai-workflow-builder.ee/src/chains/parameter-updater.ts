@@ -101,15 +101,10 @@ export const createParameterUpdaterChain = (
 		builder.section(sectionId, guide.content, { priority: guide.priority ?? 30 });
 	}
 
-	// Add common patterns and output format
+	// Add common patterns, examples, and output format
 	builder
 		.section('common_patterns', COMMON_PATTERNS, { priority: 70 })
-		.sectionIf(
-			examples.length > 0,
-			'examples',
-			() => '## Relevant Examples\n' + examples.map((e) => e.content).join('\n\n'),
-			{ priority: 80 },
-		)
+		.examplesIf(examples.length > 0, 'examples', examples, undefined, { priority: 80 })
 		.section('output_format', OUTPUT_FORMAT, { priority: 90 });
 
 	const systemPromptContent = builder.build();

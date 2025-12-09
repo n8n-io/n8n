@@ -84,7 +84,7 @@ describe('getMatchingGuides', () => {
 
 	it('should return IF node guide for IF nodes', () => {
 		const guides = getMatchingGuides(createContext('n8n-nodes-base.if'));
-		const ifGuide = guides.find((g) => g.content.includes('IF Node Updates'));
+		const ifGuide = guides.find((g) => g.content.includes('IF node uses a complex filter'));
 		expect(ifGuide).toBeDefined();
 	});
 
