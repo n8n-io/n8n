@@ -51,6 +51,14 @@ export { workflowNamingPromptTemplate } from './chains/workflow-name.prompt';
 
 // Parameter updater prompts
 export {
+	// Registry system
+	registerGuide,
+	registerExamples,
+	getMatchingGuides,
+	getMatchingExamples,
+	matchesPattern,
+	clearRegistry,
+	// Legacy exports
 	buildParameterUpdatePrompt,
 	estimatePromptTokens,
 	hasResourceLocatorParameters,
@@ -67,4 +75,11 @@ export {
 	RESOURCE_LOCATOR_GUIDE,
 	SYSTEM_MESSAGE_GUIDE,
 	TEXT_FIELDS_GUIDE,
+} from './chains/parameter-updater';
+
+export type {
+	NodeTypeGuide,
+	NodeTypeExamples,
+	NodeTypePattern,
+	PromptContext,
 } from './chains/parameter-updater';
