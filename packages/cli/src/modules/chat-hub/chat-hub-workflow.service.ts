@@ -31,6 +31,7 @@ import {
 	NodeConnectionTypes,
 	OperationalError,
 	type IBinaryData,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -691,7 +692,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				mode: 'insert',
 				insertMode: 'override',
 				messages: {
-					messageValues: messageValues as any,
+					messageValues: messageValues as unknown as NodeParameterValueType,
 				},
 			},
 			type: MEMORY_MANAGER_NODE_TYPE,
