@@ -1287,6 +1287,10 @@ export class SourceControlImportService {
 			return;
 		}
 
+		// Fetch user for author info
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		const authors = user ? `${user.firstName} ${user.lastName}` : 'Unknown';
+
 		try {
 			const existingVersion = await this.workflowHistoryService.findVersion(
 				importedWorkflow.id,
@@ -1306,16 +1310,13 @@ export class SourceControlImportService {
 						`Updating workflow history for versionId ${importedWorkflow.versionId}`,
 					);
 
-					// Fetch user for author info
-					const user = await this.userRepository.findOne({ where: { id: userId } });
-
 					await this.workflowHistoryService.updateVersion(
 						importedWorkflow.versionId,
 						importedWorkflow.id,
 						{
 							nodes: importedWorkflow.nodes,
 							connections: importedWorkflow.connections,
-							authors: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+							authors,
 						},
 					);
 				} else {
@@ -1329,10 +1330,8 @@ export class SourceControlImportService {
 					`Creating new workflow history for versionId ${importedWorkflow.versionId}`,
 				);
 
-				const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
-
 				await this.workflowHistoryService.saveVersion(
-					user,
+					authors,
 					importedWorkflow as unknown as IWorkflowBase,
 					importedWorkflow.id,
 				);

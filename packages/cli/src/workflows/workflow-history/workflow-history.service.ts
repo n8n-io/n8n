@@ -97,7 +97,7 @@ export class WorkflowHistoryService {
 	}
 
 	async saveVersion(
-		user: User,
+		user: User | string,
 		workflow: IWorkflowBase,
 		workflowId: string,
 		transactionManager?: EntityManager,
@@ -108,13 +108,15 @@ export class WorkflowHistoryService {
 			);
 		}
 
+		const authors = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+
 		const repository = transactionManager
 			? transactionManager.getRepository(WorkflowHistory)
 			: this.workflowHistoryRepository;
 
 		try {
 			await repository.insert({
-				authors: user.firstName + ' ' + user.lastName,
+				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
 				versionId: workflow.versionId,
