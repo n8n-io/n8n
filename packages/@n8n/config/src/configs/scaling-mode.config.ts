@@ -26,19 +26,33 @@ class RedisTlsConfig {
 	 * https://bun.com/reference/node/tls/ConnectionOptions
 	 */
 
-	/** Root CA certificate file path. Must be PEM formatted X.509 certificate. @example '/home/node/certs/ca.crt' */
+	/**
+	 * Root CA certificate file path. Must be PEM formatted X.509 certificate.
+	 * @example '/home/node/certs/ca.crt'
+	 */
 	@Env('QUEUE_BULL_REDIS_TLS_CA_FILE')
 	caFile: string = '';
 
-	/** Client certificate in pem format. Must be PEM formatted X.509 certificate. Optional if redis tls_auth_clients is 'no' or 'optional'. @example '/home/node/certs/cert.crt' */
+	/**
+	 * Client certificate file path. Can be of type clientServer where both client and server use the same certificates.
+	 * Optional if redis tls_auth_clients is 'no' or 'optional'.
+	 * @example '/home/node/certs/cert.crt'
+	 */
 	@Env('QUEUE_BULL_REDIS_TLS_CERT_FILE')
 	certFile: string = '';
 
-	/** The client certificate's private key. File path to load pem certificate file. @example '/home/node/certs/cert.key' */
+	/**
+	 * The client certificate's private key. File path to certificate's private key file.
+	 * Encryption with passphrase is supported. @see QUEUE_BULL_REDIS_TLS_CERT_KEY_PASS
+	 * @example '/home/node/certs/cert.key'
+	 */
 	@Env('QUEUE_BULL_REDIS_TLS_CERT_KEY_FILE')
 	certKeyFile: string = '';
 
-	/** The passphrase to decrypt the client certificate's private key. . @example 'MyCertKeyPassphrase' */
+	/**
+	 * The passphrase to decrypt the client certificate's private key. Optional if the key is not encrypted.
+	 * @example 'MyCertKeyPassphrase'
+	 */
 	@Env('QUEUE_BULL_REDIS_TLS_CERT_KEY_PASS')
 	certKeyFilePassphrase: string = '';
 
@@ -61,7 +75,11 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_HOST')
 	host: string = 'localhost';
 
-	/** Enable full ioredis client debug logging. Same as setting env 'DEBUG=ioredis:*' */
+	/**
+	 * Enable full ioredis client debug logging. Same effect as setting env 'DEBUG=ioredis:*'.
+	 * Will merge with existing DEBUG env namespaces if any are set.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#debug
+	 */
 	@Env('QUEUE_BULL_REDIS_DEBUG')
 	debug: boolean = false;
 

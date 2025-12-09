@@ -26,8 +26,9 @@ type RedisNode = Array<{
 
 /**
  * Enable ioredis debug logging if QUEUE_BULL_REDIS_DEBUG is set to 'true'.
- * Based on npm package 'debug', setting the DEBUG env var to 'ioredis:*' enables
- * Must be called before any ioredis client is created.
+ * Based on npm package 'debug', setting the DEBUG env var to 'ioredis:*' enables logging.
+ * Must be called before any ioredis module is loaded to take effect.
+ * @see
  */
 function enableRedisDebug() {
 	const debug = process.env.QUEUE_BULL_REDIS_DEBUG === 'true';
@@ -158,6 +159,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const redisConfig = this.globalConfig.queue.bull.redis;
 		const { username, password, db, tls, tlsConfig, enableAutoPipelining } = redisConfig;
 
+		// Support all IPv4/IPv6 DNS lookup variants. Defaults to IPv4. Backward compatible with DUALSTACK option.
 		const getHostnameResolutionIpAddressFamily = (): 0 | 4 | 6 => {
 			const { dualStack, ipV6 } = redisConfig;
 			if (dualStack && ipV6) this.exitWithError('Set only one redis option: DUALSTACK or IPV6.');
@@ -175,6 +177,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		 * - https://github.com/OptimalBits/bull/issues/890
 		 * - https://github.com/OptimalBits/bull/issues/1873
 		 * - https://github.com/OptimalBits/bull/pull/2185
+		 *
+		 * Set lazyConnect=true so that connection is established on first redis command.
+		 * Once client and listeners are set up, we call client.connect() once with retry strategy enabled.
+		 * By calling connect() explicitly errors can be logged that ioredis is hiding when auto connecting.
+		 *
+		 * @todo Test enableAutoPipelining for performance impact on high load deployments. Maybe remove later if no acceleration provable.
+		 * @see https://github.com/redis/ioredis?tab=readme-ov-file#autopipelining
 		 */
 		const options: RedisOptions = {
 			username,
@@ -202,22 +211,27 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (tls) {
 			options.tls = {
-				ca: caFile ? this.readCertFileSync(caFile) : undefined,
-				cert: certFile ? this.readCertFileSync(certFile) : undefined,
-				key: certKeyFile ? this.readCertFileSync(certKeyFile) : undefined,
+				ca: caFile ? this.readTlsFileSync(caFile) : undefined,
+				cert: certFile ? this.readTlsFileSync(certFile) : undefined,
+				key: certKeyFile ? this.readTlsFileSync(certKeyFile) : undefined,
 				enableTrace: false,
 				passphrase: certKeyFilePassphrase,
 				servername: serverName,
 				rejectUnauthorized: rejectUnauthorized ? undefined : false,
 			};
 		} else if ([caFile, certFile, certKeyFile, serverName, !rejectUnauthorized].some((v) => v)) {
+			// To be backward compatible tls=true still works and tlsConfig={} was added to set TLS options.
+			// In case tlsConfig is set but tls=false (default) we error out to avoid confusion.
 			this.exitWithError('Redis TLS disabled but config found. Set QUEUE_BULL_REDIS_TLS=true.');
 		}
 
 		return options;
 	}
 
-	private readCertFileSync = (path: string) => {
+	/*
+	 * Read TLS certificate files synchronously once on client creation with graceful error handling.
+	 */
+	private readTlsFileSync = (path: string) => {
 		try {
 			if (!isAbsolute(path)) {
 				this.exitWithError(`Redis TLS file path is not absolute: ${path}`);
@@ -229,14 +243,25 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return '';
 	};
 
+	/**
+	 * DNS lookups for redis hostnames to specific IPs can be error prone with TLS and require different resolution strategies.
+	 * Both IPv4 and IPv6 addresses or only IPv6 addresses may resolve, while ioredis defaults to only support IPv4.
+	 * The TLS certificate presented by either server or client (mtls) may not match all resolved IP addresses or hostnames.
+	 * Especially AWS Elasticache cluster connections often lead to invalid certificate errors due to certificate hostname/ip mismatches.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
+	 */
 	private getDnsLookupFunction =
 		(family: number): DNSLookupFunction =>
 		(address, resolve) => {
-			this.logger.info(`Redis DNS lookup: address=${address}`);
+			this.logger.info(`Redis DNS lookup: address=${address} family=${family}`);
 			dns.lookup(address, { family }, resolve);
 			//resolve(null, address);
 		};
 
+	/**
+	 * Connect to Redis clients once after setup and log any initial connection error.
+	 * Subsequent reconnection attempts are handled by ioredis with retry strategy.
+	 */
 	private connect = (
 		client: Cluster | ioRedis,
 		isCluster: boolean,
@@ -255,6 +280,10 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			});
 	};
 
+	/**
+	 * Log any reconnection errors to surface helpful network or TLS errors. Return true to reconnect.
+	 * Does not always work because some redis servers just close connections without responding error messages.
+	 */
 	private onReconnectError = (error: Error) => {
 		this.logger.error(`Redis onReconnectError: ${error.message}`, { error });
 		return true;
