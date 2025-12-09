@@ -67,6 +67,7 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const ssoStore = useSSOStore();
+const settingsStore = useSettingsStore();
 
 const dataTable = ref<LdapSyncTable[]>([]);
 const tableKey = ref(0);

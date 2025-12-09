@@ -41,6 +41,7 @@ const toast = useToast();
 const documentTitle = useDocumentTitle();
 const templatesStore = useTemplatesStore();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
