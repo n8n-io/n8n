@@ -153,7 +153,7 @@ export async function getBinaryDataBuffer(
 
 	if (isBinaryData(parameterData)) {
 		binaryData = parameterData;
-	} else if (typeof parameterData === 'string' && binaryMode !== 'separate') {
+	} else if (typeof parameterData === 'string' && binaryMode !== 'combined') {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
 	} else if (typeof parameterData === 'string') {
 		const itemData = inputData.main[inputIndex]![itemIndex].json;

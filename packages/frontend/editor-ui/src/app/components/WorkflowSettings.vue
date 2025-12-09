@@ -68,10 +68,25 @@ const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
-const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
-	{ key: 'v0', value: 'v0 (legacy)' },
-	{ key: 'v1', value: 'v1 (legacy)' },
-	{ key: 'v2', value: 'v2 (recommended)' },
+const executionOrderOptions = ref<Array<{ key: string; value: string; description: string }>>([
+	{
+		key: 'v0',
+		value: 'v0 (legacy)',
+		description:
+			"Executes the first node of each branch, then the second node of each branch, and so on. Binaries are stred in item's binary property.",
+	},
+	{
+		key: 'v1',
+		value: 'v1 (legacy)',
+		description:
+			"Executes each branch in turn, completing one branch before starting another. Branches are ordered by position on canvas (topmost to bottommost, leftmost first if at same height). Binaries are stored in item's binary property.",
+	},
+	{
+		key: 'v2',
+		value: 'v2 (recommended)',
+		description:
+			"Uses v1 execution logic with combined binary mode where binaries included in the item's json data and expressions are simplified.",
+	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
@@ -680,6 +695,10 @@ onBeforeUnmount(() => {
 								:label="option.value"
 								:value="option.key"
 							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.value }}</div>
+									<div v-n8n-html="option.description" class="option-description"></div>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</ElCol>
@@ -1331,6 +1350,26 @@ onBeforeUnmount(() => {
 
 	&:hover {
 		text-decoration: underline;
+	}
+}
+
+.list-option {
+	margin: 6px 0;
+	white-space: normal;
+	padding-right: 20px;
+
+	.option-headline {
+		font-weight: var(--font-weight--medium);
+		line-height: var(--line-height--md);
+		overflow-wrap: break-word;
+	}
+
+	.option-description {
+		margin-top: 2px;
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--regular);
+		line-height: var(--line-height--xl);
+		color: $custom-font-very-light;
 	}
 }
 </style>
