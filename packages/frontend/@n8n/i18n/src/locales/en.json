@@ -3276,6 +3276,7 @@
 	"workflowHistory.action.restore.modal.button.restore": "Restore",
 	"workflowHistory.action.restore.modal.button.cancel": "Cancel",
 	"workflowHistory.action.restore.success.title": "Successfully restored workflow version",
+	"workflowHistory.action.restore.alreadyRestored": "Workflow version is already restored",
 	"workflowHistory.action.clone.success.title": "Successfully cloned workflow version",
 	"workflowHistory.action.clone.success.message": "Open cloned workflow in a new tab",
 	"workflowHistory.action.unpublish.success.title": "Workflow unpublished successfully",
