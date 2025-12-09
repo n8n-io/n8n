@@ -138,6 +138,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const client = new ioRedis.Cluster(nodes, {
 			redisOptions: options,
+			lazyConnect: options.lazyConnect,
 			clusterRetryStrategy: this.retryStrategy(),
 			dnsLookup: this.getDnsLookupFunction(options.family as number),
 			showFriendlyErrorStack: true,
@@ -260,6 +261,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		nodes: RedisNode,
 	) => {
 		const clientName = isCluster ? 'Redis cluster client' : 'Redis client';
+
+		if (client.status !== 'wait') {
+			this.logger.info(`${clientName} already connected ${type}`, { type, nodes });
+			return;
+		}
+
 		this.logger.info(`Connecting ${clientName} ${type}`, { type, nodes });
 		client
 			.connect()
