@@ -1,6 +1,7 @@
 import { watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { isSourceControlledFileStatus, type SourceControlledFileStatus } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
 import {
@@ -48,6 +49,7 @@ export function useWorkflowDiffRouting() {
 
 	const handleDiffModal = (
 		diffWorkflowId: string | undefined,
+		diffWorkflowStatus: SourceControlledFileStatus | undefined,
 		direction: Direction | undefined,
 	) => {
 		const shouldOpen = diffWorkflowId && direction;
@@ -59,6 +61,7 @@ export function useWorkflowDiffRouting() {
 				data: {
 					eventBus: workflowDiffEventBus,
 					workflowId: diffWorkflowId,
+					workflowStatus: diffWorkflowStatus,
 					direction,
 				},
 			});
@@ -107,6 +110,10 @@ export function useWorkflowDiffRouting() {
 
 	const handleRouteChange = () => {
 		const diffWorkflowId = typeof route.query.diff === 'string' ? route.query.diff : undefined;
+		const diffWorkflowStatus =
+			diffWorkflowId && isSourceControlledFileStatus(route.query.workflowStatus)
+				? route.query.workflowStatus
+				: undefined;
 		const direction =
 			typeof route.query.direction === 'string' &&
 			(route.query.direction === 'push' || route.query.direction === 'pull')
@@ -118,7 +125,7 @@ export function useWorkflowDiffRouting() {
 				? route.query.sourceControl
 				: undefined;
 
-		handleDiffModal(diffWorkflowId, direction);
+		handleDiffModal(diffWorkflowId, diffWorkflowStatus, direction);
 		handleSourceControlModals(sourceControl, diffWorkflowId, direction);
 	};
 

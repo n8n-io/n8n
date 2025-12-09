@@ -4,7 +4,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -36,49 +36,6 @@ const builderStore = useBuilderStore();
 
 // Workflow execution composable
 const { runWorkflow } = useRunWorkflow({ router });
-
-const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
-const PLACEHOLDER_SUFFIX = '__>';
-
-interface PlaceholderDetail {
-	path: string[];
-	label: string;
-}
-
-function extractPlaceholderLabel(value: unknown): string | null {
-	if (typeof value !== 'string') return null;
-	if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) return null;
-
-	const label = value
-		.slice(PLACEHOLDER_PREFIX.length, value.length - PLACEHOLDER_SUFFIX.length)
-		.trim();
-	return label.length > 0 ? label : null;
-}
-
-function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
-	const label = extractPlaceholderLabel(value);
-	if (label) return [{ path, label }];
-
-	if (Array.isArray(value)) {
-		return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
-	}
-
-	if (value !== null && typeof value === 'object') {
-		return Object.entries(value).flatMap(([key, nested]) =>
-			findPlaceholderDetails(nested, [...path, key]),
-		);
-	}
-
-	return [];
-}
-
-function formatPlaceholderPath(path: string[]): string {
-	if (path.length === 0) return 'parameters';
-
-	return path
-		.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
-		.join('');
-}
 
 let executionWatcherStop: WatchStopHandle | undefined;
 
@@ -115,61 +72,48 @@ const ensureExecutionWatcher = () => {
 	);
 };
 
-// Workflow validation from store
-const baseWorkflowIssues = computed(() =>
-	workflowsStore.workflowValidationIssues.filter((issue) =>
-		['credentials', 'parameters'].includes(issue.type),
-	),
-);
-
-const placeholderIssues = computed(() => {
-	const issues: WorkflowValidationIssue[] = [];
-	const seen = new Set<string>();
-
-	for (const node of workflowsStore.workflow.nodes) {
-		if (!node?.parameters) continue;
-
-		const placeholders = findPlaceholderDetails(node.parameters);
-		if (placeholders.length === 0) continue;
-
-		const existingParameterIssues = node.issues?.parameters ?? {};
-
-		for (const placeholder of placeholders) {
-			const path = formatPlaceholderPath(placeholder.path);
-			const message = i18n.baseText('aiAssistant.builder.executeMessage.fillParameter', {
-				interpolate: { label: placeholder.label },
-			});
-			const rawMessages = existingParameterIssues[path];
-			const existingMessages = rawMessages
-				? Array.isArray(rawMessages)
-					? rawMessages
-					: [rawMessages]
-				: [];
-
-			if (existingMessages.includes(message)) continue;
-
-			const key = `${node.name}|${path}|${placeholder.label}`;
-			if (seen.has(key)) continue;
-			seen.add(key);
-
-			issues.push({
-				node: node.name,
-				type: 'parameters',
-				value: message,
-			});
-		}
-	}
-
-	return issues;
-});
-
-const workflowIssues = computed(() => [...baseWorkflowIssues.value, ...placeholderIssues.value]);
-const hasValidationIssues = computed(() => workflowIssues.value.length > 0);
-const formatIssueMessage = workflowsStore.formatIssueMessage;
-
+const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
 const triggerNodes = computed(() =>
 	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 );
+
+/**
+ * Converts a locale string pattern with placeholders into a regex.
+ * E.g., "Credentials for {type} are not set." → /Credentials for .+ are not set\./i
+ */
+function localePatternToRegex(localeKey: BaseTextKey): RegExp {
+	const pattern = i18n.baseText(localeKey, { interpolate: { type: '.+' } });
+	const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const withPlaceholder = escaped.replace('\\.\\+', '.+');
+	return new RegExp(withPlaceholder, 'i');
+}
+
+const credentialsNotSetPattern = localePatternToRegex('nodeIssues.credentials.notSet');
+const parameterRequiredPattern = /Parameter\s+".+"\s+is\s+required/i;
+
+/**
+ * Custom formatter for issue messages in the execute panel.
+ * Transforms verbose validation messages into user-friendly action prompts.
+ */
+function formatIssueMessage(issue: string | string[]): string {
+	const baseMessage = workflowsStore.formatIssueMessage(issue);
+
+	// Transform "Parameter "X" is required" → "Choose model" (for Model) or keep original
+	if (parameterRequiredPattern.test(baseMessage)) {
+		// Extract parameter name and check if it's "Model"
+		const match = baseMessage.match(/Parameter\s+"(.+)"\s+is\s+required/i);
+		if (match?.[1]?.toLowerCase() === 'model') {
+			return i18n.baseText('aiAssistant.builder.executeMessage.chooseModel' as BaseTextKey);
+		}
+	}
+
+	// Transform "Credentials for '...' are not set" → "Choose credentials"
+	if (credentialsNotSetPattern.test(baseMessage)) {
+		return i18n.baseText('aiAssistant.builder.executeMessage.chooseCredentials' as BaseTextKey);
+	}
+
+	return baseMessage;
+}
 
 // Helper to get node type
 function getNodeTypeByName(nodeName: string) {
@@ -234,6 +178,13 @@ function scrollIntoView() {
 	});
 }
 
+function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
+	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+		node_type: workflowsStore.getNodeByName(issue.node)?.type,
+		type: issue.type,
+	});
+}
+
 onMounted(scrollIntoView);
 
 onBeforeUnmount(() => {
@@ -253,21 +204,24 @@ onBeforeUnmount(() => {
 			<p :class="$style.description">
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
 			</p>
-			<TransitionGroup
-				name="fade"
-				tag="ul"
-				:class="$style.issuesList"
-				role="list"
-				aria-label="Workflow validation issues"
-			>
-				<NodeIssueItem
-					v-for="issue in workflowIssues"
-					:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
-					:issue="issue"
-					:get-node-type="getNodeTypeByName"
-					:format-issue-message="formatIssueMessage"
-				/>
-			</TransitionGroup>
+			<div :class="$style.issuesBox">
+				<TransitionGroup
+					name="fade"
+					tag="ul"
+					:class="$style.issuesList"
+					role="list"
+					aria-label="Workflow validation issues"
+				>
+					<NodeIssueItem
+						v-for="issue in builderStore.workflowTodos"
+						:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
+						:issue="issue"
+						:get-node-type="getNodeTypeByName"
+						:format-issue-message="formatIssueMessage"
+						@click="() => trackBuilderPlaceholders(issue)"
+					/>
+				</TransitionGroup>
+			</div>
 		</template>
 
 		<!-- No Issues Section -->
@@ -315,14 +269,10 @@ onBeforeUnmount(() => {
 .container {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--xs);
 	gap: var(--spacing--xs);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
-	border-radius: var(--radius--lg);
 	line-height: var(--line-height--lg);
 	position: relative;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 }
 
 .description {
@@ -336,10 +286,20 @@ onBeforeUnmount(() => {
 	color: var(--color--text--shade-1);
 }
 
+.issuesBox {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
 .issuesList {
 	margin: 0;
 	padding: 0;
 	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .runButton {
