@@ -738,7 +738,23 @@ When you need to reference “now”, use this date and time.`;
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
 				if (currentTotalSize >= maxTotalPayloadSize) {
-					break;
+					blocks.push({
+						type: 'text',
+						text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+					});
+					continue;
+				}
+
+				if (attachment.mimeType.startsWith('text/')) {
+					const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
+					const content = buffer.toString('utf-8');
+
+					blocks.push({
+						type: 'text',
+						text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+					});
+					currentTotalSize += content.length;
+					continue;
 				}
 
 				const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment, {
@@ -748,10 +764,16 @@ When you need to reference “now”, use this date and time.`;
 				});
 				const dataUrlSize = url.length;
 
-				if (currentTotalSize + dataUrlSize <= maxTotalPayloadSize) {
-					blocks.push({ type: 'image_url', image_url: url });
-					currentTotalSize += dataUrlSize;
+				if (currentTotalSize + dataUrlSize > maxTotalPayloadSize) {
+					blocks.push({
+						type: 'text',
+						text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+					});
+					continue;
 				}
+
+				blocks.push({ type: 'image_url', image_url: url });
+				currentTotalSize += dataUrlSize;
 			}
 
 			messageValues.push({

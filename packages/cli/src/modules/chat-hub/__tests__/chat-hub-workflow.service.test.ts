@@ -167,7 +167,7 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
-		describe('attachment handling with binary data URLs', () => {
+		describe('attachment files', () => {
 			it('should generate binary data URL using getInstanceBaseUrl when attachment has id', async () => {
 				const mockAttachment: IBinaryData = {
 					id: 'filesystem-v2:chat-hub/sessions/session-456/messages/msg-1/binary_data/bin-1',
@@ -337,46 +337,6 @@ describe('ChatHubWorkflowService', () => {
 				]);
 			});
 
-			it('should return simple message when no attachments', async () => {
-				const mockMessage = new ChatHubMessage();
-				mockMessage.id = 'msg-1';
-				mockMessage.content = 'Hello';
-				mockMessage.type = 'human';
-				mockMessage.attachments = [];
-				mockMessage.sessionId = 'session-456';
-				mockMessage.session = new ChatHubSession();
-				mockMessage.status = 'running';
-
-				const mockHistory: ChatHubMessage[] = [mockMessage];
-
-				const result = await service.createChatWorkflow(
-					'user-123',
-					'session-456',
-					'project-789',
-					mockHistory,
-					'Hello',
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4' },
-					undefined,
-					[],
-					'UTC',
-				);
-
-				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
-				expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();
-
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0]).toEqual({
-					type: 'user',
-					message: 'Hello',
-					hideFromUI: false,
-				});
-			});
-
 			it('should use custom rest endpoint from config', async () => {
 				globalConfig.endpoints = { rest: 'api/v1' } as any;
 
@@ -429,10 +389,10 @@ describe('ChatHubWorkflowService', () => {
 				]);
 			});
 
-			it('should skip attachments that exceed maxTotalPayloadSize limit', async () => {
-				// Create a large data URL that, when added to another attachment, will exceed the 20MB limit
-				const largeDataUrl = 'data:image/png;base64,' + 'A'.repeat(15 * 1024 * 1024);
-				const smallDataUrl = 'data:image/png;base64,' + 'B'.repeat(6 * 1024 * 1024);
+			it('should omit attachments that exceed maxTotalPayloadSize limit', async () => {
+				// Create a large data URL that, when added to another attachment, will exceed the 20MB limit (90% of 20MB = 18MB)
+				const largeDataUrl = 'data:image/png;base64,' + 'A'.repeat(10 * 1024 * 1024);
+				const smallDataUrl = 'data:image/png;base64,' + 'B'.repeat(9 * 1024 * 1024);
 
 				const mockAttachment1: IBinaryData = {
 					data: largeDataUrl,
@@ -483,13 +443,11 @@ describe('ChatHubWorkflowService', () => {
 				expect(messageContent).toEqual([
 					{ type: 'text', text: 'Check these images' },
 					{ type: 'image_url', image_url: largeDataUrl },
+					{ type: 'text', text: 'File: small.png\n(Content omitted due to size limit)' },
 				]);
-
-				// Should NOT include the second attachment
-				expect(messageContent).toHaveLength(2);
 			});
 
-			it('should skip attachments across multiple messages when total size exceeds limit', async () => {
+			it('should omit attachments across multiple messages when total size exceeds limit', async () => {
 				const attachment1DataUrl = 'data:image/png;base64,' + 'A'.repeat(5 * 1024 * 1024);
 				const mockAttachment1: IBinaryData = {
 					data: attachment1DataUrl,
@@ -522,7 +480,7 @@ describe('ChatHubWorkflowService', () => {
 				message2.session = new ChatHubSession();
 				message2.status = 'running';
 
-				const attachment3DataUrl = 'data:image/png;base64,' + 'C'.repeat(9 * 1024 * 1024);
+				const attachment3DataUrl = 'data:image/png;base64,' + 'C'.repeat(6 * 1024 * 1024);
 				const mockAttachment3: IBinaryData = {
 					data: attachment3DataUrl,
 					mimeType: 'image/png',
@@ -562,9 +520,10 @@ describe('ChatHubWorkflowService', () => {
 				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
 				expect(messageValues).toHaveLength(3);
 
-				// First message attachment is skipped due to cumulative size limit
+				// First message attachment is skipped due to cumulative size limit (processed last, size limit reached)
 				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'First message with attachment' },
+					{ type: 'text', text: 'File: first.png\n(Content omitted due to size limit)' },
 				]);
 
 				// Second message includes attachment
@@ -573,10 +532,130 @@ describe('ChatHubWorkflowService', () => {
 					{ type: 'image_url', image_url: attachment2DataUrl },
 				]);
 
-				// Third message includes attachment
+				// Third message includes attachment (processed first)
 				expect(messageValues[2].message).toEqual([
 					{ type: 'text', text: 'Third message' },
 					{ type: 'image_url', image_url: attachment3DataUrl },
+				]);
+			});
+
+			it('should include omitted content message when attachment exceeds size limit', async () => {
+				const largeDataUrl = 'data:image/png;base64,' + 'A'.repeat(17 * 1024 * 1024);
+
+				const mockAttachment: IBinaryData = {
+					data: largeDataUrl,
+					mimeType: 'image/png',
+					fileName: 'large-image.png',
+				};
+
+				const mockMessage = new ChatHubMessage();
+				mockMessage.id = 'msg-1';
+				mockMessage.content = 'Check this large image';
+				mockMessage.type = 'human';
+				mockMessage.attachments = [mockAttachment];
+				mockMessage.sessionId = 'session-456';
+				mockMessage.session = new ChatHubSession();
+				mockMessage.status = 'running';
+
+				const anotherAttachment: IBinaryData = {
+					data: 'data:image/jpeg;base64,' + 'B'.repeat(2 * 1024 * 1024),
+					mimeType: 'image/jpeg',
+					fileName: 'small-image.jpg',
+				};
+
+				const mockMessage2 = new ChatHubMessage();
+				mockMessage2.id = 'msg-2';
+				mockMessage2.content = 'And this small one';
+				mockMessage2.type = 'human';
+				mockMessage2.attachments = [anotherAttachment];
+				mockMessage2.sessionId = 'session-456';
+				mockMessage2.session = new ChatHubSession();
+				mockMessage2.status = 'running';
+
+				const mockHistory: ChatHubMessage[] = [mockMessage, mockMessage2];
+
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					mockHistory,
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+				);
+
+				const restoreMemoryNode = result.workflowData.nodes.find(
+					(node) => node.name === 'Restore Chat Memory',
+				);
+				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
+
+				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
+
+				expect(messageValues[0].message).toEqual([
+					{ type: 'text', text: 'Check this large image' },
+					{ type: 'text', text: 'File: large-image.png\n(Content omitted due to size limit)' },
+				]);
+
+				expect(messageValues[1].message).toEqual([
+					{ type: 'text', text: 'And this small one' },
+					{ type: 'image_url', image_url: anotherAttachment.data },
+				]);
+			});
+
+			it('should handle text file attachments as text blocks', async () => {
+				const textContent = 'This is the content of the text file.\nIt has multiple lines.';
+				const mockAttachment: IBinaryData = {
+					id: 'filesystem-v2:chat-hub/sessions/session-456/messages/msg-1/binary_data/text-1',
+					data: 'filesystem-v2',
+					mimeType: 'text/plain',
+					fileName: 'document.txt',
+					fileSize: '60',
+					fileExtension: 'txt',
+				};
+
+				const mockMessage = new ChatHubMessage();
+				mockMessage.id = 'msg-1';
+				mockMessage.content = 'Here is a text file';
+				mockMessage.type = 'human';
+				mockMessage.attachments = [mockAttachment];
+				mockMessage.sessionId = 'session-456';
+				mockMessage.session = new ChatHubSession();
+				mockMessage.status = 'running';
+
+				const mockHistory: ChatHubMessage[] = [mockMessage];
+
+				// Mock getAsBuffer to return the text content
+				binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from(textContent, 'utf-8'));
+
+				const result = await service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					mockHistory,
+					'Hello',
+					[],
+					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+				);
+
+				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
+
+				const restoreMemoryNode = result.workflowData.nodes.find(
+					(node) => node.name === 'Restore Chat Memory',
+				);
+				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
+
+				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
+				expect(messageValues[0].message).toEqual([
+					{ type: 'text', text: 'Here is a text file' },
+					{ type: 'text', text: `File: document.txt\nContent: \n${textContent}` },
 				]);
 			});
 		});

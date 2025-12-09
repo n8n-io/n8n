@@ -155,6 +155,10 @@ export class ChatHubAttachmentService {
 		return `data:${mimeType};base64,${base64Data}`;
 	}
 
+	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
+		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
 	/**
 	 * Processes a single attachment by populating metadata and storing it.
 	 */
