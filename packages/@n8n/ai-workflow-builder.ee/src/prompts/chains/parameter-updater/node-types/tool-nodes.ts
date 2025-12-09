@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const TOOL_NODES_GUIDE = `
 ## CRITICAL: $fromAI Expression Support for Tool Nodes
 
@@ -67,3 +69,9 @@ You can combine $fromAI with regular text:
 - Message content: "={{ $fromAI('message_html') }}" or "={{ $fromAI('message') }}"
 - Date ranges: "={{ $fromAI('After', '', 'string') }}"
 - Channel IDs: "={{ $fromAI('channel') }}"`;
+
+registerGuide({
+	patterns: ['*Tool'],
+	content: TOOL_NODES_GUIDE,
+	priority: 40,
+});

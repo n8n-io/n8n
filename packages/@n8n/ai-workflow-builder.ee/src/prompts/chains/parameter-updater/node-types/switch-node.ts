@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const SWITCH_NODE_GUIDE = `
 ### Switch Node Configuration Guide
 
@@ -66,3 +68,9 @@ Use two conditions with combinator: "and":
 - Use type: "string" with operation: "equals"
 - Set caseSensitive: false in options for case-insensitive matching
 `;
+
+registerGuide({
+	patterns: ['n8n-nodes-base.switch', '.switch'],
+	content: SWITCH_NODE_GUIDE,
+	priority: 30,
+});

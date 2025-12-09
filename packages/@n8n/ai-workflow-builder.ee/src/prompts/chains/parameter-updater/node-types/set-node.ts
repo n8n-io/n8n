@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const SET_NODE_GUIDE = `
 ### Set Node Updates - Comprehensive Type Handling Guide
 
@@ -85,3 +87,9 @@ The Set node uses assignments to create or modify data fields. Each assignment h
    - CORRECT: \`{ "value": true, "type": "boolean" }\`
    - WRONG: Setting array without stringification: \`{ "value": [1,2,3], "type": "array" }\`
    - CORRECT: \`{ "value": "[1,2,3]", "type": "array" }\``;
+
+registerGuide({
+	patterns: ['n8n-nodes-base.set', '.set'],
+	content: SET_NODE_GUIDE,
+	priority: 30,
+});

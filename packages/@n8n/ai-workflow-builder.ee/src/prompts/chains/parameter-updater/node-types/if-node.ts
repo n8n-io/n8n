@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const IF_NODE_GUIDE = `
 ### IF Node Updates - Comprehensive Guide
 
@@ -152,3 +154,9 @@ The IF node uses a complex filter structure for conditional logic. Understanding
 3. **Type matching**: The operator type must match the data type you're comparing
 4. **Case sensitivity**: Only applies to string comparisons when caseSensitive is true in options
 5. **Type validation**: "loose" allows type coercion, "strict" requires exact type matches`;
+
+registerGuide({
+	patterns: ['n8n-nodes-base.if', '.if'],
+	content: IF_NODE_GUIDE,
+	priority: 30,
+});

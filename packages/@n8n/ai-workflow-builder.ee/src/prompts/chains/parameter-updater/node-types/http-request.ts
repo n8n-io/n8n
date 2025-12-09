@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const HTTP_REQUEST_GUIDE = `
 ### HTTP Request Node Updates
 
@@ -107,3 +109,9 @@ Expected Output:
   },
   "options": {}
 }`;
+
+registerGuide({
+	patterns: ['n8n-nodes-base.httpRequest', 'httprequest', 'n8n-nodes-base.webhook', '.webhook'],
+	content: HTTP_REQUEST_GUIDE,
+	priority: 30,
+});
