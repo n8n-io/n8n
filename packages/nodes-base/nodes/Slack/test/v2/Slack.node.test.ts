@@ -774,6 +774,71 @@ describe('SlackV2', () => {
 				{},
 			);
 		});
+
+		it('should send message to user resolved by email', async () => {
+			jest.spyOn(GenericFunctions, 'getTarget').mockReturnValue('initial-target');
+			jest.spyOn(GenericFunctions, 'getMessageContent').mockReturnValue({
+				text: 'Email-based message',
+			});
+			jest.spyOn(GenericFunctions, 'processThreadOptions').mockReturnValue({});
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'message',
+					operation: 'post',
+					select: 'user',
+					user: {
+						mode: 'email',
+						value: 'user@example.com',
+					} as INodeParameterResourceLocator,
+					otherOptions: {},
+					authentication: 'accessToken',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy
+				.mockResolvedValueOnce({
+					ok: true,
+					user: { id: 'UEMAIL123' },
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					message: {
+						text: 'Email-based message',
+						user: 'UEMAIL123',
+					},
+				});
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+				1,
+				'GET',
+				'/users.lookupByEmail',
+				{},
+				{ email: 'user@example.com' },
+			);
+
+			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+				2,
+				'POST',
+				'/chat.postMessage',
+				expect.objectContaining({
+					channel: 'UEMAIL123',
+					text: 'Email-based message',
+				}),
+				{},
+			);
+
+			expect(result[0][0].json).toEqual({
+				ok: true,
+				message: {
+					text: 'Email-based message',
+					user: 'UEMAIL123',
+				},
+			});
+		});
 	});
 
 	describe('Reaction and Star Operations', () => {
