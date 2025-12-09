@@ -3,10 +3,22 @@
  *
  * This directory contains all prompts used by the AI workflow builder agents and chains.
  * Organization:
+ * - builder/ - PromptBuilder utility for composing prompts
  * - agents/ - Multi-agent system prompts (builder, configurator, discovery, etc.)
  * - chains/ - Chain-level prompts (categorization, compact, workflow-name, parameter-updater)
  * - legacy-agent.prompt.ts - Legacy single-agent mode prompt
  */
+
+// Prompt builder utility
+export {
+	PromptBuilder,
+	prompt,
+	type ContentOrFactory,
+	type MessageBlock,
+	type PromptBuilderOptions,
+	type SectionFormat,
+	type SectionOptions,
+} from './builder';
 
 // Agent prompts (multi-agent system)
 export { buildBuilderPrompt } from './agents/builder.prompt';
