@@ -25,7 +25,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		microsoftOneDrive = new MicrosoftOneDrive();
 
 		mockExecuteFunctions.helpers = {
-			assertBinaryData: jest.fn((itemIndex: number, propertyName: string) => {
+			assertBinaryData: jest.fn(() => {
 				return {
 					data: 'base64data',
 					mimeType: 'text/plain',
@@ -45,7 +45,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 	it('should use filename from node parameters even when binary has a filename', async () => {
 		const items = [{ json: { data: 'test' }, binary: { data: {} as IBinaryData } }];
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
-		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string, index: number) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
 			if (key === 'resource') return 'file';
 			if (key === 'operation') return 'upload';
 			if (key === 'parentId') return 'parentFolderId';
@@ -63,7 +63,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			expect.any(Buffer),
 			{},
 			undefined,
-			{ 'Content-Type': 'text/plain', 'Content-length': expect.any(Number) },
+			{ 'Content-Type': 'text/plain', 'Content-Length': expect.any(Number) },
 			{},
 		);
 	});
@@ -71,7 +71,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 	it('should use binary filename when node parameter filename is empty', async () => {
 		const items = [{ json: { data: 'test' }, binary: { data: {} as IBinaryData } }];
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
-		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string, index: number) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
 			if (key === 'resource') return 'file';
 			if (key === 'operation') return 'upload';
 			if (key === 'parentId') return 'parentFolderId';
@@ -97,7 +97,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 	it('should properly encode special characters in filename from node parameters', async () => {
 		const items = [{ json: { data: 'test' }, binary: { data: {} as IBinaryData } }];
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
-		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string, index: number) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
 			if (key === 'resource') return 'file';
 			if (key === 'operation') return 'upload';
 			if (key === 'parentId') return 'parentFolderId';
