@@ -1,3 +1,4 @@
+import type { INodeListSearchResult } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -6,6 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
 import { mockedStore } from '@/__tests__/utils';
+import { vi } from 'vitest';
 import {
 	TEST_MODEL_VALUE,
 	TEST_NODE_MULTI_MODE,
@@ -470,5 +472,182 @@ describe('ResourceLocator', () => {
 		);
 
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
+	});
+
+	describe('slow load notice', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+		it('should pass slowLoadNotice configuration to dropdown component', async () => {
+			const SLOW_LOAD_PARAMETER = {
+				...TEST_PARAMETER_SINGLE_MODE,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list' as const,
+						typeOptions: {
+							searchListMethod: 'getItems',
+							slowLoadNotice: {
+								message: 'This is taking longer than expected',
+								timeout: 2000,
+							},
+						},
+					},
+				],
+			};
+
+			// Use a slow response to keep loading state
+			let resolvePromise: ((value: INodeListSearchResult) => void) | undefined;
+			nodeTypesStore.getResourceLocatorResults.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePromise = resolve;
+				}),
+			);
+			const user = userEvent.setup({ delay: null });
+			const { getByTestId, findByText } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: SLOW_LOAD_PARAMETER,
+					path: `parameters.${SLOW_LOAD_PARAMETER.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			vi.advanceTimersByTime(200);
+			await user.click(getByTestId('rlc-input'));
+
+			vi.advanceTimersByTime(2000);
+			const noticeText = await findByText('This is taking longer than expected', undefined, {
+				timeout: 3000,
+			});
+			expect(noticeText).toBeInTheDocument();
+
+			if (resolvePromise) {
+				resolvePromise({ results: [], paginationToken: null });
+			}
+		}, 10000);
+
+		it('should not show notice when dropdown is not visible', async () => {
+			const SLOW_LOAD_PARAMETER = {
+				...TEST_PARAMETER_SINGLE_MODE,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list' as const,
+						typeOptions: {
+							searchListMethod: 'getItems',
+							slowLoadNotice: {
+								message: 'This is taking longer than expected',
+								timeout: 100,
+							},
+						},
+					},
+				],
+			};
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [],
+				paginationToken: null,
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: SLOW_LOAD_PARAMETER,
+					path: `parameters.${SLOW_LOAD_PARAMETER.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			vi.advanceTimersByTime(200);
+			expect(queryByText('This is taking longer than expected')).not.toBeInTheDocument();
+		});
+
+		it('should hide notice when loading completes', async () => {
+			const SLOW_LOAD_PARAMETER = {
+				...TEST_PARAMETER_SINGLE_MODE,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list' as const,
+						typeOptions: {
+							searchListMethod: 'getItems',
+							slowLoadNotice: {
+								message: 'This is taking longer than expected',
+								timeout: 100,
+							},
+						},
+					},
+				],
+			};
+
+			nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+				results: [{ name: 'Test Item', value: 'test-item' }],
+				paginationToken: null,
+			});
+
+			const user = userEvent.setup({ delay: null });
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: SLOW_LOAD_PARAMETER,
+					path: `parameters.${SLOW_LOAD_PARAMETER.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			await user.click(getByTestId('rlc-input'));
+
+			vi.advanceTimersByTime(200);
+
+			await waitFor(() => {
+				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+			});
+			expect(queryByText('This is taking longer than expected')).not.toBeInTheDocument();
+		});
+
+		it('should not show notice when slowLoadNotice is not configured', async () => {
+			let resolvePromise: ((value: INodeListSearchResult) => void) | undefined;
+			nodeTypesStore.getResourceLocatorResults.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePromise = resolve;
+				}),
+			);
+
+			const user = userEvent.setup({ delay: null });
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_SINGLE_MODE,
+					path: `parameters.${TEST_PARAMETER_SINGLE_MODE.name}`,
+					node: TEST_NODE_SINGLE_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+				},
+			});
+
+			await user.click(getByTestId('rlc-input'));
+
+			vi.advanceTimersByTime(500);
+
+			const noticeContainer = document.querySelector('[class*="slowLoadNoticeContainer"]');
+			expect(noticeContainer).not.toBeInTheDocument();
+
+			if (resolvePromise) {
+				resolvePromise({ results: [], paginationToken: null });
+			}
+		});
 	});
 });

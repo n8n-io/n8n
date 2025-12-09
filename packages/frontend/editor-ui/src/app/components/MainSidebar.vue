@@ -28,7 +28,6 @@ import {
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -58,6 +57,7 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
+import MainSidebarTrialUpgrade from './MainSidebarTrialUpgrade.vue';
 import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
@@ -116,16 +116,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: 'Admin Panel',
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
-	},
-	{
-		id: 'chat',
-		icon: 'message-circle',
-		label: 'Chat',
-		position: 'bottom',
-		route: { to: { name: CHAT_VIEW } },
-		available:
-			settingsStore.isChatFeatureEnabled &&
-			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		// Link to in-app pre-built agent templates, available experiment is enabled
@@ -591,6 +581,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		</N8nScrollArea>
 
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<MainSidebarTrialUpgrade />
 		<MainSidebarUserArea
 			v-if="showUserArea"
 			ref="user"
@@ -610,7 +601,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	flex-direction: column;
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	width: $sidebar-expanded-width;
-	background-color: var(--menu--color--background, var(--color--background--light-3));
+	background-color: var(--menu--color--background, var(--color--background--light-1));
 
 	.logo {
 		display: flex;

@@ -188,7 +188,7 @@ function onRetryMenuItemSelect(action: string): void {
 </template>
 
 <style module lang="scss">
-@use '@/app/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .WorkflowExecutionsCard {
 	--execution-list-item--color--background: var(--execution-card--color--background);

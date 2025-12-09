@@ -15,7 +15,7 @@ import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import router from '@/router';
+import router from '@/app/router';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';

@@ -13,13 +13,13 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import { TemplateClickSource } from '@/experiments/utils';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -171,36 +171,6 @@ describe('WorkflowsView', () => {
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
 		});
-
-		it('should show template card', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(getByTestId('new-workflow-from-template-card')).toBeInTheDocument();
-		});
-
-		it('should track template card click', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			const card = getByTestId('new-workflow-from-template-card');
-			await userEvent.click(card);
-
-			expect(mockTrack).toHaveBeenCalledWith(
-				'User clicked on templates',
-				expect.objectContaining({
-					source: TemplateClickSource.emptyInstanceCard,
-				}),
-			);
-		});
 	});
 
 	describe('fetch workflow options', () => {
@@ -289,7 +259,7 @@ describe('WorkflowsView', () => {
 				expect.any(Number),
 				expect.any(String),
 				expect.objectContaining({
-					name: 'one',
+					query: 'one',
 					isArchived: false,
 				}),
 				expect.any(Boolean),
@@ -433,6 +403,7 @@ describe('WorkflowsView', () => {
 			const sourceControl = useSourceControlStore();
 
 			renderComponent({ pinia });
+			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true);
 			expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
@@ -456,6 +427,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		activeVersionId: 'v1',
 		isArchived: false,
 		versionId: '1',
 		homeProject: {
@@ -504,5 +476,104 @@ describe('Folders', () => {
 		expect(getByTestId('resources-list-wrapper').querySelectorAll('.listItem')).toHaveLength(2);
 		expect(getByTestId('workflow-card-name')).toHaveTextContent(TEST_WORKFLOW_RESOURCE.name);
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
+	});
+});
+
+describe('Simplified Layout', () => {
+	beforeEach(async () => {
+		await router.push('/');
+		await router.isReady();
+		pinia = createTestingPinia({ initialState });
+		foldersStore = mockedStore(useFoldersStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
+		foldersStore.totalWorkflowCount = 0;
+		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+	});
+
+	it('should render EmptyStateLayout when simplified layout is enabled', async () => {
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		const projectsStore = mockedStore(useProjectsStore);
+
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
+		vi.spyOn(readyToRunStore, 'getCardVisibility').mockReturnValue(true);
+		projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		// EmptyStateLayout cards should be rendered
+		expect(getByTestId('new-workflow-card')).toBeInTheDocument();
+		expect(getByTestId('ready-to-run-card')).toBeInTheDocument();
+
+		// ResourcesListLayout should NOT be rendered
+		expect(queryByTestId('resources-list-wrapper')).not.toBeInTheDocument();
+	});
+
+	it('should render ResourcesListLayout when simplified layout is disabled', async () => {
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
+
+		const { queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		// ResourcesListLayout should be rendered (look for list-empty-state as indicator)
+		// EmptyStateLayout cards should NOT be rendered when using regular layout
+		expect(queryByTestId('list-empty-state')).toBeInTheDocument();
+	});
+
+	it('should call getSimplifiedLayoutVisibility with route and loading state', async () => {
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		const getSimplifiedLayoutVisibility = vi
+			.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility')
+			.mockReturnValue(false);
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		// Should be called with route and loading boolean
+		expect(getSimplifiedLayoutVisibility).toHaveBeenCalled();
+		const callArgs = getSimplifiedLayoutVisibility.mock.calls[0];
+		expect(callArgs[0]).toBeDefined(); // route
+	});
+
+	it('should call addWorkflow when EmptyStateLayout new workflow card is clicked', async () => {
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = { id: 'project-123', scopes: ['workflow:create'] } as Project;
+
+		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(true);
+		vi.spyOn(readyToRunStore, 'getCardVisibility').mockReturnValue(true);
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const newWorkflowCard = getByTestId('new-workflow-card');
+		expect(newWorkflowCard).toBeInTheDocument();
+
+		// Click the new workflow card
+		await userEvent.click(newWorkflowCard);
+
+		// Should navigate to new workflow view
+		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
+	});
+
+	it('should pass route and loading state reactively to getSimplifiedLayoutVisibility', async () => {
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		const getSimplifiedLayoutVisibility = vi
+			.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility')
+			.mockReturnValue(false);
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		const initialCallCount = getSimplifiedLayoutVisibility.mock.calls.length;
+		expect(initialCallCount).toBeGreaterThan(0);
+
+		// The computed should be called with the current route and loading state
+		const lastCall = getSimplifiedLayoutVisibility.mock.calls[initialCallCount - 1];
+		expect(lastCall[0]).toHaveProperty('params'); // route object
 	});
 });

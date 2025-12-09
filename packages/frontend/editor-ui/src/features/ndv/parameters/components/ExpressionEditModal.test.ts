@@ -81,4 +81,103 @@ describe('ExpressionEditModal', () => {
 			expect(editor).toHaveAttribute('aria-readonly', 'true');
 		});
 	});
+
+	describe('output render mode radio buttons', () => {
+		it('renders all three render mode options', async () => {
+			const { getByText } = renderModal({
+				pinia,
+				props: {
+					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+					path: '',
+					modelValue: 'test',
+					dialogVisible: true,
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Text')).toBeInTheDocument();
+				expect(getByText('Html')).toBeInTheDocument();
+				expect(getByText('Markdown')).toBeInTheDocument();
+			});
+		});
+
+		it('has Text as default render mode', async () => {
+			const { getByText } = renderModal({
+				pinia,
+				props: {
+					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+					path: '',
+					modelValue: 'test',
+					dialogVisible: true,
+				},
+			});
+
+			await waitFor(() => {
+				const textButton = getByText('Text').closest('label');
+				expect(textButton).toHaveAttribute('aria-checked', 'true');
+			});
+		});
+
+		it('allows switching to Html render mode', async () => {
+			const { getByText } = renderModal({
+				pinia,
+				props: {
+					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+					path: '',
+					modelValue: 'test',
+					dialogVisible: true,
+				},
+			});
+
+			await waitFor(async () => {
+				const htmlButton = getByText('Html').closest('label');
+				const htmlInput = htmlButton?.querySelector('input');
+
+				if (htmlInput) {
+					htmlInput.click();
+					expect(htmlInput).toBeChecked();
+				}
+			});
+		});
+
+		it('allows switching to Markdown render mode', async () => {
+			const { getByText } = renderModal({
+				pinia,
+				props: {
+					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+					path: '',
+					modelValue: 'test',
+					dialogVisible: true,
+				},
+			});
+
+			await waitFor(async () => {
+				const markdownButton = getByText('Markdown').closest('label');
+				const markdownInput = markdownButton?.querySelector('input');
+
+				if (markdownInput) {
+					markdownInput.click();
+					expect(markdownInput).toBeChecked();
+				}
+			});
+		});
+
+		it('has correct values for each render mode option', async () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: {
+					parameter: createTestNodeProperties({ name: 'foo', type: 'string' }),
+					path: '',
+					modelValue: 'test',
+					dialogVisible: true,
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('radio-button-text')).toBeInTheDocument();
+				expect(getByTestId('radio-button-html')).toBeInTheDocument();
+				expect(getByTestId('radio-button-markdown')).toBeInTheDocument();
+			});
+		});
+	});
 });

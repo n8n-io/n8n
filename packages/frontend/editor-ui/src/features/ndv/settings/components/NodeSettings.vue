@@ -632,6 +632,7 @@ function handleSelectAction(params: INodeParameters) {
 					:model-value="node.name"
 					:icon-source="iconSource"
 					:read-only="isReadOnly"
+					:node-type="nodeType"
 					@update:model-value="nameChanged"
 				/>
 				<NodeExecuteButton
@@ -820,7 +821,12 @@ function handleSelectAction(params: INodeParameters) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<N8nBlockUi :show="blockUI" />
+		<N8nBlockUi
+			:show="blockUI"
+			:class="{
+				[$style.uiBlockerNdvV2]: isNdvV2,
+			}"
+		/>
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
@@ -831,7 +837,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color--background);
+	background-color: var(--ndv--header--color);
 }
 
 .featureRequest {
@@ -849,6 +855,10 @@ function handleSelectAction(params: INodeParameters) {
 		color: var(--color--text--tint-1);
 	}
 }
+
+.uiBlockerNdvV2 {
+	border-radius: 0;
+}
 </style>
 
 <style lang="scss" scoped>
@@ -856,7 +866,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color--background--light-3);
+	background-color: var(--ndv--background--color);
 	height: 100%;
 	width: 100%;
 

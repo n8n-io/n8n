@@ -103,7 +103,7 @@ const isEulaError = (error: unknown): error is EulaErrorResponse => {
 
 const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value, eulaUri);
+		await usageStore.activateLicense(activationKey.value.trim(), eulaUri?.trim());
 		activationKeyModal.value = false;
 		eulaModal.value = false;
 		activationKey.value = '';
@@ -111,9 +111,9 @@ const onLicenseActivation = async (eulaUri?: string) => {
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance using type guard
 		if (isEulaError(error)) {
-			activationKeyModal.value = false;
 			eulaUrl.value = error.meta.eulaUrl;
 			eulaModal.value = true;
+			activationKeyModal.value = false;
 			return;
 		}
 
@@ -136,6 +136,18 @@ const onEulaCancel = () => {
 	eulaModal.value = false;
 	eulaUrl.value = '';
 	activationKey.value = '';
+};
+
+const onActivationCancel = () => {
+	activationKeyModal.value = false;
+	activationKey.value = '';
+};
+
+const onActivationModalClose = () => {
+	// Only clear key if not transitioning to EULA flow
+	if (!eulaModal.value) {
+		onActivationCancel();
+	}
 };
 
 onMounted(async () => {
@@ -185,10 +197,6 @@ const onViewPlans = () => {
 
 const onManagePlan = () => {
 	sendUsageTelemetry('manage_plan');
-};
-
-const onDialogClosed = () => {
-	activationKey.value = '';
 };
 
 const onDialogOpened = () => {
@@ -307,7 +315,7 @@ const openCommunityRegisterModal = () => {
 				top="0"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
-				@closed="onDialogClosed"
+				@closed="onActivationModalClose"
 				@opened="onDialogOpened"
 			>
 				<template #default>
@@ -318,10 +326,10 @@ const openCommunityRegisterModal = () => {
 					/>
 				</template>
 				<template #footer>
-					<N8nButton type="secondary" @click="activationKeyModal = false">
+					<N8nButton type="secondary" @click="onActivationCancel">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
-					<N8nButton :disabled="!activationKey" @click="onLicenseActivation">
+					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</N8nButton>
 				</template>
@@ -338,7 +346,7 @@ const openCommunityRegisterModal = () => {
 </template>
 
 <style lang="scss" module>
-@use '@/app/styles/variables' as *;
+@use '@/app/css/variables' as *;
 
 .center > div {
 	justify-content: center;

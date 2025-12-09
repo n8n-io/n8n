@@ -95,6 +95,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
 
@@ -113,7 +114,6 @@ type Props = {
 	workflowObject: Workflow;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
-	tooMuchDataTitle: string;
 	executingMessage: string;
 	pushRef?: string;
 	paneType: NodePanelType;
@@ -808,6 +808,7 @@ function getResolvedNodeOutputs() {
 	}
 	return [];
 }
+
 function shouldHintBeDisplayed(hint: NodeHint): boolean {
 	const { location, whenToDisplay } = hint;
 
@@ -964,6 +965,8 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
 		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
+		workflow_id: workflowsStore.workflowId,
+		node_id: activeNode.value?.id,
 	});
 }
 
@@ -1039,6 +1042,8 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 			push_ref: props.pushRef,
 			run_index: props.runIndex,
 			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : props.displayMode,
+			workflow_id: workflowsStore.workflowId,
+			node_id: activeNode.value?.id,
 		};
 
 		void externalHooks.run('runData.onTogglePinData', telemetryPayload);
@@ -1420,7 +1425,7 @@ function onSearchClear() {
 
 function executeNode(nodeName: string) {
 	void runWorkflow({
-		destinationNode: nodeName,
+		destinationNode: { nodeName, mode: 'inclusive' },
 		source: 'schema-preview',
 	});
 }
@@ -1726,9 +1731,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
-				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small">{{
-					i18n.baseText('runData.pinData.insertedExecutionData')
-				}}</N8nText>
+				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small"
+					>{{ i18n.baseText('runData.pinData.insertedExecutionData') }}
+				</N8nText>
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
 						:model-value="editMode.value"
@@ -1831,27 +1836,34 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-data-size-warning"
 				:class="$style.center"
 			>
-				<NDVEmptyState :title="tooMuchDataTitle">
-					<span
-						v-n8n-html="
-							i18n.baseText('ndv.output.tooMuchData.message', {
-								interpolate: { size: dataSizeInMB },
+				<div :class="$style.dataSizeWarning">
+					<NDVEmptyState
+						:title="
+							i18n.baseText('ndv.tooMuchData.title', {
+								interpolate: {
+									size: dataSizeInMB,
+								},
 							})
 						"
-					/>
-				</NDVEmptyState>
+					>
+						<span v-n8n-html="i18n.baseText('ndv.tooMuchData.message')" />
+					</NDVEmptyState>
 
-				<N8nButton
-					outline
-					:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
-					@click="showTooMuchData"
-				/>
+					<div :class="$style.warningActions">
+						<N8nButton
+							outline
+							size="small"
+							:label="i18n.baseText('runData.downloadBinaryData')"
+							@click="downloadJsonData()"
+						/>
 
-				<N8nButton
-					size="small"
-					:label="i18n.baseText('runData.downloadBinaryData')"
-					@click="downloadJsonData()"
-				/>
+						<N8nButton
+							size="small"
+							:label="i18n.baseText('ndv.tooMuchData.showDataAnyway')"
+							@click="showTooMuchData"
+						/>
+					</div>
+				</div>
 			</div>
 
 			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
@@ -1978,7 +1990,13 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
+		<N8nBlockUi
+			:show="blockUI"
+			:class="{
+				[$style.uiBlocker]: true,
+				[$style.uiBlockerNdvV2]: isNDVV2,
+			}"
+		/>
 	</div>
 </template>
 
@@ -2239,6 +2257,10 @@ defineExpose({ enterEditMode });
 	border-bottom-left-radius: 0;
 }
 
+.uiBlockerNdvV2 {
+	border-radius: 0;
+}
+
 .hintCallout {
 	margin-bottom: var(--spacing--xs);
 	margin-left: var(--ndv--spacing);
@@ -2310,6 +2332,25 @@ defineExpose({ enterEditMode });
 .ndv-v2,
 .compact {
 	--ndv--spacing: var(--spacing--2xs);
+}
+
+.dataSizeWarning {
+	padding: var(--spacing--sm) var(--spacing--md);
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.warningActions {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	align-items: center;
 }
 </style>
 

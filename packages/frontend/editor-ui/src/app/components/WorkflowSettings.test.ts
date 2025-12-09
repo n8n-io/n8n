@@ -1,7 +1,7 @@
 import { nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { within, waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -60,6 +60,7 @@ describe('WorkflowSettingsVue', () => {
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
+				activeVersionId: 'v1',
 				isArchived: false,
 				nodes: [],
 				connections: {},
@@ -72,6 +73,7 @@ describe('WorkflowSettingsVue', () => {
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			activeVersionId: 'v1',
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -137,7 +139,7 @@ describe('WorkflowSettingsVue', () => {
 		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
 		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: undefined,
+				query: undefined,
 			}),
 		);
 	});
@@ -222,12 +224,14 @@ describe('WorkflowSettingsVue', () => {
 	);
 
 	it('should save time saved per execution correctly', async () => {
+		workflowsStore.workflowSettings.timeSavedMode = 'fixed';
 		const { getByTestId, getByRole } = createComponent({ pinia });
 		await nextTick();
+		await waitFor(() => {
+			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
+		});
 
 		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
-
-		expect(timeSavedPerExecutionInput).toBeVisible();
 
 		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -240,14 +244,16 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should remove time saved per execution setting', async () => {
+		workflowsStore.workflowSettings.timeSavedMode = 'fixed';
 		workflowsStore.workflowSettings.timeSavedPerExecution = 10;
 
 		const { getByTestId, getByRole } = createComponent({ pinia });
 		await nextTick();
+		await waitFor(() => {
+			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
+		});
 
 		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
-
-		expect(timeSavedPerExecutionInput).toBeVisible();
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput as Element);
@@ -263,22 +269,27 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it('should disable save time saved per execution if env is read-only', async () => {
+		workflowsStore.workflowSettings.timeSavedMode = 'fixed';
 		sourceControlStore.preferences.branchReadOnly = true;
 
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
+		await waitFor(() => {
+			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
+		});
 
 		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
 
-		expect(timeSavedPerExecutionInput).toBeVisible();
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
 
 	it('should disable save time saved per execution if user has no permission to update workflow', async () => {
+		workflowsStore.workflowSettings.timeSavedMode = 'fixed';
 		workflowsStore.getWorkflowById.mockImplementation(() => ({
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			activeVersionId: 'v1',
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -290,10 +301,12 @@ describe('WorkflowSettingsVue', () => {
 
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
+		await waitFor(() => {
+			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
+		});
 
 		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
 
-		expect(timeSavedPerExecutionInput).toBeVisible();
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
 });

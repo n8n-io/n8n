@@ -59,7 +59,7 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
-import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
+import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 
@@ -200,7 +200,7 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
 		}
 
 		await this.postHogClient.init();
@@ -215,7 +215,7 @@ export class Server extends AbstractServer {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			if (frontendService) {
-				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
 		}
 
@@ -487,7 +487,9 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
-					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
+					return req.user
+						? await frontendService.getSettings()
+						: await frontendService.getPublicSettings();
 				}),
 			);
 		}

@@ -173,7 +173,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				{ name: 'test search' },
+				{ query: 'test search' },
 			);
 
 			// Should reset workflows array and populate with filtered results

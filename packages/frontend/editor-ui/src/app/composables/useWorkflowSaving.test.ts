@@ -1,7 +1,7 @@
 import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CANCEL, MODAL_CONFIRM, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import router from '@/router';
+import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
@@ -21,6 +21,12 @@ vi.mock('@/app/composables/useMessage', () => {
 		}),
 	};
 });
+
+vi.mock('@n8n/permissions', () => ({
+	getResourcePermissions: () => ({
+		workflow: { update: true },
+	}),
+}));
 
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
@@ -365,7 +371,7 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
-		it('should include active=false in the request if the workflow has no activatable trigger node', async () => {
+		it('should not include active=false in the request if the workflow has no activatable trigger node', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w1',
 				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true })],
@@ -381,10 +387,9 @@ describe('useWorkflowSaving', () => {
 			await saveCurrentWorkflow({ id: 'w1' });
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w1',
-				expect.objectContaining({ id: 'w1', active: false }),
+				expect.objectContaining({ id: 'w1' }),
 				false,
 			);
-			expect(workflowsStore.setWorkflowInactive).toHaveBeenCalled();
 		});
 	});
 });

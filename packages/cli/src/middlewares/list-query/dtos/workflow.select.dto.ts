@@ -6,6 +6,7 @@ export class WorkflowSelect extends BaseSelect {
 			'id', // always included downstream
 			'name',
 			'active',
+			'activeVersionId',
 			'tags',
 			'createdAt',
 			'updatedAt',
@@ -14,6 +15,7 @@ export class WorkflowSelect extends BaseSelect {
 			'parentFolder',
 			'nodes',
 			'isArchived',
+			'description',
 		]);
 	}
 

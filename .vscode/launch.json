@@ -26,15 +26,11 @@
 			"name": "Launch n8n with debug",
 			"program": "${workspaceFolder}/packages/cli/bin/n8n",
 			"cwd": "${workspaceFolder}/packages/cli/bin",
-			// "args": ["start", "--tunnel"],
 			"request": "launch",
 			"skipFiles": ["<node_internals>/**"],
 			"type": "node",
-			"env": {
-				// "N8N_PORT": "5679",
-			},
 			"outputCapture": "std",
-			"killBehavior": "polite"
+			"killBehavior": "forceful"
 		},
 		{
 			"name": "Launch n8n CLI dev with debug",
