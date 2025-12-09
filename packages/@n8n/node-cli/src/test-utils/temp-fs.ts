@@ -24,6 +24,8 @@ export const tmpdirTest = test.extend<TmpDirFixture>({
 			await use(directory);
 		} finally {
 			process.chdir(originalCwd);
+			// Add a small delay to ensure all file handles are released
+			await new Promise((resolve) => setTimeout(resolve, 100));
 			await fs.rm(directory, { recursive: true, force: true });
 		}
 	},

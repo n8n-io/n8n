@@ -44,6 +44,7 @@
     "tailwindcss": "^3.4.3",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-svg-loader": "^5.1.0",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "vue-tsc": "catalog:frontend",

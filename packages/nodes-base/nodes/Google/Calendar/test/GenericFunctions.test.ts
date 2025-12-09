@@ -623,7 +623,7 @@ describe('addNextOccurrence', () => {
 			{
 				start: { date: '2025-01-01' },
 				end: { date: '2025-01-02' },
-				recurrence: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=1;UNTIL=20251231T235959Z'],
+				recurrence: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=1;UNTIL=20260131T235959Z'],
 			},
 		];
 
