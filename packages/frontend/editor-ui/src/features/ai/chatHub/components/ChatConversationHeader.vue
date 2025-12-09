@@ -17,7 +17,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+const { isNewSession, selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+	isNewSession: boolean;
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
 	readyToShowModelSelector: boolean;
@@ -79,6 +80,7 @@ defineExpose({
 				text
 				icon-size="large"
 				:aria-label="i18n.baseText('chatHub.chat.header.button.newChat')"
+				:disabled="isNewSession"
 				@click="onNewChat"
 			/>
 			<ModelSelector

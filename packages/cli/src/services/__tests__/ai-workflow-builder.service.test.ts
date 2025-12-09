@@ -100,6 +100,7 @@ describe('WorkflowBuilderService', () => {
 	describe('chat', () => {
 		it('should create AiWorkflowBuilderService on first chat call without AI assistant client', async () => {
 			const mockPayload = {
+				id: '12345',
 				message: 'test message',
 				workflowContext: {},
 			};
@@ -134,6 +135,7 @@ describe('WorkflowBuilderService', () => {
 
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -170,6 +172,7 @@ describe('WorkflowBuilderService', () => {
 		it('should reuse the same service instance on subsequent calls', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -201,6 +204,7 @@ describe('WorkflowBuilderService', () => {
 		it('should pass abort signal to underlying service', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -265,6 +269,7 @@ describe('WorkflowBuilderService', () => {
 		it('should send push notification when credits are updated', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -313,6 +318,7 @@ describe('WorkflowBuilderService', () => {
 		it('should handle multiple credit updates', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -373,6 +379,7 @@ describe('WorkflowBuilderService', () => {
 		it('should call telemetry.track when telemetry event is triggered', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -419,6 +426,7 @@ describe('WorkflowBuilderService', () => {
 		it('should handle multiple telemetry events', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
@@ -463,6 +471,7 @@ describe('WorkflowBuilderService', () => {
 		it('should handle telemetry events with empty properties', async () => {
 			const mockPayload = {
 				message: 'test message',
+				id: '12345',
 				workflowContext: {},
 			};
 
