@@ -37,12 +37,17 @@ function focusOnInput() {
 	selectRef.value?.focusOnInput();
 }
 
+function removeOption(value: string) {
+	workflowOptions.value = workflowOptions.value.filter((option) => option.value !== value);
+}
+
 onMounted(async () => {
 	await loadEligibleWorkflows();
 });
 
 defineExpose({
 	focusOnInput,
+	removeOption,
 });
 </script>
 

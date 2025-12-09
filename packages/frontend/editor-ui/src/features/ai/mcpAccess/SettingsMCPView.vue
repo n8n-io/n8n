@@ -2,7 +2,6 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import type { WorkflowListItem } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
@@ -28,7 +27,6 @@ const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
 
-const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
@@ -90,12 +88,17 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
-const onRemoveMCPAccess = async (workflow: WorkflowListItem) => {
+const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
 	try {
-		await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
-		availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
+		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
+		if (isEnabled) {
+			await fetchAvailableWorkflows();
+		} else {
+			availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflowId);
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+		throw error;
 	}
 };
 
@@ -164,7 +167,14 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 };
 
 const openConnectWorkflowsModal = () => {
-	uiStore.openModal(MCP_CONNECT_WORKFLOWS_MODAL_KEY);
+	uiStore.openModalWithData({
+		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+		data: {
+			onEnableMcpAccess: async (workflowId: string) => {
+				await onToggleWorkflowMCPAccess(workflowId, true);
+			},
+		},
+	});
 };
 </script>
 <template>
@@ -218,7 +228,7 @@ const openConnectWorkflowsModal = () => {
 					:data-test-id="'mcp-workflow-table'"
 					:workflows="availableWorkflows"
 					:loading="workflowsLoading"
-					@remove-mcp-access="onRemoveMCPAccess"
+					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
 					@connect-workflows="openConnectWorkflowsModal"
 					@refresh="onRefreshWorkflows"
 				/>

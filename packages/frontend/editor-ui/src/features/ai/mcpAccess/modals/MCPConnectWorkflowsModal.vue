@@ -9,6 +9,12 @@ import { computed, onMounted, ref } from 'vue';
 
 type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
 
+const props = defineProps<{
+	data: {
+		onEnableMcpAccess: (workflowId: string) => Promise<void>;
+	};
+}>();
+
 const i18n = useI18n();
 
 const isSaving = ref(false);
@@ -33,8 +39,16 @@ const cancel = () => {
 	modalBus.emit('close');
 };
 
-function save() {
+async function save() {
+	if (!selectedWorkflowId.value) return;
+
 	isSaving.value = true;
+	try {
+		await props.data.onEnableMcpAccess(selectedWorkflowId.value);
+		modalBus.emit('close');
+	} finally {
+		isSaving.value = false;
+	}
 }
 
 onMounted(() => {
@@ -50,6 +64,7 @@ onMounted(() => {
 		:title="i18n.baseText('settings.mcp.connectWorkflows')"
 		width="600px"
 		:class="$style.container"
+		:event-bus="modalBus"
 	>
 		<template #content>
 			<div :class="$style.content">
