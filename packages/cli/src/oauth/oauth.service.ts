@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -38,22 +37,18 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
-
-type CsrfStateRequired = {
-	/** Random CSRF token, used to verify the signature of the CSRF state */
-	token: string;
-	/** Creation timestamp of the CSRF state. Used for expiration.  */
-	createdAt: number;
-};
-
-type CreateCsrfStateData = {
-	cid: string;
-	[key: string]: unknown;
-};
-
-type CsrfState = CsrfStateRequired & CreateCsrfStateData;
-
-const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
+import type { AxiosRequestConfig } from 'axios';
+import { createHmac } from 'crypto';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
+import {
+	algorithmMap,
+	MAX_CSRF_AGE,
+	OauthVersion,
+	type CreateCsrfStateData,
+	type CsrfState,
+	type OAuth1CredentialData,
+} from './types';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -62,10 +57,7 @@ export function shouldSkipAuthOnOAuthCallback() {
 
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
-export const enum OauthVersion {
-	V1 = 1,
-	V2 = 2,
-}
+export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
 
 @Service()
 export class OauthService {
@@ -84,7 +76,9 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredential(req: OAuthRequest.OAuth2Credential.Auth): Promise<CredentialsEntity> {
+	async getCredential(
+		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
+	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
 
 		if (!credentialId) {
@@ -281,9 +275,11 @@ export class OauthService {
 
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
-		oauthCredentials: OAuth2CredentialData,
 		csrfData: CreateCsrfStateData,
 	): Promise<string> {
+		const oauthCredentials: OAuth2CredentialData =
+			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
@@ -395,6 +391,68 @@ export class OauthService {
 		});
 
 		return returnUri.toString();
+	}
+
+	async generateAOauth1AuthUri(
+		credential: CredentialsEntity,
+		csrfData: CreateCsrfStateData,
+	): Promise<string> {
+		const oauthCredentials: OAuth1CredentialData =
+			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+
+		const [csrfSecret, state] = this.createCsrfState(csrfData);
+
+		const signatureMethod = oauthCredentials.signatureMethod;
+
+		const oAuthOptions: clientOAuth1.Options = {
+			consumer: {
+				key: oauthCredentials.consumerKey,
+				secret: oauthCredentials.consumerSecret,
+			},
+			signature_method: signatureMethod,
+
+			hash_function(base, key) {
+				const algorithm = algorithmMap[signatureMethod] ?? 'sha1';
+				return createHmac(algorithm, key).update(base).digest('base64');
+			},
+		};
+
+		const oauthRequestData = {
+			oauth_callback: `${this.getBaseUrl(OauthVersion.V1)}/callback?state=${state}`,
+		};
+
+		await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
+
+		const oauth = new clientOAuth1(oAuthOptions);
+
+		const options: RequestOptions = {
+			method: 'POST',
+			url: oauthCredentials.requestTokenUrl,
+			data: oauthRequestData,
+		};
+
+		const data = oauth.toHeader(oauth.authorize(options));
+
+		// @ts-ignore
+		options.headers = data;
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
+
+		// Response comes as x-www-form-urlencoded string so convert it to JSON
+		const paramsParser = new URLSearchParams(response as string);
+		const responseJson = Object.fromEntries(paramsParser.entries());
+
+		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+
+		await this.encryptAndSaveData(credential, { csrfSecret }, []);
+
+		this.logger.debug('OAuth1 authorization url created for credential', {
+			csrfData,
+			credentialId: credential.id,
+		});
+
+		return returnUri;
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {

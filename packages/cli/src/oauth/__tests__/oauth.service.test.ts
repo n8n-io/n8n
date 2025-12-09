@@ -10,7 +10,12 @@ import type { Response } from 'express';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { OauthService, OauthVersion, shouldSkipAuthOnOAuthCallback } from '@/oauth/oauth.service';
+import {
+	OauthService,
+	OauthVersion,
+	shouldSkipAuthOnOAuthCallback,
+	type OAuth1CredentialData,
+} from '@/oauth/oauth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -720,7 +725,7 @@ describe('OauthService', () => {
 					}) as any,
 			);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
 				clientId: 'client_id',
 				clientSecret: 'client_secret',
@@ -731,9 +736,10 @@ describe('OauthService', () => {
 				authentication: 'header',
 			};
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, oauthCredentials, {
+			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				userId: 'user-id',
 			});
@@ -769,7 +775,7 @@ describe('OauthService', () => {
 					}) as any,
 			);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
 				clientId: 'client_id',
 				clientSecret: 'client_secret',
@@ -780,9 +786,10 @@ describe('OauthService', () => {
 				authentication: 'header',
 			};
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, oauthCredentials, {
+			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				userId: 'user-id',
 			});
@@ -811,7 +818,7 @@ describe('OauthService', () => {
 					}) as any,
 			);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
 				clientId: 'client_id',
 				clientSecret: 'client_secret',
@@ -823,9 +830,10 @@ describe('OauthService', () => {
 				authQueryParameters: 'custom_param=value',
 			};
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, oauthCredentials, {
+			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				userId: 'user-id',
 			});
@@ -850,12 +858,13 @@ describe('OauthService', () => {
 					}) as any,
 			);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://example.domain',
 				useDynamicClientRegistration: true,
 			} as OAuth2CredentialData;
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.mocked(axios.get).mockResolvedValue({
 				data: {
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
@@ -877,7 +886,7 @@ describe('OauthService', () => {
 
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, oauthCredentials, {
+			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				userId: 'user-id',
 			});
@@ -913,24 +922,25 @@ describe('OauthService', () => {
 
 		it('should throw BadRequestError when OAuth2 server metadata is invalid', async () => {
 			const axios = require('axios');
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://example.domain',
 				useDynamicClientRegistration: true,
 			} as OAuth2CredentialData;
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.mocked(axios.get).mockResolvedValue({
 				data: { invalid: 'metadata' },
 			} as any);
 
 			await expect(
-				service.generateAOauth2AuthUri(credential, oauthCredentials, {
+				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
-				service.generateAOauth2AuthUri(credential, oauthCredentials, {
+				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
 					userId: 'user-id',
 				}),
@@ -942,12 +952,13 @@ describe('OauthService', () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			jest.mocked(ClientOAuth2).mockImplementation(() => ({}) as any);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://example.domain',
 				useDynamicClientRegistration: true,
 			} as OAuth2CredentialData;
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.mocked(axios.get).mockResolvedValue({
 				data: {
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
@@ -964,13 +975,13 @@ describe('OauthService', () => {
 			} as any);
 
 			await expect(
-				service.generateAOauth2AuthUri(credential, oauthCredentials, {
+				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
-				service.generateAOauth2AuthUri(credential, oauthCredentials, {
+				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
 					userId: 'user-id',
 				}),
@@ -993,12 +1004,13 @@ describe('OauthService', () => {
 					}) as any,
 			);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://example.domain',
 				useDynamicClientRegistration: true,
 			} as OAuth2CredentialData;
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.mocked(axios.get).mockResolvedValue({
 				data: {
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
@@ -1019,7 +1031,7 @@ describe('OauthService', () => {
 
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, oauthCredentials, {
+			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				userId: 'user-id',
 			});
@@ -1049,7 +1061,7 @@ describe('OauthService', () => {
 					}) as any,
 			);
 
-			const credential = mock<CredentialsEntity>({ id: '1' });
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials: OAuth2CredentialData = {
 				clientId: 'client_id',
 				clientSecret: 'client_secret',
@@ -1060,10 +1072,11 @@ describe('OauthService', () => {
 				authentication: 'header',
 			};
 
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 			jest.spyOn(service, 'createCsrfState').mockReturnValue(['csrf-secret', 'encoded-state']);
 
-			await service.generateAOauth2AuthUri(credential, oauthCredentials, {
+			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				userId: 'user-id',
 			});
@@ -1074,6 +1087,90 @@ describe('OauthService', () => {
 					cid: '1',
 				}),
 			);
+		});
+	});
+
+	describe('generateAOauth1AuthUri', () => {
+		it('should generate auth URI for OAuth1 credential', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				authUrl: 'https://example.domain/oauth/authorize',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA1',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.request).mockResolvedValue({
+				data: 'oauth_token=random-token&oauth_token_secret=random-secret',
+			});
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth1AuthUri(credential, {
+				cid: credential.id,
+				userId: 'user-id',
+			});
+
+			expect(authUri).toContain('https://example.domain/oauth/authorize?oauth_token=random-token');
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(
+				credential,
+				expect.objectContaining({ csrfSecret: expect.any(String) }),
+				[],
+			);
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth1.authenticate', expect.any(Array));
+		});
+
+		it('should generate auth URI with different signature methods', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				authUrl: 'https://example.domain/oauth/authorize',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA256',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.request).mockResolvedValue({
+				data: 'oauth_token=random-token&oauth_token_secret=random-secret',
+			});
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth1AuthUri(credential, {
+				cid: credential.id,
+				userId: 'user-id',
+			});
+
+			expect(authUri).toContain('https://example.domain/oauth/authorize?oauth_token=random-token');
+			expect(service.encryptAndSaveData).toHaveBeenCalled();
+		});
+
+		it('should handle request token URL errors', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				authUrl: 'https://example.domain/oauth/authorize',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA1',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.request).mockRejectedValue(new Error('Request token failed'));
+
+			await expect(
+				service.generateAOauth1AuthUri(credential, {
+					cid: credential.id,
+					userId: 'user-id',
+				}),
+			).rejects.toThrow('Request token failed');
 		});
 	});
 });

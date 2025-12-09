@@ -66,17 +66,10 @@ describe('OAuth2CredentialController', () => {
 			const authUri = await controller.getAuthUri(req);
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
-				mockResolvedCredential,
-				expect.objectContaining({
-					clientId: 'client_id',
-					authUrl: 'https://example.domain/oauth2/auth',
-				}),
-				{
-					cid: '1',
-					userId: '123',
-				},
-			);
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
+				cid: '1',
+				userId: '123',
+			});
 		});
 	});
 
