@@ -7,6 +7,7 @@ export const DEFAULT_PROMPT_CONFIG: NodePromptConfig = {
 		switch: ['n8n-nodes-base.switch', 'switch'],
 		httpRequest: ['n8n-nodes-base.httpRequest', 'httprequest', 'webhook', 'n8n-nodes-base.webhook'],
 		tool: ['Tool', '.tool'],
+		gmail: ['n8n-nodes-base.gmailTrigger', 'gmail'],
 	},
 
 	parameterKeywords: {
