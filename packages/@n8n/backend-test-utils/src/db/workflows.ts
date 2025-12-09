@@ -200,8 +200,7 @@ export async function createWorkflowWithHistory(
 	const workflow = await createWorkflow(attributes, userOrProject);
 
 	// Create workflow history for the initial version
-	const user = userOrProject instanceof User ? userOrProject : undefined;
-	await createWorkflowHistory(workflow, user);
+	await createWorkflowHistory(workflow, userOrProject);
 
 	return workflow;
 }
@@ -243,12 +242,19 @@ export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
 ): Promise<void> {
+	const authors =
+		userOrProject instanceof User
+			? userOrProject.firstName && userOrProject.lastName
+				? `${userOrProject.firstName} ${userOrProject.lastName}`
+				: 'Test User'
+			: 'Test User';
+
 	await Container.get(WorkflowHistoryRepository).insert({
 		workflowId: workflow.id,
 		versionId: workflow.versionId,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
-		authors: userOrProject instanceof User ? userOrProject.email : 'test@example.com',
+		authors,
 	});
 }
 
