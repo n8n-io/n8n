@@ -485,13 +485,8 @@ describe('ResourceLocator', () => {
 	});
 
 	describe('slow load notice', () => {
-		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-		afterEach(() => {
-			vi.useRealTimers();
-		});
 		it('should pass slowLoadNotice configuration to dropdown component', async () => {
+			vi.useFakeTimers();
 			const SLOW_LOAD_PARAMETER = {
 				...TEST_PARAMETER_SINGLE_MODE,
 				modes: [
@@ -517,7 +512,7 @@ describe('ResourceLocator', () => {
 					resolvePromise = resolve;
 				}),
 			);
-			const user = userEvent.setup({ delay: null });
+			const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 			const { getByTestId, findByText } = renderComponent({
 				props: {
 					modelValue: TEST_MODEL_VALUE,
@@ -529,10 +524,10 @@ describe('ResourceLocator', () => {
 				},
 			});
 
-			vi.advanceTimersByTime(200);
+			await vi.advanceTimersByTimeAsync(200);
 			await user.click(getByTestId('rlc-input'));
 
-			vi.advanceTimersByTime(2000);
+			await vi.advanceTimersByTimeAsync(2000);
 			const noticeText = await findByText('This is taking longer than expected', undefined, {
 				timeout: 3000,
 			});
@@ -541,6 +536,7 @@ describe('ResourceLocator', () => {
 			if (resolvePromise) {
 				resolvePromise({ results: [], paginationToken: null });
 			}
+			vi.useRealTimers();
 		}, 10000);
 
 		it('should not show notice when dropdown is not visible', async () => {
