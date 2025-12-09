@@ -1,4 +1,4 @@
-import { reRankSearchResults } from './reRankSearchResults';
+import { NODE_POPULARITY_SCALING_FACTOR, reRankSearchResults } from './reRankSearchResults';
 import topLevel from './snapshots/toplevel.snapshot.json';
 import { sublimeSearch } from './sublimeSearch';
 
@@ -114,6 +114,30 @@ describe('reRankSearchResults', () => {
 			if (githubIndex !== -1 && gitIndex !== -1) {
 				expect(githubIndex).toBeLessThan(gitIndex);
 			}
+		});
+
+		it('should return Set node before Edit image node when searching for "edit", favoring Set node', () => {
+			const searchResults = sublimeSearch('edit', topLevel);
+
+			// Add factors that favor Set node over Edit Image node
+			const additionalFactors = {
+				popularity: {
+					/* eslint-disable @typescript-eslint/naming-convention */
+					'n8n-nodes-base.set': 0.978 * NODE_POPULARITY_SCALING_FACTOR, // Popular Set node
+					'n8n-nodes-base.editImage': 0.662 * NODE_POPULARITY_SCALING_FACTOR, // Less popular Edit Image node
+					/* eslint-enable @typescript-eslint/naming-convention */
+				},
+			};
+
+			const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
+
+			// Set node should appear before Edit Image node
+			const setIndex = reRankedResults.findIndex((r) => r.item.key === 'n8n-nodes-base.set');
+			const editImageIndex = reRankedResults.findIndex(
+				(r) => r.item.key === 'n8n-nodes-base.editImage',
+			);
+
+			expect(setIndex).toBeLessThan(editImageIndex);
 		});
 	});
 });

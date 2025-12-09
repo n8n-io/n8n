@@ -62,6 +62,7 @@ import { type NodeIconSource } from '@/app/utils/nodeIcon';
 import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 
 import nodePopularity from 'virtual:node-popularity-data';
+import { NODE_POPULARITY_SCALING_FACTOR } from '@n8n/utils/search/reRankSearchResults';
 
 export interface ViewStack {
 	uuid?: string;
@@ -93,7 +94,7 @@ export interface ViewStack {
 const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
 	return {
 		...acc,
-		[node.id]: node.popularity * 100, // Scale the popularity score
+		[node.id]: node.popularity * NODE_POPULARITY_SCALING_FACTOR, // Scale the popularity score
 	};
 }, {});
 

@@ -1,3 +1,5 @@
+export const NODE_POPULARITY_SCALING_FACTOR = 150;
+
 export function reRankSearchResults<T extends { key: string }>(
 	searchResults: Array<{ score: number; item: T }>,
 	additionalFactors: Record<string, Record<string, number>>,
