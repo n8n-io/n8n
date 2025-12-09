@@ -24,6 +24,8 @@ type RedisNode = Array<{
 	port: number;
 }>;
 
+type CreateRedisClientArgs = { type: RedisClientType; extraOptions?: RedisOptions };
+
 /**
  * Enable ioredis debug logging if QUEUE_BULL_REDIS_DEBUG is set to 'true'.
  * Based on npm package 'debug', setting the DEBUG env var to 'ioredis:*' enables logging.
@@ -77,11 +79,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return !this.lostConnection;
 	}
 
-	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
+	createClient(arg: CreateRedisClientArgs) {
+		const options = this.getOptions(arg);
 		const isCluster = this.clusterNodes().length > 0;
 		const { client, nodes } = isCluster
-			? this.createClusterClient(arg)
-			: this.createRegularClient(arg);
+			? this.createClusterClient(options)
+			: this.createRegularClient(options);
 
 		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
@@ -119,13 +122,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	//            private
 	// ----------------------------------
 
-	private createRegularClient({
-		extraOptions,
-	}: {
-		extraOptions?: RedisOptions;
-	}) {
-		const options = this.getOptions({ extraOptions });
-
+	private createRegularClient(options: RedisOptions) {
 		const { host, port } = this.globalConfig.queue.bull.redis;
 
 		options.host = host;
@@ -136,13 +133,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return { client, nodes: [{ host, port }] };
 	}
 
-	private createClusterClient({
-		extraOptions,
-	}: {
-		extraOptions?: RedisOptions;
-	}) {
-		const options = this.getOptions({ extraOptions });
-
+	private createClusterClient(options: RedisOptions) {
 		const nodes = this.clusterNodes();
 
 		const client = new ioRedis.Cluster(nodes, {
@@ -155,7 +146,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return { client, nodes };
 	}
 
-	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
+	private getOptions({ type, extraOptions }: CreateRedisClientArgs) {
 		const redisConfig = this.globalConfig.queue.bull.redis;
 		const { username, password, db, tls, tlsConfig, enableAutoPipelining } = redisConfig;
 
@@ -188,7 +179,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const options: RedisOptions = {
 			username,
 			password,
-			connectionName: this.instanceSettings.hostId,
+			connectionName: `${this.instanceSettings.hostId}:${type}`,
 			db,
 			enableReadyCheck: false,
 			lazyConnect: true,
@@ -269,7 +260,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		nodes: RedisNode,
 	) => {
 		const clientName = isCluster ? 'Redis cluster client' : 'Redis client';
-		this.logger.debug(`Starting ${clientName} ${type}`, { type, nodes });
+		this.logger.info(`Connecting ${clientName} ${type}`, { type, nodes });
 		client
 			.connect()
 			.then(() => {
