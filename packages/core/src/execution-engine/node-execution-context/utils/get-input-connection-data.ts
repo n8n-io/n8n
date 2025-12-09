@@ -74,14 +74,7 @@ interface HitlNodeTypeFactoryParams {
 }
 
 /**
- * Get the next run index for a node from the run execution data.
- */
-function getHitlNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string): number {
-	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
-}
-
-/**
- * Create an INodeType for an HITL tool node with supplyData and execute methods.
+ * Create an INodeType for an HITL tool node with supplyData method.
  *
  * HITL tools act as middleware that intercepts tool calls and requires human approval.
  * The key insight: Agent sees the **gated tools** directly (e.g., "HTTP Request"),
@@ -197,8 +190,7 @@ function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 					description: originalTool.description,
 					schema: originalTool.schema,
 					// This func is never called - execution happens via EngineRequest to HITL node
-					// eslint-disable-next-line @typescript-eslint/require-await
-					func: async () => 'This tool is executed via EngineRequest through HITL',
+					func: async () => await Promise.resolve(''),
 					metadata: {
 						// Route to HITL node, not the original tool's node
 						sourceNodeName: node.name,
@@ -222,181 +214,10 @@ function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 			return { response: gatedTools };
 		},
 
-		/**
-		 * Execute the HITL node as middleware.
-		 *
-		 * When Agent calls a gated tool, the EngineRequest comes here because
-		 * sourceNodeName points to this HITL node.
-		 *
-		 * 1. Execute sendAndWait to request human approval
-		 * 2. After webhook resume, check if approved
-		 * 3. If approved: find and execute the actual gated tool
-		 * 4. Return the gated tool's result (or denial message)
-		 */
-		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const node = this.getNode();
-			const inputData = this.getInputData();
-
-			// The input contains the tool call that the Agent made
-			// This is the parameters the Agent passed to the "gated" tool
-			const toolInput = inputData[0]?.json;
-
-			// Track input data for the HITL node execution (similar to normal tools)
-			const currentRunIndex = getHitlNextRunIndex(runExecutionData, node.name);
-			this.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolInput ?? {} }]]);
-
-			LoggerProxy.debug('[HITL] execute called - received tool call from Agent', {
-				hitlNodeName: node.name,
-				toolInput,
-				inputDataLength: inputData.length,
-				runIndex: currentRunIndex,
-			});
-
-			// Execute sendAndWait operation from the original node (Slack, Email, etc.)
-			if (!originalNodeType.execute) {
-				const error = new NodeOperationError(
-					node,
-					`Original node type ${originalNodeTypeName} does not have an execute method`,
-				);
-				this.addOutputData(NodeConnectionTypes.AiTool, currentRunIndex, error);
-				throw error;
-			}
-
-			LoggerProxy.debug('[HITL] Calling sendAndWait operation', {
-				hitlNodeName: node.name,
-				originalNodeTypeName,
-			});
-
-			// This will call putExecutionToWait() and pause execution until webhook response
-			const sendAndWaitResult = await originalNodeType.execute.call(this);
-
-			LoggerProxy.debug('[HITL] sendAndWait returned (after webhook resume)', {
-				hitlNodeName: node.name,
-				resultType: typeof sendAndWaitResult,
-				hasResult: !!sendAndWaitResult,
-			});
-
-			// After webhook resume, check approval status
-			// Handle case where result might be an EngineRequest (shouldn't happen for sendAndWait)
-			if (isEngineRequest(sendAndWaitResult)) {
-				const error = new NodeOperationError(
-					node,
-					'Unexpected EngineRequest returned from sendAndWait operation',
-				);
-				this.addOutputData(NodeConnectionTypes.AiTool, currentRunIndex, error);
-				throw error;
-			}
-
-			// The sendAndWait operation returns { data: { approved: boolean } } from webhook
-			const resultData = sendAndWaitResult?.[0]?.[0]?.json;
-			const approvalData = resultData?.data as IDataObject | undefined;
-			const approved = approvalData?.approved;
-
-			LoggerProxy.debug('[HITL] Approval status from webhook', {
-				hitlNodeName: node.name,
-				approved,
-				resultData,
-				approvalData,
-			});
-
-			if (!approved) {
-				LoggerProxy.debug('[HITL] Tool execution DENIED by human reviewer', {
-					hitlNodeName: node.name,
-				});
-				// Return denial message to the Agent
-				// Agent will see this and know not to retry the same tool call
-				const denialResult: INodeExecutionData[][] = [
-					[
-						{
-							json: {
-								response:
-									'Tool execution was denied by human reviewer. Do not attempt this tool call again.',
-								approved: false,
-							},
-						},
-					],
-				];
-				// Track output data for denial
-				this.addOutputData(NodeConnectionTypes.AiTool, currentRunIndex, [
-					[{ json: { response: denialResult[0][0].json } }],
-				]);
-				return denialResult;
-			}
-
-			LoggerProxy.debug('[HITL] Tool execution APPROVED - executing gated tool', {
-				hitlNodeName: node.name,
-			});
-
-			// Approved! Now execute the actual gated tool
-			// Get connected tools to find the one that was called
-			const connectedTools = (await this.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as
-				| DynamicStructuredTool[]
-				| DynamicStructuredTool
-				| undefined;
-
-			const toolsArray = Array.isArray(connectedTools)
-				? connectedTools
-				: connectedTools
-					? [connectedTools]
-					: [];
-
-			LoggerProxy.debug('[HITL] Found gated tools for execution', {
-				hitlNodeName: node.name,
-				toolCount: toolsArray.length,
-				toolNames: toolsArray.map((t) => t.name),
-			});
-
-			// For now, if there's only one tool, use it directly
-			// TODO: For multiple tools, we need to match by name from the EngineRequest action
-			const selectedTool = toolsArray[0];
-			if (!selectedTool) {
-				const error = new NodeOperationError(node, 'No gated tool connected to HITL node');
-				this.addOutputData(NodeConnectionTypes.AiTool, currentRunIndex, error);
-				throw error;
-			}
-
-			LoggerProxy.debug('[HITL] Invoking gated tool', {
-				hitlNodeName: node.name,
-				selectedToolName: selectedTool.name,
-				toolInput,
-			});
-
-			try {
-				// Execute the gated tool with the original parameters from the Agent
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const toolResult = await selectedTool.invoke(toolInput);
-				const response = typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult);
-
-				LoggerProxy.debug('[HITL] Gated tool execution completed', {
-					hitlNodeName: node.name,
-					selectedToolName: selectedTool.name,
-					responseLength: response.length,
-				});
-
-				// Track output data for successful execution
-				const outputData: INodeExecutionData[][] = [
-					[
-						{
-							json: {
-								response,
-								approved: true,
-							},
-						},
-					],
-				];
-				this.addOutputData(NodeConnectionTypes.AiTool, currentRunIndex, [
-					[{ json: { response: outputData[0][0].json } }],
-				]);
-
-				// Return the gated tool's result to the Agent
-				return outputData;
-			} catch (error) {
-				// Track output data for error
-				const nodeError = new NodeOperationError(node, error as Error);
-				this.addOutputData(NodeConnectionTypes.AiTool, currentRunIndex, nodeError);
-				throw nodeError;
-			}
-		},
+		// Note: execute() is not defined here because HITL execution goes through
+		// the static node type's execute method from hitl-tools.ts, not this dynamic type.
+		// The supplyData method creates the gated tools for the Agent, and the actual
+		// HITL node execution (sendAndWait + approval) happens via the EngineRequest pattern.
 	};
 
 	return hitlNodeType;

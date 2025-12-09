@@ -1,6 +1,8 @@
 import type { Types } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	INodeProperties,
+	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
@@ -86,11 +88,11 @@ function filterHitlToolProperties(
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		default: '=The agent wants to call {{ $json.toolName }}',
+		default: '=The agent wants to call {{ $fromAI("toolName") }}',
 		required: true,
 		typeOptions: { rows: 3 },
 		description:
-			'Message to send for approval. Use expressions to include tool details: {{ $json.toolName }}, {{ $json.toolCallId }}, {{ $json.parameters }}',
+			'Message to send for approval. Use expressions to include tool details: {{ $fromAI("toolName") }}, {{ $json.toolCallId }}, {{ $json.parameters }}',
 	});
 
 	for (const prop of properties) {
@@ -203,6 +205,33 @@ export function convertNodeToHitlTool<
 	}
 
 	setToolCodex(item.description, 'Human in the Loop');
+
+	// Wrap the execute method to ensure proper ai_tool logging
+	const nodeItem = item as unknown as INodeType;
+	if (nodeItem.execute) {
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		const originalExecute = nodeItem.execute;
+		nodeItem.execute = async function (this: IExecuteFunctions) {
+			LoggerProxy.debug('[HITL] convertNodeToHitlTool execute wrapper called');
+
+			const node = this.getNode();
+
+			// Ensure output is logged with ai_tool connection type
+			// This makes the HITL node appear in the Agent's logs panel
+			node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+
+			LoggerProxy.debug('[HITL] convertNodeToHitlTool wrapper set rewireOutputLogTo', {
+				nodeName: node.name,
+				nodeType: node.type,
+				rewireOutputLogTo: node.rewireOutputLogTo,
+			});
+
+			// Call original execute (the underlying sendAndWait handler)
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return await originalExecute.call(this);
+		};
+	}
+
 	return item;
 }
 

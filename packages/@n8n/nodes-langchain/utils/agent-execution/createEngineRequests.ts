@@ -44,9 +44,14 @@ export async function createEngineRequests(
 			const isHitlTool = originalSourceNodeName !== undefined;
 
 			// For toolkit tools, include the tool name so the node knows which tool to execute
-			const input: IDataObject = foundTool.metadata?.isFromToolkit
-				? ({ ...toolCall.toolInput, tool: toolCall.tool } as IDataObject)
-				: (toolCall.toolInput as IDataObject);
+			// For HITL tools, also include the tool name so it's available in expressions
+			let input: IDataObject = toolCall.toolInput as IDataObject;
+			if (foundTool.metadata?.isFromToolkit) {
+				input = { ...input, tool: toolCall.tool };
+			}
+			if (isHitlTool) {
+				input = { ...input, toolName: toolCall.tool };
+			}
 
 			// Extract thought_signature from the AIMessage in messageLog (for Gemini 3)
 			let thoughtSignature: string | undefined;

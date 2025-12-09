@@ -140,6 +140,10 @@ export function processHitlResponses(
 					hitlApprovalFollowUp: {
 						originalHitlActionId: actionResponse.action.id,
 						hitlToolName: hitl.toolName,
+						hitlNodeName: actionResponse.action.nodeName, // HITL node name for logs panel
+						// HITL node's run index - typically 0 for first execution
+						// This ensures gated tools appear under the correct HITL run in logs
+						hitlNodeRunIndex: 0,
 					},
 				},
 			});
