@@ -38,7 +38,7 @@ import {
 	type IBinaryData,
 	createRunExecutionData,
 	WorkflowExecuteMode,
-	ExecutionStatus,
+	AGENT_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
@@ -47,12 +47,21 @@ import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import {
+	EXECUTION_FINISHED_STATUSES,
+	EXECUTION_POLL_INTERVAL,
+	JSONL_STREAM_HEADERS,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	TOOLS_AGENT_NODE_MIN_VERSION,
+} from './chat-hub.constants';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
 	RegenerateMessagePayload,
 	EditMessagePayload,
+	chatTriggerParamsShape,
+	ChatTriggerResponseMode,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -64,9 +73,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-const EXECUTION_POLL_INTERVAL = 1000;
-const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = ['canceled', 'crashed', 'error', 'success'];
 
 @Service()
 export class ChatHubService {
@@ -159,6 +165,7 @@ export class ChatHubService {
 
 		let executionData: IRunExecutionData;
 		let workflowData: IWorkflowBase;
+		let responseMode: ChatTriggerResponseMode;
 
 		try {
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
@@ -203,6 +210,7 @@ export class ChatHubService {
 
 			executionData = result.executionData;
 			workflowData = result.workflowData;
+			responseMode = result.responseMode;
 		} catch (error) {
 			if (processedAttachments.length > 0) {
 				try {
@@ -224,6 +232,8 @@ export class ChatHubService {
 			sessionId,
 			messageId,
 			model,
+			null,
+			responseMode,
 		);
 
 		// Generate title for the session on receiving the first human message.
@@ -301,7 +311,7 @@ export class ChatHubService {
 			return;
 		}
 
-		const { workflowData, executionData } = workflow;
+		const { workflowData, executionData, responseMode } = workflow;
 
 		await this.executeChatWorkflowWithCleanup(
 			res,
@@ -311,6 +321,8 @@ export class ChatHubService {
 			sessionId,
 			messageId,
 			model,
+			null,
+			responseMode,
 		);
 	}
 
@@ -319,7 +331,7 @@ export class ChatHubService {
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const {
-			workflow: { workflowData, executionData },
+			workflow: { workflowData, executionData, responseMode },
 			retryOfMessageId,
 			previousMessageId,
 		} = await this.messageRepository.manager.transaction(async (trx) => {
@@ -383,6 +395,7 @@ export class ChatHubService {
 			previousMessageId,
 			model,
 			retryOfMessageId,
+			responseMode,
 		);
 	}
 
@@ -537,18 +550,18 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 	) {
-		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
 			['workflow:execute-chat'],
 			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
 		);
 
-		if (!workflowEntity?.activeVersion) {
+		if (!workflow?.activeVersion) {
 			throw new BadRequestError('Workflow not found');
 		}
 
-		const chatTriggers = workflowEntity.activeVersion.nodes.filter(
+		const chatTriggers = workflow.activeVersion.nodes.filter(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
 		);
 
@@ -556,9 +569,31 @@ export class ChatHubService {
 			throw new BadRequestError('Workflow must have exactly one chat trigger');
 		}
 
-		const chatTriggerNode = chatTriggers[0];
+		const chatTrigger = chatTriggers[0];
 
-		const chatResponseNodes = workflowEntity.activeVersion.nodes.filter(
+		if (chatTrigger.typeVersion < 1.4) {
+			throw new BadRequestError(
+				'Chat Trigger node version is too old to support Chat. Please update the node.',
+			);
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams) {
+			throw new BadRequestError('Chat Trigger node has invalid parameters');
+		}
+
+		if (!chatTriggerParams.availableInChat) {
+			throw new BadRequestError('Chat Trigger node must be made available in Chat');
+		}
+
+		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
+		if (responseMode !== 'streaming') {
+			throw new BadRequestError(
+				'Chat Trigger node response mode must be set to streaming to use the workflow on Chat',
+			);
+		}
+
+		const chatResponseNodes = workflow.activeVersion.nodes.filter(
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
 
@@ -568,8 +603,19 @@ export class ChatHubService {
 			);
 		}
 
+		const agentNodes = workflow.activeVersion.nodes?.filter(
+			(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
+		);
+
+		// Agents older than this can't do streaming
+		if (agentNodes.some((node) => node.typeVersion < TOOLS_AGENT_NODE_MIN_VERSION)) {
+			throw new BadRequestError(
+				'Agent node version is too old to support streaming responses. Please update the node.',
+			);
+		}
+
 		const nodeExecutionStack = this.chatHubWorkflowService.prepareExecutionData(
-			chatTriggerNode,
+			chatTrigger,
 			sessionId,
 			message,
 			attachments,
@@ -585,14 +631,15 @@ export class ChatHubService {
 		});
 
 		const workflowData: IWorkflowBase = {
-			...workflowEntity,
-			nodes: workflowEntity.activeVersion.nodes,
-			connections: workflowEntity.activeVersion.connections,
+			...workflow,
+			nodes: workflow.activeVersion.nodes,
+			connections: workflow.activeVersion.connections,
 		};
 
 		return {
 			workflowData,
 			executionData,
+			responseMode,
 		};
 	}
 
@@ -653,10 +700,15 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null = null,
 		executionMode: WorkflowExecuteMode = 'chat',
+		responseMode: ChatTriggerResponseMode,
 	) {
 		this.logger.debug(
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
 		);
+
+		if (responseMode !== 'streaming') {
+			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
+		}
 
 		// Capture the streaming response as it's being generated to save
 		// partial messages in the database when generation gets cancelled.
@@ -842,7 +894,8 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
 		model: ChatHubConversationModel,
-		retryOfMessageId: ChatMessageId | null = null,
+		retryOfMessageId: ChatMessageId | null,
+		responseMode: ChatTriggerResponseMode,
 	) {
 		try {
 			// 'n8n' provider executions count towards execution limits and they are run with the usual 'webhook' mode.
@@ -859,6 +912,7 @@ export class ChatHubService {
 				model,
 				retryOfMessageId,
 				executionMode,
+				responseMode,
 			);
 		} finally {
 			if (model.provider !== 'n8n') {

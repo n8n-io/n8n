@@ -9,7 +9,6 @@ import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
@@ -31,7 +30,6 @@ import { useDebounce } from '@/app/composables/useDebounce';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -51,7 +49,6 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
-const posthogStore = usePostHog();
 const nodeCreatorStore = useNodeCreatorStore();
 
 const isLoading = ref(true);
@@ -131,15 +128,7 @@ const isEligibleForMcp = computed(() => {
 	return isEligibleForMcpAccess(workflow.value);
 });
 
-const isTimeSavedNodeExperimentEnabled = computed(() => {
-	return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
-});
-
 const savedTimeNodes = computed(() => {
-	if (!isTimeSavedNodeExperimentEnabled.value) {
-		return [];
-	}
-
 	if (!workflow?.value?.nodes) return [];
 	return workflow.value.nodes.filter(
 		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
@@ -147,10 +136,6 @@ const savedTimeNodes = computed(() => {
 });
 
 const hasSavedTimeNodes = computed(() => {
-	if (!isTimeSavedNodeExperimentEnabled.value) {
-		return false;
-	}
-
 	return savedTimeNodes.value.length > 0;
 });
 
@@ -160,7 +145,7 @@ const timeSavedModeOptions = computed(() => [
 		value: 'fixed' as const,
 	},
 	{
-		label: 'Dynamic (node based)',
+		label: 'Dynamic (uses time saved nodes)',
 		value: 'dynamic' as const,
 	},
 ]);
@@ -504,6 +489,7 @@ onMounted(async () => {
 
 	try {
 		await Promise.all([
+			workflowsStore.fetchWorkflow(workflowId.value),
 			loadWorkflows(),
 			loadSaveDataErrorExecutionOptions(),
 			loadSaveDataSuccessExecutionOptions(),
@@ -979,19 +965,7 @@ onBeforeUnmount(() => {
 						</label>
 					</ElCol>
 					<ElCol :span="14">
-						<div v-if="!isTimeSavedNodeExperimentEnabled" :class="$style['time-saved']">
-							<N8nInput
-								id="timeSavedPerExecution"
-								v-model="workflowSettings.timeSavedPerExecution"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
-								@update:model-value="updateTimeSavedPerExecution"
-							/>
-							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
-						</div>
-						<div v-else class="ignore-key-press-canvas">
+						<div class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="workflowSettings.timeSavedMode"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1010,12 +984,9 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<!-- Fixed mode warning section (only shown in fixed mode when nodes exist) -->
-				<ElRow
-					v-if="isTimeSavedNodeExperimentEnabled && workflowSettings.timeSavedMode === 'fixed'"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed'">
 					<ElCol :span="14" :offset="10">
-						<div :class="$style['time-saved']">
+						<div :class="$style['time-saved-input']">
 							<N8nInput
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
@@ -1029,13 +1000,7 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<ElRow
-					v-if="
-						isTimeSavedNodeExperimentEnabled &&
-						workflowSettings.timeSavedMode === 'fixed' &&
-						hasSavedTimeNodes
-					"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed' && hasSavedTimeNodes">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-content']">
 							<div :class="$style['time-saved-warning']">
@@ -1054,13 +1019,7 @@ onBeforeUnmount(() => {
 				</ElRow>
 				<!-- Minutes saved section (only shown in fixed mode) -->
 				<!-- Active nodes section (only shown in dynamic mode when nodes exist) -->
-				<ElRow
-					v-if="
-						isTimeSavedNodeExperimentEnabled &&
-						workflowSettings.timeSavedMode === 'dynamic' &&
-						hasSavedTimeNodes
-					"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'dynamic' && hasSavedTimeNodes">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-content']">
 							<div :class="$style['time-saved-nodes-active']">
@@ -1091,13 +1050,7 @@ onBeforeUnmount(() => {
 					</ElCol>
 				</ElRow>
 				<!-- No nodes detected section (only shown in dynamic mode when no nodes) -->
-				<ElRow
-					v-if="
-						isTimeSavedNodeExperimentEnabled &&
-						workflowSettings.timeSavedMode === 'dynamic' &&
-						!hasSavedTimeNodes
-					"
-				>
+				<ElRow v-if="workflowSettings.timeSavedMode === 'dynamic' && !hasSavedTimeNodes">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-content']">
 							<div :class="$style['time-saved-no-nodes']">
@@ -1170,6 +1123,19 @@ onBeforeUnmount(() => {
 }
 
 .time-saved {
+	display: flex;
+	align-items: center;
+
+	:global(.el-input) {
+		width: var(--spacing--3xl);
+	}
+
+	span {
+		margin-left: var(--spacing--2xs);
+	}
+}
+
+.time-saved-input {
 	display: flex;
 	align-items: center;
 
