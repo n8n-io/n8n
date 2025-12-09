@@ -27,6 +27,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
+	updateDescription: [workflow: WorkflowListItem];
 }>();
 
 const i18n = useI18n();
@@ -80,6 +81,11 @@ const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<Workf
 			value: 'removeFromMCP',
 			disabled: !permissions.workflow.update,
 		},
+		{
+			label: i18n.baseText('settings.mcp.workflows.table.action.updateDescription'),
+			value: 'updateDescription',
+			disabled: !permissions.workflow.update,
+		},
 	];
 };
 
@@ -94,6 +100,9 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	switch (action) {
 		case 'removeFromMCP':
 			emit('removeMcpAccess', workflow);
+			break;
+		case 'updateDescription':
+			emit('updateDescription', workflow);
 			break;
 		default:
 			break;
