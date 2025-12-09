@@ -8,8 +8,6 @@ import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-type
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
-import { UrlService } from '@/services/url.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -18,8 +16,6 @@ export class ChatHubAttachmentService {
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
-		private readonly urlService: UrlService,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**

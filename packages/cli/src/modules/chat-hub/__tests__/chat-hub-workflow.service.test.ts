@@ -1,12 +1,10 @@
 import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
-import type { UrlService } from '@/services/url.service';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
@@ -17,8 +15,6 @@ describe('ChatHubWorkflowService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
-	const urlService = mock<UrlService>();
-	const globalConfig = mock<GlobalConfig>();
 	const messageRepository = mock<ChatHubMessageRepository>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
@@ -28,12 +24,7 @@ describe('ChatHubWorkflowService', () => {
 		jest.resetAllMocks();
 
 		// Create real ChatHubAttachmentService with mocked dependencies
-		chatHubAttachmentService = new ChatHubAttachmentService(
-			binaryDataService,
-			messageRepository,
-			urlService,
-			globalConfig,
-		);
+		chatHubAttachmentService = new ChatHubAttachmentService(binaryDataService, messageRepository);
 
 		service = new ChatHubWorkflowService(
 			logger,
@@ -41,10 +32,6 @@ describe('ChatHubWorkflowService', () => {
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
 		);
-
-		// Default mock values
-		globalConfig.endpoints = { rest: 'rest' } as any;
-		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 
 		// Mock repository methods
 		const mockEntityManager = {
@@ -82,9 +69,6 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					'UTC',
 				);
-
-				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
-				expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
 					(node) => node.name === 'Restore Chat Memory',
@@ -138,9 +122,6 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					'UTC',
 				);
-
-				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
-				expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
 					(node) => node.name === 'Restore Chat Memory',
@@ -207,7 +188,6 @@ describe('ChatHubWorkflowService', () => {
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
-				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
 
 				const expectedDataUrl = `data:${mockAttachment.mimeType};base64,${mockImageBuffer.toString('base64')}`;
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -240,8 +220,6 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockBaseUrl = 'https://example.com';
 
-				urlService.getInstanceBaseUrl.mockReturnValue(mockBaseUrl);
-
 				const result = await service.createChatWorkflow(
 					'user-123',
 					'session-456',
@@ -255,8 +233,6 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					'UTC',
 				);
-
-				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
 					(node) => node.name === 'Restore Chat Memory',
