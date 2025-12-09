@@ -1,6 +1,11 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWebhookData, IWorkflowBase, IDestinationNode } from 'n8n-workflow';
+import {
+	type IWebhookData,
+	type IWorkflowBase,
+	type IDestinationNode,
+	UserError,
+} from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
@@ -43,6 +48,14 @@ export class TestWebhookRegistrationsService {
 		const hashKey = this.toKey(registration.webhook);
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+
+		const isCached = await this.cacheService.exists(this.cacheKey);
+
+		if (!isCached) {
+			throw new UserError(
+				'Test webhook registration failed: workflow is too big. Remove pinned data',
+			);
+		}
 
 		if (this.instanceSettings.isSingleMain) return;
 
