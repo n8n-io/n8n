@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const RESOURCE_LOCATOR_GUIDE = `
 ## IMPORTANT: ResourceLocator Parameter Handling
 
@@ -89,3 +91,10 @@ Output:
   }
 }
 \`\`\``;
+
+registerGuide({
+	patterns: ['*'],
+	content: RESOURCE_LOCATOR_GUIDE,
+	priority: 50,
+	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+});

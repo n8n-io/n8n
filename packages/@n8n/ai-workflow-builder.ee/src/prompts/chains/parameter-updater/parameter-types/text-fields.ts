@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const TEXT_FIELDS_GUIDE = `
 ## Text Field Expression Formatting
 
@@ -16,3 +18,23 @@ export const TEXT_FIELDS_GUIDE = `
 - The entire string must start with = when using expressions
 - Expressions within text use single curly braces {{ }}
 - The outer expression wrapper uses double curly braces ={{ }}`;
+
+/**
+ * Checks if a node has text/string fields that might use expressions.
+ */
+function hasTextFields(nodeDefinition: {
+	properties?: Array<{ type: string; typeOptions?: { multipleValues?: boolean } }>;
+}): boolean {
+	if (!nodeDefinition.properties) return false;
+
+	return nodeDefinition.properties.some(
+		(prop) => prop.type === 'string' && prop.typeOptions?.multipleValues !== true,
+	);
+}
+
+registerGuide({
+	patterns: ['*'],
+	content: TEXT_FIELDS_GUIDE,
+	priority: 60,
+	condition: (ctx) => hasTextFields(ctx.nodeDefinition),
+});

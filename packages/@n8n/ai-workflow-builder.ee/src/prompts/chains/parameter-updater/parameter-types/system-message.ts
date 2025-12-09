@@ -1,3 +1,5 @@
+import { registerGuide } from '../registry';
+
 export const SYSTEM_MESSAGE_GUIDE = `
 ## CRITICAL: System Message vs User Prompt Separation
 
@@ -69,3 +71,41 @@ Instructions: [
 - **Best Practice**: Follows standard AI prompt engineering patterns
 - **Clarity**: Separates "what the AI model is" from "what data to process"
 `;
+
+/**
+ * Checks if a node has system message parameters.
+ * Applies to AI Agent, LLM Chain, Anthropic, OpenAI, etc.
+ */
+function hasSystemMessageParameters(nodeDefinition: {
+	properties?: Array<{ name: string; type: string; options?: unknown[] }>;
+}): boolean {
+	if (!nodeDefinition.properties) return false;
+
+	return nodeDefinition.properties.some((prop) => {
+		// Pattern 1 & 2: options.systemMessage (AI Agent) or options.system (Anthropic)
+		if (prop.name === 'options' && prop.type === 'collection') {
+			if (Array.isArray(prop.options)) {
+				return prop.options.some(
+					(opt) =>
+						(opt as { name?: string }).name === 'systemMessage' ||
+						(opt as { name?: string }).name === 'system',
+				);
+			}
+		}
+		// Pattern 3: messages parameter with role support (OpenAI, LLM Chain)
+		if (
+			prop.name === 'messages' &&
+			(prop.type === 'fixedCollection' || prop.type === 'collection')
+		) {
+			return true;
+		}
+		return false;
+	});
+}
+
+registerGuide({
+	patterns: ['*'],
+	content: SYSTEM_MESSAGE_GUIDE,
+	priority: 30,
+	condition: (ctx) => hasSystemMessageParameters(ctx.nodeDefinition),
+});
