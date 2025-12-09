@@ -1650,6 +1650,24 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+export function isToolType(
+	nodeType?: string,
+	{ includeHitl = true }: { includeHitl?: boolean } = {},
+) {
+	if (!nodeType) return false;
+	if (nodeType.endsWith('Tool')) {
+		if (includeHitl) {
+			return true;
+		}
+		return !nodeType.endsWith('HitlTool');
+	}
+}
+
+export function isHitlToolType(nodeType?: string) {
+	if (!nodeType) return false;
+	return nodeType.endsWith('HitlTool');
+}
+
 export function isTool(
 	nodeTypeDescription: INodeTypeDescription,
 	parameters: INodeParameters,

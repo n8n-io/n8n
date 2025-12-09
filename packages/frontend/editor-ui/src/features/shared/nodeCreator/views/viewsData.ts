@@ -49,7 +49,6 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HELPERS_SUBCATEGORY,
-	HITL_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
@@ -59,12 +58,13 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	TEMPLATE_CATEGORY_AI,
 	DATA_TABLE_NODE_TYPE,
+	HITL_SUBCATEGORY,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { BaseTextKey } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
@@ -116,7 +116,7 @@ interface NodeView {
 	items: NodeViewItem[];
 }
 
-function getNodeView(node: INodeTypeDescription) {
+function getNodeView(node: INodeTypeDescription | SimplifiedNodeType) {
 	return {
 		key: node.name,
 		type: 'node',
@@ -650,4 +650,21 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 	});
 
 	return view;
+}
+
+export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
+	const i18n = useI18n();
+
+	// Filter nodes whose name ends with 'HitlTool'
+	const hitlToolNodes = nodes
+		.filter((node) => isHitlToolType(node.name))
+		.map(getNodeView)
+		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
+
+	return {
+		value: HUMAN_IN_THE_LOOP_CATEGORY,
+		title: i18n.baseText('nodeCreator.hitlToolPanel.hitlTools'),
+		subtitle: i18n.baseText('nodeCreator.hitlToolPanel.selectHitlTool'),
+		items: hitlToolNodes,
+	};
 }

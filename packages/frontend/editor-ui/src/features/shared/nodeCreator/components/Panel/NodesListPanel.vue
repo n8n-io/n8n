@@ -8,11 +8,12 @@ import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
-import { TriggerView, RegularView, AIView, AINodesView } from '../../views/viewsData';
+import { TriggerView, RegularView, AIView, AINodesView, HitlToolView } from '../../views/viewsData';
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
@@ -129,9 +130,10 @@ watch(
 			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
 			[AI_UNCATEGORIZED_CATEGORY]: AINodesView,
 			[AI_EVALUATION]: AINodesView,
+			[HUMAN_IN_THE_LOOP_CATEGORY]: HitlToolView,
 		};
 
-		const itemKey = selectedView;
+		const itemKey = selectedView as keyof typeof views;
 		const matchedView = views[itemKey];
 
 		if (!matchedView) {
@@ -139,7 +141,6 @@ watch(
 			return;
 		}
 		const view = matchedView(mergedNodes);
-
 		pushViewStack({
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
