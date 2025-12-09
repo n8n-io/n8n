@@ -263,6 +263,7 @@ describe('GlobalConfig', () => {
 					dualStack: false,
 					ipV6: false,
 					enableAutoPipelining: false,
+					dnsResolveStrategy: 'LOOKUP',
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',

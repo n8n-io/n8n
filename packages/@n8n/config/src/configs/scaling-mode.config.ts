@@ -119,6 +119,19 @@ class RedisConfig {
 	ipV6: boolean = false;
 
 	/**
+	 * DNS resolution strategy for Redis hostnames on initial client connection.
+	 * - `LOOKUP` (default): Use system DNS resolver to resolve hostnames to IP addresses.
+	 * - `NONE`: Disable DNS resolution and pass hostnames directly to Redis client.
+	 *
+	 * DNS lookups can be error prone, especially in combination with TLS certificates.
+	 * Especially AWS Elasticache cluster connections often lead to invalid certificate errors due to hostname/ip mismatches.
+	 * For AWS ElastiCache clusters with TLS, it is recommended to set this option to `NONE`.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
+	 */
+	@Env('QUEUE_BULL_REDIS_DNS_LOOKUP_STRATEGY')
+	dnsResolveStrategy: 'LOOKUP' | 'NONE' = 'LOOKUP';
+
+	/**
 	 * In auto pipelining mode, all commands issued during an event loop are enqueued in a pipeline automatically managed by ioredis.
 	 * At the end of the iteration, the pipeline is executed and thus all commands are sent to the server at the same time.
 	 * This feature can dramatically improve throughput and avoids HOL blocking.

@@ -135,12 +135,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 	private createClusterClient(options: RedisOptions) {
 		const nodes = this.clusterNodes();
+		const { dnsResolveStrategy } = this.globalConfig.queue.bull.redis;
 
 		const client = new ioRedis.Cluster(nodes, {
 			redisOptions: options,
 			lazyConnect: options.lazyConnect,
 			clusterRetryStrategy: this.retryStrategy(),
-			dnsLookup: this.getDnsLookupFunction(options.family as number),
+			dnsLookup: this.getDnsLookupFunction(options.family as number, dnsResolveStrategy),
 			showFriendlyErrorStack: true,
 		});
 
@@ -243,11 +244,22 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
 	 */
 	private getDnsLookupFunction =
-		(family: number): DNSLookupFunction =>
+		(family: number, strategy: 'LOOKUP' | 'NONE' | 'UNKNOWN'): DNSLookupFunction =>
 		(address, resolve) => {
-			this.logger.info(`Redis DNS lookup: address=${address} family=${family}`);
-			dns.lookup(address, { family }, resolve);
-			//resolve(null, address);
+			this.logger.debug(
+				`Redis DNS lookup: strategy=${strategy} address=${address} family=${family}`,
+			);
+			if (strategy === 'LOOKUP') {
+				// Use default dns.lookup which ioredis also uses internally.
+				dns.lookup(address, { family }, resolve);
+			} else if (strategy === 'NONE') {
+				// resolve to original hostname without DNS resolution
+				resolve(null, address);
+			} else {
+				this.exitWithError(
+					`Invalid DNS lookup strategy: ${strategy}. Valid are 'LOOKUP' or 'NONE'.`,
+				);
+			}
 		};
 
 	/**
@@ -263,11 +275,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const clientName = isCluster ? 'Redis cluster client' : 'Redis client';
 
 		if (client.status !== 'wait') {
-			this.logger.info(`${clientName} already connected ${type}`, { type, nodes });
+			this.logger.warn(`${clientName} already connected ${type}`, { type, nodes });
 			return;
 		}
 
-		this.logger.info(`Connecting ${clientName} ${type}`, { type, nodes });
+		this.logger.debug(`Connecting ${clientName} ${type}`, { type, nodes });
 		client
 			.connect()
 			.then(() => {
