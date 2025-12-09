@@ -84,6 +84,18 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
+	/**
+	 * Find a workflow history version without permission checks.
+	 */
+	async findVersion(workflowId: string, versionId: string): Promise<WorkflowHistory | null> {
+		return await this.workflowHistoryRepository.findOne({
+			where: {
+				workflowId,
+				versionId,
+			},
+		});
+	}
+
 	async saveVersion(
 		user: User,
 		workflow: IWorkflowBase,

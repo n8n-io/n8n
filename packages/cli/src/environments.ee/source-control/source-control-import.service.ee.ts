@@ -21,7 +21,6 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 	WorkflowPublishHistoryRepository,
-	WorkflowHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -160,7 +159,6 @@ export class SourceControlImportService {
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -1290,13 +1288,10 @@ export class SourceControlImportService {
 		}
 
 		try {
-			const existingVersion = await this.workflowHistoryRepository.findOne({
-				where: {
-					versionId: importedWorkflow.versionId,
-					workflowId: importedWorkflow.id,
-				},
-				select: ['versionId', 'nodes', 'connections'],
-			});
+			const existingVersion = await this.workflowHistoryService.findVersion(
+				importedWorkflow.id,
+				importedWorkflow.versionId,
+			);
 
 			if (existingVersion) {
 				// Check if nodes or connections changed
