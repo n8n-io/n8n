@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 import type { ChatMessageId } from '@n8n/api-types';
@@ -29,7 +30,13 @@ const currentAlternativeIndex = computed(() => {
 	return alternatives.findIndex((id) => id === message.id);
 });
 
+const showExecutionUrl = computed(() => {
+	return hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } });
+});
+
 const executionUrl = computed(() => {
+	if (!showExecutionUrl.value) return undefined;
+
 	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
@@ -87,7 +94,7 @@ function handleReadAloud() {
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="executionUrl && message.executionId" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="executionUrl" placement="bottom" :show-after="300">
 			<N8nIconButton icon="info" type="tertiary" size="medium" text />
 			<template #content>
 				{{ i18n.baseText('chatHub.message.actions.executionId') }}:

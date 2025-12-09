@@ -1,17 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { PromptTemplate } from '@langchain/core/prompts';
 import z from 'zod';
 
-const workflowNamingPromptTemplate = PromptTemplate.fromTemplate(
-	`Based on the initial user prompt, please generate a name for the workflow that captures its essence and purpose.
-
-<initial_prompt>
-{initialPrompt}
-</initial_prompt>
-
-This name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand. Do not include the word "workflow" in the name.
-`,
-);
+import { workflowNamingPromptTemplate } from '@/prompts/chains/workflow-name.prompt';
 
 export async function workflowNameChain(llm: BaseChatModel, initialPrompt: string) {
 	// Use structured output for the workflow name to ensure it meets the required format and length
