@@ -483,18 +483,39 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (typeof filter?.availableInMCP === 'boolean') {
 			const dbType = this.globalConfig.database.type;
 
-			if (['postgresdb'].includes(dbType)) {
-				qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
-					availableInMCP: filter.availableInMCP.toString(),
-				});
-			} else if (['mysqldb', 'mariadb'].includes(dbType)) {
-				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-					availableInMCP: filter.availableInMCP,
-				});
-			} else if (dbType === 'sqlite') {
-				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
-				});
+			if (filter.availableInMCP) {
+				// Filter for workflows where availableInMCP is explicitly true
+				if (['postgresdb'].includes(dbType)) {
+					qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
+						availableInMCP: 'true',
+					});
+				} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+						availableInMCP: true,
+					});
+				} else if (dbType === 'sqlite') {
+					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+						availableInMCP: 1,
+					});
+				}
+			} else {
+				// Filter for workflows where availableInMCP is not true (false, null, or missing)
+				if (['postgresdb'].includes(dbType)) {
+					qb.andWhere(
+						"(workflow.settings ->> 'availableInMCP' IS NULL OR workflow.settings ->> 'availableInMCP' != :availableInMCP)",
+						{ availableInMCP: 'true' },
+					);
+				} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+					qb.andWhere(
+						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') != :availableInMCP)",
+						{ availableInMCP: true },
+					);
+				} else if (dbType === 'sqlite') {
+					qb.andWhere(
+						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') != :availableInMCP)",
+						{ availableInMCP: 1 },
+					);
+				}
 			}
 		}
 	}
