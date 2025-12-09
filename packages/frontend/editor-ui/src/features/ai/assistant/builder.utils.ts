@@ -1,16 +1,24 @@
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	AI_BUILDER_MULTI_AGENT_EXPERIMENT,
+	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT,
+} from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
+export function generateShortId() {
+	return Math.random().toString(36).substr(2, 9);
+}
+
 export function generateMessageId(): string {
-	return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	return `${Date.now()}-${generateShortId()}`;
 }
 
 export function createBuilderPayload(
 	text: string,
+	id: string,
 	options: {
 		quickReplyType?: string;
 		executionData?: IRunExecutionData['resultData'];
@@ -56,11 +64,15 @@ export function createBuilderPayload(
 		templateExamples:
 			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
 			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
+		multiAgent:
+			posthogStore.getVariant(AI_BUILDER_MULTI_AGENT_EXPERIMENT.name) ===
+			AI_BUILDER_MULTI_AGENT_EXPERIMENT.variant,
 	};
 
 	return {
 		role: 'user',
 		type: 'message',
+		id,
 		text,
 		quickReplyType: options.quickReplyType,
 		workflowContext,

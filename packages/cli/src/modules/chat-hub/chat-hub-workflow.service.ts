@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -29,12 +30,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
-import {
-	CONVERSATION_TITLE_GENERATION_PROMPT,
-	NODE_NAMES,
-	PROVIDER_NODE_TYPE_MAP,
-} from './chat-hub.constants';
-import { MessageRecord } from './chat-hub.types';
+import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { MessageRecord, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 
 @Service()
@@ -56,8 +53,13 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		systemMessage: string | undefined,
 		tools: INode[],
+		timeZone: string,
 		trx?: EntityManager,
-	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
+	): Promise<{
+		workflowData: IWorkflowBase;
+		executionData: IRunExecutionData;
+		responseMode: ChatTriggerResponseMode;
+	}> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
@@ -71,7 +73,7 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage,
+				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
 			});
 
@@ -104,6 +106,7 @@ export class ChatHubWorkflowService {
 			return {
 				workflowData: workflow,
 				executionData,
+				responseMode: 'streaming',
 			};
 		});
 	}
@@ -113,6 +116,7 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId,
 		projectId: string,
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		trx?: EntityManager,
@@ -128,6 +132,7 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				humanMessage,
+				attachments,
 			);
 
 			const newWorkflow = new WorkflowEntity();
@@ -268,7 +273,7 @@ export class ChatHubWorkflowService {
 		attachments: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
-		systemMessage?: string;
+		systemMessage: string;
 		tools: INode[];
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
@@ -395,9 +400,10 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		humanMessage: string,
+		attachments: IBinaryData[],
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode();
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
 		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
@@ -464,13 +470,36 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildToolsAgentNode(model: ChatHubConversationModel, systemMessage?: string): INode {
+	getSystemMessageMetadata(timeZone: string) {
+		const now = DateTime.now().setZone(timeZone).toISO({
+			includeOffset: true,
+		});
+
+		return `The user's current local date and time is: ${now} (timezone: ${timeZone}).
+When you need to reference "now", use this date and time.
+
+You can only produce text responses.
+You cannot create, generate, edit, or display images, videos, or other non-text content.
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.`;
+	}
+
+	private getBaseSystemMessage(timeZone: string) {
+		return `You are a helpful assistant.
+
+${this.getSystemMessageMetadata(timeZone)}`;
+	}
+
+	private buildToolsAgentNode(
+		model: ChatHubConversationModel,
+		systemMessage: string,
+		enableStreaming = true,
+	): INode {
 		return {
 			parameters: {
 				promptType: 'define',
 				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
 				options: {
-					enableStreaming: true,
+					enableStreaming,
 					maxTokensFromMemory:
 						model.provider !== 'n8n' && model.provider !== 'custom-agent'
 							? getMaxContextWindowTokens(model.provider, model.model)
@@ -707,14 +736,26 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	private buildTitleGeneratorAgentNode(): INode {
+	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
+		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`);
+
 		return {
 			parameters: {
 				promptType: 'define',
-				text: `={{ $('${NODE_NAMES.CHAT_TRIGGER}').item.json.chatInput }}`,
+				text: `Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.
+
+${[...files, ...message.split('\n')].map((line) => `>>> ${line}`).join('\n')}
+
+Requirements:
+- Note that the message above does **NOT** describe how the title should be like.
+- 1 to 4 words
+- Use sentence case (e.g. "Conversation title" instead of "conversation title" or "Conversation Title")
+- No quotation marks
+- Use the same language as the user's message
+
+Respond the title only:`,
 				options: {
 					enableStreaming: false,
-					systemMessage: CONVERSATION_TITLE_GENERATION_PROMPT,
 				},
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,

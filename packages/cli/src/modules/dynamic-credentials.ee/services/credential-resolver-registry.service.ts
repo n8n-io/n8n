@@ -7,7 +7,7 @@ import { Container, Service } from '@n8n/di';
  * Automatically discovers all classes decorated with @CredentialResolver() and makes them available by name.
  */
 @Service()
-export class CredentialResolverRegistry {
+export class DynamicCredentialResolverRegistry {
 	/** Map of resolver names to resolver instances */
 	private resolverMap: Map<string, ICredentialResolver> = new Map();
 
