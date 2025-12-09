@@ -74,6 +74,8 @@ describe('SourceControlImportService', () => {
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		sourceControlScopedService,
 		mock(),
+		mock(),
+		mock(),
 	);
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
