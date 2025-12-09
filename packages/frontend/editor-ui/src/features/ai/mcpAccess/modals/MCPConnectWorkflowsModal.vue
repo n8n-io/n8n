@@ -2,17 +2,22 @@
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nButton, N8nIcon, N8nNotice, N8nSelect } from '@n8n/design-system';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { N8nButton, N8nIcon, N8nNotice, N8nSelect, N8nOption } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref } from 'vue';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
+type SelectOption = { value: string; label: string };
 
 const i18n = useI18n();
+const mcpStore = useMCPStore();
 
 const isSaving = ref(false);
+const isLoading = ref(false);
 const canSave = ref(true);
 const selectRef = ref<SelectRef | null>(null);
+const workflowOptions = ref<SelectOption[]>([]);
 
 const modalBus = createEventBus();
 
@@ -34,7 +39,22 @@ function save() {
 	isSaving.value = true;
 }
 
+async function loadEligibleWorkflows() {
+	isLoading.value = true;
+	try {
+		const response = await mcpStore.getMcpEligibleWorkflows({ take: 10 });
+		const workflows = response?.data ?? [];
+		workflowOptions.value = workflows.map((workflow) => ({
+			value: workflow.id,
+			label: workflow.name,
+		}));
+	} finally {
+		isLoading.value = false;
+	}
+}
+
 onMounted(async () => {
+	await loadEligibleWorkflows();
 	setTimeout(() => {
 		selectRef.value?.focusOnInput();
 	}, 150);
@@ -54,14 +74,20 @@ onMounted(async () => {
 				<N8nSelect
 					ref="selectRef"
 					data-test-id="mcp-connect-workflows-select"
-					:options="[]"
 					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
 					:disabled="isSaving"
+					:loading="isLoading"
 					:filterable="true"
 				>
 					<template #prepend>
 						<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
 					</template>
+					<N8nOption
+						v-for="option in workflowOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
 				</N8nSelect>
 			</div>
 		</template>
