@@ -35,7 +35,7 @@
     "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
-    "start:dev": "export $(cat .env | xargs) && pnpm start",
+    "start:dev": "set -a && source .env && set +a && pnpm start",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
