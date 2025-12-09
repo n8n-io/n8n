@@ -35,6 +35,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -684,6 +685,7 @@ export class SourceControlImportService {
 			} else {
 				importedWorkflow.active = false;
 				importedWorkflow.activeVersionId = null;
+				importedWorkflow.versionId = importedWorkflow.versionId ?? uuid();
 			}
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
