@@ -12,6 +12,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import * as restApiClient from '@n8n/rest-api-client';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
@@ -59,12 +60,12 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 
-		settingsStore.settings = {
+		settingsStore.settings = mock<FrontendSettings>({
 			enterprise: {},
 			envFeatureFlags: {
 				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
 			},
-		} as FrontendSettings;
+		});
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
 		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([
@@ -419,7 +420,7 @@ describe('WorkflowSettingsVue', () => {
 
 			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
 			expect(callArgs[0]).toBe('1');
-			expect(callArgs[1].settings.credentialResolverId).toBe('resolver-1');
+			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-1');
 		});
 
 		it('should save workflow with selected resolver', async () => {
@@ -441,7 +442,7 @@ describe('WorkflowSettingsVue', () => {
 
 			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
 			expect(callArgs[0]).toBe('1');
-			expect(callArgs[1].settings.credentialResolverId).toBe('resolver-2');
+			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-2');
 		});
 
 		it('should disable credential resolver dropdown when environment is read-only', async () => {
