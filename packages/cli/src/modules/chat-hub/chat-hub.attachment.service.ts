@@ -126,7 +126,7 @@ export class ChatHubAttachmentService {
 		);
 	}
 
-	async getPubliclyAccessibleUrl(binaryData: IBinaryData): Promise<string> {
+	async getDataUrl(binaryData: IBinaryData): Promise<string> {
 		if (binaryData.data.startsWith('data:')) {
 			return binaryData.data;
 		}

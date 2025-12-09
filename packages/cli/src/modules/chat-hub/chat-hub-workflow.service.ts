@@ -710,7 +710,9 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		const messageValues: MessageRecord[] = [];
 		let currentTotalSize = 0;
 
-		for (const message of history.slice().reverse()) {
+		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
+
+		for (const message of messages) {
 			// Empty messages can't be restored by the memory manager
 			if (message.content.length === 0) {
 				continue;
@@ -785,7 +787,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				};
 			}
 
-			const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment);
+			const url = await this.chatHubAttachmentService.getDataUrl(attachment);
 
 			if (currentTotalSize + url.length > maxTotalPayloadSize) {
 				throw new TotalFileSizeExceededError();
