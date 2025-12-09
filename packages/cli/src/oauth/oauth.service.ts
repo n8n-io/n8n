@@ -433,15 +433,31 @@ export class OauthService {
 
 		const data = oauth.toHeader(oauth.authorize(options));
 
-		// @ts-ignore
-		options.headers = data;
+		const axiosConfig: AxiosRequestConfig = {
+			method: options.method,
+			url: options.url,
+			headers: {
+				...data,
+			},
+		};
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
+		const { data: response } = await axios.request(axiosConfig);
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
-		const paramsParser = new URLSearchParams(response as string);
+		if (typeof response !== 'string') {
+			throw new BadRequestError(
+				'Expected string response from OAuth1 request token endpoint, but received invalid response type',
+			);
+		}
+
+		const paramsParser = new URLSearchParams(response);
 		const responseJson = Object.fromEntries(paramsParser.entries());
+
+		if (!responseJson.oauth_token) {
+			throw new BadRequestError(
+				'OAuth1 request token response is missing required oauth_token parameter',
+			);
+		}
 
 		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
 
