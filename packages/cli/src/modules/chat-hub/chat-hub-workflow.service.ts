@@ -737,43 +737,14 @@ When you need to reference “now”, use this date and time.`;
 
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
-				if (currentTotalSize >= maxTotalPayloadSize) {
-					blocks.push({
-						type: 'text',
-						text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
-					});
-					continue;
-				}
-
-				if (attachment.mimeType.startsWith('text/')) {
-					const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
-					const content = buffer.toString('utf-8');
-
-					blocks.push({
-						type: 'text',
-						text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
-					});
-					currentTotalSize += content.length;
-					continue;
-				}
-
-				const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment, {
-					// langchain doesn't allow to send URLs with https:// schema in image_url to google
-					// https://github.com/langchain-ai/langchainjs/blob/72795fe76b515d9edc7d78fb28db59df844ce0c3/libs/providers/langchain-google-genai/src/utils/common.ts#L291
-					mustBeDataUrl: provider === 'google',
-				});
-				const dataUrlSize = url.length;
-
-				if (currentTotalSize + dataUrlSize > maxTotalPayloadSize) {
-					blocks.push({
-						type: 'text',
-						text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
-					});
-					continue;
-				}
-
-				blocks.push({ type: 'image_url', image_url: url });
-				currentTotalSize += dataUrlSize;
+				const block = await this.buildContentBlockForAttachment(
+					attachment,
+					provider,
+					currentTotalSize,
+					maxTotalPayloadSize,
+				);
+				blocks.push(block);
+				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
 			}
 
 			messageValues.push({
@@ -787,6 +758,45 @@ When you need to reference “now”, use this date and time.`;
 		messageValues.reverse();
 
 		return messageValues;
+	}
+
+	private async buildContentBlockForAttachment(
+		attachment: IBinaryData,
+		provider: ChatHubProvider,
+		currentTotalSize: number,
+		maxTotalPayloadSize: number,
+	): Promise<ContentBlock> {
+		if (currentTotalSize >= maxTotalPayloadSize) {
+			return {
+				type: 'text',
+				text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+			};
+		}
+
+		if (attachment.mimeType.startsWith('text/')) {
+			const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
+			const content = buffer.toString('utf-8');
+
+			return {
+				type: 'text',
+				text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+			};
+		}
+
+		const url = await this.chatHubAttachmentService.getPubliclyAccessibleUrl(attachment, {
+			// langchain doesn't allow to send URLs with https:// schema in image_url to google
+			// https://github.com/langchain-ai/langchainjs/blob/72795fe76b515d9edc7d78fb28db59df844ce0c3/libs/providers/langchain-google-genai/src/utils/common.ts#L291
+			mustBeDataUrl: provider === 'google',
+		});
+
+		if (currentTotalSize + url.length > maxTotalPayloadSize) {
+			return {
+				type: 'text',
+				text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+			};
+		}
+
+		return { type: 'image_url', image_url: url };
 	}
 
 	private buildClearMemoryNode(): INode {
