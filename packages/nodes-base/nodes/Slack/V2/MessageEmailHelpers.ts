@@ -1,10 +1,40 @@
-import type { IDataObject, IExecuteFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { slackApiRequest } from './GenericFunctions';
 
 const USER_ID_TYPE: 'user' = 'user';
 const EMAIL_MODE = 'email';
+
+interface SlackUserLookupResponse {
+	user?: {
+		id?: unknown;
+	};
+}
+
+interface UserEmailLocator {
+	mode: typeof EMAIL_MODE;
+	value: unknown;
+}
+
+function isUserEmailLocator(param: unknown): param is UserEmailLocator {
+	if (typeof param !== 'object' || param === null) return false;
+
+	const candidate = param as { mode?: unknown; value?: unknown };
+
+	return candidate.mode === EMAIL_MODE && typeof candidate.value !== 'undefined';
+}
+
+function getUserIdFromLookupResponse(response: unknown): string | undefined {
+	if (typeof response !== 'object' || response === null) {
+		return undefined;
+	}
+
+	const typedResponse = response as SlackUserLookupResponse;
+	const userId = typedResponse.user?.id;
+
+	return typeof userId === 'string' ? userId : undefined;
+}
 
 export async function resolveTargetForEmailIfNeeded(
 	context: IExecuteFunctions,
@@ -16,17 +46,13 @@ export async function resolveTargetForEmailIfNeeded(
 		return currentTarget;
 	}
 
-	const userParam = context.getNodeParameter('user', itemIndex) as
-		| INodeParameterResourceLocator
-		| IDataObject;
+	const userParam = context.getNodeParameter('user', itemIndex);
 
-	const mode = (userParam as IDataObject).mode as string | undefined;
-
-	if (mode !== EMAIL_MODE) {
+	if (!isUserEmailLocator(userParam)) {
 		return currentTarget;
 	}
 
-	const email = (userParam as INodeParameterResourceLocator).value?.toString().trim();
+	const email = String(userParam.value).trim();
 
 	if (!email) {
 		throw new NodeOperationError(
@@ -43,7 +69,7 @@ export async function resolveTargetForEmailIfNeeded(
 		{ email },
 	);
 
-	const userId = (response.user?.id as string | undefined) ?? undefined;
+	const userId = getUserIdFromLookupResponse(response);
 
 	if (!userId) {
 		throw new NodeOperationError(context.getNode(), `No Slack user found for email "${email}".`);
