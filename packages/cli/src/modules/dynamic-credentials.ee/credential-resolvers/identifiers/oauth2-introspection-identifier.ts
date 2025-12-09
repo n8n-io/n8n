@@ -246,7 +246,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		});
 
 		if (response.status !== 200) {
-			this.logger.debug('Token introspection failed', {
+			this.logger.error('Token introspection failed', {
 				status: response.status,
 				data: response.data,
 			});
