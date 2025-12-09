@@ -122,7 +122,7 @@ export class Chat implements INodeType {
 		group: ['input'],
 		version: [1, 1.1],
 		defaultVersion: 1.1,
-		description: 'Send a message to a chat',
+		description: 'Send a message into the chat',
 		defaults: {
 			name: 'Chat',
 		},
