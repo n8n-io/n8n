@@ -217,10 +217,6 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			// Set rewireOutputLogTo on the node so output is logged with ai_tool type
 			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
-			this.logger.debug('[HITL] Set rewireOutputLogTo for HITL node on webhook resume', {
-				nodeName: lastNodeExecuted,
-				nodeType: executionStackEntry.node.type,
-			});
 
 			// Preserve inputOverride in execution metadata for restoration after pop
 			if (lastRun.inputOverride) {
@@ -228,10 +224,6 @@ export class WaitingWebhooks implements IWebhookManager {
 					...executionStackEntry.metadata,
 					preservedInputOverride: lastRun.inputOverride,
 				};
-				this.logger.debug('[HITL] Preserved inputOverride for HITL node on webhook resume', {
-					nodeName: lastNodeExecuted,
-					inputOverrideKeys: Object.keys(lastRun.inputOverride),
-				});
 			}
 		}
 

@@ -16,7 +16,7 @@ export interface HitlProcessingResult {
 	pendingGatedToolRequest?: EngineRequest<RequestResponseMetadata>;
 	/** Modified response with HITL approvals/denials properly formatted */
 	processedResponse: EngineResponse<RequestResponseMetadata>;
-	/** Whether any HITL tools are awaiting approval (need another cycle) */
+	/** Whether any HITL tools were approved and need gated tool execution */
 	hasApprovedHitlTools: boolean;
 }
 
@@ -75,12 +75,6 @@ export function processHitlResponses(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
 	itemIndex: number,
 ): HitlProcessingResult {
-	LoggerProxy.debug('[HITL] processHitlResponses called', {
-		hasResponse: !!response,
-		actionResponseCount: response?.actionResponses?.length ?? 0,
-		itemIndex,
-	});
-
 	if (!response || !response.actionResponses || response.actionResponses.length === 0) {
 		return {
 			processedResponse: response ?? { actionResponses: [], metadata: {} },
@@ -88,18 +82,8 @@ export function processHitlResponses(
 		};
 	}
 
-	// Debug: log action structure
-	for (const actionResponse of response.actionResponses) {
-		LoggerProxy.debug('[HITL] Inspecting actionResponse', {
-			hasAction: !!actionResponse.action,
-			actionKeys: actionResponse.action ? Object.keys(actionResponse.action) : [],
-			actionMetadata: actionResponse.action?.metadata,
-			dataKeys: actionResponse.data ? Object.keys(actionResponse.data) : [],
-		});
-	}
-
 	const pendingGatedToolActions: EngineRequest<RequestResponseMetadata>['actions'] = [];
-	const processedActionResponses: ExecuteNodeResult<RequestResponseMetadata>[] = [];
+	const processedActionResponses: Array<ExecuteNodeResult<RequestResponseMetadata>> = [];
 	let hasApprovedHitlTools = false;
 
 	for (const actionResponse of response.actionResponses) {
@@ -112,21 +96,8 @@ export function processHitlResponses(
 		const hitl = actionResponse.action.metadata.hitl as HitlMetadata;
 		const approved = getApprovalStatus(actionResponse);
 
-		LoggerProxy.debug('[HITL] Processing HITL tool response', {
-			toolName: hitl.toolName,
-			originalSourceNodeName: hitl.originalSourceNodeName,
-			approved,
-			itemIndex,
-		});
-
 		if (approved === true) {
-			// Approved! Generate EngineRequest for the gated tool
 			hasApprovedHitlTools = true;
-
-			LoggerProxy.debug('[HITL] Tool approved - generating request for gated tool', {
-				gatedToolNodeName: hitl.originalSourceNodeName,
-				originalInput: hitl.originalInput,
-			});
 
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,
@@ -136,14 +107,10 @@ export function processHitlResponses(
 				id: `hitl_approved_${actionResponse.action.id}`,
 				metadata: {
 					itemIndex,
-					// Mark this as a follow-up from HITL approval
+					// Mark this as a follow-up from HITL approval (for debugging/logging)
 					hitlApprovalFollowUp: {
 						originalHitlActionId: actionResponse.action.id,
 						hitlToolName: hitl.toolName,
-						hitlNodeName: actionResponse.action.nodeName, // HITL node name for logs panel
-						// HITL node's run index - typically 0 for first execution
-						// This ensures gated tools appear under the correct HITL run in logs
-						hitlNodeRunIndex: 0,
 					},
 				},
 			});
@@ -151,11 +118,6 @@ export function processHitlResponses(
 			// Don't include the HITL response in processed responses
 			// The gated tool's response will replace it
 		} else if (approved === false) {
-			// Denied - modify the response to clearly indicate denial
-			LoggerProxy.debug('[HITL] Tool denied by human reviewer', {
-				toolName: hitl.toolName,
-			});
-
 			const modifiedResponse: ExecuteNodeResult<RequestResponseMetadata> = {
 				...actionResponse,
 				data: {

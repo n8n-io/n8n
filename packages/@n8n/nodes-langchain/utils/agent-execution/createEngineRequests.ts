@@ -1,5 +1,5 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import { NodeConnectionTypes, LoggerProxy } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
 
 import { isThinkingBlock, isRedactedThinkingBlock, isGeminiThoughtSignatureBlock } from './types';
@@ -91,16 +91,6 @@ export async function createEngineRequests(
 				}
 			}
 
-			// Debug: log if this is an HITL tool
-			if (isHitlTool) {
-				LoggerProxy.debug('[HITL] Creating engine request for HITL tool', {
-					nodeName,
-					originalSourceNodeName,
-					toolName: toolCall.tool,
-					toolCallId: toolCall.toolCallId,
-				});
-			}
-
 			return {
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName,
@@ -114,8 +104,8 @@ export async function createEngineRequests(
 						hitl: {
 							isHitlTool: true,
 							originalSourceNodeName,
-							toolName: toolCall.tool, // The tool name as seen by the LLM
-							originalInput: toolCall.toolInput as IDataObject, // Preserve original input for gated tool
+							toolName: toolCall.tool,
+							originalInput: toolCall.toolInput as IDataObject,
 						},
 					}),
 					...(thoughtSignature && {
