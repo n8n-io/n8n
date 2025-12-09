@@ -473,6 +473,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
+		this.applyActiveVersionNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
 	}
 
@@ -668,6 +669,35 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
 			nodeTypes,
 			this.globalConfig.database.type,
+		);
+
+		qb.andWhere(whereClause, parameters);
+	}
+
+	/**
+	 * Filter workflows by node types in the published (active) version.
+	 * This joins the workflow_history table to check nodes in the activeVersion.
+	 */
+	private applyActiveVersionNodeTypesFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		const nodeTypes = isStringArray(filter?.activeVersionNodeTypes)
+			? filter.activeVersionNodeTypes
+			: [];
+
+		if (!nodeTypes.length) return;
+
+		// Join the activeVersion relation if not already joined
+		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
+			qb.innerJoin('workflow.activeVersion', 'activeVersion');
+		}
+
+		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
+			nodeTypes,
+			this.globalConfig.database.type,
+			'activeVersion.nodes',
+			'activeVersion_',
 		);
 
 		qb.andWhere(whereClause, parameters);
