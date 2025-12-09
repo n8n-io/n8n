@@ -19,11 +19,13 @@ import {
 	type WorkflowEntity,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
+	WorkflowHistoryRepository,
 } from '@n8n/db';
 import {
 	FolderRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
+	SharedWorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -52,12 +54,14 @@ describe('SourceControlImportService', () => {
 	let credentialsRepository: CredentialsRepository;
 	let projectRepository: ProjectRepository;
 	let sharedCredentialsRepository: SharedCredentialsRepository;
+	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let userRepository: UserRepository;
 	let folderRepository: FolderRepository;
 	let service: SourceControlImportService;
 	let workflowRepository: WorkflowRepository;
 	let tagRepository: TagRepository;
 	let workflowTagMappingRepository: WorkflowTagMappingRepository;
+	let workflowHistoryRepository: WorkflowHistoryRepository;
 	let sourceControlScopedService: SourceControlScopedService;
 
 	const cipher = mockInstance(Cipher);
@@ -68,11 +72,13 @@ describe('SourceControlImportService', () => {
 		credentialsRepository = Container.get(CredentialsRepository);
 		projectRepository = Container.get(ProjectRepository);
 		sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+		sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		userRepository = Container.get(UserRepository);
 		folderRepository = Container.get(FolderRepository);
 		workflowRepository = Container.get(WorkflowRepository);
 		tagRepository = Container.get(TagRepository);
 		workflowTagMappingRepository = Container.get(WorkflowTagMappingRepository);
+		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 		sourceControlScopedService = Container.get(SourceControlScopedService);
 		service = new SourceControlImportService(
 			mock(),
@@ -82,7 +88,7 @@ describe('SourceControlImportService', () => {
 			credentialsRepository,
 			projectRepository,
 			tagRepository,
-			mock(),
+			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			userRepository,
 			mock(),
@@ -1462,6 +1468,224 @@ describe('SourceControlImportService', () => {
 			expect(importedCredential?.isGlobal).toBe(false);
 			expect(importedCredential?.name).toBe('Standard Credential');
 			expect(importedCredential?.type).toBe('standardCredentialType');
+		});
+	});
+
+	describe('importWorkflowFromWorkFolder()', () => {
+		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const fsReadFile = jest.spyOn(fsp, 'readFile');
+
+		describe('workflow history', () => {
+			it('should create workflow history for new workflow on import', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+
+				const mockWorkflowFile = `/mock/${workflowId}.json`;
+
+				const mockWorkflowData: IWorkflowToImport = {
+					id: workflowId,
+					name: 'Test Workflow',
+					versionId,
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							typeVersion: 1,
+							position: [250, 300] as [number, number],
+							parameters: {},
+						},
+					],
+					connections: {},
+					settings: {},
+					parentFolderId: null,
+					active: false,
+					isArchived: false,
+					activeVersionId: null,
+				};
+
+				globMock.mockResolvedValue([mockWorkflowFile]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file: mockWorkflowFile })],
+					importingUser.id,
+				);
+
+				// Verify workflow history was created
+				const historyRecord = await workflowHistoryRepository.findOne({
+					where: { versionId, workflowId },
+				});
+
+				expect(historyRecord).toBeTruthy();
+				expect(historyRecord?.nodes).toEqual(mockWorkflowData.nodes);
+				expect(historyRecord?.connections).toEqual(mockWorkflowData.connections);
+				expect(historyRecord?.authors).toBe(`${importingUser.firstName} ${importingUser.lastName}`);
+			});
+
+			it('should update workflow history when versionId exists but nodes changed', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+
+				// Create initial workflow and history
+				const initialNodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflow(
+					{
+						id: workflowId,
+						name: 'Test Workflow',
+						versionId,
+						nodes: initialNodes,
+						connections: {},
+					},
+					importingUser,
+				);
+
+				// Create initial history record
+				await workflowHistoryRepository.insert({
+					versionId,
+					workflowId,
+					nodes: initialNodes,
+					connections: {},
+					authors: 'Initial Author',
+				});
+
+				// Now import with updated nodes
+				const updatedNodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				const mockWorkflowFile = `/mock/${workflowId}.json`;
+				const mockWorkflowData: IWorkflowToImport = {
+					id: workflowId,
+					name: 'Test Workflow',
+					versionId,
+					nodes: updatedNodes,
+					connections: {},
+					settings: {},
+					parentFolderId: null,
+					active: false,
+					isArchived: false,
+					activeVersionId: null,
+				};
+
+				globMock.mockResolvedValue([mockWorkflowFile]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file: mockWorkflowFile })],
+					importingUser.id,
+				);
+
+				// Verify workflow history was updated
+				const historyRecord = await workflowHistoryRepository.findOne({
+					where: { versionId, workflowId },
+				});
+
+				expect(historyRecord).toBeTruthy();
+				expect(historyRecord?.nodes).toEqual(updatedNodes);
+				expect(historyRecord?.authors).toBe(`${importingUser.firstName} ${importingUser.lastName}`);
+			});
+
+			it('should not update workflow history when versionId exists and content unchanged', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				// Create initial workflow and history
+				await createWorkflow(
+					{
+						id: workflowId,
+						name: 'Test Workflow',
+						versionId,
+						nodes,
+						connections: {},
+					},
+					importingUser,
+				);
+
+				// Create initial history record
+				await workflowHistoryRepository.insert({
+					versionId,
+					workflowId,
+					nodes,
+					connections: {},
+					authors: 'Initial Author',
+				});
+
+				const historyBefore = await workflowHistoryRepository.findOne({
+					where: { versionId, workflowId },
+				});
+
+				// Import with same content
+				const mockWorkflowFile = `/mock/${workflowId}.json`;
+				const mockWorkflowData: IWorkflowToImport = {
+					id: workflowId,
+					name: 'Test Workflow',
+					versionId,
+					nodes,
+					connections: {},
+					settings: {},
+					parentFolderId: null,
+					active: false,
+					isArchived: false,
+					activeVersionId: null,
+				};
+
+				globMock.mockResolvedValue([mockWorkflowFile]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file: mockWorkflowFile })],
+					importingUser.id,
+				);
+
+				// Verify workflow history was NOT updated (authors should remain unchanged)
+				const historyAfter = await workflowHistoryRepository.findOne({
+					where: { versionId, workflowId },
+				});
+
+				expect(historyAfter).toBeTruthy();
+				expect(historyAfter?.authors).toBe('Initial Author'); // Should not have changed
+				expect(historyAfter?.updatedAt).toEqual(historyBefore?.updatedAt);
+			});
 		});
 	});
 });
