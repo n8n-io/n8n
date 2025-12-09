@@ -408,7 +408,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least viewer access to all users who should use it. Currently, only streaming response mode is supported.',
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least \'workflow:execute-chat\' access to all users who should use it. Currently, only streaming response mode is supported.',
 				name: 'availableInChatNotice',
 				type: 'notice',
 				displayOptions: {

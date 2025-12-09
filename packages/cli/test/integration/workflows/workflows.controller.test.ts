@@ -166,6 +166,7 @@ describe('POST /workflows', () => {
 			[
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:execute-chat',
 				'workflow:move',
 				'workflow:read',
 				'workflow:share',
@@ -810,6 +811,7 @@ describe('GET /workflows', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:update',
@@ -818,7 +820,9 @@ describe('GET /workflows', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
+			expect(wf2.scopes).toEqual(
+				['workflow:read', 'workflow:update', 'workflow:execute', 'workflow:execute-chat'].sort(),
+			);
 		}
 
 		{
@@ -836,6 +840,7 @@ describe('GET /workflows', () => {
 			expect(wf1.scopes).toEqual([
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:execute-chat',
 				'workflow:read',
 				'workflow:update',
 			]);
@@ -846,6 +851,7 @@ describe('GET /workflows', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:share',
@@ -871,6 +877,7 @@ describe('GET /workflows', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
@@ -886,6 +893,7 @@ describe('GET /workflows', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
@@ -1852,6 +1860,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:update',
@@ -1860,7 +1869,9 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
+			expect(wf2.scopes).toEqual(
+				['workflow:read', 'workflow:update', 'workflow:execute', 'workflow:execute-chat'].sort(),
+			);
 
 			expect(f1.id).toBe(savedFolder1.id);
 		}
@@ -1883,6 +1894,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.scopes).toEqual([
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:execute-chat',
 				'workflow:read',
 				'workflow:update',
 			]);
@@ -1893,6 +1905,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:share',
@@ -1923,6 +1936,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
@@ -1938,6 +1952,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
