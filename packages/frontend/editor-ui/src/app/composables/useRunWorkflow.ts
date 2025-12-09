@@ -344,12 +344,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			const triggerNodeName = triggerToStartFrom?.name ?? '';
-			const triggerNode = workflowsStore.getNodeByName(triggerNodeName);
-			if (triggerNode && workflowsStore.nodeHasIssuesDownstream(triggerNode.name)) {
-				throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
-			}
-
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};

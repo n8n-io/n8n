@@ -422,53 +422,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	/**
-	 * Checks if any downstream nodes (children) of the given node have issues.
-	 * This function performs a depth-first traversal of all connection types
-	 * (main, AI tool, AI language model, AI embedding, etc.) and returns true
-	 * if any connected node has issues.
-	 *
-	 * @param nodeName - The name of the node to check
-	 * @returns true if any downstream node has issues and is enabled, false otherwise
-	 *
-	 * @remarks
-	 * - Disabled nodes are skipped (they don't count as having issues)
-	 * - Uses a visited set to prevent infinite loops in circular graphs
-	 * - Checks all connection types, not just main connections
-	 */
-	function nodeHasIssuesDownstream(nodeName: string): boolean {
-		const visited = new Set<string>();
-
-		function hasIssues(currentNodeName: string): boolean {
-			if (visited.has(currentNodeName)) return false;
-			visited.add(currentNodeName);
-
-			const node = getNodeByName(currentNodeName);
-			if (!node) return false;
-
-			// Check if node has issues (skip disabled nodes)
-			if (!node.disabled && node.issues && Object.keys(node.issues).length > 0) {
-				return true;
-			}
-
-			// Recursively check all downstream connections (all connection types)
-			const connections = outgoingConnectionsByNodeName(currentNodeName);
-			return Object.values(connections).some((connectionType) =>
-				connectionType?.some((outputIndexes) =>
-					outputIndexes?.some((connection) => hasIssues(connection.node)),
-				),
-			);
-		}
-
-		// Check children of the given node (all connection types)
-		const connections = outgoingConnectionsByNodeName(nodeName);
-		return Object.values(connections).some((connectionType) =>
-			connectionType?.some((outputIndexes) =>
-				outputIndexes?.some((connection) => hasIssues(connection.node)),
-			),
-		);
-	}
-
 	function getWorkflowById(id: string): IWorkflowDb {
 		return workflowsById.value[id];
 	}
@@ -2006,7 +1959,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
-		nodeHasIssuesDownstream,
 		getWorkflowById,
 		getNodeByName,
 		findRootWithMainConnection,
