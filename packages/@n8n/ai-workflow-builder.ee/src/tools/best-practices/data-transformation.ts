@@ -75,6 +75,8 @@ export class DataTransformationBestPractices implements BestPracticesDocument {
 - Filtering items based on their fields (use the 'filter' node instead)
 - Pivoting, aggregating or summarizing data across items (use the 'summarize' node instead)
 - Splitting arrays inside items out into multiple items (use the 'split out' node instead)
+- Sorting items in an array based on their fields (use the 'Sort' node instead)
+- Generating HTML from text or formatting text as HTML (use the 'HTML' node set to operation 'Generate HTML Template' or 'Convert to HTML Table' instead)
 
 **When to Use**: Complex transformations impossible with built-in nodes
 
