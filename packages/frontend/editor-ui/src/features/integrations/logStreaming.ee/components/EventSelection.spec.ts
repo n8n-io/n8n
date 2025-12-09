@@ -257,7 +257,7 @@ describe('EventSelection.ee.vue', () => {
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			expect(anonymizeCheckbox?.checked).toBe(true);
 		});
@@ -289,7 +289,7 @@ describe('EventSelection.ee.vue', () => {
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			anonymizeCheckbox?.click();
 
@@ -309,7 +309,7 @@ describe('EventSelection.ee.vue', () => {
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			anonymizeCheckbox?.click();
 
@@ -382,7 +382,7 @@ describe('EventSelection.ee.vue', () => {
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			const initialValue =
 				logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages;

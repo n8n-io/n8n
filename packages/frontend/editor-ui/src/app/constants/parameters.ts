@@ -9,7 +9,7 @@ export const DATA_TYPE_ICON_MAP = {
 	array: 'list',
 	object: 'box',
 	file: 'file',
-} satisfies Record<string, IconName>;
+} as const satisfies Record<string, IconName>;
 
 export const MAPPING_PARAMS = [
 	'$binary',
