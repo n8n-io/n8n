@@ -8,8 +8,11 @@ import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentia
 describe('DynamicCredentialResolverRepository', () => {
 	let resolverRepository: DynamicCredentialResolverRepository;
 	let credentialsRepository: CredentialsRepository;
+	let previousEnvVar: string | undefined;
 
 	beforeAll(async () => {
+		previousEnvVar = process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
 		await testModules.loadModules(['dynamic-credentials']);
 		await testDb.init();
 		resolverRepository = Container.get(DynamicCredentialResolverRepository);
@@ -21,6 +24,7 @@ describe('DynamicCredentialResolverRepository', () => {
 	});
 
 	afterAll(async () => {
+		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = previousEnvVar;
 		await testDb.terminate();
 	});
 
