@@ -105,7 +105,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		);
 	});
 
-	it('should properly encode special characters in filename from node parameters (version 1.1+)', async () => {
+	it('should properly encode special characters in filename from node parameters', async () => {
 		const items = [{ json: { data: 'test' }, binary: { data: {} as IBinaryData } }];
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
