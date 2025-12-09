@@ -5,8 +5,10 @@ on:
 
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
+  # Only runs for internal PRs (not community/fork PRs)
   multi-main-ui:
     name: 'Multi-Main: UI'
+    if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-build
@@ -18,6 +20,7 @@ jobs:
 
   multi-main-isolated:
     name: 'Multi-Main: Isolated'
+    if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-build
@@ -27,26 +30,26 @@ jobs:
       workers: '1'
     secrets: inherit
 
-  # Standard: Single n8n instance with SQLite
-  # TODO: Enable after confirmed costs with currents/blacksmith
-  # standard-ui:
-  #   name: 'Standard: UI'
-  #   uses: ./.github/workflows/playwright-test-reusable.yml
-  #   with:
-  #     test-mode: docker-build
-  #     test-command: pnpm --filter=n8n-playwright test:container:standard:ui
-  #     shards: '[1, 2, 3, 4, 5]'
-  #     runner: blacksmith-2vcpu-ubuntu-2204
-  #     workers: '2'
-  #   secrets: inherit
+  # Community PR tests: Standard mode with SQLite (no secrets required)
+  # Runs on GitHub-hosted runners without Currents reporting
+  community-standard-ui:
+    name: 'Community: Standard UI'
+    if: ${{ github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:standard:ui
+      shards: '[1, 2, 3, 4, 5]'
+      runner: ubuntu-latest
+      workers: '2'
 
-  # standard-isolated:
-  #   name: 'Standard: Isolated'
-  #   uses: ./.github/workflows/playwright-test-reusable.yml
-  #   with:
-  #     test-mode: docker-build
-  #     test-command: pnpm --filter=n8n-playwright test:container:standard:isolated
-  #     shards: '[1]'
-  #     runner: blacksmith-2vcpu-ubuntu-2204
-  #     workers: '1'
-  #   secrets: inherit
+  community-standard-isolated:
+    name: 'Community: Standard Isolated'
+    if: ${{ github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:standard:isolated
+      shards: '[1]'
+      runner: ubuntu-latest
+      workers: '1'
