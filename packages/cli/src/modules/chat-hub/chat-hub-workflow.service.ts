@@ -771,7 +771,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				throw new TotalFileSizeExceededError();
 			}
 
-			if (attachment.mimeType.startsWith('text/')) {
+			if (this.isTextFile(attachment.mimeType)) {
 				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
 				const content = buffer.toString('utf-8');
 
@@ -802,6 +802,17 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 			throw e;
 		}
+	}
+
+	private isTextFile(mimeType: string): boolean {
+		return (
+			mimeType.startsWith('text/') ||
+			mimeType === 'application/json' ||
+			mimeType === 'application/xml' ||
+			mimeType === 'application/csv' ||
+			mimeType === 'application/x-yaml' ||
+			mimeType === 'application/yaml'
+		);
 	}
 
 	private buildClearMemoryNode(): INode {
