@@ -30,26 +30,26 @@ jobs:
       workers: '1'
     secrets: inherit
 
-  # Community PR tests: Standard mode with SQLite (no secrets required)
+  # Community PR tests: Local mode with SQLite (no container building, no secrets required)
   # Runs on GitHub-hosted runners without Currents reporting
-  community-standard-ui:
-    name: 'Community: Standard UI'
+  community-ui:
+    name: 'Community: UI'
     if: ${{ github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-build
-      test-command: pnpm --filter=n8n-playwright test:container:standard:ui
+      test-mode: local
+      test-command: pnpm --filter=n8n-playwright test:local
       shards: '[1, 2, 3, 4, 5]'
       runner: ubuntu-latest
       workers: '2'
 
-  community-standard-isolated:
-    name: 'Community: Standard Isolated'
+  community-isolated:
+    name: 'Community: Isolated'
     if: ${{ github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-build
-      test-command: pnpm --filter=n8n-playwright test:container:standard:isolated
+      test-mode: local
+      test-command: pnpm --filter=n8n-playwright test:local:isolated
       shards: '[1]'
       runner: ubuntu-latest
       workers: '1'
