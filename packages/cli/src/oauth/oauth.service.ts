@@ -22,7 +22,13 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { OAuth2CredentialData } from '@n8n/client-oauth2';
+import {
+	ClientOAuth2,
+	type ClientOAuth2Options,
+	type OAuth2AuthenticationMethod,
+	type OAuth2CredentialData,
+	type OAuth2GrantType,
+} from '@n8n/client-oauth2';
 import axios from 'axios';
 import {
 	oAuthAuthorizationServerMetadataSchema,
@@ -30,9 +36,6 @@ import {
 } from '@/controllers/oauth/oauth2-dynamic-client-registration.schema';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
-import type { ClientOAuth2Options } from '@n8n/client-oauth2';
-import type { OAuth2GrantType, OAuth2AuthenticationMethod } from '@n8n/client-oauth2';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
 

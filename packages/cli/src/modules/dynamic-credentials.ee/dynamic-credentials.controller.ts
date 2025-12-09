@@ -30,7 +30,7 @@ export class DynamicCredentialsController {
 			await this.oauthService.getOAuthCredentials<OAuth2CredentialData>(credential);
 
 		if (credential.type.includes('OAuth2')) {
-			return this.oauthService.generateAOauth2AuthUri(credential, oauthCredentials, {
+			return await this.oauthService.generateAOauth2AuthUri(credential, oauthCredentials, {
 				cid: credential.id,
 				authorizationHeader: req.headers.authorization,
 			});
