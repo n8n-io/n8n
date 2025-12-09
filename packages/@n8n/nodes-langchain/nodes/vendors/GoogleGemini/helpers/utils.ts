@@ -1,10 +1,9 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { apiRequest } from '../transport';
-
 import axios from 'axios';
 import type Stream from 'node:stream';
+
+import { apiRequest } from '../transport';
 
 interface File {
 	name: string;
@@ -164,4 +163,94 @@ export async function transferFile(
 	}
 
 	return { fileUri: file.uri, mimeType: file.mimeType };
+}
+
+interface Operation {
+	name: string;
+	done: boolean;
+	error?: { message: string };
+	response?: IDataObject;
+}
+
+export async function createFileSearchStore(
+	this: IExecuteFunctions,
+	displayName: string,
+): Promise<IDataObject> {
+	return (await apiRequest.call(this, 'POST', '/v1beta/fileSearchStores', {
+		body: { displayName },
+	})) as IDataObject;
+}
+
+export async function uploadToFileSearchStore(
+	this: IExecuteFunctions,
+	fileSearchStoreName: string,
+	displayName: string,
+	downloadUrl: string,
+	fallbackMimeType?: string,
+	qs?: IDataObject,
+) {
+	// Download the file from URL
+	const downloadResponse = await axios.get(downloadUrl, {
+		params: qs,
+		responseType: 'stream',
+	});
+
+	const contentType = downloadResponse.headers['content-type'] as string | undefined;
+	const mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
+	const contentLength = downloadResponse.headers['content-length'] as string | undefined;
+	const fileSize = parseInt(contentLength ?? '0', 10);
+	const stream = downloadResponse.data as Stream;
+
+	const uploadInitResponse = (await apiRequest.call(
+		this,
+		'POST',
+		`/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
+		{
+			headers: {
+				'X-Goog-Upload-Protocol': 'resumable',
+				'X-Goog-Upload-Command': 'start',
+				'X-Goog-Upload-Header-Content-Type': mimeType,
+				'Content-Type': 'application/json',
+			},
+			body: { displayName, mimeType },
+			option: { returnFullResponse: true },
+		},
+	)) as { headers: IDataObject };
+
+	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
+	if (!uploadUrl) {
+		throw new NodeOperationError(this.getNode(), 'Failed to get upload URL');
+	}
+
+	// Upload the file
+	const uploadResponse = (await this.helpers.httpRequest({
+		method: 'POST',
+		url: uploadUrl,
+		headers: {
+			'X-Goog-Upload-Offset': '0',
+			'X-Goog-Upload-Command': 'upload, finalize',
+			'Content-Type': mimeType,
+			...(fileSize > 0 && { 'Content-Length': fileSize.toString() }),
+		},
+		body: stream,
+		returnFullResponse: true,
+	})) as { body: { name: string } };
+
+	// Poll the operation until it's done
+	// According to API docs: GET /v1beta/{name=fileSearchStores/*/upload/operations/*}
+	const operationName = uploadResponse.body.name;
+	let operation = (await apiRequest.call(this, 'GET', `/v1beta/${operationName}`)) as Operation;
+
+	while (!operation.done) {
+		await new Promise((resolve) => setTimeout(resolve, 5000));
+		operation = (await apiRequest.call(this, 'GET', `/v1beta/${operationName}`)) as Operation;
+	}
+
+	if (operation.error) {
+		throw new NodeOperationError(this.getNode(), operation.error.message ?? 'Unknown error', {
+			description: 'Error uploading file to File Search store',
+		});
+	}
+
+	return operation.response ?? { name: uploadResponse.body.name };
 }
