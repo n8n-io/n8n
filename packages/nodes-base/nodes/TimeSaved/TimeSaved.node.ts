@@ -13,7 +13,8 @@ export class TimeSaved implements INodeType {
 		icon: 'fa:timer',
 		group: ['organization'],
 		version: 1,
-		description: 'Track time savings for workflow executions dynamically',
+		description:
+			'Dynamically track time saved based on the workflow’s execution path and the number of items processed',
 		defaults: {
 			name: 'Time Saved',
 			color: '#1E90FF',
