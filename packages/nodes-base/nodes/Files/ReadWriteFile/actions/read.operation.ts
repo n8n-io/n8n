@@ -105,7 +105,9 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			const newItems: INodeExecutionData[] = [];
 			for (const filePath of files) {
-				const stream = await this.helpers.createReadStream(filePath);
+				const stream = await this.helpers.createReadStream(
+					await this.helpers.resolvePath(filePath),
+				);
 				const binaryData = await this.helpers.prepareBinaryData(stream, filePath);
 
 				if (options.fileName !== undefined) {
