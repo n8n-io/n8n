@@ -92,9 +92,22 @@ class RedisConfig {
 	@Nested
 	tlsConfig: RedisTlsConfig;
 
-	/** Whether to enable dual-stack hostname resolution for Redis connections. */
+	/** Whether to enable dual-stack hostname resolution to support both IPv4 and IPv6 addresses for Redis connections. Default uses IPv4 only. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to use only IPv6 to avoid ENOTFOUND errors when a hostname only resolves to an IPv6 address . Default uses IPv4 only. */
+	@Env('QUEUE_BULL_REDIS_IPV6')
+	ipV6: boolean = false;
+
+	/**
+	 * In auto pipelining mode, all commands issued during an event loop are enqueued in a pipeline automatically managed by ioredis.
+	 * At the end of the iteration, the pipeline is executed and thus all commands are sent to the server at the same time.
+	 * This feature can dramatically improve throughput and avoids HOL blocking.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#autopipelining
+	 */
+	@Env('QUEUE_BULL_REDIS_ENABLE_AUTO_PIPELINING')
+	enableAutoPipelining: boolean = false;
 }
 
 @Config

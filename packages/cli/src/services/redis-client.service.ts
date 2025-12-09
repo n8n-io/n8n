@@ -3,18 +3,26 @@ import { GlobalConfig } from '@n8n/config';
 enableRedisDebug();
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import dns from 'dns';
 import { readFileSync } from 'fs';
 import ioRedis from 'ioredis';
-import type { Cluster, RedisOptions } from 'ioredis';
+import type { Cluster, DNSLookupFunction, RedisOptions } from 'ioredis';
+import { InstanceSettings } from 'n8n-core';
+import { isAbsolute } from 'path';
 
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
 
 type RedisEventMap = {
-	'connection-lost': number;
-	'connection-recovered': never;
+	['connection-lost']: number;
+	['connection-recovered']: never;
 };
+
+type RedisNode = Array<{
+	host: string;
+	port: number;
+}>;
 
 /**
  * Enable ioredis debug logging if QUEUE_BULL_REDIS_DEBUG is set to 'true'.
@@ -24,7 +32,7 @@ type RedisEventMap = {
 function enableRedisDebug() {
 	const debug = process.env.QUEUE_BULL_REDIS_DEBUG === 'true';
 	if (debug) {
-		// get existing DEBUG namspaces and add 'ioredis:* debug option'"
+		// get existing DEBUG namespaces and add 'ioredis:* debug option'"
 		const debuggers = (process.env.DEBUG ?? '')
 			.split(',')
 			.map((d) => d.trim())
@@ -55,6 +63,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		super();
 
@@ -68,30 +77,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
-		const client =
-			this.clusterNodes().length > 0
-				? this.createClusterClient(arg)
-				: this.createRegularClient(arg);
-
-		client.on('wait', (...args: any[]) => {
-			this.logger.info(`[Redis client] wait ${args.join('')}`);
-		});
-
-		client.on('close', (...args: any[]) => {
-			this.logger.info(`[Redis client] close ${args.join('')}`);
-		});
-
-		client.on('reconnecting', (...args: any[]) => {
-			this.logger.info(`[Redis client] reconnecting ${args.join('')}`);
-		});
-
-		client.on('end', (...args: any[]) => {
-			this.logger.info(`[Redis client] end ${args.join('')}`);
-		});
+		const isCluster = this.clusterNodes().length > 0;
+		const { client, nodes } = isCluster
+			? this.createClusterClient(arg)
+			: this.createRegularClient(arg);
 
 		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
-
 			this.logger.error(`[Redis client] ${error.message}`, { error });
 		});
 
@@ -103,6 +95,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		});
 
 		this.clients.add(client);
+
+		this.connect(client, isCluster, arg.type, nodes);
 
 		return client;
 	}
@@ -125,10 +119,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	// ----------------------------------
 
 	private createRegularClient({
-		type,
 		extraOptions,
 	}: {
-		type: RedisClientType;
 		extraOptions?: RedisOptions;
 	}) {
 		const options = this.getOptions({ extraOptions });
@@ -140,35 +132,39 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const client = new ioRedis(options);
 
-		this.logger.debug(`Started Redis client ${type}`, { type, host, port });
-
-		return client;
+		return { client, nodes: [{ host, port }] };
 	}
 
 	private createClusterClient({
-		type,
 		extraOptions,
 	}: {
-		type: string;
 		extraOptions?: RedisOptions;
 	}) {
 		const options = this.getOptions({ extraOptions });
 
-		const clusterNodes = this.clusterNodes();
+		const nodes = this.clusterNodes();
 
-		const clusterClient = new ioRedis.Cluster(clusterNodes, {
+		const client = new ioRedis.Cluster(nodes, {
 			redisOptions: options,
 			clusterRetryStrategy: this.retryStrategy(),
+			dnsLookup: this.getDnsLookupFunction(options.family as number),
+			showFriendlyErrorStack: true,
 		});
 
-		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
-
-		return clusterClient;
+		return { client, nodes };
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, tlsConfig, dualStack } =
-			this.globalConfig.queue.bull.redis;
+		const redisConfig = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, tlsConfig, enableAutoPipelining } = redisConfig;
+
+		const getHostnameResolutionIpAddressFamily = (): 0 | 4 | 6 => {
+			const { dualStack, ipV6 } = redisConfig;
+			if (dualStack && ipV6) this.exitWithError('Set only one redis option: DUALSTACK or IPV6.');
+			if (ipV6) return 6;
+			if (dualStack) return 0;
+			return 4;
+		};
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -183,55 +179,90 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const options: RedisOptions = {
 			username,
 			password,
+			connectionName: this.instanceSettings.hostId,
 			db,
 			enableReadyCheck: false,
+			lazyConnect: true,
 			maxRetriesPerRequest: null,
+			enableAutoPipelining,
+			family: getHostnameResolutionIpAddressFamily(),
 			retryStrategy: this.retryStrategy(),
+			reconnectOnError: this.onReconnectError,
 			...extraOptions,
 		};
 
-		if (dualStack) options.family = 0;
-
 		const {
-			caFile = '',
-			certFile = '',
-			certKeyFile = '',
-			certKeyFilePassphrase = '',
-			serverName = '',
-			rejectUnauthorized = true,
+			caFile,
+			certFile,
+			certKeyFile,
+			certKeyFilePassphrase = undefined,
+			serverName = undefined,
+			rejectUnauthorized,
 		} = tlsConfig;
 
 		if (tls) {
-			const readCertFileSync = (path: string) => {
-				try {
-					return readFileSync(path).toString('utf-8');
-				} catch (e) {
-					const msg = `Error reading Redis TLS file: ${path}`;
-					this.logger.error(msg, { error: e });
-					throw new Error(msg, { cause: e });
-				}
-			};
-
 			options.tls = {
-				ca: caFile ? readCertFileSync(caFile) : undefined,
-				cert: certFile ? readCertFileSync(certFile) : undefined,
-				key: certKeyFile ? readCertFileSync(certKeyFile) : undefined,
-				passphrase: certKeyFilePassphrase || undefined,
-				servername: serverName || undefined,
+				ca: caFile ? this.readCertFileSync(caFile) : undefined,
+				cert: certFile ? this.readCertFileSync(certFile) : undefined,
+				key: certKeyFile ? this.readCertFileSync(certKeyFile) : undefined,
+				enableTrace: false,
+				passphrase: certKeyFilePassphrase,
+				servername: serverName,
 				rejectUnauthorized: rejectUnauthorized ? undefined : false,
 			};
-		} else if (
-			caFile !== '' ||
-			certFile !== '' ||
-			certKeyFile !== '' ||
-			serverName !== '' ||
-			!rejectUnauthorized
-		) {
-			this.logger.error('Redis TLS config found but TLS disabled. Set QUEUE_BULL_REDIS_TLS=true.');
-			process.exit(1);
+		} else if ([caFile, certFile, certKeyFile, serverName, !rejectUnauthorized].some((v) => v)) {
+			this.exitWithError('Redis TLS disabled but config found. Set QUEUE_BULL_REDIS_TLS=true.');
 		}
 
 		return options;
+	}
+
+	private readCertFileSync = (path: string) => {
+		try {
+			if (!isAbsolute(path)) {
+				this.exitWithError(`Redis TLS file path is not absolute: ${path}`);
+			}
+			return readFileSync(path).toString('utf-8');
+		} catch (e) {
+			this.exitWithError(`Error reading Redis TLS file: ${path}`, e as Error);
+		}
+		return '';
+	};
+
+	private getDnsLookupFunction =
+		(family: number): DNSLookupFunction =>
+		(address, resolve) => {
+			this.logger.info(`Redis DNS lookup: address=${address}`);
+			dns.lookup(address, { family }, resolve);
+			//resolve(null, address);
+		};
+
+	private connect = (
+		client: Cluster | ioRedis,
+		isCluster: boolean,
+		type: string,
+		nodes: RedisNode,
+	) => {
+		const clientName = isCluster ? 'Redis cluster client' : 'Redis client';
+		this.logger.debug(`Starting ${clientName} ${type}`, { type, nodes });
+		client
+			.connect()
+			.then(() => {
+				this.logger.info(`${clientName} connected ${type}`, { type, nodes });
+			})
+			.catch((error) => {
+				this.logger.error(`${clientName} connection failed: ${error}`, { error });
+			});
+	};
+
+	private onReconnectError = (error: Error) => {
+		this.logger.error(`Redis onReconnectError: ${error.message}`, { error });
+		return true;
+	};
+
+	private exitWithError(message: string, error?: Error) {
+		this.logger.error(message, { error });
+		process.exit(1);
 	}
 
 	/**
@@ -257,8 +288,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				if (cumulativeTimeout > this.config.maxTimeout) {
 					const maxTimeout = Math.round(this.config.maxTimeout / 1000) + 's';
 					this.logger.error(`Unable to connect to Redis after trying to connect for ${maxTimeout}`);
-					this.logger.error('Exiting process due to Redis connection error');
-					process.exit(1);
+					this.exitWithError('Exiting process due to Redis connection error');
 				}
 			}
 
