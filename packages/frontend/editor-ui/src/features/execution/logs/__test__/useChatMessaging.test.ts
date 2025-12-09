@@ -20,7 +20,7 @@ vi.mock('../logs.utils', () => {
 describe('useChatMessaging', () => {
 	let chatMessaging: ReturnType<typeof useChatMessaging>;
 	let chatTrigger: Ref<INodeUi | null>;
-	let sessionId: string;
+	let sessionId: Ref<string>;
 	let executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
 	let onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
@@ -33,7 +33,7 @@ describe('useChatMessaging', () => {
 		executionData = undefined;
 		createTestingPinia();
 		chatTrigger = ref(null);
-		sessionId = 'session-id';
+		sessionId = ref('session-id');
 		executionResultData = computed(() => executionData);
 		onRunChatWorkflow = vi.fn().mockResolvedValue({
 			executionId: 'execution-id',
@@ -81,7 +81,7 @@ describe('useChatMessaging', () => {
 
 		expect(ws.value.send).toHaveBeenCalledWith(
 			JSON.stringify({
-				sessionId,
+				sessionId: sessionId.value,
 				action: 'sendMessage',
 				chatInput: messageText,
 			}),

@@ -8,6 +8,7 @@ import {
 	type ChatMessageId,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
+	type ChatHubInputModality,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -331,4 +332,46 @@ export function isLlmProviderModel(
 	model?: ChatHubConversationModel,
 ): model is ChatHubConversationModel & { provider: ChatHubLLMProvider } {
 	return isLlmProvider(model?.provider);
+}
+
+export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+	return {
+		id: streaming.sessionId,
+		title: 'New Chat',
+		ownerId: '',
+		lastMessageAt: new Date().toISOString(),
+		credentialId: null,
+		agentName: streaming.agentName,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		tools: streaming.tools,
+		...flattenModel(streaming.model),
+	};
+}
+
+export function createMimeTypes(modalities: ChatHubInputModality[]): string | undefined {
+	if (modalities.length === 0) {
+		return undefined;
+	}
+
+	// If 'file' modality is present, accept all file types
+	if (modalities.includes('file')) {
+		return '*/*';
+	}
+
+	const mimeTypes: string[] = [];
+
+	for (const modality of modalities) {
+		if (modality === 'image') {
+			mimeTypes.push('image/*');
+		}
+		if (modality === 'audio') {
+			mimeTypes.push('audio/*');
+		}
+		if (modality === 'video') {
+			mimeTypes.push('video/*');
+		}
+	}
+
+	return mimeTypes.length > 0 ? mimeTypes.join(',') : undefined;
 }

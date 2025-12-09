@@ -58,6 +58,23 @@ export const formFields: INodeProperties = {
 			values: [
 				{
 					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					required: true,
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Label',
 					name: 'fieldLabel',
 					type: 'string',
 					default: '',
@@ -67,6 +84,26 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['hiddenField', 'html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldLabel',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. What is your name?',
+					description: 'Label that appears above the input field',
+					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField', 'html'],
+						},
+						show: {
+							'@version': [{ _cnd: { lt: 2.4 } }],
 						},
 					},
 				},
@@ -80,6 +117,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['hiddenField'],
+							'@version': [{ _cnd: { lt: 2.4 } }],
 						},
 					},
 				},
@@ -164,6 +202,60 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description: 'Default value that will be pre-filled in the form field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['text', 'number', 'email', 'textarea'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
+					type: 'dateTime',
+					typeOptions: {
+						dateOnly: true,
+					},
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value that will be pre-selected. Must match one of the option labels.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['dropdown', 'radio'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
 						},
 					},
 				},

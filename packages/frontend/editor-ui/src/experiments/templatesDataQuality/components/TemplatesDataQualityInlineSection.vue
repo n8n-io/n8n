@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
-import { TEMPLATES_URLS } from '@/app/constants';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import TemplateCard from './TemplateCard.vue';
 
 const locale = useI18n();
 const templatesStore = useTemplatesDataQualityStore();
+const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
@@ -29,7 +31,7 @@ onMounted(async () => {
 			<N8nText tag="h2" size="large" :bold="true">
 				{{ locale.baseText('workflows.empty.startWithTemplate') }}
 			</N8nText>
-			<N8nLink :href="TEMPLATES_URLS.BASE_WEBSITE_URL" :class="$style.allTemplatesLink">
+			<N8nLink :href="websiteTemplateRepositoryURL" :class="$style.allTemplatesLink">
 				{{ locale.baseText('workflows.templatesDataQuality.seeMoreTemplates') }}
 			</N8nLink>
 		</div>

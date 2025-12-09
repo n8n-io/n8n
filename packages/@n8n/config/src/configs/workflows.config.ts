@@ -22,8 +22,4 @@ export class WorkflowsConfig {
 	/** Whether to enable workflow dependency indexing */
 	@Env('N8N_WORKFLOWS_INDEXING_ENABLED')
 	indexingEnabled: boolean = false;
-
-	/** DO NOT USE - Enable draft/publish workflow feature */
-	@Env('N8N_WORKFLOWS_DRAFT_PUBLISH_ENABLED')
-	draftPublishEnabled: boolean = false;
 }

@@ -120,7 +120,8 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
-RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
+RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
+    apk del apk-tools
 
 # Bring corepack and pnpm over, to make the image easier to extend
 COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
