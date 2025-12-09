@@ -209,6 +209,12 @@ export function convertNodeToHitlTool<
 /**
  * Generate HITL tool variants for all nodes with sendAndWait operations.
  * Called during node loading to create HITL tool nodes automatically.
+ *
+ * The generated HITL tools use the EngineRequest pattern:
+ * 1. Agent calls HITL tool → returns EngineRequest
+ * 2. Engine executes HITL node → sendAndWait → waiting state
+ * 3. Webhook resumes → Agent gets approval result
+ * 4. If approved, Agent calls gated tool
  */
 export function createHitlTools(types: Types, known: KnownNodesAndCredentials): void {
 	const sendAndWaitNodes = types.nodes.filter(hasSendAndWaitOperation);
@@ -217,12 +223,11 @@ export function createHitlTools(types: Types, known: KnownNodesAndCredentials): 
 		const description = deepCopy(sendAndWaitNode);
 		const wrapped = convertNodeToHitlTool({ description }).description;
 
-		// Add to node types
 		types.nodes.push(wrapped);
 
-		// Point to original node's class - execution engine handles HITL-specific behavior
-		// by detecting nodes with 'HitlTool' suffix
-		known.nodes[wrapped.name] = { ...known.nodes[sendAndWaitNode.name] };
+		known.nodes[wrapped.name] = {
+			...known.nodes[sendAndWaitNode.name],
+		};
 
 		copyCredentialSupport(known, sendAndWaitNode.name, wrapped.name);
 	}

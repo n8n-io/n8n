@@ -11,6 +11,7 @@ import {
 	type Workflow,
 	type EngineResponse,
 	UnexpectedError,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '../errors/error-reporter';
@@ -95,6 +96,16 @@ function prepareRequestedNodesForExecution(
 		runData[node.name] ||= [];
 		const nodeRunData = runData[node.name];
 		const nodeRunIndex = nodeRunData.length;
+
+		// Debug: log what input data we're setting for the node
+		Logger.debug('[EngineRequest] Setting up input data for node', {
+			nodeName: node.name,
+			nodeRunIndex,
+			actionInput: action.input,
+			mergedJsonKeys: Object.keys(mergedJson),
+			hasParentOutputData: parentOutputData.length > 0,
+		});
+
 		// TODO: Remove when AI-723 lands.
 		nodeRunData.push({
 			// Necessary for the log on the canvas.

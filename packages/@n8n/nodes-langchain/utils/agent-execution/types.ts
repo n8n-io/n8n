@@ -115,6 +115,24 @@ export type RequestResponseMetadata = {
 		/** Cryptographic signature for thinking blocks */
 		thinkingSignature?: string;
 	};
+	/** HITL (Human-in-the-Loop) metadata */
+	hitl?: {
+		/** Whether this is an HITL tool action */
+		isHitlTool: boolean;
+		/** The original source node name (gated tool) */
+		originalSourceNodeName: string;
+		/** The tool name as seen by the LLM */
+		toolName: string;
+		/** Original input for the gated tool */
+		originalInput: IDataObject;
+	};
+	/** HITL approval follow-up metadata (for gated tool execution after approval) */
+	hitlApprovalFollowUp?: {
+		/** The original HITL action ID */
+		originalHitlActionId: string;
+		/** The HITL tool name that was approved */
+		hitlToolName: string;
+	};
 };
 
 /**
