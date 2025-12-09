@@ -203,7 +203,8 @@ export function configureAdapterProcessCallback(
 		const mcpTokenRef = { token: undefined as string | undefined };
 
 		try {
-			const tokenResult = await agent.authorization.getToken(turnContext, 'agentic');
+			turnContext.turnState.set('AgenticAuthorization/agentic', undefined);
+			const tokenResult = await agent.authorization.exchangeToken(turnContext, 'agentic', { scopes: [getMcpPlatformAuthenticationScope()] });
 			mcpTokenRef.token = tokenResult.token;
 		} catch (error) {
 			console.error('Error getting MCP token');
