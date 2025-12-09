@@ -1,5 +1,6 @@
 import type { INodeTypeDescription, INodeProperties } from 'n8n-workflow';
 
+import { prompt } from '@/prompts/builder';
 import type { PromptBuilderContext } from '@/types/config';
 
 import { COMMON_PATTERNS } from './base/common-patterns';
@@ -32,58 +33,63 @@ export class ParameterUpdatePromptBuilder {
 	 */
 	static buildSystemPrompt(context: PromptBuilderContext): string {
 		const options = context.options ?? {};
-		const sections: string[] = [];
 
-		// Always include base sections
-		sections.push(CORE_INSTRUCTIONS);
-		sections.push(EXPRESSION_RULES);
+		// Determine which node-type specific guide to include (mutually exclusive)
+		const hasSystemMessage = this.hasSystemMessageParameters(context.nodeDefinition);
+		const isSet = this.isSetNode(context.nodeType);
+		const isIf = this.isIfNode(context.nodeType);
+		const isSwitch = this.isSwitchNode(context.nodeType);
+		const isHttpRequest = this.isHttpRequestNode(context.nodeType);
+		const isTool = this.isToolNode(context.nodeType);
+		const needsResourceLocator =
+			Boolean(context.hasResourceLocatorParams) || this.needsResourceLocatorGuide(context);
+		const hasText = this.hasTextFields(context.nodeDefinition);
 
-		// Add node-type specific guides
-		if (this.hasSystemMessageParameters(context.nodeDefinition)) {
-			sections.push(SYSTEM_MESSAGE_GUIDE);
-		} else if (this.isSetNode(context.nodeType)) {
-			sections.push(SET_NODE_GUIDE);
-		} else if (this.isIfNode(context.nodeType)) {
-			sections.push(IF_NODE_GUIDE);
-		} else if (this.isSwitchNode(context.nodeType)) {
-			sections.push(SWITCH_NODE_GUIDE);
-		} else if (this.isHttpRequestNode(context.nodeType)) {
-			sections.push(HTTP_REQUEST_GUIDE);
-		}
-
-		// Add tool node guide if applicable
-		if (this.isToolNode(context.nodeType)) {
-			sections.push(TOOL_NODES_GUIDE);
-		}
-
-		// Add resource locator guide if needed
-		if (context.hasResourceLocatorParams || this.needsResourceLocatorGuide(context)) {
-			sections.push(RESOURCE_LOCATOR_GUIDE);
-		}
-
-		// Add text field guide if dealing with text parameters
-		if (this.hasTextFields(context.nodeDefinition)) {
-			sections.push(TEXT_FIELDS_GUIDE);
-		}
-
-		// Add common patterns
-		sections.push(COMMON_PATTERNS);
-
-		// Add relevant examples if enabled
-		if (options.includeExamples !== false) {
+		// Build examples section lazily
+		const buildExamplesSection = (): string | null => {
 			const examples = this.selectRelevantExamples(context);
-			if (examples.length > 0) {
-				sections.push('\n## Relevant Examples');
-				sections.push.apply(sections, examples);
-			}
-		}
+			if (examples.length === 0) return null;
+			return '## Relevant Examples\n' + examples.join('\n');
+		};
 
-		// Always include output format at the end
-		sections.push(OUTPUT_FORMAT);
-
-		const finalPrompt = sections.join('\n');
-
-		return finalPrompt;
+		return (
+			prompt()
+				.section('core_instructions', CORE_INSTRUCTIONS, { priority: 10 })
+				.section('expression_rules', EXPRESSION_RULES, { priority: 20 })
+				// Node-type specific guides (mutually exclusive)
+				.sectionIf(hasSystemMessage, 'system_message_guide', SYSTEM_MESSAGE_GUIDE, { priority: 30 })
+				.sectionIf(!hasSystemMessage && isSet, 'set_node_guide', SET_NODE_GUIDE, { priority: 30 })
+				.sectionIf(!hasSystemMessage && !isSet && isIf, 'if_node_guide', IF_NODE_GUIDE, {
+					priority: 30,
+				})
+				.sectionIf(
+					!hasSystemMessage && !isSet && !isIf && isSwitch,
+					'switch_node_guide',
+					SWITCH_NODE_GUIDE,
+					{ priority: 30 },
+				)
+				.sectionIf(
+					!hasSystemMessage && !isSet && !isIf && !isSwitch && isHttpRequest,
+					'http_request_guide',
+					HTTP_REQUEST_GUIDE,
+					{ priority: 30 },
+				)
+				// Additional guides (can be combined)
+				.sectionIf(isTool, 'tool_nodes_guide', TOOL_NODES_GUIDE, { priority: 40 })
+				.sectionIf(needsResourceLocator, 'resource_locator_guide', RESOURCE_LOCATOR_GUIDE, {
+					priority: 50,
+				})
+				.sectionIf(hasText, 'text_fields_guide', TEXT_FIELDS_GUIDE, { priority: 60 })
+				// Common patterns
+				.section('common_patterns', COMMON_PATTERNS, { priority: 70 })
+				// Examples (conditional with lazy evaluation)
+				.sectionIf(options.includeExamples !== false, 'examples', buildExamplesSection, {
+					priority: 80,
+				})
+				// Output format always last
+				.section('output_format', OUTPUT_FORMAT, { priority: 90 })
+				.build()
+		);
 	}
 
 	/**
