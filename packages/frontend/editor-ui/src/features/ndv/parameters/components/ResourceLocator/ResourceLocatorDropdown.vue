@@ -182,8 +182,8 @@ function onKeyDown(e: KeyboardEvent) {
 	}
 }
 
-function onFilterInput(value: string) {
-	emit('filter', value);
+function onFilterInput(value: string | number | null) {
+	emit('filter', String(value ?? ''));
 }
 
 function onItemClick(selected: string | number | boolean) {

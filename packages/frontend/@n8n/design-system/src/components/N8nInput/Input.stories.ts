@@ -1,130 +1,192 @@
-import type { StoryFn } from '@storybook/vue3-vite';
-import { action } from 'storybook/actions';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { ref } from 'vue';
 
-import N8nInput from './Input.vue';
-import N8nIcon from '../N8nIcon';
+import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-export default {
-	title: 'Atoms/Input',
-	component: N8nInput,
-	argTypes: {
-		type: {
-			control: 'select',
-			options: ['text', 'textarea', 'number', 'password', 'email'],
-		},
-		placeholder: {
-			control: 'text',
-		},
-		disabled: {
-			control: {
-				type: 'boolean',
-			},
-		},
-		size: {
-			control: 'select',
-			options: ['xlarge', 'large', 'medium', 'small', 'mini'],
-		},
-	},
+import Input from './Input.vue';
+
+const meta = {
+	title: 'Components/Input',
+	component: Input,
 	parameters: {
-		backgrounds: { default: '--color--background--light-2' },
+		docs: {
+			source: { type: 'dynamic' },
+		},
 	},
-};
+} satisfies Meta<typeof Input>;
+export default meta;
 
-const methods = {
-	onUpdateModelValue: action('update:modelValue'),
-	onFocus: action('focus'),
-	onChange: action('change'),
-};
+type Story = StoryObj<typeof meta>;
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nInput,
+export const Text = {
+	render: (args) => ({
+		components: { Input },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<Input v-bind="args" v-model="value" />
+			<p style="margin-top: 16px;">Value: {{ value }}</p>
+		</div>
+		`,
+	}),
+	args: {
+		placeholder: 'Enter text...',
+		modelValue: '',
 	},
-	template:
-		'<n8n-input v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" />',
-	data() {
-		return {
-			val: '',
-		};
+} satisfies Story;
+
+export const Textarea = {
+	render: (args) => ({
+		components: { Input },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<h3>Fixed rows</h3>
+			<Input v-bind="args" v-model="value" :rows="4" />
+			<h3 style="margin-top: 16px;">Autosize</h3>
+			<Input v-bind="args" v-model="value" :autosize="true" />
+			<h3 style="margin-top: 16px;">Autosize with minRows/maxRows</h3>
+			<Input v-bind="args" v-model="value" :autosize="{ minRows: 2, maxRows: 6 }" />
+		</div>
+		`,
+	}),
+	args: {
+		type: 'textarea',
+		placeholder: 'Enter multi-line text...',
+		modelValue: '',
 	},
-	methods,
-});
+} satisfies Story;
 
-export const Input = Template.bind({});
-Input.args = {
-	placeholder: 'placeholder...',
-};
-
-const ManyTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nInput,
+export const Password = {
+	render: (args) => ({
+		components: { Input },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<Input v-bind="args" v-model="value" />
+		</div>
+		`,
+	}),
+	args: {
+		type: 'password',
+		placeholder: 'Enter password...',
+		modelValue: '',
 	},
-	template:
-		'<div class="multi-container"> <n8n-input size="xlarge" v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" size="medium" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" size="small" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" v-model="val" size="mini" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" /> </div> ',
-	methods,
-	data() {
-		return {
-			val: '',
-		};
+} satisfies Story;
+
+export const WithSlots = {
+	render: (args) => ({
+		components: { Input, N8nIcon },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<h3>Prefix slot</h3>
+			<Input v-bind="args" v-model="value">
+				<template #prefix>
+					<N8nIcon icon="search" size="small" />
+				</template>
+			</Input>
+			<h3 style="margin-top: 16px;">Suffix slot</h3>
+			<Input v-bind="args" v-model="value">
+				<template #suffix>
+					<N8nIcon icon="check" size="small" />
+				</template>
+			</Input>
+			<h3 style="margin-top: 16px;">Both slots</h3>
+			<Input v-bind="args" v-model="value">
+				<template #prefix>
+					<N8nIcon icon="envelope" size="small" />
+				</template>
+				<template #suffix>
+					<N8nIcon icon="check" size="small" />
+				</template>
+			</Input>
+		</div>
+		`,
+	}),
+	args: {
+		placeholder: 'Enter text...',
+		modelValue: '',
 	},
-});
+} satisfies Story;
 
-export const Text = ManyTemplate.bind({});
-Text.args = {
-	type: 'text',
-	placeholder: 'placeholder...',
-};
-
-export const TextArea = ManyTemplate.bind({});
-TextArea.args = {
-	type: 'textarea',
-	placeholder: 'placeholder...',
-};
-
-const WithPrefix: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIcon,
-		N8nInput,
+export const Clearable = {
+	render: (args) => ({
+		components: { Input },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<Input v-bind="args" v-model="value" clearable />
+			<p style="margin-top: 16px;">Value: {{ value }}</p>
+		</div>
+		`,
+	}),
+	args: {
+		placeholder: 'Type something and clear...',
+		modelValue: 'Clear me!',
 	},
-	template:
-		'<n8n-input v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="prefix" /></n8n-input>',
-	data() {
-		return {
-			val: '',
-		};
-	},
-	methods,
-});
+} satisfies Story;
 
-export const WithPrefixIcon = WithPrefix.bind({});
-WithPrefixIcon.args = {
-	placeholder: 'placeholder...',
-};
-
-const WithSuffix: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIcon,
-		N8nInput,
+export const Disabled = {
+	render: (args) => ({
+		components: { Input },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<h3>Disabled with value</h3>
+			<Input v-bind="args" v-model="value" disabled />
+			<h3 style="margin-top: 16px;">Disabled with placeholder</h3>
+			<Input placeholder="Disabled input" disabled />
+		</div>
+		`,
+	}),
+	args: {
+		modelValue: 'Disabled value',
 	},
-	template:
-		'<n8n-input v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="suffix" /></n8n-input>',
-	data() {
-		return {
-			val: '',
-		};
-	},
-	methods,
-});
+} satisfies Story;
 
-export const WithSuffixIcon = WithSuffix.bind({});
-WithSuffixIcon.args = {
-	placeholder: 'placeholder...',
-};
+export const Sizes = {
+	render: (args) => ({
+		components: { Input },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px;">
+			<h3>xlarge (48px)</h3>
+			<Input v-bind="args" v-model="value" size="xlarge" />
+			<h3 style="margin-top: 16px;">large (40px) - default</h3>
+			<Input v-bind="args" v-model="value" size="large" />
+			<h3 style="margin-top: 16px;">medium (36px)</h3>
+			<Input v-bind="args" v-model="value" size="medium" />
+			<h3 style="margin-top: 16px;">small (28px)</h3>
+			<Input v-bind="args" v-model="value" size="small" />
+			<h3 style="margin-top: 16px;">mini (22px)</h3>
+			<Input v-bind="args" v-model="value" size="mini" />
+		</div>
+		`,
+	}),
+	args: {
+		placeholder: 'Enter text...',
+		modelValue: '',
+	},
+} satisfies Story;

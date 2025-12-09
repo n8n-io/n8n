@@ -165,10 +165,11 @@ const timeSavedModeOptions = computed(() => [
 	},
 ]);
 
-const onCallerIdsInput = (str: string) => {
-	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
-		? str
-		: str.replace(/[^a-zA-Z0-9,\s]/g, '');
+const onCallerIdsInput = (str: string | number | null) => {
+	const value = String(str ?? '');
+	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(value)
+		? value
+		: value.replace(/[^a-zA-Z0-9,\s]/g, '');
 };
 
 const closeDialog = () => {
@@ -468,8 +469,8 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
-const updateTimeSavedPerExecution = (value: string) => {
-	const numValue = parseInt(value, 10);
+const updateTimeSavedPerExecution = (value: string | number | null) => {
+	const numValue = parseInt(String(value ?? ''), 10);
 	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
 		? undefined
 		: numValue < 0
@@ -901,7 +902,9 @@ onBeforeUnmount(() => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.hours"
 								:min="0"
-								@update:model-value="(value: string) => setTheTimeout('hours', value)"
+								@update:model-value="
+									(value: string | number | null) => setTheTimeout('hours', String(value ?? ''))
+								"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
 							</N8nInput>
@@ -912,7 +915,9 @@ onBeforeUnmount(() => {
 								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
-								@update:model-value="(value: string) => setTheTimeout('minutes', value)"
+								@update:model-value="
+									(value: string | number | null) => setTheTimeout('minutes', String(value ?? ''))
+								"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
 							</N8nInput>
@@ -923,7 +928,9 @@ onBeforeUnmount(() => {
 								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
-								@update:model-value="(value: string) => setTheTimeout('seconds', value)"
+								@update:model-value="
+									(value: string | number | null) => setTheTimeout('seconds', String(value ?? ''))
+								"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
 							</N8nInput>

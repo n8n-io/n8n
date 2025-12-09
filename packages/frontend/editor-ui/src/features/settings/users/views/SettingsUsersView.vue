@@ -387,8 +387,8 @@ const debouncedUpdateUsersTableData = useDebounceFn(() => {
 	void updateUsersTableData(usersTableState.value);
 }, 300);
 
-const onSearch = (value: string) => {
-	search.value = value;
+const onSearch = (value: string | number | null) => {
+	search.value = String(value ?? '');
 	void debouncedUpdateUsersTableData();
 };
 

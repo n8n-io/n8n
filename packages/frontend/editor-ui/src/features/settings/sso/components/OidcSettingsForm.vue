@@ -206,7 +206,7 @@ onMounted(async () => {
 				type="text"
 				data-test-id="oidc-discovery-endpoint"
 				placeholder="https://accounts.google.com/.well-known/openid-configuration"
-				@update:model-value="(v: string) => (discoveryEndpoint = v)"
+				@update:model-value="(v: string | number | null) => (discoveryEndpoint = String(v ?? ''))"
 			/>
 			<small>Paste here your discovery endpoint</small>
 		</div>
@@ -216,7 +216,7 @@ onMounted(async () => {
 				:model-value="clientId"
 				type="text"
 				data-test-id="oidc-client-id"
-				@update:model-value="(v: string) => (clientId = v)"
+				@update:model-value="(v: string | number | null) => (clientId = String(v ?? ''))"
 			/>
 			<small>The client ID you received when registering your application with your provider</small>
 		</div>
@@ -226,7 +226,7 @@ onMounted(async () => {
 				:model-value="clientSecret"
 				type="password"
 				data-test-id="oidc-client-secret"
-				@update:model-value="(v: string) => (clientSecret = v)"
+				@update:model-value="(v: string | number | null) => (clientSecret = String(v ?? ''))"
 			/>
 			<small
 				>The client Secret you received when registering your application with your provider</small
@@ -264,7 +264,9 @@ onMounted(async () => {
 				type="textarea"
 				data-test-id="oidc-authentication-context-class-reference"
 				placeholder="mfa, phrh, pwd"
-				@update:model-value="(v: string) => (authenticationContextClassReference = v)"
+				@update:model-value="
+					(v: string | number | null) => (authenticationContextClassReference = String(v ?? ''))
+				"
 			/>
 			<small
 				>ACR values to include in the authorization request (acr_values parameter), separated by
