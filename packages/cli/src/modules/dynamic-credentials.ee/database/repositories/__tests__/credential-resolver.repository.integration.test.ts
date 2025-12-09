@@ -99,12 +99,13 @@ describe('DynamicCredentialResolverRepository', () => {
 					name: 'Linked',
 					type: 'oauth2',
 					data: '',
+					isResolvable: true,
 					resolverId: resolver.id,
 				}),
 			);
 
 			await resolverRepository.delete(resolver.id);
-			const orphaned = await credentialsRepository.findOne({ where: { id: credential.id } });
+			const orphaned = await credentialsRepository.findOneBy({ id: credential.id });
 
 			expect(orphaned?.resolverId).toBeNull();
 		});

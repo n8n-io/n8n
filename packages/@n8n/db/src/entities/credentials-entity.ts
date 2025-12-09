@@ -59,7 +59,7 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 * ID of the dynamic credential resolver associated with this credential.
 	 */
 	@Column({ type: 'varchar', nullable: true })
-	resolverId?: string;
+	resolverId: string | null;
 
 	toJSON() {
 		const { shared, ...rest } = this;
