@@ -1640,10 +1640,30 @@ export class WorkflowExecute {
 								nodeSuccessData = [nodePinData]; // always zeroth runIndex
 							} else {
 								if (executionData.metadata?.subNodeExecutionData) {
+									Logger.debug('[HITL] Found subNodeExecutionData for node', {
+										nodeName: executionNode.name,
+										subNodeActions: executionData.metadata.subNodeExecutionData.actions.map(
+											(a: { nodeName: string; runIndex: number }) => ({
+												nodeName: a.nodeName,
+												runIndex: a.runIndex,
+											}),
+										),
+										availableRunData: Object.keys(this.runExecutionData.resultData.runData),
+									});
+
 									subNodeExecutionResults.metadata =
 										executionData.metadata.subNodeExecutionData.metadata;
 									for (const subNode of executionData.metadata.subNodeExecutionData.actions) {
 										const nodeRunData = this.runExecutionData.resultData.runData[subNode.nodeName];
+										Logger.debug('[HITL] Looking up run data for subNode', {
+											subNodeName: subNode.nodeName,
+											requestedRunIndex: subNode.runIndex,
+											availableRunIndexes: nodeRunData?.length ?? 0,
+											hasData: !!(nodeRunData && nodeRunData[subNode.runIndex]),
+											// Debug: log the action object to see if hitl metadata is preserved
+											actionMetadata: subNode.action?.metadata,
+											actionHitl: (subNode.action?.metadata as Record<string, unknown>)?.hitl,
+										});
 										if (nodeRunData && nodeRunData[subNode.runIndex]) {
 											const data = nodeRunData[subNode.runIndex];
 											subNodeExecutionResults.actionResponses.push({
@@ -1652,6 +1672,16 @@ export class WorkflowExecute {
 											});
 										}
 									}
+
+									Logger.debug('[HITL] Built subNodeExecutionResults', {
+										nodeName: executionNode.name,
+										actionResponseCount: subNodeExecutionResults.actionResponses.length,
+									});
+								} else {
+									Logger.debug('[HITL] No subNodeExecutionData for node', {
+										nodeName: executionNode.name,
+										hasMetadata: !!executionData.metadata,
+									});
 								}
 
 								Logger.debug(`Running node "${executionNode.name}" started`, {

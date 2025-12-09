@@ -1,5 +1,5 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, LoggerProxy } from 'n8n-workflow';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';
 
 import { isThinkingBlock, isRedactedThinkingBlock, isGeminiThoughtSignatureBlock } from './types';
@@ -34,6 +34,14 @@ export async function createEngineRequests(
 
 			// Ensure nodeName is defined and is a string
 			if (typeof nodeName !== 'string') return undefined;
+
+			// Check if this is an HITL (Human-in-the-Loop) tool
+			// HITL tools have originalSourceNodeName pointing to the gated tool
+			const originalSourceNodeName =
+				typeof foundTool.metadata?.originalSourceNodeName === 'string'
+					? foundTool.metadata.originalSourceNodeName
+					: undefined;
+			const isHitlTool = originalSourceNodeName !== undefined;
 
 			// For toolkit tools, include the tool name so the node knows which tool to execute
 			const input: IDataObject = foundTool.metadata?.isFromToolkit
@@ -78,6 +86,16 @@ export async function createEngineRequests(
 				}
 			}
 
+			// Debug: log if this is an HITL tool
+			if (isHitlTool) {
+				LoggerProxy.debug('[HITL] Creating engine request for HITL tool', {
+					nodeName,
+					originalSourceNodeName,
+					toolName: toolCall.tool,
+					toolCallId: toolCall.toolCallId,
+				});
+			}
+
 			return {
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName,
@@ -86,6 +104,15 @@ export async function createEngineRequests(
 				id: toolCall.toolCallId,
 				metadata: {
 					itemIndex,
+					// HITL metadata for handling approval flow
+					...(isHitlTool && {
+						hitl: {
+							isHitlTool: true,
+							originalSourceNodeName,
+							toolName: toolCall.tool, // The tool name as seen by the LLM
+							originalInput: toolCall.toolInput as IDataObject, // Preserve original input for gated tool
+						},
+					}),
 					...(thoughtSignature && {
 						google: {
 							thoughtSignature,
