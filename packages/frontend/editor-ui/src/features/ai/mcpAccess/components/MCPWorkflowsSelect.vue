@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nIcon, N8nSelect, N8nOption } from '@n8n/design-system';
 import { onMounted, ref } from 'vue';
 
@@ -19,17 +20,22 @@ const isLoading = ref(false);
 const selectRef = ref<SelectRef | null>(null);
 const workflowOptions = ref<SelectOption[]>([]);
 
-async function loadEligibleWorkflows() {
+async function searchWorkflows(query?: string) {
 	isLoading.value = true;
 	try {
-		const response = await mcpStore.getMcpEligibleWorkflows({ take: 10 });
+		const response = await mcpStore.getMcpEligibleWorkflows({
+			take: 10,
+			query: query || undefined,
+		});
 		const workflows = response?.data ?? [];
 		workflowOptions.value = workflows.map((workflow) => ({
 			value: workflow.id,
 			label: workflow.name,
 		}));
 	} finally {
-		isLoading.value = false;
+		setTimeout(() => {
+			isLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
 	}
 }
 
@@ -42,7 +48,7 @@ function removeOption(value: string) {
 }
 
 onMounted(async () => {
-	await loadEligibleWorkflows();
+	await searchWorkflows();
 });
 
 defineExpose({
@@ -60,6 +66,8 @@ defineExpose({
 		:disabled="disabled"
 		:loading="isLoading"
 		:filterable="true"
+		:remote="true"
+		:remote-method="searchWorkflows"
 	>
 		<template #prepend>
 			<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
