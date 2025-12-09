@@ -1,4 +1,4 @@
-import { registerExamples } from '../../registry';
+import type { ExamplesConfig } from '../../types';
 
 export const IF_NODE_EXAMPLES = `
 ### IF Node Examples
@@ -135,8 +135,7 @@ Expected Output:
 }
 `;
 
-registerExamples({
+export const IF_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
 	patterns: ['n8n-nodes-base.if', '.if'],
-	content: IF_NODE_EXAMPLES,
 	priority: 20,
-});
+};

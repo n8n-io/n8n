@@ -1,4 +1,4 @@
-import { registerExamples } from '../../registry';
+import type { ExamplesConfig } from '../../types';
 
 export const SIMPLE_UPDATE_EXAMPLES = `
 ## Examples of Parameter Updates
@@ -48,9 +48,8 @@ Updated parameters: {
   }
 }`;
 
-// Generic examples for nodes that don't have specific examples
-registerExamples({
+/** Generic examples for nodes that don't have specific examples */
+export const SIMPLE_UPDATE_EXAMPLES_CONFIG: ExamplesConfig = {
 	patterns: ['*'],
-	content: SIMPLE_UPDATE_EXAMPLES,
 	priority: 100, // Low priority - used as fallback
-});
+};

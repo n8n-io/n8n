@@ -1,4 +1,4 @@
-import { registerGuide } from '../registry';
+import type { GuideConfig } from '../types';
 
 export const TEXT_FIELDS_GUIDE = `
 ## Text Field Expression Formatting
@@ -32,9 +32,8 @@ function hasTextFields(nodeDefinition: {
 	);
 }
 
-registerGuide({
+export const TEXT_FIELDS_CONFIG: GuideConfig = {
 	patterns: ['*'],
-	content: TEXT_FIELDS_GUIDE,
 	priority: 60,
 	condition: (ctx) => hasTextFields(ctx.nodeDefinition),
-});
+};

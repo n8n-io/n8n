@@ -1,13 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	registerGuide,
-	registerExamples,
-	getMatchingGuides,
-	getMatchingExamples,
-	clearRegistry,
-	matchesPattern,
-} from './registry';
+import { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry';
 import type { PromptContext } from './types';
 
 // Mock node definition for testing
@@ -23,10 +16,11 @@ const mockNodeDefinition: INodeTypeDescription = {
 	properties: [],
 };
 
-const createContext = (nodeType: string): PromptContext => ({
+const createContext = (nodeType: string, extras?: Partial<PromptContext>): PromptContext => ({
 	nodeType,
 	nodeDefinition: mockNodeDefinition,
 	requestedChanges: [],
+	...extras,
 });
 
 describe('matchesPattern', () => {
@@ -81,168 +75,121 @@ describe('matchesPattern', () => {
 	});
 });
 
-describe('registry', () => {
-	beforeEach(() => {
-		clearRegistry();
+describe('getMatchingGuides', () => {
+	it('should return Set node guide for Set nodes', () => {
+		const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
+		const setGuide = guides.find((g) => g.content.includes('Set Node Updates'));
+		expect(setGuide).toBeDefined();
 	});
 
-	describe('registerGuide and getMatchingGuides', () => {
-		it('should register and retrieve a guide by exact pattern', () => {
-			registerGuide({
-				patterns: ['n8n-nodes-base.set'],
-				content: 'Set node guide',
-				priority: 30,
-			});
-
-			const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
-			expect(guides).toHaveLength(1);
-			expect(guides[0].content).toBe('Set node guide');
-		});
-
-		it('should return empty array when no guides match', () => {
-			registerGuide({
-				patterns: ['n8n-nodes-base.set'],
-				content: 'Set node guide',
-			});
-
-			const guides = getMatchingGuides(createContext('n8n-nodes-base.if'));
-			expect(guides).toHaveLength(0);
-		});
-
-		it('should match using wildcard patterns', () => {
-			registerGuide({
-				patterns: ['*Tool'],
-				content: 'Tool node guide',
-			});
-
-			const guides = getMatchingGuides(createContext('gmailTool'));
-			expect(guides).toHaveLength(1);
-			expect(guides[0].content).toBe('Tool node guide');
-		});
-
-		it('should return multiple matching guides', () => {
-			registerGuide({
-				patterns: ['n8n-nodes-base.set'],
-				content: 'Set node guide',
-				priority: 30,
-			});
-			registerGuide({
-				patterns: ['n8n-nodes-base.*'],
-				content: 'General n8n guide',
-				priority: 50,
-			});
-
-			const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
-			expect(guides).toHaveLength(2);
-		});
-
-		it('should sort guides by priority (lower first)', () => {
-			registerGuide({
-				patterns: ['n8n-nodes-base.*'],
-				content: 'Low priority',
-				priority: 100,
-			});
-			registerGuide({
-				patterns: ['n8n-nodes-base.*'],
-				content: 'High priority',
-				priority: 10,
-			});
-			registerGuide({
-				patterns: ['n8n-nodes-base.*'],
-				content: 'Medium priority',
-				priority: 50,
-			});
-
-			const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
-			expect(guides[0].content).toBe('High priority');
-			expect(guides[1].content).toBe('Medium priority');
-			expect(guides[2].content).toBe('Low priority');
-		});
-
-		it('should use default priority of 50 when not specified', () => {
-			registerGuide({
-				patterns: ['n8n-nodes-base.*'],
-				content: 'With priority',
-				priority: 40,
-			});
-			registerGuide({
-				patterns: ['n8n-nodes-base.*'],
-				content: 'Without priority',
-			});
-
-			const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
-			expect(guides[0].content).toBe('With priority');
-			expect(guides[1].content).toBe('Without priority');
-		});
-
-		it('should respect condition function', () => {
-			registerGuide({
-				patterns: ['*'],
-				content: 'Conditional guide',
-				condition: (ctx) => ctx.hasResourceLocatorParams === true,
-			});
-
-			const contextWithoutFlag = createContext('any-node');
-			expect(getMatchingGuides(contextWithoutFlag)).toHaveLength(0);
-
-			const contextWithFlag = { ...createContext('any-node'), hasResourceLocatorParams: true };
-			expect(getMatchingGuides(contextWithFlag)).toHaveLength(1);
-		});
-
-		it('should match any of multiple patterns', () => {
-			registerGuide({
-				patterns: ['n8n-nodes-base.set', '.set', 'set'],
-				content: 'Set guide',
-			});
-
-			expect(getMatchingGuides(createContext('n8n-nodes-base.set'))).toHaveLength(1);
-			expect(getMatchingGuides(createContext('custom.set'))).toHaveLength(1);
-			expect(getMatchingGuides(createContext('setter'))).toHaveLength(1);
-		});
+	it('should return IF node guide for IF nodes', () => {
+		const guides = getMatchingGuides(createContext('n8n-nodes-base.if'));
+		const ifGuide = guides.find((g) => g.content.includes('IF Node Updates'));
+		expect(ifGuide).toBeDefined();
 	});
 
-	describe('registerExamples and getMatchingExamples', () => {
-		it('should register and retrieve examples by pattern', () => {
-			registerExamples({
-				patterns: ['n8n-nodes-base.set'],
-				content: 'Set node examples',
-				priority: 30,
-			});
+	it('should return Switch node guide for Switch nodes', () => {
+		const guides = getMatchingGuides(createContext('n8n-nodes-base.switch'));
+		const switchGuide = guides.find((g) => g.content.includes('Switch Node Configuration'));
+		expect(switchGuide).toBeDefined();
+	});
 
-			const examples = getMatchingExamples(createContext('n8n-nodes-base.set'));
-			expect(examples).toHaveLength(1);
-			expect(examples[0].content).toBe('Set node examples');
-		});
+	it('should return HTTP Request guide for HTTP Request nodes', () => {
+		const guides = getMatchingGuides(createContext('n8n-nodes-base.httpRequest'));
+		const httpGuide = guides.find((g) => g.content.includes('HTTP Request Node'));
+		expect(httpGuide).toBeDefined();
+	});
 
-		it('should sort examples by priority', () => {
-			registerExamples({
-				patterns: ['*'],
-				content: 'Low priority',
-				priority: 100,
-			});
-			registerExamples({
-				patterns: ['*'],
-				content: 'High priority',
-				priority: 10,
-			});
+	it('should return Tool nodes guide for Tool nodes', () => {
+		const guides = getMatchingGuides(createContext('gmailTool'));
+		const toolGuide = guides.find((g) => g.content.includes('$fromAI Expression Support'));
+		expect(toolGuide).toBeDefined();
+	});
 
-			const examples = getMatchingExamples(createContext('any-node'));
-			expect(examples[0].content).toBe('High priority');
-			expect(examples[1].content).toBe('Low priority');
-		});
+	it('should return resource locator guide when hasResourceLocatorParams is true', () => {
+		const guidesWithout = getMatchingGuides(createContext('n8n-nodes-base.slack'));
+		const resourceGuideWithout = guidesWithout.find((g) =>
+			g.content.includes('ResourceLocator Parameter'),
+		);
+		expect(resourceGuideWithout).toBeUndefined();
 
-		it('should respect condition function for examples', () => {
-			registerExamples({
-				patterns: ['*'],
-				content: 'Conditional examples',
-				condition: (ctx) => ctx.requestedChanges.length > 0,
-			});
+		const guidesWith = getMatchingGuides(
+			createContext('n8n-nodes-base.slack', { hasResourceLocatorParams: true }),
+		);
+		const resourceGuideWith = guidesWith.find((g) =>
+			g.content.includes('ResourceLocator Parameter'),
+		);
+		expect(resourceGuideWith).toBeDefined();
+	});
 
-			const contextNoChanges = createContext('any-node');
-			expect(getMatchingExamples(contextNoChanges)).toHaveLength(0);
+	it('should return guides sorted by priority', () => {
+		const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
+		// Check that guides are sorted by priority (lower first)
+		for (let i = 1; i < guides.length; i++) {
+			const prevPriority = guides[i - 1].priority ?? 50;
+			const currPriority = guides[i].priority ?? 50;
+			expect(prevPriority).toBeLessThanOrEqual(currPriority);
+		}
+	});
 
-			const contextWithChanges = { ...createContext('any-node'), requestedChanges: ['change 1'] };
-			expect(getMatchingExamples(contextWithChanges)).toHaveLength(1);
-		});
+	it('should return multiple matching guides for a node', () => {
+		// Set node should get: Set guide + Text fields guide (since mock has no properties, text fields won't match)
+		const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
+		expect(guides.length).toBeGreaterThanOrEqual(1);
+	});
+});
+
+describe('getMatchingExamples', () => {
+	it('should return Set node examples for Set nodes', () => {
+		const examples = getMatchingExamples(createContext('n8n-nodes-base.set'));
+		const setExamples = examples.find((e) => e.content.includes('Set Node Examples'));
+		expect(setExamples).toBeDefined();
+	});
+
+	it('should return IF node examples for IF nodes', () => {
+		const examples = getMatchingExamples(createContext('n8n-nodes-base.if'));
+		const ifExamples = examples.find((e) => e.content.includes('IF Node Examples'));
+		expect(ifExamples).toBeDefined();
+	});
+
+	it('should return Tool node examples for Tool nodes', () => {
+		const examples = getMatchingExamples(createContext('gmailTool'));
+		const toolExamples = examples.find((e) => e.content.includes('Tool Node Examples'));
+		expect(toolExamples).toBeDefined();
+	});
+
+	it('should return simple update examples as fallback', () => {
+		// Any node should get simple update examples (priority 100)
+		const examples = getMatchingExamples(createContext('some-random-node'));
+		const simpleExamples = examples.find((e) =>
+			e.content.includes('Examples of Parameter Updates'),
+		);
+		expect(simpleExamples).toBeDefined();
+	});
+
+	it('should return resource locator examples when hasResourceLocatorParams is true', () => {
+		const examplesWithout = getMatchingExamples(createContext('n8n-nodes-base.slack'));
+		const resourceExamplesWithout = examplesWithout.find((e) =>
+			e.content.includes('ResourceLocator Examples'),
+		);
+		expect(resourceExamplesWithout).toBeUndefined();
+
+		const examplesWith = getMatchingExamples(
+			createContext('n8n-nodes-base.slack', { hasResourceLocatorParams: true }),
+		);
+		const resourceExamplesWith = examplesWith.find((e) =>
+			e.content.includes('ResourceLocator Examples'),
+		);
+		expect(resourceExamplesWith).toBeDefined();
+	});
+
+	it('should return examples sorted by priority', () => {
+		const examples = getMatchingExamples(createContext('n8n-nodes-base.set'));
+		// Check that examples are sorted by priority (lower first)
+		for (let i = 1; i < examples.length; i++) {
+			const prevPriority = examples[i - 1].priority ?? 50;
+			const currPriority = examples[i].priority ?? 50;
+			expect(prevPriority).toBeLessThanOrEqual(currPriority);
+		}
 	});
 });

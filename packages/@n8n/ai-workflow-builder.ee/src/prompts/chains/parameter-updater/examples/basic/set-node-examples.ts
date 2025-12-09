@@ -1,4 +1,4 @@
-import { registerExamples } from '../../registry';
+import type { ExamplesConfig } from '../../types';
 
 export const SET_NODE_EXAMPLES = `
 ### Set Node Examples
@@ -145,8 +145,7 @@ Expected Output:
 }
 `;
 
-registerExamples({
+export const SET_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
 	patterns: ['n8n-nodes-base.set', '.set'],
-	content: SET_NODE_EXAMPLES,
 	priority: 20,
-});
+};

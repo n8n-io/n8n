@@ -1,4 +1,4 @@
-import { registerExamples } from '../../registry';
+import type { ExamplesConfig } from '../../types';
 
 export const SWITCH_NODE_EXAMPLES = `
 ### Switch Node Examples
@@ -125,8 +125,7 @@ Expected Output:
 }
 `;
 
-registerExamples({
+export const SWITCH_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
 	patterns: ['n8n-nodes-base.switch', '.switch'],
-	content: SWITCH_NODE_EXAMPLES,
 	priority: 20,
-});
+};

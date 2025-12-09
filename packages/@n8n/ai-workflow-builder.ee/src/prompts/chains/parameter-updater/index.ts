@@ -1,13 +1,13 @@
 // Registry system
-export {
-	registerGuide,
-	registerExamples,
-	getMatchingGuides,
-	getMatchingExamples,
-	matchesPattern,
-	clearRegistry,
-} from './registry';
-export type { NodeTypeGuide, NodeTypeExamples, NodeTypePattern, PromptContext } from './types';
+export { getMatchingGuides, getMatchingExamples, matchesPattern, clearRegistry } from './registry';
+export type {
+	NodeTypeGuide,
+	NodeTypeExamples,
+	NodeTypePattern,
+	PromptContext,
+	GuideConfig,
+	ExamplesConfig,
+} from './types';
 
 // Legacy exports (kept for backwards compatibility)
 export {

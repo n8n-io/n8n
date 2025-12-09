@@ -1,4 +1,4 @@
-import { registerGuide } from '../registry';
+import type { GuideConfig } from '../types';
 
 export const SYSTEM_MESSAGE_GUIDE = `
 ## CRITICAL: System Message vs User Prompt Separation
@@ -103,9 +103,8 @@ function hasSystemMessageParameters(nodeDefinition: {
 	});
 }
 
-registerGuide({
+export const SYSTEM_MESSAGE_CONFIG: GuideConfig = {
 	patterns: ['*'],
-	content: SYSTEM_MESSAGE_GUIDE,
 	priority: 30,
 	condition: (ctx) => hasSystemMessageParameters(ctx.nodeDefinition),
-});
+};

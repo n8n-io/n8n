@@ -1,4 +1,4 @@
-import { registerGuide } from '../registry';
+import type { GuideConfig } from '../types';
 
 export const TOOL_NODES_GUIDE = `
 ## CRITICAL: $fromAI Expression Support for Tool Nodes
@@ -70,8 +70,7 @@ You can combine $fromAI with regular text:
 - Date ranges: "={{ $fromAI('After', '', 'string') }}"
 - Channel IDs: "={{ $fromAI('channel') }}"`;
 
-registerGuide({
+export const TOOL_NODES_CONFIG: GuideConfig = {
 	patterns: ['*Tool'],
-	content: TOOL_NODES_GUIDE,
 	priority: 40,
-});
+};

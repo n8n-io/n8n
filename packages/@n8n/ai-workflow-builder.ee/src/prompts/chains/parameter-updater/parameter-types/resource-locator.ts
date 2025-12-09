@@ -1,4 +1,4 @@
-import { registerGuide } from '../registry';
+import type { GuideConfig } from '../types';
 
 export const RESOURCE_LOCATOR_GUIDE = `
 ## IMPORTANT: ResourceLocator Parameter Handling
@@ -92,9 +92,8 @@ Output:
 }
 \`\`\``;
 
-registerGuide({
+export const RESOURCE_LOCATOR_CONFIG: GuideConfig = {
 	patterns: ['*'],
-	content: RESOURCE_LOCATOR_GUIDE,
 	priority: 50,
 	condition: (ctx) => ctx.hasResourceLocatorParams === true,
-});
+};

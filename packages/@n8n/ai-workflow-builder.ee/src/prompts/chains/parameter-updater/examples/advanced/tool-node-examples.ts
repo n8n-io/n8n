@@ -1,4 +1,4 @@
-import { registerExamples } from '../../registry';
+import type { ExamplesConfig } from '../../types';
 
 export const TOOL_NODE_EXAMPLES = `
 ### Tool Node Examples
@@ -68,8 +68,7 @@ Expected Output:
   "subject": "={{ $fromAI('subject') }} - Automated Report"
 }`;
 
-registerExamples({
+export const TOOL_NODE_EXAMPLES_CONFIG: ExamplesConfig = {
 	patterns: ['*Tool'],
-	content: TOOL_NODE_EXAMPLES,
 	priority: 20,
-});
+};

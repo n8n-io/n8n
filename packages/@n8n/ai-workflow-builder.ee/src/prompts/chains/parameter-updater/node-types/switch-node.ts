@@ -1,4 +1,4 @@
-import { registerGuide } from '../registry';
+import type { GuideConfig } from '../types';
 
 export const SWITCH_NODE_GUIDE = `
 ### Switch Node Configuration Guide
@@ -69,8 +69,7 @@ Use two conditions with combinator: "and":
 - Set caseSensitive: false in options for case-insensitive matching
 `;
 
-registerGuide({
+export const SWITCH_NODE_CONFIG: GuideConfig = {
 	patterns: ['n8n-nodes-base.switch', '.switch'],
-	content: SWITCH_NODE_GUIDE,
 	priority: 30,
-});
+};

@@ -1,4 +1,4 @@
-import { registerGuide } from '../registry';
+import type { GuideConfig } from '../types';
 
 export const IF_NODE_GUIDE = `
 ### IF Node Updates - Comprehensive Guide
@@ -155,8 +155,7 @@ The IF node uses a complex filter structure for conditional logic. Understanding
 4. **Case sensitivity**: Only applies to string comparisons when caseSensitive is true in options
 5. **Type validation**: "loose" allows type coercion, "strict" requires exact type matches`;
 
-registerGuide({
+export const IF_NODE_CONFIG: GuideConfig = {
 	patterns: ['n8n-nodes-base.if', '.if'],
-	content: IF_NODE_GUIDE,
 	priority: 30,
-});
+};

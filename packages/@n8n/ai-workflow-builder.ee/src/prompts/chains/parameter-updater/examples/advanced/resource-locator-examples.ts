@@ -1,4 +1,4 @@
-import { registerExamples } from '../../registry';
+import type { ExamplesConfig } from '../../types';
 
 export const RESOURCE_LOCATOR_EXAMPLES = `
 ### ResourceLocator Examples
@@ -76,9 +76,8 @@ Expected Output:
   }
 }`;
 
-registerExamples({
+export const RESOURCE_LOCATOR_EXAMPLES_CONFIG: ExamplesConfig = {
 	patterns: ['*'],
-	content: RESOURCE_LOCATOR_EXAMPLES,
 	priority: 30,
 	condition: (ctx) => ctx.hasResourceLocatorParams === true,
-});
+};
