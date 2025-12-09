@@ -729,14 +729,14 @@ export class ChatHubModelsService {
 			.filter((workflow) => !!workflow.activeVersionId);
 
 		const workflows = await this.workflowRepository.find({
-			select: { id: true },
+			select: { id: true, name: true },
 			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
 			relations: { activeVersion: true },
 		});
 
 		const models: ChatModelDto[] = [];
 
-		for (const { id, activeVersion } of workflows) {
+		for (const { id, name, activeVersion } of workflows) {
 			if (!activeVersion) {
 				continue;
 			}
@@ -755,8 +755,13 @@ export class ChatHubModelsService {
 				chatTriggerParams.options,
 			);
 
+			const agentName =
+				chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+					? chatTriggerParams.agentName
+					: name;
+
 			models.push({
-				name: chatTriggerParams.agentName ?? activeVersion.name ?? 'Unknown Agent',
+				name: agentName,
 				description: chatTriggerParams.agentDescription ?? null,
 				model: {
 					provider: 'n8n',

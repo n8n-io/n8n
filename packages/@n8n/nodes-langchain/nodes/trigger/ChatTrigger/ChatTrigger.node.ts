@@ -425,7 +425,8 @@ export class ChatTrigger extends Node {
 				type: 'string',
 				default: '',
 				noDataExpression: true,
-				description: 'The name of the agent on n8n Chat',
+				description:
+					'The name of the agent on n8n Chat. Name of the workflow is used if left empty.',
 				displayOptions: {
 					show: {
 						availableInChat: [true],
