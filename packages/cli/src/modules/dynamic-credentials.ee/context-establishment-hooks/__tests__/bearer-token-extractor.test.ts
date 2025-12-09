@@ -1,7 +1,8 @@
-import type { ContextEstablishmentOptions, ContextEstablishmentResult } from '@n8n/decorators';
+import type { ContextEstablishmentResult } from '@n8n/decorators';
 
 import { BearerTokenExtractor } from '../bearer-token-extractor';
 import type { HttpHeaderExtractor } from '../http-header-extractor';
+import { createOptions, createTriggerItem } from './utils';
 
 describe('BearerTokenExtractor', () => {
 	let bearerTokenExtractor: BearerTokenExtractor;
@@ -49,20 +50,9 @@ describe('BearerTokenExtractor', () => {
 
 	describe('execute', () => {
 		it('should extract bearer token from Authorization header', async () => {
-			const options: ContextEstablishmentOptions = {
-				triggerItems: [
-					{
-						json: {
-							headers: {
-								authorization: 'Bearer test-token-123',
-							},
-						},
-					},
-				],
-			};
+			const options = createOptions();
 
 			const expectedResult: ContextEstablishmentResult = {
-				triggerItems: options.triggerItems,
 				contextUpdate: {
 					credentials: {
 						version: 1,
@@ -87,18 +77,7 @@ describe('BearerTokenExtractor', () => {
 		});
 
 		it('should pass through all options to HttpHeaderExtractor', async () => {
-			const options: ContextEstablishmentOptions = {
-				triggerItems: [
-					{
-						json: {
-							headers: {
-								authorization: 'Bearer token',
-							},
-						},
-					},
-				],
-				customField: 'custom-value',
-			};
+			const options = createOptions({ customField: 'custom-value' } as any);
 
 			mockHttpHeaderExtractor.execute.mockResolvedValue({});
 
@@ -123,9 +102,9 @@ describe('BearerTokenExtractor', () => {
 			];
 
 			for (const authHeader of testCases) {
-				const options: ContextEstablishmentOptions = {
-					triggerItems: [{ json: { headers: { authorization: authHeader } } }],
-				};
+				const options = createOptions({
+					triggerItems: [createTriggerItem({ authorization: authHeader })],
+				});
 
 				mockHttpHeaderExtractor.execute.mockResolvedValue({
 					contextUpdate: {
@@ -150,39 +129,25 @@ describe('BearerTokenExtractor', () => {
 		});
 
 		it('should return empty result when no Authorization header present', async () => {
-			const options: ContextEstablishmentOptions = {
-				triggerItems: [{ json: { headers: {} } }],
-			};
+			const options = createOptions({ triggerItems: [createTriggerItem({})] });
 
-			mockHttpHeaderExtractor.execute.mockResolvedValue({
-				triggerItems: options.triggerItems,
-			});
+			mockHttpHeaderExtractor.execute.mockResolvedValue({});
 
 			const result = await bearerTokenExtractor.execute(options);
 
-			expect(result).toEqual({ triggerItems: options.triggerItems });
+			expect(result).toEqual({});
 		});
 
 		it('should return empty result for malformed bearer token', async () => {
-			const options: ContextEstablishmentOptions = {
-				triggerItems: [
-					{
-						json: {
-							headers: {
-								authorization: 'NotBearer token123',
-							},
-						},
-					},
-				],
-			};
-
-			mockHttpHeaderExtractor.execute.mockResolvedValue({
-				triggerItems: options.triggerItems,
+			const options = createOptions({
+				triggerItems: [createTriggerItem({ authorization: 'NotBearer token123' })],
 			});
+
+			mockHttpHeaderExtractor.execute.mockResolvedValue({});
 
 			const result = await bearerTokenExtractor.execute(options);
 
-			expect(result).toEqual({ triggerItems: options.triggerItems });
+			expect(result).toEqual({});
 		});
 	});
 });
