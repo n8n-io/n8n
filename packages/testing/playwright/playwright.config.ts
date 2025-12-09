@@ -7,9 +7,10 @@ import path from 'path';
 
 import currentsConfig from './currents.config';
 import { getProjects } from './playwright-projects';
-import { getPortFromUrl } from './utils/url-helper';
+import { getBackendUrl, getFrontendUrl, getPortFromUrl } from './utils/url-helper';
 
 const IS_CI = !!process.env.CI;
+const IS_DEV = !!process.env.N8N_EDITOR_URL;
 
 const MACBOOK_WINDOW_SIZE = { width: 1536, height: 960 };
 
@@ -34,7 +35,14 @@ const getTestEnv = () => {
 const CPU_COUNT = os.cpus().length;
 const LOCAL_WORKERS = Math.min(6, Math.floor(CPU_COUNT / 2));
 const CI_WORKERS = CPU_COUNT;
-const WORKERS = IS_CI ? CI_WORKERS : LOCAL_WORKERS;
+const WORKERS = IS_DEV ? 1 : IS_CI ? CI_WORKERS : LOCAL_WORKERS;
+
+const BACKEND_URL = getBackendUrl();
+const FRONTEND_URL = getFrontendUrl();
+const START_COMMAND = IS_DEV ? 'pnpm dev:fe:e2e' : 'pnpm start';
+const WEB_SERVER_URL = FRONTEND_URL ?? BACKEND_URL;
+
+const EXPECT_TIMEOUT = IS_DEV ? 20000 : 10000;
 
 export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	globalSetup: './global-setup.ts',
@@ -43,21 +51,21 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	workers: WORKERS,
 	timeout: 60000,
 	expect: {
-		timeout: 10000,
+		timeout: EXPECT_TIMEOUT,
 	},
 	projects: getProjects(),
 
 	// We use this if an n8n url is passed in. If the server is already running, we reuse it.
-	webServer: process.env.N8N_BASE_URL
+	webServer: BACKEND_URL
 		? {
-				command: 'cd .. && pnpm start',
-				url: `${process.env.N8N_BASE_URL}/favicon.ico`,
-				timeout: 20000,
+				command: `cd .. && ${START_COMMAND}`,
+				url: `${WEB_SERVER_URL}/favicon.ico`,
+				timeout: 30000,
 				reuseExistingServer: true,
 				env: {
 					DB_SQLITE_POOL_SIZE: '40',
 					E2E_TESTS: 'true',
-					N8N_PORT: getPortFromUrl(process.env.N8N_BASE_URL),
+					N8N_PORT: getPortFromUrl(BACKEND_URL),
 					N8N_USER_FOLDER: USER_FOLDER,
 					N8N_LOG_LEVEL: 'debug',
 					N8N_METRICS: 'true',

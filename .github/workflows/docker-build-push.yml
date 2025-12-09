@@ -71,7 +71,7 @@ jobs:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
     needs: determine-build-context
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
