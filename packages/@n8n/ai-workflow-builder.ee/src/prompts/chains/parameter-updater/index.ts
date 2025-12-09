@@ -1,4 +1,8 @@
-export { ParameterUpdatePromptBuilder } from './prompt-builder';
+export {
+	buildParameterUpdatePrompt,
+	hasResourceLocatorParameters,
+	estimatePromptTokens,
+} from './prompt-builder';
 export { instanceUrlPrompt } from './instance-url';
 export {
 	DEFAULT_PROMPT_CONFIG,

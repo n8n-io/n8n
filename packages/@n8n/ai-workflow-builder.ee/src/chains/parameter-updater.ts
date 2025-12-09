@@ -5,8 +5,10 @@ import type { Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
+	buildParameterUpdatePrompt,
+	estimatePromptTokens,
+	hasResourceLocatorParameters,
 	instanceUrlPrompt,
-	ParameterUpdatePromptBuilder,
 } from '@/prompts/chains/parameter-updater';
 
 import { LLMServiceError } from '../errors';
@@ -72,17 +74,15 @@ export const createParameterUpdaterChain = (
 	}
 
 	// Build dynamic system prompt based on context
-	const systemPromptContent = ParameterUpdatePromptBuilder.buildSystemPrompt({
+	const systemPromptContent = buildParameterUpdatePrompt({
 		nodeType: options.nodeType,
 		nodeDefinition: options.nodeDefinition,
 		requestedChanges: options.requestedChanges,
-		hasResourceLocatorParams: ParameterUpdatePromptBuilder.hasResourceLocatorParameters(
-			options.nodeDefinition,
-		),
+		hasResourceLocatorParams: hasResourceLocatorParameters(options.nodeDefinition),
 	});
 
 	// Log token estimate for monitoring
-	const tokenEstimate = ParameterUpdatePromptBuilder.estimateTokens(systemPromptContent);
+	const tokenEstimate = estimatePromptTokens(systemPromptContent);
 	logger?.debug(`Parameter updater prompt size: ~${tokenEstimate} tokens`);
 
 	// Cache system prompt and node definition prompt

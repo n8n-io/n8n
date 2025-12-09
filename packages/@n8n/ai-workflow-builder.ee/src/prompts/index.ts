@@ -51,7 +51,9 @@ export { workflowNamingPromptTemplate } from './chains/workflow-name.prompt';
 
 // Parameter updater prompts
 export {
-	ParameterUpdatePromptBuilder,
+	buildParameterUpdatePrompt,
+	estimatePromptTokens,
+	hasResourceLocatorParameters,
 	instanceUrlPrompt,
 	CORE_INSTRUCTIONS,
 	EXPRESSION_RULES,
