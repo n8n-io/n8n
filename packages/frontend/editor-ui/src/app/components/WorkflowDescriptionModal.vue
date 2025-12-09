@@ -59,7 +59,7 @@ const saveDescription = async () => {
 			normalizedCurrentValue.value ?? null,
 		);
 
-		props.data.onSave?.(normalizedCurrentValue.value || null);
+		props.data.onSave?.(normalizedCurrentValue.value ?? null);
 
 		telemetry.track('User set workflow description', {
 			workflow_id: props.data.workflowId,
