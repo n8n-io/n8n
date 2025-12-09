@@ -150,6 +150,10 @@ const isMessage = (message: unknown): message is BaseMessage => {
 	return message instanceof BaseMessage;
 };
 
+const isAgentFinish = (value: unknown): value is AgentFinish => {
+	return typeof value === 'object' && value !== null && 'returnValues' in value;
+};
+
 export const getAgentStepsParser =
 	(outputParser: N8nOutputParser) =>
 	async (
@@ -178,8 +182,8 @@ export const getAgentStepsParser =
 			return parsedOutput;
 		}
 
-		if (typeof steps === 'object' && (steps as AgentFinish).returnValues) {
-			const returnValues = (steps as AgentFinish).returnValues;
+		if (isAgentFinish(steps)) {
+			const returnValues = steps.returnValues;
 			const parsedOutput = (await outputParser.parse(JSON.stringify(returnValues))) as Record<
 				string,
 				unknown
