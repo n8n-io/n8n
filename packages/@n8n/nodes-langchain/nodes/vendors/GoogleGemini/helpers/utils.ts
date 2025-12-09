@@ -1,6 +1,7 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import axios from 'axios';
+import { Readable } from 'node:stream';
 import type Stream from 'node:stream';
 
 import { apiRequest } from '../transport';
@@ -87,6 +88,63 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 	return { fileUri: uploadResponse.file.uri, mimeType: uploadResponse.file.mimeType };
 }
 
+interface FileStreamData {
+	stream: Stream;
+	mimeType: string;
+	fileSize: number;
+}
+
+async function getFileStreamFromUrlOrBinary(
+	this: IExecuteFunctions,
+	i: number,
+	downloadUrl?: string,
+	fallbackMimeType?: string,
+	qs?: IDataObject,
+): Promise<FileStreamData | { buffer: Buffer; mimeType: string }> {
+	if (downloadUrl) {
+		const downloadResponse = await axios.get(downloadUrl, {
+			params: qs,
+			responseType: 'stream',
+		});
+
+		const contentType = downloadResponse.headers['content-type'] as string | undefined;
+		const mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
+		const contentLength = downloadResponse.headers['content-length'] as string | undefined;
+		const fileSize = parseInt(contentLength ?? '0', 10);
+
+		return {
+			stream: downloadResponse.data as Stream,
+			mimeType,
+			fileSize,
+		};
+	}
+
+	// Get binary data
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+	if (!binaryPropertyName) {
+		throw new NodeOperationError(this.getNode(), 'Binary property name is required', {
+			description: 'Error uploading file',
+		});
+	}
+
+	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+	if (!binaryData.id) {
+		// Small file - return buffer for direct upload
+		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+		return {
+			buffer,
+			mimeType: binaryData.mimeType,
+		};
+	}
+
+	// Large file - return stream
+	return {
+		stream: await this.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE),
+		mimeType: binaryData.mimeType,
+		fileSize: 0, // Unknown for streams
+	};
+}
+
 export async function transferFile(
 	this: IExecuteFunctions,
 	i: number,
@@ -94,33 +152,21 @@ export async function transferFile(
 	fallbackMimeType?: string,
 	qs?: IDataObject,
 ) {
-	let stream: Stream;
-	let mimeType: string;
+	const fileData = await getFileStreamFromUrlOrBinary.call(
+		this,
+		i,
+		downloadUrl,
+		fallbackMimeType,
+		qs,
+	);
 
-	if (downloadUrl) {
-		const downloadResponse = await axios.get(downloadUrl, {
-			params: qs,
-			responseType: 'stream',
-		});
-
-		mimeType = downloadResponse.headers['content-type']?.split(';')?.[0] ?? fallbackMimeType;
-		stream = downloadResponse.data;
-	} else {
-		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-		if (!binaryPropertyName) {
-			throw new NodeOperationError(this.getNode(), 'Binary property name is required', {
-				description: 'Error uploading file',
-			});
-		}
-		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-		if (!binaryData.id) {
-			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-			return await uploadFile.call(this, buffer, binaryData.mimeType);
-		} else {
-			stream = await this.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE);
-			mimeType = binaryData.mimeType;
-		}
+	// Handle small binary files (buffer) - use uploadFile which handles resumable upload
+	if ('buffer' in fileData) {
+		return await uploadFile.call(this, fileData.buffer, fileData.mimeType);
 	}
+
+	// Handle URL or large binary files (stream)
+	const { stream, mimeType } = fileData;
 
 	const uploadResponse = (await performResumableUpload.call(this, stream, {
 		endpoint: '/upload/v1beta/files',
@@ -209,23 +255,36 @@ export async function createFileSearchStore(
 
 export async function uploadToFileSearchStore(
 	this: IExecuteFunctions,
+	i: number,
 	fileSearchStoreName: string,
 	displayName: string,
-	downloadUrl: string,
+	downloadUrl?: string,
 	fallbackMimeType?: string,
 	qs?: IDataObject,
 ) {
-	// Download the file from URL
-	const downloadResponse = await axios.get(downloadUrl, {
-		params: qs,
-		responseType: 'stream',
-	});
+	const fileData = await getFileStreamFromUrlOrBinary.call(
+		this,
+		i,
+		downloadUrl,
+		fallbackMimeType,
+		qs,
+	);
 
-	const contentType = downloadResponse.headers['content-type'] as string | undefined;
-	const mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
-	const contentLength = downloadResponse.headers['content-length'] as string | undefined;
-	const fileSize = parseInt(contentLength ?? '0', 10);
-	const stream = downloadResponse.data as Stream;
+	// Handle small binary files (buffer) - convert to stream
+	let stream: Stream;
+	let mimeType: string;
+	let fileSize: number;
+
+	if ('buffer' in fileData) {
+		stream = Readable.from(fileData.buffer);
+		mimeType = fileData.mimeType;
+		fileSize = fileData.buffer.length;
+	} else {
+		// Handle URL or large binary files (stream)
+		stream = fileData.stream;
+		mimeType = fileData.mimeType;
+		fileSize = fileData.fileSize;
+	}
 
 	const uploadResponse = (await performResumableUpload.call(this, stream, {
 		endpoint: `/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,

@@ -24,13 +24,47 @@ export const properties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'File URL',
+		displayName: 'Input Type',
+		name: 'inputType',
+		type: 'options',
+		default: 'url',
+		options: [
+			{
+				name: 'File URL',
+				value: 'url',
+			},
+			{
+				name: 'Binary File',
+				value: 'binary',
+			},
+		],
+	},
+	{
+		displayName: 'URL',
 		name: 'fileUrl',
 		type: 'string',
 		placeholder: 'e.g. https://example.com/file.pdf',
 		description: 'URL of the file to upload',
 		default: '',
-		required: true,
+		displayOptions: {
+			show: {
+				inputType: ['url'],
+			},
+		},
+	},
+	{
+		displayName: 'Input Data Field Name',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
+		description: 'Name of the binary property which contains the file',
+		displayOptions: {
+			show: {
+				inputType: ['binary'],
+			},
+		},
 	},
 ];
 
@@ -46,15 +80,21 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const fileSearchStoreName = this.getNodeParameter('fileSearchStoreName', i, '') as string;
 	const displayName = this.getNodeParameter('displayName', i, '') as string;
-	const fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
+	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 
 	// Normalize the store name - if it's just an ID, prepend the prefix
 	const normalizedStoreName = fileSearchStoreName.startsWith('fileSearchStores/')
 		? fileSearchStoreName
 		: `fileSearchStores/${fileSearchStoreName}`;
 
+	let fileUrl: string | undefined;
+	if (inputType === 'url') {
+		fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
+	}
+
 	const response = await uploadToFileSearchStore.call(
 		this,
+		i,
 		normalizedStoreName,
 		displayName,
 		fileUrl,
