@@ -55,6 +55,12 @@ export const TEMPLATE_RECO_V2 = {
 	variant: 'variant',
 };
 
+export const UPGRADE_PLAN_CTA_EXPERIMENT = {
+	name: '054_upgrade_plan_cta',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
 	name: '046_templates_data_quality',
 	control: 'control',
@@ -83,10 +89,6 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
-export const TIME_SAVED_NODE_EXPERIMENT = {
-	name: '053_time_saved_node',
-};
-
 export const TEMPLATE_SETUP_EXPERIENCE = {
 	name: '055_template_setup_experience',
 	control: 'control',
@@ -95,6 +97,12 @@ export const TEMPLATE_SETUP_EXPERIENCE = {
 
 export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
 	name: '056_ai_builder_template_examples',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
+	name: '057_ai_builder_multi_agent',
 	control: 'control',
 	variant: 'variant',
 };
@@ -108,7 +116,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
-	TIME_SAVED_NODE_EXPERIMENT.name,
+	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 ];
