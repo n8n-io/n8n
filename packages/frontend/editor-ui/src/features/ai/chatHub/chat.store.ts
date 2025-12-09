@@ -24,23 +24,23 @@ import {
 	updateChatSettingsApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { emptyChatModelsResponse } from '@n8n/api-types';
 import type {
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
-	emptyChatModelsResponse,
-	type ChatHubConversationModel,
-	type ChatHubSendMessageRequest,
-	type ChatModelsResponse,
-	type ChatHubSessionDto,
-	type ChatMessageId,
-	type ChatSessionId,
-	type ChatHubMessageDto,
-	type ChatHubAgentDto,
-	type ChatHubCreateAgentRequest,
-	type ChatHubUpdateAgentRequest,
-	type EnrichedStructuredChunk,
-	type ChatHubMessageStatus,
-	type ChatModelDto,
+	ChatHubConversationModel,
+	ChatHubSendMessageRequest,
+	ChatModelsResponse,
+	ChatHubSessionDto,
+	ChatMessageId,
+	ChatSessionId,
+	ChatHubMessageDto,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	EnrichedStructuredChunk,
+	ChatHubMessageStatus,
+	ChatModelDto,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
