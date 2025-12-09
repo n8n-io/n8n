@@ -16,7 +16,7 @@ import { getOptionalOutputParser } from '../../../utils/output_parsers/N8nOutput
 import type { ChatPromptTemplate, BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 
 import { type N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import type { DynamicStructuredTool } from 'langchain/tools';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { ToolInputSchemaBase } from '@langchain/core/dist/tools/types';
 
 export async function invokeAgent(

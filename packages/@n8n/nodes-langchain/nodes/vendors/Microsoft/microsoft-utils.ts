@@ -19,6 +19,7 @@ import {
 	type Builder,
 } from '@microsoft/agents-a365-observability';
 import {
+	getMcpPlatformAuthenticationScope,
 	getObservabilityAuthenticationScope,
 	Utility as RuntimeUtility,
 } from '@microsoft/agents-a365-runtime';
@@ -67,7 +68,6 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 
 	Utility.ValidateAuthToken(mcpAuthToken);
 
-	// @ts-expect-error Type mismatch due to multiple versions of @microsoft/agents-hosting
 	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
 	const servers = await configService.listToolServers(agenticAppId, mcpAuthToken);
 	const mcpServers: Record<string, Connection> = {};
@@ -204,7 +204,9 @@ export function configureAdapterProcessCallback(
 
 		try {
 			turnContext.turnState.set('AgenticAuthorization/agentic', undefined);
-			const tokenResult = await agent.authorization.exchangeToken(turnContext, 'agentic', { scopes: [getMcpPlatformAuthenticationScope()] });
+			const tokenResult = await agent.authorization.exchangeToken(turnContext, 'agentic', {
+				scopes: [getMcpPlatformAuthenticationScope()],
+			});
 			mcpTokenRef.token = tokenResult.token;
 		} catch (error) {
 			console.error('Error getting MCP token');
