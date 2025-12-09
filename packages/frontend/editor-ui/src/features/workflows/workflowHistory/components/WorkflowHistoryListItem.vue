@@ -345,7 +345,7 @@ $timelineMarkerBorderWidth: 1.33px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	max-width: 150px;
+	max-width: 110px;
 }
 
 .unnamedTime {
