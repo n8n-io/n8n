@@ -2,6 +2,7 @@
 import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
@@ -260,11 +261,20 @@ const restoreWorkflowVersion = async (
 			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
 	}
 
+	const versionIdBeforeRestore = workflow.versionId;
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
 		workflowId.value,
 		id,
 		deactivateAndRestore,
 	);
+
+	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.restore.alreadyRestored'),
+			type: 'info',
+		});
+		return;
+	}
 
 	if (workflowId.value === workflowsStore.workflowId && activeWorkflow.value.checksum) {
 		workflowsStore.setWorkflowChecksum(activeWorkflow.value.checksum);
