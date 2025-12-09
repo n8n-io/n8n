@@ -29,6 +29,7 @@ jobs:
         run: pnpm --filter n8n-editor-ui build:coverage
 
       - name: Run Coverage Tests
+        id: coverage-tests
         run: |
           pnpm --filter n8n-playwright test:local \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
@@ -40,9 +41,11 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Generate Coverage Report
+        if: always() && steps.coverage-tests.outcome != 'skipped'
         run: pnpm --filter n8n-playwright coverage:report
 
       - name: Upload Coverage Report
+        if: always() && steps.coverage-tests.outcome != 'skipped'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-report
