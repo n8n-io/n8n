@@ -1,4 +1,4 @@
-import type { SharedWorkflow, IWorkflowDb } from '@n8n/db';
+import type { SharedWorkflow, IWorkflowDb, WorkflowPublishHistory } from '@n8n/db';
 import {
 	Project,
 	User,
@@ -6,6 +6,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -196,12 +197,13 @@ export async function createWorkflowWithTrigger(
 export async function createWorkflowWithHistory(
 	attributes: Partial<IWorkflowDb> = {},
 	userOrProject?: User | Project,
+	withPublishHistory?: Partial<WorkflowPublishHistory>,
 ) {
 	const workflow = await createWorkflow(attributes, userOrProject);
 
 	// Create workflow history for the initial version
 	const user = userOrProject instanceof User ? userOrProject : undefined;
-	await createWorkflowHistory(workflow, user);
+	await createWorkflowHistory(workflow, user, withPublishHistory);
 
 	return workflow;
 }
@@ -214,11 +216,12 @@ export async function createWorkflowWithHistory(
 export async function createWorkflowWithTriggerAndHistory(
 	attributes: Partial<IWorkflowDb> = {},
 	userOrProject?: User | Project,
+	withPublishHistory?: Partial<WorkflowPublishHistory>,
 ) {
 	const workflow = await createWorkflowWithTrigger(attributes, userOrProject);
 
 	// Create workflow history for the initial version
-	await createWorkflowHistory(workflow, userOrProject);
+	await createWorkflowHistory(workflow, userOrProject, withPublishHistory);
 
 	return workflow;
 }
@@ -242,6 +245,7 @@ export const getWorkflowById = async (id: string) =>
 export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
+	withPublishHistory?: Partial<WorkflowPublishHistory>,
 ): Promise<void> {
 	await Container.get(WorkflowHistoryRepository).insert({
 		workflowId: workflow.id,
@@ -250,6 +254,18 @@ export async function createWorkflowHistory(
 		connections: workflow.connections,
 		authors: userOrProject instanceof User ? userOrProject.email : 'test@example.com',
 	});
+
+	if (withPublishHistory) {
+		// We wait a millisecond as createdAt order is often relevant for the publishing history
+		await new Promise((res) => setTimeout(res, 1));
+		await Container.get(WorkflowPublishHistoryRepository).insert({
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			event: 'activated',
+			userId: userOrProject instanceof User ? userOrProject.id : undefined,
+			...withPublishHistory,
+		});
+	}
 }
 
 /**
@@ -279,6 +295,7 @@ export async function createActiveWorkflow(
 	const workflow = await createWorkflowWithTriggerAndHistory(
 		{ active: true, ...attributes },
 		userOrProject,
+		{},
 	);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
