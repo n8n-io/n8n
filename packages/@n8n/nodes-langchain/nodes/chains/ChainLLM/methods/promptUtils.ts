@@ -166,25 +166,13 @@ export const getAgentStepsParser =
 				const toolInput = responseParserTool.toolInput;
 				// Ensure the tool input is a string
 				const parserInput = toolInput instanceof Object ? JSON.stringify(toolInput) : toolInput;
-				const returnValues = (await outputParser.parse(parserInput)) as Record<string, unknown>;
-				return returnValues;
+				const parsedOutput = (await outputParser.parse(parserInput)) as Record<string, unknown>;
+				return parsedOutput;
 			}
 		}
 
 		if (typeof steps === 'object' && isMessage(steps)) {
-			let output: string;
-			if (steps.text) {
-				output = steps.text;
-			} else if (Array.isArray(steps.content) && steps.content.length > 0) {
-				output = steps.content.find((content) => content.type === 'text' && content.text)
-					?.text as string;
-			} else if (typeof steps.content === 'string') {
-				output = steps.content;
-			} else if (typeof steps.content === 'object' && 'text' in steps.content) {
-				output = steps.content.text as string;
-			} else {
-				throw new Error('Invalid content type');
-			}
+			const output = steps.text;
 
 			const parsedOutput = (await outputParser.parse(output)) as Record<string, unknown>;
 			return parsedOutput;
