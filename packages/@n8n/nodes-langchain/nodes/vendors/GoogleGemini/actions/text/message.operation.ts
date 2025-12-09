@@ -16,6 +16,7 @@ import type {
 	Content,
 	Tool,
 	GenerateContentGenerationConfig,
+	BuiltInTools,
 } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
@@ -352,7 +353,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
-	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
+	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as BuiltInTools;
 	validateNodeParameters(
 		options,
 		{
@@ -429,15 +430,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				});
 			}
 
-			const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
+			const googleMapsOptions = builtInTools.googleMaps;
 			if (googleMapsOptions) {
 				tools.push({
 					googleMaps: {},
 				});
 
 				// Build toolConfig with retrievalConfig if latitude/longitude are provided
-				const latitude = googleMapsOptions.latitude as number | string | undefined;
-				const longitude = googleMapsOptions.longitude as number | string | undefined;
+				const latitude = googleMapsOptions.latitude;
+				const longitude = googleMapsOptions.longitude;
 				if (
 					latitude !== undefined &&
 					latitude !== '' &&
@@ -461,12 +462,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				});
 			}
 
-			const fileSearchOptions = builtInTools.fileSearch as IDataObject | undefined;
+			const fileSearchOptions = builtInTools.fileSearch;
 			if (fileSearchOptions) {
-				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames as
-					| string
-					| undefined;
-				const metadataFilter = fileSearchOptions.metadataFilter as string | undefined;
+				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames;
+				const metadataFilter = fileSearchOptions.metadataFilter;
 				let fileSearchStoreNames: string[] | undefined;
 				if (fileSearchStoreNamesRaw) {
 					const parsed = jsonParse(fileSearchStoreNamesRaw, {
@@ -556,7 +555,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		currentIteration++;
 	}
 
-	const candidatesWithMergedResponse = options.includeMergedResponse
+	const candidates = options.includeMergedResponse
 		? response.candidates.map((candidate) => ({
 				...candidate,
 				mergedResponse: candidate.content.parts
@@ -567,7 +566,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		: response.candidates;
 
 	if (simplify) {
-		return candidatesWithMergedResponse.map((candidate) => ({
+		return candidates.map((candidate) => ({
 			json: candidate,
 			pairedItem: { item: i },
 		}));
@@ -577,7 +576,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		{
 			json: {
 				...response,
-				candidates: candidatesWithMergedResponse,
+				candidates,
 			},
 			pairedItem: { item: i },
 		},

@@ -104,6 +104,26 @@ export interface VeoResponse {
 	};
 }
 
+/**
+ * User configuration for built-in tools in the node parameters
+ */
+export interface BuiltInTools {
+	googleSearch?: boolean;
+	googleMaps?: {
+		latitude?: number | string;
+		longitude?: number | string;
+	};
+	urlContext?: boolean;
+	fileSearch?: {
+		fileSearchStoreNames?: string;
+		metadataFilter?: string;
+	};
+	codeExecution?: boolean;
+}
+
+/**
+ * Tool structure for the Google Gemini API request
+ */
 export interface Tool {
 	functionDeclarations?: Array<{
 		name: string;
