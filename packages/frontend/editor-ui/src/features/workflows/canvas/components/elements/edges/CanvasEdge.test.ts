@@ -6,6 +6,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';
 import type { CanvasConnectionPort } from '../../../canvas.types';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -22,6 +23,11 @@ const DEFAULT_PROPS = {
 } satisfies Partial<CanvasEdgeProps>;
 const renderComponent = createComponentRenderer(CanvasEdge, {
 	props: DEFAULT_PROPS,
+	global: {
+		provide: {
+			...createCanvasProvide(),
+		},
+	},
 });
 
 beforeEach(() => {

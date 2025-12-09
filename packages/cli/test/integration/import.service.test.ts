@@ -58,11 +58,19 @@ describe('ImportService', () => {
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			Container.get(DatabaseConfig),
+			mock(),
 		);
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'TagEntity', 'WorkflowTagMapping']);
+		await testDb.truncate([
+			'WorkflowEntity',
+			'SharedWorkflow',
+			'TagEntity',
+			'WorkflowTagMapping',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 	});
 
 	afterAll(async () => {

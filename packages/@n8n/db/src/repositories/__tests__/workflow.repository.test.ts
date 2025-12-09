@@ -6,6 +6,7 @@ import { WorkflowEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
+import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
 describe('WorkflowRepository', () => {
@@ -14,10 +15,12 @@ describe('WorkflowRepository', () => {
 		database: { type: 'postgresdb' },
 	});
 	const folderRepository = mockInstance(FolderRepository);
+	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
+		workflowHistoryRepository,
 	);
 
 	let queryBuilder: jest.Mocked<SelectQueryBuilder<WorkflowEntity>>;
@@ -141,6 +144,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -259,6 +263,49 @@ describe('WorkflowRepository', () => {
 			// Check pagination
 			expect(queryBuilder.skip).toHaveBeenCalledWith(0);
 			expect(queryBuilder.take).toHaveBeenCalledWith(10);
+		});
+	});
+
+	describe('applyActiveVersionRelation', () => {
+		it('should join activeVersion relation when select.activeVersion is true', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				select: { activeVersion: true } as const,
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith([
+				'activeVersion.versionId',
+				'activeVersion.nodes',
+				'activeVersion.connections',
+			]);
+		});
+
+		it('should not join activeVersion relation by default when select is undefined', async () => {
+			const workflowIds = ['workflow1'];
+
+			await workflowRepository.getMany(workflowIds, {});
+
+			const leftJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+				(call) => call[0] === 'workflow.activeVersion',
+			);
+			expect(leftJoinCalls).toHaveLength(0);
+		});
+
+		it('should not join activeVersion relation when activeVersion is not in select', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				select: { name: true, createdAt: true } as const,
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			const leftJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+				(call) => call[0] === 'workflow.activeVersion',
+			);
+			expect(leftJoinCalls).toHaveLength(0);
 		});
 	});
 });
