@@ -233,7 +233,11 @@ const navigateToWorkflowList = () => {
 						:show-after="MCP_TOOLTIP_DELAY"
 						:popper-class="$style['description-popper']"
 					>
-						<div :class="$style['description-cell']">
+						<div
+							data-test-id="mcp-workflow-description-cell"
+							:class="$style['description-cell']"
+							@click="emit('updateDescription', item)"
+						>
 							<span v-if="item.description">
 								<N8nText data-test-id="mcp-workflow-description">
 									{{ item.description }}
@@ -328,6 +332,11 @@ const navigateToWorkflowList = () => {
 	overflow: hidden;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
+	cursor: pointer;
+
+	&:hover span {
+		color: var(--color--text--shade-1);
+	}
 
 	span {
 		display: flex;
