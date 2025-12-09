@@ -87,6 +87,7 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-intento');
 		}
 
 		for (const dir of this.moduleRegistry.loadDirs) {

@@ -154,6 +154,7 @@
     "n8n-core": "workspace:*",
     "n8n-editor-ui": "workspace:*",
     "n8n-nodes-base": "workspace:*",
+    "n8n-nodes-intento": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "nodemailer": "catalog:",
