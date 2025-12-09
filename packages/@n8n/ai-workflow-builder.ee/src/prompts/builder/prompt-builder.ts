@@ -7,6 +7,34 @@ import type {
 	SectionOptions,
 } from './types';
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Type guard for objects with a content property
+ */
+function hasContentProperty(value: unknown): value is { content: string } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'content' in value &&
+		typeof (value as { content: string }).content === 'string'
+	);
+}
+
+/**
+ * Default formatter for examples.
+ * Handles strings and objects with a `content` property.
+ */
+function defaultExampleFormatter<T>(example: T): string {
+	if (typeof example === 'string') return example;
+	if (hasContentProperty(example)) return example.content;
+	throw new Error(
+		'Example must be a string or have a content property. Provide a custom formatter.',
+	);
+}
+
 /**
  * Normalizes a section name to a valid XML tag or keeps it for markdown.
  * - Converts to lowercase
@@ -140,17 +168,19 @@ export class PromptBuilder {
 	 *
 	 * @param name - Display name of the examples section
 	 * @param examples - Array of example objects
-	 * @param formatter - Function to format each example into a string
+	 * @param formatter - Optional function to format each example. Defaults to handling
+	 *                    strings and objects with a `content` property.
 	 * @param options - Optional section configuration
 	 * @returns this for chaining
 	 */
 	examples<T>(
 		name: string,
 		examples: T[],
-		formatter: (example: T) => string,
+		formatter?: (example: T) => string,
 		options: SectionOptions = {},
 	): this {
-		const content = examples.map(formatter).join('\n');
+		const format = formatter ?? defaultExampleFormatter;
+		const content = examples.map(format).join('\n\n');
 		return this.section(name, content, options);
 	}
 
@@ -160,7 +190,8 @@ export class PromptBuilder {
 	 * @param condition - Truthy value to include the examples, falsy to skip
 	 * @param name - Display name of the examples section
 	 * @param examples - Array of example objects
-	 * @param formatter - Function to format each example into a string
+	 * @param formatter - Optional function to format each example. Defaults to handling
+	 *                    strings and objects with a `content` property.
 	 * @param options - Optional section configuration
 	 * @returns this for chaining
 	 */
@@ -168,12 +199,60 @@ export class PromptBuilder {
 		condition: unknown,
 		name: string,
 		examples: T[],
-		formatter: (example: T) => string,
+		formatter?: (example: T) => string,
 		options: SectionOptions = {},
 	): this {
 		if (condition) {
 			return this.examples(name, examples, formatter, options);
 		}
+		return this;
+	}
+
+	/**
+	 * Appends examples to the last added section.
+	 * This is a section modifier that must be called after section() or sectionIf().
+	 *
+	 * @param examples - Array of example objects
+	 * @param formatter - Optional function to format each example. Defaults to handling
+	 *                    strings and objects with a `content` property.
+	 * @returns this for chaining
+	 *
+	 * @example
+	 * ```typescript
+	 * prompt()
+	 *   .section('routing', ROUTING_RULES)
+	 *   .withExamples(['example 1', 'example 2'])
+	 *   .section('output', OUTPUT_FORMAT)
+	 *   .build();
+	 * ```
+	 */
+	withExamples<T>(examples: T[], formatter?: (example: T) => string): this {
+		const lastSection = this.sections.at(-1);
+		if (!lastSection) {
+			throw new Error('withExamples() must be called after section()');
+		}
+
+		if (examples.length === 0) {
+			return this;
+		}
+
+		const format = formatter ?? defaultExampleFormatter;
+		const examplesContent = examples.map(format).join('\n\n');
+
+		// Format examples block using the builder's format setting
+		const examplesBlock =
+			this.format === 'markdown'
+				? `## Examples\n${examplesContent}`
+				: `<examples>\n${examplesContent}\n</examples>`;
+
+		// Wrap original content to append examples
+		const originalContent = lastSection.content;
+		lastSection.content = () => {
+			const resolved = resolveContent(originalContent);
+			if (resolved === null) return null;
+			return `${resolved}\n\n${examplesBlock}`;
+		};
+
 		return this;
 	}
 

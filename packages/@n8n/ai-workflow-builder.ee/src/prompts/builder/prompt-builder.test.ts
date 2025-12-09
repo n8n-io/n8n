@@ -171,6 +171,21 @@ describe('PromptBuilder', () => {
 			expect(result).toContain('foo → bar');
 		});
 
+		it('should use default formatter for strings', () => {
+			const result = prompt().examples('EXAMPLES', ['one', 'two', 'three']).build();
+
+			expect(result).toContain('one\n\ntwo\n\nthree');
+		});
+
+		it('should use default formatter for objects with content property', () => {
+			const examples = [{ content: 'first' }, { content: 'second' }];
+
+			const result = prompt().examples('EXAMPLES', examples).build();
+
+			expect(result).toContain('first');
+			expect(result).toContain('second');
+		});
+
 		it('should wrap examples in section tags', () => {
 			const result = prompt()
 				.examples('TEST EXAMPLES', [{ a: 1 }], (ex) => String(ex.a))
@@ -180,14 +195,14 @@ describe('PromptBuilder', () => {
 			expect(result).toContain('</test_examples>');
 		});
 
-		it('should join multiple examples with newlines', () => {
+		it('should join multiple examples with double newlines', () => {
 			const examples = [{ v: 'one' }, { v: 'two' }, { v: 'three' }];
 
 			const result = prompt()
 				.examples('LIST', examples, (ex) => ex.v)
 				.build();
 
-			expect(result).toContain('one\ntwo\nthree');
+			expect(result).toContain('one\n\ntwo\n\nthree');
 		});
 
 		it('should support custom tag for examples', () => {
@@ -223,6 +238,147 @@ describe('PromptBuilder', () => {
 				.build();
 
 			expect(formatter).not.toHaveBeenCalled();
+		});
+
+		it('should use default formatter when not provided', () => {
+			const examples = [{ content: 'example 1' }, { content: 'example 2' }];
+
+			const result = prompt().examplesIf(true, 'EXAMPLES', examples).build();
+
+			expect(result).toContain('example 1');
+			expect(result).toContain('example 2');
+		});
+
+		it('should use default formatter with strings', () => {
+			const result = prompt().examplesIf(true, 'EXAMPLES', ['one', 'two']).build();
+
+			expect(result).toContain('one\n\ntwo');
+		});
+	});
+
+	describe('withExamples()', () => {
+		it('should append examples to the last section with XML tags', () => {
+			const result = prompt()
+				.section('RULES', 'Follow these rules')
+				.withExamples(['example 1', 'example 2'])
+				.build();
+
+			expect(result).toContain('Follow these rules');
+			expect(result).toContain('<examples>');
+			expect(result).toContain('</examples>');
+			expect(result).toContain('example 1');
+			expect(result).toContain('example 2');
+		});
+
+		it('should use markdown format when builder is in markdown mode', () => {
+			const result = prompt({ format: 'markdown' })
+				.section('RULES', 'Follow these rules')
+				.withExamples(['example 1'])
+				.build();
+
+			expect(result).toContain('## Examples');
+			expect(result).not.toContain('<examples>');
+		});
+
+		it('should use default formatter for strings', () => {
+			const result = prompt()
+				.section('TEST', 'content')
+				.withExamples(['one', 'two', 'three'])
+				.build();
+
+			expect(result).toContain('one\n\ntwo\n\nthree');
+		});
+
+		it('should use default formatter for objects with content property', () => {
+			const examples = [{ content: 'first example' }, { content: 'second example' }];
+
+			const result = prompt().section('TEST', 'content').withExamples(examples).build();
+
+			expect(result).toContain('first example');
+			expect(result).toContain('second example');
+		});
+
+		it('should use custom formatter when provided', () => {
+			const examples = [
+				{ input: 'hello', output: 'world' },
+				{ input: 'foo', output: 'bar' },
+			];
+
+			const result = prompt()
+				.section('TEST', 'content')
+				.withExamples(examples, (ex) => `${ex.input} → ${ex.output}`)
+				.build();
+
+			expect(result).toContain('hello → world');
+			expect(result).toContain('foo → bar');
+		});
+
+		it('should throw error when called without a preceding section', () => {
+			expect(() => {
+				prompt().withExamples(['example']);
+			}).toThrow('withExamples() must be called after section()');
+		});
+
+		it('should not modify section when examples array is empty', () => {
+			const result = prompt().section('TEST', 'content').withExamples([]).build();
+
+			expect(result).toContain('content');
+			expect(result).not.toContain('<examples>');
+		});
+
+		it('should work with factory function content', () => {
+			const result = prompt()
+				.section('DYNAMIC', () => 'dynamic content')
+				.withExamples(['example'])
+				.build();
+
+			expect(result).toContain('dynamic content');
+			expect(result).toContain('<examples>');
+			expect(result).toContain('example');
+		});
+
+		it('should skip section if factory returns null', () => {
+			const result = prompt()
+				.section('NULLABLE', () => null)
+				.withExamples(['example'])
+				.build();
+
+			expect(result).toBe('');
+		});
+
+		it('should allow chaining after withExamples', () => {
+			const result = prompt()
+				.section('A', 'first')
+				.withExamples(['ex1'])
+				.section('B', 'second')
+				.build();
+
+			expect(result).toContain('first');
+			expect(result).toContain('ex1');
+			expect(result).toContain('second');
+		});
+
+		it('should only modify the last section', () => {
+			const result = prompt()
+				.section('A', 'first')
+				.section('B', 'second')
+				.withExamples(['example for B'])
+				.build();
+
+			// Examples should only be in section B
+			const aSection = result.substring(0, result.indexOf('</a>'));
+			const bSection = result.substring(result.indexOf('<b>'));
+
+			expect(aSection).not.toContain('example for B');
+			expect(bSection).toContain('example for B');
+		});
+
+		it('should throw error for objects without content property when no formatter provided', () => {
+			const invalidExamples = [{ name: 'test' }];
+
+			expect(() => {
+				prompt().section('TEST', 'content').withExamples(invalidExamples).build();
+			}).toThrow('Example must be a string or have a content property');
 		});
 	});
 
