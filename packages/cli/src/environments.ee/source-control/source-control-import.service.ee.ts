@@ -71,6 +71,7 @@ import type {
 } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -893,7 +894,7 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				await this.tagRepository.upsert(tagCopy, {
+				await this.tagRepository.upsert(tagCopy as QueryDeepPartialEntity<TagEntity>, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});

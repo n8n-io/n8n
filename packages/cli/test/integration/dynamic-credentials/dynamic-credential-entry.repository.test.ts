@@ -2,23 +2,27 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DynamicCredentialEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-entry.repository';
 import { DynamicCredentialEntry } from '@/modules/dynamic-credentials.ee/database/entities/dynamic-credential-entry';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-entry.repository';
 
-import { createCredentials } from '../shared/db/credentials';
 import { createDynamicCredentialResolver } from './shared/db-helpers';
+import { createCredentials } from '../shared/db/credentials';
 
 describe('DynamicCredentialEntryRepository', () => {
 	let repository: DynamicCredentialEntryRepository;
+	let previousEnvVar: string | undefined;
 
 	beforeAll(async () => {
+		previousEnvVar = process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
 		await testModules.loadModules(['dynamic-credentials']);
 		await testDb.init();
 		repository = Container.get(DynamicCredentialEntryRepository);
 	});
 
 	afterAll(async () => {
+		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = previousEnvVar;
 		await testDb.terminate();
 	});
 
