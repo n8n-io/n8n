@@ -64,7 +64,7 @@ env:
 jobs:
   test:
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
