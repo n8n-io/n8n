@@ -91,6 +91,7 @@ export class NodeTypes implements INodeTypes {
 
 		// For HITL tools, use convertNodeToHitlTool; for regular AI tools, use convertNodeToAiTool
 		const tool = isHitlTool ? convertNodeToHitlTool(clonedNode) : convertNodeToAiTool(clonedNode);
+
 		loadedNodes[origType] = { sourcePath: '', type: tool };
 		return tool;
 	}

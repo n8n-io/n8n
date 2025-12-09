@@ -1287,6 +1287,11 @@ export class WorkflowExecute {
 	 *    does not show up as having run twice
 	 */
 	private handleWaitingState(workflow: Workflow) {
+		Logger.debug('[HITL] handleWaitingState called', {
+			hasWaitTill: !!this.runExecutionData.waitTill,
+			waitTill: this.runExecutionData.waitTill,
+		});
+
 		if (this.runExecutionData.waitTill) {
 			this.runExecutionData.waitTill = undefined;
 
@@ -1296,10 +1301,45 @@ export class WorkflowExecute {
 				this.additionalData,
 				this.mode,
 			);
-			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
+
+			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
+			executionStackEntry.node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
-			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
+			const lastRunData = this.runExecutionData.resultData.runData[lastNodeExecuted];
+
+			// For HITL nodes resuming from wait, restore rewireOutputLogTo so output is logged correctly
+			// HITL nodes need to log output with ai_tool connection type for the UI to display them
+			if (lastRunData && lastRunData.length > 0) {
+				const lastRun = lastRunData[lastRunData.length - 1];
+				// Check if this node has metadata indicating it's an HITL tool execution
+				// and preserve inputOverride for the resume
+				const isHitlNode = executionStackEntry.node.type.endsWith('HitlTool');
+				if (lastRun.metadata?.subExecution || isHitlNode) {
+					// Set rewireOutputLogTo on the node so output is logged with ai_tool type
+					executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+					Logger.debug('[HITL] Restored rewireOutputLogTo for HITL node on resume', {
+						nodeName: lastNodeExecuted,
+						rewireOutputLogTo: executionStackEntry.node.rewireOutputLogTo,
+					});
+				}
+
+				// Preserve inputOverride from the popped run data for HITL nodes
+				// This ensures the input data is available after the resume
+				if (isHitlNode && lastRun.inputOverride) {
+					// Store inputOverride in execution metadata so it can be restored after the pop
+					executionStackEntry.metadata = {
+						...executionStackEntry.metadata,
+						preservedInputOverride: lastRun.inputOverride,
+					};
+					Logger.debug('[HITL] Preserved inputOverride for HITL node on resume', {
+						nodeName: lastNodeExecuted,
+						inputOverrideKeys: Object.keys(lastRun.inputOverride),
+					});
+				}
+			}
+
+			lastRunData.pop();
 		}
 	}
 
@@ -1947,14 +1987,28 @@ export class WorkflowExecute {
 					} as ITaskDataConnections;
 
 					// Rewire output data log to the given connectionType
+					Logger.debug('[HITL] Checking rewireOutputLogTo for node output', {
+						nodeName: executionNode.name,
+						rewireOutputLogTo: executionNode.rewireOutputLogTo,
+						hasRewire: !!executionNode.rewireOutputLogTo,
+					});
 					if (executionNode.rewireOutputLogTo) {
 						// TODO: Remove when AI-723 lands.
+						// Try to get inputOverride from existing run data, or from preserved metadata (for HITL resume)
 						taskData.inputOverride =
 							this.runExecutionData.resultData.runData[executionNode.name][runIndex]
-								?.inputOverride || {};
+								?.inputOverride ||
+							executionData.metadata?.preservedInputOverride ||
+							{};
 						taskData.data = {
 							[executionNode.rewireOutputLogTo]: nodeSuccessData,
 						} as ITaskDataConnections;
+						Logger.debug('[HITL] Applied rewireOutputLogTo to task data', {
+							nodeName: executionNode.name,
+							connectionType: executionNode.rewireOutputLogTo,
+							hasInputOverride: !!taskData.inputOverride,
+							inputOverrideKeys: Object.keys(taskData.inputOverride ?? {}),
+						});
 					}
 
 					const runDataAlreadyExists =

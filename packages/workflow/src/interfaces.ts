@@ -2546,6 +2546,13 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Preserved inputOverride from HITL node execution before wait/resume cycle.
+	 * When an HITL node goes to waiting state and then resumes, the inputOverride
+	 * is preserved here so it can be restored to the task data after resume.
+	 */
+	preservedInputOverride?: ITaskDataConnections;
 }
 
 /** The data that gets returned when a node execution starts */

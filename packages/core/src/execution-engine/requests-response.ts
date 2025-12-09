@@ -57,7 +57,15 @@ function prepareRequestedNodesForExecution(
 			// tools always have only one input
 			index: 0,
 		};
-		const parentNode = currentNode.name;
+		// For gated tools (HITL approval follow-ups), use the HITL node as the parent
+		// so the gated tool appears under the HITL node in the logs panel
+		const hitlApprovalFollowUp = (
+			action.metadata as
+				| { hitlApprovalFollowUp?: { hitlNodeName: string; hitlNodeRunIndex: number } }
+				| undefined
+		)?.hitlApprovalFollowUp;
+		const parentNode = hitlApprovalFollowUp?.hitlNodeName ?? currentNode.name;
+		const hitlRunIndex = hitlApprovalFollowUp?.hitlNodeRunIndex;
 		const parentSourceData = executionData.source?.main?.[runIndex];
 		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
 		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
@@ -104,13 +112,24 @@ function prepareRequestedNodesForExecution(
 			actionInput: action.input,
 			mergedJsonKeys: Object.keys(mergedJson),
 			hasParentOutputData: parentOutputData.length > 0,
+			isHitlFollowUp: !!hitlApprovalFollowUp,
+			parentNodeForSource: parentNode,
 		});
 
 		// TODO: Remove when AI-723 lands.
 		nodeRunData.push({
 			// Necessary for the log on the canvas.
 			inputOverride: { ai_tool: parentOutputData },
-			source: [],
+			// Source must point to the parent node for the frontend logs panel
+			// to correctly display this sub-node under the parent.
+			// For HITL follow-ups, use the HITL node's run index instead of the agent's.
+			source: [
+				{
+					previousNode: parentNode,
+					previousNodeOutput: parentOutputIndex,
+					previousNodeRun: hitlRunIndex ?? runIndex,
+				},
+			],
 			executionIndex: 0,
 			executionTime: 0,
 			startTime: 0,

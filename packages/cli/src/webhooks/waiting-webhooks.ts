@@ -14,6 +14,7 @@ import {
 	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
+	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
 	Workflow,
@@ -204,6 +205,35 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
+
+		// For HITL nodes, preserve inputOverride and set rewireOutputLogTo before popping run data
+		const nodeExecutionStack = execution.data.executionData?.nodeExecutionStack;
+		const executionStackEntry = nodeExecutionStack?.[0];
+		const lastRunData = execution.data.resultData.runData[lastNodeExecuted];
+		const isHitlNode = executionStackEntry?.node?.type?.endsWith('HitlTool') ?? false;
+
+		if (isHitlNode && executionStackEntry && lastRunData && lastRunData.length > 0) {
+			const lastRun = lastRunData[lastRunData.length - 1];
+
+			// Set rewireOutputLogTo on the node so output is logged with ai_tool type
+			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+			this.logger.debug('[HITL] Set rewireOutputLogTo for HITL node on webhook resume', {
+				nodeName: lastNodeExecuted,
+				nodeType: executionStackEntry.node.type,
+			});
+
+			// Preserve inputOverride in execution metadata for restoration after pop
+			if (lastRun.inputOverride) {
+				executionStackEntry.metadata = {
+					...executionStackEntry.metadata,
+					preservedInputOverride: lastRun.inputOverride,
+				};
+				this.logger.debug('[HITL] Preserved inputOverride for HITL node on webhook resume', {
+					nodeName: lastNodeExecuted,
+					inputOverrideKeys: Object.keys(lastRun.inputOverride),
+				});
+			}
+		}
 
 		// Remove the data of the node execution again else it will display the node as executed twice
 		execution.data.resultData.runData[lastNodeExecuted].pop();

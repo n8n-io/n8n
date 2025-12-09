@@ -132,6 +132,10 @@ export type RequestResponseMetadata = {
 		originalHitlActionId: string;
 		/** The HITL tool name that was approved */
 		hitlToolName: string;
+		/** The HITL node name (for logs panel source) */
+		hitlNodeName: string;
+		/** The HITL node's run index (for logs panel source) */
+		hitlNodeRunIndex: number;
 	};
 };
 
