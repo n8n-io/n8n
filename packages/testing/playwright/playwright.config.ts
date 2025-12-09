@@ -35,12 +35,14 @@ const getTestEnv = () => {
 const CPU_COUNT = os.cpus().length;
 const LOCAL_WORKERS = Math.min(6, Math.floor(CPU_COUNT / 2));
 const CI_WORKERS = CPU_COUNT;
-const WORKERS = IS_CI ? CI_WORKERS : LOCAL_WORKERS;
+const WORKERS = IS_DEV ? 1 : IS_CI ? CI_WORKERS : LOCAL_WORKERS;
 
 const BACKEND_URL = getBackendUrl();
 const FRONTEND_URL = getFrontendUrl();
 const START_COMMAND = IS_DEV ? 'pnpm dev:fe:e2e' : 'pnpm start';
 const WEB_SERVER_URL = FRONTEND_URL ?? BACKEND_URL;
+
+const EXPECT_TIMEOUT = IS_DEV ? 20000 : 10000;
 
 export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	globalSetup: './global-setup.ts',
@@ -49,7 +51,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	workers: WORKERS,
 	timeout: 60000,
 	expect: {
-		timeout: 10000,
+		timeout: EXPECT_TIMEOUT,
 	},
 	projects: getProjects(),
 
