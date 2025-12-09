@@ -20,8 +20,10 @@ test.describe('Chat session ID reset', () => {
 
 		// Use .last() to get the most recently opened tooltip (session ID), not the "waiting for chat" tooltip
 		const initialTooltip = n8n.page.locator('.n8n-tooltip').last();
-		await expect(initialTooltip).toHaveText(/^[a-f0-9]+ \(click to copy\)$/i);
-		const initialSessionId = ((await initialTooltip.textContent()) as string).split(' ')[0];
+		// Wait for tooltip to be visible before asserting text
+		await expect(initialTooltip).toBeVisible();
+		await expect(initialTooltip).toHaveText(/^[a-f0-9]+\s+\(click to copy\)$/im);
+		const initialSessionId = ((await initialTooltip.textContent()) as string).split(/\s/)[0];
 
 		// Click on the chat trigger node in the logs to see its output
 		await n8n.canvas.logsPanel.clickLogEntryAtRow(0);
@@ -38,8 +40,10 @@ test.describe('Chat session ID reset', () => {
 		// Step 5: Get the new session ID
 		await sessionIdButton.hover();
 		const newTooltip = n8n.page.locator('.n8n-tooltip').last();
-		await expect(newTooltip).toHaveText(/^[a-f0-9]+ \(click to copy\)$/i);
-		const newSessionId = ((await newTooltip.textContent()) as string).split(' ')[0];
+		// Wait for tooltip to be visible before asserting text
+		await expect(newTooltip).toBeVisible();
+		await expect(newTooltip).toHaveText(/^[a-f0-9]+\s+\(click to copy\)$/im);
+		const newSessionId = ((await newTooltip.textContent()) as string).split(/\s/)[0];
 
 		expect(newSessionId).not.toEqual(initialSessionId);
 
