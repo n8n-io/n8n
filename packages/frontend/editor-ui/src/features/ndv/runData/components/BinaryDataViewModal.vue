@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import VueJsonPretty from 'vue-json-pretty';
 import RunDataHtml from './RunDataHtml.vue';
@@ -22,6 +22,8 @@ const isLoading = ref(true);
 const embedSource = ref('');
 const error = ref(false);
 const displayData = ref('');
+
+let currentBlobUrl: string | null = null;
 
 const binaryData = computed(() => {
 	const { id, mimeType, fileName } = props.data.binaryData;
@@ -47,9 +49,18 @@ const binaryData = computed(() => {
 	};
 });
 
+function revokeBlobUrl() {
+	if (currentBlobUrl) {
+		URL.revokeObjectURL(currentBlobUrl);
+		currentBlobUrl = null;
+	}
+}
+
 async function loadBinaryData() {
 	isLoading.value = true;
 	error.value = false;
+
+	revokeBlobUrl();
 	embedSource.value = '';
 	displayData.value = '';
 
@@ -65,6 +76,7 @@ async function loadBinaryData() {
 				displayData.value = await fetchedData.json();
 				break;
 			}
+
 			case 'html':
 			case 'markdown':
 			case 'text': {
@@ -72,6 +84,16 @@ async function loadBinaryData() {
 				displayData.value = await fetchedData.text();
 				break;
 			}
+
+			case 'pdf': {
+				const fetched = await fetch(binaryUrl, { credentials: 'include' });
+				const blob = await fetched.blob();
+
+				currentBlobUrl = URL.createObjectURL(blob);
+				embedSource.value = currentBlobUrl;
+				break;
+			}
+
 			default:
 				embedSource.value = binaryUrl;
 		}
@@ -85,10 +107,14 @@ async function loadBinaryData() {
 watch(
 	() => props.data.binaryData,
 	() => {
-		void loadBinaryData();
+		loadBinaryData().catch(() => {});
 	},
 	{ immediate: true },
 );
+
+onBeforeUnmount(() => {
+	revokeBlobUrl();
+});
 </script>
 
 <template>
@@ -105,18 +131,22 @@ watch(
 				<div v-else-if="error" class="error-message">Error loading binary data</div>
 
 				<div v-else class="content-wrapper">
+					<!-- VIDEO -->
 					<video v-if="binaryData.fileType === 'video'" controls autoplay>
 						<source :src="embedSource" :type="binaryData.mimeType" />
 						{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 					</video>
 
+					<!-- AUDIO -->
 					<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
 						<source :src="embedSource" :type="binaryData.mimeType" />
 						{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 					</audio>
 
+					<!-- IMAGE -->
 					<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
 
+					<!-- JSON -->
 					<VueJsonPretty
 						v-else-if="binaryData.fileType === 'json'"
 						:data="displayData"
@@ -124,19 +154,30 @@ watch(
 						:show-length="true"
 					/>
 
+					<!-- HTML -->
 					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
 
+					<!-- Markdown -->
 					<RunDataMarkdown
 						v-else-if="binaryData.fileType === 'markdown'"
 						:input-markdown="displayData"
 					/>
 
-					<pre v-else-if="binaryData.fileType === 'text'" class="text-content">{{
-						displayData
-					}}</pre>
+					<!-- TEXT -->
+					<pre v-else-if="binaryData.fileType === 'text'" class="text-content">
+						{{ displayData }}
+					</pre
+					>
 
-					<embed v-else-if="binaryData.fileType === 'pdf'" :src="embedSource" class="binary-data" />
+					<!-- PDF -->
+					<embed
+						v-else-if="binaryData.fileType === 'pdf'"
+						:src="embedSource"
+						class="binary-data"
+						type="application/pdf"
+					/>
 
+					<!-- UNKNOWN -->
 					<div v-else class="error-message">Preview not available for this file type</div>
 				</div>
 			</div>

@@ -5,7 +5,7 @@ import type {
 	IRunNodeResponse,
 	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY } from 'n8n-workflow';
+import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY, UnexpectedError } from 'n8n-workflow';
 
 import { BinaryDataConfig } from '../binary-data/binary-data.config';
 import { prepareBinaryData } from '../execution-engine/node-execution-context/utils/binary-helper-functions';
@@ -57,8 +57,15 @@ export async function convertBinaryData(
 				jsonBinaries[key] = binaryData;
 			}
 
+			const existingValue = item.json[BINARY_IN_JSON_PROPERTY];
+			if (existingValue && (Array.isArray(existingValue) || typeof existingValue !== 'object')) {
+				throw new UnexpectedError(
+					`Binary data could not be converted. Item already has '${BINARY_IN_JSON_PROPERTY}' field, but value type is not an object`,
+				);
+			}
+
 			if (Object.keys(jsonBinaries).length) {
-				const existingJsonBinaries = (item.json[BINARY_IN_JSON_PROPERTY] as IBinaryKeyData) ?? {};
+				const existingJsonBinaries = (existingValue as IBinaryKeyData) ?? {};
 				item.json[BINARY_IN_JSON_PROPERTY] = { ...existingJsonBinaries, ...jsonBinaries };
 			}
 

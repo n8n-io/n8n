@@ -60,7 +60,9 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
  * Check if object is a binary data
  */
 function isBinaryData(obj: unknown): obj is IBinaryData {
-	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+	return (
+		typeof obj === 'object' && obj !== null && ('data' in obj || 'id' in obj) && 'mimeType' in obj
+	);
 }
 
 /**
@@ -145,13 +147,21 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: 'separate' | 'combined' | undefined = undefined,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
 	if (isBinaryData(parameterData)) {
 		binaryData = parameterData;
-	} else if (typeof parameterData === 'string') {
+	} else if (typeof parameterData === 'string' && binaryMode !== 'separate') {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
+	} else if (typeof parameterData === 'string') {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const data = get(itemData, parameterData);
+		if (data === undefined || !isBinaryData(data)) {
+			throw new UnexpectedError('Provided parameter is not a string or binary data object.');
+		}
+		binaryData = data;
 	} else {
 		throw new UnexpectedError('Provided parameter is not a string or binary data object.');
 	}

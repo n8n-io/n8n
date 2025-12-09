@@ -3100,7 +3100,7 @@
 	"workflowSettings.defaultTimezone": "Default - {defaultTimezoneValue}",
 	"workflowSettings.defaultTimezoneNotValid": "Default Timezone not valid",
 	"workflowSettings.errorWorkflow": "Error Workflow (to notify when this one errors)",
-	"workflowSettings.executionOrder": "Execution Order",
+	"workflowSettings.executionLogic": "Execution Logic",
 	"workflowSettings.binaryMode": "Binary Mode",
 	"workflowSettings.helpTexts.errorWorkflow": "A second workflow to run if the current one fails.<br />The second workflow should have an 'Error Trigger' node.",
 	"workflowSettings.helpTexts.executionTimeout": "How long the workflow should wait before timing out",

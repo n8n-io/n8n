@@ -454,7 +454,7 @@ export const useFlattenSchema = () => {
 							depth,
 							prefix: itemPrefix,
 							level: level + 1,
-							preview: preview || schema.type === 'binary',
+							preview,
 							lastSuccessfulPreview,
 							truncateLimit,
 						});

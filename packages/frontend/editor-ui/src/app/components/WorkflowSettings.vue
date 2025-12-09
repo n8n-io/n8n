@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
@@ -13,7 +13,15 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -62,20 +70,8 @@ const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: s
 const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 	{ key: 'v0', value: 'v0 (legacy)' },
-	{ key: 'v1', value: 'v1 (recommended)' },
-]);
-const binaryModeOptions = ref<Array<{ key: string; value: string }>>([
-	{
-		key: 'separate',
-		value: rootStore.binaryDataMode === 'default' ? 'separate' : 'separate (legacy)',
-	},
-	{
-		key: 'combined',
-		value:
-			rootStore.binaryDataMode === 'default'
-				? 'combined (not supported with "default"(current) binary data mode)'
-				: 'combined (recommended)',
-	},
+	{ key: 'v1', value: 'v1 (legacy)' },
+	{ key: 'v2', value: 'v2 (recommended)' },
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
@@ -105,6 +101,13 @@ const defaultValues = ref({
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
+});
+
+const executionLogic = computed(() => {
+	if (workflowSettings.value.binaryMode === 'combined') {
+		return 'v2';
+	}
+	return workflowSettings.value.executionOrder || 'v0';
 });
 
 const isMCPEnabled = computed(
@@ -490,12 +493,34 @@ const updateTimeSavedPerExecution = (value: string) => {
 			: numValue;
 };
 
-const onBinaryModeChange = (value: string) => {
-	if (value === 'separate' || value === 'combined') {
-		workflowSettings.value.binaryMode = value;
+const onExecutionLogicModeChange = (value: string) => {
+	const currentBinaryMode = workflowSettings.value.binaryMode || 'separate';
+
+	if (['v0', 'v1'].includes(value)) {
+		workflowSettings.value.binaryMode = 'separate';
+		workflowSettings.value.executionOrder = value as 'v0' | 'v1';
+	}
+
+	if (value === 'v2') {
+		workflowSettings.value.binaryMode = 'combined';
+		workflowSettings.value.executionOrder = 'v1';
+	}
+
+	if (workflowSettings.value.binaryMode !== currentBinaryMode) {
 		toast.showMessage({
 			title: 'Binary mode changed',
-			message: 'Please update expressions that reference binary data to match the new binary mode.',
+			message: h('span', [
+				'Please update expressions that reference binary data to match the new binary mode. ',
+				h(
+					N8nLink,
+					{
+						to: 'https://docs.n8n.io/data/binary-data/',
+						size: 'small',
+						newWindow: true,
+					},
+					() => 'Learn more',
+				),
+			]),
 			type: 'warning',
 			duration: 0,
 		});
@@ -636,46 +661,21 @@ onBeforeUnmount(() => {
 			>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
-						{{ i18n.baseText('workflowSettings.executionOrder') }}
+						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
-							v-model="workflowSettings.executionOrder"
+							v-model="executionLogic"
 							placeholder="Select Execution Order"
 							size="medium"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-execution-order"
+							@update:model-value="onExecutionLogicModeChange"
 						>
 							<N8nOption
 								v-for="option in executionOrderOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
-							>
-							</N8nOption>
-						</N8nSelect>
-					</ElCol>
-				</ElRow>
-
-				<ElRow>
-					<ElCol :span="10" :class="$style['setting-name']">
-						{{ i18n.baseText('workflowSettings.binaryMode') }}
-					</ElCol>
-					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.binaryMode"
-							placeholder="Select Binary Mode"
-							size="medium"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-binary-mode"
-							@update:model-value="onBinaryModeChange"
-						>
-							<N8nOption
-								v-for="option in binaryModeOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
