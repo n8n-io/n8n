@@ -224,8 +224,8 @@ function buildLangsmithResults(
 		.filter(Boolean)
 		.join('');
 
+	// Return results in alphabetical key order to match LangSmith column display
 	return [
-		{ key: 'pairwise_primary', score: majorityPass ? 1 : 0, comment },
 		{
 			key: 'pairwise_diagnostic',
 			score: avgDiagnosticScore,
@@ -236,13 +236,14 @@ function buildLangsmithResults(
 			score: primaryPasses,
 			comment: `${primaryPasses} of ${numJudges} judges returned primaryPass=true`,
 		},
-		{
-			key: 'pairwise_total_violations',
-			score: judgeResults.reduce((sum, r) => sum + r.violations.length, 0),
-		},
+		{ key: 'pairwise_primary', score: majorityPass ? 1 : 0, comment },
 		{
 			key: 'pairwise_total_passes',
 			score: judgeResults.reduce((sum, r) => sum + r.passes.length, 0),
+		},
+		{
+			key: 'pairwise_total_violations',
+			score: judgeResults.reduce((sum, r) => sum + r.violations.length, 0),
 		},
 	];
 }
@@ -285,55 +286,52 @@ function buildMultiGenerationLangsmithResults(
 		0,
 	);
 
+	// Return results in alphabetical key order to match LangSmith column display
 	return [
-		// Primary aggregated metrics (new)
-		{
-			key: 'pairwise_generation_correctness',
-			score: generationCorrectness,
-			comment: `${passingGenerations} of ${totalGenerations} generations passed majority vote`,
-		},
 		{
 			key: 'pairwise_aggregated_diagnostic',
 			score: aggregatedDiagnosticScore,
 			comment: `Average diagnostic score across ${totalGenerations} generations`,
-		},
-		// Legacy metrics (backward compat, use first generation)
-		{
-			key: 'pairwise_primary',
-			score: firstGen.majorityPass ? 1 : 0,
-			comment: `First generation: ${firstGen.primaryPasses}/${numJudges} judges passed`,
 		},
 		{
 			key: 'pairwise_diagnostic',
 			score: firstGen.avgDiagnosticScore,
 			comment: 'First generation diagnostic score',
 		},
-		// Summary metrics
+		{
+			key: 'pairwise_generation_correctness',
+			score: generationCorrectness,
+			comment: `${passingGenerations} of ${totalGenerations} generations passed majority vote`,
+		},
 		{
 			key: 'pairwise_generations_passed',
 			score: passingGenerations,
 			comment,
 		},
 		{
-			key: 'pairwise_total_judge_calls',
-			score: totalGenerations * numJudges,
-			comment: `${totalGenerations} generations x ${numJudges} judges`,
-		},
-		// Aggregated detail metrics (across all generations)
-		{
 			key: 'pairwise_judges_passed',
 			score: totalJudgesPassed,
 			comment: `${totalJudgesPassed} of ${totalGenerations * numJudges} total judge calls passed`,
 		},
 		{
-			key: 'pairwise_total_violations',
-			score: totalViolations,
-			comment: `Total violations across all ${totalGenerations} generations`,
+			key: 'pairwise_primary',
+			score: firstGen.majorityPass ? 1 : 0,
+			comment: `First generation: ${firstGen.primaryPasses}/${numJudges} judges passed`,
+		},
+		{
+			key: 'pairwise_total_judge_calls',
+			score: totalGenerations * numJudges,
+			comment: `${totalGenerations} generations x ${numJudges} judges`,
 		},
 		{
 			key: 'pairwise_total_passes',
 			score: totalPasses,
 			comment: `Total criteria passes across all ${totalGenerations} generations`,
+		},
+		{
+			key: 'pairwise_total_violations',
+			score: totalViolations,
+			comment: `Total violations across all ${totalGenerations} generations`,
 		},
 	];
 }
