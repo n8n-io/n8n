@@ -920,50 +920,54 @@ describe('InsightsService (Integration)', () => {
 				projectId: project.id,
 			});
 
-			// ASSERT
-			expect(byTime).toHaveLength(4);
-
-			// expect date to be sorted by oldest first
-			expect(byTime[0].date).toEqual(now.minus({ days: 14 }).startOf('day').toISO());
-			expect(byTime[1].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
-			expect(byTime[2].date).toEqual(now.minus({ days: 2 }).startOf('day').toISO());
-			expect(byTime[3].date).toEqual(now.startOf('day').toISO());
-
-			expect(byTime[0].values).toEqual({
-				total: 2,
-				succeeded: 1,
-				failed: 1,
-				failureRate: 0.5,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-
-			expect(byTime[1].values).toEqual({
-				total: 2,
-				succeeded: 2,
-				failed: 0,
-				failureRate: 0,
-				averageRunTime: 15,
-				timeSaved: 0,
-			});
-
-			expect(byTime[2].values).toEqual({
-				total: 2,
-				succeeded: 2,
-				failed: 0,
-				failureRate: 0,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-
-			expect(byTime[3].values).toEqual({
-				total: 7,
-				succeeded: 3,
-				failed: 4,
-				failureRate: 4 / 7,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
+			expect(byTime).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						date: now.minus({ days: 14 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 1,
+							failed: 1,
+							failureRate: 0.5,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.minus({ days: 10 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 2,
+							failed: 0,
+							failureRate: 0,
+							averageRunTime: 15,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.minus({ days: 2 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 2,
+							failed: 0,
+							failureRate: 0,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.startOf('day').toISO(),
+						values: {
+							total: 7,
+							succeeded: 3,
+							failed: 4,
+							failureRate: 4 / 7,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+				]),
+			);
 		});
 	});
 

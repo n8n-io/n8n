@@ -22,6 +22,7 @@ export interface BaseMessagePayload {
 	sessionId: ChatSessionId;
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
+	timeZone?: string;
 }
 
 export interface HumanMessagePayload extends BaseMessagePayload {
@@ -30,6 +31,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	previousMessageId: ChatMessageId | null;
 	attachments: ChatAttachment[];
 	tools: INode[];
+	agentName?: string;
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
 	retryId: ChatMessageId;
@@ -49,13 +51,23 @@ export interface MessageRecord {
 	hideFromUI: boolean;
 }
 
-export const validChatTriggerParamsShape = z.object({
-	availableInChat: z.literal(true),
+const ChatTriggerResponseModeSchema = z.enum([
+	'streaming',
+	'lastNode',
+	'responseNode',
+	'responseNodes',
+]);
+export type ChatTriggerResponseMode = z.infer<typeof ChatTriggerResponseModeSchema>;
+
+export const chatTriggerParamsShape = z.object({
+	availableInChat: z.boolean().optional().default(false),
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),
+			allowedFilesMimeTypes: z.string().optional(),
+			responseMode: ChatTriggerResponseModeSchema.optional(),
 		})
 		.optional(),
 });

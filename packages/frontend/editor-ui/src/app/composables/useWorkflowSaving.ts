@@ -10,6 +10,7 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -29,6 +30,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 export function useWorkflowSaving({
 	router,
@@ -46,7 +48,7 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
-
+	const builderStore = useBuilderStore();
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -140,13 +142,17 @@ export function useWorkflowSaving({
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
+		if (IS_DRAFT_PUBLISH_ENABLED) {
+			return undefined;
+		}
+
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
 
 		if (missingActivatableTriggerNode) {
 			// Automatically deactivate if all activatable triggers are removed
 			return {
-				title: i18n.baseText('workflows.deactivated'),
+				title: i18n.baseText('workflows.autodeactivated'),
 				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
 				type: 'info',
 			};
@@ -216,6 +222,9 @@ export function useWorkflowSaving({
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
+			// Check if AI Builder made edits since last save
+			workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
+
 			const deactivateReason = await getWorkflowDeactivationInfo(
 				currentWorkflow,
 				workflowDataRequest,
@@ -250,6 +259,9 @@ export function useWorkflowSaving({
 			uiStore.stateIsDirty = false;
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
+
+			// Reset AI Builder edits flag only after successful save
+			builderStore.resetAiBuilderMadeEdits();
 
 			return true;
 		} catch (error) {

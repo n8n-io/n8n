@@ -1,8 +1,8 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { AgentExecutor } from 'langchain/agents';
-import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
-import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import type { BufferWindowMemory } from 'langchain/memory';
+import { AgentExecutor } from '@langchain/classic/agents';
+import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
+import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
+import type { BufferWindowMemory } from '@langchain/classic/memory';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
@@ -18,7 +18,7 @@ import {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { promptTypeOptions } from '@utils/descriptions';
+import { promptTypeOptionsDeprecated } from '@utils/descriptions';
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
@@ -29,7 +29,7 @@ import { getProxyAgent } from '@utils/httpProxyAgent';
 const properties: INodeProperties[] = [
 	assistantRLC,
 	{
-		...promptTypeOptions,
+		...promptTypeOptionsDeprecated,
 		name: 'prompt',
 	},
 	{
