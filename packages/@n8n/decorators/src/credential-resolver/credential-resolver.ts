@@ -10,6 +10,12 @@ import type {
  */
 export type CredentialResolverConfiguration = Record<string, unknown>;
 
+export type CredentialResolverHandle = {
+	configuration: CredentialResolverConfiguration;
+	resolverName: string;
+	resolverId: string;
+};
+
 /**
  * Metadata describing a credential resolver type for UI integration and discovery.
  */
@@ -43,7 +49,7 @@ export interface ICredentialResolver {
 	getSecret(
 		credentialId: string,
 		context: ICredentialContext,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	/**
@@ -54,7 +60,7 @@ export interface ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		data: ICredentialDataDecryptedObject,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<void>;
 
 	/**
@@ -65,7 +71,7 @@ export interface ICredentialResolver {
 	deleteSecret?(
 		credentialId: string,
 		context: ICredentialContext,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<void>;
 
 	/**
