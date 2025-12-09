@@ -81,6 +81,7 @@ export class WorkflowService {
 		includeScopes?: boolean,
 		includeFolders?: boolean,
 		onlySharedWithMe?: boolean,
+		requiredScopes: Scope[] = ['workflow:read'],
 	) {
 		let count;
 		let workflows;
@@ -102,7 +103,7 @@ export class WorkflowService {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
 		} else {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: ['workflow:read'],
+				scopes: requiredScopes,
 			});
 		}
 

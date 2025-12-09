@@ -68,7 +68,6 @@ export class McpSettingsController {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 
-	@GlobalScope('mcp:manage')
 	@Get('/workflows', { middlewares: listQueryMiddleware })
 	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
 		const supportedTriggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
@@ -84,7 +83,14 @@ export class McpSettingsController {
 			},
 		};
 
-		const { workflows, count } = await this.workflowService.getMany(req.user, options);
+		const { workflows, count } = await this.workflowService.getMany(
+			req.user,
+			options,
+			false, // includeScopes
+			false, // includeFolders
+			false, // onlySharedWithMe
+			['workflow:update'], // requiredScopes - only return workflows the user can edit
+		);
 
 		res.json({ count, data: workflows });
 	}
