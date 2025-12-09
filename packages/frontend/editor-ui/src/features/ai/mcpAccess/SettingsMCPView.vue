@@ -7,7 +7,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import {
+	LOADING_INDICATOR_TIMEOUT,
+	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
@@ -27,6 +31,7 @@ const mcp = useMcp();
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
+const uiStore = useUIStore();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
@@ -52,6 +57,10 @@ const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+
+const showConnectWorkflowsButton = computed(() => {
+	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
+});
 
 const onTabSelected = async (tab: MCPTabs) => {
 	selectedTab.value = tab;
@@ -153,6 +162,10 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
 	}
 };
+
+const openConnectWorkflowsModal = () => {
+	uiStore.openModal(MCP_CONNECT_WORKFLOWS_MODAL_KEY);
+};
 </script>
 <template>
 	<div :class="$style.container">
@@ -178,16 +191,26 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		>
 			<header :class="$style['tabs-header']">
 				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
-				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+				<div :class="$style.actions">
 					<N8nButton
-						data-test-id="mcp-workflows-refresh-button"
+						v-if="showConnectWorkflowsButton"
+						:label="i18n.baseText('settings.mcp.connectWorkflows')"
+						data-test-id="mcp-connect-workflows-header-button"
 						size="small"
-						type="tertiary"
-						icon="refresh-cw"
-						:square="true"
-						@click="onTableRefresh"
+						type="primary"
+						@click="openConnectWorkflowsModal"
 					/>
-				</N8nTooltip>
+					<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+						<N8nButton
+							data-test-id="mcp-workflows-refresh-button"
+							size="small"
+							type="tertiary"
+							icon="refresh-cw"
+							:square="true"
+							@click="onTableRefresh"
+						/>
+					</N8nTooltip>
+				</div>
 			</header>
 			<main>
 				<WorkflowsTable
@@ -196,6 +219,7 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 					:workflows="availableWorkflows"
 					:loading="workflowsLoading"
 					@remove-mcp-access="onRemoveMCPAccess"
+					@connect-workflows="openConnectWorkflowsModal"
 					@refresh="onRefreshWorkflows"
 				/>
 				<OAuthClientsTable
@@ -227,5 +251,10 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing--2xs);
 }
 </style>

@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	turnOnMcp: [];
+	connectWorkflows: [];
 }>();
 
 const i18n = useI18n();

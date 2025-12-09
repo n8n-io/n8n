@@ -27,6 +27,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
+	connectWorkflows: [];
 }>();
 
 const i18n = useI18n();
@@ -100,8 +101,8 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	}
 };
 
-const navigateToWorkflowList = () => {
-	void router.push({ name: VIEWS.WORKFLOWS });
+const onConnectClick = () => {
+	emit('connectWorkflows');
 };
 </script>
 
@@ -135,7 +136,7 @@ const navigateToWorkflowList = () => {
 							data-test-id="mcp-workflow-table-empty-state-button"
 							type="primary"
 							:label="i18n.baseText('settings.mcp.workflows.table.empty.button.label')"
-							@click="navigateToWorkflowList"
+							@click="onConnectClick"
 						/>
 					</div>
 				</template>
