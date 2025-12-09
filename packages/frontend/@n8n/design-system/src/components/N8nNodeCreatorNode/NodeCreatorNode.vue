@@ -42,7 +42,14 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<ElTag v-if="tag" :class="$style.tag" size="small" round :type="tag.type ?? 'success'">
+				<ElTag
+					v-if="tag"
+					:class="$style.tag"
+					disable-transitions
+					size="small"
+					round
+					:type="tag.type ?? 'success'"
+				>
 					{{ tag.text }}
 				</ElTag>
 				<N8nIcon

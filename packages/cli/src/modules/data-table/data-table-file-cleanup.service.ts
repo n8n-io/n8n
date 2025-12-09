@@ -1,7 +1,7 @@
+import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { promises as fs } from 'fs';
-import path from 'path';
 
 @Service()
 export class DataTableFileCleanupService {
@@ -47,7 +47,7 @@ export class DataTableFileCleanupService {
 			const maxAge = this.globalConfig.dataTable.fileMaxAgeMs;
 
 			for (const file of files) {
-				const filePath = path.join(this.uploadDir, file);
+				const filePath = safeJoinPath(this.uploadDir, file);
 				try {
 					const stats = await fs.stat(filePath);
 					const fileAge = now - stats.mtimeMs;
@@ -74,7 +74,7 @@ export class DataTableFileCleanupService {
 	 * Deletes a specific CSV file by its fileId
 	 */
 	async deleteFile(fileId: string): Promise<void> {
-		const filePath = path.join(this.uploadDir, fileId);
+		const filePath = safeJoinPath(this.uploadDir, fileId);
 		try {
 			await fs.unlink(filePath);
 		} catch (error) {

@@ -102,6 +102,8 @@ const classes = computed(() => ({
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
 	selected: props.selected,
+	waiting: props.data.execution.waiting || props.data.execution.status === 'waiting',
+	running: props.data.execution.running || props.data.execution.waitingForNext,
 	...Object.fromEntries([...nodeClasses.value].map((c) => [c, true])),
 }));
 

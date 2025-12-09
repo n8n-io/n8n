@@ -20,6 +20,7 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -70,6 +71,7 @@ import type {
 } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -151,6 +153,7 @@ export class SourceControlImportService {
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -388,6 +391,7 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
+				isGlobal: true,
 				shared: {
 					project: {
 						id: true,
@@ -418,6 +422,7 @@ export class SourceControlImportService {
 				type: local.type,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+				isGlobal: local.isGlobal,
 			};
 		}) as StatusExportableCredential[];
 	}
@@ -634,7 +639,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -662,9 +667,18 @@ export class SourceControlImportService {
 			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
 			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
-			importedWorkflow.active = existingWorkflow
-				? existingWorkflow.active && !importedWorkflow.isArchived
-				: false;
+			if (existingWorkflow) {
+				if (importedWorkflow.isArchived) {
+					importedWorkflow.active = false;
+					importedWorkflow.activeVersionId = null;
+				} else {
+					importedWorkflow.active = !!existingWorkflow.activeVersionId;
+					importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
+				}
+			} else {
+				importedWorkflow.active = false;
+				importedWorkflow.activeVersionId = null;
+			}
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -695,9 +709,10 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			if (existingWorkflow?.active) {
-				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
-			}
+			await this.activateImportedWorkflowIfAlreadyActive(
+				{ existingWorkflow, importedWorkflow },
+				userId,
+			);
 
 			importWorkflowsResult.push({
 				id: importedWorkflow.id ?? 'unknown',
@@ -724,19 +739,28 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflow({
-		existingWorkflow,
-		importedWorkflow,
-	}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport }) {
+	private async activateImportedWorkflowIfAlreadyActive(
+		{
+			existingWorkflow,
+			importedWorkflow,
+		}: {
+			existingWorkflow?: WorkflowEntity;
+			importedWorkflow: IWorkflowToImport;
+		},
+		userId: string,
+	) {
+		if (!existingWorkflow?.activeVersionId) return;
+		let didAdd = false;
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
-			if (importedWorkflow.active) {
+			if (importedWorkflow.activeVersionId) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				didAdd = true;
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -747,6 +771,21 @@ export class SourceControlImportService {
 				{ id: existingWorkflow.id },
 				{ versionId: importedWorkflow.versionId },
 			);
+			if (didAdd) {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'activated',
+					userId,
+				});
+			} else {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'deactivated',
+					userId,
+				});
+			}
 		}
 	}
 
@@ -778,7 +817,7 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id } = credential;
+				const { name, type, data, id, isGlobal = false } = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
@@ -792,7 +831,7 @@ export class SourceControlImportService {
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert(newCredentialObject, ['id']);
+				await this.credentialsRepository.upsert({ ...newCredentialObject, isGlobal }, ['id']);
 
 				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
@@ -855,7 +894,7 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				await this.tagRepository.upsert(tagCopy, {
+				await this.tagRepository.upsert(tagCopy as QueryDeepPartialEntity<TagEntity>, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});

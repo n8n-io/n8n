@@ -509,7 +509,7 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: 24px;
 	color: var(--color--text--shade-1);
 	padding: 0 var(--spacing--2xs);
@@ -542,7 +542,7 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: 18px;
 	color: var(--color--text--shade-1);
 	padding: var(--spacing--3xs);

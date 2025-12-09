@@ -20,6 +20,7 @@ export interface WorkflowData {
 	tags?: string[];
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId?: string | null;
 	meta?: WorkflowMetadata;
 }
 
@@ -37,6 +38,7 @@ export interface WorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 	parentFolderId?: string;
 	uiContext?: string;
+	aiBuilderAssisted?: boolean;
 }
 
 export interface WorkflowDataCreate extends WorkflowDataUpdate {

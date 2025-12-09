@@ -290,7 +290,7 @@ const selectColumn: ColumnDef<T> = {
 	},
 	meta: {
 		cellProps: {
-			align: undefined,
+			align: 'start',
 		},
 	},
 };

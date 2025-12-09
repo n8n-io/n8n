@@ -183,6 +183,7 @@ export class ExecutionService {
 		const executionMode = 'retry';
 
 		execution.workflowData.active = false;
+		execution.workflowData.activeVersionId = null;
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {

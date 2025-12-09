@@ -11,7 +11,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
+import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import type {
@@ -26,6 +26,7 @@ import type {
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -114,7 +115,7 @@ export class JobProcessor {
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
-			active: execution.workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(execution.workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,
@@ -220,7 +221,7 @@ export class JobProcessor {
 						finished: false,
 						startedAt: now,
 						stoppedAt: now,
-						data: { resultData: { error, runData: {} } },
+						data: createRunExecutionData({ resultData: { error, runData: {} } }),
 					};
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);

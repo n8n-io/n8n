@@ -4,6 +4,7 @@ import type {
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	DataTableListOptions,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
@@ -171,7 +172,11 @@ export class DataTableService {
 	async addColumn(dataTableId: string, projectId: string, dto: AddDataTableColumnDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+		const result = await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
+		return result;
 	}
 
 	async moveColumn(
@@ -194,7 +199,21 @@ export class DataTableService {
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
 		return true;
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		dto: RenameDataTableColumnDto,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+
+		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {
@@ -261,6 +280,8 @@ export class DataTableService {
 		});
 
 		this.dataTableSizeValidator.reset();
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
 		return result;
 	}
@@ -336,6 +357,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -421,6 +444,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -479,6 +504,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -687,5 +714,110 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables: accessibleDataTables,
 		};
+	}
+
+	async generateDataTableCsv(
+		dataTableId: string,
+		projectId: string,
+	): Promise<{ csvContent: string; dataTableName: string }> {
+		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
+
+		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
+
+		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(
+			dataTableId,
+			{
+				skip: 0,
+			},
+			columns,
+		);
+
+		const csvContent = this.buildCsvContent(rows, columns);
+
+		return {
+			csvContent,
+			dataTableName: dataTable.name,
+		};
+	}
+
+	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
+
+		const userHeaders = sortedColumns.map((col) => col.name);
+		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
+
+		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
+
+		for (const row of rows) {
+			const values: string[] = [];
+
+			values.push(this.escapeCsvValue(row.id));
+
+			for (const column of sortedColumns) {
+				const value = row[column.name];
+				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
+			}
+
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+
+			csvRows.push(values.join(','));
+		}
+
+		return csvRows.join('\n');
+	}
+
+	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
+		if (value === null || value === undefined) {
+			return '';
+		}
+
+		if (columnType === 'date') {
+			if (value instanceof Date || typeof value === 'string') {
+				return this.formatDateForCsv(value);
+			}
+		}
+
+		if (columnType === 'boolean') {
+			return String(value);
+		}
+
+		if (columnType === 'number') {
+			return String(value);
+		}
+
+		return String(value);
+	}
+
+	private formatDateForCsv(date: Date | string): string {
+		if (date instanceof Date) {
+			return date.toISOString();
+		}
+		// If it's already a string, try to parse and format
+		const parsed = new Date(date);
+		return !isNaN(parsed.getTime()) ? parsed.toISOString() : String(date);
+	}
+
+	private escapeCsvValue(value: unknown): string {
+		const str = String(value);
+
+		// RFC 4180 compliant escaping:
+		// - If value contains comma, quote, or newline, wrap in quotes
+		// - Also wrap if value has leading/trailing spaces to prevent trimming
+		// - Escape quotes by doubling them
+		const hasLeadingOrTrailingSpace =
+			str.length > 0 && (str[0] === ' ' || str[str.length - 1] === ' ');
+
+		if (
+			str.includes(',') ||
+			str.includes('"') ||
+			str.includes('\n') ||
+			str.includes('\r') ||
+			hasLeadingOrTrailingSpace
+		) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+
+		return str;
 	}
 }

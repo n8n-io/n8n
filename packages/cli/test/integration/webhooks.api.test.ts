@@ -1,7 +1,6 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { testDb, mockInstance, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import {
 	type INode,
 	type IWorkflowBase,
@@ -66,11 +65,15 @@ class WebhookTestingNode implements INodeType {
 
 describe('Webhook API', () => {
 	const nodeInstance = new WebhookTestingNode();
-	const node = mock<INode>({
+	const node: INode = {
+		id: 'webhook-node-1',
 		name: 'Webhook',
 		type: nodeInstance.description.name,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
 		webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
-	});
+	};
 	const workflowData = { active: true, nodes: [node] } as IWorkflowBase;
 
 	const nodeTypes = mockInstance(NodeTypes);
@@ -91,7 +94,7 @@ describe('Webhook API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		await createWorkflow(workflowData, user);
+		await createActiveWorkflow(workflowData, user);
 		await initActiveWorkflowManager();
 	});
 

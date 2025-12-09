@@ -17,6 +17,7 @@ import { AGENT_EDITOR_MODAL_KEY, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHu
 import { useRouter } from 'vue-router';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
+import { useI18n } from '@n8n/i18n';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
@@ -25,6 +26,7 @@ const message = useMessage();
 const usersStore = useUsersStore();
 const router = useRouter();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
+const i18n = useI18n();
 
 const agentFilter = ref<ChatAgentFilter>({
 	search: '',
@@ -41,19 +43,21 @@ const allModels = computed(() =>
 
 const agents = computed(() => filterAndSortAgents(allModels.value, agentFilter.value));
 
-const providerOptions = [
-	{ label: 'All', value: '' },
-	{ label: 'Custom agents', value: 'custom-agent' },
-	{ label: 'n8n workflows', value: 'n8n' },
-] as const;
+const providerOptions = computed(
+	() =>
+		[
+			{ label: i18n.baseText('chatHub.agents.filter.all'), value: '' },
+			{ label: i18n.baseText('chatHub.agents.filter.customAgents'), value: 'custom-agent' },
+			{ label: i18n.baseText('chatHub.agents.filter.n8nWorkflows'), value: 'n8n' },
+		] as const,
+);
 
-const sortOptions = [
-	{ label: 'Sort by last updated', value: 'updatedAt' },
-	{ label: 'Sort by created', value: 'createdAt' },
-];
+const sortOptions = computed(() => [
+	{ label: i18n.baseText('chatHub.agents.sort.updatedAt'), value: 'updatedAt' },
+	{ label: i18n.baseText('chatHub.agents.sort.createdAt'), value: 'createdAt' },
+]);
 
 function handleCreateAgent() {
-	chatStore.currentEditingAgent = null;
 	uiStore.openModalWithData({
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
@@ -76,28 +80,23 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 	}
 
 	if (model.provider === 'custom-agent') {
-		try {
-			await chatStore.fetchCustomAgent(model.agentId);
-			uiStore.openModalWithData({
-				name: AGENT_EDITOR_MODAL_KEY,
-				data: {
-					agentId: model.agentId,
-					credentials: credentialsByProvider,
-				},
-			});
-		} catch (error) {
-			toast.showError(error, 'Failed to load agent');
-		}
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId: model.agentId,
+				credentials: credentialsByProvider,
+			},
+		});
 	}
 }
 
 async function handleDeleteAgent(agentId: string) {
 	const confirmed = await message.confirm(
-		'Are you sure you want to delete this agent?',
-		'Delete agent',
+		i18n.baseText('chatHub.agents.delete.confirm.message'),
+		i18n.baseText('chatHub.agents.delete.confirm.title'),
 		{
-			confirmButtonText: 'Delete',
-			cancelButtonText: 'Cancel',
+			confirmButtonText: i18n.baseText('chatHub.agents.delete.confirm.button'),
+			cancelButtonText: i18n.baseText('chatHub.agents.delete.cancel.button'),
 		},
 	);
 
@@ -107,9 +106,9 @@ async function handleDeleteAgent(agentId: string) {
 
 	try {
 		await chatStore.deleteCustomAgent(agentId, credentialsByProvider.value);
-		toast.showMessage({ type: 'success', title: 'Agent deleted successfully' });
+		toast.showMessage({ type: 'success', title: i18n.baseText('chatHub.agents.delete.success') });
 	} catch (error) {
-		toast.showError(error, 'Could not delete the agent');
+		toast.showError(error, i18n.baseText('chatHub.agents.delete.error'));
 	}
 }
 
@@ -129,14 +128,13 @@ watch(
 		<div :class="[$style.container, { [$style.isMobileDevice]: isMobileDevice }]">
 			<div :class="$style.header">
 				<div :class="$style.headerContent">
-					<N8nText tag="h1" size="xlarge" bold>Custom Agents</N8nText>
+					<N8nText tag="h1" size="xlarge" bold>{{ i18n.baseText('chatHub.agents.title') }}</N8nText>
 					<N8nText color="text-light">
-						Use n8n workflow agents or create custom AI agents with specific instructions and
-						behaviors
+						{{ i18n.baseText('chatHub.agents.description') }}
 					</N8nText>
 				</div>
-				<N8nButton icon="plus" type="primary" size="large" @click="handleCreateAgent">
-					New Agent
+				<N8nButton icon="plus" type="primary" size="medium" @click="handleCreateAgent">
+					{{ i18n.baseText('chatHub.agents.button.newAgent') }}
 				</N8nButton>
 			</div>
 
@@ -144,7 +142,7 @@ watch(
 				<N8nInput
 					v-model="agentFilter.search"
 					:class="$style.search"
-					placeholder="Search"
+					:placeholder="i18n.baseText('chatHub.agents.search.placeholder')"
 					clearable
 				>
 					<template #prefix>
@@ -161,7 +159,7 @@ watch(
 					/>
 				</N8nSelect>
 
-				<N8nSelect v-model="agentFilter.sortBy" :class="$style.sort" placeholder="Sort by">
+				<N8nSelect v-model="agentFilter.sortBy" :class="$style.sort">
 					<N8nOption
 						v-for="option in sortOptions"
 						:key="option.value"
@@ -175,12 +173,14 @@ watch(
 
 			<div v-else-if="allModels.length === 0" :class="$style.empty">
 				<N8nText color="text-light" size="medium">
-					No agents available. Create your first custom agent to get started.
+					{{ i18n.baseText('chatHub.agents.empty.noAgents') }}
 				</N8nText>
 			</div>
 
 			<div v-else-if="agents.length === 0" :class="$style.empty">
-				<N8nText color="text-light" size="medium"> No agents match your search criteria. </N8nText>
+				<N8nText color="text-light" size="medium">
+					{{ i18n.baseText('chatHub.agents.empty.noMatch') }}
+				</N8nText>
 			</div>
 
 			<div v-else :class="$style.agentsGrid">

@@ -271,7 +271,7 @@ export async function execute(
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
 		if (nodeVersion >= 2.4) {
-			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+			item = convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
 		}
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);

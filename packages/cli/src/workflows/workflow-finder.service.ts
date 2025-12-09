@@ -24,6 +24,7 @@ export class WorkflowFinderService {
 		options: {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
+			includeActiveVersion?: boolean;
 			em?: EntityManager;
 		} = {},
 	) {
@@ -50,6 +51,7 @@ export class WorkflowFinderService {
 			where,
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
+			includeActiveVersion: options.includeActiveVersion,
 			em: options.em,
 		});
 
