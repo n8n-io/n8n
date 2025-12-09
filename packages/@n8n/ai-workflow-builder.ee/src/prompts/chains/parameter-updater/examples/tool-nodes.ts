@@ -1,4 +1,4 @@
-import type { NodeTypeExamples } from '../../types';
+import type { NodeTypeExamples } from '../types';
 
 export const TOOL_NODE_EXAMPLES: NodeTypeExamples = {
 	patterns: ['*Tool'],

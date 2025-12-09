@@ -5,20 +5,24 @@
  * Pattern matching is used to find relevant content based on node type.
  */
 
-import { RESOURCE_LOCATOR_EXAMPLES } from './examples/advanced/resource-locator-examples';
-import { TOOL_NODE_EXAMPLES } from './examples/advanced/tool-node-examples';
-import { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
-import { SET_NODE_EXAMPLES } from './examples/basic/set-node-examples';
-import { SIMPLE_UPDATE_EXAMPLES } from './examples/basic/simple-updates';
-import { SWITCH_NODE_EXAMPLES } from './examples/basic/switch-node-examples';
-import { HTTP_REQUEST_GUIDE } from './node-types/http-request';
-import { IF_NODE_GUIDE } from './node-types/if-node';
-import { SET_NODE_GUIDE } from './node-types/set-node';
-import { SWITCH_NODE_GUIDE } from './node-types/switch-node';
-import { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
-import { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
-import { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
-import { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
+import {
+	IF_NODE_EXAMPLES,
+	RESOURCE_LOCATOR_EXAMPLES,
+	SET_NODE_EXAMPLES,
+	SIMPLE_UPDATE_EXAMPLES,
+	SWITCH_NODE_EXAMPLES,
+	TOOL_NODE_EXAMPLES,
+} from './examples';
+import {
+	HTTP_REQUEST_GUIDE,
+	IF_NODE_GUIDE,
+	RESOURCE_LOCATOR_GUIDE,
+	SET_NODE_GUIDE,
+	SWITCH_NODE_GUIDE,
+	SYSTEM_MESSAGE_GUIDE,
+	TEXT_FIELDS_GUIDE,
+	TOOL_NODES_GUIDE,
+} from './guides';
 import type { NodeTypeExamples, NodeTypeGuide, NodeTypePattern, PromptContext } from './types';
 
 // ============================================================================

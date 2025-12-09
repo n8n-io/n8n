@@ -1,4 +1,4 @@
-import type { NodeTypeExamples } from '../../types';
+import type { NodeTypeExamples } from '../types';
 
 export const IF_NODE_EXAMPLES: NodeTypeExamples = {
 	patterns: ['n8n-nodes-base.if'],
