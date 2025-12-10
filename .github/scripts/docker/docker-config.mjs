@@ -85,11 +85,11 @@ class BuildContext {
 			.substring(0, 128);
 	}
 
-	buildMatrix(platforms) {
-		const runners = {
-			'linux/amd64': 'blacksmith-4vcpu-ubuntu-2204',
-			'linux/arm64': 'blacksmith-4vcpu-ubuntu-2204-arm',
-		};
+  buildMatrix(platforms) {
+    const runners = {
+      'linux/amd64': 'ubuntu-22.04',
+      'linux/arm64': 'ubuntu-22.04-arm64',
+    };
 
 		const matrix = {
 			platform: [],
