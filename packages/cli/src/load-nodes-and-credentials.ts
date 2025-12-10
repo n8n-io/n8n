@@ -157,8 +157,14 @@ export class LoadNodesAndCredentials {
 		if (!loader) {
 			return undefined;
 		}
-		const pathPrefix = `/icons/${packageName}/`;
-		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
+
+		const withPrefix = (str: string, prefix: string) =>
+			str.startsWith(prefix) ? str : prefix + str;
+		//const dedupeSlashes = (str) => str.replace(/\/+/g, '/');
+
+		const pathPrefix = `/icons/${packageName}`;
+		const urlWithoutPrefix = withPrefix(url.substring(pathPrefix.length), '/');
+		const filePath = path.resolve(loader.directory, urlWithoutPrefix);
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
