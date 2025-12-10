@@ -117,10 +117,6 @@ export const test = base.extend<
 				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
 			);
 
-			console.log(
-				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
-			);
-
 			await use(container);
 			await container.stop();
 		},

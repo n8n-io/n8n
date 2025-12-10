@@ -134,6 +134,58 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 		});
+
+		it('should use latest activation date from workflowPublishHistory when available', () => {
+			const oldDate = '2024-01-01T00:00:00.000Z';
+			const latestActivationDate = '2024-06-15T10:30:00.000Z';
+			workflowsStore.workflow.activeVersion = {
+				...createMockActiveVersion('active-version-1'),
+				createdAt: oldDate,
+				workflowPublishHistory: [
+					{
+						id: 1,
+						createdAt: oldDate,
+						event: 'activated' as const,
+						userId: 'user-1',
+						versionId: 'active-version-1',
+						workflowId: '1',
+					},
+					{
+						id: 2,
+						createdAt: '2024-03-01T00:00:00.000Z',
+						event: 'deactivated' as const,
+						userId: 'user-1',
+						versionId: 'active-version-1',
+						workflowId: '1',
+					},
+					{
+						id: 3,
+						createdAt: latestActivationDate,
+						event: 'activated' as const,
+						userId: 'user-1',
+						versionId: 'active-version-1',
+						workflowId: '1',
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs: {
+						N8nTooltip: {
+							template: '<div><slot name="content" /></div>',
+						},
+						TimeAgo: {
+							props: ['date'],
+							template: '<div data-test-id="time-ago-stub">{{ date }}</div>',
+						},
+					},
+				},
+			});
+
+			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+		});
 	});
 
 	describe('Publish button behavior', () => {

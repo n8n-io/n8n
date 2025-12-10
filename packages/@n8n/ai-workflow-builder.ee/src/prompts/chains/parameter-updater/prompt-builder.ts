@@ -12,6 +12,7 @@ import { IF_NODE_EXAMPLES } from './examples/basic/if-node-examples';
 import { SET_NODE_EXAMPLES } from './examples/basic/set-node-examples';
 import { SIMPLE_UPDATE_EXAMPLES } from './examples/basic/simple-updates';
 import { SWITCH_NODE_EXAMPLES } from './examples/basic/switch-node-examples';
+import { GMAIL_GUIDE } from './node-types/gmail';
 import { HTTP_REQUEST_GUIDE } from './node-types/http-request';
 import { IF_NODE_GUIDE } from './node-types/if-node';
 import { SET_NODE_GUIDE } from './node-types/set-node';
@@ -49,6 +50,8 @@ export class ParameterUpdatePromptBuilder {
 			sections.push(SWITCH_NODE_GUIDE);
 		} else if (this.isHttpRequestNode(context.nodeType)) {
 			sections.push(HTTP_REQUEST_GUIDE);
+		} else if (this.isGmailNode(context.nodeType)) {
+			sections.push(GMAIL_GUIDE);
 		}
 
 		// Add tool node guide if applicable
@@ -149,6 +152,14 @@ export class ParameterUpdatePromptBuilder {
 	private static isHttpRequestNode(nodeType: string): boolean {
 		const category = getNodeTypeCategory(nodeType);
 		return category === 'httpRequest';
+	}
+
+	/**
+	 * Checks if node is a Gmail node
+	 */
+	private static isGmailNode(nodeType: string): boolean {
+		const category = getNodeTypeCategory(nodeType);
+		return category === 'gmail';
 	}
 
 	/**
