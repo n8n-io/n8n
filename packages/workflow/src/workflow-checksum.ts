@@ -57,6 +57,11 @@ function sortObjectKeys(value: unknown): unknown {
 /**
  * Calculates SHA-256 checksum of workflow content fields for conflict detection.
  * Excludes: id, versionId, timestamps, staticData, relations.
+ *
+ * @warning This function uses the Web Crypto API (crypto.subtle) which may not be available
+ * in insecure contexts (HTTP). In browser environments with HTTP connections, crypto.subtle
+ * will be undefined, causing this function to throw an error. For client-side use, always
+ * use the checksum provided by the backend API response instead of calculating it client-side.
  */
 export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Promise<string> {
 	const checksumPayload: Record<string, unknown> = {};

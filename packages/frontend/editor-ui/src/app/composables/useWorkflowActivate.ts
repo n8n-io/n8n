@@ -18,7 +18,6 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -116,8 +115,8 @@ export function useWorkflowActivate() {
 				workflowsStore.setWorkflowInactive(currWorkflowId);
 			}
 
-			if (isCurrentWorkflow) {
-				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflow));
+			if (isCurrentWorkflow && workflow.checksum) {
+				workflowsStore.setWorkflowChecksum(workflow.checksum);
 			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
@@ -195,7 +194,9 @@ export function useWorkflowActivate() {
 
 			if (workflowId === workflowsStore.workflowId) {
 				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
-				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+				if (updatedWorkflow.checksum) {
+					workflowsStore.setWorkflowChecksum(updatedWorkflow.checksum);
+				}
 			}
 
 			void useExternalHooks().run('workflow.published', {
@@ -243,8 +244,8 @@ export function useWorkflowActivate() {
 		try {
 			const updatedWorkflow = await workflowsStore.deactivateWorkflow(workflowId);
 
-			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+			if (workflowId === workflowsStore.workflowId && updatedWorkflow.checksum) {
+				workflowsStore.setWorkflowChecksum(updatedWorkflow.checksum);
 			}
 
 			void useExternalHooks().run('workflow.unpublished', {
