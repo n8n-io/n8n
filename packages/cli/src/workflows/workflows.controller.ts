@@ -35,7 +35,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -256,7 +256,9 @@ export class WorkflowsController {
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
-		return { ...savedWorkflowWithMetaData, scopes };
+		const checksum = await calculateWorkflowChecksum(savedWorkflow);
+
+		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -382,8 +384,9 @@ export class WorkflowsController {
 			delete workflowWithMetaData.shared;
 
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+			const checksum = await calculateWorkflowChecksum(workflow);
 
-			return { ...workflowWithMetaData, scopes };
+			return { ...workflowWithMetaData, scopes, checksum };
 		}
 
 		// sharing disabled
@@ -410,8 +413,9 @@ export class WorkflowsController {
 		}
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes };
+		return { ...workflow, scopes, checksum };
 	}
 
 	@Patch('/:workflowId')
@@ -450,8 +454,9 @@ export class WorkflowsController {
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 
-		return { ...updatedWorkflow, scopes };
+		return { ...updatedWorkflow, scopes, checksum };
 	}
 
 	@Delete('/:workflowId')
@@ -489,7 +494,9 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		return { ...workflow, checksum };
 	}
 
 	@Post('/:workflowId/unarchive')
@@ -510,7 +517,9 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		return { ...workflow, checksum };
 	}
 
 	@Post('/:workflowId/activate')
@@ -531,8 +540,9 @@ export class WorkflowsController {
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes };
+		return { ...workflow, scopes, checksum };
 	}
 
 	@Post('/:workflowId/deactivate')
@@ -543,8 +553,9 @@ export class WorkflowsController {
 		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes };
+		return { ...workflow, scopes, checksum };
 	}
 
 	@Post('/:workflowId/run')
