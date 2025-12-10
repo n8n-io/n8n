@@ -4,6 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import type Stream from 'node:stream';
 
+import type { FileSearchOperation } from './interfaces';
 import { apiRequest } from '../transport';
 
 interface File {
@@ -12,6 +13,17 @@ interface File {
 	mimeType: string;
 	state: string;
 	error?: { message: string };
+}
+
+interface FileStreamData {
+	stream: Stream;
+	mimeType: string;
+}
+
+interface ResumableUploadConfig {
+	endpoint: string;
+	mimeType: string;
+	body?: IDataObject;
 }
 
 const CHUNK_SIZE = 256 * 1024;
@@ -88,11 +100,6 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 	return { fileUri: uploadResponse.file.uri, mimeType: uploadResponse.file.mimeType };
 }
 
-interface FileStreamData {
-	stream: Stream;
-	mimeType: string;
-}
-
 async function getFileStreamFromUrlOrBinary(
 	this: IExecuteFunctions,
 	i: number,
@@ -140,20 +147,12 @@ async function getFileStreamFromUrlOrBinary(
 	};
 }
 
-interface ResumableUploadConfig {
-	endpoint: string;
-	mimeType: string;
-	body?: IDataObject;
-	headers?: IDataObject;
-	fileSize?: number;
-}
-
 async function performResumableUpload(
 	this: IExecuteFunctions,
 	stream: Stream,
 	config: ResumableUploadConfig,
 ): Promise<{ body: IDataObject }> {
-	const { endpoint, mimeType, body, headers = {}, fileSize } = config;
+	const { endpoint, mimeType, body } = config;
 
 	// Initialize the upload
 	const uploadInitResponse = (await apiRequest.call(this, 'POST', endpoint, {
@@ -162,7 +161,6 @@ async function performResumableUpload(
 			'X-Goog-Upload-Command': 'start',
 			'X-Goog-Upload-Header-Content-Type': mimeType,
 			'Content-Type': 'application/json',
-			...headers,
 		},
 		body,
 		option: { returnFullResponse: true },
@@ -181,7 +179,6 @@ async function performResumableUpload(
 			'X-Goog-Upload-Offset': '0',
 			'X-Goog-Upload-Command': 'upload, finalize',
 			'Content-Type': mimeType,
-			...(fileSize && fileSize > 0 && { 'Content-Length': fileSize.toString() }),
 		},
 		body: stream,
 		returnFullResponse: true,
@@ -232,13 +229,6 @@ export async function transferFile(
 	return { fileUri: file.uri, mimeType: file.mimeType };
 }
 
-interface Operation {
-	name: string;
-	done: boolean;
-	error?: { message: string };
-	response?: IDataObject;
-}
-
 export async function createFileSearchStore(
 	this: IExecuteFunctions,
 	displayName: string,
@@ -285,11 +275,19 @@ export async function uploadToFileSearchStore(
 	})) as { body: { name: string } };
 
 	const operationName = uploadResponse.body.name;
-	let operation = (await apiRequest.call(this, 'GET', `/v1beta/${operationName}`)) as Operation;
+	let operation = (await apiRequest.call(
+		this,
+		'GET',
+		`/v1beta/${operationName}`,
+	)) as FileSearchOperation;
 
 	while (!operation.done) {
 		await new Promise((resolve) => setTimeout(resolve, 3000));
-		operation = (await apiRequest.call(this, 'GET', `/v1beta/${operationName}`)) as Operation;
+		operation = (await apiRequest.call(
+			this,
+			'GET',
+			`/v1beta/${operationName}`,
+		)) as FileSearchOperation;
 	}
 
 	if (operation.error) {
