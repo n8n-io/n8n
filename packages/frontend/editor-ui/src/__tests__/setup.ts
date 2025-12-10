@@ -41,36 +41,8 @@ beforeAll(() => {
 	}
 });
 
-// Preserve originals for pointer event patches
-const OriginalMouseEvent = window.MouseEvent;
-const OriginalPointerEvent = window.PointerEvent || window.MouseEvent;
-
-// Patched MouseEvent - fixes defaultPrevented for Reka UI
-class PatchedMouseEvent extends OriginalMouseEvent {
-	constructor(type: string, eventInit?: MouseEventInit) {
-		super(type, eventInit);
-		Object.defineProperty(this, 'defaultPrevented', {
-			get: () => false,
-		});
-	}
-}
-
-// Patched PointerEvent - fixes defaultPrevented for Reka UI
-class PatchedPointerEvent extends OriginalPointerEvent {
-	constructor(type: string, eventInit?: PointerEventInit) {
-		super(type, eventInit);
-		Object.defineProperty(this, 'defaultPrevented', {
-			get: () => false,
-		});
-	}
-}
-
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {
-	// Stub pointer events for Reka UI compatibility
-	vi.stubGlobal('MouseEvent', PatchedMouseEvent);
-	vi.stubGlobal('PointerEvent', PatchedPointerEvent);
-
 	// Create app-grid container for toasts
 	const appGrid = document.createElement('div');
 	appGrid.id = 'app-grid';
@@ -83,9 +55,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	// Unstub pointer events
-	vi.unstubAllGlobals();
-
 	// Clean up only our specific DOM containers to avoid interfering with Vue's unmounting
 	const appGrid = document.getElementById('app-grid');
 	const appModals = document.getElementById(APP_MODALS_ELEMENT_ID);

@@ -1,26 +1,10 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-
-// Mock N8nTooltip
-vi.mock('@n8n/design-system', async (importOriginal) => {
-	const original = await importOriginal<object>();
-	return {
-		...original,
-		N8nTooltip: {
-			name: 'N8nTooltip',
-			template: `
-        <div>
-          <slot name="content" />
-          <slot />
-        </div>
-      `,
-		},
-	};
-});
 
 const baseUser: UsersList['items'][number] = {
 	id: '1',
@@ -76,7 +60,7 @@ describe('SettingsUsersProjectsCell', () => {
 		expect(screen.getByText('Project B')).toBeInTheDocument();
 	});
 
-	it('should show a tooltip with additional projects when list is long', () => {
+	it('should show a tooltip with additional projects when list is long', async () => {
 		const props = {
 			data: {
 				...baseUser,
@@ -88,18 +72,25 @@ describe('SettingsUsersProjectsCell', () => {
 				],
 			},
 		};
-		renderComponent({ props });
+		const { baseElement } = renderComponent({ props });
 
 		// Visible projects
 		expect(screen.getByText('Project A')).toBeInTheDocument();
 		expect(screen.getByText('Project B')).toBeInTheDocument();
 
-		// Additional count
-		expect(screen.getByText('+ 2')).toBeInTheDocument();
+		// Additional count - hover to show tooltip
+		const additionalCount = screen.getByText('+ 2');
+		expect(additionalCount).toBeInTheDocument();
+
+		await userEvent.hover(additionalCount);
 
 		// Projects inside the tooltip content
-		const list = screen.getByRole('list');
-		expect(within(list).getByText('Project C')).toBeInTheDocument();
-		expect(within(list).getByText('Project D')).toBeInTheDocument();
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toBeInTheDocument();
+			const list = within(tooltip as HTMLElement).getByRole('list');
+			expect(within(list).getByText('Project C')).toBeInTheDocument();
+			expect(within(list).getByText('Project D')).toBeInTheDocument();
+		});
 	});
 });
