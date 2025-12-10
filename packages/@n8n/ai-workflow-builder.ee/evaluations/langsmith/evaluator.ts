@@ -98,7 +98,7 @@ export function createLangsmithEvaluator(
 	parsedNodeTypes: INodeTypeDescription[],
 ): (rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]> {
 	// eslint-disable-next-line complexity
-	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
+	return async (rootRun: Run, example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		// Validate and extract outputs
 		const validation = validateRunOutputs(rootRun.outputs);
 		if (validation.error) {
@@ -111,10 +111,29 @@ export function createLangsmithEvaluator(
 			];
 		}
 
+		let referenceWorkflow: SimpleWorkflow | SimpleWorkflow[] | undefined = undefined;
+		let referenceWorkflows: SimpleWorkflow[] | undefined = undefined;
+		// Extract reference workflow from example outputs if available
+		if (example?.outputs) {
+			const exampleOutputs = example.outputs as Record<string, unknown>;
+			if (Array.isArray(exampleOutputs.workflowJSON)) {
+				referenceWorkflows = [];
+				for (const workflow of exampleOutputs.workflowJSON) {
+					if (isSimpleWorkflow(workflow)) {
+						referenceWorkflows.push(workflow);
+					}
+				}
+			}
+			if (isSimpleWorkflow(exampleOutputs.workflowJSON)) {
+				referenceWorkflow = exampleOutputs.workflowJSON;
+			}
+		}
+
 		const evaluationInput: EvaluationInput = {
 			userPrompt: validation.prompt!,
 			generatedWorkflow: validation.workflow!,
-			referenceWorkflow: validation.referenceWorkflow,
+			referenceWorkflow,
+			referenceWorkflows,
 		};
 
 		try {
@@ -241,7 +260,7 @@ export function createLangsmithEvaluator(
 			results.push(categoryToResult('programmatic.fromAi', programmaticResult.fromAi));
 
 			// Add workflow similarity if available
-			if (programmaticResult.similarity) {
+			if (programmaticResult.similarity !== null && programmaticResult.similarity !== undefined) {
 				results.push(categoryToResult('programmatic.similarity', programmaticResult.similarity));
 			}
 
