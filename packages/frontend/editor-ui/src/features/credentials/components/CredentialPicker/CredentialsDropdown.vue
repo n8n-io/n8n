@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, computed } from 'vue';
 import type { PermissionsRecord } from '@n8n/permissions';
 export type CredentialOption = {
 	id: string;
@@ -24,8 +24,20 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const selectRefs = ref<InstanceType<typeof N8nSelect> | null>(null);
+const filter = ref('');
 
-const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
+function matches(needle: string, haystack: string) {
+	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+}
+
+const filteredOptions = computed(() => {
+	if (!filter.value) return props.credentialOptions;
+	return props.credentialOptions.filter((option) => matches(filter.value, option.name));
+});
+
+const onFilter = (newFilter = '') => {
+	filter.value = newFilter;
+};
 
 const onCredentialSelected = (credentialId: string) => {
 	emit('credentialSelected', credentialId);
@@ -42,12 +54,14 @@ const onCreateNewCredential = async () => {
 	<N8nSelect
 		ref="selectRefs"
 		size="small"
+		filterable
+		:filter-method="onFilter"
 		:model-value="props.selectedCredentialId"
-		@update:model-value="onCredentialSelected"
 		:popper-class="$style.selectPopper"
+		@update:model-value="onCredentialSelected"
 	>
 		<N8nOption
-			v-for="item in props.credentialOptions"
+			v-for="item in filteredOptions"
 			:key="item.id"
 			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:label="item.name"
@@ -73,7 +87,7 @@ const onCreateNewCredential = async () => {
 					@click="onCreateNewCredential()"
 				>
 					<N8nIcon size="xsmall" icon="plus" />
-					{{ NEW_CREDENTIALS_TEXT }}
+					{{ i18n.baseText('nodeCredentials.createNew') }}
 				</button>
 			</N8nTooltip>
 		</template>
