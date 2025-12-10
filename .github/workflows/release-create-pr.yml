@@ -1,18 +1,18 @@
-name: 'Release: Create Pull Request'
+name: "Release: Create Pull Request"
 
 on:
   workflow_dispatch:
     inputs:
       base-branch:
-        description: 'The branch, tag, or commit to create this release PR from.'
+        description: "The branch, tag, or commit to create this release PR from."
         required: true
-        default: 'master'
+        default: "master"
 
       release-type:
-        description: 'A SemVer release type.'
+        description: "A SemVer release type."
         required: true
         type: choice
-        default: 'minor'
+        default: "minor"
         options:
           - patch
           - minor
@@ -28,7 +28,7 @@ jobs:
       contents: write
       pull-requests: write
 
-    timeout-minutes: 5
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -83,10 +83,10 @@ jobs:
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
-          base: 'release/${{ env.NEXT_RELEASE }}'
-          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
-          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          base: "release/${{ env.NEXT_RELEASE }}"
+          branch: "release-pr/${{ env.NEXT_RELEASE }}"
+          commit-message: ":rocket: Release ${{ env.NEXT_RELEASE }}"
           delete-branch: true
           labels: release,release:${{ github.event.inputs.release-type }}
-          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
-          body: ${{ steps.generate-body.outputs.content }}
+          title: ":rocket: Release ${{ env.NEXT_RELEASE }}"
+          body-path: "CHANGELOG-${{ env.NEXT_RELEASE }}.md"

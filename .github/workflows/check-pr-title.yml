@@ -7,13 +7,12 @@ on:
       - edited
       - synchronize
     branches:
-      - 'master'
-      - '1.x'
+      - "master"
 
 jobs:
   check-pr-title:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - name: Validate PR title
         uses: n8n-io/validate-n8n-pull-request-title@c3b6fd06bda12eebd57a592c0cf3b747d5b73569 # v2.4.0

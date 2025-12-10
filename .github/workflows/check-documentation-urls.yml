@@ -4,14 +4,14 @@ on:
   release:
     types: [published]
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
   check-docs-urls:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 5
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -31,7 +31,7 @@ jobs:
         if: failure()
         with:
           status: ${{ job.status }}
-          channel: '#alerts-build'
+          channel: "#alerts-build"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Documentation URLs check failed >

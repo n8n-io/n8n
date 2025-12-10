@@ -27,7 +27,7 @@ jobs:
     name: Publish to NPM
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       id-token: write
     env:
@@ -103,7 +103,7 @@ jobs:
     needs: [publish-to-npm, publish-to-docker-hub]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 5
+    timeout-minutes: 30
 
     permissions:
       contents: write
@@ -124,7 +124,7 @@ jobs:
     needs: [publish-to-npm, publish-to-docker-hub]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 5
+    timeout-minutes: 30
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
