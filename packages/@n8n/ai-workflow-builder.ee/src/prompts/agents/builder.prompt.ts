@@ -76,6 +76,7 @@ ALWAYS check node details and set connectionParameters explicitly.`;
 const CONNECTION_PARAMETERS = `- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
 - AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
+- Vector Store insert for AI Agent: reasoning="Vector store will be used for AI Agent needs retrieve-as-tool mode", parameters={{ mode: "retrieve-as-tool" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure`;
 
