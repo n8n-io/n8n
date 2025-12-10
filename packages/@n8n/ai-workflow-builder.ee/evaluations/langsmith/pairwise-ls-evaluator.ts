@@ -1,8 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
+import { traceable } from 'langsmith/traceable';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { generateWorkflow } from './pairwise-generator';
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { PairwiseEvaluationResult } from '../chains/pairwise-evaluator';
 import {
 	runJudgePanel,
@@ -17,15 +21,15 @@ import {
 // Types
 // ============================================================================
 
-interface PairwiseGeneratorOutput {
-	workflow: SimpleWorkflow;
+interface PairwiseTargetOutput {
 	prompt: string;
+	evals: EvalCriteria;
 }
 
-function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGeneratorOutput {
+function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTargetOutput {
 	if (!outputs || typeof outputs !== 'object') return false;
 	const obj = outputs as Record<string, unknown>;
-	return obj.workflow !== undefined && typeof obj.prompt === 'string';
+	return typeof obj.prompt === 'string';
 }
 
 // ============================================================================
@@ -180,63 +184,78 @@ function buildMultiGenerationResults(
 /**
  * Creates a LangSmith evaluator for pairwise workflow evaluation.
  *
- * The evaluator runs a panel of judges on each generated workflow and
- * returns aggregated metrics.
+ * The evaluator generates workflows and runs a panel of judges on each.
+ * All generation happens here for consistent tracing structure.
  *
- * @param llm - Language model for judge evaluation
+ * @param llm - Language model for generation and judge evaluation
  * @param numJudges - Number of judges to run per workflow
- * @param numGenerations - Number of generations per example (for multi-gen mode)
+ * @param numGenerations - Number of generations per example
+ * @param parsedNodeTypes - Node types for generation (required)
+ * @param featureFlags - Feature flags for generation
  */
 export function createPairwiseLangsmithEvaluator(
 	llm: BaseChatModel,
 	numJudges: number,
 	numGenerations: number = 1,
+	parsedNodeTypes?: INodeTypeDescription[],
+	featureFlags?: BuilderFeatureFlags,
 ) {
-	return async (rootRun: Run, example?: Example): Promise<LangsmithEvaluationResult[]> => {
+	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		const outputs = rootRun.outputs;
 
-		// Validate outputs
-		if (!isPairwiseGeneratorOutput(outputs)) {
+		// Validate outputs (now just prompt pass-through from target)
+		if (!isPairwiseTargetOutput(outputs)) {
 			return [
 				{
 					key: 'pairwise_primary',
 					score: 0,
-					comment: 'Invalid output - missing workflow or prompt',
+					comment: 'Invalid output - missing prompt',
 				},
 				{ key: 'pairwise_diagnostic', score: 0 },
 			];
 		}
 
-		// Extract evaluation criteria from example inputs
-		const exampleInputs = example?.inputs as { evals?: EvalCriteria } | undefined;
-		const evalCriteria: EvalCriteria = exampleInputs?.evals ?? { dos: '', donts: '' };
+		// Validate we have node types for generation
+		if (!parsedNodeTypes) {
+			return [
+				{
+					key: 'pairwise_primary',
+					score: 0,
+					comment: 'Missing parsedNodeTypes - cannot generate workflows',
+				},
+				{ key: 'pairwise_diagnostic', score: 0 },
+			];
+		}
+
+		// Get evaluation criteria from outputs (passed through from target)
+		const evalCriteria: EvalCriteria = outputs.evals ?? { dos: '', donts: '' };
+		const { prompt } = outputs;
+
+		// Generate ALL workflows in evaluator for consistent trace structure
+		const generationResults: GenerationResult[] = [];
+
+		for (let i = 0; i < numGenerations; i++) {
+			// Wrap each generation in traceable for proper LangSmith visibility
+			const generate = traceable(
+				async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
+				{ name: `generation_${i + 1}`, run_type: 'chain' },
+			);
+			const workflow = await generate();
+			const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
+			generationResults.push({ workflow, ...panelResult });
+		}
 
 		if (numGenerations === 1) {
-			// Single generation: run judge panel on the workflow
-			const panelResult = await runJudgePanel(llm, outputs.workflow, evalCriteria, numJudges);
-
+			const result = generationResults[0];
 			return buildSingleGenerationResults(
-				panelResult.judgeResults,
+				result.judgeResults,
 				numJudges,
-				panelResult.primaryPasses,
-				panelResult.majorityPass,
-				panelResult.avgDiagnosticScore,
+				result.primaryPasses,
+				result.majorityPass,
+				result.avgDiagnosticScore,
 			);
 		} else {
-			// Multi-generation: Note - in the refactored version, multi-generation
-			// would need to be handled differently since we only have one workflow
-			// from the generator. For now, we evaluate the single workflow.
-			// TODO: Consider if multi-generation should regenerate in the evaluator
-			const panelResult = await runJudgePanel(llm, outputs.workflow, evalCriteria, numJudges);
-
-			const generationResult: GenerationResult = {
-				workflow: outputs.workflow,
-				...panelResult,
-			};
-
-			// For single workflow, create aggregation with just one generation
-			const aggregation = aggregateGenerations([generationResult]);
-
+			const aggregation = aggregateGenerations(generationResults);
 			return buildMultiGenerationResults(aggregation, numJudges);
 		}
 	};

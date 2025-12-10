@@ -1,6 +1,4 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { getLangchainCallbacks } from 'langsmith/langchain';
-import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
@@ -21,78 +19,28 @@ export interface PairwiseDatasetInput {
 	prompt: string;
 }
 
-export interface PairwiseGeneratorOutput {
-	workflow: SimpleWorkflow;
-	prompt: string;
-}
-
 // ============================================================================
 // Generator Factory
 // ============================================================================
 
 /**
- * Creates a workflow generator function for LangSmith evaluation.
- * The generator only produces workflows - evaluation is done by the evaluator.
+ * Creates a pass-through target function for LangSmith evaluation.
+ * All generation happens in the evaluator for consistent tracing.
  *
- * Uses traceable wrapper for proper LangSmith context propagation.
- *
- * @param parsedNodeTypes - Available node types
- * @param llm - Language model for generation
- * @param featureFlags - Optional feature flags
- * @param runName - Optional run name prefix
- * @returns Target function for LangSmith evaluate()
+ * @returns Target function for LangSmith evaluate() that passes inputs through
  */
-export function createPairwiseGenerator(
-	parsedNodeTypes: INodeTypeDescription[],
-	llm: BaseChatModel,
-	featureFlags?: BuilderFeatureFlags,
-	runName?: string,
-) {
-	// Wrap with traceable for proper LangSmith context propagation
-	const generateWorkflow = traceable(
-		async (inputs: PairwiseDatasetInput): Promise<PairwiseGeneratorOutput> => {
-			const runId = generateRunId();
-
-			// Get LangChain callbacks linked to current traceable context
-			// This is the official bridge between LangSmith's traceable and LangChain callbacks
-			const callbacks = await getLangchainCallbacks();
-
-			// Create agent for this run
-			const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags, runName);
-
-			// Generate workflow - pass callbacks for proper trace linking
-			await consumeGenerator(
-				agent.chat(
-					getChatPayload('pairwise-gen', inputs.prompt, runId, featureFlags),
-					'pairwise-gen-user',
-					undefined, // abortSignal
-					callbacks, // externalCallbacks for LangSmith tracing
-				),
-			);
-
-			// Get generated workflow
-			const state = await agent.getState(runId, 'pairwise-gen-user');
-
-			if (!state.values || !isWorkflowStateValues(state.values)) {
-				throw new Error('Invalid workflow state: workflow or messages missing');
-			}
-
-			return {
-				workflow: state.values.workflowJSON,
-				prompt: inputs.prompt,
-			};
-		},
-		{ name: 'pairwise_workflow_generation', run_type: 'chain' },
-	);
-
-	return generateWorkflow;
+export function createPairwiseTarget() {
+	return async (inputs: PairwiseDatasetInput): Promise<PairwiseDatasetInput> => {
+		// Pass-through: evaluator will handle all generation
+		return inputs;
+	};
 }
 
 /**
- * Generate a single workflow without LangSmith tracing.
- * Used for local evaluation mode.
+ * Generate a single workflow.
+ * Used for local evaluation and regeneration in multi-generation mode.
  */
-export async function generateWorkflowLocal(
+export async function generateWorkflow(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	prompt: string,

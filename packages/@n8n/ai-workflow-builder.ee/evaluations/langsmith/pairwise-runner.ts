@@ -2,7 +2,7 @@ import { evaluate } from 'langsmith/evaluation';
 import type { Example } from 'langsmith/schemas';
 import pc from 'picocolors';
 
-import { createPairwiseGenerator, generateWorkflowLocal } from './pairwise-generator';
+import { createPairwiseTarget, generateWorkflow } from './pairwise-generator';
 import { createPairwiseLangsmithEvaluator, evaluateWorkflowLocally } from './pairwise-ls-evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { setupTestEnvironment } from '../core/environment';
@@ -200,19 +200,20 @@ export async function runPairwiseLangsmithEvaluation(
 		const exampleCount = typeof data === 'string' ? '(all)' : data.length;
 		log.info(`➔ Running ${exampleCount} example(s) × ${repetitions} rep(s)`);
 
-		// Create generator and evaluator
-		const generateWorkflow = createPairwiseGenerator(
-			parsedNodeTypes,
+		// Create target (pass-through) and evaluator (does all generation + judging)
+		const target = createPairwiseTarget();
+		const evaluator = createPairwiseLangsmithEvaluator(
 			llm,
+			numJudges,
+			numGenerations,
+			parsedNodeTypes,
 			featureFlags,
-			experimentName,
 		);
-		const evaluator = createPairwiseLangsmithEvaluator(llm, numJudges, numGenerations);
 
 		const evalStartTime = Date.now();
 
 		// Run evaluation using LangSmith's built-in features
-		await evaluate(generateWorkflow, {
+		await evaluate(target, {
 			data,
 			evaluators: [evaluator],
 			maxConcurrency: concurrency,
@@ -304,7 +305,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				const genStartTime = Date.now();
 
 				// Generate workflow
-				const workflow = await generateWorkflowLocal(parsedNodeTypes, llm, prompt, featureFlags);
+				const workflow = await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags);
 				const genTime = (Date.now() - genStartTime) / 1000;
 
 				log.verbose(
