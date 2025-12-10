@@ -1,31 +1,12 @@
-import type {
-	ClientOAuth2Options,
-	OAuth2AuthenticationMethod,
-	OAuth2CredentialData,
-	OAuth2GrantType,
-} from '@n8n/client-oauth2';
+import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
-import axios from 'axios';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
-import {
-	ensureError,
-	type ICredentialDataDecryptedObject,
-	jsonParse,
-	jsonStringify,
-} from 'n8n-workflow';
-import pkceChallenge from 'pkce-challenge';
-import * as qs from 'querystring';
+import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
-import {
-	oAuthAuthorizationServerMetadataSchema,
-	dynamicClientRegistrationResponseSchema,
-} from './oauth2-dynamic-client-registration.schema';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
 import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
 import { Logger } from '@n8n/backend-common';
@@ -43,123 +24,12 @@ export class OAuth2CredentialController {
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.oauthService.getCredential(req);
-		const oauthCredentials: OAuth2CredentialData =
-			await this.oauthService.getOAuthCredentials<OAuth2CredentialData>(credential);
 
-		const toUpdate: ICredentialDataDecryptedObject = {};
-
-		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			const serverUrl = new URL(oauthCredentials.serverUrl);
-			const { data } = await axios.get<unknown>(
-				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
-			);
-			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
-			if (!metadataValidation.success) {
-				throw new BadRequestError(
-					`Invalid OAuth2 server metadata: ${metadataValidation.error.issues.map((e) => e.message).join(', ')}`,
-				);
-			}
-
-			const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
-				metadataValidation.data;
-			oauthCredentials.authUrl = authorization_endpoint;
-			oauthCredentials.accessTokenUrl = token_endpoint;
-			toUpdate.authUrl = authorization_endpoint;
-			toUpdate.accessTokenUrl = token_endpoint;
-			const scope = scopes_supported ? scopes_supported.join(' ') : undefined;
-			if (scope) {
-				oauthCredentials.scope = scope;
-				toUpdate.scope = scope;
-			}
-
-			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
-				metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
-				metadataValidation.data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
-				metadataValidation.data.code_challenge_methods_supported ?? [],
-			);
-			oauthCredentials.grantType = grantType;
-			toUpdate.grantType = grantType;
-			if (authentication) {
-				oauthCredentials.authentication = authentication;
-				toUpdate.authentication = authentication;
-			}
-
-			const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
-				grantType,
-				authentication,
-			);
-			const registerPayload = {
-				redirect_uris: [`${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`],
-				token_endpoint_auth_method,
-				grant_types,
-				response_types: ['code'],
-				client_name: 'n8n',
-				client_uri: 'https://n8n.io/',
-				scope,
-			};
-
-			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
-
-			const { data: registerResult } = await axios.post<unknown>(
-				registration_endpoint,
-				registerPayload,
-			);
-			const registrationValidation =
-				dynamicClientRegistrationResponseSchema.safeParse(registerResult);
-			if (!registrationValidation.success) {
-				throw new BadRequestError(
-					`Invalid client registration response: ${registrationValidation.error.issues.map((e) => e.message).join(', ')}`,
-				);
-			}
-
-			const { client_id, client_secret } = registrationValidation.data;
-			oauthCredentials.clientId = client_id;
-			toUpdate.clientId = client_id;
-			if (client_secret) {
-				oauthCredentials.clientSecret = client_secret;
-				toUpdate.clientSecret = client_secret;
-			}
-		}
-
-		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.oauthService.createCsrfState({
+		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
 			cid: credential.id,
-			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
-		});
-
-		const oAuthOptions = {
-			...this.convertCredentialToOptions(oauthCredentials),
-			state,
-		};
-
-		if (oauthCredentials.authQueryParameters) {
-			oAuthOptions.query = qs.parse(oauthCredentials.authQueryParameters);
-		}
-
-		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
-
-		toUpdate.csrfSecret = csrfSecret;
-		if (oauthCredentials.grantType === 'pkce') {
-			const { code_verifier, code_challenge } = await pkceChallenge();
-			oAuthOptions.query = {
-				...oAuthOptions.query,
-				code_challenge,
-				code_challenge_method: 'S256',
-			};
-			toUpdate.codeVerifier = code_verifier;
-		}
-
-		await this.oauthService.encryptAndSaveData(credential, toUpdate);
-
-		const oAuthObj = new ClientOAuth2(oAuthOptions);
-		const returnUri = oAuthObj.code.getUri();
-
-		this.logger.debug('OAuth2 authorization url created for credential', {
 			userId: req.user.id,
-			credentialId: credential.id,
 		});
-
-		return returnUri.toString();
+		return uri;
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
@@ -262,63 +132,5 @@ export class OAuth2CredentialController {
 		}
 
 		return options;
-	}
-
-	private selectGrantTypeAndAuthenticationMethod(
-		grantTypes: string[],
-		tokenEndpointAuthMethods: string[],
-		codeChallengeMethods: string[],
-	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
-		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
-			if (codeChallengeMethods.includes('S256')) {
-				return { grantType: 'pkce' };
-			}
-
-			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {
-				return { grantType: 'authorizationCode', authentication: 'header' };
-			}
-
-			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
-				return { grantType: 'authorizationCode', authentication: 'body' };
-			}
-		}
-
-		if (grantTypes.includes('client_credentials')) {
-			if (tokenEndpointAuthMethods.includes('client_secret_basic')) {
-				return { grantType: 'clientCredentials', authentication: 'header' };
-			}
-
-			if (tokenEndpointAuthMethods.includes('client_secret_post')) {
-				return { grantType: 'clientCredentials', authentication: 'body' };
-			}
-		}
-
-		throw new BadRequestError('No supported grant type and authentication method found');
-	}
-
-	private mapGrantTypeAndAuthenticationMethod(
-		grantType: OAuth2GrantType,
-		authentication?: OAuth2AuthenticationMethod,
-	) {
-		if (grantType === 'pkce') {
-			return {
-				grant_types: ['authorization_code', 'refresh_token'],
-				token_endpoint_auth_method: 'none',
-			};
-		}
-
-		const tokenEndpointAuthMethod =
-			authentication === 'header' ? 'client_secret_basic' : 'client_secret_post';
-		if (grantType === 'authorizationCode') {
-			return {
-				grant_types: ['authorization_code', 'refresh_token'],
-				token_endpoint_auth_method: tokenEndpointAuthMethod,
-			};
-		}
-
-		return {
-			grant_types: ['client_credentials'],
-			token_endpoint_auth_method: tokenEndpointAuthMethod,
-		};
 	}
 }

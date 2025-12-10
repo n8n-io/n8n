@@ -24,7 +24,7 @@ import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBui
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { type ITelemetryTrackProperties, type INodeExecutionData, jsonParse } from 'n8n-workflow';
+import { type INodeExecutionData, type ITelemetryTrackProperties, jsonParse } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -36,6 +36,27 @@ import { dedupe } from 'n8n-workflow';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
+
+/**
+ * Event types for the Workflow builder journey telemetry event
+ */
+export type WorkflowBuilderJourneyEventType =
+	| 'user_clicked_todo'
+	| 'field_focus_placeholder_in_ndv'
+	| 'no_placeholder_values_left';
+
+interface WorkflowBuilderJourneyEventProperties {
+	node_type?: string;
+	type?: string;
+}
+
+interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
+	workflow_id: string;
+	session_id: string;
+	event_type: WorkflowBuilderJourneyEventType;
+	event_properties?: WorkflowBuilderJourneyEventProperties;
+	last_user_message_id?: string;
+}
 
 interface EndOfStreamingTrackingPayload {
 	userMessageId: string;
@@ -75,7 +96,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		error: 0,
 	});
 
+	// Track whether AI Builder made edits since last save (resets after each save)
+	const aiBuilderMadeEdits = ref(false);
+
 	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
+
+	// Track the last user message ID for telemetry
+	const lastUserMessageId = ref<string | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -155,6 +182,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = clearMessages();
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
+		lastUserMessageId.value = undefined;
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -391,6 +419,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			initialGeneration.value = options.initialGeneration;
 		}
 		const userMessageId = generateMessageId();
+		lastUserMessageId.value = userMessageId;
 		const currentWorkflowJson = getWorkflowSnapshot();
 
 		currentStreamingMessage.value = {
@@ -627,6 +656,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflowData.pinData = restoredPinData;
 		}
 
+		// Mark that AI Builder made edits (will be reset after save)
+		aiBuilderMadeEdits.value = true;
+
 		return {
 			success: true,
 			workflowData,
@@ -637,6 +669,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function getWorkflowSnapshot() {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+	}
+
+	/**
+	 * Returns true if AI Builder made edits since the last save.
+	 * Use resetAiBuilderMadeEdits() after successful save to clear the flag.
+	 */
+	function getAiBuilderMadeEdits(): boolean {
+		return aiBuilderMadeEdits.value;
+	}
+
+	/**
+	 * Resets the AI Builder edits flag.
+	 * Should only be called after a successful workflow save.
+	 */
+	function resetAiBuilderMadeEdits(): void {
+		aiBuilderMadeEdits.value = false;
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
@@ -691,6 +739,43 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		},
 	);
 
+	/**
+	 * Tracks workflow builder journey events for telemetry
+	 * @param eventType - The type of event being tracked
+	 * @param eventProperties - Optional event-specific attributes
+	 */
+	function trackWorkflowBuilderJourney(
+		eventType: WorkflowBuilderJourneyEventType,
+		eventProperties?: WorkflowBuilderJourneyEventProperties,
+	) {
+		const payload: WorkflowBuilderJourneyPayload = {
+			workflow_id: workflowsStore.workflowId,
+			session_id: trackingSessionId.value,
+			event_type: eventType,
+		};
+
+		if (eventProperties && Object.keys(eventProperties).length > 0) {
+			payload.event_properties = eventProperties;
+		}
+
+		if (lastUserMessageId.value) {
+			payload.last_user_message_id = lastUserMessageId.value;
+		}
+
+		telemetry.track('Workflow builder journey', payload);
+	}
+
+	watch(
+		workflowTodos,
+		(newTodos, oldTodos) => {
+			// Only track if we had todos before and now we don't
+			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0) {
+				trackWorkflowBuilderJourney('no_placeholder_values_left');
+			}
+		},
+		{ deep: true },
+	);
+
 	// Public API
 	return {
 		// State
@@ -722,6 +807,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		updateBuilderCredits,
 		getRunningTools,
 		fetchSessionsMetadata,
+		trackWorkflowBuilderJourney,
+		getAiBuilderMadeEdits,
+		resetAiBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
 	};

@@ -1,5 +1,11 @@
 import jwt from 'jsonwebtoken';
-import { ApplicationError, type IWebhookFunctions } from 'n8n-workflow';
+import {
+	ApplicationError,
+	type IWebhookFunctions,
+	type INodeExecutionData,
+	type IDataObject,
+	type MultiPartFormData,
+} from 'n8n-workflow';
 
 import type { WebhookParameters } from '../utils';
 import {
@@ -7,6 +13,7 @@ import {
 	configuredOutputs,
 	getResponseCode,
 	getResponseData,
+	handleFormData,
 	isIpWhitelisted,
 	setupOutputConnection,
 	validateWebhookAuthentication,
@@ -469,6 +476,150 @@ describe('Webhook Utils', () => {
 				authPropertyName,
 			);
 			expect(result).toEqual(decodedPayload);
+		});
+	});
+
+	describe('handleFormData', () => {
+		const mockCopyBinaryFile = jest.fn().mockResolvedValue({
+			data: 'binary-data',
+			mimeType: 'text/plain',
+		});
+
+		const createMockContext = (options: IDataObject = {}): IWebhookFunctions =>
+			({
+				getRequestObject: jest.fn().mockReturnValue({
+					contentType: 'multipart/form-data',
+					headers: { 'content-type': 'multipart/form-data' },
+					params: {},
+					query: {},
+					body: {
+						data: { field1: 'value1' },
+						files: {},
+					},
+				}),
+				getNodeParameter: jest.fn().mockReturnValue(options),
+				nodeHelpers: {
+					copyBinaryFile: mockCopyBinaryFile,
+				},
+			}) as any;
+
+		const mockPrepareOutput = jest.fn().mockImplementation((data: INodeExecutionData) => [[data]]);
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should use default binary property name for empty filename', async () => {
+			const context = createMockContext();
+			const req = context.getRequestObject() as MultiPartFormData.Request;
+			req.body.files = {
+				'': {
+					filepath: '/tmp/file1',
+					originalFilename: '',
+					newFilename: 'temp1',
+					mimetype: 'text/plain',
+				},
+			};
+
+			const result = await handleFormData(context, mockPrepareOutput);
+
+			expect(result.workflowData[0][0].binary).toEqual({
+				data0: expect.any(Object),
+			});
+		});
+
+		it('should use default binary property name for whitespace-only filename', async () => {
+			const context = createMockContext();
+			const req = context.getRequestObject() as MultiPartFormData.Request;
+			req.body.files = {
+				'   ': {
+					filepath: '/tmp/file1',
+					originalFilename: '   ',
+					newFilename: 'temp1',
+					mimetype: 'text/plain',
+				},
+			};
+
+			const result = await handleFormData(context, mockPrepareOutput);
+
+			expect(result.workflowData[0][0].binary).toEqual({
+				data0: expect.any(Object),
+			});
+		});
+
+		it('should handle multiple files with empty/whitespace filenames', async () => {
+			const context = createMockContext();
+			const req = context.getRequestObject() as MultiPartFormData.Request;
+			req.body.files = {
+				'': [
+					{
+						filepath: '/tmp/file1',
+						originalFilename: '',
+						newFilename: 'temp1',
+						mimetype: 'text/plain',
+					},
+					{
+						filepath: '/tmp/file2',
+						originalFilename: '',
+						newFilename: 'temp2',
+						mimetype: 'text/plain',
+					},
+				],
+				'  ': [
+					{
+						filepath: '/tmp/file3',
+						originalFilename: '  ',
+						newFilename: 'temp3',
+						mimetype: 'image/png',
+					},
+				],
+			};
+
+			const result = await handleFormData(context, mockPrepareOutput);
+
+			expect(result.workflowData[0][0].binary).toEqual({
+				data0: expect.any(Object),
+				data1: expect.any(Object),
+				data2: expect.any(Object),
+			});
+		});
+
+		it('should use custom binaryPropertyName with count for empty filenames', async () => {
+			const context = createMockContext({ binaryPropertyName: 'myFile' });
+			const req = context.getRequestObject() as MultiPartFormData.Request;
+			req.body.files = {
+				'': {
+					filepath: '/tmp/file1',
+					originalFilename: '',
+					newFilename: 'temp1',
+					mimetype: 'text/plain',
+				},
+			};
+
+			const result = await handleFormData(context, mockPrepareOutput);
+
+			expect(result.workflowData[0][0].binary).toEqual({
+				myFile0: expect.any(Object),
+			});
+		});
+
+		it('should preserve valid filename without using default naming', async () => {
+			const context = createMockContext();
+			const req = context.getRequestObject() as MultiPartFormData.Request;
+			req.body.files = {
+				validFile: {
+					filepath: '/tmp/file1',
+					originalFilename: 'validFile.txt',
+					newFilename: 'temp1',
+					mimetype: 'text/plain',
+				},
+			};
+
+			const result = await handleFormData(context, mockPrepareOutput);
+
+			expect(result.workflowData[0][0].binary).toEqual({
+				validFile: expect.any(Object),
+			});
 		});
 	});
 });

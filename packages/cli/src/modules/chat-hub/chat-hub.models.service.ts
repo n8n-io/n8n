@@ -1,20 +1,3 @@
-import { In, WorkflowRepository, type User } from '@n8n/db';
-import { getBase } from '@/workflow-execute-additional-data';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import {
-	AGENT_LANGCHAIN_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	type INodeCredentials,
-	type INodePropertyOptions,
-	type IWorkflowExecuteAdditionalData,
-} from 'n8n-workflow';
 import {
 	chatHubProviderSchema,
 	emptyChatModelsResponse,
@@ -24,8 +7,24 @@ import {
 	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { validChatTriggerParamsShape } from './chat-hub.types';
+import { In, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	type INodeCredentials,
+	type INodePropertyOptions,
+	type IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { chatTriggerParamsShape } from './chat-hub.types';
+
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class ChatHubModelsService {
@@ -724,19 +723,20 @@ export class ChatHubModelsService {
 		);
 
 		const activeWorkflows = workflowsWithChatTrigger
-			// Ensure the user has at least read access to the workflows
-			.filter((workflow) => workflow.scopes.includes('workflow:read'))
+			// Ensure the user has chat execution access to the workflow
+			.filter((workflow) => workflow.scopes.includes('workflow:execute-chat'))
+			// The workflow has to be active
 			.filter((workflow) => !!workflow.activeVersionId);
 
 		const workflows = await this.workflowRepository.find({
-			select: { id: true },
+			select: { id: true, name: true },
 			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
 			relations: { activeVersion: true },
 		});
 
 		const models: ChatModelDto[] = [];
 
-		for (const { id, activeVersion } of workflows) {
+		for (const { id, name, activeVersion } of workflows) {
 			if (!activeVersion) {
 				continue;
 			}
@@ -746,17 +746,8 @@ export class ChatHubModelsService {
 				continue;
 			}
 
-			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-			if (!chatTriggerParams) {
-				continue;
-			}
-
-			const agentNodes = activeVersion.nodes?.filter(
-				(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
-			);
-
-			// Agents older than this can't do streaming
-			if (agentNodes.some((node) => node.typeVersion < 2.1)) {
+			const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+			if (!chatTriggerParams?.availableInChat) {
 				continue;
 			}
 
@@ -764,8 +755,13 @@ export class ChatHubModelsService {
 				chatTriggerParams.options,
 			);
 
+			const agentName =
+				chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+					? chatTriggerParams.agentName
+					: name;
+
 			models.push({
-				name: chatTriggerParams.agentName ?? activeVersion.name ?? 'Unknown Agent',
+				name: agentName,
 				description: chatTriggerParams.agentDescription ?? null,
 				model: {
 					provider: 'n8n',
@@ -778,6 +774,7 @@ export class ChatHubModelsService {
 					capabilities: {
 						functionCalling: false,
 					},
+					available: true,
 				},
 			});
 		}
@@ -791,21 +788,28 @@ export class ChatHubModelsService {
 		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
 	): ChatModelDto[] {
-		return rawModels.map((model) => {
+		return rawModels.flatMap((model) => {
 			const id = String(model.value);
+			const metadata = getModelMetadata(provider, id);
 
-			return {
-				id,
-				name: model.name,
-				description: model.description ?? null,
-				model: {
-					provider,
-					model: id,
+			if (!metadata.available) {
+				return [];
+			}
+
+			return [
+				{
+					id,
+					name: model.name,
+					description: model.description ?? null,
+					model: {
+						provider,
+						model: id,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata,
 				},
-				createdAt: null,
-				updatedAt: null,
-				metadata: getModelMetadata(provider, id),
-			};
+			];
 		});
 	}
 }

@@ -453,6 +453,26 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions(true);
 	}
 
+	function getErrorMessageByStatusCode(
+		statusCode: number | undefined,
+		message: string | undefined,
+	): string {
+		const errorMessages: Record<number, string> = {
+			[413]: i18n.baseText('chatHub.error.payloadTooLarge'),
+			[400]: message ?? i18n.baseText('chatHub.error.badRequest'),
+			[403]: i18n.baseText('chatHub.error.forbidden'),
+			[500]: message
+				? i18n.baseText('chatHub.error.serverErrorWithReason', {
+						interpolate: { error: message },
+					})
+				: i18n.baseText('chatHub.error.serverError'),
+		};
+
+		return (
+			(statusCode && errorMessages[statusCode]) || message || i18n.baseText('chatHub.error.unknown')
+		);
+	}
+
 	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
@@ -468,26 +488,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		toast.showError(cause, i18n.baseText('chatHub.error.sendMessageFailed'));
 
 		streaming.value = undefined;
-	}
-
-	function getErrorMessageByStatusCode(
-		statusCode: number | undefined,
-		message: string | undefined,
-	): string {
-		const errorMessages: Record<number, string> = {
-			[413]: i18n.baseText('chatHub.error.payloadTooLarge'),
-			[400]: i18n.baseText('chatHub.error.badRequest'),
-			[403]: i18n.baseText('chatHub.error.forbidden'),
-			[500]: message
-				? i18n.baseText('chatHub.error.serverErrorWithReason', {
-						interpolate: { error: message },
-					})
-				: i18n.baseText('chatHub.error.serverError'),
-		};
-
-		return (
-			(statusCode && errorMessages[statusCode]) || message || i18n.baseText('chatHub.error.unknown')
-		);
 	}
 
 	async function sendMessage(
@@ -795,6 +795,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
 				inputModalities: [],
+				available: true,
 			},
 		};
 		agents.value?.['custom-agent'].models.push(agent);
@@ -866,6 +867,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				capabilities: {
 					functionCalling: true,
 				},
+				available: true,
 			},
 		};
 	}
