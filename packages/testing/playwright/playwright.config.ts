@@ -91,7 +91,6 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	reporter: IS_CI
 		? [
 				['list'],
-				['github'],
 				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
 				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
