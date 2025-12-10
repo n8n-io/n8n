@@ -33,11 +33,20 @@ describe('LoadNodesAndCredentials', () => {
 		const pathPrefix = `/icons/${packageName}`;
 		const pathPrefixDir = `${pathPrefix}${directory}`;
 
+		let winInstance: LoadNodesAndCredentials;
+		const winDirectory = 'C:/Users/name/.n8n/nodes';
+		const winPathPrefixDir = `${pathPrefix}/${winDirectory}`;
+
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-			instance.loaders.package1 = mock<DirectoryLoader>({
-				directory,
-			});
+			const mockInstance = (pkg: string, directory: string) => {
+				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+				mi.loaders[pkg] = mock<DirectoryLoader>({
+					directory,
+				});
+				return mi;
+			};
+			instance = mockInstance('package1', directory);
+			winInstance = mockInstance('package2', winDirectory);
 		});
 
 		it('should return undefined if the loader for the package is not found', () => {
@@ -60,9 +69,16 @@ describe('LoadNodesAndCredentials', () => {
 			expect(result).toBe(`${directory}/icon.png`);
 		});
 
-		it('should return the file path if the url path is missing the slash at start', () => {
-			const result = instance.resolveIcon('package1', `${pathPrefixDir.substring(1)}/icon.png`);
-			expect(result).toBe(`${directory}/icon.png`);
+		it('should return absolute windows file path starting with C:/', () => {
+			const winIconPath = `${winDirectory}/icon.png`;
+			const result = winInstance.resolveIcon('package2', `${winPathPrefixDir}/icon.png`);
+			expect(result).toBe(winIconPath);
+		});
+
+		it('should return absolute windows file path if the url contains duplicate slash //', () => {
+			const winIconPath = `${winDirectory}/icon.png`;
+			const result = winInstance.resolveIcon('package2', `${winPathPrefixDir}//icon.png`);
+			expect(result).toBe(winIconPath);
 		});
 
 		it('should return undefined if the URL is outside the package directory', () => {

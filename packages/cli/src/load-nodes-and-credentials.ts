@@ -158,13 +158,15 @@ export class LoadNodesAndCredentials {
 			return undefined;
 		}
 
-		const withPrefix = (str: string, prefix: string) =>
-			str.startsWith(prefix) ? str : prefix + str;
-		//const dedupeSlashes = (str) => str.replace(/\/+/g, '/');
+		const prefix = (str: string, pre: string) => pre + str;
+		const dedupe = (str: string) => str.replace(/\/+/g, '/');
+		const isWinPath = (str: string) => /^([A-Z]:[\/|\\])/.test(str);
 
-		const pathPrefix = `/icons/${packageName}`;
-		const urlWithoutPrefix = withPrefix(url.substring(pathPrefix.length), '/');
-		const filePath = path.resolve(loader.directory, urlWithoutPrefix);
+		const pathPrefix = `/icons/${packageName}/`;
+		const urlFilePath = dedupe(url).substring(pathPrefix.length);
+		const filePath = isWinPath(urlFilePath)
+			? urlFilePath
+			: path.resolve(loader.directory, prefix(urlFilePath, '/'));
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
