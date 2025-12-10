@@ -86,7 +86,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 		actionTimeout: 20000, // TODO: We might need to make this dynamic for container tests if we have low resource containers etc
 		navigationTimeout: 10000,
 		currentsFixturesEnabled: !!process.env.CI,
-		currentsBatchSize: 6,
+		currentsBatchSize: 5,
 	},
 
 	reporter: IS_CI
@@ -95,6 +95,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
 				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
+				...(!process.env.CURRENTS_RECORD_KEY ? [['github']] : []),
 				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
 			]
