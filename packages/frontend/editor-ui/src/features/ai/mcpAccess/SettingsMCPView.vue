@@ -19,6 +19,7 @@ import { N8nHeading, N8nTabs, N8nTooltip, N8nButton } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type MCPTabs = 'workflows' | 'oauth';
 
@@ -26,6 +27,7 @@ const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
+const telemetry = useTelemetry();
 
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
@@ -66,6 +68,7 @@ const onTabSelected = async (tab: MCPTabs) => {
 		await fetchAvailableWorkflows();
 	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
 		await fetchoAuthCLients();
+		telemetry.track('User clicked connected clients tab');
 	}
 };
 
@@ -109,14 +112,6 @@ const onTableRefresh = async () => {
 		await fetchoAuthCLients();
 	}
 };
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.mcp'));
-	if (!mcpStore.mcpAccessEnabled) {
-		return;
-	}
-	await fetchAvailableWorkflows();
-});
 
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
@@ -175,7 +170,16 @@ const openConnectWorkflowsModal = () => {
 			},
 		},
 	});
+	telemetry.track('User clicked connect workflows from mcp settings');
 };
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.mcp'));
+	if (!mcpStore.mcpAccessEnabled) {
+		return;
+	}
+	await fetchAvailableWorkflows();
+});
 </script>
 <template>
 	<div :class="$style.container">

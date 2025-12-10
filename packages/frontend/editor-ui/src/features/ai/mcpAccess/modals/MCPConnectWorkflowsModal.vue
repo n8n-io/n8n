@@ -4,8 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { N8nButton, N8nNotice } from '@n8n/design-system';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref } from 'vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
 
@@ -16,26 +16,29 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const isSaving = ref(false);
 const selectedWorkflowId = ref<string>();
 const selectRef = ref<SelectRef | null>(null);
 
-const modalBus = createEventBus();
-
 const canSave = computed(() => !!selectedWorkflowId.value);
 
-const cancel = () => {
-	modalBus.emit('close');
+const cancel = (close: () => void) => {
+	close();
+	telemetry.track('User dismissed mcp workflows dialog');
 };
 
-async function save() {
+async function save(close: () => void) {
 	if (!selectedWorkflowId.value) return;
 
 	isSaving.value = true;
 	try {
 		await props.data.onEnableMcpAccess(selectedWorkflowId.value);
-		modalBus.emit('close');
+		telemetry.track('User selected workflow from list', {
+			workflowId: selectedWorkflowId.value,
+		});
+		close();
 	} finally {
 		isSaving.value = false;
 	}
@@ -54,7 +57,6 @@ onMounted(() => {
 		:title="i18n.baseText('settings.mcp.connectWorkflows')"
 		width="600px"
 		:class="$style.container"
-		:event-bus="modalBus"
 	>
 		<template #content>
 			<div :class="$style.content">
@@ -71,7 +73,7 @@ onMounted(() => {
 				/>
 			</div>
 		</template>
-		<template #footer>
+		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
 					:label="i18n.baseText('generic.cancel')"
@@ -79,7 +81,7 @@ onMounted(() => {
 					:disabled="isSaving"
 					type="tertiary"
 					data-test-id="mcp-connect-workflows-cancel-button"
-					@click="cancel"
+					@click="cancel(close)"
 				/>
 				<N8nButton
 					:label="i18n.baseText('settings.mcp.connectWorkflows.confirm.label')"
@@ -87,7 +89,7 @@ onMounted(() => {
 					:disabled="!canSave || isSaving"
 					type="primary"
 					data-test-id="mcp-connect-workflows-save-button"
-					@click="save"
+					@click="save(close)"
 				/>
 			</div>
 		</template>
