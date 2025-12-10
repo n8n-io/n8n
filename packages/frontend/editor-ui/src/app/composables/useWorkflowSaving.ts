@@ -221,9 +221,9 @@ export function useWorkflowSaving({
 			}
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
-
 			// Check if AI Builder made edits since last save
 			workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
+			workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
 
 			const deactivateReason = await getWorkflowDeactivationInfo(
 				currentWorkflow,
@@ -245,6 +245,9 @@ export function useWorkflowSaving({
 				forceSave,
 			);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			if (workflowData.checksum) {
+				workflowsStore.setWorkflowChecksum(workflowData.checksum);
+			}
 
 			if (name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });

@@ -2,7 +2,12 @@ import { Time } from '@n8n/constants';
 import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
 import type { ITaskDataConnections } from 'n8n-workflow';
-import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	jsonParse,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import { resolve, join, dirname } from 'path';
 
 const { E2E_TESTS } = process.env;
@@ -25,6 +30,11 @@ export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
 	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
+];
+
+export const TRIGGER_COUNT_EXCLUDED_NODES = [
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
 ];
 
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';

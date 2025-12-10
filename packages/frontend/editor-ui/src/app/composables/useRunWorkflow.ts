@@ -113,11 +113,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowState.setActiveExecutionId(response.executionId);
 		}
 
-		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowState.setActiveExecutionId(undefined);
-			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
-		}
-
 		if (response.waitingForWebhook === true) {
 			workflowsStore.executionWaitingForWebhook = true;
 		}

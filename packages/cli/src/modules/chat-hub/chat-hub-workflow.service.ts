@@ -26,13 +26,15 @@ import {
 	NodeConnectionTypes,
 	OperationalError,
 	type IBinaryData,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { MessageRecord, type ChatTriggerResponseMode } from './chat-hub.types';
+import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -40,6 +42,7 @@ export class ChatHubWorkflowService {
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
 
 	async createChatWorkflow(
@@ -65,7 +68,7 @@ export class ChatHubWorkflowService {
 				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
-			const { nodes, connections, executionData } = this.buildChatWorkflow({
+			const { nodes, connections, executionData } = await this.buildChatWorkflow({
 				userId,
 				sessionId,
 				history,
@@ -255,7 +258,7 @@ export class ChatHubWorkflowService {
 		return uniqueName;
 	}
 
-	private buildChatWorkflow({
+	private async buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
@@ -280,7 +283,7 @@ export class ChatHubWorkflowService {
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(history);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 
@@ -673,29 +676,15 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		};
 	}
 
-	private buildRestoreMemoryNode(history: ChatHubMessage[]): INode {
+	private async buildRestoreMemoryNode(history: ChatHubMessage[]): Promise<INode> {
+		const messageValues = await this.buildMessageValuesWithAttachments(history);
+
 		return {
 			parameters: {
 				mode: 'insert',
 				insertMode: 'override',
 				messages: {
-					messageValues: history
-						// Empty messages can't be restored by the memory manager
-						.filter((message) => message.content.length > 0)
-						.map((message) => {
-							const typeMap: Record<string, MessageRecord['type']> = {
-								human: 'user',
-								ai: 'ai',
-								system: 'system',
-							};
-
-							// TODO: Tool messages etc?
-							return {
-								type: typeMap[message.type] || 'system',
-								message: message.content,
-								hideFromUI: false,
-							};
-						}),
+					messageValues: messageValues as unknown as NodeParameterValueType,
 				},
 			},
 			type: MEMORY_MANAGER_NODE_TYPE,
@@ -704,6 +693,128 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 			id: uuidv4(),
 			name: NODE_NAMES.RESTORE_CHAT_MEMORY,
 		};
+	}
+
+	private async buildMessageValuesWithAttachments(
+		history: ChatHubMessage[],
+	): Promise<MessageRecord[]> {
+		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
+		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
+
+		const typeMap: Record<string, MessageRecord['type']> = {
+			human: 'user',
+			ai: 'ai',
+			system: 'system',
+		};
+
+		const messageValues: MessageRecord[] = [];
+		let currentTotalSize = 0;
+
+		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
+
+		for (const message of messages) {
+			// Empty messages can't be restored by the memory manager
+			if (message.content.length === 0) {
+				continue;
+			}
+
+			const attachments = message.attachments ?? [];
+			const type = typeMap[message.type] || 'system';
+
+			// TODO: Tool messages etc?
+
+			const textSize = message.content.length;
+			currentTotalSize += textSize;
+
+			if (attachments.length === 0) {
+				messageValues.push({
+					type,
+					message: message.content,
+					hideFromUI: false,
+				});
+				continue;
+			}
+
+			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
+
+			// Add attachments if within size limit
+			for (const attachment of attachments) {
+				const block = await this.buildContentBlockForAttachment(
+					attachment,
+					currentTotalSize,
+					maxTotalPayloadSize,
+				);
+				blocks.push(block);
+				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+			}
+
+			messageValues.push({
+				type,
+				message: blocks,
+				hideFromUI: false,
+			});
+		}
+
+		// Reverse to restore original order
+		messageValues.reverse();
+
+		return messageValues;
+	}
+
+	private async buildContentBlockForAttachment(
+		attachment: IBinaryData,
+		currentTotalSize: number,
+		maxTotalPayloadSize: number,
+	): Promise<ContentBlock> {
+		class TotalFileSizeExceededError extends Error {}
+
+		try {
+			if (currentTotalSize >= maxTotalPayloadSize) {
+				throw new TotalFileSizeExceededError();
+			}
+
+			if (this.isTextFile(attachment.mimeType)) {
+				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
+				const content = buffer.toString('utf-8');
+
+				if (currentTotalSize + content.length > maxTotalPayloadSize) {
+					throw new TotalFileSizeExceededError();
+				}
+
+				return {
+					type: 'text',
+					text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+				};
+			}
+
+			const url = await this.chatHubAttachmentService.getDataUrl(attachment);
+
+			if (currentTotalSize + url.length > maxTotalPayloadSize) {
+				throw new TotalFileSizeExceededError();
+			}
+
+			return { type: 'image_url', image_url: url };
+		} catch (e) {
+			if (e instanceof TotalFileSizeExceededError) {
+				return {
+					type: 'text',
+					text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+				};
+			}
+
+			throw e;
+		}
+	}
+
+	private isTextFile(mimeType: string): boolean {
+		return (
+			mimeType.startsWith('text/') ||
+			mimeType === 'application/json' ||
+			mimeType === 'application/xml' ||
+			mimeType === 'application/csv' ||
+			mimeType === 'application/x-yaml' ||
+			mimeType === 'application/yaml'
+		);
 	}
 
 	private buildClearMemoryNode(): INode {

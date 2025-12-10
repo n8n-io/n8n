@@ -143,12 +143,24 @@ describe('useWorkflowResourcesLocator', () => {
 				1, // page
 				40, // pageSize
 				'updatedAt:desc', // sort
-				undefined, // filter
+				{ triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' }, // filter
 			);
 
 			expect(workflowsResources.value).toEqual([
-				{ name: 'Workflow 1', value: '1', url: expect.any(String) as string, isArchived: false },
-				{ name: 'Workflow 2', value: '2', url: expect.any(String) as string, isArchived: false },
+				{
+					name: 'Workflow 1',
+					value: '1',
+					url: expect.any(String) as string,
+					isArchived: false,
+					active: false,
+				},
+				{
+					name: 'Workflow 2',
+					value: '2',
+					url: expect.any(String) as string,
+					isArchived: false,
+					active: false,
+				},
 			]);
 
 			expect(hasMoreWorkflowsToLoad.value).toBe(true);
@@ -163,7 +175,7 @@ describe('useWorkflowResourcesLocator', () => {
 
 			// Pre-populate some workflows
 			workflowsResources.value = [
-				{ name: 'Old Workflow', value: 'old', url: '/old', isArchived: false },
+				{ name: 'Old Workflow', value: 'old', url: '/old', isArchived: false, active: true },
 			];
 
 			await onSearchFilter('test search');
@@ -173,7 +185,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				{ query: 'test search' },
+				{ query: 'test search', triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
 			);
 
 			// Should reset workflows array and populate with filtered results
@@ -183,6 +195,7 @@ describe('useWorkflowResourcesLocator', () => {
 					value: '3',
 					url: expect.any(String) as string,
 					isArchived: false,
+					active: false,
 				},
 			]);
 		});
@@ -227,7 +240,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				undefined,
+				{ triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
 			);
 
 			// Load second page
@@ -238,7 +251,7 @@ describe('useWorkflowResourcesLocator', () => {
 				2,
 				40,
 				'updatedAt:desc',
-				undefined,
+				{ triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
 			);
 
 			// Verify workflows from both pages are present
@@ -269,6 +282,7 @@ describe('useWorkflowResourcesLocator', () => {
 				value: 'test-id',
 				url: '/workflow/test-id',
 				isArchived: false,
+				active: false,
 			});
 		});
 
@@ -290,6 +304,7 @@ describe('useWorkflowResourcesLocator', () => {
 				value: 'test-id',
 				url: '/workflow/test-id',
 				isArchived: true,
+				active: false,
 			});
 		});
 	});
