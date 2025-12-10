@@ -50,6 +50,9 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HELPERS_SUBCATEGORY,
 	HITL_SUBCATEGORY,
+	TRANSLATION_SUBCATEGORY,
+	APE_SUBCATEGORY,
+	LQA_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
@@ -561,6 +564,54 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 								COMPRESSION_NODE_TYPE,
 								EDIT_IMAGE_NODE_TYPE,
 							],
+						},
+					],
+				},
+			},
+			{
+				type: 'subcategory',
+				key: TRANSLATION_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: i18n.baseText('nodeCreator.subcategoryNames.translation'),
+					icon: 'language',
+					sections: [
+						{
+							key: 'translationNodes',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [],
+						},
+					],
+				},
+			},
+			{
+				type: 'subcategory',
+				key: APE_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: i18n.baseText('nodeCreator.subcategoryNames.automaticPostEditing'),
+					icon: 'edit',
+					sections: [
+						{
+							key: 'apeNodes',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [],
+						},
+					],
+				},
+			},
+			{
+				type: 'subcategory',
+				key: LQA_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: i18n.baseText('nodeCreator.subcategoryNames.languageQualityAssurance'),
+					icon: 'check-double',
+					sections: [
+						{
+							key: 'lqaNodes',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [],
 						},
 					],
 				},
