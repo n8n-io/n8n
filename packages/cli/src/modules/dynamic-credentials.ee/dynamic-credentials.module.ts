@@ -4,7 +4,7 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 function isFeatureFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+	return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
 }
 
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })

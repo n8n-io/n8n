@@ -7,6 +7,7 @@ import {
 	N8nMenuItem,
 	N8nText,
 	N8nInlineTextEdit,
+	N8nCallout,
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -57,6 +58,8 @@ const resolverType = ref('');
 const resolverConfig = ref<Record<string, unknown>>({});
 const availableTypes = ref<CredentialResolverType[]>([]);
 const hasUnsavedChanges = ref(false);
+const errorMessage = ref<string>('');
+const mainContentRef = ref<HTMLElement>();
 
 const isEditMode = computed(() => !!props.data?.resolverId);
 
@@ -102,14 +105,38 @@ const toNodeProperty = (option: Record<string, unknown>): INodeProperties => {
 	};
 };
 
-const credentialProperties = computed<INodeProperties[]>(() => {
+const resolverProperties = computed<INodeProperties[]>(() => {
 	if (!selectedType.value?.options) return [];
 
 	// Transform resolver options to INodeProperties format
 	return selectedType.value.options.map(toNodeProperty);
 });
 
-const credentialData = computed<ICredentialDataDecryptedObject>(() => {
+const requiredPropertiesFilled = computed(() => {
+	for (const property of resolverProperties.value) {
+		if (property.required !== true) {
+			continue;
+		}
+
+		const resolverProperty = resolverData.value[property.name];
+
+		if (property.type === 'string' && !resolverProperty) {
+			return false;
+		}
+
+		if (property.type === 'number') {
+			const containsExpression =
+				typeof resolverProperty === 'string' && resolverProperty.startsWith('=');
+
+			if (typeof resolverProperty !== 'number' && !containsExpression) {
+				return false;
+			}
+		}
+	}
+	return true;
+});
+
+const resolverData = computed<ICredentialDataDecryptedObject>(() => {
 	return toCredentialData(resolverConfig.value);
 });
 
@@ -151,7 +178,7 @@ const loadResolver = async () => {
 	}
 };
 
-const beforeClose = async () => {
+const beforeClose = () => {
 	if (hasUnsavedChanges.value) {
 		// Could add confirmation dialog here
 	}
@@ -162,6 +189,13 @@ const save = async () => {
 	if (!canSave.value) return;
 
 	isSaving.value = true;
+	errorMessage.value = '';
+
+	if (!requiredPropertiesFilled.value) {
+		errorMessage.value = i18n.baseText('credentialResolverEdit.error.missingRequiredFields');
+		isSaving.value = false;
+		return;
+	}
 
 	try {
 		const payload = {
@@ -193,7 +227,11 @@ const save = async () => {
 		hasUnsavedChanges.value = false;
 		modalBus.emit('close');
 	} catch (error) {
-		toast.showError(error, i18n.baseText('credentialResolverEdit.error.save'));
+		errorMessage.value =
+			error instanceof Error ? error.message : i18n.baseText('credentialResolverEdit.error.save');
+
+		// Scroll to top to show error message
+		mainContentRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
 	} finally {
 		isSaving.value = false;
 	}
@@ -205,6 +243,7 @@ const onConfigUpdate = (updateData: IUpdateInformation) => {
 		[updateData.name]: updateData.value,
 	};
 	hasUnsavedChanges.value = true;
+	errorMessage.value = '';
 };
 
 const onNameEdit = (newName: string) => {
@@ -334,7 +373,16 @@ onMounted(async () => {
 						@click="() => onTabSelect(item.id)"
 					/>
 				</div>
-				<div v-if="activeTab === 'configuration'" :class="$style.mainContent">
+				<div v-if="activeTab === 'configuration'" ref="mainContentRef" :class="$style.mainContent">
+					<N8nCallout
+						v-if="errorMessage"
+						theme="danger"
+						:class="$style.errorAlert"
+						data-test-id="credential-resolver-error-alert"
+					>
+						{{ errorMessage }}
+					</N8nCallout>
+
 					<div :class="$style.formGroup">
 						<label :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.type.label') }}
@@ -343,7 +391,12 @@ onMounted(async () => {
 							v-model="resolverType"
 							:placeholder="i18n.baseText('credentialResolverEdit.type.placeholder')"
 							data-test-id="credential-resolver-type-select"
-							@update:model-value="() => (hasUnsavedChanges = true)"
+							@update:model-value="
+								() => {
+									hasUnsavedChanges = true;
+									errorMessage = '';
+								}
+							"
 						>
 							<N8nOption
 								v-for="type in availableTypes"
@@ -355,11 +408,12 @@ onMounted(async () => {
 						</N8nSelect>
 					</div>
 
-					<div v-if="credentialProperties.length > 0" :class="$style.configSection">
+					<div v-if="resolverProperties.length > 0" :class="$style.configSection">
 						<CredentialInputs
-							:credential-properties="credentialProperties"
-							:credential-data="credentialData"
+							:credential-properties="resolverProperties"
+							:credential-data="resolverData"
 							documentation-url=""
+							:show-validation-warnings="!requiredPropertiesFilled"
 							@update="onConfigUpdate"
 						/>
 					</div>
@@ -473,5 +527,9 @@ onMounted(async () => {
 
 .configSection {
 	margin-top: var(--spacing--lg);
+}
+
+.errorAlert {
+	margin-bottom: var(--spacing--md);
 }
 </style>
