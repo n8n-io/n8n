@@ -1146,7 +1146,10 @@ export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
 	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
-	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
+	getWorkflowNodeContext(
+		nodeType: string,
+		useActiveVersion?: boolean,
+	): Promise<IWorkflowNodeContext | null>;
 }
 
 export interface IWorkflowLoader {
@@ -1606,6 +1609,15 @@ export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
+	/**
+	 * If provided, a slow load notice will be shown to the user if the resource locator takes longer than the timeout to load.
+	 * @example
+	 * {
+	 *   message: 'If loading takes longer than expected, try selecting a resource using "By ID"',
+	 *   timeout: 10000,
+	 * }
+	 */
+	slowLoadNotice?: { message: string; timeout: number };
 	/**
 	 * If true, the resource locator will not show an error if the credentials are not selected
 	 */
@@ -2590,8 +2602,21 @@ export interface IWorkflowBase {
 	pinData?: IPinData;
 	versionId?: string;
 	activeVersionId: string | null;
+	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+}
+
+interface IWorkflowHistory {
+	versionId: string;
+	workflowId: string;
+	nodes: INode[];
+	connections: IConnections;
+	authors: string;
+	name: string | null;
+	description: string | null;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface IWorkflowCredentials {
@@ -2760,6 +2785,7 @@ export interface IWorkflowSettings {
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
+	credentialResolverId?: string;
 }
 
 export interface WorkflowFEMeta {

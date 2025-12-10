@@ -1,5 +1,14 @@
 import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
-import type { INodeTypeNameVersion } from 'n8n-workflow';
+import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
+
+export const EXECUTION_POLL_INTERVAL = 1000;
+export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
+	'canceled',
+	'crashed',
+	'error',
+	'success',
+];
+export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
 
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {

@@ -3,19 +3,23 @@ import { Container } from '@n8n/di';
 
 import { DynamicCredentialEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-entry-storage';
 
-import { createCredentials } from '../shared/db/credentials';
 import { createDynamicCredentialResolver } from './shared/db-helpers';
+import { createCredentials } from '../shared/db/credentials';
 
 describe('DynamicCredentialEntryStorage', () => {
 	let storage: DynamicCredentialEntryStorage;
+	let previousEnvVar: string | undefined;
 
 	beforeAll(async () => {
+		previousEnvVar = process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
 		await testModules.loadModules(['dynamic-credentials']);
 		await testDb.init();
 		storage = Container.get(DynamicCredentialEntryStorage);
 	});
 
 	afterAll(async () => {
+		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = previousEnvVar;
 		await testDb.terminate();
 	});
 

@@ -1,6 +1,8 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 
+import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
+
 // Tags that require test containers environment
 // These tests won't be run against local
 const CONTAINER_ONLY_TAGS = [
@@ -31,7 +33,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 ];
 
 export function getProjects(): Project[] {
-	const isLocal = !!process.env.N8N_BASE_URL;
+	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
 
 	if (isLocal) {
@@ -43,14 +45,14 @@ export function getProjects(): Project[] {
 					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
 				),
 				fullyParallel: true,
-				use: { baseURL: process.env.N8N_BASE_URL },
+				use: { baseURL: getFrontendUrl() },
 			},
 			{
 				name: 'ui:isolated',
 				testDir: './tests/e2e',
 				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 				workers: 1,
-				use: { baseURL: process.env.N8N_BASE_URL },
+				use: { baseURL: getFrontendUrl() },
 			},
 		);
 	} else {
