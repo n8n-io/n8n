@@ -55,7 +55,6 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 import {
-	calculateWorkflowChecksum,
 	deepCopy,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
@@ -755,8 +754,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function updateWorkflowChecksum() {
 		const updatedWorkflow = await fetchWorkflow(workflow.value.id);
-		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
-		setWorkflowChecksum(checksum);
+		if (updatedWorkflow.checksum) {
+			setWorkflowChecksum(updatedWorkflow.checksum);
+		}
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory) {
@@ -865,8 +865,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
 		}
 
-		if (id === workflow.value.id) {
-			setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+		if (id === workflow.value.id && updatedWorkflow.checksum) {
+			setWorkflowChecksum(updatedWorkflow.checksum);
 		}
 
 		setWorkflowInactive(id);
@@ -889,8 +889,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		// Update checksum if unarchiving the currently open workflow
-		if (id === workflow.value.id) {
-			setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+		if (id === workflow.value.id && updatedWorkflow.checksum) {
+			setWorkflowChecksum(updatedWorkflow.checksum);
 		}
 
 		if (id === workflow.value.id) {
@@ -1718,7 +1718,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow) {
 			setWorkflowVersionId(updated.versionId);
-			setWorkflowChecksum(await calculateWorkflowChecksum(updated));
+			if (updated.checksum) {
+				setWorkflowChecksum(updated.checksum);
+			}
 			setWorkflowSettings(updated.settings ?? {});
 		} else if (workflowsById.value[id]) {
 			workflowsById.value[id] = {
@@ -1772,7 +1774,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			if (updated.versionId !== currentVersionId) {
 				setWorkflowVersionId(updated.versionId);
 			}
-			setWorkflowChecksum(await calculateWorkflowChecksum(updated));
+			if (updated.checksum) {
+				setWorkflowChecksum(updated.checksum);
+			}
 		}
 
 		return updated;
