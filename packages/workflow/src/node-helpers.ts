@@ -1661,6 +1661,7 @@ export function isToolType(
 		}
 		return !nodeType.endsWith('HitlTool');
 	}
+	return false;
 }
 
 export function isHitlToolType(nodeType?: string) {
