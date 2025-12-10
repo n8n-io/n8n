@@ -598,6 +598,7 @@ describe('operations-processor', () => {
 			previousSummary: 'EMPTY',
 			nodeConfigurations: {},
 			templateIds: [],
+			cachedWorkflows: [],
 		});
 
 		it('should process operations and clear them', () => {

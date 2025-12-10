@@ -124,7 +124,7 @@ export interface FetchWorkflowsResult {
 
 /**
  * Fetch workflows from templates API and return full workflow data
- * Shared utility used by both get-workflow-examples and get-node-configuration-examples tools
+ * Shared utility used by both get-workflow-examples and get-node-examples tools
  */
 export async function fetchWorkflowsFromTemplates(
 	query: {

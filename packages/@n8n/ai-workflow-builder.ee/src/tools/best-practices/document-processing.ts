@@ -169,7 +169,10 @@ Configuration: Set appropriate folder and file type filters
 Purpose: Extract text from various file formats using format-specific operations
 Critical: ALWAYS check file type first with an IF or Switch before and select the correct operation (Extract from PDF, Extract from MS Excel, etc.)
 Output: Extracted text is returned under the "text" key in JSON (e.g., access with {{ $json.text }})
-Pitfalls: Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
+Pitfalls:
+- Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
+- If connecting to a document upload form (n8n-nodes-base.formTrigger) use a File field type and then connect it the the extract from file node using the field name.
+For example if creating a form trigger with field "Upload Document" then set the extract from file input binary field to "Upload_Document"
 
 **AWS Textract (n8n-nodes-base.awsTextract)**
 Purpose: Advanced OCR with table and form detection

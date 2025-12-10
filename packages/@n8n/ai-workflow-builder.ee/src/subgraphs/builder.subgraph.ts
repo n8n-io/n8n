@@ -14,6 +14,7 @@ import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
+import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
@@ -101,6 +102,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
+			createGetNodeConnectionExamplesTool(config.logger),
 		];
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound

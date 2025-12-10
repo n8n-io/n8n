@@ -45,6 +45,21 @@ Leverage AI for unstructured data using nodes like Information Extractor or Summ
 
 ## Recommended Nodes
 
+### Loop Over Items (n8n-nodes-base.splitInBatches)
+
+Purpose: Looping over a set of items extracted from a data set, for example if pulling a lot of data
+from a Google Sheet or database then looping over the items is required. This node MUST be used
+if the user mentions a large amount of data, it is necessary to batch the data to process all of it.
+
+Pitfalls:
+
+- Misconfigured connections: This node has TWO outputs that work differently from most nodes.
+  CRITICAL: Output 0 (first array element) = "Done" branch - connects to nodes that run AFTER all looping completes.
+  CRITICAL: Output 1 (second array element) = "Loop" branch - connects to nodes that process each batch during the loop.
+  This is COUNTERINTUITIVE - the loop processing is on output 1, NOT output 0.
+  Example: If looping over items and then aggregating results, the connections array must be:
+  [[{node: "Aggregate Results"}], [{node: "Process Each Batch"}]] - aggregation on output 0, processing on output 1.
+
 ### Extract From File (n8n-nodes-base.extractFromFile)
 
 Purpose: Converts binary data from CSV, Excel, PDF, and text files to JSON for processing
@@ -60,7 +75,7 @@ Purpose: Scrapes data from web pages using CSS selectors
 
 ### Split Out (n8n-nodes-base.splitOut)
 
-Purpose: Processes arrays of items individually for sequential operations
+Purpose: Processes arrays of items individually for sequential operations.
 
 ### Edit Fields (Set) (n8n-nodes-base.set)
 

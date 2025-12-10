@@ -225,6 +225,25 @@ Example connectionParameters for 3-way routing:
 }}
 </switch_node_pattern>`;
 
+const NODE_CONNECTION_EXAMPLES = `<node_connection_examples>
+When connecting nodes with non-standard output patterns, use get_node_connection_examples:
+
+Call get_node_connection_examples when:
+- Connecting Loop Over Items (splitInBatches) - has TWO outputs with specific meanings
+- Connecting Switch nodes with multiple outputs
+- Connecting IF nodes with true/false branches
+- Any node where you're unsure about connection patterns
+
+Usage:
+- nodeType: "n8n-nodes-base.splitInBatches" (exact node type)
+- Returns mermaid diagrams showing how the node is typically connected
+
+CRITICAL for splitInBatches:
+- Output 0 (first connection) = "Done" branch - runs AFTER all looping completes
+- Output 1 (second connection) = "Loop" branch - processes each batch during the loop
+- This is COUNTERINTUITIVE - always verify with examples if unsure
+</node_connection_examples>`;
+
 const CONNECTION_TYPES = `<connection_type_examples>
 **Main Connections** (regular data flow):
 - Trigger → HTTP Request → Set → Email
@@ -284,6 +303,7 @@ export function buildBuilderPrompt(): string {
 		AGENT_NODE_DISTINCTION,
 		RAG_PATTERN,
 		SWITCH_NODE_PATTERN,
+		NODE_CONNECTION_EXAMPLES,
 		CONNECTION_TYPES,
 		RESTRICTIONS,
 		RESPONSE_FORMAT,

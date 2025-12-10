@@ -12,7 +12,7 @@ import { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from '@/prompts/agents/c
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-configuration-examples.tool';
+import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';

@@ -12,7 +12,7 @@ const EXECUTION_SEQUENCE = `MANDATORY EXECUTION SEQUENCE:
 You MUST follow these steps IN ORDER. Do not skip any step.
 
 STEP 1: RETRIEVE NODE EXAMPLES
-- Call the get-node-configuration-examples tool for each node type being configured
+- Call the get_node_configuration_examples tool for each node type being configured
 - Use the examples to understand how these node types can be configured
 
 STEP 2: CONFIGURE ALL NODES

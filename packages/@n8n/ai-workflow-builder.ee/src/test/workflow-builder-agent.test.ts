@@ -298,6 +298,7 @@ describe('WorkflowBuilderAgent', () => {
 				previousSummary: 'EMPTY',
 				nodeConfigurations: {},
 				templateIds: [],
+				cachedWorkflows: [],
 			};
 		};
 

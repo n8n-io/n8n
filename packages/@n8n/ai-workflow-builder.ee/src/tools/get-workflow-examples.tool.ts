@@ -183,10 +183,11 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				// Deduplicate template IDs
 				const uniqueTemplateIds = [...new Set(allTemplateIds)];
 
-				// Return success response with node configurations and template IDs stored in state
+				// Return success response with workflows, node configurations, and template IDs stored in state
 				return createSuccessResponse(config, responseMessage, {
 					nodeConfigurations,
 					templateIds: uniqueTemplateIds,
+					cachedWorkflows: deduplicatedResults,
 				});
 			} catch (error) {
 				// Handle validation or unexpected errors

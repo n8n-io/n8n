@@ -1,4 +1,4 @@
-import type { NodeConfigurationsMap } from '../types/tools';
+import type { NodeConfigurationsMap, WorkflowMetadata } from '../types/tools';
 
 /**
  * Reducer for appending arrays with null/empty check.
@@ -6,6 +6,31 @@ import type { NodeConfigurationsMap } from '../types/tools';
  */
 export function appendArrayReducer<T>(current: T[], update: T[] | undefined | null): T[] {
 	return update && update.length > 0 ? [...current, ...update] : current;
+}
+
+/**
+ * Reducer for caching workflow templates, deduplicating by name.
+ * Merges new workflows with existing ones, avoiding duplicates.
+ */
+export function cachedWorkflowsReducer(
+	current: WorkflowMetadata[],
+	update: WorkflowMetadata[] | undefined | null,
+): WorkflowMetadata[] {
+	if (!update || update.length === 0) {
+		return current;
+	}
+
+	// Build a map of existing workflows by name for fast lookup
+	const existingByName = new Map(current.map((wf) => [wf.name, wf]));
+
+	// Add new workflows that don't already exist
+	for (const workflow of update) {
+		if (!existingByName.has(workflow.name)) {
+			existingByName.set(workflow.name, workflow);
+		}
+	}
+
+	return Array.from(existingByName.values());
 }
 
 /**

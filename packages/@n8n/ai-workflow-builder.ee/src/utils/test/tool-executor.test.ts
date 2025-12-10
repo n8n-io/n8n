@@ -54,6 +54,7 @@ describe('tool-executor', () => {
 			previousSummary: 'EMPTY',
 			nodeConfigurations: {},
 			templateIds: [],
+			cachedWorkflows: [],
 		});
 
 		// Helper to create mock tool
