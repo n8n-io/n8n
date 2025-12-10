@@ -27,6 +27,7 @@ export class OAuth2CredentialController {
 
 		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
 			cid: credential.id,
+			origin: 'static-credential',
 			userId: req.user.id,
 		});
 		return uri;
@@ -45,7 +46,7 @@ export class OAuth2CredentialController {
 				);
 			}
 
-			const [credential, decryptedDataOriginal, oauthCredentials] =
+			const [credential, decryptedDataOriginal, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
 			let options: Partial<ClientOAuth2Options> = {};
@@ -90,13 +91,19 @@ export class OAuth2CredentialController {
 				...oauthToken.data,
 			};
 
-			await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+			if (!state.origin || state.origin === 'static-credential') {
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
-			this.logger.debug('OAuth2 callback successful for credential', {
-				credentialId: credential.id,
-			});
+				this.logger.debug('OAuth2 callback successful for credential', {
+					credentialId: credential.id,
+				});
 
-			return res.render('oauth-callback');
+				return res.render('oauth-callback');
+			}
+
+			if (state.origin === 'dynamic-credential') {
+				// something
+			}
 		} catch (e) {
 			const error = ensureError(e);
 			return this.oauthService.renderCallbackError(

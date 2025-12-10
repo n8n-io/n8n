@@ -68,6 +68,7 @@ describe('OAuth2CredentialController', () => {
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
 				cid: '1',
+				origin: 'static-credential',
 				userId: '123',
 			});
 		});
@@ -79,6 +80,7 @@ describe('OAuth2CredentialController', () => {
 				token: 'token',
 				cid: '1',
 				userId: '123',
+				origin: 'static-credential',
 				createdAt: timestamp,
 			}),
 		).toString('base64');
@@ -97,7 +99,7 @@ describe('OAuth2CredentialController', () => {
 			);
 		});
 
-		it('should exchange the code for a valid token, and save it to DB', async () => {
+		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = jest.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
@@ -112,6 +114,13 @@ describe('OAuth2CredentialController', () => {
 			);
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential',
+				createdAt: timestamp,
+			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{ csrfSecret: 'csrf-secret' },
@@ -124,6 +133,7 @@ describe('OAuth2CredentialController', () => {
 					grantType: 'authorizationCode',
 					authentication: 'header',
 				},
+				mockState,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -149,6 +159,120 @@ describe('OAuth2CredentialController', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', expect.any(Array));
 		});
 
+		it('should handle dynamic credential callback', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = jest.fn().mockResolvedValue({
+				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getToken: mockGetToken,
+						},
+					}) as any,
+			);
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'dynamic-credential',
+				createdAt: timestamp,
+			};
+			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					scope: 'openid',
+					grantType: 'authorizationCode',
+					authentication: 'header',
+				},
+				mockState,
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: dynamicState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			// Dynamic credential handling is not yet implemented, so encryptAndSaveData should not be called
+			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
+			expect(res.render).not.toHaveBeenCalledWith('oauth-callback');
+		});
+
+		it('should handle static credential callback when origin is undefined', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = jest.fn().mockResolvedValue({
+				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getToken: mockGetToken,
+						},
+					}) as any,
+			);
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				createdAt: timestamp,
+			};
+			const undefinedOriginState = Buffer.from(JSON.stringify(mockState)).toString('base64');
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					scope: 'openid',
+					grantType: 'authorizationCode',
+					authentication: 'header',
+				},
+				mockState,
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: undefinedOriginState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				expect.objectContaining({
+					oauthTokenData: { access_token: 'new_token', refresh_token: 'refresh_token' },
+				}),
+				['csrfSecret'],
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+		});
+
 		it('should handle PKCE flow', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = jest.fn().mockResolvedValue({
@@ -164,6 +288,13 @@ describe('OAuth2CredentialController', () => {
 			);
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential',
+				createdAt: timestamp,
+			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{ csrfSecret: 'csrf-secret', codeVerifier: 'code_verifier' },
@@ -176,6 +307,7 @@ describe('OAuth2CredentialController', () => {
 					grantType: 'pkce',
 					authentication: 'header',
 				},
+				mockState,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -214,6 +346,13 @@ describe('OAuth2CredentialController', () => {
 			);
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential',
+				createdAt: timestamp,
+			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{ csrfSecret: 'csrf-secret' },
@@ -226,6 +365,7 @@ describe('OAuth2CredentialController', () => {
 					grantType: 'authorizationCode',
 					authentication: 'body',
 				},
+				mockState,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -266,6 +406,13 @@ describe('OAuth2CredentialController', () => {
 			);
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential',
+				createdAt: timestamp,
+			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{ csrfSecret: 'csrf-secret' },
@@ -278,6 +425,7 @@ describe('OAuth2CredentialController', () => {
 					grantType: 'authorizationCode',
 					authentication: 'header',
 				},
+				mockState,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -321,6 +469,13 @@ describe('OAuth2CredentialController', () => {
 			);
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential',
+				createdAt: timestamp,
+			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{ csrfSecret: 'csrf-secret' },
@@ -333,6 +488,7 @@ describe('OAuth2CredentialController', () => {
 					grantType: 'authorizationCode',
 					authentication: 'header',
 				},
+				mockState,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);

@@ -438,6 +438,25 @@ describe('OauthService', () => {
 			const state = {
 				token: stateToken,
 				cid: 'credential-id',
+				origin: 'static-credential',
+				createdAt: Date.now(),
+			};
+			const decrypted = { csrfSecret };
+
+			const result = (service as any).verifyCsrfState(decrypted, state);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return true for valid CSRF state with dynamic credential origin', () => {
+			const csrfSecret = 'csrf-secret';
+			const token = new (require('csrf'))();
+			const stateToken = token.create(csrfSecret);
+
+			const state = {
+				token: stateToken,
+				cid: 'credential-id',
+				origin: 'dynamic-credential',
 				createdAt: Date.now(),
 			};
 			const decrypted = { csrfSecret };
@@ -456,6 +475,7 @@ describe('OauthService', () => {
 			const state = {
 				token: stateToken,
 				cid: 'credential-id',
+				origin: 'static-credential',
 				createdAt: expiredTime,
 			};
 			const decrypted = { csrfSecret };
@@ -473,6 +493,7 @@ describe('OauthService', () => {
 			const state = {
 				token: stateToken,
 				cid: 'credential-id',
+				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
 			const decrypted = {};
@@ -486,6 +507,7 @@ describe('OauthService', () => {
 			const state = {
 				token: 'invalid-token',
 				cid: 'credential-id',
+				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
 			const decrypted = { csrfSecret: 'csrf-secret' };
@@ -502,6 +524,7 @@ describe('OauthService', () => {
 				token: 'token',
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential',
 				createdAt: timestamp,
 			};
 
@@ -528,7 +551,7 @@ describe('OauthService', () => {
 
 			const result = await service.resolveCredential(req);
 
-			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials]);
+			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials, state]);
 		});
 
 		it('should throw UnexpectedError when credential is not found', async () => {
@@ -536,6 +559,7 @@ describe('OauthService', () => {
 				token: 'token',
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential',
 				createdAt: timestamp,
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
@@ -558,6 +582,7 @@ describe('OauthService', () => {
 				token: 'token',
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential',
 				createdAt: timestamp,
 			};
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');

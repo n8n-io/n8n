@@ -26,6 +26,7 @@ export class OAuth1CredentialController {
 
 		const uri = await this.oauthService.generateAOauth1AuthUri(credential, {
 			cid: credential.id,
+			origin: 'static-credential',
 			userId: skipAuthOnOAuthCallback ? undefined : req.user.id,
 		});
 
@@ -51,7 +52,7 @@ export class OAuth1CredentialController {
 				);
 			}
 
-			const [credential, _, oauthCredentials] =
+			const [credential, _, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
 
 			// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
@@ -67,12 +68,18 @@ export class OAuth1CredentialController {
 
 			const oauthTokenData = Object.fromEntries(paramParser.entries());
 
-			await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+			if (!state.origin || state.origin === 'static-credential') {
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
-			this.logger.debug('OAuth1 callback successful for new credential', {
-				credentialId: credential.id,
-			});
-			return res.render('oauth-callback');
+				this.logger.debug('OAuth1 callback successful for new credential', {
+					credentialId: credential.id,
+				});
+				return res.render('oauth-callback');
+			}
+
+			if (state.origin === 'dynamic-credential') {
+				// something
+			}
 		} catch (e) {
 			const error = ensureError(e);
 			return this.oauthService.renderCallbackError(

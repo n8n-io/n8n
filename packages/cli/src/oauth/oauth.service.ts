@@ -196,6 +196,11 @@ export class OauthService {
 			throw new UnexpectedError(errorMessage);
 		}
 
+		// user validation not required for dynamic credentials
+		if (decoded.origin === 'dynamic-credential') {
+			return decoded;
+		}
+
 		if (decoded.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
@@ -218,7 +223,7 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
+	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T, CsrfState]> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -242,7 +247,7 @@ export class OauthService {
 			throw new UnexpectedError('The OAuth callback state is invalid!');
 		}
 
-		return [credential, decryptedDataOriginal, oauthCredentials];
+		return [credential, decryptedDataOriginal, oauthCredentials, state];
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {

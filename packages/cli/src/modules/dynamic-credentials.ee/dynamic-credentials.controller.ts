@@ -28,6 +28,7 @@ export class DynamicCredentialsController {
 		if (credential.type.includes('OAuth2')) {
 			return await this.oauthService.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'dynamic-credential',
 				authorizationHeader: req.headers.authorization,
 			});
 		}
@@ -35,6 +36,7 @@ export class DynamicCredentialsController {
 		if (credential.type.includes('OAuth1')) {
 			return await this.oauthService.generateAOauth1AuthUri(credential, {
 				cid: credential.id,
+				origin: 'dynamic-credential',
 				authorizationHeader: req.headers.authorization,
 			});
 		}
