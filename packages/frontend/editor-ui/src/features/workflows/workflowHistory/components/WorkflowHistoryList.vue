@@ -140,6 +140,7 @@ const onItemMounted = ({
 				<N8nText color="text-base" size="small">
 					{{
 						i18n.baseText('workflowHistory.group.unnamedVersions', {
+							adjustToNumber: entry.count,
 							interpolate: { count: String(entry.count) },
 						})
 					}}
