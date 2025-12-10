@@ -25,7 +25,7 @@ interface FileBufferData {
 	mimeType: string;
 }
 
-interface ResumableUploadConfig {
+interface UploadStreamConfig {
 	endpoint: string;
 	mimeType: string;
 	body?: IDataObject;
@@ -152,7 +152,7 @@ async function getFileStreamFromUrlOrBinary(
 async function uploadStream(
 	this: IExecuteFunctions,
 	stream: Stream,
-	config: ResumableUploadConfig,
+	config: UploadStreamConfig,
 ): Promise<{ body: IDataObject }> {
 	const { endpoint, mimeType, body } = config;
 
