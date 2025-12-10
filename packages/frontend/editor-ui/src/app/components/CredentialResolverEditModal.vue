@@ -65,9 +65,25 @@ const isEditMode = computed(() => !!props.data?.resolverId);
 
 // Type guard to validate and convert resolver config to credential data
 const isCredentialInformation = (value: unknown): value is CredentialInformation => {
-	return (
-		typeof value === 'string' || (Array.isArray(value) && value.every((v) => typeof v === 'string'))
-	);
+	// Check for primitive types (string, number, boolean)
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		return true;
+	}
+
+	// Check for arrays (can be string[] or IDataObject[])
+	if (Array.isArray(value)) {
+		// Accept arrays where all elements are either strings or objects
+		return value.every(
+			(v) => typeof v === 'string' || (typeof v === 'object' && v !== null && !Array.isArray(v)),
+		);
+	}
+
+	// Check for IDataObject (plain object, not null or array)
+	if (typeof value === 'object' && value !== null) {
+		return true;
+	}
+
+	return false;
 };
 
 const toCredentialData = (config: Record<string, unknown>): ICredentialDataDecryptedObject => {
@@ -112,6 +128,10 @@ const resolverProperties = computed<INodeProperties[]>(() => {
 	return selectedType.value.options.map(toNodeProperty);
 });
 
+const resolverData = computed<ICredentialDataDecryptedObject>(() => {
+	return toCredentialData(resolverConfig.value);
+});
+
 const requiredPropertiesFilled = computed(() => {
 	for (const property of resolverProperties.value) {
 		if (property.required !== true) {
@@ -134,10 +154,6 @@ const requiredPropertiesFilled = computed(() => {
 		}
 	}
 	return true;
-});
-
-const resolverData = computed<ICredentialDataDecryptedObject>(() => {
-	return toCredentialData(resolverConfig.value);
 });
 
 const canSave = computed(() => {
