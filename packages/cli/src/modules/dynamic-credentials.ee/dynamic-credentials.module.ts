@@ -7,8 +7,7 @@ function isFeatureFlagEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
 }
 
-// TODO: Remove LICENSE_FEATURES.EXTERNAL_SECRETS with dynamic credentials feature once it is in the license server
-@BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.EXTERNAL_SECRETS })
+@BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
 		if (!isFeatureFlagEnabled()) {
