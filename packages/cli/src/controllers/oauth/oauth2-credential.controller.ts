@@ -11,6 +11,7 @@ import { OAuthRequest } from '@/requests';
 import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
 import { Logger } from '@n8n/backend-common';
 import { ExternalHooks } from '@/external-hooks';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -89,7 +90,7 @@ export class OAuth2CredentialController {
 			oauthTokenData = {
 				...(typeof oauthTokenData === 'object' ? oauthTokenData : {}),
 				...oauthToken.data,
-			};
+			} as ICredentialDataDecryptedObject;
 
 			if (!state.origin || state.origin === 'static-credential') {
 				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
@@ -102,6 +103,24 @@ export class OAuth2CredentialController {
 			}
 
 			if (state.origin === 'dynamic-credential') {
+				if (!state.credentialResolverId || typeof state.credentialResolverId !== 'string') {
+					return this.oauthService.renderCallbackError(res, 'Credential resolver ID is required');
+				}
+
+				if (
+					!state.authorizationHeader ||
+					typeof state.authorizationHeader !== 'string' ||
+					!state.authorizationHeader.startsWith('Bearer ')
+				) {
+					return this.oauthService.renderCallbackError(res, 'Authorization header is required');
+				}
+
+				await this.oauthService.saveDynamicCredential(
+					credential,
+					decryptedDataOriginal,
+					state.authorizationHeader.split('Bearer ')[1],
+					state.credentialResolverId,
+				);
 				return res.render('oauth-callback');
 			}
 		} catch (e) {

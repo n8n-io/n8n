@@ -11,6 +11,7 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import { Logger } from '@n8n/backend-common';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -78,6 +79,24 @@ export class OAuth1CredentialController {
 			}
 
 			if (state.origin === 'dynamic-credential') {
+				if (!state.credentialResolverId || typeof state.credentialResolverId !== 'string') {
+					return this.oauthService.renderCallbackError(res, 'Credential resolver ID is required');
+				}
+
+				if (
+					!state.authorizationHeader ||
+					typeof state.authorizationHeader !== 'string' ||
+					!state.authorizationHeader.startsWith('Bearer ')
+				) {
+					return this.oauthService.renderCallbackError(res, 'Authorization header is required');
+				}
+
+				await this.oauthService.saveDynamicCredential(
+					credential,
+					oauthTokenData,
+					state.authorizationHeader.split('Bearer ')[1],
+					state.credentialResolverId,
+				);
 				return res.render('oauth-callback');
 			}
 		} catch (e) {

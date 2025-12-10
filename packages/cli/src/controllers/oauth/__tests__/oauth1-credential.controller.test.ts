@@ -121,12 +121,58 @@ describe('OAuth1CredentialController', () => {
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 
-		it('should handle dynamic credential callback', async () => {
+		it('should handle dynamic credential callback successfully', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
 				token: 'token',
 				cid: '1',
 				origin: 'dynamic-credential' as const,
+				credentialResolverId: 'resolver-id',
+				authorizationHeader: 'Bearer token123',
+				createdAt: timestamp,
+			};
+			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
+			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
+				query: {
+					oauth_verifier: 'verifier',
+					oauth_token: 'token',
+					state: dynamicState,
+				},
+			});
+
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'invalid' },
+				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
+				mockState,
+			]);
+			jest
+				.mocked(axios.post)
+				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
+
+			await controller.handleCallback(dynamicReq, res);
+
+			expect(oauthService.saveDynamicCredential).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				expect.objectContaining({
+					oauth_token: 'token',
+					oauth_token_secret: 'secret',
+				}),
+				'token123',
+				'resolver-id',
+			);
+			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+		});
+
+		it('should render error when credentialResolverId is missing for dynamic credential', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				origin: 'dynamic-credential' as const,
+				authorizationHeader: 'Bearer token123',
 				createdAt: timestamp,
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
@@ -150,10 +196,86 @@ describe('OAuth1CredentialController', () => {
 
 			await controller.handleCallback(dynamicReq, res);
 
-			// Dynamic credential handling is not yet implemented, so encryptAndSaveData should not be called
-			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
-			// Dynamic credentials still render the callback page
-			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'Credential resolver ID is required',
+			);
+			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
+		});
+
+		it('should render error when authorizationHeader is missing for dynamic credential', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				origin: 'dynamic-credential' as const,
+				credentialResolverId: 'resolver-id',
+				createdAt: timestamp,
+			};
+			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
+			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
+				query: {
+					oauth_verifier: 'verifier',
+					oauth_token: 'token',
+					state: dynamicState,
+				},
+			});
+
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'invalid' },
+				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
+				mockState,
+			]);
+			jest
+				.mocked(axios.post)
+				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+
+			await controller.handleCallback(dynamicReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'Authorization header is required',
+			);
+			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
+		});
+
+		it('should render error when authorizationHeader does not start with Bearer', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				origin: 'dynamic-credential' as const,
+				credentialResolverId: 'resolver-id',
+				authorizationHeader: 'Invalid token123',
+				createdAt: timestamp,
+			};
+			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
+			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
+				query: {
+					oauth_verifier: 'verifier',
+					oauth_token: 'token',
+					state: dynamicState,
+				},
+			});
+
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'invalid' },
+				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
+				mockState,
+			]);
+			jest
+				.mocked(axios.post)
+				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+
+			await controller.handleCallback(dynamicReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'Authorization header is required',
+			);
+			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
 		});
 
 		it('should handle static credential callback when origin is undefined', async () => {

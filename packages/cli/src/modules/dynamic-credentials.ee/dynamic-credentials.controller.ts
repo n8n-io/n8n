@@ -29,7 +29,7 @@ export class DynamicCredentialsController {
 			return await this.oauthService.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
 				origin: 'dynamic-credential',
-				authorizationHeader: req.headers.authorization,
+				authorizationHeader: req.headers.authorization ?? '',
 			});
 		}
 
@@ -37,7 +37,7 @@ export class DynamicCredentialsController {
 			return await this.oauthService.generateAOauth1AuthUri(credential, {
 				cid: credential.id,
 				origin: 'dynamic-credential',
-				authorizationHeader: req.headers.authorization,
+				authorizationHeader: req.headers.authorization ?? '',
 			});
 		}
 

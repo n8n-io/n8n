@@ -49,6 +49,8 @@ import {
 	type CsrfState,
 	type OAuth1CredentialData,
 } from './types';
+import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -70,6 +72,7 @@ export class OauthService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly externalHooks: ExternalHooks,
 		private readonly cipher: Cipher,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
@@ -172,7 +175,9 @@ export class OauthService {
 	}
 
 	/** Get a credential without user check */
-	protected async getCredentialWithoutUser(credentialId: string): Promise<ICredentialsDb | null> {
+	protected async getCredentialWithoutUser(
+		credentialId: string,
+	): Promise<CredentialsEntity | null> {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
@@ -226,7 +231,7 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T, CsrfState]> {
+	): Promise<[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState]> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -563,4 +568,37 @@ export class OauthService {
 			token_endpoint_auth_method: tokenEndpointAuthMethod,
 		};
 	}
+
+	async saveDynamicCredential(
+		credential: CredentialsEntity,
+		oauthTokenData: ICredentialDataDecryptedObject,
+		authHeader: string,
+		credentialResolverId: string,
+	) {
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(oauthTokenData, ['csrfSecret']);
+
+		const credentialStoreMetadata: CredentialStoreMetadata = {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			isResolvable: true,
+		};
+
+		await this.dynamicCredentialsProxy.storeIfNeeded(
+			{
+				...credentialStoreMetadata,
+				isResolvable: true,
+			},
+			oauthTokenData,
+			//  todo parse this
+			{ version: 1, identity: authHeader },
+			credentials.getData(),
+			{ credentialResolverId },
+		);
+	}
 }
+
+// parse authorization header to string, stripping the Bearer prefix
+
+// within the dynamic credentials controller, fetch the resolver based on resolverId provided as a query string parameter, if it exists and the token is valid for it, then continue, if not exists, or invalid, error.

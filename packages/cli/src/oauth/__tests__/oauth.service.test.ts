@@ -27,6 +27,8 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { Credentials } from 'n8n-core';
 
 jest.mock('@/workflow-execute-additional-data');
 jest.mock('axios');
@@ -42,6 +44,7 @@ describe('OauthService', () => {
 	const globalConfig = mockInstance(GlobalConfig);
 	const externalHooks = mockInstance(ExternalHooks);
 	const cipher = mock<Cipher>();
+	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
 
 	let service: OauthService;
 
@@ -84,6 +87,7 @@ describe('OauthService', () => {
 			globalConfig,
 			externalHooks,
 			cipher,
+			dynamicCredentialsProxy,
 		);
 	});
 
@@ -812,6 +816,104 @@ describe('OauthService', () => {
 			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials, state]);
 			// CSRF validation should still be called
 			expect((service as any).verifyCsrfState).toHaveBeenCalledWith(mockDecryptedData, state);
+		});
+	});
+
+	describe('saveDynamicCredential', () => {
+		beforeEach(() => {
+			// Mock Credentials.getData to return empty object to avoid decryption issues
+			jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({});
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should save dynamic credential with correct parameters', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'googleOAuth2Api',
+				data: 'encrypted-data',
+			});
+			const oauthTokenData = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+			};
+			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
+			const credentialResolverId = 'resolver-id';
+
+			dynamicCredentialsProxy.storeIfNeeded.mockResolvedValue(undefined);
+
+			await service.saveDynamicCredential(
+				credential,
+				oauthTokenData,
+				authToken,
+				credentialResolverId,
+			);
+
+			expect(dynamicCredentialsProxy.storeIfNeeded).toHaveBeenCalledWith(
+				{
+					id: 'credential-id',
+					name: 'Test Credential',
+					type: 'googleOAuth2Api',
+					isResolvable: true,
+				},
+				oauthTokenData,
+				{ version: 1, identity: authToken },
+				expect.any(Object),
+				{ credentialResolverId: 'resolver-id' },
+			);
+		});
+
+		it('should remove csrfSecret from credential data', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'googleOAuth2Api',
+				data: 'encrypted-data',
+			});
+			const oauthTokenData = {
+				access_token: 'access-token',
+				csrfSecret: 'csrf-secret',
+			};
+			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
+			const credentialResolverId = 'resolver-id';
+
+			dynamicCredentialsProxy.storeIfNeeded.mockResolvedValue(undefined);
+
+			await service.saveDynamicCredential(
+				credential,
+				oauthTokenData,
+				authToken,
+				credentialResolverId,
+			);
+
+			// Verify that storeIfNeeded was called with data that doesn't include csrfSecret
+			const callArgs = dynamicCredentialsProxy.storeIfNeeded.mock.calls[0];
+			const staticData = callArgs[3] as any;
+			expect(staticData).not.toHaveProperty('csrfSecret');
+		});
+
+		it('should handle errors from dynamicCredentialsProxy', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'googleOAuth2Api',
+				data: 'encrypted-data',
+			});
+			const oauthTokenData = {
+				access_token: 'access-token',
+			};
+			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
+			const credentialResolverId = 'resolver-id';
+
+			const error = new Error('Storage failed');
+			dynamicCredentialsProxy.storeIfNeeded.mockRejectedValue(error);
+
+			await expect(
+				service.saveDynamicCredential(credential, oauthTokenData, authToken, credentialResolverId),
+			).rejects.toThrow('Storage failed');
 		});
 	});
 
