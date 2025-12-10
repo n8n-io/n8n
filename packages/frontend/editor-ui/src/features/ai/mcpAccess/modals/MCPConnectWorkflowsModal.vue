@@ -4,7 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { N8nButton, N8nNotice } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
@@ -21,12 +22,15 @@ const telemetry = useTelemetry();
 const isSaving = ref(false);
 const selectedWorkflowId = ref<string>();
 const selectRef = ref<SelectRef | null>(null);
+const modalBus = createEventBus();
+const closedByAction = ref(false);
 
 const canSave = computed(() => !!selectedWorkflowId.value);
 
 const cancel = (close: () => void) => {
-	close();
+	closedByAction.value = true;
 	telemetry.track('User dismissed mcp workflows dialog');
+	close();
 };
 
 async function save(close: () => void) {
@@ -35,6 +39,7 @@ async function save(close: () => void) {
 	isSaving.value = true;
 	try {
 		await props.data.onEnableMcpAccess(selectedWorkflowId.value);
+		closedByAction.value = true;
 		telemetry.track('User selected workflow from list', {
 			workflowId: selectedWorkflowId.value,
 		});
@@ -44,10 +49,21 @@ async function save(close: () => void) {
 	}
 }
 
+function onModalClosed() {
+	if (!closedByAction.value) {
+		telemetry.track('User dismissed mcp workflows dialog');
+	}
+}
+
 onMounted(() => {
+	modalBus.on('closed', onModalClosed);
 	setTimeout(() => {
 		selectRef.value?.focusOnInput();
 	}, 150);
+});
+
+onBeforeUnmount(() => {
+	modalBus.off('closed', onModalClosed);
 });
 </script>
 
@@ -57,6 +73,7 @@ onMounted(() => {
 		:title="i18n.baseText('settings.mcp.connectWorkflows')"
 		width="600px"
 		:class="$style.container"
+		:event-bus="modalBus"
 	>
 		<template #content>
 			<div :class="$style.content">
