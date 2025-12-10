@@ -598,7 +598,3 @@ export class OauthService {
 		);
 	}
 }
-
-// parse authorization header to string, stripping the Bearer prefix
-
-// within the dynamic credentials controller, fetch the resolver based on resolverId provided as a query string parameter, if it exists and the token is valid for it, then continue, if not exists, or invalid, error.
