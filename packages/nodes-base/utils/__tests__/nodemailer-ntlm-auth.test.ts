@@ -160,7 +160,7 @@ describe('ntlmAuthProcessor', () => {
 		);
 	});
 
-	it('must reset an error if first respond is not 235', async () => {
+	it('must throw an error if second response is not 235', async () => {
 		// Arrange
 		const mockType1Message = 'NTLM type1';
 		const mockType2Message = {
