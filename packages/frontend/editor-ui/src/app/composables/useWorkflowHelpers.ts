@@ -23,7 +23,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
-	calculateWorkflowChecksum,
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
@@ -849,7 +848,9 @@ export function useWorkflowHelpers() {
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
-		workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflow));
+		if (workflow.checksum) {
+			workflowsStore.setWorkflowChecksum(workflow.checksum);
+		}
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
@@ -953,7 +954,9 @@ export function useWorkflowHelpers() {
 		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflowData));
+		if (workflowData.checksum) {
+			workflowsStore.setWorkflowChecksum(workflowData.checksum);
+		}
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 
