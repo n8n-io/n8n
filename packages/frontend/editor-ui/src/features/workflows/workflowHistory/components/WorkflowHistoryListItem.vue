@@ -278,11 +278,10 @@ $timelineMarkerBorderWidth: 1.33px;
 }
 
 .timelineLine {
+	@include timeline-line-style;
 	position: absolute;
 	top: calc(-1 * var(--spacing--xs));
 	bottom: 0;
-	width: var(--border-width);
-	background-color: var(--color--foreground--tint-1);
 }
 
 .content {
