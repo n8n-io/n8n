@@ -36,6 +36,12 @@ export class Smtp implements ICredentialType {
 			default: 465,
 		},
 		{
+			displayName: 'Use NTLM',
+			name: 'useNTLM',
+			type: 'boolean',
+			default: false
+		},
+		{
 			displayName: 'SSL/TLS',
 			name: 'secure',
 			type: 'boolean',
