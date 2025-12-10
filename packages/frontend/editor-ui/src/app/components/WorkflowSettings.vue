@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
@@ -12,6 +13,7 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
+import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
 	N8nButton,
 	N8nIcon,
@@ -58,6 +60,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const posthogStore = usePostHog();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -68,19 +71,18 @@ const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([
 const executionOrderOptions = ref<Array<{ key: string; value: string; description: string }>>([
 	{
 		key: 'v0',
-		value: 'v0 (legacy)',
+		value: 'Run branches in parallel (v0, legacy)',
 		description:
-			"Executes the first node of each branch, then the second node of each branch, and so on. Binaries are stred in item's binary property.",
+			'Executes the first node of each branch, then the second node of each branch, and so on',
 	},
 	{
 		key: 'v1',
-		value: 'v1 (legacy)',
-		description:
-			"Executes each branch in turn, completing one branch before starting another. Branches are ordered by position on canvas (topmost to bottommost, leftmost first if at same height). Binaries are stored in item's binary property.",
+		value: 'Run each branch one at a time (v1, legacy)',
+		description: 'Executes each branch in turn, completing one branch before starting another',
 	},
 	{
 		key: 'v2',
-		value: 'v2 (recommended)',
+		value: 'Run each branch one at a time with optimized binaries & expressions (v2, recommended)',
 		description:
 			"Uses v1 execution logic with combined binary mode where binaries included in the item's json data and expressions are simplified.",
 	},
@@ -180,6 +182,33 @@ const timeSavedModeOptions = computed(() => [
 		value: 'dynamic' as const,
 	},
 ]);
+
+const filteredExecutionOrderOptions = computed(() => {
+	if (workflowSettings.value.binaryMode === 'combined') {
+		return executionOrderOptions.value;
+	}
+
+	const isV2Enabled = posthogStore.isVariantEnabled(
+		EXECUTION_LOGIC_V2_EXPERIMENT.name,
+		EXECUTION_LOGIC_V2_EXPERIMENT.variant,
+	);
+
+	if (isV2Enabled) {
+		return executionOrderOptions.value;
+	}
+
+	return executionOrderOptions.value
+		.filter((option) => option.key !== 'v2')
+		.map((option) => {
+			if (option.key === 'v1') {
+				return {
+					...option,
+					value: 'Run each branch one at a time (v1, recommended)',
+				};
+			}
+			return option;
+		});
+});
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -676,7 +705,7 @@ onBeforeUnmount(() => {
 							@update:model-value="onExecutionLogicModeChange"
 						>
 							<N8nOption
-								v-for="option in executionOrderOptions"
+								v-for="option in filteredExecutionOrderOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
