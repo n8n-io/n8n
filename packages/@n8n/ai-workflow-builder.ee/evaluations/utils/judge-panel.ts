@@ -1,0 +1,130 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+
+import type { SimpleWorkflow } from '../../src/types/workflow';
+import {
+	evaluateWorkflowPairwise,
+	type PairwiseEvaluationResult,
+} from '../chains/pairwise-evaluator';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface EvalCriteria {
+	dos: string;
+	donts: string;
+}
+
+export interface JudgePanelResult {
+	judgeResults: PairwiseEvaluationResult[];
+	primaryPasses: number;
+	majorityPass: boolean;
+	avgDiagnosticScore: number;
+}
+
+export interface GenerationResult extends JudgePanelResult {
+	workflow: SimpleWorkflow;
+}
+
+export interface MultiGenerationAggregation {
+	/** Generation correctness: (# passing generations) / total generations */
+	generationCorrectness: number;
+	/** Average diagnostic score across all generations */
+	aggregatedDiagnosticScore: number;
+	/** Number of generations that passed majority vote */
+	passingGenerations: number;
+	/** Total number of generations run */
+	totalGenerations: number;
+	/** Detailed results for each generation */
+	generationDetails: GenerationResult[];
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Calculate minimum judges needed for majority (e.g., 2 for 3 judges, 3 for 5 judges)
+ */
+export function getMajorityThreshold(numJudges: number): number {
+	return Math.ceil(numJudges / 2);
+}
+
+// ============================================================================
+// Judge Panel Execution
+// ============================================================================
+
+/**
+ * Run a panel of judges on a workflow.
+ * Executes judges in parallel and aggregates their results.
+ *
+ * @param llm - Language model for evaluation
+ * @param workflow - Workflow to evaluate
+ * @param evalCriteria - Evaluation criteria (dos/donts)
+ * @param numJudges - Number of judges to run
+ * @returns Aggregated judge panel results
+ */
+export async function runJudgePanel(
+	llm: BaseChatModel,
+	workflow: SimpleWorkflow,
+	evalCriteria: EvalCriteria,
+	numJudges: number,
+): Promise<JudgePanelResult> {
+	// Run all judges in parallel
+	const judgeResults = await Promise.all(
+		Array.from({ length: numJudges }, async (_, judgeIndex) => {
+			return await evaluateWorkflowPairwise(
+				llm,
+				{ workflowJSON: workflow, evalCriteria },
+				{ runName: `judge_${judgeIndex + 1}` },
+			);
+		}),
+	);
+
+	return aggregateJudgeResults(judgeResults, numJudges);
+}
+
+/**
+ * Aggregate results from multiple judges into summary metrics.
+ */
+export function aggregateJudgeResults(
+	judgeResults: PairwiseEvaluationResult[],
+	numJudges: number,
+): JudgePanelResult {
+	const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+	const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
+	const avgDiagnosticScore =
+		judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+
+	return {
+		judgeResults,
+		primaryPasses,
+		majorityPass,
+		avgDiagnosticScore,
+	};
+}
+
+// ============================================================================
+// Multi-Generation Aggregation
+// ============================================================================
+
+/**
+ * Aggregate results across multiple generations.
+ */
+export function aggregateGenerations(
+	generationResults: GenerationResult[],
+): MultiGenerationAggregation {
+	const totalGenerations = generationResults.length;
+	const passingGenerations = generationResults.filter((g) => g.majorityPass).length;
+	const generationCorrectness = passingGenerations / totalGenerations;
+	const aggregatedDiagnosticScore =
+		generationResults.reduce((sum, g) => sum + g.avgDiagnosticScore, 0) / totalGenerations;
+
+	return {
+		generationCorrectness,
+		aggregatedDiagnosticScore,
+		passingGenerations,
+		totalGenerations,
+		generationDetails: generationResults,
+	};
+}
