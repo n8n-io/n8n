@@ -7,8 +7,11 @@ import { WHATS_NEW_MODAL_KEY, VIEWS, ABOUT_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import type { CommandGroup, CommandBarItem } from '../types';
+import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const ITEM_ID = {
+	CHAT_HUB: 'chat-hub',
 	WHATS_NEW: 'whats-new',
 	SETTINGS: 'settings',
 	SIGN_OUT: 'sign-out',
@@ -27,6 +30,7 @@ export function useGenericCommands(): CommandGroup {
 	const i18n = useI18n();
 	const uiStore = useUIStore();
 	const router = useRouter();
+	const settingsStore = useSettingsStore();
 	const { getReportingURL } = useBugReporting();
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
@@ -48,6 +52,25 @@ export function useGenericCommands(): CommandGroup {
 				i18n.baseText('mainSidebar.whatsNew.fullChangelog').toLowerCase(),
 			],
 		},
+		...(settingsStore.isChatFeatureEnabled
+			? [
+					{
+						id: ITEM_ID.CHAT_HUB,
+						title: i18n.baseText('projects.menu.chat'),
+						section: i18n.baseText('commandBar.sections.general'),
+						handler: () => {
+							void router.push({ name: CHAT_VIEW });
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'message-circle',
+							},
+						},
+						keywords: ['chat', 'open chat', i18n.baseText('projects.menu.chat').toLowerCase()],
+					},
+				]
+			: []),
 		{
 			id: ITEM_ID.TEMPLATES,
 			title: i18n.baseText('generic.templates'),
