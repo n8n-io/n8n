@@ -2,9 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import * as fs from 'fs';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
-import { getLangchainCallbacks } from 'langsmith/langchain';
 import type { Run, Example } from 'langsmith/schemas';
-import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 import pc from 'picocolors';
@@ -331,104 +329,90 @@ function buildMultiGenerationLangsmithResults(
 	];
 }
 
-/** Run a single judge evaluation - wrapped with traceable for separate LangSmith run */
-const runJudgeEvaluation = traceable(
-	async (
-		llm: BaseChatModel,
-		workflow: SimpleWorkflow,
-		evalCriteria: PairwiseDatasetInput['evals'],
-		judgeIndex: number,
-		generationIndex: number,
-	): Promise<PairwiseEvaluationResult> => {
-		const callbacks = await getLangchainCallbacks();
-		return await evaluateWorkflowPairwise(
-			llm,
-			{ workflowJSON: workflow, evalCriteria },
-			{
-				callbacks,
-				runName: `judge_${judgeIndex + 1}_gen_${generationIndex + 1}`,
-			},
-		);
-	},
-	{ name: 'judge_evaluation', run_type: 'chain' },
-);
+/** Run a single judge evaluation */
+async function runJudgeEvaluation(
+	llm: BaseChatModel,
+	workflow: SimpleWorkflow,
+	evalCriteria: PairwiseDatasetInput['evals'],
+	judgeIndex: number,
+	generationIndex: number,
+): Promise<PairwiseEvaluationResult> {
+	return await evaluateWorkflowPairwise(
+		llm,
+		{ workflowJSON: workflow, evalCriteria },
+		{
+			runName: `judge_${judgeIndex + 1}_gen_${generationIndex + 1}`,
+		},
+	);
+}
 
-/** Run a single generation and its judge panel - wrapped with traceable for LangSmith context propagation */
-const runSingleGeneration = traceable(
-	async (
-		parsedNodeTypes: INodeTypeDescription[],
-		llm: BaseChatModel,
-		numJudges: number,
-		inputs: PairwiseDatasetInput,
-		generationIndex: number,
-		log: EvalLogger,
-		featureFlags?: BuilderFeatureFlags,
-		runName?: string,
-	): Promise<GenerationResult> => {
-		const startTime = Date.now();
-		const runId = generateRunId();
+/** Run a single generation and its judge panel */
+async function runSingleGeneration(
+	parsedNodeTypes: INodeTypeDescription[],
+	llm: BaseChatModel,
+	numJudges: number,
+	inputs: PairwiseDatasetInput,
+	generationIndex: number,
+	log: EvalLogger,
+	featureFlags?: BuilderFeatureFlags,
+	runName?: string,
+): Promise<GenerationResult> {
+	const startTime = Date.now();
+	const runId = generateRunId();
 
-		// Get LangChain callbacks linked to current traceable context.
-		// This is the official bridge between LangSmith's traceable and LangChain callbacks.
-		const callbacks = await getLangchainCallbacks();
+	// Create dedicated agent for this generation
+	const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags, runName);
 
-		// Create dedicated agent for this generation (no tracer - callbacks passed at invocation)
-		const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags, runName);
+	// Generate workflow
+	await consumeGenerator(
+		agent.chat(
+			getChatPayload('pairewise-gen', inputs.prompt, runId, featureFlags),
+			`pairwise-gen-${generationIndex}`,
+		),
+	);
 
-		// Generate workflow - pass callbacks for proper trace linking
-		await consumeGenerator(
-			agent.chat(
-				getChatPayload('pairewise-gen', inputs.prompt, runId, featureFlags),
-				`pairwise-gen-${generationIndex}`,
-				undefined, // abortSignal
-				callbacks, // externalCallbacks for LangSmith tracing
-			),
-		);
+	const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
 
-		const state = await agent.getState(runId, `pairwise-gen-${generationIndex}`);
+	if (!state.values || !isWorkflowStateValues(state.values)) {
+		throw new Error(`Invalid workflow state for generation ${generationIndex + 1}`);
+	}
 
-		if (!state.values || !isWorkflowStateValues(state.values)) {
-			throw new Error(`Invalid workflow state for generation ${generationIndex + 1}`);
-		}
+	const workflow = state.values.workflowJSON;
+	const genTime = (Date.now() - startTime) / 1000;
 
-		const workflow = state.values.workflowJSON;
-		const genTime = (Date.now() - startTime) / 1000;
+	log.verbose(
+		`  Gen ${generationIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
+	);
 
-		log.verbose(
-			`  Gen ${generationIndex + 1}: Workflow done (${workflow?.nodes?.length ?? 0} nodes) [${genTime.toFixed(1)}s]`,
-		);
+	// Run judges for this generation in parallel
+	const judgeResults = await Promise.all(
+		Array.from({ length: numJudges }, async (_, judgeIndex) => {
+			return await runJudgeEvaluation(llm, workflow, inputs.evals, judgeIndex, generationIndex);
+		}),
+	);
 
-		// Run judges for this generation in parallel - each wrapped in traceable for separate runs
-		const judgeResults = await Promise.all(
-			Array.from({ length: numJudges }, async (_, judgeIndex) => {
-				return await runJudgeEvaluation(llm, workflow, inputs.evals, judgeIndex, generationIndex);
-			}),
-		);
+	// Aggregate judge results for this generation
+	const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
+	const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
+	const avgDiagnosticScore =
+		judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
 
-		// Aggregate judge results for this generation
-		const primaryPasses = judgeResults.filter((r) => r.primaryPass).length;
-		const majorityPass = primaryPasses >= getMajorityThreshold(numJudges);
-		const avgDiagnosticScore =
-			judgeResults.reduce((sum, r) => sum + r.diagnosticScore, 0) / numJudges;
+	// Log per-generation judge results
+	const totalViolations = judgeResults.reduce((sum, r) => sum + r.violations.length, 0);
+	log.verbose(
+		`  Gen ${generationIndex + 1}: ${primaryPasses}/${numJudges} judges → ` +
+			`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%` +
+			`${totalViolations > 0 ? `, ${totalViolations} violations` : ''})`,
+	);
 
-		// Log per-generation judge results
-		const totalViolations = judgeResults.reduce((sum, r) => sum + r.violations.length, 0);
-		log.verbose(
-			`  Gen ${generationIndex + 1}: ${primaryPasses}/${numJudges} judges → ` +
-				`${majorityPass ? '✓ PASS' : '✗ FAIL'} (diag=${(avgDiagnosticScore * 100).toFixed(0)}%` +
-				`${totalViolations > 0 ? `, ${totalViolations} violations` : ''})`,
-		);
-
-		return {
-			workflow,
-			judgeResults,
-			primaryPasses,
-			majorityPass,
-			avgDiagnosticScore,
-		};
-	},
-	{ name: 'workflow_generation', run_type: 'chain' },
-);
+	return {
+		workflow,
+		judgeResults,
+		primaryPasses,
+		majorityPass,
+		avgDiagnosticScore,
+	};
+}
 
 // ============================================================================
 // Workflow Generator (for LangSmith)
