@@ -78,7 +78,7 @@ export class OAuth1CredentialController {
 			}
 
 			if (state.origin === 'dynamic-credential') {
-				// something
+				return res.render('oauth-callback');
 			}
 		} catch (e) {
 			const error = ensureError(e);
