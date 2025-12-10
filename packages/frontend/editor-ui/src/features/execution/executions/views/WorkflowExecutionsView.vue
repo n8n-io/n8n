@@ -37,14 +37,18 @@ const loadingMore = ref(false);
 const workflow = ref<IWorkflowDb | undefined>();
 
 const workflowId = computed(() => {
-	return route.params.name as string | undefined;
+	const name = route.params.name;
+	return typeof name === 'string' ? name : undefined;
 });
 
 const isNewWorkflowRoute = computed(() => {
 	return route.query.new === 'true';
 });
 
-const executionId = computed(() => route.params.executionId as string);
+const executionId = computed(() => {
+	const id = route.params.executionId;
+	return typeof id === 'string' ? id : undefined;
+});
 
 const executions = computed(() =>
 	workflowId.value
