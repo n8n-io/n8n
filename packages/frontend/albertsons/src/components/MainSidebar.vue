@@ -97,14 +97,6 @@ const renderIcon = (key) => {
 		</nav>
 
 		<!-- User footer -->
-		<div class="sidebar-user">
-			<div class="sidebar-user-avatar">RI</div>
-			<div class="sidebar-user-info">
-				<div class="sidebar-user-name">Risha I.M</div>
-				<div class="sidebar-user-email">risha@sashai.tech</div>
-			</div>
-			<button type="button" class="sidebar-user-menu">⋯</button>
-		</div>
 	</aside>
 </template>
 
