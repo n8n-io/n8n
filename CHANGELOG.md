@@ -1,3 +1,15 @@
+## [2.0.1](https://github.com/n8n-io/n8n/compare/n8n@2.0.0...n8n@2.0.1) (2025-12-10)
+
+
+### Bug Fixes
+
+* Add version history records when importing workflows ([#22974](https://github.com/n8n-io/n8n/issues/22974)) ([d86117e](https://github.com/n8n-io/n8n/commit/d86117e9f22d6ab5c4ef7eb1b83a6f297b5f7245))
+* **core:** Add missing env vars to internal mode ([#22965](https://github.com/n8n-io/n8n/issues/22965)) ([574227f](https://github.com/n8n-io/n8n/commit/574227f186633ab8ea38b6984117f5e00c539fb2))
+* **core:** Don't resume parent workflow when the child workflow goes into waiting ([#22964](https://github.com/n8n-io/n8n/issues/22964)) ([163a0cd](https://github.com/n8n-io/n8n/commit/163a0cdbf866a7fb738f99d68fc8b947a4fee2b1))
+* Fix checksum hashing when WebCrypto is unavailable ([#23024](https://github.com/n8n-io/n8n/issues/23024)) ([74760e9](https://github.com/n8n-io/n8n/commit/74760e92123cdb8979a131b6b9f7508b55629862))
+
+
+
 # [2.0.0](https://github.com/n8n-io/n8n/compare/n8n@2.0.0-rc.3...n8n@2.0.0) (2025-12-08)
 
 
