@@ -189,7 +189,7 @@ describe('ntlmAuthProcessor', () => {
 		);
 	});
 
-	it('must retrow an error parseType2Message callback', async () => {
+	it('must rethrow an error in parseType2Message callback', async () => {
 		// Arrange
 		const mockType1Message = 'NTLM type1';
 		const testError = new Error('Parse error');
