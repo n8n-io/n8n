@@ -127,7 +127,6 @@ async function getFileStreamFromUrlOrBinary(
 		};
 	}
 
-	// Get binary data
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
 	if (!binaryPropertyName) {
 		throw new NodeOperationError(this.getNode(), 'Binary property name is required', {
@@ -137,7 +136,6 @@ async function getFileStreamFromUrlOrBinary(
 
 	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 	if (!binaryData.id) {
-		// Small file - return buffer for direct upload
 		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 		return {
 			buffer,
@@ -145,21 +143,19 @@ async function getFileStreamFromUrlOrBinary(
 		};
 	}
 
-	// Large file - return stream
 	return {
 		stream: await this.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE),
 		mimeType: binaryData.mimeType,
 	};
 }
 
-async function performResumableUpload(
+async function uploadStream(
 	this: IExecuteFunctions,
 	stream: Stream,
 	config: ResumableUploadConfig,
 ): Promise<{ body: IDataObject }> {
 	const { endpoint, mimeType, body } = config;
 
-	// Initialize the upload
 	const uploadInitResponse = (await apiRequest.call(this, 'POST', endpoint, {
 		headers: {
 			'X-Goog-Upload-Protocol': 'resumable',
@@ -176,7 +172,6 @@ async function performResumableUpload(
 		throw new NodeOperationError(this.getNode(), 'Failed to get upload URL');
 	}
 
-	// Upload the file
 	return (await this.helpers.httpRequest({
 		method: 'POST',
 		url: uploadUrl,
@@ -205,15 +200,12 @@ export async function transferFile(
 		qs,
 	);
 
-	// Handle small binary files (buffer) - use uploadFile which handles resumable upload
 	if ('buffer' in fileData) {
 		return await uploadFile.call(this, fileData.buffer, fileData.mimeType);
 	}
 
-	// Handle URL or large binary files (stream)
 	const { stream, mimeType } = fileData;
-
-	const uploadResponse = (await performResumableUpload.call(this, stream, {
+	const uploadResponse = (await uploadStream.call(this, stream, {
 		endpoint: '/upload/v1beta/files',
 		mimeType,
 	})) as { body: { file: File } };
@@ -260,7 +252,6 @@ export async function uploadToFileSearchStore(
 		qs,
 	);
 
-	// Handle small binary files (buffer) - convert to stream
 	let stream: Stream;
 	let mimeType: string;
 
@@ -268,12 +259,11 @@ export async function uploadToFileSearchStore(
 		stream = Readable.from(fileData.buffer);
 		mimeType = fileData.mimeType;
 	} else {
-		// Handle URL or large binary files (stream)
 		stream = fileData.stream;
 		mimeType = fileData.mimeType;
 	}
 
-	const uploadResponse = (await performResumableUpload.call(this, stream, {
+	const uploadResponse = (await uploadStream.call(this, stream, {
 		endpoint: `/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
 		mimeType,
 		body: { displayName, mimeType },

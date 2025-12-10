@@ -8,9 +8,9 @@ export const properties: INodeProperties[] = [
 		displayName: 'File Search Store Name',
 		name: 'fileSearchStoreName',
 		type: 'string',
-		placeholder: 'e.g. fileSearchStores/123456789',
+		placeholder: 'e.g. fileSearchStores/abc123',
 		description:
-			'The name of the File Search store to upload to. Can be the full name (fileSearchStores/...) or just the ID.',
+			'The full name of the File Search store to upload to (format: fileSearchStores/...)',
 		default: '',
 		required: true,
 	},
@@ -82,11 +82,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const displayName = this.getNodeParameter('displayName', i, '') as string;
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 
-	// Normalize the store name - if it's just an ID, prepend the prefix
-	const normalizedStoreName = fileSearchStoreName.startsWith('fileSearchStores/')
-		? fileSearchStoreName
-		: `fileSearchStores/${fileSearchStoreName}`;
-
 	let fileUrl: string | undefined;
 	if (inputType === 'url') {
 		fileUrl = this.getNodeParameter('fileUrl', i, '') as string;
@@ -95,7 +90,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await uploadToFileSearchStore.call(
 		this,
 		i,
-		normalizedStoreName,
+		fileSearchStoreName,
 		displayName,
 		fileUrl,
 		'application/octet-stream',
