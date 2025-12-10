@@ -5,7 +5,7 @@ import { ChatbotBestPractices } from './chatbot';
 import { ContentGenerationBestPractices } from './content-generation';
 // import { DataAnalysisBestPractices } from './data-analysis';
 import { DataExtractionBestPractices } from './data-extraction';
-// import { DataTransformationBestPractices } from './data-transformation';
+import { DataTransformationBestPractices } from './data-transformation';
 import { DocumentProcessingBestPractices } from './document-processing';
 // import { EnrichmentBestPractices } from './enrichment';
 import { FormInputBestPractices } from './form-input';
@@ -23,7 +23,7 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.CONTENT_GENERATION]: new ContentGenerationBestPractices(),
 	[WorkflowTechnique.DATA_ANALYSIS]: undefined, // new DataAnalysisBestPractices(),
 	[WorkflowTechnique.DATA_EXTRACTION]: new DataExtractionBestPractices(),
-	[WorkflowTechnique.DATA_TRANSFORMATION]: undefined, // new DataTransformationBestPractices(),
+	[WorkflowTechnique.DATA_TRANSFORMATION]: new DataTransformationBestPractices(),
 	[WorkflowTechnique.DOCUMENT_PROCESSING]: new DocumentProcessingBestPractices(),
 	[WorkflowTechnique.ENRICHMENT]: undefined, // new EnrichmentBestPractices(),
 	[WorkflowTechnique.FORM_INPUT]: new FormInputBestPractices(),
