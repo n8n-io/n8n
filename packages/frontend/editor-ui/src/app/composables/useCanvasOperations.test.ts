@@ -92,8 +92,6 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 				},
 			}),
 		},
-		isToolType: vi.fn((type: string) => type.endsWith('Tool') && !type.endsWith('HitlTool')),
-		isHitlToolType: vi.fn((type: string) => type.endsWith('HitlTool')),
 	};
 });
 
