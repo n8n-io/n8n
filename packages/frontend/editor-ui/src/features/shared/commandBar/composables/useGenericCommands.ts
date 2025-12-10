@@ -59,7 +59,7 @@ export function useGenericCommands(): CommandGroup {
 						title: i18n.baseText('projects.menu.chat'),
 						section: i18n.baseText('commandBar.sections.general'),
 						handler: () => {
-							void router.push({ name: CHAT_VIEW });
+							void router.push({ name: CHAT_VIEW, force: true });
 						},
 						icon: {
 							component: N8nIcon,

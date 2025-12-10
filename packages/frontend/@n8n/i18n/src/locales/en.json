@@ -4172,6 +4172,7 @@
 	"commandBar.sections.executions": "Executions",
 	"commandBar.sections.evaluation": "Evaluation",
 	"commandBar.sections.demo": "Demo",
+	"commandBar.sections.chat": "Chat",
 	"commandBar.sections.general": "Navigation",
 	"commandBar.templates.import": "Import template",
 	"commandBar.templates.importWithPrefix": "Import template {templateName}",
@@ -4230,5 +4231,8 @@
 	"commandBar.projects.create": "Create project",
 	"commandBar.projects.open": "Open project",
 	"commandBar.projects.searchPlaceholder": "Search by project name...",
-	"commandBar.projects.unnamed": "(unnamed project)"
+	"commandBar.projects.unnamed": "(unnamed project)",
+	"commandBar.chat.new": "New conversation",
+	"commandBar.chat.open": "Open conversation",
+	"commandBar.chat.open.searchPlaceholder": "Search by session or agent name ..."
 }
