@@ -744,9 +744,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	}
 
-	function setWorkflowVersionId(versionId: string, newChecksum: string) {
+	function setWorkflowVersionId(versionId: string, newChecksum?: string) {
 		workflow.value.versionId = versionId;
-		workflowChecksum.value = newChecksum;
+		if (newChecksum) {
+			workflowChecksum.value = newChecksum;
+		}
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory) {

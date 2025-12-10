@@ -948,11 +948,6 @@ export function useWorkflowHelpers() {
 	}
 
 	async function initState(workflowData: IWorkflowDb) {
-		// TODO: check if there are cases like readonly etc where we wouldn't have a checksum
-		if (!workflowData.checksum) {
-			throw new Error('Checksum is required');
-		}
-
 		workflowsStore.addWorkflow(workflowData);
 		workflowState.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
