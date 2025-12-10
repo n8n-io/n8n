@@ -135,7 +135,7 @@ onMounted(() => {
 						:collapsed="false"
 						:release-channel="settingsStore.settings.releaseChannel"
 					/>
-					<BetaTag :style="$style.beta" />
+					<BetaTag />
 				</div>
 			</RouterLink>
 			<N8nIconButton
@@ -210,10 +210,6 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.beta {
-	margin-bottom: var(--spacing--lg);
 }
 
 .component {
