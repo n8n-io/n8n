@@ -22,6 +22,7 @@
   ],
   "n8n": {
     "credentials": [
+
     ],
     "nodes": [
       "dist/nodes/TranslationAgent/TranslationAgent.node.js"
