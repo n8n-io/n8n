@@ -58,7 +58,11 @@ function updateSortBy(value: 'updatedAt' | 'createdAt') {
 			</template>
 		</N8nInput>
 
-		<N8nSelect :model-value="modelValue.sortBy" :class="$style.sort" @update:model-value="updateSortBy">
+		<N8nSelect
+			:model-value="modelValue.sortBy"
+			:class="$style.sort"
+			@update:model-value="updateSortBy"
+		>
 			<N8nOption
 				v-for="option in sortOptions"
 				:key="option.value"
