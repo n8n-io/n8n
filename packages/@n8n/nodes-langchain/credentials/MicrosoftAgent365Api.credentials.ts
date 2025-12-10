@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftAgent365Api implements ICredentialType {
 	name = 'microsoftAgent365Api';
@@ -12,13 +12,14 @@ export class MicrosoftAgent365Api implements ICredentialType {
 			displayName: 'Tenant ID',
 			name: 'tenantId',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string',
-			// required: true, TODO enable
+			required: true,
 			default: '',
 		},
 		{
@@ -26,6 +27,7 @@ export class MicrosoftAgent365Api implements ICredentialType {
 			name: 'clientSecret',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 	];

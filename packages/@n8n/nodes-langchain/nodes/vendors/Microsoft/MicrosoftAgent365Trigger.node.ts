@@ -13,6 +13,7 @@ import {
 	configureAdapterProcessCallback,
 	createMicrosoftAgentApplication,
 	type MicrosoftAgent365Credentials,
+	setObservabilityDefaultEnv,
 } from './microsoft-utils';
 
 // TODO : remove after resolved ====================================
@@ -73,6 +74,13 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'Agent 365 is currently only available for Microsoft customers that have opted into the Copilot Frontier program. <a href="https://adoption.microsoft.com/en-us/copilot/frontier-program/" target="_blank">Learn more</a>.',
+				name: 'previewNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Welcome Message',
 				name: 'welcomeMessage',
@@ -168,11 +176,8 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		const messageId = req.body?.id;
 
 		if (messageId && processedMessages.has(messageId)) {
-			console.log(`Duplicate message detected: ${messageId}, skipping processing`);
 			res.status(200).end();
-			return {
-				noWebhookResponse: true,
-			};
+			return { noWebhookResponse: true };
 		}
 
 		if (messageId) {
@@ -184,6 +189,8 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			}
 		}
 		//================================================================================
+
+		setObservabilityDefaultEnv();
 
 		const credentials = (await this.getCredentials(
 			'microsoftAgent365Api',
@@ -199,9 +206,9 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);
 
 		(req as any).user = {
-			aud: credentials.clientId || 'mock-client-id',
-			appid: credentials.clientId || 'mock-client-id',
-			azp: credentials.clientId || 'mock-client-id',
+			aud: credentials.clientId,
+			appid: credentials.clientId,
+			azp: credentials.clientId,
 		};
 
 		await agent.adapter.process(req, res, callback);
