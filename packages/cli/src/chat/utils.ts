@@ -2,7 +2,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import {
 	CHAT_WAIT_USER_REPLY,
-	RESPOND_TO_CHAT_NODE_TYPE,
+	CHAT_NODE_TYPE,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
@@ -62,11 +62,7 @@ export function shouldResumeImmediately(lastNode: INode) {
 	}
 
 	const operation = lastNode?.parameters?.operation;
-	if (
-		lastNode?.type === RESPOND_TO_CHAT_NODE_TYPE &&
-		operation &&
-		operation !== SEND_AND_WAIT_OPERATION
-	) {
+	if (lastNode?.type === CHAT_NODE_TYPE && operation && operation !== SEND_AND_WAIT_OPERATION) {
 		return true;
 	}
 

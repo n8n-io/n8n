@@ -31,7 +31,7 @@ import {
 	jsonParse,
 	jsonStringify,
 	StructuredChunk,
-	RESPOND_TO_CHAT_NODE_TYPE,
+	CHAT_NODE_TYPE,
 	IRunExecutionData,
 	INodeParameters,
 	INode,
@@ -594,7 +594,7 @@ export class ChatHubService {
 		}
 
 		const chatResponseNodes = workflow.activeVersion.nodes.filter(
-			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
+			(node) => node.type === CHAT_NODE_TYPE,
 		);
 
 		if (chatResponseNodes.length > 0) {
