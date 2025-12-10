@@ -6,6 +6,7 @@ export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
 
 export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'tool-node-has-no-parameters',
+	// this validation has been removed for now as it was throwing a lot of false positives
 	'tool-node-static-parameters',
 	'agent-static-prompt',
 	'agent-no-system-prompt',
@@ -28,6 +29,8 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'workflow-similarity-edge-delete',
 	'workflow-similarity-edge-substitute',
 	'workflow-similarity-evaluation-failed',
+	'http-request-hardcoded-credentials',
+	'set-node-credential-field',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -53,6 +56,7 @@ export interface ProgrammaticChecksResult {
 	agentPrompt: ProgrammaticViolation[];
 	tools: ProgrammaticViolation[];
 	fromAi: ProgrammaticViolation[];
+	credentials: ProgrammaticViolation[];
 }
 
 export interface ProgrammaticEvaluationResult {
@@ -63,6 +67,7 @@ export interface ProgrammaticEvaluationResult {
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;
 	fromAi: SingleEvaluatorResult;
+	credentials: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
 }
 

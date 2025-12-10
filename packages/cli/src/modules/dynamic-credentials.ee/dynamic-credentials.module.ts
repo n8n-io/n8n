@@ -17,9 +17,21 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		await import('./credential-resolvers.controller');
 		await import('./context-establishment-hooks');
 		await import('./credential-resolvers');
-		const { DynamicCredentialResolverRegistry } = await import('./services');
+		const {
+			DynamicCredentialResolverRegistry,
+			DynamicCredentialStorageService,
+			DynamicCredentialService,
+		} = await import('./services');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
+
+		// Register the credential resolution provider with CredentialsHelper
+		const { DynamicCredentialsProxy } = await import('../../credentials/dynamic-credentials-proxy');
+		const credentialsProxy = Container.get(DynamicCredentialsProxy);
+		const dynamicCredentialService = Container.get(DynamicCredentialService);
+		const dynamicCredentialStorageService = Container.get(DynamicCredentialStorageService);
+		credentialsProxy.setResolverProvider(dynamicCredentialService);
+		credentialsProxy.setStorageProvider(dynamicCredentialStorageService);
 	}
 
 	async entities() {

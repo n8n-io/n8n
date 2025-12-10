@@ -47,7 +47,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickBackToCanvasButton() {
-		await this.clickByTestId('back-to-canvas');
+		await this.clickByTestId('ndv-close-button');
 	}
 
 	getParameterByLabel(labelName: string) {
@@ -757,7 +757,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+		return this.page.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {
