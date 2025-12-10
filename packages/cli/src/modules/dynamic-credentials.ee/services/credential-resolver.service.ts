@@ -21,6 +21,7 @@ export interface CreateResolverParams {
 
 export interface UpdateResolverParams {
 	name?: string;
+	type?: string;
 	config?: CredentialResolverConfiguration;
 }
 
@@ -100,6 +101,10 @@ export class DynamicCredentialResolverService {
 		const existing = await this.repository.findOneBy({ id });
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
+		}
+
+		if (params.type !== undefined) {
+			existing.type = params.type;
 		}
 
 		if (params.config !== undefined) {

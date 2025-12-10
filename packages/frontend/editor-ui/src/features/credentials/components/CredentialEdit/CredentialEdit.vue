@@ -1189,7 +1189,7 @@ const isResolvable = computed<boolean>(() => {
 							>
 								<template #tag>
 									<span :class="$style.dynamicTagContent">
-										<N8nIcon icon="key" size="xsmall" />
+										<N8nIcon icon="key-round" size="xsmall" />
 										{{ i18n.baseText('credentialEdit.credentialEdit.dynamic') }}
 									</span>
 								</template>

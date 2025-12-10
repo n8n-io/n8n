@@ -413,7 +413,7 @@ onMounted(async () => {
 							:credential-properties="resolverProperties"
 							:credential-data="resolverData"
 							documentation-url=""
-							:show-validation-warnings="!requiredPropertiesFilled"
+							:show-validation-warnings="!!errorMessage"
 							@update="onConfigUpdate"
 						/>
 					</div>
