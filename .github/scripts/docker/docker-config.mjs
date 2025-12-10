@@ -34,23 +34,21 @@ class BuildContext {
 					context.push_to_ghcr = false;
 					break;
 
-				case 'workflow_dispatch':
-					context.version = `branch-${this.sanitizeBranch(branch)}`;
-					context.release_type = 'branch';
-					context.platforms = ['linux/amd64'];
-					break;
+      case 'workflow_dispatch':
+        context.version = `branch-${this.sanitizeBranch(branch)}`;
+        context.release_type = 'branch';
+        break;
 
-				case 'push':
-					if (branch === 'master') {
-						context.version = 'dev';
-						context.release_type = 'dev';
-						context.push_to_docker = true;
-					} else {
-						context.version = `branch-${this.sanitizeBranch(branch)}`;
-						context.release_type = 'branch';
-						context.platforms = ['linux/amd64'];
-					}
-					break;
+      case 'push':
+        if (branch === 'master') {
+          context.version = 'dev';
+          context.release_type = 'dev';
+          context.push_to_docker = true;
+        } else {
+          context.version = `branch-${this.sanitizeBranch(branch)}`;
+          context.release_type = 'branch';
+        }
+        break;
 
 				case 'workflow_call':
 				case 'release':
