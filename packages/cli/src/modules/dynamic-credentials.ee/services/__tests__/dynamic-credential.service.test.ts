@@ -7,7 +7,7 @@ import type {
 	IExecutionContext,
 } from 'n8n-workflow';
 
-import type { CredentialResolveMetadata } from '@/credential-resolution-provider.interface';
+import type { CredentialResolveMetadata } from '@/credentials/credential-resolution-provider.interface';
 
 import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
