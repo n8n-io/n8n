@@ -592,7 +592,7 @@ const onLogout = () => {
 											<template v-for="child in whatsNewItems.children" :key="child.id">
 												<component
 													:is="child.component"
-													v-if="isCustomMenuItem(child)"
+													v-if="isCustomMenuItem(child) && child.available !== false"
 													v-bind="child.props"
 												/>
 												<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
