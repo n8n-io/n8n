@@ -14,6 +14,7 @@ import {
 	TOOL_NODE_EXAMPLES,
 } from './examples';
 import {
+	GMAIL_GUIDE,
 	HTTP_REQUEST_GUIDE,
 	IF_NODE_GUIDE,
 	RESOURCE_LOCATOR_GUIDE,
@@ -39,6 +40,7 @@ const guides: NodeTypeGuide[] = [
 	SWITCH_NODE_GUIDE,
 	HTTP_REQUEST_GUIDE,
 	TOOL_NODES_GUIDE,
+	GMAIL_GUIDE,
 	// Parameter-type guides
 	RESOURCE_LOCATOR_GUIDE,
 	SYSTEM_MESSAGE_GUIDE,

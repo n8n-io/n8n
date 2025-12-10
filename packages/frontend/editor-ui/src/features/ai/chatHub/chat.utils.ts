@@ -349,17 +349,13 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 	};
 }
 
-export function createMimeTypes(modalities: ChatHubInputModality[]): string | undefined {
-	if (modalities.length === 0) {
-		return undefined;
-	}
-
+export function createMimeTypes(modalities: ChatHubInputModality[]): string {
 	// If 'file' modality is present, accept all file types
 	if (modalities.includes('file')) {
 		return '*/*';
 	}
 
-	const mimeTypes: string[] = [];
+	const mimeTypes: string[] = ['text/*'];
 
 	for (const modality of modalities) {
 		if (modality === 'image') {
@@ -373,5 +369,5 @@ export function createMimeTypes(modalities: ChatHubInputModality[]): string | un
 		}
 	}
 
-	return mimeTypes.length > 0 ? mimeTypes.join(',') : undefined;
+	return mimeTypes.join(',');
 }

@@ -13,7 +13,7 @@ export type EnvProviderState = {
 export function createEnvProviderState(): EnvProviderState {
 	const isProcessAvailable = typeof process !== 'undefined';
 	const isEnvAccessBlocked = isProcessAvailable
-		? process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
+		? process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE !== 'false'
 		: false;
 	const env: Record<string, string> =
 		!isProcessAvailable || isEnvAccessBlocked ? {} : (process.env as Record<string, string>);

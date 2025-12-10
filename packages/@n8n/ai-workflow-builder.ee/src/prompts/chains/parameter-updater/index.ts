@@ -26,6 +26,7 @@ export {
 	SWITCH_NODE_GUIDE,
 	HTTP_REQUEST_GUIDE,
 	TOOL_NODES_GUIDE,
+	GMAIL_GUIDE,
 } from './guides';
 
 // Parameter type guides

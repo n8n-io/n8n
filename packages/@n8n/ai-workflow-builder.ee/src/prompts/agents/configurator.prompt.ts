@@ -38,6 +38,19 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 - "Set method to POST"
 - "Add field 'status' with value 'processed'"`;
 
+const DATA_REFERENCING = `Nodes output an array of items. Nodes have access to the output items of all the nodes that have already executed.
+
+Within a node, data from previous nodes is commonly referenced using the following:
+- $json: the current JSON data of the previous node
+- $('<node_name>').item.json: the JSON data of the matching item of any preceding node
+
+Prefer $('<node_name>').item to $('<node_name>').first() or $('<node_name>').last() unless it is explicitly required to fix an error.
+
+Examples in parameter configuration:
+- "Set field to ={{ $json.fieldName }}"
+- "Set value to ={{ $('Previous Node').item.json.value }}"
+- "Set message to ={{ $('HTTP Request').item.json.message }}"`;
+
 const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions:
 - "Set sendTo to ={{ $fromAI('to') }}"
 - "Set subject to ={{ $fromAI('subject') }}"
@@ -118,6 +131,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
+		.section('data_referencing', DATA_REFERENCING)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
 		.section('default_values_warning', DEFAULT_VALUES_WARNING)

@@ -82,6 +82,7 @@ describe('ActiveExecutions', () => {
 		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
+		executionRepository.updateExistingExecution.mockResolvedValue(true);
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
 		workflowExecution.cancel = jest.fn();
@@ -112,6 +113,18 @@ describe('ActiveExecutions', () => {
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+
+	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
+		// Mock updateExistingExecution to return false (status check failed)
+		executionRepository.updateExistingExecution.mockResolvedValue(false);
+
+		await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
+			'Execution is already being resumed by another process',
+		);
+
+		// Verify execution was NOT added to active executions
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 	});
 
 	describe('attachWorkflowExecution', () => {
