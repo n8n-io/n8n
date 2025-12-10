@@ -179,6 +179,12 @@ export class WebhookService {
 		return path.startsWith(':') || path.includes('/:');
 	}
 
+	getWebhookPath(webhook: IWebhookData): string {
+		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
+			.filter((part) => !!part)
+			.join('/');
+	}
+
 	/**
 	 * Returns all the webhooks which should be created for the give node
 	 */
