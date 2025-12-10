@@ -28,7 +28,7 @@ test.describe('NDV', () => {
 		const canvasNodes = n8n.canvas.getCanvasNodes();
 		await canvasNodes.last().dblclick();
 		await expect(n8n.ndv.getContainer()).toBeVisible();
-		await expect(n8n.ndv.inputPanel.get()).toContainText('Wire me up');
+		await expect(n8n.ndv.inputPanel.get()).toContainText('No input connected');
 	});
 
 	test('should test webhook node', async ({ n8n }) => {

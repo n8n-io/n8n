@@ -40,20 +40,26 @@ describe('StubCredentialResolver', () => {
 			const context = testHelpers.createContext('user-1');
 			const data = { apiKey: 'test-key' };
 
+			const handleWithPrefix = testHelpers.createHandle({ prefix: 'test' });
+			const handleWithOtherPrefix = testHelpers.createHandle({ prefix: 'other' });
+			const handleWithoutPrefix = testHelpers.createHandle({});
+
 			// Store with prefix
-			await resolver.setSecret(credentialId, context, data, { prefix: 'test' });
+			await resolver.setSecret(credentialId, context, data, handleWithPrefix);
 
 			// Should retrieve with same prefix
-			const retrieved = await resolver.getSecret(credentialId, context, { prefix: 'test' });
+			const retrieved = await resolver.getSecret(credentialId, context, handleWithPrefix);
 			expect(retrieved).toEqual(data);
 
 			// Should NOT retrieve with different prefix
 			await expect(
-				resolver.getSecret(credentialId, context, { prefix: 'other' }),
+				resolver.getSecret(credentialId, context, handleWithOtherPrefix),
 			).rejects.toThrow();
 
 			// Should NOT retrieve without prefix
-			await expect(resolver.getSecret(credentialId, context, {})).rejects.toThrow();
+			await expect(
+				resolver.getSecret(credentialId, context, handleWithoutPrefix),
+			).rejects.toThrow();
 		});
 
 		it('should store data in memory (lost on restart)', async () => {
@@ -63,12 +69,13 @@ describe('StubCredentialResolver', () => {
 			const credentialId = 'cred-123';
 			const context = testHelpers.createContext('user-1');
 			const data = { apiKey: 'test-key' };
+			const handle = testHelpers.createHandle({});
 
 			// Store in first instance
-			await resolver1.setSecret(credentialId, context, data, {});
+			await resolver1.setSecret(credentialId, context, data, handle);
 
 			// Should not be available in second instance (different memory)
-			await expect(resolver2.getSecret(credentialId, context, {})).rejects.toThrow();
+			await expect(resolver2.getSecret(credentialId, context, handle)).rejects.toThrow();
 		});
 	});
 });

@@ -219,7 +219,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
 		});
 
-		it('should prevent running a webhook-based workflow that has issues', async () => {
+		it('should not prevent running a webhook-based workflow that has issues', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 			vi.mocked(workflowsStore).nodesIssuesExist = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
@@ -227,9 +227,7 @@ describe('useRunWorkflow({ router })', () => {
 				waitingForWebhook: true,
 			});
 
-			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
-				'workflowRun.showError.resolveOutstandingIssues',
-			);
+			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
 
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 		});
