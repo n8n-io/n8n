@@ -316,7 +316,11 @@ describe('OauthService', () => {
 
 	describe('createCsrfState', () => {
 		it('should create CSRF state with correct structure', () => {
-			const data = { cid: 'credential-id', userId: 'user-id' };
+			const data = {
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
 			jest.setSystemTime(new Date(timestamp));
 
 			const [csrfSecret, encodedState] = service.createCsrfState(data);
@@ -332,7 +336,11 @@ describe('OauthService', () => {
 		});
 
 		it('should include additional data in state', () => {
-			const data = { cid: 'credential-id', customField: 'custom-value' };
+			const data = {
+				cid: 'credential-id',
+				customField: 'custom-value',
+				origin: 'static-credential' as const,
+			};
 			jest.setSystemTime(new Date(timestamp));
 
 			const [, encodedState] = service.createCsrfState(data);
@@ -766,6 +774,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -816,6 +825,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -860,6 +870,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -913,6 +924,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -961,12 +973,14 @@ describe('OauthService', () => {
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Invalid OAuth2 server metadata');
@@ -1002,12 +1016,14 @@ describe('OauthService', () => {
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow(BadRequestError);
 			await expect(
 				service.generateAOauth2AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Invalid client registration response');
@@ -1058,6 +1074,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1103,6 +1120,7 @@ describe('OauthService', () => {
 
 			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1136,6 +1154,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth1AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1168,6 +1187,7 @@ describe('OauthService', () => {
 
 			const authUri = await service.generateAOauth1AuthUri(credential, {
 				cid: credential.id,
+				origin: 'static-credential',
 				userId: 'user-id',
 			});
 
@@ -1193,6 +1213,7 @@ describe('OauthService', () => {
 			await expect(
 				service.generateAOauth1AuthUri(credential, {
 					cid: credential.id,
+					origin: 'static-credential',
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Request token failed');
