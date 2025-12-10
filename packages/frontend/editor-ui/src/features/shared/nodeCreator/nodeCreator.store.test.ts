@@ -333,7 +333,7 @@ describe('useNodeCreatorStore', () => {
 			expect(nodeCreatorStore.selectedView).toEqual(AI_UNCATEGORIZED_CATEGORY);
 		});
 
-		it('sets nodeCreatorView to provided nodeCreatorView event when connection type is not Main', async () => {
+		it('sets nodeCreatorView to provided nodeCreatorView even when connection type is not Main', async () => {
 			mockedParseCanvasConnectionHandleString.mockReturnValue({
 				type: NodeConnectionTypes.AiLanguageModel, // any value that is not NodeConnectionTypes.Main
 				index: 0,
