@@ -1231,19 +1231,6 @@ onBeforeUnmount(() => {
 	background-color: var(--color--background--light-2);
 }
 
-.time-saved-input {
-	display: flex;
-	align-items: center;
-
-	:global(.el-input) {
-		width: var(--spacing--3xl);
-	}
-
-	span {
-		margin-left: var(--spacing--2xs);
-	}
-}
-
 .time-saved-warning {
 	color: var(--color--text);
 	line-height: var(--line-height--xl);

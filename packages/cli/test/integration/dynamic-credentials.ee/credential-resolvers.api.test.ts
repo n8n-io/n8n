@@ -5,9 +5,9 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { Telemetry } from '@/telemetry';
-import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -18,6 +18,8 @@ mockInstance(Telemetry);
 const licenseMock = mock<LicenseState>();
 licenseMock.isLicensed.mockReturnValue(true);
 Container.set(LicenseState, licenseMock);
+
+process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
