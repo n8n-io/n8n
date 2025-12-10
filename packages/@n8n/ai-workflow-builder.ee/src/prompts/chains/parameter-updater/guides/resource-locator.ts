@@ -2,7 +2,6 @@ import type { NodeTypeGuide } from '../types';
 
 export const RESOURCE_LOCATOR_GUIDE: NodeTypeGuide = {
 	patterns: ['*'],
-	priority: 50,
 	condition: (ctx) => ctx.hasResourceLocatorParams === true,
 	content: `
 ## IMPORTANT: ResourceLocator Parameter Handling

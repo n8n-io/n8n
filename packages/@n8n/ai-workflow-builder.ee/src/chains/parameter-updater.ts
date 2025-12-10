@@ -92,20 +92,20 @@ export const createParameterUpdaterChain = (
 
 	// Build dynamic system prompt using PromptBuilder
 	const builder = createPromptBuilder()
-		.section('core_instructions', CORE_INSTRUCTIONS, { priority: 10 })
-		.section('expression_rules', EXPRESSION_RULES, { priority: 20 });
+		.section('core_instructions', CORE_INSTRUCTIONS)
+		.section('expression_rules', EXPRESSION_RULES);
 
-	// Add all matching guides (already sorted by priority)
+	// Add all matching guides
 	for (const guide of guides) {
 		const sectionId = `guide_${guide.patterns[0].replace(/[^a-zA-Z0-9]/g, '_')}`;
-		builder.section(sectionId, guide.content, { priority: guide.priority ?? 30 });
+		builder.section(sectionId, guide.content);
 	}
 
 	// Add common patterns, examples, and output format
 	builder
-		.section('common_patterns', COMMON_PATTERNS, { priority: 70 })
-		.examplesIf(examples.length > 0, 'examples', examples, undefined, { priority: 80 })
-		.section('output_format', OUTPUT_FORMAT, { priority: 90 });
+		.section('common_patterns', COMMON_PATTERNS)
+		.examplesIf(examples.length > 0, 'examples', examples)
+		.section('output_format', OUTPUT_FORMAT);
 
 	const systemPromptContent = builder.build();
 

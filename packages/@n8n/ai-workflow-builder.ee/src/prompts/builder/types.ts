@@ -24,13 +24,6 @@ export interface SectionOptions {
 	tag?: string;
 
 	/**
-	 * Sort priority. Lower values appear first.
-	 * Sections with the same priority maintain insertion order.
-	 * Default: 0
-	 */
-	priority?: number;
-
-	/**
 	 * Whether to add LangChain cache_control to this section.
 	 * Only affects buildAsMessageBlocks() output.
 	 * Default: false
@@ -67,9 +60,6 @@ export interface SectionEntry {
 
 	/** Section options */
 	options: SectionOptions;
-
-	/** Insertion order for stable sorting */
-	order: number;
 }
 
 /**

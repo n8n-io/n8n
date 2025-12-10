@@ -2,7 +2,6 @@ import type { NodeTypeExamples } from '../types';
 
 export const TOOL_NODE_EXAMPLES: NodeTypeExamples = {
 	patterns: ['*Tool'],
-	priority: 20,
 	content: `
 ### Tool Node Examples
 

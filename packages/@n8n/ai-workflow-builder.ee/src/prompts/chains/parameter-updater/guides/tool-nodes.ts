@@ -2,7 +2,6 @@ import type { NodeTypeGuide } from '../types';
 
 export const TOOL_NODES_GUIDE: NodeTypeGuide = {
 	patterns: ['*Tool'],
-	priority: 40,
 	content: `
 ## CRITICAL: $fromAI Expression Support for Tool Nodes
 

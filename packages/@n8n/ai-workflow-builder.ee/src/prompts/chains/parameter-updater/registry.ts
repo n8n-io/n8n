@@ -104,57 +104,47 @@ export function matchesPattern(nodeType: string, pattern: NodeTypePattern): bool
 /**
  * Gets all guides matching the given context.
  *
- * Returns guides sorted by priority (lower priority number = earlier in list).
- * Default priority is 50 if not specified.
- *
  * @param context - The prompt context containing nodeType and other metadata
- * @returns Array of matching guides, sorted by priority
+ * @returns Array of matching guides in registration order
  */
 export function getMatchingGuides(context: PromptContext): NodeTypeGuide[] {
-	return guides
-		.filter((guide) => {
-			// Check if any pattern matches
-			const patternMatches = guide.patterns.some((pattern) =>
-				matchesPattern(context.nodeType, pattern),
-			);
-			if (!patternMatches) return false;
+	return guides.filter((guide) => {
+		// Check if any pattern matches
+		const patternMatches = guide.patterns.some((pattern) =>
+			matchesPattern(context.nodeType, pattern),
+		);
+		if (!patternMatches) return false;
 
-			// Check optional condition
-			if (guide.condition && !guide.condition(context)) {
-				return false;
-			}
+		// Check optional condition
+		if (guide.condition && !guide.condition(context)) {
+			return false;
+		}
 
-			return true;
-		})
-		.sort((a, b) => (a.priority ?? 50) - (b.priority ?? 50));
+		return true;
+	});
 }
 
 /**
  * Gets all examples matching the given context.
  *
- * Returns examples sorted by priority (lower priority number = earlier in list).
- * Default priority is 50 if not specified.
- *
  * @param context - The prompt context containing nodeType and other metadata
- * @returns Array of matching examples, sorted by priority
+ * @returns Array of matching examples in registration order
  */
 export function getMatchingExamples(context: PromptContext): NodeTypeExamples[] {
-	return examples
-		.filter((example) => {
-			// Check if any pattern matches
-			const patternMatches = example.patterns.some((pattern) =>
-				matchesPattern(context.nodeType, pattern),
-			);
-			if (!patternMatches) return false;
+	return examples.filter((example) => {
+		// Check if any pattern matches
+		const patternMatches = example.patterns.some((pattern) =>
+			matchesPattern(context.nodeType, pattern),
+		);
+		if (!patternMatches) return false;
 
-			// Check optional condition
-			if (example.condition && !example.condition(context)) {
-				return false;
-			}
+		// Check optional condition
+		if (example.condition && !example.condition(context)) {
+			return false;
+		}
 
-			return true;
-		})
-		.sort((a, b) => (a.priority ?? 50) - (b.priority ?? 50));
+		return true;
+	});
 }
 
 /**

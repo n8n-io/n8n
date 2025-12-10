@@ -36,7 +36,7 @@ src/prompts/
 
 ## PromptBuilder Utility
 
-A type-safe, fluent builder for composing LLM prompts with priority-based ordering and conditional sections.
+A type-safe, fluent builder for composing LLM prompts with conditional sections.
 
 ### Basic Usage
 
@@ -52,7 +52,6 @@ const systemPrompt = prompt()
 
 - **Fluent API**: Chain methods for readable prompt composition
 - **Conditional sections**: `sectionIf()` and `examplesIf()` for dynamic content
-- **Priority ordering**: Sections sorted by priority, then insertion order
 - **Lazy evaluation**: Factory functions evaluated only at build time
 - **Output formats**: XML tags (default) or Markdown headers
 - **LangChain integration**: `buildAsMessageBlocks()` with cache_control support
@@ -90,8 +89,7 @@ A registry-based system that automatically selects relevant guides and examples 
 
 1. **Pattern Matching**: Guides and examples declare patterns they match against
 2. **Context-Based Selection**: Registry filters content based on node type and conditions
-3. **Priority Ordering**: Matched content is sorted by priority for consistent output
-4. **Dynamic Assembly**: PromptBuilder combines base prompts with matched content
+3. **Dynamic Assembly**: PromptBuilder combines base prompts with matched content
 
 ### Pattern Types
 
@@ -113,7 +111,6 @@ Example guide structure:
 ```typescript
 export const MY_NODE_GUIDE: NodeTypeGuide = {
   patterns: ['n8n-nodes-base.myNode'],  // Which nodes to match
-  priority: 30,                          // Sort order (lower = earlier)
   condition: (ctx) => true,              // Optional: extra conditions
   content: `Your guide content here...`,
 };
@@ -126,7 +123,6 @@ Some guides only apply in certain contexts. Use the `condition` property:
 ```typescript
 export const RESOURCE_LOCATOR_GUIDE: NodeTypeGuide = {
   patterns: ['*'],  // Matches all nodes
-  priority: 50,
   condition: (ctx) => ctx.hasResourceLocatorParams === true,
   content: `...`,
 };
@@ -154,4 +150,4 @@ export const RESOURCE_LOCATOR_GUIDE: NodeTypeGuide = {
 | Switch Node | `n8n-nodes-base.switch` | Switch node examples |
 | Tool Nodes | `*Tool` | Tool node examples |
 | Resource Locator | `*` (conditional) | ResourceLocator examples |
-| Simple Updates | `*` (low priority) | Generic fallback examples |
+| Simple Updates | `*` | Generic fallback examples |

@@ -2,7 +2,6 @@ import type { NodeTypeExamples } from '../types';
 
 export const RESOURCE_LOCATOR_EXAMPLES: NodeTypeExamples = {
 	patterns: ['*'],
-	priority: 30,
 	condition: (ctx) => ctx.hasResourceLocatorParams === true,
 	content: `
 ### ResourceLocator Examples

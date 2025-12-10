@@ -122,16 +122,6 @@ describe('getMatchingGuides', () => {
 		expect(resourceGuideWith).toBeDefined();
 	});
 
-	it('should return guides sorted by priority', () => {
-		const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
-		// Check that guides are sorted by priority (lower first)
-		for (let i = 1; i < guides.length; i++) {
-			const prevPriority = guides[i - 1].priority ?? 50;
-			const currPriority = guides[i].priority ?? 50;
-			expect(prevPriority).toBeLessThanOrEqual(currPriority);
-		}
-	});
-
 	it('should return multiple matching guides for a node', () => {
 		// Set node should get: Set guide + Text fields guide (since mock has no properties, text fields won't match)
 		const guides = getMatchingGuides(createContext('n8n-nodes-base.set'));
@@ -159,7 +149,7 @@ describe('getMatchingExamples', () => {
 	});
 
 	it('should return simple update examples as fallback', () => {
-		// Any node should get simple update examples (priority 100)
+		// Any node should get simple update examples
 		const examples = getMatchingExamples(createContext('some-random-node'));
 		const simpleExamples = examples.find((e) =>
 			e.content.includes('Examples of Parameter Updates'),
@@ -181,15 +171,5 @@ describe('getMatchingExamples', () => {
 			e.content.includes('ResourceLocator Examples'),
 		);
 		expect(resourceExamplesWith).toBeDefined();
-	});
-
-	it('should return examples sorted by priority', () => {
-		const examples = getMatchingExamples(createContext('n8n-nodes-base.set'));
-		// Check that examples are sorted by priority (lower first)
-		for (let i = 1; i < examples.length; i++) {
-			const prevPriority = examples[i - 1].priority ?? 50;
-			const currPriority = examples[i].priority ?? 50;
-			expect(prevPriority).toBeLessThanOrEqual(currPriority);
-		}
 	});
 });

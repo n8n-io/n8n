@@ -90,7 +90,6 @@ function resolveContent(content: ContentOrFactory): string | null {
  * - Conditional sections with `sectionIf()`
  * - Lazy evaluation with factory functions
  * - Configurable format (XML tags or Markdown headers)
- * - Priority-based ordering
  * - LangChain message block support with cache_control
  * - Composable via `merge()`
  *
@@ -110,8 +109,6 @@ export class PromptBuilder {
 
 	private readonly separator: string;
 
-	private orderCounter = 0;
-
 	constructor(options: PromptBuilderOptions = {}) {
 		this.format = options.format ?? 'xml';
 		this.separator = options.separator ?? '\n\n';
@@ -130,7 +127,6 @@ export class PromptBuilder {
 			name,
 			content,
 			options,
-			order: this.orderCounter++,
 		});
 		return this;
 	}
@@ -157,7 +153,6 @@ export class PromptBuilder {
 				name,
 				content,
 				options,
-				order: this.orderCounter++,
 			});
 		}
 		return this;
@@ -265,26 +260,21 @@ export class PromptBuilder {
 	 */
 	merge(other: PromptBuilder): this {
 		for (const section of other.sections) {
-			this.sections.push({
-				...section,
-				order: this.orderCounter++,
-			});
+			this.sections.push({ ...section });
 		}
 		return this;
 	}
 
 	/**
 	 * Builds the final prompt string.
-	 * Sections are sorted by priority (lower first), then by insertion order.
+	 * Sections are output in insertion order.
 	 * Factory functions are evaluated, and sections returning null/undefined/empty are skipped.
 	 *
 	 * @returns The composed prompt string
 	 */
 	build(): string {
-		const sorted = this.getSortedSections();
-
 		const formatted: string[] = [];
-		for (const section of sorted) {
+		for (const section of this.sections) {
 			const content = resolveContent(section.content);
 			if (content === null) {
 				continue;
@@ -302,10 +292,8 @@ export class PromptBuilder {
 	 * @returns Array of message blocks for use with ChatPromptTemplate
 	 */
 	buildAsMessageBlocks(): MessageBlock[] {
-		const sorted = this.getSortedSections();
-
 		const blocks: MessageBlock[] = [];
-		for (const section of sorted) {
+		for (const section of this.sections) {
 			const content = resolveContent(section.content);
 			if (content === null) {
 				continue;
@@ -336,22 +324,6 @@ export class PromptBuilder {
 			return 0;
 		}
 		return Math.ceil(text.length / 4);
-	}
-
-	/**
-	 * Gets sections sorted by priority (lower first), then by insertion order.
-	 */
-	private getSortedSections(): SectionEntry[] {
-		return [...this.sections].sort((a, b) => {
-			const priorityA = a.options.priority ?? 0;
-			const priorityB = b.options.priority ?? 0;
-
-			if (priorityA !== priorityB) {
-				return priorityA - priorityB;
-			}
-
-			return a.order - b.order;
-		});
 	}
 }
 

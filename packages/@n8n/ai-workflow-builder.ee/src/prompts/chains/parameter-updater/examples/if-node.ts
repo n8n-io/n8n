@@ -2,7 +2,6 @@ import type { NodeTypeExamples } from '../types';
 
 export const IF_NODE_EXAMPLES: NodeTypeExamples = {
 	patterns: ['n8n-nodes-base.if'],
-	priority: 20,
 	content: `
 ### IF Node Examples
 

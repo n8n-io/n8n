@@ -415,62 +415,6 @@ describe('PromptBuilder', () => {
 		});
 	});
 
-	describe('priority ordering', () => {
-		it('should sort sections by priority (lower first)', () => {
-			const result = prompt()
-				.section('C', 'third', { priority: 30 })
-				.section('A', 'first', { priority: 10 })
-				.section('B', 'second', { priority: 20 })
-				.build();
-
-			const aIndex = result.indexOf('first');
-			const bIndex = result.indexOf('second');
-			const cIndex = result.indexOf('third');
-
-			expect(aIndex).toBeLessThan(bIndex);
-			expect(bIndex).toBeLessThan(cIndex);
-		});
-
-		it('should maintain insertion order for same priority', () => {
-			const result = prompt()
-				.section('A', 'first', { priority: 10 })
-				.section('B', 'second', { priority: 10 })
-				.section('C', 'third', { priority: 10 })
-				.build();
-
-			const aIndex = result.indexOf('first');
-			const bIndex = result.indexOf('second');
-			const cIndex = result.indexOf('third');
-
-			expect(aIndex).toBeLessThan(bIndex);
-			expect(bIndex).toBeLessThan(cIndex);
-		});
-
-		it('should treat undefined priority as 0', () => {
-			const result = prompt()
-				.section('B', 'with-priority', { priority: 10 })
-				.section('A', 'no-priority')
-				.build();
-
-			const aIndex = result.indexOf('no-priority');
-			const bIndex = result.indexOf('with-priority');
-
-			expect(aIndex).toBeLessThan(bIndex);
-		});
-
-		it('should support negative priorities', () => {
-			const result = prompt()
-				.section('B', 'zero', { priority: 0 })
-				.section('A', 'negative', { priority: -10 })
-				.build();
-
-			const aIndex = result.indexOf('negative');
-			const bIndex = result.indexOf('zero');
-
-			expect(aIndex).toBeLessThan(bIndex);
-		});
-	});
-
 	describe('buildAsMessageBlocks()', () => {
 		it('should return array of message blocks', () => {
 			const blocks = prompt().section('A', 'content').buildAsMessageBlocks();
@@ -513,16 +457,6 @@ describe('PromptBuilder', () => {
 			expect(blocks).toHaveLength(2);
 			expect(blocks[0]).not.toHaveProperty('cache_control');
 			expect(blocks[1]).toHaveProperty('cache_control');
-		});
-
-		it('should respect priority ordering in message blocks', () => {
-			const blocks = prompt()
-				.section('B', 'second', { priority: 20 })
-				.section('A', 'first', { priority: 10 })
-				.buildAsMessageBlocks();
-
-			expect(blocks[0].text).toContain('first');
-			expect(blocks[1].text).toContain('second');
 		});
 	});
 

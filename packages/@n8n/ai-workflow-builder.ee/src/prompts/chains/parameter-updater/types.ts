@@ -38,8 +38,6 @@ export interface NodeTypeGuide {
 	patterns: NodeTypePattern[];
 	/** Guide content string */
 	content: string;
-	/** Priority for ordering (lower = earlier, default: 50) */
-	priority?: number;
 	/**
 	 * Optional condition function for more complex matching logic.
 	 * If provided, guide is only included if condition returns true.
@@ -55,8 +53,6 @@ export interface NodeTypeExamples {
 	patterns: NodeTypePattern[];
 	/** Examples content string */
 	content: string;
-	/** Priority for ordering (lower = earlier, default: 50) */
-	priority?: number;
 	/**
 	 * Optional condition function for more complex matching logic.
 	 */

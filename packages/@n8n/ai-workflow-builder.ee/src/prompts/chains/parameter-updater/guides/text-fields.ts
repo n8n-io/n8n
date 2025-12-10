@@ -15,7 +15,6 @@ function hasTextFields(nodeDefinition: {
 
 export const TEXT_FIELDS_GUIDE: NodeTypeGuide = {
 	patterns: ['*'],
-	priority: 60,
 	condition: (ctx) => hasTextFields(ctx.nodeDefinition),
 	content: `
 ## Text Field Expression Formatting

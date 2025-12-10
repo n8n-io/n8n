@@ -33,7 +33,6 @@ function hasSystemMessageParameters(nodeDefinition: {
 
 export const SYSTEM_MESSAGE_GUIDE: NodeTypeGuide = {
 	patterns: ['*'],
-	priority: 30,
 	condition: (ctx) => hasSystemMessageParameters(ctx.nodeDefinition),
 	content: `
 ## CRITICAL: System Message vs User Prompt Separation
