@@ -71,6 +71,7 @@ export interface ProgrammaticEvaluationInput {
 	userPrompt?: string;
 	referenceWorkflow?: SimpleWorkflow;
 	referenceWorkflows?: SimpleWorkflow[];
+	preset?: 'strict' | 'standard' | 'lenient';
 }
 
 export interface NodeResolvedConnectionTypesInfo {

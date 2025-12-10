@@ -20,7 +20,7 @@ export async function programmaticEvaluation(
 	input: ProgrammaticEvaluationInput,
 	nodeTypes: INodeTypeDescription[],
 ) {
-	const { generatedWorkflow, referenceWorkflow, referenceWorkflows } = input;
+	const { generatedWorkflow, referenceWorkflow, referenceWorkflows, preset = 'standard' } = input;
 
 	const connectionsEvaluationResult = evaluateConnections(generatedWorkflow, nodeTypes);
 	const nodesEvaluationResult = evaluateNodes(generatedWorkflow, nodeTypes);
@@ -38,6 +38,7 @@ export async function programmaticEvaluation(
 			similarityEvaluationResult = await evaluateWorkflowSimilarityMultiple(
 				generatedWorkflow,
 				referenceWorkflows,
+				preset,
 			);
 		} catch (error) {
 			console.warn('Multiple workflow similarity evaluation failed:', error);
@@ -58,6 +59,7 @@ export async function programmaticEvaluation(
 			similarityEvaluationResult = await evaluateWorkflowSimilarity(
 				generatedWorkflow,
 				referenceWorkflow,
+				preset,
 			);
 		} catch (error) {
 			console.warn('Workflow similarity evaluation failed:', error);

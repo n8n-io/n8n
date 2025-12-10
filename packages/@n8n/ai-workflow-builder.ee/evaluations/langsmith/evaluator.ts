@@ -113,7 +113,8 @@ export function createLangsmithEvaluator(
 
 		let referenceWorkflow: SimpleWorkflow | SimpleWorkflow[] | undefined = undefined;
 		let referenceWorkflows: SimpleWorkflow[] | undefined = undefined;
-		// Extract reference workflow from example outputs if available
+		let preset: 'strict' | 'standard' | 'lenient' | undefined = undefined;
+		// Extract reference workflow and preset from example outputs if available
 		if (example?.outputs) {
 			const exampleOutputs = example.outputs as Record<string, unknown>;
 			if (Array.isArray(exampleOutputs.workflowJSON)) {
@@ -127,6 +128,13 @@ export function createLangsmithEvaluator(
 			if (isSimpleWorkflow(exampleOutputs.workflowJSON)) {
 				referenceWorkflow = exampleOutputs.workflowJSON;
 			}
+			// Extract preset if available
+			if (
+				typeof exampleOutputs.preset === 'string' &&
+				['strict', 'standard', 'lenient'].includes(exampleOutputs.preset)
+			) {
+				preset = exampleOutputs.preset as 'strict' | 'standard' | 'lenient';
+			}
 		}
 
 		const evaluationInput: EvaluationInput = {
@@ -134,6 +142,7 @@ export function createLangsmithEvaluator(
 			generatedWorkflow: validation.workflow!,
 			referenceWorkflow,
 			referenceWorkflows,
+			preset,
 		};
 
 		try {
