@@ -18,13 +18,14 @@ import {
 interface PairwiseTargetOutput {
 	prompt: string;
 	evals: EvalCriteria;
-	metrics: LangsmithEvaluationResult[];
+	/** Pre-computed feedback results. Named with underscore to avoid LangSmith auto-processing */
+	_feedback: LangsmithEvaluationResult[];
 }
 
 function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTargetOutput {
 	if (!outputs || typeof outputs !== 'object') return false;
 	const obj = outputs as Record<string, unknown>;
-	return typeof obj.prompt === 'string' && Array.isArray(obj.metrics);
+	return typeof obj.prompt === 'string' && Array.isArray(obj._feedback);
 }
 
 // ============================================================================
@@ -187,20 +188,18 @@ export function createPairwiseLangsmithEvaluator() {
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		const outputs = rootRun.outputs;
 
-		// Validate outputs contain pre-computed metrics
 		if (!isPairwiseTargetOutput(outputs)) {
 			return [
 				{
 					key: 'pairwise_primary',
 					score: 0,
-					comment: 'Invalid output - missing metrics from target',
+					comment: 'Invalid output - missing _feedback from target',
 				},
 				{ key: 'pairwise_diagnostic', score: 0 },
 			];
 		}
 
-		// Return pre-computed metrics from target
-		return outputs.metrics;
+		return outputs._feedback;
 	};
 }
 

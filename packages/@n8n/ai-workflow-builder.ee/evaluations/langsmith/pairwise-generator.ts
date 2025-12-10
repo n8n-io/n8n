@@ -31,7 +31,8 @@ export interface PairwiseDatasetInput {
 export interface PairwiseTargetOutput {
 	prompt: string;
 	evals: EvalCriteria;
-	metrics: LangsmithEvaluationResult[];
+	/** Pre-computed feedback results. Named with underscore to avoid LangSmith auto-processing */
+	_feedback: LangsmithEvaluationResult[];
 }
 
 // ============================================================================
@@ -42,9 +43,9 @@ export interface PairwiseTargetOutput {
  * Creates a target function that does ALL the work:
  * - Generates all workflows (each wrapped in traceable)
  * - Runs judge panels
- * - Returns pre-computed metrics
+ * - Returns pre-computed feedback
  *
- * The evaluator then just extracts the pre-computed metrics.
+ * The evaluator then just extracts the pre-computed feedback.
  * This avoids 403 errors from nested traceable in evaluator context.
  */
 export function createPairwiseTarget(
@@ -74,7 +75,7 @@ export function createPairwiseTarget(
 
 			if (numGenerations === 1) {
 				const result = generationResults[0];
-				const singleGenMetrics: LangsmithEvaluationResult[] = buildSingleGenerationResults(
+				const singleGenFeedback: LangsmithEvaluationResult[] = buildSingleGenerationResults(
 					result.judgeResults,
 					numJudges,
 					result.primaryPasses,
@@ -82,16 +83,16 @@ export function createPairwiseTarget(
 					result.avgDiagnosticScore,
 				);
 
-				return { prompt, evals: evalCriteria, metrics: singleGenMetrics };
+				return { prompt, evals: evalCriteria, _feedback: singleGenFeedback };
 			}
 
 			const aggregation = aggregateGenerations(generationResults);
-			const multiGenMetrics: LangsmithEvaluationResult[] = buildMultiGenerationResults(
+			const multiGenFeedback: LangsmithEvaluationResult[] = buildMultiGenerationResults(
 				aggregation,
 				numJudges,
 			);
 
-			return { prompt, evals: evalCriteria, metrics: multiGenMetrics };
+			return { prompt, evals: evalCriteria, _feedback: multiGenFeedback };
 		},
 		{ name: 'pairwise_evaluation', run_type: 'chain' },
 	);
