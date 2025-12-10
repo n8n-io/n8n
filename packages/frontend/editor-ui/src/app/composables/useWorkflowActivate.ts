@@ -108,15 +108,20 @@ export function useWorkflowActivate() {
 				workflow = await workflowsApi.deactivateWorkflow(rootStore.restApiContext, currWorkflowId);
 			}
 
-			// Update local state
-			if (workflow.activeVersion) {
-				workflowsStore.setWorkflowActive(currWorkflowId, workflow.activeVersion);
-			} else {
-				workflowsStore.setWorkflowInactive(currWorkflowId);
+			if (!workflow.checksum) {
+				throw new Error('Failed to activate or deactivate workflow');
 			}
 
-			if (isCurrentWorkflow && workflow.checksum) {
-				workflowsStore.setWorkflowChecksum(workflow.checksum);
+			// Update local state
+			if (workflow.activeVersion) {
+				workflowsStore.setWorkflowActive(
+					currWorkflowId,
+					workflow.activeVersion,
+					true,
+					workflow.checksum,
+				);
+			} else {
+				workflowsStore.setWorkflowInactive(currWorkflowId, workflow.checksum);
 			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
@@ -186,17 +191,19 @@ export function useWorkflowActivate() {
 				expectedChecksum,
 			});
 
-			if (!updatedWorkflow.activeVersion) {
+			if (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum) {
 				throw new Error('Failed to publish workflow');
 			}
 
-			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
+			workflowsStore.setWorkflowActive(
+				workflowId,
+				updatedWorkflow.activeVersion,
+				true,
+				updatedWorkflow.checksum,
+			);
 
 			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
-				if (updatedWorkflow.checksum) {
-					workflowsStore.setWorkflowChecksum(updatedWorkflow.checksum);
-				}
+				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 			}
 
 			void useExternalHooks().run('workflow.published', {
@@ -242,11 +249,7 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
-			const updatedWorkflow = await workflowsStore.deactivateWorkflow(workflowId);
-
-			if (workflowId === workflowsStore.workflowId && updatedWorkflow.checksum) {
-				workflowsStore.setWorkflowChecksum(updatedWorkflow.checksum);
-			}
+			await workflowsStore.deactivateWorkflow(workflowId);
 
 			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,

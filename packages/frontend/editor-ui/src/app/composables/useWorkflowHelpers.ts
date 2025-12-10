@@ -847,10 +847,11 @@ export function useWorkflowHelpers() {
 		}
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
-		workflowsStore.setWorkflowVersionId(workflow.versionId);
-		if (workflow.checksum) {
-			workflowsStore.setWorkflowChecksum(workflow.checksum);
+		if (!workflow.checksum) {
+			throw new Error('Failed to update workflow');
 		}
+
+		workflowsStore.setWorkflowVersionId(workflow.versionId, workflow.checksum);
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
@@ -858,9 +859,14 @@ export function useWorkflowHelpers() {
 		}
 
 		if (workflow.activeVersion) {
-			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			workflowsStore.setWorkflowActive(
+				workflowId,
+				workflow.activeVersion,
+				isCurrentWorkflow,
+				workflow.checksum,
+			);
 		} else {
-			workflowsStore.setWorkflowInactive(workflowId);
+			workflowsStore.setWorkflowInactive(workflowId, workflow.checksum);
 		}
 	}
 
@@ -942,6 +948,11 @@ export function useWorkflowHelpers() {
 	}
 
 	async function initState(workflowData: IWorkflowDb) {
+		// TODO: check if there are cases like readonly etc where we wouldn't have a checksum
+		if (!workflowData.checksum) {
+			throw new Error('Checksum is required');
+		}
+
 		workflowsStore.addWorkflow(workflowData);
 		workflowState.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
@@ -953,10 +964,7 @@ export function useWorkflowHelpers() {
 		});
 		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		if (workflowData.checksum) {
-			workflowsStore.setWorkflowChecksum(workflowData.checksum);
-		}
+		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 
