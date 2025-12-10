@@ -1,6 +1,28 @@
 export const HTTP_REQUEST_GUIDE = `
 ### HTTP Request Node Updates
 
+#### IMPORTANT - Credential Security
+
+**NEVER hardcode credentials** (API keys, tokens, passwords, secrets) in the HTTP Request node parameters.
+Instead, ALWAYS use n8n's built-in credential system:
+
+1. Set \`authentication\` to \`"genericCredentialType"\`
+2. Set \`genericAuthType\` to the appropriate credential type:
+   - \`"httpHeaderAuth"\` - For API keys sent in headers (X-API-Key, Authorization, etc.)
+   - \`"httpBearerAuth"\` - For Bearer token authentication
+   - \`"httpQueryAuth"\` - For API keys sent as query parameters
+   - \`"httpBasicAuth"\` - For username/password authentication
+   - \`"oAuth2Api"\` - For OAuth 2.0 authentication
+
+**DO NOT:**
+- Put API keys or tokens directly in header values
+- Store credentials in Set nodes and reference them with expressions
+- Hardcode Bearer tokens in Authorization headers
+
+**DO:**
+- Use the authentication parameter with the appropriate credential type
+- Let users configure their credentials securely in n8n's credential manager
+
 #### Common Parameters
 - **url**: The endpoint URL (can use expressions)
 - **method**: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
@@ -62,7 +84,7 @@ export const HTTP_REQUEST_GUIDE = `
 4. **Query Parameters**:
    - Can be part of URL or set in options.queryParameters
 
-#### Example: HTTP Request with Headers and Body
+#### Example: HTTP Request with Authentication and Body
 Current Parameters:
 {
   "method": "GET",
@@ -71,20 +93,18 @@ Current Parameters:
 
 Requested Changes:
 - Change to POST method
-- Add API key header
+- Add API key authentication (using n8n credentials)
 - Add JSON body with user ID and status
 
 Expected Output:
 {
   "method": "POST",
   "url": "https://api.example.com/data",
+  "authentication": "genericCredentialType",
+  "genericAuthType": "httpHeaderAuth",
   "sendHeaders": true,
   "headerParameters": {
     "parameters": [
-      {
-        "name": "X-API-Key",
-        "value": "={{ $credentials.apiKey }}"
-      },
       {
         "name": "Content-Type",
         "value": "application/json"
@@ -106,4 +126,7 @@ Expected Output:
     ]
   },
   "options": {}
-}`;
+}
+
+Note: The API key is handled by the httpHeaderAuth credential, NOT hardcoded in the header parameters.
+The user will configure their API key securely in n8n's credential manager.`;

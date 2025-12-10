@@ -32,24 +32,19 @@ describe('OAuth1CredentialController', () => {
 		it('should return a valid auth URI', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
-			oauthService.createCsrfState.mockReturnValueOnce(['csrf-secret', 'state']);
-			oauthService.getOAuthCredentials.mockResolvedValueOnce({
-				requestTokenUrl: 'https://example.domain/oauth/request_token',
-				authUrl: 'https://example.domain/oauth/authorize',
-				accessTokenUrl: 'https://example.domain/oauth/access_token',
-				signatureMethod: 'HMAC-SHA1' as const,
-			});
-			jest.mocked(axios).request.mockResolvedValueOnce({ data: { oauth_token: 'random-token' } });
+			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth/authorize?oauth_token=random-token',
+			);
 			const req = mock<OAuthRequest.OAuth1Credential.Auth>({
 				user: mock<User>({ id: '123' }),
 				query: { id: '1' },
 			});
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
-			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
-				mockResolvedCredential,
-				expect.objectContaining({ csrfSecret: 'csrf-secret' }),
-			);
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
+				cid: '1',
+				userId: '123',
+			});
 		});
 	});
 

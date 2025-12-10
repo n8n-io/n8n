@@ -58,6 +58,7 @@ describe('validateWorkflow tool', () => {
 		],
 		tools: [],
 		fromAi: [],
+		credentials: [],
 	};
 
 	beforeEach(() => {
