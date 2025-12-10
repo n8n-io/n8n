@@ -7,6 +7,56 @@ interface NodeWithVersion extends INodeTypeDescription {
 	defaultVersion?: number;
 }
 
+// These types are ignored because they tend to cause issues when generating workflows
+// Same as in ai-workflow-builder-agent.service.ts
+const IGNORED_TYPES = new Set([
+	'@n8n/n8n-nodes-langchain.toolVectorStore',
+	'@n8n/n8n-nodes-langchain.documentGithubLoader',
+	'@n8n/n8n-nodes-langchain.code',
+]);
+
+// Parse disabled nodes from environment variable (comma-separated)
+function getDisabledNodes(): Set<string> {
+	const disabledNodesEnv = process.env.N8N_EVALS_DISABLED_NODES ?? '';
+	return new Set(
+		disabledNodesEnv
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean),
+	);
+}
+
+/**
+ * Filter node types similar to production service:
+ * - Remove ignored types (hardcoded)
+ * - Remove disabled types (from env var)
+ * - Remove hidden nodes (except DataTable)
+ * - Merge tool nodes with their non-tool counterparts
+ */
+function filterNodeTypes(
+	nodeTypes: INodeTypeDescription[],
+	disabledNodes: Set<string>,
+): INodeTypeDescription[] {
+	const visibleNodeTypes = nodeTypes.filter(
+		(nodeType) =>
+			!IGNORED_TYPES.has(nodeType.name) &&
+			!disabledNodes.has(nodeType.name) &&
+			// Filter out hidden nodes, except for the Data Table node which has custom hiding logic
+			(nodeType.hidden !== true || nodeType.name === 'n8n-nodes-base.dataTable'),
+	);
+
+	return visibleNodeTypes.map((nodeType) => {
+		// If the node type is a tool, merge it with the corresponding non-tool node type
+		const isTool = nodeType.name.endsWith('Tool');
+		if (!isTool) return nodeType;
+
+		const nonToolNode = nodeTypes.find((nt) => nt.name === nodeType.name.replace('Tool', ''));
+		if (!nonToolNode) return nodeType;
+
+		return { ...nonToolNode, ...nodeType };
+	});
+}
+
 export function loadNodesFromFile(): INodeTypeDescription[] {
 	console.log('Loading nodes from nodes.json...');
 
@@ -86,11 +136,21 @@ Without nodes.json, the evaluator cannot validate node types and parameters.
 	console.log(`\nNodes with multiple versions: ${multiVersionCount}`);
 	console.log(`Final node count: ${latestNodes.length}`);
 
-	// Filter out hidden nodes
-	const visibleNodes = latestNodes.filter((node) => !node.hidden);
-	console.log(`Visible nodes (after filtering hidden): ${visibleNodes.length}\n`);
+	// Get disabled nodes from environment variable
+	const disabledNodes = getDisabledNodes();
+	if (disabledNodes.size > 0) {
+		console.log(
+			`Disabled nodes from N8N_EVALS_DISABLED_NODES env: ${[...disabledNodes].join(', ')}`,
+		);
+	}
 
-	return visibleNodes;
+	// Apply full filtering (ignored types, disabled nodes, hidden nodes, tool merging)
+	const filteredNodes = filterNodeTypes(latestNodes, disabledNodes);
+	console.log(
+		`Filtered nodes (after applying ignoredTypes + disabled + hidden): ${filteredNodes.length}\n`,
+	);
+
+	return filteredNodes;
 }
 
 // Helper function to get specific node version for testing
