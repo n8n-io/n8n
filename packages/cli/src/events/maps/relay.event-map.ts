@@ -86,6 +86,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		previousWorkflow?: IWorkflowDb;
+		aiBuilderAssisted?: boolean;
 	};
 
 	'workflow-activated': {

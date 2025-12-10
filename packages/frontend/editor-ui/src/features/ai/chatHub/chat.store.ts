@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
+import { useI18n } from '@n8n/i18n';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
@@ -58,11 +59,13 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
 import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { ResponseError } from '@n8n/rest-api-client';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse>();
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
@@ -450,29 +453,41 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions(true);
 	}
 
+	function getErrorMessageByStatusCode(
+		statusCode: number | undefined,
+		message: string | undefined,
+	): string {
+		const errorMessages: Record<number, string> = {
+			[413]: i18n.baseText('chatHub.error.payloadTooLarge'),
+			[400]: message ?? i18n.baseText('chatHub.error.badRequest'),
+			[403]: i18n.baseText('chatHub.error.forbidden'),
+			[500]: message
+				? i18n.baseText('chatHub.error.serverErrorWithReason', {
+						interpolate: { error: message },
+					})
+				: i18n.baseText('chatHub.error.serverError'),
+		};
+
+		return (
+			(statusCode && errorMessages[statusCode]) || message || i18n.baseText('chatHub.error.unknown')
+		);
+	}
+
 	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
 
-		toast.showError(error, 'Could not send message');
+		const cause =
+			error instanceof ResponseError
+				? new Error(getErrorMessageByStatusCode(error.httpStatusCode, error.message))
+				: error.message.includes('Failed to fetch')
+					? new Error(i18n.baseText('chatHub.error.noConnection'))
+					: error;
 
-		const { sessionId } = streaming.value;
+		toast.showError(cause, i18n.baseText('chatHub.error.sendMessageFailed'));
 
 		streaming.value = undefined;
-
-		const conversation = getConversation(sessionId);
-		if (!conversation) {
-			return;
-		}
-
-		// TODO: Not sure if we want to mark all running messages as errored?
-		for (const messageId of conversation.activeMessageChain) {
-			const message = conversation.messages[messageId];
-			if (message.status === 'running') {
-				updateMessage(sessionId, messageId, 'error');
-			}
-		}
 	}
 
 	async function sendMessage(
@@ -780,6 +795,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
 				inputModalities: [],
+				available: true,
 			},
 		};
 		agents.value?.['custom-agent'].models.push(agent);
@@ -851,6 +867,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				capabilities: {
 					functionCalling: true,
 				},
+				available: true,
 			},
 		};
 	}

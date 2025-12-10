@@ -6,6 +6,7 @@ import { Client } from 'langsmith';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 import pc from 'picocolors';
+import { v4 as uuid } from 'uuid';
 
 import { anthropicClaudeSonnet45 } from '../../src/llm-config';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
@@ -278,18 +279,20 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 }
 
 export function getChatPayload(
+	evalType: string,
 	message: string,
-	id: string,
+	workflowId: string,
 	featureFlags?: BuilderFeatureFlags,
 ): ChatPayload {
 	return {
+		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? {
 			multiAgent: true,
 			templateExamples: false,
 		},
 		message,
 		workflowContext: {
-			currentWorkflow: { id, nodes: [], connections: {} },
+			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
 		},
 	};
 }
