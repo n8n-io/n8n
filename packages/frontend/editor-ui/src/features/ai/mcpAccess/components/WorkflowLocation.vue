@@ -61,20 +61,20 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 <template>
 	<div :class="$style['location-container']">
 		<!-- Project -->
-		<span v-if="homeProject">
+		<span v-if="homeProject" :class="$style.truncate">
 			<N8nLink
 				v-if="asLinks"
 				data-test-id="workflow-location-project-link"
 				:to="projectLink"
 				:theme="'text'"
-				:class="[$style['location-link'], $style['project-link']]"
+				:class="[$style['location-link'], $style['project-link'], $style.truncate]"
 				:new-window="true"
 			>
-				<N8nText data-test-id="workflow-location-project-name">
+				<N8nText :class="$style.truncate" data-test-id="workflow-location-project-name">
 					{{ projectName }}
 				</N8nText>
 			</N8nLink>
-			<N8nText v-else data-test-id="workflow-location-project-name">
+			<N8nText v-else :class="$style.truncate" data-test-id="workflow-location-project-name">
 				{{ projectName }}
 			</N8nText>
 		</span>
@@ -91,7 +91,7 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 		<!-- Ellipsis for grandparent folder -->
 		<span
 			v-if="hasGrandparentFolder"
-			:class="$style['parent-folder']"
+			:class="$style.grandparent"
 			data-test-id="workflow-location-grandparent"
 		>
 			<span :class="$style.ellipsis">...</span>
@@ -105,14 +105,14 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 				data-test-id="workflow-location-folder-link"
 				:to="folderLink"
 				:theme="'text'"
-				:class="$style['location-link']"
+				:class="[$style['location-link'], $style.truncate]"
 				:new-window="true"
 			>
-				<N8nText data-test-id="workflow-location-folder-name">
+				<N8nText :class="$style.truncate" data-test-id="workflow-location-folder-name">
 					{{ parentFolder.name }}
 				</N8nText>
 			</N8nLink>
-			<N8nText v-else data-test-id="workflow-location-folder-name">
+			<N8nText v-else :class="$style.truncate" data-test-id="workflow-location-folder-name">
 				{{ parentFolder.name }}
 			</N8nText>
 		</span>
@@ -121,20 +121,20 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 		<span v-if="parentFolder && workflowName" :class="$style.separator">/</span>
 
 		<!-- Workflow name -->
-		<span v-if="workflowName" :class="$style['workflow-name']">
+		<span v-if="workflowName" :class="[$style['workflow-name'], $style.truncate]">
 			<N8nLink
 				v-if="asLinks && workflowId"
 				data-test-id="workflow-location-workflow-link"
 				:to="workflowLink"
 				:theme="'text'"
-				:class="$style['location-link']"
+				:class="[$style['location-link'], $style.truncate]"
 				:new-window="true"
 			>
-				<N8nText data-test-id="workflow-location-workflow-name">
+				<N8nText :class="$style.truncate" data-test-id="workflow-location-workflow-name">
 					{{ workflowName }}
 				</N8nText>
 			</N8nLink>
-			<N8nText v-else data-test-id="workflow-location-workflow-name">
+			<N8nText v-else :class="$style.truncate" data-test-id="workflow-location-workflow-name">
 				{{ workflowName }}
 			</N8nText>
 		</span>
@@ -147,6 +147,8 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 	align-items: center;
 	gap: var(--spacing--4xs);
 	color: var(--color--text);
+	min-width: 0;
+	overflow: hidden;
 }
 
 .ellipsis {
@@ -159,25 +161,33 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 	color: var(--color--text--tint-1);
 }
 
+.grandparent {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
 .parent-folder {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.truncate {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .location-link {
 	color: var(--color--text);
-
-	:global(.n8n-text) {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--3xs);
-	}
 }
 
 .workflow-name {
-	:global(.n8n-text) {
-		color: var(--color--text--shade-1);
-	}
+	color: var(--color--text--shade-1);
 }
 </style>

@@ -146,9 +146,11 @@ const onConnectClick = () => {
 								}).fullPath
 							"
 							:theme="'text'"
-							:class="$style['table-link']"
+							:class="[$style['table-link'], $style.truncate]"
 						>
-							<N8nText data-test-id="mcp-workflow-name">{{ item.name }}</N8nText>
+							<N8nText :class="$style.truncate" data-test-id="mcp-workflow-name">{{
+								item.name
+							}}</N8nText>
 						</N8nLink>
 					</div>
 				</template>
@@ -234,6 +236,8 @@ const onConnectClick = () => {
 .workflow-cell {
 	display: flex;
 	padding: var(--spacing--2xs) 0;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .location-cell {
@@ -261,11 +265,13 @@ const onConnectClick = () => {
 
 .table-link {
 	color: var(--color--text);
+}
 
-	:global(.n8n-text) {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--3xs);
-	}
+.truncate {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 </style>
