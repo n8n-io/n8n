@@ -20,6 +20,11 @@ interface FileStreamData {
 	mimeType: string;
 }
 
+interface FileBufferData {
+	buffer: Buffer;
+	mimeType: string;
+}
+
 interface ResumableUploadConfig {
 	endpoint: string;
 	mimeType: string;
@@ -106,7 +111,7 @@ async function getFileStreamFromUrlOrBinary(
 	downloadUrl?: string,
 	fallbackMimeType?: string,
 	qs?: IDataObject,
-): Promise<FileStreamData | { buffer: Buffer; mimeType: string }> {
+): Promise<FileStreamData | FileBufferData> {
 	if (downloadUrl) {
 		const downloadResponse = await axios.get(downloadUrl, {
 			params: qs,
