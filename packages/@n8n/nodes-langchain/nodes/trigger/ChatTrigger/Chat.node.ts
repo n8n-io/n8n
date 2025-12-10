@@ -1,9 +1,19 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/classic/memory';
-import { limitWaitTimeOption } from 'n8n-nodes-base/dist/utils/sendAndWait/descriptions';
+import {
+	limitWaitTimeOption,
+	sendAndWaitWebhooksDescription,
+} from 'n8n-nodes-base/dist/utils/sendAndWait/descriptions';
+import {
+	getSendAndWaitConfig,
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from 'n8n-nodes-base/dist/utils/sendAndWait/utils';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
+	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	NodeConnectionTypes,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -18,6 +28,58 @@ import type {
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
+
+const getSendAndWaitPropertiesForChatNode = () => {
+	const originalProperties = getSendAndWaitProperties([], null);
+	const filteredProperties = originalProperties.filter(
+		// `subject` is not needed and we provide our own `message` and `options` properties
+		(p) => p.name !== 'subject' && p.name !== 'message' && p.name !== 'options',
+	);
+	const responseTypeProperty = filteredProperties.find((p) => p.name === 'responseType');
+	if (responseTypeProperty) {
+		responseTypeProperty.options = [
+			// for now we only support `approval` and `freeText` response types
+			{
+				name: 'Approval',
+				value: 'approval',
+				description: 'User can approve/disapprove from within the message',
+			},
+			{
+				name: 'Free Text',
+				// use a different name to not show options for `freeText` response type
+				value: FREE_TEXT_CHAT_RESPONSE_TYPE,
+				description: 'User can respond in the chat',
+			},
+		];
+		responseTypeProperty.default = FREE_TEXT_CHAT_RESPONSE_TYPE;
+	}
+
+	return filteredProperties;
+};
+
+function getMessageContent(ctx: IExecuteFunctions) {
+	const nodeVersion = ctx.getNode().typeVersion;
+	const message = ctx.getNodeParameter('message', 0, '') as string;
+	if (nodeVersion < 1.1) {
+		return message;
+	}
+
+	const responseType = ctx.getNodeParameter(
+		'responseType',
+		0,
+		FREE_TEXT_CHAT_RESPONSE_TYPE,
+	) as string;
+	if (responseType === FREE_TEXT_CHAT_RESPONSE_TYPE) {
+		// for free text, we just return the message
+		// since the user will respond with the text in the chat
+		return message;
+	}
+
+	// TODO: better styling for approval options
+	const config = getSendAndWaitConfig(ctx);
+	const urls = config.options.map((option) => `[${option.label}](${option.url})`);
+	return `${message}\n\n\n\n${urls.join('\n\n')}`;
+}
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,6 +111,8 @@ export class Chat implements INodeType {
 		},
 		inputs: `={{ (${configureInputs})($parameter) }}`,
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
 			{
 				displayName:
@@ -61,12 +125,12 @@ export class Chat implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				default: 'sendMessage',
+				default: 'send',
 				noDataExpression: true,
 				options: [
 					{
 						name: 'Send Message',
-						value: 'sendMessage',
+						value: 'send',
 						action: 'Send a message',
 					},
 					{
@@ -88,7 +152,7 @@ export class Chat implements INodeType {
 				default: '',
 				required: true,
 				typeOptions: {
-					rows: 6,
+					rows: 4,
 				},
 			},
 			{
@@ -103,6 +167,7 @@ export class Chat implements INodeType {
 					},
 				},
 			},
+			...getSendAndWaitPropertiesForChatNode(),
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -120,6 +185,11 @@ export class Chat implements INodeType {
 						name: 'memoryConnection',
 						type: 'boolean',
 						default: false,
+						displayOptions: {
+							hide: {
+								'/responseType': ['approval'],
+							},
+						},
 					},
 					{
 						...limitWaitTimeOption,
@@ -169,6 +239,8 @@ export class Chat implements INodeType {
 			},
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async onMessage(
 		context: IExecuteFunctions,
@@ -249,7 +321,7 @@ export class Chat implements INodeType {
 			);
 		}
 
-		const message = (this.getNodeParameter('message', 0) as string) ?? '';
+		const message = getMessageContent(this);
 		const options = this.getNodeParameter('options', 0, {}) as {
 			memoryConnection?: boolean;
 		};

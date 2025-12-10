@@ -129,3 +129,5 @@ export const PROJECT_ROOT = '0';
 export const WAITING_FORMS_EXECUTION_STATUS = 'n8n-execution-status';
 
 export const CHAT_WAIT_USER_REPLY = 'waitUserReply';
+
+export const FREE_TEXT_CHAT_RESPONSE_TYPE = 'freeTextChat';

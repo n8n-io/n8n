@@ -60,7 +60,7 @@ const appendAttributionOption: INodeProperties = {
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
-	resource: string = 'message',
+	resource: string | null = 'message',
 	additionalProperties: INodeProperties[] = [],
 	options?: {
 		noButtonStyle?: boolean;
@@ -298,7 +298,7 @@ export function getSendAndWaitProperties(
 	return updateDisplayOptions(
 		{
 			show: {
-				resource: [resource],
+				...(resource ? { resource: [resource] } : {}),
 				operation: [SEND_AND_WAIT_OPERATION],
 			},
 		},

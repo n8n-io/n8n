@@ -1,7 +1,16 @@
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { IExecutionResponse } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
-import { jsonParse, UnexpectedError, ensureError } from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
+import {
+	jsonParse,
+	UnexpectedError,
+	ensureError,
+	SEND_AND_WAIT_OPERATION,
+	FREE_TEXT_CHAT_RESPONSE_TYPE,
+	RESPOND_TO_CHAT_NODE_TYPE,
+} from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
@@ -13,8 +22,6 @@ import {
 	Session,
 } from './chat-service.types';
 import { getLastNodeExecuted, getMessage, shouldResumeImmediately } from './utils';
-import { ErrorReporter } from 'n8n-core';
-import { IExecutionResponse } from '@n8n/db';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;
@@ -227,9 +234,10 @@ export class ChatService {
 				}
 
 				const executionId = session.executionId;
-
-				await this.resumeExecution(executionId, this.parseChatMessage(message), sessionKey);
-				session.nodeWaitingForChatResponse = undefined;
+				if (await this.shouldResumeOnMessage(executionId)) {
+					await this.resumeExecution(executionId, this.parseChatMessage(message), sessionKey);
+					session.nodeWaitingForChatResponse = undefined;
+				}
 			} catch (e) {
 				const error = ensureError(e);
 				this.errorReporter.error(error);
@@ -326,6 +334,27 @@ export class ChatService {
 			this.errorReporter.error(error);
 			this.logger.error(`Error checking heartbeats: ${error.message}`);
 		}
+	}
+
+	private async shouldResumeOnMessage(executionId: string) {
+		const execution = await this.executionManager.findExecution(executionId);
+		if (!execution) {
+			return true;
+		}
+
+		const lastNode = getLastNodeExecuted(execution);
+		// for `sendAndWait` we resume execution on a new message
+		// only if the response type is `freeText`, otherwise we wait
+		// for the user to approve/disapprove through an n8n form
+		if (
+			lastNode?.type === RESPOND_TO_CHAT_NODE_TYPE &&
+			lastNode?.parameters?.operation === SEND_AND_WAIT_OPERATION &&
+			lastNode?.parameters?.responseType !== FREE_TEXT_CHAT_RESPONSE_TYPE
+		) {
+			return false;
+		}
+
+		return true;
 	}
 
 	@OnShutdown()
