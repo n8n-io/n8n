@@ -25,16 +25,6 @@ const modalBus = createEventBus();
 
 const canSave = computed(() => !!selectedWorkflowId.value);
 
-const noticeText = computed(() => {
-	return `
-		${i18n.baseText('settings.mcp.connectWorkflows.notice.intro')}:
-		<ul>
-			<li>${i18n.baseText('settings.mcp.connectWorkflows.notice.condition1')}</li>
-			<li>${i18n.baseText('settings.mcp.connectWorkflows.notice.condition2')}</li>
-		</ul>
-	`;
-});
-
 const cancel = () => {
 	modalBus.emit('close');
 };
@@ -68,7 +58,11 @@ onMounted(() => {
 	>
 		<template #content>
 			<div :class="$style.content">
-				<N8nNotice data-test-id="mcp-connect-workflows-info-notice" :content="noticeText" />
+				<N8nNotice
+					data-test-id="mcp-connect-workflows-info-notice"
+					theme="info"
+					:content="i18n.baseText('settings.mcp.connectWorkflows.notice')"
+				/>
 				<MCPWorkflowsSelect
 					ref="selectRef"
 					v-model="selectedWorkflowId"

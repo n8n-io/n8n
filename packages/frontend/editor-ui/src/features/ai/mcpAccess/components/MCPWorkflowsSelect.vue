@@ -32,7 +32,7 @@ async function searchWorkflows(query?: string) {
 	} finally {
 		setTimeout(() => {
 			isLoading.value = false;
-		}, 2 * LOADING_INDICATOR_TIMEOUT);
+		}, LOADING_INDICATOR_TIMEOUT);
 	}
 }
 
