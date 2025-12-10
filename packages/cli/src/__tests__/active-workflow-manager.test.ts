@@ -2,14 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type {
-	WorkflowParameters,
-	INode,
-	INodeType,
-	INodeTypeDescription,
-	WorkflowActivateMode,
-} from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import type { WorkflowActivateMode } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { NodeTypes } from '@/node-types';
@@ -41,49 +34,6 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 		);
-	});
-
-	describe('checkIfWorkflowCanBeActivated', () => {
-		const disabledNode = mock<INode>({ type: 'triggerNode', disabled: true });
-		const unknownNode = mock<INode>({ type: 'unknownNode' });
-		const noTriggersNode = mock<INode>({ type: 'noTriggersNode' });
-		const pollNode = mock<INode>({ type: 'pollNode' });
-		const triggerNode = mock<INode>({ type: 'triggerNode' });
-		const webhookNode = mock<INode>({ type: 'webhookNode' });
-
-		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
-			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
-			if (type === 'unknownNode') return undefined as unknown as INodeType;
-			const partial: Partial<INodeType> = {
-				poll: undefined,
-				trigger: undefined,
-				webhook: undefined,
-				description: mock<INodeTypeDescription>({
-					properties: [],
-				}),
-			};
-			if (type === 'pollNode') partial.poll = jest.fn();
-			if (type === 'triggerNode') partial.trigger = jest.fn();
-			if (type === 'webhookNode') partial.webhook = jest.fn();
-			return mock(partial);
-		});
-
-		test.each([
-			['should skip disabled nodes', disabledNode, [], false],
-			['should skip nodes marked as ignored', triggerNode, ['triggerNode'], false],
-			['should skip unknown nodes', unknownNode, [], false],
-			['should skip nodes with no trigger method', noTriggersNode, [], false],
-			['should activate if poll method exists', pollNode, [], true],
-			['should activate if trigger method exists', triggerNode, [], true],
-			['should activate if webhook method exists', webhookNode, [], true],
-		])('%s', async (_, node, ignoredNodes, expected) => {
-			const workflow = new Workflow(mock<WorkflowParameters>({ nodeTypes, nodes: [node] }));
-			const canBeActivated = activeWorkflowManager.checkIfWorkflowCanBeActivated(
-				workflow,
-				ignoredNodes,
-			);
-			expect(canBeActivated).toBe(expected);
-		});
 	});
 
 	describe('shouldAddWebhooks', () => {
@@ -130,7 +80,6 @@ describe('ActiveWorkflowManager', () => {
 			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange']])(
 				'should skip inactive workflow in `%s` activation mode',
 				async (mode) => {
-					const checkSpy = jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated');
 					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
 					const addTriggersAndPollersSpy = jest.spyOn(
 						activeWorkflowManager,
@@ -142,7 +91,6 @@ describe('ActiveWorkflowManager', () => {
 
 					const added = await activeWorkflowManager.add('some-id', mode);
 
-					expect(checkSpy).not.toHaveBeenCalled();
 					expect(addWebhooksSpy).not.toHaveBeenCalled();
 					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });

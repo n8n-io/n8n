@@ -22,7 +22,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { calculateWorkflowChecksum, deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -348,6 +348,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	const workflowsData = (await workflowsStore.searchWorkflows({
 		query: searchTerm,
 		isArchived: false,
+		triggerNodeType: 'n8n-nodes-base.errorTrigger',
 	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
@@ -477,10 +478,12 @@ const saveSettings = async () => {
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
+	data.expectedChecksum = workflowsStore.workflowChecksum;
 
 	try {
 		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflowData));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
@@ -723,7 +726,18 @@ onBeforeUnmount(() => {
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
+								:disabled="item.active === false"
 							>
+								<div :class="$style.optionContent">
+									<span>{{ item.name }}</span>
+									<N8nTooltip
+										v-if="item.active === false"
+										:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+										placement="top"
+									>
+										<N8nIcon icon="triangle-alert" size="small" :class="$style.inactiveIcon" />
+									</N8nTooltip>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</ElCol>
@@ -1364,6 +1378,23 @@ onBeforeUnmount(() => {
 
 	&:hover {
 		text-decoration: underline;
+	}
+}
+
+.optionContent {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+}
+
+.c {
+	color: var(--color--warning);
+	opacity: 0;
+	transition: opacity 0.2s ease;
+
+	:global(.el-select-dropdown__item):hover & {
+		opacity: 1;
 	}
 }
 
