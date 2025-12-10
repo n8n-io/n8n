@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.31.0",
+  "version": "0.33.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -28,6 +28,7 @@
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
     "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
     "eval:categorize": "tsx scripts/categorize-prompts.ts",
+    "eval:pairwise": "USE_PAIRWISE_EVAL=true tsx evaluations",
     "python:check": "cd evaluations/programmatic/python && just check",
     "python:test": "cd evaluations/programmatic/python && just test",
     "python:lint": "cd evaluations/programmatic/python && just lint",
@@ -49,9 +50,9 @@
   "dependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/langgraph": "0.2.74",
+    "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
-    "@n8n/backend-common": "workspace:^",
+    "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/utils": "workspace:*",

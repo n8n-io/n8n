@@ -147,7 +147,11 @@ export class ChatHubAttachmentService {
 		};
 
 		return await this.binaryDataService.store(
-			FileLocation.ofCustom(['chat-hub', 'sessions', sessionId, 'messages', messageId]),
+			FileLocation.ofCustom({
+				sourceType: 'chat_message_attachment',
+				pathSegments: ['chat-hub', 'sessions', sessionId, 'messages', messageId],
+				sourceId: messageId,
+			}),
 			buffer,
 			binaryData,
 		);

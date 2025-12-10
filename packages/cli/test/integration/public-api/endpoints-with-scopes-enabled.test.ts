@@ -322,6 +322,33 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						expect(formerAdminApiKey.scopes).not.toContain(ownerScope);
 					}
 				});
+
+				it('should remove all API keys when user downgrading to chatUser', async () => {
+					/**
+					 * Arrange
+					 */
+					testServer.license.enable('feat:advancedPermissions');
+
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
+					const admin = await createAdminWithApiKey();
+					const payload = { newRoleName: 'global:chatUser' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${admin.id}/role`)
+						.send(payload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(204);
+
+					const formerAdminApiKey = await apiKeyRepository.findOneBy({ userId: admin.id });
+					expect(formerAdminApiKey).toBeNull();
+				});
 			});
 
 			describe('DELETE /users/:id', () => {
@@ -1069,6 +1096,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						name: 'some-project',
 						icon: null,
 						type: 'team',
+						creatorId: owner.id,
 						description: null,
 						id: expect.any(String),
 						createdAt: expect.any(String),
