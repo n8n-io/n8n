@@ -22,7 +22,7 @@ const SettingsChatHubView = async () =>
 export const ChatModule: FrontendModuleDescription = {
 	id: 'chat-hub',
 	name: 'Chat',
-	description: 'Interact with various LLM models or your n8n AI agents.',
+	description: 'Chat with LLM models or your n8n AI agents.',
 	icon: 'chat',
 	modals: [
 		{
