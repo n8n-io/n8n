@@ -2,10 +2,10 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
-import type { AgentAction, AgentFinish } from 'langchain/agents';
-import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
-import type { BaseChatMemory } from 'langchain/memory';
-import { DynamicStructuredTool, type Tool } from 'langchain/tools';
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { BaseChatMemory } from '@langchain/classic/memory';
+import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';

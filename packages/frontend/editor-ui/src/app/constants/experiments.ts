@@ -16,12 +16,6 @@ export const COMMAND_BAR_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const NDV_UI_OVERHAUL_EXPERIMENT = {
-	name: '029_ndv_ui_overhaul',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
 	control: 'control',
@@ -51,6 +45,12 @@ export const PRE_BUILT_AGENTS_EXPERIMENT = {
 
 export const TEMPLATE_RECO_V2 = {
 	name: '039_template_onboarding_v2',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const UPGRADE_PLAN_CTA_EXPERIMENT = {
+	name: '054_upgrade_plan_cta',
 	control: 'control',
 	variant: 'variant',
 };
@@ -89,14 +89,28 @@ export const TEMPLATE_SETUP_EXPERIENCE = {
 	variant: 'variant',
 };
 
+export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
+	name: '056_ai_builder_template_examples',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
+	name: '057_ai_builder_multi_agent',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
-	NDV_UI_OVERHAUL_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	UPGRADE_PLAN_CTA_EXPERIMENT.name,
+	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
+	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 ];

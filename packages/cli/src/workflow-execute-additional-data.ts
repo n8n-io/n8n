@@ -125,10 +125,14 @@ export async function getWorkflowData(
 			});
 		}
 
-		if (workflowFromDb.activeVersion) {
-			workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
-			workflowFromDb.connections = workflowFromDb.activeVersion.connections;
+		if (!workflowFromDb.activeVersion) {
+			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id },
+			});
 		}
+
+		workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
+		workflowFromDb.connections = workflowFromDb.activeVersion.connections;
 
 		workflowData = workflowFromDb;
 	} else {
@@ -230,6 +234,7 @@ async function startExecution(
 			executionId,
 			workflowData,
 			additionalData.userId,
+			options.parentExecution,
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
@@ -459,6 +464,7 @@ export async function getBase({
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
+		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

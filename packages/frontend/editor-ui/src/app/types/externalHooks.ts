@@ -3,13 +3,14 @@ import type {
 	ExecutionError,
 	GenericValue,
 	IConnections,
-	IDestinationNode,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 	NodeParameterValueType,
+	IDestinationNode,
+	StartNodeData,
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type {
@@ -65,7 +66,12 @@ interface OutputModeChangedEventData {
 }
 interface ExecutionFinishedEventData {
 	runDataExecutedStartData:
-		| { destinationNode?: IDestinationNode; runNodeFilter?: string[] | undefined }
+		| {
+				startNodes?: StartNodeData[];
+				destinationNode?: IDestinationNode | undefined;
+				originalDestinationNode?: IDestinationNode | undefined;
+				runNodeFilter?: string[] | undefined;
+		  }
 		| undefined;
 	nodeName?: string;
 	errorMessage: string;
@@ -213,9 +219,13 @@ export interface ExternalHooks {
 	};
 	workflow: {
 		activeChange: Array<ExternalHooksMethod<{ active: boolean; workflowId: string }>>;
-		activeChangeCurrent: Array<ExternalHooksMethod<{ workflowId: string; active: boolean }>>;
+		activeChangeCurrent: Array<
+			ExternalHooksMethod<{ workflowId: string; versionId: string | null; active: boolean }>
+		>;
 		afterUpdate: Array<ExternalHooksMethod<{ workflowData: IWorkflowDb }>>;
 		open: Array<ExternalHooksMethod<{ workflowId: string; workflowName: string }>>;
+		published: Array<ExternalHooksMethod<{ workflowId: string; versionId: string }>>;
+		unpublished: Array<ExternalHooksMethod<{ workflowId: string }>>;
 	};
 	execution: {
 		open: Array<

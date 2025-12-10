@@ -45,6 +45,7 @@ import {
 import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -892,12 +893,22 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('setWorkflowActive()', () => {
-		it('should set workflow as active when it is not already active', () => {
+		it('should set workflow as active when it is not already active', async () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
-			workflowsStore.setWorkflowActive('1');
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion);
 
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -910,7 +921,17 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
-			workflowsStore.setWorkflowActive('1');
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion);
 
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -921,7 +942,18 @@ describe('useWorkflowsStore', () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
-			workflowsStore.setWorkflowActive('2');
+
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('2', mockActiveVersion);
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
@@ -2080,6 +2112,107 @@ describe('useWorkflowsStore', () => {
 			});
 
 			expect(result).toBe(0); // No nodes to update (only current node exists)
+		});
+	});
+
+	describe('getWebhookUrl', () => {
+		it('should return undefined when node does not exist', () => {
+			workflowsStore.setNodes([]);
+
+			const result = workflowsStore.getWebhookUrl('non-existent-node', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when node type does not exist', () => {
+			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue(null);
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when node type has no webhooks', () => {
+			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return webhook URL for test type', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [{ name: 'default', httpMethod: 'GET', path: 'webhook' }],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook');
+		});
+
+		it('should return webhook URL for production type', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'production');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook');
+		});
+
+		it('should use the first webhook when node has multiple webhooks', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [
+					{ name: 'default', httpMethod: 'GET', path: 'webhook1' },
+					{ name: 'default', httpMethod: 'POST', path: 'webhook2' },
+				],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook1');
 		});
 	});
 

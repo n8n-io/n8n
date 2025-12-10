@@ -18,6 +18,7 @@ on:
           - minor
           - major
           - experimental
+          - premajor
 
 jobs:
   create-release-pr:
