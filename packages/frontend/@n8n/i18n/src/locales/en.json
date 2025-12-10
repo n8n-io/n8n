@@ -2395,6 +2395,7 @@
 	"settings.mcp.connectWorkflows.notice": "Workflows that are published and have one of webhook, form, schedule or chat trigger nodes can be enabled for MCP access",
 	"settings.mcp.connectWorkflows.input.placeholder": "Search workflows to connect",
 	"settings.mcp.connectWorkflows.confirm.label": "Connect",
+	"settings.mcp.connectWorkflows.error": "Error fetching available workflows",
 	"settings.mcp.connectPopover.tab.oauth": "OAuth",
 	"settings.mcp.connectPopover.tab.accessToken": "Access token",
 	"settings.mcp.connectPopover.serverUrl": "Server URL",

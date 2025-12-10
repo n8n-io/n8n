@@ -14,13 +14,15 @@ type ParentFolder = {
 
 const props = withDefaults(
 	defineProps<{
-		workflowId?: string;
-		workflowName?: string;
+		workflowId: string;
+		workflowName: string;
 		homeProject?: ProjectSharingData;
 		parentFolder?: ParentFolder;
 		asLinks?: boolean;
 	}>(),
 	{
+		homeProject: undefined,
+		parentFolder: undefined,
 		asLinks: false,
 	},
 );

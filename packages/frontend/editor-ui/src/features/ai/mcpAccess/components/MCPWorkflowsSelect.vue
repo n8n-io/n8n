@@ -5,6 +5,8 @@ import { N8nIcon, N8nSelect, N8nOption } from '@n8n/design-system';
 import { onMounted, ref } from 'vue';
 import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
+import { useI18n } from '@n8n/i18n';
+import { useToast } from '@/app/composables/useToast';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
 
@@ -12,6 +14,9 @@ defineProps<{
 	placeholder?: string;
 	disabled?: boolean;
 }>();
+
+const i18n = useI18n();
+const toast = useToast();
 
 const modelValue = defineModel<string>();
 
@@ -29,6 +34,8 @@ async function searchWorkflows(query?: string) {
 			query: query || undefined,
 		});
 		workflowOptions.value = response?.data ?? [];
+	} catch (e) {
+		toast.showError(e, i18n.baseText('settings.mcp.connectWorkflows.error'));
 	} finally {
 		setTimeout(() => {
 			isLoading.value = false;
@@ -77,6 +84,7 @@ defineExpose({
 			:label="workflow.name"
 		>
 			<WorkflowLocation
+				:workflow-id="workflow.id"
 				:workflow-name="workflow.name"
 				:home-project="workflow.homeProject"
 				:parent-folder="workflow.parentFolder"
