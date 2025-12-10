@@ -1633,7 +1633,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (id === workflow.value.id) {
-			workflow.value.checksum = updatedWorkflow.checksum;
+			workflowChecksum.value = updatedWorkflow.checksum;
 		}
 
 		if (
