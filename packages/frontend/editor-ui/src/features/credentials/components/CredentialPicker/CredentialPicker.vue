@@ -18,6 +18,7 @@ const props = defineProps<{
 	appName: string;
 	credentialType: string;
 	selectedCredentialId: string | null;
+	personalOnly?: boolean;
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
 }>();
@@ -41,11 +42,15 @@ const currentCredential = ref<ICredentialsResponse | ICredentialsDecryptedRespon
 
 const availableCredentials = computed(() => {
 	const credByType = credentialsStore.getCredentialsByType(props.credentialType);
-	// Only show personal credentials since templates are created in personal by default
-	// Here, we don't care about sharing because credentials cannot be shared with personal project
-	return credByType.filter(
-		(credential) => !credential.homeProject || credential.homeProject?.type === 'personal',
-	);
+	if (props.personalOnly) {
+		// Only show personal credentials since templates are created in personal by default
+		// Here, we don't care about sharing because credentials cannot be shared with personal project
+		return credByType.filter(
+			(credential) => credential.homeProject?.type === 'personal' || credential.isGlobal,
+		);
+	}
+
+	return credByType;
 });
 
 const credentialOptions = computed(() => {
@@ -53,6 +58,7 @@ const credentialOptions = computed(() => {
 		id: credential.id,
 		name: credential.name,
 		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+		homeProject: credential.homeProject,
 	}));
 });
 

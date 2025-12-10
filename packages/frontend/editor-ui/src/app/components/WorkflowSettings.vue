@@ -22,7 +22,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
-import { calculateWorkflowChecksum, deepCopy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -483,7 +483,9 @@ const saveSettings = async () => {
 	try {
 		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflowData));
+		if (workflowData.checksum) {
+			workflowsStore.setWorkflowChecksum(workflowData.checksum);
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;

@@ -13,7 +13,7 @@ import { DynamicCredentialResolverRegistry } from './credential-resolver-registr
 import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
-} from '../../../credential-resolution-provider.interface';
+} from '../../../credentials/credential-resolution-provider.interface';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
 

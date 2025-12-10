@@ -151,13 +151,17 @@ export class WaitTracker {
 				.getPostExecutePromise(executionId)
 				.then(async (subworkflowResults) => {
 					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 					await updateParentExecutionWithChildResults(
 						this.executionRepository,
 						parentExecution.executionId,
 						subworkflowResults,
 					);
+					return subworkflowResults;
 				})
-				.then(() => {
+				.then((subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 					void this.startExecution(parentExecution.executionId);
 				});
 		}
