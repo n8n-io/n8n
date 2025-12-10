@@ -260,7 +260,8 @@ test.describe('Projects', () => {
 
 			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
-			expect(n8n.page.url()).toContain('/workflow/new');
+			// New workflows redirect to /workflow/<id>?new=true
+			expect(n8n.page.url()).toMatch(/\/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});

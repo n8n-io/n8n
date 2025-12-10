@@ -10,7 +10,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
-import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -37,13 +37,18 @@ const loadingMore = ref(false);
 const workflow = ref<IWorkflowDb | undefined>();
 
 const workflowId = computed(() => {
-	const workflowIdParam = route.params.name as string;
-	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
-		? undefined
-		: workflowIdParam;
+	const name = route.params.name;
+	return typeof name === 'string' ? name : undefined;
 });
 
-const executionId = computed(() => route.params.executionId as string);
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
+});
+
+const executionId = computed(() => {
+	const id = route.params.executionId;
+	return typeof id === 'string' ? id : undefined;
+});
 
 const executions = computed(() =>
 	workflowId.value
@@ -138,7 +143,8 @@ async function initializeRoute() {
 async function fetchWorkflow() {
 	if (workflowId.value) {
 		// Check if we are loading the Executions tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Skip fetching if it's a new workflow that hasn't been saved yet
+		if (!workflowsStore.workflow.id && !isNewWorkflowRoute.value) {
 			try {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
@@ -146,6 +152,12 @@ async function fetchWorkflow() {
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 			}
+		}
+
+		// For new workflows, use the current workflow from the store
+		if (isNewWorkflowRoute.value) {
+			workflow.value = workflowsStore.workflow;
+			return;
 		}
 
 		workflow.value = workflowsStore.getWorkflowById(workflowId.value);

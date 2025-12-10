@@ -6,7 +6,6 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
@@ -115,7 +114,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 };
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
-	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	id: '',
 	...defaults,
 });
 
@@ -173,7 +172,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		Object.values(workflowsById.value).sort((a, b) => a.name.localeCompare(b.name)),
 	);
 
-	const isNewWorkflow = computed(() => workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID);
+	// A workflow is new if it hasn't been saved to the backend yet
+	const isNewWorkflow = computed(() => {
+		if (!workflow.value.id) return true;
+
+		// Check if the workflow exists in workflowsById
+		const existingWorkflow = workflowsById.value[workflow.value.id];
+		// If workflow doesn't exist in the store or has no ID, it's new
+		return !existingWorkflow?.id;
+	});
 
 	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
@@ -566,7 +573,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodeTypes = getNodeTypes();
 
 		let id: string | undefined = workflow.value.id;
-		if (id && id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// If workflow doesn't exist in store, treat as new (no ID)
+		if (id && !workflowsById.value[id]?.id) {
 			id = undefined;
 		}
 
@@ -597,12 +605,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchLastSuccessfulExecution() {
-		const workflowId = workflow.value.id;
 		const workflowPermissions = getResourcePermissions(workflow.value.scopes).workflow;
 
 		try {
 			if (
-				workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+				isNewWorkflow.value ||
 				sourceControlStore.preferences.branchReadOnly ||
 				uiStore.isReadOnlyView ||
 				!workflowPermissions.update ||
@@ -613,7 +620,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 			lastSuccessfulExecution.value = await workflowsApi.getLastSuccessfulExecution(
 				rootStore.restApiContext,
-				workflowId,
+				workflowId.value,
 			);
 		} catch (e: unknown) {
 			// no need to do anything if fails
@@ -1054,7 +1061,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
 			...(!value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
-			...(!value.hasOwnProperty('id') ? { id: PLACEHOLDER_EMPTY_WORKFLOW_ID } : {}),
+			...(!value.hasOwnProperty('id') ? { id: '' } : {}),
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
 		};

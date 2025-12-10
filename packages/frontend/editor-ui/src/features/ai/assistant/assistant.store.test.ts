@@ -428,7 +428,7 @@ describe('AI Assistant store', () => {
 			node_type: 'n8n-nodes-base.stopAndError',
 			source: 'error',
 			task: 'error',
-			workflow_id: '__EMPTY__',
+			workflow_id: '',
 		});
 	});
 

@@ -35,7 +35,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -96,7 +96,12 @@ export class WorkflowsController {
 
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
-		delete req.body.id; // delete if sent
+		if (req.body.id) {
+			const workflowExists = await this.workflowRepository.existsBy({ id: req.body.id });
+			if (workflowExists) {
+				throw new UserError(`Workflow with id ${req.body.id} exists already.`);
+			}
+		}
 		// @ts-expect-error: We shouldn't accept this because it can
 		// mess with relations of other workflows
 		delete req.body.shared;
