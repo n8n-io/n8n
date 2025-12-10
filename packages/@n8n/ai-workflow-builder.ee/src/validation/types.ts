@@ -28,6 +28,8 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'workflow-similarity-edge-delete',
 	'workflow-similarity-edge-substitute',
 	'workflow-similarity-evaluation-failed',
+	'http-request-hardcoded-credentials',
+	'set-node-credential-field',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -53,6 +55,7 @@ export interface ProgrammaticChecksResult {
 	agentPrompt: ProgrammaticViolation[];
 	tools: ProgrammaticViolation[];
 	fromAi: ProgrammaticViolation[];
+	credentials: ProgrammaticViolation[];
 }
 
 export interface ProgrammaticEvaluationResult {
@@ -63,6 +66,7 @@ export interface ProgrammaticEvaluationResult {
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;
 	fromAi: SingleEvaluatorResult;
+	credentials: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
 }
 
