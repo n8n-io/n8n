@@ -159,10 +159,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 			return null;
 		}
 
-		return chatStore.getAgent(
-			model,
-			(currentConversation.value?.agentName || currentConversation.value?.model) ?? undefined,
-		);
+		return chatStore.getAgent(model, {
+			name: currentConversation.value?.agentName || currentConversation.value?.model,
+			icon: currentConversation.value?.agentIcon,
+		});
 	}
 
 	if (modelFromQuery.value) {
@@ -170,14 +170,20 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.model, chatStore.streaming.agentName);
+		return chatStore.getAgent(chatStore.streaming.agent.model, {
+			name: chatStore.streaming.agent.name,
+			icon: chatStore.streaming.agent.icon,
+		});
 	}
 
 	if (!defaultModel.value) {
 		return null;
 	}
 
-	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
+	return chatStore.getAgent(defaultModel.value, {
+		name: defaultModel.value.cachedDisplayName,
+		icon: defaultModel.value.cachedIcon,
+	});
 });
 
 const customAgentId = computed(() =>
@@ -397,11 +403,10 @@ function onSubmit(message: string, attachments: File[]) {
 	void chatStore.sendMessage(
 		sessionId.value,
 		message,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
 		attachments,
-		selectedModel.value.name,
 	);
 
 	inputRef.value?.setText('');
@@ -440,7 +445,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		sessionId.value,
 		messageToEdit,
 		message.content,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 	);
 	editingMessageId.value = undefined;
@@ -461,7 +466,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 	);
 }
@@ -601,6 +606,7 @@ function onFilesDropped(files: File[]) {
 						:is-editing="editingMessageId === message.id"
 						:is-streaming="message.status === 'running'"
 						:cached-agent-display-name="selectedModel?.name ?? null"
+						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
 							didSubmitInCurrentSession &&
 							message.type === 'ai' &&

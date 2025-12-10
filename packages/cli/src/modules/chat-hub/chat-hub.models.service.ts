@@ -7,31 +7,26 @@ import {
 	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { In, WorkflowRepository, type User } from '@n8n/db';
+import { type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
-	CHAT_TRIGGER_NODE_TYPE,
 	type INodeCredentials,
 	type INodePropertyOptions,
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { chatTriggerParamsShape } from './chat-hub.types';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 
 @Service()
 export class ChatHubModelsService {
 	constructor(
 		private readonly nodeParametersService: DynamicNodeParametersService,
-		private readonly workflowService: WorkflowService,
-		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
@@ -158,7 +153,7 @@ export class ChatHubModelsService {
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
 			case 'n8n':
-				return await this.fetchAgentWorkflowsAsModels(user);
+				return { models: await this.chatHubWorkflowService.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
 				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
 		}
@@ -712,78 +707,6 @@ export class ChatHubModelsService {
 		);
 	}
 
-	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
-		// Workflows are scanned by their latest version for chat trigger nodes.
-		// This means that we might miss some active workflow versions that had chat triggers but
-		// the latest version does not, but this trade-off is done for performance.
-		const workflowsWithChatTrigger = await this.workflowService.getWorkflowsWithNodesIncluded(
-			user,
-			[CHAT_TRIGGER_NODE_TYPE],
-			true,
-		);
-
-		const activeWorkflows = workflowsWithChatTrigger
-			// Ensure the user has chat execution access to the workflow
-			.filter((workflow) => workflow.scopes.includes('workflow:execute-chat'))
-			// The workflow has to be active
-			.filter((workflow) => !!workflow.activeVersionId);
-
-		const workflows = await this.workflowRepository.find({
-			select: { id: true, name: true },
-			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
-			relations: { activeVersion: true },
-		});
-
-		const models: ChatModelDto[] = [];
-
-		for (const { id, name, activeVersion } of workflows) {
-			if (!activeVersion) {
-				continue;
-			}
-
-			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-			if (!chatTrigger) {
-				continue;
-			}
-
-			const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-			if (!chatTriggerParams?.availableInChat) {
-				continue;
-			}
-
-			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
-				chatTriggerParams.options,
-			);
-
-			const agentName =
-				chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
-					? chatTriggerParams.agentName
-					: name;
-
-			models.push({
-				name: agentName,
-				description: chatTriggerParams.agentDescription ?? null,
-				model: {
-					provider: 'n8n',
-					workflowId: id,
-				},
-				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
-				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-				metadata: {
-					inputModalities,
-					capabilities: {
-						functionCalling: false,
-					},
-					available: true,
-				},
-			});
-		}
-
-		return {
-			models,
-		};
-	}
-
 	private transformAndFilterModels(
 		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
@@ -801,12 +724,14 @@ export class ChatHubModelsService {
 					id,
 					name: model.name,
 					description: model.description ?? null,
+					icon: null,
 					model: {
 						provider,
 						model: id,
 					},
 					createdAt: null,
 					updatedAt: null,
+					projectName: null,
 					metadata,
 				},
 			];

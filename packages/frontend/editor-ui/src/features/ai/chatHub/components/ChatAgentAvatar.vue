@@ -2,8 +2,10 @@
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { type ChatModelDto, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
-import { N8nAvatar, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { computed } from 'vue';
+import { isLlmProviderModel } from '../chat.utils';
 
 defineProps<{
 	agent: ChatModelDto | null;
@@ -18,16 +20,15 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 <template>
 	<N8nTooltip :show-after="100" placement="left" :disabled="!tooltip">
 		<template v-if="agent" #content>{{ agent.name }}</template>
+		<span v-if="agent?.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
+			{{ agent.icon.value }}
+		</span>
 		<N8nIcon
-			v-if="!agent"
-			icon="messages-square"
+			v-else-if="!agent || !isLlmProviderModel(agent.model)"
+			color="text-light"
+			:class="$style.n8nIcon"
+			:icon="agent ? ((agent.icon?.value ?? 'bot') as IconName) : 'messages-square'"
 			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
-		/>
-		<N8nAvatar
-			v-else-if="agent.model.provider === 'custom-agent' || agent.model.provider === 'n8n'"
-			:class="[$style.avatar, $style[size]]"
-			:first-name="agent.name"
-			:size="size === 'lg' ? 'medium' : size === 'sm' ? 'xxsmall' : 'xsmall'"
 		/>
 		<CredentialIcon
 			v-else
@@ -39,8 +40,31 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 </template>
 
 <style lang="scss" module>
-.avatar.md {
-	transform: scale(1.2);
+.n8nIcon {
+	outline: none;
+}
+
+.emoji {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+
+	&.sm {
+		width: 16px;
+		height: 16px;
+	}
+
+	&.md {
+		width: 20px;
+		height: 20px;
+		font-size: 20px;
+	}
+
+	&.lg {
+		width: 40px;
+		height: 40px;
+		font-size: 28px;
+	}
 }
 
 .credentialsIcon {

@@ -103,9 +103,65 @@ const menu = computed(() => {
 	const fullNamesMap: Record<string, string> = {};
 
 	if (includeCustomAgents) {
+		// Group n8n agents by projectName
+		const n8nAgentsByProject = new Map<string | null, (typeof agents.value)['n8n']['models']>();
+
+		if (!isLoading.value) {
+			for (const agent of agents.value['n8n'].models) {
+				const projectName = agent.projectName;
+				if (!n8nAgentsByProject.has(projectName)) {
+					n8nAgentsByProject.set(projectName, []);
+				}
+				n8nAgentsByProject.get(projectName)?.push(agent);
+			}
+		}
+
+		// Create submenu items for each project
+		const n8nAgentsSubmenu: (typeof N8nNavigationDropdown)['menu'] = [];
+
+		if (isLoading.value) {
+			n8nAgentsSubmenu.push({
+				id: 'loading',
+				title: i18n.baseText('generic.loadingEllipsis'),
+				disabled: true,
+			});
+		} else {
+			// Sort projects alphabetically, with null projectName at the end
+			const sortedProjects = Array.from(n8nAgentsByProject.keys()).sort((a, b) => {
+				if (a === null) return 1;
+				if (b === null) return -1;
+				return a.localeCompare(b);
+			});
+
+			for (const projectName of sortedProjects) {
+				const projectAgents = n8nAgentsByProject.get(projectName) ?? [];
+				const agentMenuItems = projectAgents.map((agent) => {
+					const id = stringifyModel(agent.model);
+					fullNamesMap[id] = agent.name;
+					return {
+						id,
+						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
+						disabled: false,
+					};
+				});
+
+				if (projectName === null) {
+					// Add agents without project directly at the root level
+					n8nAgentsSubmenu.push(...agentMenuItems);
+				} else {
+					// Create a project group
+					n8nAgentsSubmenu.push({
+						id: `project::${projectName}`,
+						title: projectName,
+						submenu: agentMenuItems,
+					});
+				}
+			}
+		}
+
 		const customAgents = isLoading.value
 			? []
-			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => {
+			: agents.value['custom-agent'].models.map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {
@@ -116,8 +172,17 @@ const menu = computed(() => {
 				});
 
 		menuItems.push({
+			id: 'n8n-agents',
+			title: i18n.baseText('chatHub.agent.workflowAgents'),
+			icon: 'robot',
+			iconSize: 'large',
+			iconMargin: false,
+			submenu: n8nAgentsSubmenu,
+		});
+
+		menuItems.push({
 			id: 'custom-agents',
-			title: i18n.baseText('chatHub.agent.customAgents'),
+			title: i18n.baseText('chatHub.agent.personalAgents'),
 			icon: 'robot',
 			iconSize: 'large',
 			iconMargin: false,
@@ -138,6 +203,8 @@ const menu = computed(() => {
 				},
 			],
 		});
+
+		menuItems.push({ isDivider: true as const, id: 'agents-divider' });
 	}
 
 	for (const provider of chatHubLLMProviderSchema.options) {
@@ -177,12 +244,14 @@ const menu = computed(() => {
 				theAgents.push({
 					name: model.displayName,
 					description: '',
+					icon: null,
 					model: {
 						provider,
 						model: model.model,
 					},
 					createdAt: '',
 					updatedAt: null,
+					projectName: null,
 					// Assume file attachment and tools are supported
 					metadata: {
 						inputModalities: ['text', 'image', 'audio', 'video', 'file'],

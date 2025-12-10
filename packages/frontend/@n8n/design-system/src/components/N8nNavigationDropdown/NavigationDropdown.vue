@@ -23,7 +23,7 @@ type BaseItem = {
 
 type Divider = { isDivider: true; id: string };
 
-type Item = BaseItem & { submenu?: Array<BaseItem | Divider> };
+type Item = BaseItem & { submenu?: Array<Item | Divider> };
 
 defineOptions({
 	name: 'N8nNavigationDropdown',
@@ -133,6 +133,81 @@ defineExpose({
 						</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
 							<hr v-if="subitem.isDivider" />
+							<template v-else-if="subitem.submenu">
+								<ElSubMenu
+									:popper-class="$style.nestedSubmenu"
+									:index="subitem.id"
+									:popper-offset="-10"
+									data-test-id="navigation-submenu"
+								>
+									<template #title>
+										<div :class="$style.subMenuTitle">
+											<slot name="item-icon" v-bind="{ item: subitem }">
+												<!-- Default icon rendering -->
+												<template v-if="subitem.icon">
+													<N8nIcon
+														v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
+														:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
+														:icon="
+															typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon
+														"
+														:size="subitem.iconSize"
+													/>
+													<N8nText
+														v-else-if="subitem.icon.type === 'emoji'"
+														:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
+													>
+														{{ subitem.icon.value }}
+													</N8nText>
+												</template>
+											</slot>
+											{{ subitem.title }}
+										</div>
+									</template>
+									<template v-for="nestedItem in subitem.submenu" :key="nestedItem.id">
+										<hr v-if="nestedItem.isDivider" />
+										<ConditionalRouterLink
+											v-else
+											:to="(!nestedItem.disabled && nestedItem.route) || undefined"
+										>
+											<ElMenuItem
+												data-test-id="navigation-submenu-item"
+												:index="nestedItem.id"
+												:disabled="nestedItem.disabled"
+												@click="emit('itemClick', $event)"
+											>
+												<slot name="item-icon" v-bind="{ item: nestedItem }">
+													<!-- Default icon rendering -->
+													<template v-if="nestedItem.icon">
+														<N8nIcon
+															v-if="
+																typeof nestedItem.icon === 'string' ||
+																nestedItem.icon.type === 'icon'
+															"
+															:class="{ [$style.submenu__icon]: nestedItem.iconMargin !== false }"
+															:icon="
+																typeof nestedItem.icon === 'object'
+																	? nestedItem.icon.value
+																	: nestedItem.icon
+															"
+															:size="nestedItem.iconSize"
+														/>
+														<N8nText
+															v-else-if="nestedItem.icon.type === 'emoji'"
+															:class="{ [$style.submenu__icon]: nestedItem.iconMargin !== false }"
+														>
+															{{ nestedItem.icon.value }}
+														</N8nText>
+													</template>
+												</slot>
+
+												{{ nestedItem.title }}
+												<slot :name="`item.append.${subitem.id}`" v-bind="{ item: nestedItem }" />
+											</ElMenuItem>
+										</ConditionalRouterLink>
+									</template>
+								</ElSubMenu>
+							</template>
 							<ConditionalRouterLink v-else :to="(!subitem.disabled && subitem.route) || undefined">
 								<ElMenuItem
 									data-test-id="navigation-submenu-item"

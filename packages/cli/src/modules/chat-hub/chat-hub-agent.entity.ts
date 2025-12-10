@@ -1,4 +1,4 @@
-import { ChatHubLLMProvider } from '@n8n/api-types';
+import { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
 import { WithTimestamps, User, CredentialsEntity, JsonColumn } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { INode } from 'n8n-workflow';
@@ -19,6 +19,12 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 512, nullable: true })
 	description: string | null;
+
+	/**
+	 * The icon or emoji for the chat agent.
+	 */
+	@JsonColumn()
+	icon: AgentIconOrEmoji;
 
 	/**
 	 * The system prompt for the chat agent.

@@ -31,7 +31,6 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	previousMessageId: ChatMessageId | null;
 	attachments: ChatAttachment[];
 	tools: INode[];
-	agentName?: string;
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
 	retryId: ChatMessageId;

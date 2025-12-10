@@ -2,11 +2,12 @@
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
+import ChatAgentSearchSort from '@/features/ai/chatHub/components/ChatAgentSearchSort.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
@@ -14,7 +15,6 @@ import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useMediaQuery } from '@vueuse/core';
 import { AGENT_EDITOR_MODAL_KEY, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
-import { useRouter } from 'vue-router';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
 import { useI18n } from '@n8n/i18n';
@@ -24,38 +24,16 @@ const uiStore = useUIStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
-const router = useRouter();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const i18n = useI18n();
 
-const agentFilter = ref<ChatAgentFilter>({
-	search: '',
-	provider: '',
-	sortBy: 'updatedAt',
-});
+const agentFilter = ref<ChatAgentFilter>({ search: '', sortBy: 'updatedAt' });
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
 const readyToShowList = computed(() => chatStore.agentsReady);
-const allModels = computed(() =>
-	chatStore.agents.n8n.models.concat(chatStore.agents['custom-agent'].models),
-);
-
+const allModels = computed(() => chatStore.agents['custom-agent'].models);
 const agents = computed(() => filterAndSortAgents(allModels.value, agentFilter.value));
-
-const providerOptions = computed(
-	() =>
-		[
-			{ label: i18n.baseText('chatHub.agents.filter.all'), value: '' },
-			{ label: i18n.baseText('chatHub.agents.filter.customAgents'), value: 'custom-agent' },
-			{ label: i18n.baseText('chatHub.agents.filter.n8nWorkflows'), value: 'n8n' },
-		] as const,
-);
-
-const sortOptions = computed(() => [
-	{ label: i18n.baseText('chatHub.agents.sort.updatedAt'), value: 'updatedAt' },
-	{ label: i18n.baseText('chatHub.agents.sort.createdAt'), value: 'createdAt' },
-]);
 
 function handleCreateAgent() {
 	uiStore.openModalWithData({
@@ -67,18 +45,6 @@ function handleCreateAgent() {
 }
 
 async function handleEditAgent(model: ChatHubConversationModel) {
-	if (model.provider === 'n8n') {
-		const routeData = router.resolve({
-			name: VIEWS.WORKFLOW,
-			params: {
-				name: model.workflowId,
-			},
-		});
-
-		window.open(routeData.href, '_blank');
-		return;
-	}
-
 	if (model.provider === 'custom-agent') {
 		uiStore.openModalWithData({
 			name: AGENT_EDITOR_MODAL_KEY,
@@ -128,9 +94,11 @@ watch(
 		<div :class="[$style.container, { [$style.isMobileDevice]: isMobileDevice }]">
 			<div :class="$style.header">
 				<div :class="$style.headerContent">
-					<N8nText tag="h1" size="xlarge" bold>{{ i18n.baseText('chatHub.agents.title') }}</N8nText>
+					<N8nText tag="h1" size="xlarge" bold>
+						{{ i18n.baseText('chatHub.personalAgents.title') }}
+					</N8nText>
 					<N8nText color="text-light">
-						{{ i18n.baseText('chatHub.agents.description') }}
+						{{ i18n.baseText('chatHub.personalAgents.description') }}
 					</N8nText>
 				</div>
 				<N8nButton icon="plus" type="primary" size="medium" @click="handleCreateAgent">
@@ -138,63 +106,29 @@ watch(
 				</N8nButton>
 			</div>
 
-			<div v-if="readyToShowList && allModels.length > 0" :class="$style.controls">
-				<N8nInput
-					v-model="agentFilter.search"
-					:class="$style.search"
-					:placeholder="i18n.baseText('chatHub.agents.search.placeholder')"
-					clearable
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
-
-				<N8nSelect v-model="agentFilter.provider" :class="$style.filter">
-					<N8nOption
-						v-for="option in providerOptions"
-						:key="String(option.value)"
-						:label="option.label"
-						:value="option.value"
-					/>
-				</N8nSelect>
-
-				<N8nSelect v-model="agentFilter.sortBy" :class="$style.sort">
-					<N8nOption
-						v-for="option in sortOptions"
-						:key="option.value"
-						:label="option.label"
-						:value="option.value"
-					/>
-				</N8nSelect>
-			</div>
+			<ChatAgentSearchSort v-if="readyToShowList && allModels.length > 0" v-model="agentFilter" />
 
 			<template v-if="!readyToShowList" />
 
-			<div v-else-if="allModels.length === 0" :class="$style.empty">
-				<N8nText color="text-light" size="medium">
-					{{ i18n.baseText('chatHub.agents.empty.noAgents') }}
-				</N8nText>
-			</div>
-
 			<div v-else-if="agents.length === 0" :class="$style.empty">
 				<N8nText color="text-light" size="medium">
-					{{ i18n.baseText('chatHub.agents.empty.noMatch') }}
+					{{
+						allModels.length === 0
+							? i18n.baseText('chatHub.personalAgents.empty.noAgents')
+							: i18n.baseText('chatHub.personalAgents.empty.noMatch')
+					}}
 				</N8nText>
 			</div>
 
 			<div v-else :class="$style.agentsGrid">
-				<ChatAgentCard
-					v-for="agent in agents"
-					:key="stringifyModel(agent.model)"
-					:agent="agent"
-					@edit="handleEditAgent(agent.model)"
-					@delete="
-						agent.model.provider === 'custom-agent'
-							? handleDeleteAgent(agent.model.agentId)
-							: undefined
-					"
-				/>
+				<template v-for="agent in agents" :key="stringifyModel(agent.model)">
+					<ChatAgentCard
+						v-if="agent.model.provider === 'custom-agent'"
+						:agent="agent"
+						@edit="handleEditAgent(agent.model)"
+						@delete="handleDeleteAgent(agent.model.agentId)"
+					/>
+				</template>
 			</div>
 		</div>
 		<ChatSidebarOpener :class="$style.menuButton" />
@@ -238,25 +172,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-}
-
-.controls {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-
-.search {
-	flex: 1;
-	min-width: 200px;
-}
-
-.filter {
-	width: 200px;
-}
-
-.sort {
-	width: 200px;
 }
 
 .empty {

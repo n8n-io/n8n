@@ -1,4 +1,4 @@
-import { ChatHubProvider } from '@n8n/api-types';
+import { ChatHubProvider, AgentIconOrEmoji } from '@n8n/api-types';
 import {
 	JsonColumn,
 	WithTimestamps,
@@ -103,6 +103,13 @@ export class ChatHubSession extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	agentName: string | null;
+
+	/**
+	 * Cached icon of the agent/model.
+	 * Used for all providers (LLM providers, custom agents, and n8n workflows).
+	 */
+	@JsonColumn({ nullable: true })
+	agentIcon: AgentIconOrEmoji | null;
 
 	/**
 	 * All messages that belong to this chat session.

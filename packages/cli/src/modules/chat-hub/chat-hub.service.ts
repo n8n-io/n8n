@@ -14,6 +14,7 @@ import {
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
 	type ChatHubUpdateConversationRequest,
+	type ChatModelDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -170,15 +171,7 @@ export class ChatHubService {
 		try {
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
-				session ??= await this.createChatSession(
-					user,
-					sessionId,
-					model,
-					credentialId,
-					tools,
-					payload.agentName,
-					trx,
-				);
+				session ??= await this.createChatSession(user, sessionId, model, credentialId, tools, trx);
 
 				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
@@ -1252,23 +1245,44 @@ export class ChatHubService {
 		return await this.sessionRepository.getOneById(sessionId, user.id, trx);
 	}
 
+	private async getAgentNameAndIcon(
+		user: User,
+		model: ChatHubConversationModel,
+	): Promise<Pick<ChatModelDto, 'name' | 'icon'>> {
+		if (model.provider === 'custom-agent') {
+			return await this.chatHubAgentService.getAgentById(model.agentId, user.id);
+		}
+
+		if (model.provider === 'n8n') {
+			const agents = await this.chatHubWorkflowService.fetchAgentWorkflowsAsModelsByIds([
+				model.workflowId,
+			]);
+
+			return { icon: agents[0]?.icon ?? null, name: agents[0]?.name ?? '' };
+		}
+
+		return { icon: null, name: model.model };
+	}
+
 	private async createChatSession(
 		user: User,
 		sessionId: ChatSessionId,
 		model: ChatHubConversationModel,
 		credentialId: string | null,
 		tools: INode[],
-		agentName?: string,
 		trx?: EntityManager,
 	) {
 		await this.ensureValidModel(user, model);
+
+		const nameAndIcon = await this.getAgentNameAndIcon(user, model);
 
 		return await this.sessionRepository.createChatSession(
 			{
 				id: sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
-				agentName,
+				agentName: nameAndIcon.name,
+				agentIcon: nameAndIcon.icon,
 				tools,
 				credentialId,
 				...model,
@@ -1316,6 +1330,7 @@ export class ChatHubService {
 				workflowId: session.workflowId,
 				agentId: session.agentId,
 				agentName: session.agentName ?? '',
+				agentIcon: session.agentIcon,
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
 				tools: session.tools,
@@ -1348,6 +1363,7 @@ export class ChatHubService {
 				workflowId: session.workflowId,
 				agentId: session.agentId,
 				agentName: session.agentName ?? '',
+				agentIcon: session.agentIcon,
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
 				tools: session.tools,
@@ -1445,24 +1461,25 @@ export class ChatHubService {
 		// Prepare the actual updates to be sent to the repository
 		const sessionUpdates: Partial<ChatHubSession> = {};
 
-		if (updates.agent) {
-			const model = updates.agent.model;
+		if (updates.model) {
+			await this.ensureValidModel(user, updates.model);
 
-			await this.ensureValidModel(user, model);
+			const nameAndIcon = await this.getAgentNameAndIcon(user, updates.model);
 
-			sessionUpdates.agentName = updates.agent.name;
-			sessionUpdates.provider = model.provider;
+			sessionUpdates.agentName = nameAndIcon.name;
+			sessionUpdates.agentIcon = nameAndIcon.icon;
+			sessionUpdates.provider = updates.model.provider;
 			sessionUpdates.model = null;
 			sessionUpdates.credentialId = null;
 			sessionUpdates.agentId = null;
 			sessionUpdates.workflowId = null;
 
-			if (updates.agent.model.provider === 'n8n') {
-				sessionUpdates.workflowId = updates.agent.model.workflowId;
-			} else if (updates.agent.model.provider === 'custom-agent') {
-				sessionUpdates.agentId = updates.agent.model.agentId;
+			if (updates.model.provider === 'n8n') {
+				sessionUpdates.workflowId = updates.model.workflowId;
+			} else if (updates.model.provider === 'custom-agent') {
+				sessionUpdates.agentId = updates.model.agentId;
 			} else {
-				sessionUpdates.model = updates.agent.model.model;
+				sessionUpdates.model = updates.model.model;
 			}
 		}
 

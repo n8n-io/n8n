@@ -1,4 +1,9 @@
-import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
+import {
+	ChatHubConversationModel,
+	ChatSessionId,
+	type ChatHubInputModality,
+	type ChatModelDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
@@ -6,9 +11,10 @@ import {
 	withTransaction,
 	WorkflowEntity,
 	WorkflowRepository,
+	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { EntityManager } from '@n8n/typeorm';
+import { EntityManager, In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
@@ -32,14 +38,21 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
+import {
+	MessageRecord,
+	type ContentBlock,
+	type ChatTriggerResponseMode,
+	chatTriggerParamsShape,
+} from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class ChatHubWorkflowService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly workflowService: WorkflowService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
@@ -240,6 +253,109 @@ export class ChatHubWorkflowService {
 		}
 
 		return Array.from(modalities);
+	}
+
+	async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelDto[]> {
+		// Workflows are scanned by their latest version for chat trigger nodes.
+		// This means that we might miss some active workflow versions that had chat triggers but
+		// the latest version does not, but this trade-off is done for performance.
+		const workflowsWithChatTrigger = await this.workflowService.getWorkflowsWithNodesIncluded(
+			user,
+			[CHAT_TRIGGER_NODE_TYPE],
+			true,
+		);
+
+		const activeWorkflows = workflowsWithChatTrigger
+			// Ensure the user has chat execution access to the workflow
+			.filter((workflow) => workflow.scopes.includes('workflow:execute-chat'))
+			// The workflow has to be active
+			.filter((workflow) => !!workflow.activeVersionId);
+
+		return await this.fetchAgentWorkflowsAsModelsByIds(
+			activeWorkflows.map((workflow) => workflow.id),
+		);
+	}
+
+	async fetchAgentWorkflowsAsModelsByIds(ids: string[]): Promise<ChatModelDto[]> {
+		const workflows = await this.workflowRepository.find({
+			select: {
+				id: true,
+				name: true,
+				shared: {
+					role: true,
+					project: {
+						id: true,
+						name: true,
+						icon: { type: true, value: true },
+					},
+				},
+			},
+			where: { id: In(ids) },
+			relations: {
+				activeVersion: true,
+				shared: {
+					project: true,
+				},
+			},
+		});
+
+		return workflows.flatMap((workflow) => {
+			const model = this.convertWorkflowToChatModel(workflow);
+
+			return model ? [model] : [];
+		});
+	}
+
+	private convertWorkflowToChatModel({
+		id,
+		name,
+		shared,
+		activeVersion,
+	}: WorkflowEntity): ChatModelDto | null {
+		if (!activeVersion) {
+			return null;
+		}
+
+		const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		if (!chatTrigger) {
+			return null;
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams?.availableInChat) {
+			return null;
+		}
+
+		const inputModalities = this.parseInputModalities(chatTriggerParams.options);
+
+		const agentName =
+			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+				? chatTriggerParams.agentName
+				: name;
+
+		// Find the owner's project (home project)
+		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+		const projectName = ownerSharedWorkflow?.project?.name ?? null;
+
+		return {
+			name: agentName,
+			description: chatTriggerParams.agentDescription ?? null,
+			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			model: {
+				provider: 'n8n',
+				workflowId: id,
+			},
+			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
+			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
+			projectName,
+			metadata: {
+				inputModalities,
+				capabilities: {
+					functionCalling: false,
+				},
+				available: true,
+			},
+		};
 	}
 
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {

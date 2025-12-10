@@ -172,11 +172,6 @@ export function filterAndSortAgents(
 		filtered = filtered.filter((model) => model.name.toLowerCase().includes(query));
 	}
 
-	// Apply provider filter
-	if (filter.provider !== '') {
-		filtered = filtered.filter((model) => model.model.provider === filter.provider);
-	}
-
 	// Apply sorting
 	filtered = [...filtered].sort((a, b) => {
 		const dateAStr = a[filter.sortBy];
@@ -255,8 +250,8 @@ export function createAiMessageFromStreamingState(
 		responses: [],
 		alternatives: [],
 		attachments: [],
-		...(streaming?.model
-			? flattenModel(streaming.model)
+		...(streaming?.agent
+			? flattenModel(streaming.agent.model)
 			: {
 					provider: null,
 					model: null,
@@ -341,11 +336,12 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		ownerId: '',
 		lastMessageAt: new Date().toISOString(),
 		credentialId: null,
-		agentName: streaming.agentName,
+		agentName: streaming.agent.name,
+		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		tools: streaming.tools,
-		...flattenModel(streaming.model),
+		...flattenModel(streaming.agent.model),
 	};
 }
 
