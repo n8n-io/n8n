@@ -1,6 +1,6 @@
+import axios from 'axios';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import axios from 'axios';
 import { Readable } from 'node:stream';
 import type Stream from 'node:stream';
 
@@ -91,7 +91,6 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 interface FileStreamData {
 	stream: Stream;
 	mimeType: string;
-	fileSize: number;
 }
 
 async function getFileStreamFromUrlOrBinary(
@@ -109,13 +108,10 @@ async function getFileStreamFromUrlOrBinary(
 
 		const contentType = downloadResponse.headers['content-type'] as string | undefined;
 		const mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
-		const contentLength = downloadResponse.headers['content-length'] as string | undefined;
-		const fileSize = parseInt(contentLength ?? '0', 10);
 
 		return {
 			stream: downloadResponse.data as Stream,
 			mimeType,
-			fileSize,
 		};
 	}
 
@@ -141,7 +137,6 @@ async function getFileStreamFromUrlOrBinary(
 	return {
 		stream: await this.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE),
 		mimeType: binaryData.mimeType,
-		fileSize: 0, // Unknown for streams
 	};
 }
 
@@ -273,33 +268,27 @@ export async function uploadToFileSearchStore(
 	// Handle small binary files (buffer) - convert to stream
 	let stream: Stream;
 	let mimeType: string;
-	let fileSize: number;
 
 	if ('buffer' in fileData) {
 		stream = Readable.from(fileData.buffer);
 		mimeType = fileData.mimeType;
-		fileSize = fileData.buffer.length;
 	} else {
 		// Handle URL or large binary files (stream)
 		stream = fileData.stream;
 		mimeType = fileData.mimeType;
-		fileSize = fileData.fileSize;
 	}
 
 	const uploadResponse = (await performResumableUpload.call(this, stream, {
 		endpoint: `/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
 		mimeType,
 		body: { displayName, mimeType },
-		fileSize,
 	})) as { body: { name: string } };
 
-	// Poll the operation until it's done
-	// According to API docs: GET /v1beta/{name=fileSearchStores/*/upload/operations/*}
 	const operationName = uploadResponse.body.name;
 	let operation = (await apiRequest.call(this, 'GET', `/v1beta/${operationName}`)) as Operation;
 
 	while (!operation.done) {
-		await new Promise((resolve) => setTimeout(resolve, 5000));
+		await new Promise((resolve) => setTimeout(resolve, 3000));
 		operation = (await apiRequest.call(this, 'GET', `/v1beta/${operationName}`)) as Operation;
 	}
 
