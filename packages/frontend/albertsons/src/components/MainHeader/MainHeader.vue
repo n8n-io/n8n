@@ -9,19 +9,19 @@ defineProps({
 
 <template>
 	<div class="greetings">
-		<h1 class="red">My Custom Header Here</h1>
+		<h1 class="red">Welcome to Albertsons AI Agent Space</h1>
 	</div>
 </template>
 
 <style scoped>
 .red {
-	color: #f00;
+	color: #0071ce;
 }
 h1 {
 	font-weight: 500;
 	font-size: 2.6rem;
 	position: relative;
-	top: -10px;
+	top: -1px;
 }
 
 h3 {
