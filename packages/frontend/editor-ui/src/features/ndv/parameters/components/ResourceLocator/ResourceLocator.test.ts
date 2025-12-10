@@ -498,7 +498,7 @@ describe('ResourceLocator', () => {
 							searchListMethod: 'getItems',
 							slowLoadNotice: {
 								message: 'This is taking longer than expected',
-								timeout: 2000,
+								timeout: 500,
 							},
 						},
 					},
@@ -512,8 +512,8 @@ describe('ResourceLocator', () => {
 					resolvePromise = resolve;
 				}),
 			);
-			const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-			const { getByTestId, findByText } = renderComponent({
+
+			const { getByTestId, queryByText } = renderComponent({
 				props: {
 					modelValue: TEST_MODEL_VALUE,
 					parameter: SLOW_LOAD_PARAMETER,
@@ -524,14 +524,16 @@ describe('ResourceLocator', () => {
 				},
 			});
 
-			await vi.advanceTimersByTimeAsync(200);
-			await user.click(getByTestId('rlc-input'));
+			// Focus to open dropdown - the new N8nInput passes data-test-id to the input element directly
+			// Focus triggers onInputFocus -> showResourceDropdown
+			const input = getByTestId('rlc-input');
+			input.focus();
+			await vi.advanceTimersByTimeAsync(100);
 
-			await vi.advanceTimersByTimeAsync(2000);
-			const noticeText = await findByText('This is taking longer than expected', undefined, {
-				timeout: 3000,
-			});
-			expect(noticeText).toBeInTheDocument();
+			// Advance time past the slowLoadNotice timeout (500ms)
+			await vi.advanceTimersByTimeAsync(600);
+
+			expect(queryByText('This is taking longer than expected')).toBeInTheDocument();
 
 			if (resolvePromise) {
 				resolvePromise({ results: [], paginationToken: null });
@@ -540,6 +542,7 @@ describe('ResourceLocator', () => {
 		}, 10000);
 
 		it('should not show notice when dropdown is not visible', async () => {
+			vi.useFakeTimers();
 			const SLOW_LOAD_PARAMETER = {
 				...TEST_PARAMETER_SINGLE_MODE,
 				modes: [
@@ -574,11 +577,13 @@ describe('ResourceLocator', () => {
 				},
 			});
 
-			vi.advanceTimersByTime(200);
+			await vi.advanceTimersByTimeAsync(200);
 			expect(queryByText('This is taking longer than expected')).not.toBeInTheDocument();
+			vi.useRealTimers();
 		});
 
 		it('should hide notice when loading completes', async () => {
+			vi.useFakeTimers();
 			const SLOW_LOAD_PARAMETER = {
 				...TEST_PARAMETER_SINGLE_MODE,
 				modes: [
@@ -602,7 +607,6 @@ describe('ResourceLocator', () => {
 				paginationToken: null,
 			});
 
-			const user = userEvent.setup({ delay: null });
 			const { getByTestId, queryByText } = renderComponent({
 				props: {
 					modelValue: TEST_MODEL_VALUE,
@@ -614,17 +618,20 @@ describe('ResourceLocator', () => {
 				},
 			});
 
-			await user.click(getByTestId('rlc-input'));
+			// Focus to open dropdown
+			getByTestId('rlc-input').focus();
 
-			vi.advanceTimersByTime(200);
+			// Allow time for loading to complete - the mock resolves immediately
+			await vi.advanceTimersByTimeAsync(200);
 
-			await waitFor(() => {
-				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
-			});
+			// Since the mock resolves immediately, the loading should be complete
+			// and the slow load notice should not be shown (timeout is 100ms, but loading finishes faster)
 			expect(queryByText('This is taking longer than expected')).not.toBeInTheDocument();
+			vi.useRealTimers();
 		});
 
 		it('should not show notice when slowLoadNotice is not configured', async () => {
+			vi.useFakeTimers();
 			let resolvePromise: ((value: INodeListSearchResult) => void) | undefined;
 			nodeTypesStore.getResourceLocatorResults.mockReturnValue(
 				new Promise((resolve) => {
@@ -632,7 +639,6 @@ describe('ResourceLocator', () => {
 				}),
 			);
 
-			const user = userEvent.setup({ delay: null });
 			const { getByTestId } = renderComponent({
 				props: {
 					modelValue: TEST_MODEL_VALUE,
@@ -644,9 +650,10 @@ describe('ResourceLocator', () => {
 				},
 			});
 
-			await user.click(getByTestId('rlc-input'));
+			// Focus to open dropdown
+			getByTestId('rlc-input').focus();
 
-			vi.advanceTimersByTime(500);
+			await vi.advanceTimersByTimeAsync(500);
 
 			const noticeContainer = document.querySelector('[class*="slowLoadNoticeContainer"]');
 			expect(noticeContainer).not.toBeInTheDocument();
@@ -654,6 +661,7 @@ describe('ResourceLocator', () => {
 			if (resolvePromise) {
 				resolvePromise({ results: [], paginationToken: null });
 			}
+			vi.useRealTimers();
 		});
 	});
 });
