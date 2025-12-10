@@ -15,19 +15,22 @@ export interface AirtopAgentSchema {
 }
 
 export interface AirtopAgentResponse extends IDataObject {
-	id: string;
-	name: string;
-	enabled: boolean;
-	publishedVersion: number;
-	webhookId: string;
+	agent: {
+		id: string;
+		organizationId: string;
+		userId: string;
+		name: string;
+		enabled: boolean;
+	};
 	versionData: {
 		configVarsSchema?: AirtopAgentSchema;
 		resultSchema?: AirtopAgentSchema;
 	};
+	webhookId: string;
 }
 
 export interface AgentsListResponse extends IDataObject {
-	agents: Array<Pick<AirtopAgentResponse, 'id' | 'name' | 'enabled'>>;
+	agents: Array<AirtopAgentResponse['agent']>;
 }
 
 export interface AgentParametersInput {

@@ -108,7 +108,7 @@ describe('Test Airtop, agent run operation', () => {
 			'GET',
 			AGENTS_ENDPOINT,
 			{},
-			{ limit: 50, enabled: true, published: true, name: '' },
+			{ createdByMe: true, limit: 50, enabled: true, published: true, name: '' },
 		);
 
 		expect(result).toEqual({
@@ -360,7 +360,7 @@ describe('Test Airtop, agent run operation', () => {
 			'GET',
 			AGENTS_ENDPOINT,
 			{},
-			{ limit: 50, enabled: true, published: true, name: 'Test' },
+			{ createdByMe: true, limit: 50, enabled: true, published: true, name: 'Test' },
 		);
 	});
 

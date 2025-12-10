@@ -25,6 +25,7 @@ export async function listSearchAgents(
 		limit: 50,
 		enabled: true,
 		published: true,
+		createdByMe: true,
 		name: filter ?? '',
 	};
 
