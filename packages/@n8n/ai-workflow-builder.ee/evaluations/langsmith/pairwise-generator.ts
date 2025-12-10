@@ -58,19 +58,19 @@ export function createPairwiseTarget(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
 			const { prompt, evals: evalCriteria } = inputs;
 
-			// Generate ALL workflows and run judges
-			const generationResults: GenerationResult[] = [];
-
-			for (let i = 0; i < numGenerations; i++) {
-				// Wrap each generation in traceable for proper visibility
-				const generate = traceable(
-					async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
-					{ name: `generation_${i + 1}`, run_type: 'chain' },
-				);
-				const workflow = await generate();
-				const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
-				generationResults.push({ workflow, ...panelResult });
-			}
+			// Generate ALL workflows and run judges in parallel
+			const generationResults: GenerationResult[] = await Promise.all(
+				Array.from({ length: numGenerations }, async (_, i) => {
+					// Wrap each generation in traceable for proper visibility
+					const generate = traceable(
+						async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
+						{ name: `generation_${i + 1}`, run_type: 'chain' },
+					);
+					const workflow = await generate();
+					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
+					return { workflow, ...panelResult };
+				}),
+			);
 
 			if (numGenerations === 1) {
 				const result = generationResults[0];
