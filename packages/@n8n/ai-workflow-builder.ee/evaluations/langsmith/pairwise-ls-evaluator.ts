@@ -1,18 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
-import { traceable } from 'langsmith/traceable';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { generateWorkflow } from './pairwise-generator';
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { PairwiseEvaluationResult } from '../chains/pairwise-evaluator';
 import {
 	runJudgePanel,
-	aggregateGenerations,
 	type JudgePanelResult,
-	type GenerationResult,
 	type MultiGenerationAggregation,
 	type EvalCriteria,
 } from '../utils/judge-panel';
@@ -24,12 +18,13 @@ import {
 interface PairwiseTargetOutput {
 	prompt: string;
 	evals: EvalCriteria;
+	metrics: LangsmithEvaluationResult[];
 }
 
 function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTargetOutput {
 	if (!outputs || typeof outputs !== 'object') return false;
 	const obj = outputs as Record<string, unknown>;
-	return typeof obj.prompt === 'string';
+	return typeof obj.prompt === 'string' && Array.isArray(obj.metrics);
 }
 
 // ============================================================================
@@ -40,7 +35,7 @@ function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTargetOutp
  * Build LangSmith-compatible evaluation results from judge panel output.
  * Results are returned in alphabetical key order to match LangSmith column display.
  */
-function buildSingleGenerationResults(
+export function buildSingleGenerationResults(
 	judgeResults: PairwiseEvaluationResult[],
 	numJudges: number,
 	primaryPasses: number,
@@ -90,7 +85,7 @@ function buildSingleGenerationResults(
  * Build LangSmith-compatible evaluation results for multi-generation aggregation.
  * Results are returned in alphabetical key order.
  */
-function buildMultiGenerationResults(
+export function buildMultiGenerationResults(
 	aggregation: MultiGenerationAggregation,
 	numJudges: number,
 ): LangsmithEvaluationResult[] {
@@ -182,82 +177,30 @@ function buildMultiGenerationResults(
 // ============================================================================
 
 /**
- * Creates a LangSmith evaluator for pairwise workflow evaluation.
+ * Creates a simple LangSmith evaluator that extracts pre-computed metrics.
  *
- * The evaluator generates workflows and runs a panel of judges on each.
- * All generation happens here for consistent tracing structure.
- *
- * @param llm - Language model for generation and judge evaluation
- * @param numJudges - Number of judges to run per workflow
- * @param numGenerations - Number of generations per example
- * @param parsedNodeTypes - Node types for generation (required)
- * @param featureFlags - Feature flags for generation
+ * All the work (generation + judging) happens in the target function.
+ * This evaluator just returns the pre-computed metrics from target output.
+ * This avoids 403 errors from nested traceable calls in evaluator context.
  */
-export function createPairwiseLangsmithEvaluator(
-	llm: BaseChatModel,
-	numJudges: number,
-	numGenerations: number = 1,
-	parsedNodeTypes?: INodeTypeDescription[],
-	featureFlags?: BuilderFeatureFlags,
-) {
+export function createPairwiseLangsmithEvaluator() {
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		const outputs = rootRun.outputs;
 
-		// Validate outputs (now just prompt pass-through from target)
+		// Validate outputs contain pre-computed metrics
 		if (!isPairwiseTargetOutput(outputs)) {
 			return [
 				{
 					key: 'pairwise_primary',
 					score: 0,
-					comment: 'Invalid output - missing prompt',
+					comment: 'Invalid output - missing metrics from target',
 				},
 				{ key: 'pairwise_diagnostic', score: 0 },
 			];
 		}
 
-		// Validate we have node types for generation
-		if (!parsedNodeTypes) {
-			return [
-				{
-					key: 'pairwise_primary',
-					score: 0,
-					comment: 'Missing parsedNodeTypes - cannot generate workflows',
-				},
-				{ key: 'pairwise_diagnostic', score: 0 },
-			];
-		}
-
-		// Get evaluation criteria from outputs (passed through from target)
-		const evalCriteria: EvalCriteria = outputs.evals ?? { dos: '', donts: '' };
-		const { prompt } = outputs;
-
-		// Generate ALL workflows in evaluator for consistent trace structure
-		const generationResults: GenerationResult[] = [];
-
-		for (let i = 0; i < numGenerations; i++) {
-			// Wrap each generation in traceable for proper LangSmith visibility
-			const generate = traceable(
-				async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
-				{ name: `generation_${i + 1}`, run_type: 'chain' },
-			);
-			const workflow = await generate();
-			const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
-			generationResults.push({ workflow, ...panelResult });
-		}
-
-		if (numGenerations === 1) {
-			const result = generationResults[0];
-			return buildSingleGenerationResults(
-				result.judgeResults,
-				numJudges,
-				result.primaryPasses,
-				result.majorityPass,
-				result.avgDiagnosticScore,
-			);
-		} else {
-			const aggregation = aggregateGenerations(generationResults);
-			return buildMultiGenerationResults(aggregation, numJudges);
-		}
+		// Return pre-computed metrics from target
+		return outputs.metrics;
 	};
 }
 

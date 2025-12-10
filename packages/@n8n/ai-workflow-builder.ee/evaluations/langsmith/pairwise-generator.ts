@@ -1,11 +1,20 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
+import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { buildSingleGenerationResults, buildMultiGenerationResults } from './pairwise-ls-evaluator';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
+import {
+	runJudgePanel,
+	aggregateGenerations,
+	type GenerationResult,
+	type EvalCriteria,
+} from '../utils/judge-panel';
 
 // ============================================================================
 // Types
@@ -19,21 +28,70 @@ export interface PairwiseDatasetInput {
 	prompt: string;
 }
 
+export interface PairwiseTargetOutput {
+	prompt: string;
+	evals: EvalCriteria;
+	metrics: LangsmithEvaluationResult[];
+}
+
 // ============================================================================
-// Generator Factory
+// Target Factory
 // ============================================================================
 
 /**
- * Creates a pass-through target function for LangSmith evaluation.
- * All generation happens in the evaluator for consistent tracing.
+ * Creates a target function that does ALL the work:
+ * - Generates all workflows (each wrapped in traceable)
+ * - Runs judge panels
+ * - Returns pre-computed metrics
  *
- * @returns Target function for LangSmith evaluate() that passes inputs through
+ * The evaluator then just extracts the pre-computed metrics.
+ * This avoids 403 errors from nested traceable in evaluator context.
  */
-export function createPairwiseTarget() {
-	return async (inputs: PairwiseDatasetInput): Promise<PairwiseDatasetInput> => {
-		// Pass-through: evaluator will handle all generation
-		return inputs;
-	};
+export function createPairwiseTarget(
+	parsedNodeTypes: INodeTypeDescription[],
+	llm: BaseChatModel,
+	numJudges: number,
+	numGenerations: number,
+	featureFlags?: BuilderFeatureFlags,
+) {
+	return traceable(
+		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
+			const { prompt, evals: evalCriteria } = inputs;
+
+			// Generate ALL workflows and run judges
+			const generationResults: GenerationResult[] = [];
+
+			for (let i = 0; i < numGenerations; i++) {
+				// Wrap each generation in traceable for proper visibility
+				const generate = traceable(
+					async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
+					{ name: `generation_${i + 1}`, run_type: 'chain' },
+				);
+				const workflow = await generate();
+				const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
+				generationResults.push({ workflow, ...panelResult });
+			}
+
+			// Pre-compute metrics
+			let metrics: LangsmithEvaluationResult[];
+			if (numGenerations === 1) {
+				const result = generationResults[0];
+				metrics = buildSingleGenerationResults(
+					result.judgeResults,
+					numJudges,
+					result.primaryPasses,
+					result.majorityPass,
+					result.avgDiagnosticScore,
+				);
+			} else {
+				const aggregation = aggregateGenerations(generationResults);
+				metrics = buildMultiGenerationResults(aggregation, numJudges);
+			}
+
+			return { prompt, evals: evalCriteria, metrics };
+		},
+		{ name: 'pairwise_evaluation', run_type: 'chain' },
+	);
 }
 
 /**

@@ -200,15 +200,15 @@ export async function runPairwiseLangsmithEvaluation(
 		const exampleCount = typeof data === 'string' ? '(all)' : data.length;
 		log.info(`➔ Running ${exampleCount} example(s) × ${repetitions} rep(s)`);
 
-		// Create target (pass-through) and evaluator (does all generation + judging)
-		const target = createPairwiseTarget();
-		const evaluator = createPairwiseLangsmithEvaluator(
+		// Create target (does all work) and evaluator (extracts pre-computed metrics)
+		const target = createPairwiseTarget(
+			parsedNodeTypes,
 			llm,
 			numJudges,
 			numGenerations,
-			parsedNodeTypes,
 			featureFlags,
 		);
+		const evaluator = createPairwiseLangsmithEvaluator();
 
 		const evalStartTime = Date.now();
 
