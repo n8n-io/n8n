@@ -9,7 +9,7 @@ const config: CurrentsConfig = {
 			? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT ?? '1'}`
 			: `local-${Date.now()}`),
 	orchestration: {
-		batchSize: Number(process.env.CURRENTS_BATCH_SIZE) || 'auto',
+		batchSize: Number(process.env.CURRENTS_BATCH_SIZE) || 8,
 	},
 	...(process.env.BUILD_WITH_COVERAGE === 'true' && {
 		coverage: {
