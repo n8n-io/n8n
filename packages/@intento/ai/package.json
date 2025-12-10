@@ -1,7 +1,7 @@
 {
-  "name": "n8n-nodes-intento",
+  "name": "@intento/ai",
   "version": "1.0.0",
-  "description": "Intento nodes for n8n",
+  "description": "Intento AI nodes for n8n",
   "main": "index.js",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -24,7 +24,6 @@
     "credentials": [
     ],
     "nodes": [
-      "dist/nodes/TranslationAgent/TranslationAgent.node.js"
     ]
   },
   "devDependencies": {

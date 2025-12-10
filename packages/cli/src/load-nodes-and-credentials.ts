@@ -87,7 +87,10 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
-			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-intento');
+			await this.loadNodesFromNodeModules(nodeModulesDir, '@intento/ai');
+			await this.loadNodesFromNodeModules(nodeModulesDir, '@intento/translation');
+			await this.loadNodesFromNodeModules(nodeModulesDir, '@intento/post-editing');
+			await this.loadNodesFromNodeModules(nodeModulesDir, '@intento/quality-assurance');
 		}
 
 		for (const dir of this.moduleRegistry.loadDirs) {
@@ -136,6 +139,7 @@ export class LoadNodesAndCredentials {
 			: [
 					...(await glob('n8n-nodes-*', globOptions)),
 					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
+					...(await glob('@intento/*', { ...globOptions, deep: 2 })),
 				];
 
 		for (const packagePath of installedPackagePaths) {

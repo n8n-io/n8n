@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - packages/@n8n/*
+  - packages/@intento/*
   - packages/frontend/**
   - packages/extensions/**
   - packages/testing/**

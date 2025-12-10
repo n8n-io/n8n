@@ -365,6 +365,166 @@ importers:
         specifier: ^8.1.4
         version: 8.1.4
 
+  packages/@intento/ai:
+    dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../../@n8n/errors
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/eslint-plugin-community-nodes':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-plugin-community-nodes
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.9
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/uuid':
+        specifier: 'catalog:'
+        version: 10.0.0
+      eslint:
+        specifier: 9.29.0
+        version: 9.29.0(jiti@2.6.1)
+
+  packages/@intento/post-editing:
+    dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../../@n8n/errors
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/eslint-plugin-community-nodes':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-plugin-community-nodes
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.9
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/uuid':
+        specifier: 'catalog:'
+        version: 10.0.0
+      eslint:
+        specifier: 9.29.0
+        version: 9.29.0(jiti@2.6.1)
+
+  packages/@intento/quality-assurance:
+    dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../../@n8n/errors
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/eslint-plugin-community-nodes':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-plugin-community-nodes
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.9
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/uuid':
+        specifier: 'catalog:'
+        version: 10.0.0
+      eslint:
+        specifier: 9.29.0
+        version: 9.29.0(jiti@2.6.1)
+
+  packages/@intento/translation:
+    dependencies:
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:^
+        version: link:../../@n8n/errors
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/eslint-plugin-community-nodes':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-plugin-community-nodes
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.9
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/uuid':
+        specifier: 'catalog:'
+        version: 10.0.0
+      eslint:
+        specifier: 9.29.0
+        version: 9.29.0(jiti@2.6.1)
+
   packages/@n8n/ai-workflow-builder.ee:
     dependencies:
       '@langchain/anthropic':
@@ -1478,6 +1638,18 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
+      '@intento/ai':
+        specifier: workspace:*
+        version: link:../@intento/ai
+      '@intento/post-editing':
+        specifier: workspace:*
+        version: link:../@intento/post-editing
+      '@intento/quality-assurance':
+        specifier: workspace:*
+        version: link:../@intento/quality-assurance
+      '@intento/translation':
+        specifier: workspace:*
+        version: link:../@intento/translation
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee
@@ -1658,9 +1830,6 @@ importers:
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../nodes-base
-      n8n-nodes-intento:
-        specifier: workspace:*
-        version: link:../intento
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -2864,46 +3033,6 @@ importers:
       z-vue-scan:
         specifier: ^0.0.35
         version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.13(typescript@5.9.2))
-
-  packages/intento:
-    dependencies:
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../@n8n/config
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../@n8n/di
-      '@n8n/errors':
-        specifier: workspace:^
-        version: link:../@n8n/errors
-      n8n-core:
-        specifier: workspace:*
-        version: link:../core
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../workflow
-    devDependencies:
-      '@n8n/eslint-plugin-community-nodes':
-        specifier: workspace:*
-        version: link:../@n8n/eslint-plugin-community-nodes
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../@n8n/typescript-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
-      '@types/jsonwebtoken':
-        specifier: 'catalog:'
-        version: 9.0.9
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.17.17
-      '@types/uuid':
-        specifier: 'catalog:'
-        version: 10.0.0
-      eslint:
-        specifier: 9.29.0
-        version: 9.29.0(jiti@2.6.1)
 
   packages/node-dev:
     dependencies:

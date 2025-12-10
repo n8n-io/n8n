@@ -33,7 +33,10 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		const packageVersion = ![
 			'n8n-nodes-base',
 			'@n8n/n8n-nodes-langchain',
-			'n8n-nodes-intento',
+			'@intento/ai',
+			'@intento/translation',
+			'@intento/post-editing',
+			'@intento/quality-assurance',
 		].includes(name)
 			? version
 			: undefined;
