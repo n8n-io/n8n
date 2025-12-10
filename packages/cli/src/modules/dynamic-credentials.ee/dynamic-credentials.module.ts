@@ -7,8 +7,7 @@ function isFeatureFlagEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
 }
 
-// TODO: Remove LICENSE_FEATURES.EXTERNAL_SECRETS with dynamic credentials feature once it is in the license server
-@BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.EXTERNAL_SECRETS })
+@BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
 		if (!isFeatureFlagEnabled()) {
@@ -18,9 +17,21 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		await import('./credential-resolvers.controller');
 		await import('./context-establishment-hooks');
 		await import('./credential-resolvers');
-		const { DynamicCredentialResolverRegistry } = await import('./services');
+		const {
+			DynamicCredentialResolverRegistry,
+			DynamicCredentialStorageService,
+			DynamicCredentialService,
+		} = await import('./services');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
+
+		// Register the credential resolution provider with CredentialsHelper
+		const { DynamicCredentialsProxy } = await import('../../credentials/dynamic-credentials-proxy');
+		const credentialsProxy = Container.get(DynamicCredentialsProxy);
+		const dynamicCredentialService = Container.get(DynamicCredentialService);
+		const dynamicCredentialStorageService = Container.get(DynamicCredentialStorageService);
+		credentialsProxy.setResolverProvider(dynamicCredentialService);
+		credentialsProxy.setStorageProvider(dynamicCredentialStorageService);
 	}
 
 	async entities() {

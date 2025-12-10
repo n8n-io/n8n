@@ -32,7 +32,7 @@ STEP 4: RESPOND TO USER
 
 const NODE_CREATION = `NODE CREATION:
 Each add_nodes call creates ONE node. You must provide:
-- nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest")
+- nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest" for the "HTTP Request node")
 - name: Descriptive name (e.g., "Fetch Weather Data")
 - connectionParametersReasoning: Explain your thinking about connection parameters
 - connectionParameters: Parameters that affect connections (or {{}} if none needed)`;
@@ -49,12 +49,12 @@ Placement rules:
 </workflow_configuration_node>`;
 
 const DATA_PARSING = `<data_parsing_strategy>
-For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
+Code nodes are slower than core n8n nodes (like Edit Fields, If, Switch, etc.) as they run in a sandboxed environment. Use Code nodes as a last resort for custom business logic.
 For binary file data, use Extract From File node to extract content from files before processing.
-Use Code nodes only for custom business logic beyond parsing.
 
-STRUCTURED OUTPUT PARSER RULE:
-When Discovery results include Structured Output Parser:
+For AI-generated structured data, use a Structured Output Parser node. For example, if an "AI Agent" node should output a JSON object to be used as input in a subsequent node, enable "Require Specific Output Format", add a outputParserStructured node, and connect it to the "AI Agent" node.
+
+When Discovery results include AI Agent or Structured Output Parser:
 1. Create the Structured Output Parser node
 2. Set AI Agent's hasOutputParser: true in connectionParameters
 3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)
@@ -62,8 +62,9 @@ When Discovery results include Structured Output Parser:
 
 const PROACTIVE_DESIGN = `<proactive_design>
 Anticipate workflow needs:
-- IF nodes for conditional logic when multiple outcomes exist
-- Set nodes for data transformation between incompatible formats
+- Switch or If nodes for conditional logic when multiple outcomes exist
+- Edit Fields nodes for data transformation between incompatible formats
+- Edit Fields nodes to prepare data for a node like Gmail, Slack, Telegram, or Google Sheets
 - Schedule Triggers for recurring tasks
 - Error handling for external service calls
 
@@ -75,8 +76,8 @@ CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS
 
 Default values often hide connection inputs/outputs. You MUST explicitly configure parameters that affect connections:
 - Vector Store: Mode parameter affects available connections - always set explicitly (e.g., mode: "insert", "retrieve", "retrieve-as-tool")
-- AI Agent: hasOutputParser default may not match your workflow needs
-- Document Loader: textSplittingMode affects whether it accepts a text splitter input
+- AI Agent: hasOutputParser is off by default, but your workflow may need it to be on
+- Document Loader: textSplittingMode affects whether it accepts a text splitter input - always set explicitly (e.g., textSplittingMode: "custom")
 
 ALWAYS check node details and set connectionParameters explicitly.
 </node_defaults_warning>`;
@@ -113,6 +114,41 @@ AI sub-nodes PROVIDE capabilities, making them the SOURCE:
 - Embeddings OpenAI → Vector Store [ai_embedding]
 </node_connections_understanding>`;
 
+const BRANCHING = `<branching>
+If two nodes (B and C) are both connected to the same output of a node (A), both will execute (with the same data). Whether B or C executes first is determined by their position on the canvas: the highest one executes first. Execution happens depth-first, i.e. any downstream nodes connected to the higher node will execute before the lower node is executed.
+Nodes that route the flow (e.g. if, switch) apply their conditions independently to each input item. They may route different items to different branches in the same execution.
+</branching>`;
+
+const MERGING = `<merging>
+If two nodes (A and B) are both connected to the same input of the following node (C), node C will execute TWICE — once with the items from A and once with the items from B. The same goes for any nodes connected to node C. These two executions are called runs and are independent of each other. In effect, there are still two branches of the execution but they're executing the same nodes. No merging of the data between them will occur.
+To merge the data of two branches together in a single run, use a merge node. This node performs set operations on the inputs it receives:
+- Union
+    - Mode: append
+- Inner join
+    - Mode: combine
+    - Combine by: Matching fields
+    - Output type: Keep matches
+- Left join
+    - Mode: combine
+    - Combine by: Matching fields
+    - Output type: Enrich input 1
+- Right join
+    - Mode: combine
+    - Combine by: Matching fields
+    - Output type: Enrich input 2
+- Cross join
+    - Mode: combine
+    - Combine by: All possible combinations
+- Outer join
+    - Mode: combine
+    - Combine by: Matching fields
+    - Output type: Keep everything
+
+Examples:
+- Enriching a dataset with another one
+- Matching items between two datasets
+</merging>`;
+
 const AGENT_NODE_DISTINCTION = `<agent_node_distinction>
 Distinguish between two different agent node types:
 
@@ -124,8 +160,8 @@ Distinguish between two different agent node types:
    - Sub-node that acts as a tool for another AI Agent
    - Use for: Multi-agent systems where one agent calls another
 
-Default assumption: When discovery results include "agent", use AI Agent
-unless explicitly specified as "agent tool" or "sub-agent".
+When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
+When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.
 </agent_node_distinction>`;
 
 const RAG_PATTERN = `<rag_workflow_pattern>
@@ -243,6 +279,8 @@ export function buildBuilderPrompt(): string {
 		CONNECTION_PARAMETERS,
 		STRUCTURED_OUTPUT_PARSER,
 		AI_CONNECTIONS,
+		BRANCHING,
+		MERGING,
 		AGENT_NODE_DISTINCTION,
 		RAG_PATTERN,
 		SWITCH_NODE_PATTERN,
