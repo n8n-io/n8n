@@ -46,9 +46,9 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
 
-import type { ICredentialResolutionProvider } from '@/credential-resolution-provider.interface';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 
 const mockNode = {
 	name: '',
@@ -86,24 +86,15 @@ const mockNodeTypes: INodeTypes = {
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
-	private credentialResolutionProvider?: ICredentialResolutionProvider;
-
 	constructor(
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {
 		super();
-	}
-
-	/**
-	 * Registers a credential resolution provider (EE feature).
-	 * Called by the dynamic credentials module during initialization.
-	 */
-	setCredentialResolutionProvider(provider: ICredentialResolutionProvider): void {
-		this.credentialResolutionProvider = provider;
 	}
 
 	/**
@@ -368,22 +359,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 		let decryptedDataOriginal = credentials.getData();
 
 		// Resolve dynamic credentials if configured (EE feature)
-		if (this.credentialResolutionProvider) {
-			decryptedDataOriginal = await this.credentialResolutionProvider.resolveIfNeeded(
-				{
-					id: credentialsEntity.id,
-					name: credentialsEntity.name,
-					isResolvable: false,
-					// TODO: use the actual values from the entity once they are added
-					// isResolvable: credentialsEntity.isResolvable,
-					// resolverId: (credentialsEntity as any).resolverId,
-					// resolvableAllowFallback: (credentialsEntity as any).resolvableAllowFallback,
-				},
-				decryptedDataOriginal,
-				additionalData.executionContext,
-				additionalData.workflowSettings,
-			);
-		}
+		decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
+			{
+				id: credentialsEntity.id,
+				name: credentialsEntity.name,
+				isResolvable: false,
+				// TODO: use the actual values from the entity once they are added
+				// isResolvable: credentialsEntity.isResolvable,
+				// resolverId: (credentialsEntity as any).resolverId,
+				// resolvableAllowFallback: (credentialsEntity as any).resolvableAllowFallback,
+			},
+			decryptedDataOriginal,
+			additionalData.executionContext,
+			additionalData.workflowSettings,
+		);
 
 		if (raw === true) {
 			return decryptedDataOriginal;
