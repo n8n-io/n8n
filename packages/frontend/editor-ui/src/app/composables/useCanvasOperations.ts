@@ -920,7 +920,7 @@ export function useCanvasOperations() {
 			createConnection(connectionFromHitl);
 
 			// delete existing connection from agent node to tool node
-			deleteConnection(lastInteractedWithNodeConnection, { trackHistory: options.trackHistory });
+			deleteConnection(lastInteractedWithNodeConnection);
 
 			const connection: Connection = {
 				source: lastInteractedWithNodeConnection.source,
