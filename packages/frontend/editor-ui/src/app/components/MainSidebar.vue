@@ -295,6 +295,10 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 	],
 }));
 
+const visibleWhatsNewChildren = computed<IMenuElement[]>(() =>
+	whatsNewItems.value.children.filter((item) => item.available !== false),
+);
+
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
@@ -589,10 +593,10 @@ const onLogout = () => {
 											<N8nText bold size="small" :class="$style.popoverTitle" color="text-light"
 												>What's new</N8nText
 											>
-											<template v-for="child in whatsNewItems.children" :key="child.id">
+											<template v-for="child in visibleWhatsNewChildren" :key="child.id">
 												<component
 													:is="child.component"
-													v-if="isCustomMenuItem(child) && child.available !== false"
+													v-if="isCustomMenuItem(child)"
 													v-bind="child.props"
 												/>
 												<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
