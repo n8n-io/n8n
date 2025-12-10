@@ -3,11 +3,12 @@ import {
 	CredentialResolver,
 	CredentialResolverConfiguration,
 	CredentialResolverDataNotFoundError,
+	CredentialResolverHandle,
 	CredentialResolverValidationError,
 	ICredentialResolver,
 } from '@n8n/decorators';
 import { ICredentialContext, ICredentialDataDecryptedObject } from 'n8n-workflow';
-import z from 'zod/v4';
+import z from 'zod';
 
 const StubOptionsSchema = z.object({
 	prefix: z.string().default(''),
@@ -57,9 +58,9 @@ export class StubCredentialResolver implements ICredentialResolver {
 	async getSecret(
 		credentialId: string,
 		context: ICredentialContext,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<ICredentialDataDecryptedObject> {
-		const parsedOptions = await this.parseOptions(options);
+		const parsedOptions = await this.parseOptions(handle.configuration);
 		const key = this.generateKey(credentialId, context, parsedOptions);
 		const secret = this.secretsStore.get(key);
 		if (!secret) {
@@ -73,9 +74,9 @@ export class StubCredentialResolver implements ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		data: ICredentialDataDecryptedObject,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<void> {
-		const parsedOptions = await this.parseOptions(options);
+		const parsedOptions = await this.parseOptions(handle.configuration);
 		const key = this.generateKey(credentialId, context, parsedOptions);
 		this.secretsStore.set(key, data);
 	}
@@ -84,9 +85,9 @@ export class StubCredentialResolver implements ICredentialResolver {
 	async deleteSecret(
 		credentialId: string,
 		context: ICredentialContext,
-		options: CredentialResolverConfiguration,
+		handle: CredentialResolverHandle,
 	): Promise<void> {
-		const parsedOptions = await this.parseOptions(options);
+		const parsedOptions = await this.parseOptions(handle.configuration);
 		const key = this.generateKey(credentialId, context, parsedOptions);
 		this.secretsStore.delete(key);
 	}
