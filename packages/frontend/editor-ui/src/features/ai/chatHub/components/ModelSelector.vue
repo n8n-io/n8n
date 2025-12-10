@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
-import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
+import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
@@ -28,6 +28,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
+	agentDefaultIcon,
 	flattenModel,
 	fromStringToModel,
 	isLlmProviderModel,
@@ -119,6 +120,7 @@ const menu = computed(() => {
 					fullNamesMap[id] = agent.name;
 					return {
 						id,
+						icon: agent.icon ?? agentDefaultIcon,
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,
 					};
@@ -133,6 +135,7 @@ const menu = computed(() => {
 					fullNamesMap[id] = agent.name;
 					return {
 						id,
+						icon: agent.icon ?? agentDefaultIcon,
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,
 					};
@@ -403,12 +406,6 @@ defineExpose({
 				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubLLMProvider]"
 				:size="16"
 				:class="$style.menuIcon"
-			/>
-			<N8nAvatar
-				v-else-if="item.id.startsWith('n8n::') || item.id.startsWith('custom-agent::')"
-				:class="$style.avatarIcon"
-				:first-name="menu.fullNames[item.id] || item.title"
-				size="xsmall"
 			/>
 		</template>
 

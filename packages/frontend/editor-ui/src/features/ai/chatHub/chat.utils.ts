@@ -9,6 +9,7 @@ import {
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
+	type AgentIconOrEmoji,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -367,3 +368,8 @@ export function createMimeTypes(modalities: ChatHubInputModality[]): string {
 
 	return mimeTypes.join(',');
 }
+
+export const agentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'bot',
+};

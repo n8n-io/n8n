@@ -27,7 +27,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { agentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
@@ -60,10 +60,7 @@ const isDeleting = ref(false);
 const isOpened = ref(false);
 const tools = ref<INode[]>([]);
 const nameInputRef = useTemplateRef('nameInput');
-const icon = ref<IconOrEmoji>({
-	type: 'icon',
-	value: 'bot',
-});
+const icon = ref<AgentIconOrEmoji>(agentDefaultIcon);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -128,6 +125,7 @@ watch(
 	(agent) => {
 		if (!agent) return;
 
+		icon.value = agent.icon;
 		name.value = agent.name;
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
@@ -136,10 +134,6 @@ watch(
 
 		if (agent.credentialId) {
 			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
-		}
-
-		if (agent.icon) {
-			icon.value = agent.icon as IconOrEmoji;
 		}
 	},
 	{ immediate: true },
@@ -288,7 +282,7 @@ function onSelectTools() {
 				>
 					<div :class="$style.agentName">
 						<N8nIconPicker
-							v-model="icon"
+							v-model="icon as IconOrEmoji"
 							:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
 						/>
 						<N8nInput
