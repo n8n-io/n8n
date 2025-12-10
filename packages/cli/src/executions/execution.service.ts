@@ -20,6 +20,7 @@ import type {
 	ExecutionError,
 	ExecutionStatus,
 	INode,
+	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -214,9 +215,8 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Fetches potential sub-executions for a parent execution.
-	 * Returns executions with mode='integrated' that fall within the parent's time range.
-	 * Filters to only include executions where parentExecution.executionId matches the parent.
+	 * Fetches sub-executions for a parent execution.
+	 * Returns executions with mode='integrated' and parentExecutionId matching the parent.
 	 */
 	async findSubExecutions(
 		parentExecutionId: string,
@@ -224,31 +224,12 @@ export class ExecutionService {
 		startedAt: Date,
 		stoppedAt: Date,
 	): Promise<IExecutionFlattedResponse[]> {
-		const subExecutions = await this.executionRepository.findSubExecutions(
+		return await this.executionRepository.findSubExecutions(
 			parentExecutionId,
 			workflowId,
 			startedAt,
 			stoppedAt,
 		);
-
-		// Filter to only include executions that actually belong to this parent
-		// by checking the parentExecution field in the execution data
-		const relatedSubExecutions: IExecutionFlattedResponse[] = [];
-		for (const subExecution of subExecutions) {
-			try {
-				const subData = parse(subExecution.data) as IRunExecutionData;
-				if (subData?.parentExecution?.executionId === parentExecutionId) {
-					relatedSubExecutions.push(subExecution);
-				}
-			} catch (error) {
-				this.logger.warn('Failed to parse sub-execution data', {
-					subExecutionId: subExecution.id,
-					error,
-				});
-			}
-		}
-
-		return relatedSubExecutions;
 	}
 
 	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {

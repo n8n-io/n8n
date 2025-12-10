@@ -19,7 +19,6 @@ import {
 	Not,
 	Repository,
 	And,
-	Like,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
@@ -362,11 +361,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
 		const data = stringify(dataObj);
 
+		// Extract parentExecutionId from execution data if present
+		const parentExecutionId = dataObj.parentExecution?.executionId ?? null;
+
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
 			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
-			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
+			const { identifiers: inserted } = await this.insert({
+				...rest,
+				parentExecutionId,
+				createdAt: new Date(),
+			});
 			const { id: executionId } = inserted[0] as { id: string };
 			await this.executionDataRepository.insert({
 				executionId,
@@ -380,6 +386,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return await this.manager.transaction(async (transactionManager) => {
 				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
 					...rest,
+					parentExecutionId,
 					createdAt: new Date(),
 				});
 				const { id: executionId } = inserted[0] as { id: string };
@@ -1258,8 +1265,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Fetches potential sub-executions for a parent execution.
-	 * Returns executions with mode='integrated' that fall within the parent's time range.
+	 * Fetches sub-executions for a parent execution.
+	 * Returns executions with mode='integrated' that have the specified parentExecutionId.
 	 */
 	async findSubExecutions(
 		parentExecutionId: string,
@@ -1270,15 +1277,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.findMultipleExecutions(
 			{
 				where: {
+					parentExecutionId,
 					workflowId,
 					mode: 'integrated',
+					// Keep time range filters as additional safety check
 					startedAt: MoreThanOrEqual(startedAt),
 					stoppedAt: LessThanOrEqual(stoppedAt),
-					executionData: {
-						// We do not have a direct relation between parent and sub-executions,
-						// This is a workaround to link them via executionData's parentExecutionId field
-						data: Like(`%"${parentExecutionId}"%`),
-					},
 				},
 				order: { startedAt: 'DESC' },
 				take: 100,

@@ -16,7 +16,6 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
-	RelatedExecution,
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
