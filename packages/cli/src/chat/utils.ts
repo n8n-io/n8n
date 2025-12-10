@@ -5,6 +5,7 @@ import {
 	CHAT_NODE_TYPE,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
+	CHAT_TOOL_NODE_TYPE,
 } from 'n8n-workflow';
 
 const AI_TOOL = 'ai_tool';
@@ -62,7 +63,8 @@ export function shouldResumeImmediately(lastNode: INode) {
 	}
 
 	const operation = lastNode?.parameters?.operation;
-	if (lastNode?.type === CHAT_NODE_TYPE && operation && operation !== SEND_AND_WAIT_OPERATION) {
+	const isChatNode = lastNode?.type === CHAT_NODE_TYPE || lastNode?.type === CHAT_TOOL_NODE_TYPE;
+	if (isChatNode && operation && operation !== SEND_AND_WAIT_OPERATION) {
 		return true;
 	}
 
