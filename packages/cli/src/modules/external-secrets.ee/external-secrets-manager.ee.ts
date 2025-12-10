@@ -95,7 +95,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		for (const provider of existingProviders) {
 			if (!newProviders.has(provider)) {
 				this.logger.debug(`Removing provider ${provider} - no longer in settings`);
-				await this.providers[provider].disconnect().catch(() => {});
+				try {
+					await this.providers[provider].disconnect();
+				} catch {
+					this.logger.warn(`Error disconnecting provider ${provider} during removal`);
+				}
 				delete this.providers[provider];
 			}
 		}
@@ -177,7 +181,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		} catch (e) {
 			try {
 				await provider.disconnect();
-			} catch {}
+			} catch {
+				this.logger.warn(
+					`Error disconnecting provider ${provider.displayName} (${provider.name}) after failed connect attempt.`,
+				);
+			}
 			this.logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
@@ -277,7 +285,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	async reloadProvider(provider: string, backoff = EXTERNAL_SECRETS_INITIAL_BACKOFF) {
 		if (provider in this.providers) {
-			await this.providers[provider].disconnect();
+			try {
+				await this.providers[provider].disconnect();
+			} catch {
+				this.logger.warn(`Error disconnecting provider ${provider} during reload`);
+			}
 			delete this.providers[provider];
 		}
 		const newProvider = await this.initProvider(provider, this.cachedSettings[provider], backoff);
