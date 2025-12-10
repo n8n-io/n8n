@@ -1020,7 +1020,10 @@ async function oAuthCredentialAuthorize() {
 	const types = parentTypes.value;
 
 	try {
-		const credData = { id: credential.id, ...credentialData.value };
+		// We exclude sharedWithProjects because it's not needed for the authorization and it causes the request to be too large
+		const { sharedWithProjects, ...sanitizedCredData } = credentialData.value;
+		const credData = { id: credential.id, ...sanitizedCredData };
+
 		if (credentialTypeName.value === 'oAuth2Api' || types.includes('oAuth2Api')) {
 			if (isValidCredentialResponse(credData)) {
 				url = await credentialsStore.oAuth2Authorize(credData);
