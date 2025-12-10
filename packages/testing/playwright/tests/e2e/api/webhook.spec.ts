@@ -225,6 +225,42 @@ test.describe.skip('Webhook Trigger node', () => {
 		});
 		expect(successResponse.ok()).toBe(true);
 	});
+
+	test('CAT-1253-bug-cant-run-workflow-when-unconnected-nodes-have-errors', async ({ n8n }) => {
+		const webhookPath = nanoid();
+
+		// Add Webhook node
+		await n8n.canvas.addNode('Webhook');
+		await n8n.ndv.setupHelper.webhook({
+			httpMethod: 'GET',
+			path: webhookPath,
+		});
+		await n8n.ndv.close();
+
+		// Add No Operation node - it will connect automatically since Webhook node is in context
+		await n8n.canvas.nodeByName('Webhook').click();
+		await n8n.canvas.addNode('No Operation, do nothing', { closeNDV: true });
+
+		// Verify connection was created
+		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
+
+		// Add HTTP Request node (unconnected, which will have an error)
+		await n8n.canvas.deselectAll();
+		await n8n.canvas.addNode('HTTP Request', { closeNDV: true });
+
+		// Verify we now have 3 nodes but still only 1 connection
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
+
+		// Execute the workflow
+		await n8n.canvas.clickExecuteWorkflowButton();
+
+		// Assert that webhook is waiting for trigger
+		await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
+
+		// Assert that no error toast appeared
+		await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
+	});
 });
 
 async function addEditFieldsNode(n8n: n8nPage): Promise<void> {
