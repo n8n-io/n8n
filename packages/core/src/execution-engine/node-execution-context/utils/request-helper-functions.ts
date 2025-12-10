@@ -975,7 +975,7 @@ export async function requestOAuth2(
 	}
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (error.response?.status === 401) {
+			if (isTokenExpiredError(error)) {
 				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 				);
@@ -1055,7 +1055,7 @@ export async function requestOAuth2(
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			if (error.statusCode === tokenExpiredStatusCode) {
+			if (isTokenExpiredError(error, tokenExpiredStatusCode)) {
 				// Token is probably not valid anymore. So try refresh it.
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
@@ -1124,6 +1124,45 @@ export async function requestOAuth2(
 			// Unknown error so simply throw it
 			throw error;
 		});
+}
+
+/**
+ * Check if an error response indicates an expired or invalid OAuth2 token.
+ *
+ * @param error The error from the HTTP request
+ * @param tokenExpiredStatusCode custom status code can be passed in from callers of requestOAuth2 and httpRequestWithAuthentication
+ */
+function isTokenExpiredError(
+	error: AxiosError | IResponseError,
+	tokenExpiredStatusCode: number = 401,
+): boolean {
+	const oAuthErrorResponseStatusCode = 400;
+
+	const isTokenExpiredAxiosError =
+		'isAxiosError' in error &&
+		error.isAxiosError &&
+		error.response?.status === tokenExpiredStatusCode;
+	const isTokenExpiredResponseError =
+		(error as IResponseError)?.statusCode === tokenExpiredStatusCode;
+
+	if (isTokenExpiredAxiosError || isTokenExpiredResponseError) {
+		return true;
+	}
+
+	if ('isAxiosError' in error && error.isAxiosError) {
+		if (error.response?.status === oAuthErrorResponseStatusCode) {
+			const responseData = error.response?.data as Record<string, unknown> | undefined;
+			return responseData?.error === 'invalid_grant';
+		}
+	} else {
+		const responseError = error as IResponseError;
+		if (responseError.statusCode === oAuthErrorResponseStatusCode) {
+			const errorWithResponse = responseError as any;
+			return errorWithResponse.error?.error === 'invalid_grant';
+		}
+	}
+
+	return false;
 }
 
 /** @deprecated make these requests using httpRequestWithAuthentication */
