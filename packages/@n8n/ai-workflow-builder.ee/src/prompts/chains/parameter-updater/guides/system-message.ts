@@ -10,25 +10,25 @@ function hasSystemMessageParameters(nodeDefinition: {
 	if (!nodeDefinition.properties) return false;
 
 	return nodeDefinition.properties.some((prop) => {
-		// Pattern 1 & 2: options.systemMessage (AI Agent) or options.system (Anthropic)
-		if (prop.name === 'options' && prop.type === 'collection') {
-			if (Array.isArray(prop.options)) {
-				return prop.options.some(
-					(opt) =>
-						typeof opt === 'object' &&
-						opt !== null &&
-						'name' in opt &&
-						(opt.name === 'systemMessage' || opt.name === 'system'),
-				);
-			}
-		}
-		// Pattern 3: messages parameter with role support (OpenAI, LLM Chain)
+		// Pattern 1: messages parameter with role support (OpenAI, LLM Chain)
 		if (
 			prop.name === 'messages' &&
 			(prop.type === 'fixedCollection' || prop.type === 'collection')
 		) {
 			return true;
 		}
+
+		// Pattern 2 & 3: options.systemMessage (AI Agent) or options.system (Anthropic)
+		if (prop.name === 'options' && prop.type === 'collection' && Array.isArray(prop.options)) {
+			return prop.options.some(
+				(opt) =>
+					typeof opt === 'object' &&
+					opt !== null &&
+					'name' in opt &&
+					(opt.name === 'systemMessage' || opt.name === 'system'),
+			);
+		}
+
 		return false;
 	});
 }
