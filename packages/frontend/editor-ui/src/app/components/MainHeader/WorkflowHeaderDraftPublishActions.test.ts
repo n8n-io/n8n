@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -135,7 +135,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 		});
 
-		it('should use latest activation date from workflowPublishHistory when available', () => {
+		it('should use latest activation date from workflowPublishHistory when available', async () => {
 			const oldDate = '2024-01-01T00:00:00.000Z';
 			const latestActivationDate = '2024-06-15T10:30:00.000Z';
 			workflowsStore.workflow.activeVersion = {
@@ -169,22 +169,26 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				],
 			};
 
-			const { getByTestId } = renderComponent({
-				global: {
-					stubs: {
-						N8nTooltip: {
-							template: '<div><slot name="content" /></div>',
-						},
-						TimeAgo: {
-							props: ['date'],
-							template: '<div data-test-id="time-ago-stub">{{ date }}</div>',
-						},
-					},
-				},
-			});
+			const { getByTestId } = renderComponent();
+			const indicator = getByTestId('workflow-active-version-indicator');
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
-			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+			expect(indicator).toBeInTheDocument();
+
+			// Find the SVG trigger element (has data-grace-area-trigger from Reka UI)
+			const svgTrigger = indicator.querySelector('svg');
+			expect(svgTrigger).toBeInTheDocument();
+
+			// Hover on the SVG to show the tooltip
+			await userEvent.hover(svgTrigger as Element);
+
+			// Wait for tooltip content to appear (Reka UI uses data-dismissable-layer attribute)
+			await waitFor(() => {
+				const tooltip = document.querySelector('[data-dismissable-layer]');
+				expect(tooltip).toBeInTheDocument();
+				// TimeAgo component has a title attribute with the full date
+				const timeAgoElement = tooltip?.querySelector('[title]');
+				expect(timeAgoElement).toHaveAttribute('title', expect.stringContaining('Jun'));
+			});
 		});
 	});
 

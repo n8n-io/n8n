@@ -14,6 +14,7 @@ import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import N8nButton from '../N8nButton';
 
 defineOptions({
+	name: 'N8nTooltip',
 	inheritAttrs: false,
 });
 
