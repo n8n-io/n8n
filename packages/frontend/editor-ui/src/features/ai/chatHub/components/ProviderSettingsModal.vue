@@ -271,7 +271,6 @@ watch(
 							:credential-type="credentialType"
 							:selected-credential-id="settings.credentialId"
 							:hide-create-new="true"
-							:show-all="true"
 							@credential-selected="onCredentialSelect"
 							@credential-deselected="onCredentialDeselect"
 						/>

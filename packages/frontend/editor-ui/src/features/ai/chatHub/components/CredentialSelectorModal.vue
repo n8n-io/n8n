@@ -113,7 +113,6 @@ function onCancel() {
 						:credential-type="credentialType"
 						:selected-credential-id="selectedCredentialId"
 						:show-delete="true"
-						:show-all="true"
 						:hide-create-new="true"
 						@credential-selected="onCredentialSelect"
 						@credential-deselected="onCredentialDeselect"
