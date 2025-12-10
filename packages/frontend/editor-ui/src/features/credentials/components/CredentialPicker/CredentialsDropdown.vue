@@ -4,10 +4,13 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
 import { nextTick, ref, computed } from 'vue';
 import type { PermissionsRecord } from '@n8n/permissions';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+
 export type CredentialOption = {
 	id: string;
 	name: string;
 	typeDisplayName: string | undefined;
+	homeProject?: ProjectSharingData;
 };
 
 const props = defineProps<{
@@ -32,7 +35,11 @@ function matches(needle: string, haystack: string) {
 
 const filteredOptions = computed(() => {
 	if (!filter.value) return props.credentialOptions;
-	return props.credentialOptions.filter((option) => matches(filter.value, option.name));
+	return props.credentialOptions.filter(
+		(option) =>
+			matches(filter.value, option.name) ||
+			(option.homeProject?.name && matches(filter.value, option.homeProject.name)),
+	);
 });
 
 const onFilter = (newFilter = '') => {
@@ -69,7 +76,10 @@ const onCreateNewCredential = async () => {
 		>
 			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
 				<N8nText bold>{{ item.name }}</N8nText>
-				<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+				<N8nText v-if="item.homeProject" size="small">
+					{{ `${item.typeDisplayName} - ${item.homeProject?.name}` }}
+				</N8nText>
+				<N8nText v-else size="small">{{ item.typeDisplayName }}</N8nText>
 			</div>
 		</N8nOption>
 		<template #empty> </template>
