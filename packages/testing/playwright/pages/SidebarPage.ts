@@ -69,8 +69,8 @@ export class SidebarPage {
 		return this.page.getByTestId('add-first-project-button');
 	}
 
-	getUserMenu(): Locator {
-		return this.page.getByTestId('main-sidebar-user-menu');
+	getSettings(): Locator {
+		return this.page.getByTestId('main-sidebar-settings');
 	}
 
 	getLogoutMenuItem(): Locator {
@@ -122,13 +122,13 @@ export class SidebarPage {
 		return this.page.getByTestId('version-update-cta-button');
 	}
 
-	async openUserMenu(): Promise<void> {
-		await this.getUserMenu().click();
+	async openSettings(): Promise<void> {
+		await this.getSettings().click();
 	}
 
 	async clickSignout(): Promise<void> {
 		await this.expand();
-		await this.openUserMenu();
+		await this.openSettings();
 		await this.getLogoutMenuItem().click();
 	}
 
