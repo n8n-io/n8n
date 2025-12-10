@@ -18,6 +18,7 @@ export { SET_NODE_GUIDE } from './node-types/set-node';
 export { IF_NODE_GUIDE } from './node-types/if-node';
 export { SWITCH_NODE_GUIDE } from './node-types/switch-node';
 export { HTTP_REQUEST_GUIDE } from './node-types/http-request';
+export { GMAIL_GUIDE } from './node-types/gmail';
 export { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
 
 // Parameter type guides

@@ -58,19 +58,11 @@ const requirements: TestRequirements = {
 };
 
 test.describe('Versions', () => {
-	test('should open updates panel', async ({ n8n, setupRequirements }) => {
+	test('should show updates in help section', async ({ n8n, setupRequirements }) => {
 		await setupRequirements(requirements);
 		await n8n.goHome();
 		await n8n.sideBar.expand();
-		await n8n.versions.openWhatsNewMenu();
-		await expect(n8n.versions.getVersionUpdatesPanelOpenButton()).toContainText(
-			'2 versions behind',
-		);
-
-		await n8n.versions.openVersionUpdatesPanel();
-		await expect(n8n.versions.getVersionCard()).toHaveCount(2);
-
-		await n8n.versions.closeVersionUpdatesPanel();
-		await expect(n8n.versions.getVersionUpdatesPanel()).toBeHidden();
+		await n8n.sideBar.clickHelpMenuItem();
+		await expect(n8n.sideBar.getVersionUpdateItem()).toContainText('Update (2 versions behind)');
 	});
 });
