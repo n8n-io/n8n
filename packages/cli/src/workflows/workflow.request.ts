@@ -28,6 +28,7 @@ export declare namespace WorkflowRequest {
 		parentFolderId?: string;
 		uiContext?: string;
 		expectedChecksum?: string;
+		aiBuilderAssisted?: boolean;
 	}>;
 
 	// TODO: Use a discriminator when CAT-1809 lands

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
+import { useI18n } from '@n8n/i18n';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
@@ -58,13 +59,16 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
 import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { ResponseError } from '@n8n/rest-api-client';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse>();
+	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
 		ids: string[] | null;
@@ -449,29 +453,41 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions(true);
 	}
 
+	function getErrorMessageByStatusCode(
+		statusCode: number | undefined,
+		message: string | undefined,
+	): string {
+		const errorMessages: Record<number, string> = {
+			[413]: i18n.baseText('chatHub.error.payloadTooLarge'),
+			[400]: message ?? i18n.baseText('chatHub.error.badRequest'),
+			[403]: i18n.baseText('chatHub.error.forbidden'),
+			[500]: message
+				? i18n.baseText('chatHub.error.serverErrorWithReason', {
+						interpolate: { error: message },
+					})
+				: i18n.baseText('chatHub.error.serverError'),
+		};
+
+		return (
+			(statusCode && errorMessages[statusCode]) || message || i18n.baseText('chatHub.error.unknown')
+		);
+	}
+
 	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
 
-		toast.showError(error, 'Could not send message');
+		const cause =
+			error instanceof ResponseError
+				? new Error(getErrorMessageByStatusCode(error.httpStatusCode, error.message))
+				: error.message.includes('Failed to fetch')
+					? new Error(i18n.baseText('chatHub.error.noConnection'))
+					: error;
 
-		const { sessionId } = streaming.value;
+		toast.showError(cause, i18n.baseText('chatHub.error.sendMessageFailed'));
 
 		streaming.value = undefined;
-
-		const conversation = getConversation(sessionId);
-		if (!conversation) {
-			return;
-		}
-
-		// TODO: Not sure if we want to mark all running messages as errored?
-		for (const messageId of conversation.activeMessageChain) {
-			const message = conversation.messages[messageId];
-			if (message.status === 'running') {
-				updateMessage(sessionId, messageId, 'error');
-			}
-		}
 	}
 
 	async function sendMessage(
@@ -547,6 +563,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				tools,
 				attachments,
 				agentName,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -617,11 +634,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				messageId: promptId,
 				message: content,
 				credentials,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User edited chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+			chat_message_id: editId,
+		});
 	}
 
 	function regenerateMessage(
@@ -653,11 +678,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			{
 				model,
 				credentials,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User regenerated chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+			chat_message_id: retryId,
+		});
 	}
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {
@@ -730,8 +763,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
-	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
-		return await fetchAgentApi(rootStore.restApiContext, agentId);
+	async function fetchCustomAgent(agentId: string) {
+		const customAgent = await fetchAgentApi(rootStore.restApiContext, agentId);
+
+		customAgents.value[agentId] = customAgent;
 	}
 
 	function getCustomAgent(agentId: string) {
@@ -744,26 +779,33 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubCreateAgentRequest,
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
-		const agent = await createAgentApi(rootStore.restApiContext, payload);
-		const agentModel = {
+		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
+		const baseModel = agents.value?.[customAgent.provider]?.models.find(
+			(model) => model.name === customAgent.model,
+		);
+		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
-				agentId: agent.id,
+				agentId: customAgent.id,
 			},
-			name: agent.name,
-			description: agent.description ?? null,
-			createdAt: agent.createdAt,
-			updatedAt: agent.updatedAt,
-			tools: agent.tools,
-			allowFileUploads: true,
+			name: customAgent.name,
+			description: customAgent.description ?? null,
+			createdAt: customAgent.createdAt,
+			updatedAt: customAgent.updatedAt,
+			metadata: baseModel?.metadata ?? {
+				capabilities: { functionCalling: false },
+				inputModalities: [],
+				available: true,
+			},
 		};
-		agents.value?.['custom-agent'].models.push(agentModel);
+		agents.value?.['custom-agent'].models.push(agent);
+		customAgents.value[customAgent.id] = customAgent;
 
 		await fetchAgents(credentials);
 
 		telemetry.track('User created agent', { ...flattenModel(payload) });
 
-		return agentModel;
+		return agent;
 	}
 
 	async function updateCustomAgent(
@@ -771,18 +813,22 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubUpdateAgentRequest,
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
-		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		const customAgent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
 			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
-				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
+				'agentId' in model && model.agentId === agentId
+					? { ...model, name: customAgent.name }
+					: model,
 			);
 		}
 
+		customAgents.value[agentId] = customAgent;
+
 		await fetchAgents(credentials);
 
-		return agent;
+		return customAgent;
 	}
 
 	async function deleteCustomAgent(agentId: string, credentials: CredentialsMap) {
@@ -794,6 +840,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				(model) => !('agentId' in model) || model.agentId !== agentId,
 			);
 		}
+
+		delete customAgents.value[agentId];
 
 		await fetchAgents(credentials);
 	}
@@ -813,7 +861,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: null,
 			createdAt: null,
 			updatedAt: null,
-			allowFileUploads: true,
+			// Assume file attachment and tools are supported
+			metadata: {
+				inputModalities: ['text', 'file'],
+				capabilities: {
+					functionCalling: true,
+				},
+				available: true,
+			},
 		};
 	}
 
@@ -858,6 +913,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
 		agentsReady: computed(() => agents.value !== undefined),
+		customAgents,
 		getAgent,
 		fetchAgents,
 		getCustomAgent,

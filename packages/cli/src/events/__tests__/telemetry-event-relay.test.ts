@@ -882,6 +882,10 @@ describe('TelemetryEventRelay', () => {
 				num_tags: 0,
 				public_api: false,
 				sharing_role: undefined,
+				meta: undefined, // workflow.meta is undefined in mock
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
 			});
 		});
 

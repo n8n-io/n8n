@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/app/composables/useDebounce';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
-import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -25,6 +25,8 @@ type Props = {
 	allowNewResources?: { label?: string };
 	eventBus?: EventBus;
 	disableInactiveItems?: boolean;
+	slowLoadNotice?: string;
+	showSlowLoadNotice?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +43,8 @@ const props = withDefaults(defineProps<Props>(), {
 	allowNewResources: () => ({}),
 	disableInactiveItems: false,
 	eventBus: () => createEventBus(),
+	slowLoadNotice: undefined,
+	showSlowLoadNotice: false,
 });
 
 const emit = defineEmits<{
@@ -376,6 +380,16 @@ watch(
 				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
 					<N8nLoading :class="$style.loader" variant="p" :rows="1" />
 				</div>
+				<div
+					v-if="props.showSlowLoadNotice && props.slowLoadNotice"
+					:class="$style.slowLoadNoticeContainer"
+				>
+					<N8nText size="small" :class="$style.tipText"
+						>{{ i18n.baseText('generic.tip') }}:
+					</N8nText>
+
+					<span :class="$style.hintText">{{ props.slowLoadNotice }}</span>
+				</div>
 			</div>
 		</div>
 		<template #reference>
@@ -484,7 +498,7 @@ watch(
 	align-items: center;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
-	margin-left: var(--spacing--2xs);
+	margin-left: auto;
 
 	&:hover {
 		color: var(--color--primary);
@@ -523,5 +537,24 @@ watch(
 	color: var(--color--text--tint-1);
 
 	margin-left: var(--spacing--2xs);
+}
+
+.tipText {
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--bold);
+	white-space: nowrap;
+	align-self: flex-start;
+}
+
+.slowLoadNoticeContainer {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	gap: var(--spacing--4xs);
+	line-height: var(--line-height--md);
+	word-break: break-word;
+	border-top: var(--border);
 }
 </style>

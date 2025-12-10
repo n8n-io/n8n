@@ -100,6 +100,10 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return apiKey;
 	}
 
+	function resetCurrentUserMCPKey(): void {
+		currentUserMCPKey.value = null;
+	}
+
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
 		const response = await fetchOAuthClients(rootStore.restApiContext);
 		oauthClients.value = response.data;
@@ -121,6 +125,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
+		resetCurrentUserMCPKey,
 		oauthClients,
 		getAllOAuthClients,
 		removeOAuthClient,

@@ -1758,6 +1758,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			expectedChecksum: currentChecksum,
 		});
 
+		if (workflowsById.value[id]) {
+			workflowsById.value[id] = {
+				...workflowsById.value[id],
+				description: updated.description,
+				versionId: updated.versionId,
+			};
+		}
+
 		// Update local store state
 		if (isCurrentWorkflow) {
 			setDescription(updated.description ?? '');
@@ -1765,12 +1773,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				setWorkflowVersionId(updated.versionId);
 			}
 			setWorkflowChecksum(await calculateWorkflowChecksum(updated));
-		} else if (workflowsById.value[id]) {
-			workflowsById.value[id] = {
-				...workflowsById.value[id],
-				description: updated.description,
-				versionId: updated.versionId,
-			};
 		}
 
 		return updated;

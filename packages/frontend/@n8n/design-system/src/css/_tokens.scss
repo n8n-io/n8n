@@ -68,7 +68,7 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--warning--shade-1: var(--color-warning-shade-1, var(--color--gold-500));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning: var(--color-warning, var(--color--gold-400));
+	--color--warning: var(--color-warning, var(--color--gold-600));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--warning--tint-1: var(--color-warning-tint-1, var(--color--gold-200));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -234,6 +234,15 @@
 		var(--assistant--color--highlight-2) 50%,
 		var(--assistant--color--highlight-1) 100%
 	);
+
+	// AI Chat text and icon colors
+	--assistant--color--text--subtle: var(--color--neutral-500);
+	--assistant--icon-color--subtle: var(--color--neutral-500);
+	--assistant--color--text: var(--color--neutral-800);
+	--assistant--color--text--user-bubble: #414244;
+	--assistant--color--background--user-bubble: var(--color--neutral-150);
+	--assistant--text-message--collapsed--max-height: 200px;
+
 	--assistant--button--color--background--hover: linear-gradient(
 		108.82deg,
 		rgba(236, 123, 142, 0.12) 0%,
@@ -457,7 +466,7 @@
 	// Dialogs and overlays
 	--dialog--color--background: var(--color--neutral-white);
 	--dialog--overlay--color--background: var(--color--white-alpha-800);
-	--dialog--overlay--color--background--dark: var(--color--slate-alpha-700);
+	--dialog--overlay--color--background--dark: var(--color--black-alpha-600);
 	--block-ui--overlay--color: var(--color--neutral-950);
 
 	// Avatar
@@ -706,6 +715,7 @@
 }
 
 :root {
+	color-scheme: light dark;
 	@include theme;
 }
 

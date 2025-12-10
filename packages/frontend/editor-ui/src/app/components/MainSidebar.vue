@@ -29,7 +29,6 @@ import {
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -58,6 +57,7 @@ import ProjectNavigation from '@/features/collaboration/projects/components/Proj
 import KeyboardShortcutTooltip from './KeyboardShortcutTooltip.vue';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
+import MainSidebarTrialUpgrade from './MainSidebarTrialUpgrade.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useSidebarLayout } from '../composables/useSidebarLayout';
 import { useSettingsItems } from '../composables/useSettingsItems';
@@ -121,16 +121,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: 'Admin Panel',
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
-	},
-	{
-		id: 'chat',
-		icon: 'message-circle',
-		label: 'Chat',
-		position: 'bottom',
-		route: { to: { name: CHAT_VIEW } },
-		available:
-			settingsStore.isChatFeatureEnabled &&
-			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
 	{
 		// Link to in-app pre-built agent templates, available experiment is enabled
@@ -668,6 +658,7 @@ const onLogout = () => {
 			</div>
 		</N8nScrollArea>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<MainSidebarTrialUpgrade />
 		<TemplateTooltip />
 	</N8nResizeWrapper>
 </template>

@@ -328,16 +328,13 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 			</ElCol>
 		</template>
 		<template v-if="!error" #footer>
-			<ElRow justify="end">
-				<ElCol :span="5" :offset="19">
-					<N8nButton
-						data-test-id="execute-workflow-button"
-						icon="flask-conical"
-						:label="i18n.baseText('fromAiParametersModal.execute')"
-						@click="onExecute"
-					/>
-				</ElCol>
-			</ElRow>
+			<N8nButton
+				data-test-id="execute-workflow-button"
+				icon="flask-conical"
+				:label="i18n.baseText('fromAiParametersModal.execute')"
+				float="right"
+				@click="onExecute"
+			/>
 		</template>
 	</Modal>
 </template>

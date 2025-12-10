@@ -676,6 +676,54 @@ describe('WorkflowDataProxy', () => {
 			// Should return existing values for keys that are present
 			expect(proxy.$fromAI('regular_field')).toEqual('regular_value');
 		});
+
+		test('Throws ExpressionError when there is no execution data', () => {
+			// Create a workflow with no data at all
+			const workflowWithNoData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithNoData.nodes,
+					connections: workflowWithNoData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				[], // Empty connectionInputData - this triggers the bug
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			expect(() => proxy.$fromAI('some_key')).toThrow(ExpressionError);
+		});
 	});
 
 	describe('$rawParameter', () => {

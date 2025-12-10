@@ -102,6 +102,13 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 			return expression.value;
 		case Syntax.ArrayExpression:
 			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		case Syntax.UnaryExpression: {
+			const value = syntaxNodeToValue(expression.argument);
+			if (typeof value === 'number' && expression.operator === '-') {
+				return -value;
+			}
+			return value;
+		}
 		default:
 			return undefined;
 	}
@@ -452,4 +459,8 @@ export function isCommunityPackageName(packageName: string): boolean {
 	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
 
 	return !!nameMatch;
+}
+
+export function dedupe<T>(arr: T[]): T[] {
+	return [...new Set(arr)];
 }

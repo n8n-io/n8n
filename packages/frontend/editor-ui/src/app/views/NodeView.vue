@@ -1629,6 +1629,10 @@ function checkIfEditingIsAllowed(): boolean {
 		return false;
 	}
 
+	if (!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)) {
+		return false;
+	}
+
 	if (isReadOnlyRoute.value || isReadOnlyEnvironment.value) {
 		const messageContext = isReadOnlyRoute.value ? 'executions' : 'workflows';
 		readOnlyNotification.value = toast.showMessage({
@@ -2137,7 +2141,7 @@ onBeforeUnmount(() => {
 				v-if="builderStore.streaming"
 				:class="$style.thinkingPill"
 				show-stop
-				@stop="builderStore.stopStreaming"
+				@stop="builderStore.abortStreaming"
 			/>
 
 			<Suspense>

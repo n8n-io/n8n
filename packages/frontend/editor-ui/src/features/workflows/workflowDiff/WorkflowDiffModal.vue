@@ -11,6 +11,7 @@ import SyncedWorkflowCanvas from '@/features/workflows/workflowDiff/SyncedWorkfl
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
+import type { SourceControlledFileStatus } from '@n8n/api-types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -36,7 +37,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 const props = defineProps<{
-	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
+	data: {
+		eventBus: EventBus;
+		workflowId: string;
+		direction: 'push' | 'pull';
+		workflowStatus?: SourceControlledFileStatus;
+	};
 }>();
 
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
@@ -62,6 +68,11 @@ const isClosed = ref(false);
 
 const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
+		if (props.data.direction === 'push' && props.data.workflowStatus === 'created') {
+			// a new workflow that has yet to be pushed cannot be on remote.
+			return { workflow: undefined, remote: true };
+		}
+
 		try {
 			const { workflowId } = props.data;
 			const { content: workflow } = await sourceControlStore.getRemoteWorkflow(workflowId);

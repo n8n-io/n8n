@@ -38,7 +38,7 @@ import { v4 as uuid } from 'uuid';
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import { createChatUser, createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -56,7 +56,6 @@ let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
@@ -84,6 +83,7 @@ beforeEach(async () => {
 		'Folder',
 		'WorkflowEntity',
 		'WorkflowHistory',
+		'WorkflowPublishHistory',
 		'TagEntity',
 		'Project',
 		'User',
@@ -171,6 +171,7 @@ describe('POST /workflows', () => {
 			[
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:execute-chat',
 				'workflow:move',
 				'workflow:read',
 				'workflow:share',
@@ -440,6 +441,29 @@ describe('POST /workflows', () => {
 			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
+	});
+
+	test('does not create the workflow in a personal project if the user is chat user', async () => {
+		//
+		// ARRANGE
+		//
+		const chatUser = await createChatUser();
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		await testServer
+			.authAgentFor(chatUser)
+			.post('/workflows')
+			.send({ ...workflow })
 			//
 			// ASSERT
 			//
@@ -797,6 +821,7 @@ describe('GET /workflows', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:update',
@@ -805,7 +830,9 @@ describe('GET /workflows', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
+			expect(wf2.scopes).toEqual(
+				['workflow:read', 'workflow:update', 'workflow:execute', 'workflow:execute-chat'].sort(),
+			);
 		}
 
 		{
@@ -823,6 +850,7 @@ describe('GET /workflows', () => {
 			expect(wf1.scopes).toEqual([
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:execute-chat',
 				'workflow:read',
 				'workflow:update',
 			]);
@@ -833,6 +861,7 @@ describe('GET /workflows', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:share',
@@ -858,6 +887,7 @@ describe('GET /workflows', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
@@ -873,6 +903,7 @@ describe('GET /workflows', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
@@ -1922,6 +1953,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:update',
@@ -1930,7 +1962,9 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
+			expect(wf2.scopes).toEqual(
+				['workflow:read', 'workflow:update', 'workflow:execute', 'workflow:execute-chat'].sort(),
+			);
 
 			expect(f1.id).toBe(savedFolder1.id);
 		}
@@ -1953,6 +1987,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.scopes).toEqual([
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:execute-chat',
 				'workflow:read',
 				'workflow:update',
 			]);
@@ -1963,6 +1998,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:move',
 					'workflow:read',
 					'workflow:share',
@@ -1993,6 +2029,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',
@@ -2008,6 +2045,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:create',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
 					'workflow:read',

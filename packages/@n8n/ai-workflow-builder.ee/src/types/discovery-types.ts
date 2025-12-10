@@ -1,3 +1,5 @@
+import type { NodeConfigurationsMap } from './tools';
+
 export interface DiscoveryContext {
 	nodesFound: Array<{
 		nodeName: string;
@@ -9,4 +11,5 @@ export interface DiscoveryContext {
 		}>;
 	}>;
 	bestPractices?: string;
+	nodeConfigurations?: NodeConfigurationsMap;
 }

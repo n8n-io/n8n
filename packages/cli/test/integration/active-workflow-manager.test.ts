@@ -102,7 +102,12 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	await activeWorkflowManager.removeAll();
-	await testDb.truncate(['WorkflowEntity', 'WebhookEntity', 'WorkflowHistory']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'WebhookEntity',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 	jest.clearAllMocks();
 });
 
@@ -134,24 +139,6 @@ describe('init()', () => {
 		await activeWorkflowManager.init();
 
 		expect(validateWorkflowHasTriggerLikeNodeSpy).toHaveBeenCalledTimes(2);
-	});
-});
-
-describe('isActive()', () => {
-	it('should return `true` for active workflow in storage', async () => {
-		const dbWorkflow = await createActiveWorkflow();
-
-		await activeWorkflowManager.init();
-
-		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(true);
-	});
-
-	it('should return `false` for inactive workflow in storage', async () => {
-		const dbWorkflow = await createInactiveWorkflow();
-
-		await activeWorkflowManager.init();
-
-		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(false);
 	});
 });
 

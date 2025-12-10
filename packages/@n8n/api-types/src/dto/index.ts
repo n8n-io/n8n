@@ -12,6 +12,9 @@ export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 
+export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
+export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
+
 export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto';
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
 export { ResourceMapperFieldsRequestDto } from './dynamic-node-parameters/resource-mapper-fields-request.dto';
@@ -100,6 +103,7 @@ export { CreateDataTableColumnDto } from './data-table/create-data-table-column.
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
+export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
 
 export {
 	OAuthClientResponseDto,
