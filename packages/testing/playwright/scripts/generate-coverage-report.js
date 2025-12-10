@@ -34,18 +34,22 @@ function main() {
 		const mergedFile = path.join(NYC_OUTPUT_DIR, 'out.json');
 		execSync(`npx nyc merge ${UI_DIR} ${mergedFile}`, { stdio: 'inherit' });
 
-		// Generate HTML report
-		console.log('Generating HTML report...');
+		// Generate reports (HTML for viewing, LCOV for Codecov)
+		console.log('Generating coverage reports...');
 		execSync(
-			`npx nyc report --reporter=html --report-dir=${COVERAGE_DIR} --temp-dir=${NYC_OUTPUT_DIR} --config=${NYC_CONFIG} --exclude-after-remap=false`,
+			`npx nyc report --reporter=html --reporter=lcov --report-dir=${COVERAGE_DIR} --temp-dir=${NYC_OUTPUT_DIR} --config=${NYC_CONFIG} --exclude-after-remap=false`,
 			{ stdio: 'inherit' },
 		);
 
 		const htmlReportPath = path.join(COVERAGE_DIR, 'index.html');
+		const lcovPath = path.join(COVERAGE_DIR, 'lcov.info');
+
+		console.log(`\n✅ Coverage reports generated successfully!`);
 		if (fs.existsSync(htmlReportPath)) {
-			console.log(`\n✅ Coverage report generated successfully!`);
-			console.log(`📊 Report: ${htmlReportPath}`);
-			console.log(`🌐 Open: file://${htmlReportPath}`);
+			console.log(`📊 HTML Report: ${htmlReportPath}`);
+		}
+		if (fs.existsSync(lcovPath)) {
+			console.log(`📄 LCOV Report: ${lcovPath} (for Codecov)`);
 		}
 	} catch (error) {
 		console.error('❌ Failed to generate coverage report:', error.message);

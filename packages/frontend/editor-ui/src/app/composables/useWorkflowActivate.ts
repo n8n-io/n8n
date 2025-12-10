@@ -18,6 +18,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -109,10 +110,14 @@ export function useWorkflowActivate() {
 			}
 
 			// Update local state
-			if (workflow.activeVersionId !== null) {
-				workflowsStore.setWorkflowActive(currWorkflowId);
+			if (workflow.activeVersion) {
+				workflowsStore.setWorkflowActive(currWorkflowId, workflow.activeVersion);
 			} else {
 				workflowsStore.setWorkflowInactive(currWorkflowId);
+			}
+
+			if (isCurrentWorkflow) {
+				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflow));
 			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
@@ -172,10 +177,14 @@ export function useWorkflowActivate() {
 		}
 
 		try {
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
 				name: options?.name,
 				description: options?.description,
+				expectedChecksum,
 			});
 
 			if (!updatedWorkflow.activeVersion) {
@@ -184,10 +193,14 @@ export function useWorkflowActivate() {
 
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
 
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
+			if (workflowId === workflowsStore.workflowId) {
+				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
+				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+			}
+
+			void useExternalHooks().run('workflow.published', {
 				workflowId,
 				versionId: updatedWorkflow.activeVersion.versionId,
-				active: true,
 			});
 
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
@@ -201,6 +214,10 @@ export function useWorkflowActivate() {
 					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
+			// Only update workflow state to inactive if this is not a validation error
+			if (!error.meta?.validationError) {
+				workflowsStore.setWorkflowInactive(workflowId);
+			}
 			return false;
 		} finally {
 			updatingWorkflowActivation.value = false;
@@ -224,12 +241,14 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
-			await workflowsStore.deactivateWorkflow(workflowId);
+			const updatedWorkflow = await workflowsStore.deactivateWorkflow(workflowId);
 
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
+			if (workflowId === workflowsStore.workflowId) {
+				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+			}
+
+			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,
-				active: false,
-				versionId: null,
 			});
 
 			return true;
