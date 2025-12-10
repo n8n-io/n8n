@@ -15,8 +15,10 @@ function hasSystemMessageParameters(nodeDefinition: {
 			if (Array.isArray(prop.options)) {
 				return prop.options.some(
 					(opt) =>
-						(opt as { name?: string }).name === 'systemMessage' ||
-						(opt as { name?: string }).name === 'system',
+						typeof opt === 'object' &&
+						opt !== null &&
+						'name' in opt &&
+						(opt.name === 'systemMessage' || opt.name === 'system'),
 				);
 			}
 		}

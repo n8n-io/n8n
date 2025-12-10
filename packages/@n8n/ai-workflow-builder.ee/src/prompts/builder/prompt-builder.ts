@@ -19,7 +19,7 @@ function hasContentProperty(value: unknown): value is { content: string } {
 		typeof value === 'object' &&
 		value !== null &&
 		'content' in value &&
-		typeof (value as { content: string }).content === 'string'
+		typeof value.content === 'string'
 	);
 }
 
