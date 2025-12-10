@@ -8,8 +8,6 @@ import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocatio
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 
-type SelectRef = InstanceType<typeof N8nSelect>;
-
 defineProps<{
 	placeholder?: string;
 	disabled?: boolean;
@@ -23,7 +21,7 @@ const modelValue = defineModel<string>();
 const mcpStore = useMCPStore();
 
 const isLoading = ref(false);
-const selectRef = ref<SelectRef | null>(null);
+const selectRef = ref<InstanceType<typeof N8nSelect>>();
 const workflowOptions = ref<WorkflowListItem[]>([]);
 
 async function searchWorkflows(query?: string) {
