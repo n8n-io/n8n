@@ -2396,6 +2396,7 @@
 	"settings.mcp.connectWorkflows.input.placeholder": "Search workflows to connect",
 	"settings.mcp.connectWorkflows.confirm.label": "Connect",
 	"settings.mcp.connectWorkflows.error": "Error fetching available workflows",
+	"settings.mcp.connectWorkflows.emptyState": "No workflows found",
 	"settings.mcp.connectPopover.tab.oauth": "OAuth",
 	"settings.mcp.connectPopover.tab.accessToken": "Access token",
 	"settings.mcp.connectPopover.serverUrl": "Server URL",

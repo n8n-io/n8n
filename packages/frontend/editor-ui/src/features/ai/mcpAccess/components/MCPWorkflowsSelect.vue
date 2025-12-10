@@ -2,7 +2,7 @@
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nIcon, N8nSelect, N8nOption } from '@n8n/design-system';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { useI18n } from '@n8n/i18n';
@@ -21,11 +21,17 @@ const modelValue = defineModel<string>();
 const mcpStore = useMCPStore();
 
 const isLoading = ref(false);
+const hasFetched = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
 const workflowOptions = ref<WorkflowListItem[]>([]);
 
+const showEmptyState = computed(() => {
+	return !isLoading.value && hasFetched.value && workflowOptions.value.length === 0;
+});
+
 async function searchWorkflows(query?: string) {
 	isLoading.value = true;
+	hasFetched.value = false;
 	try {
 		const response = await mcpStore.getMcpEligibleWorkflows({
 			take: 10,
@@ -37,12 +43,15 @@ async function searchWorkflows(query?: string) {
 	} finally {
 		setTimeout(() => {
 			isLoading.value = false;
+			hasFetched.value = true;
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
 }
 
 function focusOnInput() {
-	selectRef.value?.focusOnInput();
+	if (workflowOptions.value.length > 0) {
+		selectRef.value?.focusOnInput();
+	}
 }
 
 function removeOption(value: string) {
@@ -70,7 +79,11 @@ defineExpose({
 		:filterable="true"
 		:remote="true"
 		:remote-method="searchWorkflows"
-		:popper-class="{ [$style['mcp-workflows-select-loading']]: isLoading }"
+		:no-data-text="i18n.baseText('settings.mcp.connectWorkflows.emptyState')"
+		:popper-class="{
+			[$style['mcp-workflows-select-loading']]: isLoading,
+			[$style['mcp-workflows-select-empty']]: showEmptyState,
+		}"
 	>
 		<template #prepend>
 			<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
@@ -96,7 +109,8 @@ defineExpose({
 	min-width: var(--spacing--lg);
 }
 
-.mcp-workflows-select-loading {
+.mcp-workflows-select-loading,
+.mcp-workflows-select-empty {
 	display: flex;
 	min-height: var(--spacing--5xl);
 	align-items: center;
