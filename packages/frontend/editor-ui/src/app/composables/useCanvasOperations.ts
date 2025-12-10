@@ -1199,17 +1199,26 @@ export function useCanvasOperations() {
 					// Calculate actual node size for the new node being inserted
 					// Configurable nodes (like AI Agent) have non-main inputs and are wider
 					// Use nodeTypeDescription.inputs directly since the node isn't in the workflow yet
-					const nodeInputs = Array.isArray(nodeTypeDescription.inputs)
-						? nodeTypeDescription.inputs
-						: [];
-					const nodeInputTypes = NodeHelpers.getConnectionTypes(nodeInputs);
-					const isNewNodeConfigurable =
-						nodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
+					// If inputs is a string (expression), it's a dynamic node like AI Agent which is configurable
+					let isNewNodeConfigurable = false;
+					if (typeof nodeTypeDescription.inputs === 'string') {
+						// Dynamic inputs (expression string) indicates AI/configurable nodes
+						isNewNodeConfigurable = true;
+					} else if (Array.isArray(nodeTypeDescription.inputs)) {
+						const nodeInputTypes = NodeHelpers.getConnectionTypes(nodeTypeDescription.inputs);
+						isNewNodeConfigurable =
+							nodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
+					}
 					const newNodeSize: [number, number] = isNewNodeConfigurable
 						? CONFIGURABLE_NODE_SIZE
 						: DEFAULT_NODE_SIZE;
-					// Calculate shift margin based on actual node width (nodeWidth * 2 + GRID_SIZE)
-					const shiftMargin = newNodeSize[0] * 2 + GRID_SIZE;
+					// Calculate shift margin: base offset plus extra width for configurable nodes
+					// For standard nodes: PUSH_NODES_OFFSET (208)
+					// For configurable nodes: PUSH_NODES_OFFSET + (configurable width - default width)
+					const extraWidth = isNewNodeConfigurable
+						? CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]
+						: 0;
+					const shiftMargin = PUSH_NODES_OFFSET + extraWidth;
 
 					shiftDownstreamNodesPosition(lastInteractedWithNode.name, shiftMargin, {
 						trackHistory: true,
