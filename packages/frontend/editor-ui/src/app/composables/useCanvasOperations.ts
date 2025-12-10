@@ -1198,22 +1198,20 @@ export function useCanvasOperations() {
 
 					// Calculate actual node size for the new node being inserted
 					// Configurable nodes (like AI Agent) have non-main inputs and are wider
-					let newNodeInputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
-					try {
-						newNodeInputs = NodeHelpers.getNodeInputs(
-							editableWorkflowObject.value,
-							node as INode,
-							nodeTypeDescription,
-						);
-					} catch (e) {}
-					const newNodeInputTypes = NodeHelpers.getConnectionTypes(newNodeInputs);
+					// Use nodeTypeDescription.inputs directly since the node isn't in the workflow yet
+					const nodeInputs = Array.isArray(nodeTypeDescription.inputs)
+						? nodeTypeDescription.inputs
+						: [];
+					const nodeInputTypes = NodeHelpers.getConnectionTypes(nodeInputs);
 					const isNewNodeConfigurable =
-						newNodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
+						nodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
 					const newNodeSize: [number, number] = isNewNodeConfigurable
 						? CONFIGURABLE_NODE_SIZE
 						: DEFAULT_NODE_SIZE;
+					// Calculate shift margin based on actual node width (nodeWidth * 2 + GRID_SIZE)
+					const shiftMargin = newNodeSize[0] * 2 + GRID_SIZE;
 
-					shiftDownstreamNodesPosition(lastInteractedWithNode.name, PUSH_NODES_OFFSET, {
+					shiftDownstreamNodesPosition(lastInteractedWithNode.name, shiftMargin, {
 						trackHistory: true,
 						nodeSize: newNodeSize,
 					});
