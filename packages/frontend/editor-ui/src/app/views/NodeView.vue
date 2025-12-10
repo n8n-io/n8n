@@ -1896,6 +1896,15 @@ watch(
 	},
 );
 
+watch(
+	() => uiStore.stateIsDirty,
+	(isDirty) => {
+		if (isDirty) {
+			void workflowSaving.autoSaveWorkflow();
+		}
+	},
+);
+
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 

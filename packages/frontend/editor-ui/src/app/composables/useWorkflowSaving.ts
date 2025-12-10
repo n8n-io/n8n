@@ -30,6 +30,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 export function useWorkflowSaving({
@@ -465,9 +466,21 @@ export function useWorkflowSaving({
 		}
 	}
 
+	const autoSaveWorkflow = useDebounceFn(
+		async () => {
+			const saved = await saveCurrentWorkflow({}, true, false);
+			if (saved) {
+				console.log('[AutoSave] ✅ Workflow saved successfully');
+			}
+		},
+		1500,
+		{ maxWait: 5000 },
+	);
+
 	return {
 		promptSaveUnsavedWorkflowChanges,
 		saveCurrentWorkflow,
 		saveAsNewWorkflow,
+		autoSaveWorkflow,
 	};
 }
