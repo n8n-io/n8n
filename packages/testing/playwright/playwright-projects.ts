@@ -64,7 +64,7 @@ export function getProjects(): Project[] {
 					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
-					fullyParallel: true,
+					fullyParallel: false,
 					use: { containerConfig: config },
 				},
 				{
