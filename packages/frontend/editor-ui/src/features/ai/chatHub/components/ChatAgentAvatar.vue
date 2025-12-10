@@ -26,7 +26,7 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 		<N8nIcon
 			v-else-if="!agent || !isLlmProviderModel(agent.model)"
 			color="text-light"
-			:class="$style.n8nIcon"
+			:class="[$style.n8nIcon, $style[size]]"
 			:icon="agent ? ((agent.icon?.value ?? 'bot') as IconName) : 'messages-square'"
 			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
 		/>
@@ -42,6 +42,11 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 <style lang="scss" module>
 .n8nIcon {
 	outline: none;
+
+	&.lg {
+		width: 32px;
+		height: 32px;
+	}
 }
 
 .emoji {
@@ -61,8 +66,8 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 	}
 
 	&.lg {
-		width: 40px;
-		height: 40px;
+		width: 32px;
+		height: 32px;
 		font-size: 28px;
 	}
 }
