@@ -301,7 +301,6 @@ export async function createActiveWorkflow(
 	const workflow = await createWorkflowWithTriggerAndHistory(
 		{ active: true, ...attributes },
 		userOrProject,
-		{},
 	);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
