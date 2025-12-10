@@ -1994,8 +1994,8 @@ export function useCanvasOperations() {
 		nodeHelpers.credentialsUpdated.value = false;
 	}
 
-	function initializeWorkspace(data: IWorkflowDb) {
-		workflowHelpers.initState(data);
+	async function initializeWorkspace(data: IWorkflowDb) {
+		await workflowHelpers.initState(data);
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isUnknownNode =
@@ -2566,7 +2566,7 @@ export function useCanvasOperations() {
 			toast.showMessage({ title, message, type: 'error', duration: 0 });
 		}
 
-		initializeWorkspace(data.workflowData);
+		await initializeWorkspace(data.workflowData);
 
 		workflowState.setWorkflowExecutionData(data);
 

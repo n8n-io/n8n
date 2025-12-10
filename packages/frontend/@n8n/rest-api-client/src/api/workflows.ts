@@ -38,6 +38,8 @@ export interface WorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 	parentFolderId?: string;
 	uiContext?: string;
+	// checksum of workflow snapshot for conflict detection
+	expectedChecksum?: string;
 	aiBuilderAssisted?: boolean;
 }
 
