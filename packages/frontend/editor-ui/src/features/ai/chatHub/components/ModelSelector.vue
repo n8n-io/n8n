@@ -103,19 +103,6 @@ const menu = computed(() => {
 	const fullNamesMap: Record<string, string> = {};
 
 	if (includeCustomAgents) {
-		// Group n8n agents by projectName
-		const n8nAgentsByProject = new Map<string | null, (typeof agents.value)['n8n']['models']>();
-
-		if (!isLoading.value) {
-			for (const agent of agents.value['n8n'].models) {
-				const projectName = agent.projectName;
-				if (!n8nAgentsByProject.has(projectName)) {
-					n8nAgentsByProject.set(projectName, []);
-				}
-				n8nAgentsByProject.get(projectName)?.push(agent);
-			}
-		}
-
 		// Create submenu items for each project
 		const n8nAgentsSubmenu: (typeof N8nNavigationDropdown)['menu'] = [];
 
@@ -126,16 +113,8 @@ const menu = computed(() => {
 				disabled: true,
 			});
 		} else {
-			// Sort projects alphabetically, with null projectName at the end
-			const sortedProjects = Array.from(n8nAgentsByProject.keys()).sort((a, b) => {
-				if (a === null) return 1;
-				if (b === null) return -1;
-				return a.localeCompare(b);
-			});
-
-			for (const projectName of sortedProjects) {
-				const projectAgents = n8nAgentsByProject.get(projectName) ?? [];
-				const agentMenuItems = projectAgents.map((agent) => {
+			n8nAgentsSubmenu.push(
+				...agents.value.n8n.models.map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {
@@ -143,20 +122,8 @@ const menu = computed(() => {
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,
 					};
-				});
-
-				if (projectName === null) {
-					// Add agents without project directly at the root level
-					n8nAgentsSubmenu.push(...agentMenuItems);
-				} else {
-					// Create a project group
-					n8nAgentsSubmenu.push({
-						id: `project::${projectName}`,
-						title: projectName,
-						submenu: agentMenuItems,
-					});
-				}
-			}
+				}),
+			);
 		}
 
 		const customAgents = isLoading.value
