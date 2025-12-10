@@ -79,11 +79,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return this.handleMissingContext(credentialsResolveMetadata, staticData);
 		}
 
-		// Decrypt and parse resolver configuration
-		const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
-		const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
-
 		try {
+			// Decrypt and parse resolver configuration
+			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
+
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(
 				credentialsResolveMetadata.id,
@@ -146,7 +146,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				credentialName: credentialsResolveMetadata.name,
 				resolverId,
 				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
-				error: (error as Error).message,
+				error: error instanceof Error ? error.message : String(error),
 				isDataNotFound,
 			});
 			return staticData;
