@@ -65,6 +65,7 @@ defineExpose({
 		:filterable="true"
 		:remote="true"
 		:remote-method="searchWorkflows"
+		:popper-class="{ [$style['mcp-workflows-select-loading']]: isLoading }"
 	>
 		<template #prepend>
 			<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
@@ -87,5 +88,12 @@ defineExpose({
 <style module lang="scss">
 .search-icon {
 	min-width: var(--spacing--lg);
+}
+
+.mcp-workflows-select-loading {
+	display: flex;
+	min-height: var(--spacing--5xl);
+	align-items: center;
+	justify-content: space-around;
 }
 </style>
