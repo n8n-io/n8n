@@ -55,7 +55,6 @@ export {
 	getMatchingGuides,
 	getMatchingExamples,
 	matchesPattern,
-	clearRegistry,
 	// Utilities
 	hasResourceLocatorParameters,
 	instanceUrlPrompt,

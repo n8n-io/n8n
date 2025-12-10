@@ -1,5 +1,5 @@
 // Registry system
-export { getMatchingGuides, getMatchingExamples, matchesPattern, clearRegistry } from './registry';
+export { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry';
 export type {
 	NodeTypeGuide,
 	NodeTypeExamples,

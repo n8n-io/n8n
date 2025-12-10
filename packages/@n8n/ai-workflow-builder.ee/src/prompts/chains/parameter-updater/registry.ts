@@ -146,12 +146,3 @@ export function getMatchingExamples(context: PromptContext): NodeTypeExamples[] 
 		return true;
 	});
 }
-
-/**
- * Clears all registered guides and examples.
- * Used primarily for testing.
- */
-export function clearRegistry(): void {
-	guides.length = 0;
-	examples.length = 0;
-}
