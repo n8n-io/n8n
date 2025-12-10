@@ -144,7 +144,7 @@ describe('ntlmAuthProcessor', () => {
 		});
 	});
 
-	it('must reset an error if first respond is not 334', async () => {
+	it('must throw an error if first response is not 334', async () => {
 		// Arrange
 		const mockType1Message = 'NTLM type1';
 		mockNtlm.createType1Message.mockReturnValue(mockType1Message);
