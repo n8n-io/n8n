@@ -156,7 +156,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return {
 			...stack,
 			items: activeStackItems.value,
-			hasSearch: flatBaselineItems.length > 8 || stack?.hasSearch,
+			hasSearch:
+				stack?.hasSearch === false ? false : flatBaselineItems.length > 8 || stack?.hasSearch,
 		};
 	});
 

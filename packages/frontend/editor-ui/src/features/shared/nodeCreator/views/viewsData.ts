@@ -72,6 +72,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from '../nodeCreator.utils';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { NodeIconSource } from '@/app/utils/nodeIcon';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -108,12 +109,13 @@ export interface NodeViewItem {
 	category?: string | string[];
 }
 
-interface NodeView {
+export interface NodeView {
 	value: string;
 	title: string;
 	info?: string;
 	subtitle?: string;
 	items: NodeViewItem[];
+	nodeIcon?: NodeIconSource;
 }
 
 function getNodeView(node: INodeTypeDescription | SimplifiedNodeType) {
@@ -663,8 +665,11 @@ export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
 
 	return {
 		value: HUMAN_IN_THE_LOOP_CATEGORY,
-		title: i18n.baseText('nodeCreator.hitlToolPanel.hitlTools'),
-		subtitle: i18n.baseText('nodeCreator.hitlToolPanel.selectHitlTool'),
+		title: i18n.baseText('nodeCreator.subcategoryNames.humanInTheLoop'),
 		items: hitlToolNodes,
+		nodeIcon: {
+			type: 'icon',
+			name: 'user-check',
+		},
 	};
 }

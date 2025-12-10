@@ -1619,8 +1619,6 @@
 	"nodeCreator.aiPanel.selectATriggerDescription": "A trigger is a step that starts your workflow",
 	"nodeCreator.aiPanel.workflowTriggerDisplayName": "When Executed by Another Workflow",
 	"nodeCreator.aiPanel.workflowTriggerDescription": "Runs the flow when called by the Execute Workflow node from a different workflow",
-	"nodeCreator.hitlToolPanel.hitlTools": "HITL Nodes",
-	"nodeCreator.hitlToolPanel.selectHitlTool": "Select a HITL node to add to your workflow",
 	"nodeCreator.nodeItem.triggerIconTitle": "Trigger Node",
 	"nodeCreator.nodeItem.aiIconTitle": "LangChain AI Node",
 	"nodeCreator.nodeItem.deprecated": "Deprecated",
