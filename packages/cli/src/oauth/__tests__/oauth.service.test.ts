@@ -9,6 +9,7 @@ import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Cipher } from 'n8n-core';
 
 import {
 	OauthService,
@@ -40,6 +41,7 @@ describe('OauthService', () => {
 	const urlService = mockInstance(UrlService);
 	const globalConfig = mockInstance(GlobalConfig);
 	const externalHooks = mockInstance(ExternalHooks);
+	const cipher = mock<Cipher>();
 
 	let service: OauthService;
 
@@ -62,6 +64,17 @@ describe('OauthService', () => {
 		axios.get = jest.fn();
 		axios.post = jest.fn();
 
+		// Setup cipher mock - encrypt returns the input as-is for testing, decrypt does the reverse
+		cipher.encrypt.mockImplementation((data: string) => {
+			// For testing, we'll use base64 encoding as a simple mock
+			// In production, this would be actual encryption
+			return Buffer.from(data).toString('base64');
+		});
+		cipher.decrypt.mockImplementation((data: string) => {
+			// For testing, decode the base64
+			return Buffer.from(data, 'base64').toString();
+		});
+
 		service = new OauthService(
 			logger,
 			credentialsHelper,
@@ -70,6 +83,7 @@ describe('OauthService', () => {
 			urlService,
 			globalConfig,
 			externalHooks,
+			cipher,
 		);
 	});
 
@@ -327,8 +341,9 @@ describe('OauthService', () => {
 
 			expect(typeof csrfSecret).toBe('string');
 			expect(csrfSecret.length).toBeGreaterThan(0);
+			expect(cipher.encrypt).toHaveBeenCalled();
 
-			const decoded = JSON.parse(Buffer.from(encodedState, 'base64').toString());
+			const decoded = JSON.parse(cipher.decrypt(encodedState));
 			expect(decoded.cid).toBe('credential-id');
 			expect(decoded.userId).toBe('user-id');
 			expect(decoded.token).toBeDefined();
@@ -345,7 +360,8 @@ describe('OauthService', () => {
 
 			const [, encodedState] = service.createCsrfState(data);
 
-			const decoded = JSON.parse(Buffer.from(encodedState, 'base64').toString());
+			expect(cipher.encrypt).toHaveBeenCalled();
+			const decoded = JSON.parse(cipher.decrypt(encodedState));
 			expect(decoded.customField).toBe('custom-value');
 		});
 	});
@@ -356,15 +372,18 @@ describe('OauthService', () => {
 				token: 'token',
 				cid: 'credential-id',
 				userId: 'user-id',
+				origin: 'static-credential' as const,
 				createdAt: timestamp,
 			};
-			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			const stateString = JSON.stringify(state);
+			const encodedState = cipher.encrypt(stateString);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
 			const result = (service as any).decodeCsrfState(encodedState, req);
 
+			expect(cipher.decrypt).toHaveBeenCalledWith(encodedState);
 			expect(result).toEqual(state);
 		});
 
@@ -384,7 +403,8 @@ describe('OauthService', () => {
 				token: 'token',
 				createdAt: timestamp,
 			};
-			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			const stateString = JSON.stringify(state);
+			const encodedState = cipher.encrypt(stateString);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -397,7 +417,8 @@ describe('OauthService', () => {
 				cid: 'credential-id',
 				createdAt: timestamp,
 			};
-			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			const stateString = JSON.stringify(state);
+			const encodedState = cipher.encrypt(stateString);
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -428,7 +449,8 @@ describe('OauthService', () => {
 				userId: 'user-id',
 				createdAt: timestamp,
 			};
-			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			const stateString = JSON.stringify(state);
+			const encodedState = cipher.encrypt(stateString);
 			const req = mock<AuthenticatedRequest>({
 				user: undefined,
 			});
@@ -546,7 +568,7 @@ describe('OauthService', () => {
 			state.token = stateToken;
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { state: Buffer.from(JSON.stringify(state)).toString('base64') },
+				query: { state: cipher.encrypt(JSON.stringify(state)) },
 				user: mock<User>({ id: 'user-id' }),
 			});
 
@@ -570,7 +592,8 @@ describe('OauthService', () => {
 				origin: 'static-credential',
 				createdAt: timestamp,
 			};
-			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			const stateString = JSON.stringify(state);
+			const encodedState = cipher.encrypt(stateString);
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
 				query: { state: encodedState },

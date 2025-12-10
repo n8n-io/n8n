@@ -5,7 +5,7 @@ import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { Credentials } from 'n8n-core';
+import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
@@ -69,6 +69,7 @@ export class OauthService {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly cipher: Cipher,
 	) {}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
@@ -183,12 +184,14 @@ export class OauthService {
 			createdAt: Date.now(),
 			...data,
 		};
-		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
+		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
+		return [csrfSecret, encryptedState];
 	}
 
 	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
 		const errorMessage = 'Invalid state format';
-		const decoded = jsonParse<CsrfState>(Buffer.from(encodedState, 'base64').toString(), {
+		const decryptedState = this.cipher.decrypt(encodedState);
+		const decoded = jsonParse<CsrfState>(decryptedState, {
 			errorMessage,
 		});
 
