@@ -72,23 +72,26 @@ export function createPairwiseTarget(
 				generationResults.push({ workflow, ...panelResult });
 			}
 
-			// Pre-compute metrics
-			let metrics: LangsmithEvaluationResult[];
 			if (numGenerations === 1) {
 				const result = generationResults[0];
-				metrics = buildSingleGenerationResults(
+				const singleGenMetrics: LangsmithEvaluationResult[] = buildSingleGenerationResults(
 					result.judgeResults,
 					numJudges,
 					result.primaryPasses,
 					result.majorityPass,
 					result.avgDiagnosticScore,
 				);
-			} else {
-				const aggregation = aggregateGenerations(generationResults);
-				metrics = buildMultiGenerationResults(aggregation, numJudges);
+
+				return { prompt, evals: evalCriteria, metrics: singleGenMetrics };
 			}
 
-			return { prompt, evals: evalCriteria, metrics };
+			const aggregation = aggregateGenerations(generationResults);
+			const multiGenMetrics: LangsmithEvaluationResult[] = buildMultiGenerationResults(
+				aggregation,
+				numJudges,
+			);
+
+			return { prompt, evals: evalCriteria, metrics: multiGenMetrics };
 		},
 		{ name: 'pairwise_evaluation', run_type: 'chain' },
 	);

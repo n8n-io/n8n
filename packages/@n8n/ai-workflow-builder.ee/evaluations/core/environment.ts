@@ -34,15 +34,9 @@ export async function setupLLM(): Promise<BaseChatModel> {
  * @param projectName - Name of the LangSmith project
  * @returns LangChainTracer instance or undefined if API key not provided
  */
-export function createTracer(projectName: string): LangChainTracer | undefined {
-	const apiKey = process.env.LANGSMITH_API_KEY;
-	if (!apiKey) {
-		return undefined;
-	}
-
-	const tracingClient = new Client({ apiKey });
+export function createTracer(client: Client, projectName: string): LangChainTracer | undefined {
 	return new LangChainTracer({
-		client: tracingClient,
+		client,
 		projectName,
 	});
 }
@@ -56,7 +50,7 @@ export function createLangsmithClient(): Client | undefined {
 	if (!apiKey) {
 		return undefined;
 	}
-	return new Client({ apiKey });
+	return new Client({ apiKey, debug: true });
 }
 
 /**
@@ -66,8 +60,9 @@ export function createLangsmithClient(): Client | undefined {
 export async function setupTestEnvironment(): Promise<TestEnvironment> {
 	const parsedNodeTypes = loadNodesFromFile();
 	const llm = await setupLLM();
-	const tracer = createTracer('workflow-builder-evaluation');
 	const lsClient = createLangsmithClient();
+
+	const tracer = createTracer(lsClient!, 'workflow-builder-evaluation');
 
 	return { parsedNodeTypes, llm, tracer, lsClient };
 }
