@@ -1506,7 +1506,7 @@
 	"nodeCreator.aiPanel.selectAiNode": "Select an AI Node to add to your workflow",
 	"nodeCreator.aiPanel.nodesForAi": "Build autonomous agents, summarize or search documents, etc.",
 	"nodeCreator.aiPanel.newTag": "New",
-	"nodeCreator.aiPanel.langchainAiNodes": "AI",
+	"nodeCreator.aiPanel.langchainAiNodes": "Generic AI",
 	"nodeCreator.aiPanel.title": "When should this workflow run?",
 	"nodeCreator.aiPanel.linkItem.description": "See what's possible and get started 5x faster",
 	"nodeCreator.aiPanel.linkItem.title": "AI Templates",

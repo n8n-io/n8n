@@ -515,60 +515,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
 			{
-				key: DEFAULT_SUBCATEGORY,
-				type: 'subcategory',
-				properties: {
-					title: 'App Regular Nodes',
-					icon: 'globe',
-					forceIncludeNodes: [RSS_READ_NODE_TYPE, EMAIL_SEND_NODE_TYPE],
-				},
-			},
-			{
-				type: 'subcategory',
-				key: TRANSFORM_DATA_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: TRANSFORM_DATA_SUBCATEGORY,
-					icon: 'pen',
-					sections: [
-						{
-							key: 'popular',
-							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: popularItemsSubcategory,
-						},
-						{
-							key: 'addOrRemove',
-							title: i18n.baseText('nodeCreator.sectionNames.transform.addOrRemove'),
-							items: [
-								FILTER_NODE_TYPE,
-								REMOVE_DUPLICATES_NODE_TYPE,
-								SPLIT_OUT_NODE_TYPE,
-								LIMIT_NODE_TYPE,
-							],
-						},
-						{
-							key: 'combine',
-							title: i18n.baseText('nodeCreator.sectionNames.transform.combine'),
-							items: [SUMMARIZE_NODE_TYPE, AGGREGATE_NODE_TYPE, MERGE_NODE_TYPE],
-						},
-						{
-							key: 'convert',
-							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
-							items: [
-								HTML_NODE_TYPE,
-								MARKDOWN_NODE_TYPE,
-								XML_NODE_TYPE,
-								CRYPTO_NODE_TYPE,
-								EXTRACT_FROM_FILE_NODE_TYPE,
-								CONVERT_TO_FILE_NODE_TYPE,
-								COMPRESSION_NODE_TYPE,
-								EDIT_IMAGE_NODE_TYPE,
-							],
-						},
-					],
-				},
-			},
-			{
 				type: 'subcategory',
 				key: TRANSLATION_SUBCATEGORY,
 				category: CORE_NODES_CATEGORY,
@@ -618,6 +564,51 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 			},
 			{
 				type: 'subcategory',
+				key: TRANSFORM_DATA_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: TRANSFORM_DATA_SUBCATEGORY,
+					icon: 'pen',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: popularItemsSubcategory,
+						},
+						{
+							key: 'addOrRemove',
+							title: i18n.baseText('nodeCreator.sectionNames.transform.addOrRemove'),
+							items: [
+								FILTER_NODE_TYPE,
+								REMOVE_DUPLICATES_NODE_TYPE,
+								SPLIT_OUT_NODE_TYPE,
+								LIMIT_NODE_TYPE,
+							],
+						},
+						{
+							key: 'combine',
+							title: i18n.baseText('nodeCreator.sectionNames.transform.combine'),
+							items: [SUMMARIZE_NODE_TYPE, AGGREGATE_NODE_TYPE, MERGE_NODE_TYPE],
+						},
+						{
+							key: 'convert',
+							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
+							items: [
+								HTML_NODE_TYPE,
+								MARKDOWN_NODE_TYPE,
+								XML_NODE_TYPE,
+								CRYPTO_NODE_TYPE,
+								EXTRACT_FROM_FILE_NODE_TYPE,
+								CONVERT_TO_FILE_NODE_TYPE,
+								COMPRESSION_NODE_TYPE,
+								EDIT_IMAGE_NODE_TYPE,
+							],
+						},
+					],
+				},
+			},
+			{
+				type: 'subcategory',
 				key: FLOWS_CONTROL_SUBCATEGORY,
 				category: CORE_NODES_CATEGORY,
 				properties: {
@@ -653,6 +644,15 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 					],
 				},
 			},
+			{
+				key: DEFAULT_SUBCATEGORY,
+				type: 'subcategory',
+				properties: {
+					title: 'App Regular Nodes',
+					icon: 'globe',
+					forceIncludeNodes: [RSS_READ_NODE_TYPE, EMAIL_SEND_NODE_TYPE],
+				},
+			},
 			// To add node to this subcategory:
 			// - add "HITL" to the "categories" property of the node's codex
 			// - add "HITL": ["Human in the Loop"] to the "subcategories" property of the node's codex
@@ -679,7 +679,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 
 	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
 	if (hasAINodes)
-		view.items.unshift({
+		view.items.splice(3, 0, {
 			key: AI_NODE_CREATOR_VIEW,
 			type: 'view',
 			properties: {
