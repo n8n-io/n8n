@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -133,6 +134,32 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	});
 }
 
+const SAFE_URL_SCHEMES = ['http:', 'https:'];
+
+/**
+ * Validates that a URL uses a safe scheme (http or https).
+ * Returns the normalized URL if valid, or null if invalid.
+ */
+export function validateSafeRedirectUrl(url: string | undefined): string | null {
+	if (!url || typeof url !== 'string') return null;
+
+	let normalized = url.trim();
+	if (!normalized) return null;
+
+	if (!normalized.includes('://')) {
+		normalized = `http://${normalized}`;
+	}
+
+	try {
+		const parsed = new URL(normalized);
+		if (!SAFE_URL_SCHEMES.includes(parsed.protocol)) return null;
+		if (parsed.username || parsed.password) return null;
+		return normalized;
+	} catch {
+		return null;
+	}
+}
+
 export function createDescriptionMetadata(description: string) {
 	return description === ''
 		? 'n8n form'
@@ -206,10 +233,10 @@ export function prepareFormData({
 	};
 
 	if (redirectUrl) {
-		if (!redirectUrl.includes('://')) {
-			redirectUrl = `http://${redirectUrl}`;
+		const safeUrl = validateSafeRedirectUrl(redirectUrl);
+		if (safeUrl) {
+			formData.redirectUrl = safeUrl;
 		}
-		formData.redirectUrl = redirectUrl;
 	}
 
 	for (const [index, field] of formFields.entries()) {
@@ -516,6 +543,7 @@ export function renderForm({
 		nodeVersion: context.getNode().typeVersion,
 	});
 
+	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	res.render('form-trigger', data);
 }
 

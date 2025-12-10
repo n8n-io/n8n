@@ -1016,8 +1016,14 @@
 								}
 
 								if (json?.redirectURL) {
-									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
-									window.location.replace(url);
+									const SAFE_SCHEMES = ['http:', 'https:'];
+									const targetUrl = json.redirectURL.includes('://') ? json.redirectURL : 'https://' + json.redirectURL;
+									try {
+										const parsed = new URL(targetUrl);
+										if (SAFE_SCHEMES.includes(parsed.protocol)) {
+											window.location.replace(targetUrl);
+										}
+									} catch (e) { /* invalid URL, ignore */ }
 									return;
 								}
 
