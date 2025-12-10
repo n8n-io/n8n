@@ -135,7 +135,7 @@ describe('DynamicCredentialsController', () => {
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockCredential, {
 				cid: '1',
 				origin: 'dynamic-credential',
-				authorizationHeader: undefined,
+				authorizationHeader: '',
 			});
 		});
 	});

@@ -11,7 +11,6 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import { Logger } from '@n8n/backend-common';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
