@@ -157,8 +157,8 @@ export function useCommandBar() {
 	];
 
 	const chatHubViewGroups: CommandGroup[] = [
-		recentResourcesGroup,
 		chatHubCommandGroup,
+		recentResourcesGroup,
 		genericCommandGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,

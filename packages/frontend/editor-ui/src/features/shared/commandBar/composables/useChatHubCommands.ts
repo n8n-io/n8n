@@ -14,9 +14,7 @@ const ITEM_ID = {
 	NEW_SESSION: 'new-session',
 	OPEN_SESSION: 'open-session',
 	DELETE_SESSION: 'delete-session',
-	RETRY_LAST: 'retry-last-message',
-	EDIT_LAST: 'edit-last-message',
-	STOP_MESSAGE_EXECUTION: 'stop-message-execution',
+	STOP_MESSAGE_GENERATION: 'stop-message-generation',
 } as const;
 
 export function useChatHubCommands(options: {
@@ -87,7 +85,7 @@ export function useChatHubCommands(options: {
 		return filtered;
 	});
 
-	const createSessionCommand = (session: ChatHubSessionDto, isRoot: boolean): CommandBarItem => {
+	const openSessionCommand = (session: ChatHubSessionDto, isRoot: boolean): CommandBarItem => {
 		let title = session.title;
 
 		if (isRoot) {
@@ -110,7 +108,32 @@ export function useChatHubCommands(options: {
 	};
 
 	const openSessionCommands = computed<CommandBarItem[]>(() => {
-		return filteredSesssions.value.map((session) => createSessionCommand(session, false));
+		return filteredSesssions.value.map((session) => openSessionCommand(session, false));
+	});
+
+	const deleteSessionCommand = (session: ChatHubSessionDto, isRoot: boolean): CommandBarItem => {
+		let title = session.title;
+
+		if (isRoot) {
+			title = i18n.baseText('commandBar.chat.deleteSession', { interpolate: { title } });
+		}
+
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.chat')
+			: i18n.baseText('commandBar.chat.delete');
+
+		return {
+			id: session.id,
+			title,
+			section,
+			handler: () => {
+				void handleDeleteSession(session.id);
+			},
+		};
+	};
+
+	const deleteSessionCommands = computed<CommandBarItem[]>(() => {
+		return filteredSesssions.value.map((session) => deleteSessionCommand(session, false));
 	});
 
 	const chatHubCommands = computed<CommandBarItem[]>(() => {
@@ -129,24 +152,47 @@ export function useChatHubCommands(options: {
 					},
 				},
 			},
-		];
-
-		// if (filteredSesssions.value.length > 0) {
-		commands.push({
-			id: ITEM_ID.OPEN_SESSION,
-			title: i18n.baseText('commandBar.chat.open'),
-			section: i18n.baseText('commandBar.sections.chat'),
-			placeholder: i18n.baseText('commandBar.chat.open.searchPlaceholder'),
-			children: openSessionCommands.value,
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'layers',
-					color: 'text-light',
+			{
+				id: ITEM_ID.OPEN_SESSION,
+				title: i18n.baseText('commandBar.chat.open'),
+				section: i18n.baseText('commandBar.sections.chat'),
+				placeholder: i18n.baseText('commandBar.chat.open.searchPlaceholder'),
+				children: openSessionCommands.value,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'layers',
+						color: 'text-light',
+					},
 				},
 			},
-		});
-		// }
+			{
+				id: ITEM_ID.DELETE_SESSION,
+				title: i18n.baseText('commandBar.chat.delete'),
+				section: i18n.baseText('commandBar.sections.chat'),
+				placeholder: i18n.baseText('commandBar.chat.open.searchPlaceholder'),
+				children: deleteSessionCommands.value,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'trash-2',
+						color: 'text-light',
+					},
+				},
+			},
+		];
+
+		if (isResponding.value && currentSessionId.value) {
+			commands.push({
+				id: ITEM_ID.STOP_MESSAGE_GENERATION,
+				title: i18n.baseText('commandBar.chat.stop'),
+				section: i18n.baseText('commandBar.sections.chat'),
+				handler: async () => {
+					if (!currentSessionId.value) return;
+					await chatStore.stopStreamingMessage(currentSessionId.value);
+				},
+			});
+		}
 
 		return commands;
 	});
