@@ -1196,8 +1196,26 @@ export function useCanvasOperations() {
 					// Compute the y offset for the new node based on the number of main outputs of the source node
 					// and shift the downstream nodes accordingly
 
+					// Calculate actual node size for the new node being inserted
+					// Configurable nodes (like AI Agent) have non-main inputs and are wider
+					let newNodeInputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
+					try {
+						newNodeInputs = NodeHelpers.getNodeInputs(
+							editableWorkflowObject.value,
+							node as INode,
+							nodeTypeDescription,
+						);
+					} catch (e) {}
+					const newNodeInputTypes = NodeHelpers.getConnectionTypes(newNodeInputs);
+					const isNewNodeConfigurable =
+						newNodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
+					const newNodeSize: [number, number] = isNewNodeConfigurable
+						? CONFIGURABLE_NODE_SIZE
+						: DEFAULT_NODE_SIZE;
+
 					shiftDownstreamNodesPosition(lastInteractedWithNode.name, PUSH_NODES_OFFSET, {
 						trackHistory: true,
+						nodeSize: newNodeSize,
 					});
 				}
 
@@ -1547,7 +1565,10 @@ export function useCanvasOperations() {
 	function shiftDownstreamNodesPosition(
 		sourceNodeName: string,
 		margin: number,
-		{ trackHistory = false }: { trackHistory?: boolean },
+		{
+			trackHistory = false,
+			nodeSize = DEFAULT_NODE_SIZE,
+		}: { trackHistory?: boolean; nodeSize?: [number, number] },
 	) {
 		const sourceNode = workflowsStore.nodesByName[sourceNodeName];
 		if (!sourceNode) return;
@@ -1565,7 +1586,7 @@ export function useCanvasOperations() {
 		);
 
 		// Check if there's enough space - if so, don't move anything
-		if (hasSpaceForInsertion(insertPosition, DEFAULT_NODE_SIZE, nodesToCheck)) {
+		if (hasSpaceForInsertion(insertPosition, nodeSize, nodesToCheck)) {
 			return;
 		}
 
