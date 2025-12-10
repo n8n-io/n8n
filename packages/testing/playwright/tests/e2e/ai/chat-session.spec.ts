@@ -22,8 +22,11 @@ test.describe('Chat session ID reset', () => {
 		const initialTooltip = n8n.page.locator('.n8n-tooltip').last();
 		// Wait for tooltip to be visible before asserting text
 		await expect(initialTooltip).toBeVisible();
-		await expect(initialTooltip).toHaveText(/^[a-f0-9]+\s+\(click to copy\)$/im);
-		const initialSessionId = ((await initialTooltip.textContent()) as string).split(/\s/)[0];
+		// Reka UI tooltip has content duplicated in an aria-hidden span for accessibility,
+		// so we need to get just the visible text content, not the full textContent
+		const initialTooltipText = await initialTooltip.innerText();
+		expect(initialTooltipText).toMatch(/^[a-f0-9]+\s+\(click to copy\)$/im);
+		const initialSessionId = initialTooltipText.split(/\s/)[0];
 
 		// Click on the chat trigger node in the logs to see its output
 		await n8n.canvas.logsPanel.clickLogEntryAtRow(0);
@@ -42,8 +45,10 @@ test.describe('Chat session ID reset', () => {
 		const newTooltip = n8n.page.locator('.n8n-tooltip').last();
 		// Wait for tooltip to be visible before asserting text
 		await expect(newTooltip).toBeVisible();
-		await expect(newTooltip).toHaveText(/^[a-f0-9]+\s+\(click to copy\)$/im);
-		const newSessionId = ((await newTooltip.textContent()) as string).split(/\s/)[0];
+		// Use innerText to get visible text only (excludes aria-hidden content)
+		const newTooltipText = await newTooltip.innerText();
+		expect(newTooltipText).toMatch(/^[a-f0-9]+\s+\(click to copy\)$/im);
+		const newSessionId = newTooltipText.split(/\s/)[0];
 
 		expect(newSessionId).not.toEqual(initialSessionId);
 
