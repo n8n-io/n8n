@@ -2785,6 +2785,7 @@ export interface IWorkflowSettings {
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
+	credentialResolverId?: string;
 }
 
 export interface WorkflowFEMeta {
