@@ -39,7 +39,7 @@ function onRename(newNodeName: string) {
 				:node-name="props.nodeTypeName"
 				:show-tooltip="true"
 			/>
-			<div :class="$style.title">
+			<div :class="$style.title" data-test-id="node-title-container">
 				<N8nInlineTextEdit
 					:model-value="nodeName"
 					:min-width="0"
