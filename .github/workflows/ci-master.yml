@@ -32,7 +32,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
-    name: Lint
+    name: Lint and Format Check
     uses: ./.github/workflows/linting-reusable.yml
     with:
       ref: ${{ github.sha }}

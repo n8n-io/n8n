@@ -116,7 +116,7 @@ jobs:
           build-command: pnpm typecheck
 
   lint:
-    name: Lint
+    name: Lint and Format Check
     if: needs.install-and-build.outputs.non_python_changed == 'true'
     uses: ./.github/workflows/linting-reusable.yml
     needs: install-and-build

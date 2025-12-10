@@ -74,7 +74,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
-    name: Lint
+    name: Lint and Format Check
     needs: install-and-build
     uses: ./.github/workflows/linting-reusable.yml
     with:

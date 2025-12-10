@@ -1,4 +1,4 @@
-name: Reusable linting workflow
+name: Reusable linting and formatting check workflow
 
 on:
   workflow_call:
@@ -26,8 +26,8 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Build and Test
+      - name: Lint and Format Check
         uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          build-command: pnpm lint
+          build-command: pnpm lint && pnpm format:check
           node-version: ${{ inputs.nodeVersion }}
