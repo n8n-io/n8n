@@ -884,7 +884,7 @@ describe('GoogleGemini -> utils', () => {
 			);
 		});
 
-		it('should return operation name when response is missing', async () => {
+		it('should return undefined when response is missing', async () => {
 			const fileSearchStoreName = 'fileSearchStores/abc123';
 			const displayName = 'test-file.pdf';
 			const mockStream = {
@@ -924,9 +924,7 @@ describe('GoogleGemini -> utils', () => {
 				'https://example.com/file.pdf',
 			);
 
-			expect(result).toEqual({
-				name: 'operations/op123',
-			});
+			expect(result).toBeUndefined();
 		});
 	});
 });

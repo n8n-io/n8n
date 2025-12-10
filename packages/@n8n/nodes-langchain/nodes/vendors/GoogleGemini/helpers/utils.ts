@@ -291,5 +291,5 @@ export async function uploadToFileSearchStore(
 		});
 	}
 
-	return operation.response ?? { name: uploadResponse.body.name };
+	return operation.response;
 }
