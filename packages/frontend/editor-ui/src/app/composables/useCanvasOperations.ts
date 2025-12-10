@@ -901,7 +901,6 @@ export function useCanvasOperations() {
 			isToolType(lastInteractedWithNode.type) &&
 			lastInteractedWithNodeConnection
 		) {
-			console.log('special connection from hitl to tool');
 			const { type: connectionType } = parseCanvasConnectionHandleString(
 				lastInteractedWithNodeHandle,
 			);
@@ -1209,7 +1208,6 @@ export function useCanvasOperations() {
 					lastInteractedWithNodeConnection &&
 					connectionType === NodeConnectionTypes.AiTool
 				) {
-					console.log('special handling for hitl tool node');
 					// Get the source node (main node) from the connection
 					const toolUserNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
 					if (toolUserNode) {
