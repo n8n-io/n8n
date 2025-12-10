@@ -2392,7 +2392,7 @@
 	"settings.mcp.oAuthClients.revoke.error": "Error revoking client access",
 	"settings.mcp.refresh.tooltip": "Refresh list",
 	"settings.mcp.connectWorkflows": "Connect workflows",
-	"settings.mcp.connectWorkflows.notice": "Published Workflows with one of webhook, form, schedule or chat trigger nodes can be enabled for MCP access.",
+	"settings.mcp.connectWorkflows.notice": "Workflows that are published and have one of webhook, form, schedule or chat trigger nodes can be enabled for MCP access",
 	"settings.mcp.connectWorkflows.input.placeholder": "Search workflows to connect",
 	"settings.mcp.connectWorkflows.confirm.label": "Connect",
 	"settings.mcp.connectPopover.tab.oauth": "OAuth",
