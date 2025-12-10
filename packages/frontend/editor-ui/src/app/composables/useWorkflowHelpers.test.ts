@@ -221,7 +221,7 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('initState', () => {
-		it('should initialize workflow state with provided data', () => {
+		it('should initialize workflow state with provided data', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -249,7 +249,7 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
 			expect(setActiveSpy).toHaveBeenCalledWith('v1');
@@ -275,7 +275,7 @@ describe('useWorkflowHelpers', () => {
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 
-		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
+		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -290,13 +290,13 @@ describe('useWorkflowHelpers', () => {
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
 			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
 		});
 
-		it('should handle missing `tags` gracefully', () => {
+		it('should handle missing `tags` gracefully', async () => {
 			const { initState } = useWorkflowHelpers();
 
 			const workflowData = createTestWorkflow({
@@ -310,7 +310,7 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			initState(workflowData);
+			await initState(workflowData);
 
 			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);

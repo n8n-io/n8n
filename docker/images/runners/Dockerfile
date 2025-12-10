@@ -124,9 +124,9 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
     apk del apk-tools
 
 # Bring corepack and pnpm over, to make the image easier to extend
-COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node-alpine /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
 RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
-    ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
+		ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner

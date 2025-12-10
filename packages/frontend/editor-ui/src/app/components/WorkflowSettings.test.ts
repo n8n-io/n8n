@@ -11,6 +11,8 @@ import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import * as restApiClient from '@n8n/rest-api-client';
+import { mock } from 'vitest-mock-extended';
 
 const toast = {
 	showMessage: vi.fn(),
@@ -33,6 +35,14 @@ vi.mock('vue-router', async () => ({
 		template: '<a><slot /></a>',
 	},
 }));
+
+vi.mock('@n8n/rest-api-client', async (importOriginal) => {
+	const actual = await importOriginal<typeof restApiClient>();
+	return {
+		...actual,
+		getCredentialResolvers: vi.fn(),
+	};
+});
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
@@ -59,9 +69,13 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 
-		settingsStore.settings = {
+		settingsStore.settings = mock<FrontendSettings>({
 			enterprise: {},
-		} as FrontendSettings;
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+			releaseChannel: 'stable',
+		});
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
 		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([
@@ -396,6 +410,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should disable binary mode dropdown if user has no permission to update workflow', async () => {
 			workflowsStore.getWorkflowById.mockImplementation(() => ({
+				activeVersionId: '123',
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
@@ -444,6 +459,163 @@ describe('WorkflowSettingsVue', () => {
 			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
 
 			expect(dropdownItems[1]).toHaveTextContent('combined');
+		});
+	});
+
+	describe('Credential Resolver', () => {
+		const mockResolvers = [
+			{
+				id: 'resolver-1',
+				name: 'Test Resolver 1',
+				type: 'test-type',
+				config: '{}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+			{
+				id: 'resolver-2',
+				name: 'Test Resolver 2',
+				type: 'test-type',
+				config: '{}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		];
+
+		beforeEach(() => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
+		});
+
+		it('should render credential resolver dropdown', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('workflow-settings-credential-resolver')).toBeVisible();
+		});
+
+		it('should load credential resolvers on mount', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+
+			// Should have 2 resolvers
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[0]).toHaveTextContent('Test Resolver 1');
+			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
+		});
+
+		it('should show "New" button for creating a new resolver', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
+			});
+		});
+
+		it('should not show "Edit" button when no resolver is selected', async () => {
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(queryByTestId('workflow-settings-credential-resolver-edit')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should show "Edit" button when a resolver is selected', async () => {
+			workflowsStore.workflowSettings.credentialResolverId = 'resolver-1';
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-settings-credential-resolver-edit')).toBeInTheDocument();
+			});
+		});
+
+		it('should select a resolver from dropdown', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+
+			// Select "Test Resolver 1"
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(callArgs[0]).toBe('1');
+			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-1');
+		});
+
+		it('should save workflow with selected resolver', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+
+			// Select "Test Resolver 2"
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(callArgs[0]).toBe('1');
+			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-2');
+		});
+
+		it('should disable credential resolver dropdown when environment is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdownContainer.querySelector('input');
+			expect(input).toBeDisabled();
+		});
+
+		it('should disable credential resolver dropdown when user has no update permission', async () => {
+			workflowsStore.getWorkflowById.mockImplementation(() => ({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				isArchived: false,
+				nodes: [],
+				connections: {},
+				createdAt: 1,
+				updatedAt: 1,
+				versionId: '123',
+				scopes: ['workflow:read'],
+			}));
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdownContainer.querySelector('input');
+			expect(input).toBeDisabled();
 		});
 	});
 });
