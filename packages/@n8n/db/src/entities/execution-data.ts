@@ -27,6 +27,9 @@ export class ExecutionData {
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
 
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	workflowVersionId: string | null;
+
 	@OneToOne('ExecutionEntity', 'executionData', {
 		onDelete: 'CASCADE',
 	})
