@@ -3,7 +3,11 @@ import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import {
+	isToolMessage,
+	isWorkflowUpdatedMessage,
+	isVersionCardMessage,
+} from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -18,8 +22,11 @@ import {
 	getAiSessions,
 	getBuilderCredits,
 	getSessionsMetadata,
+	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
+import { getWorkflowVersionsByIds } from '@n8n/rest-api-client/api/workflowHistory';
 import { generateMessageId, createBuilderPayload } from './builder.utils';
+import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -33,6 +40,7 @@ import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/node
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { dedupe } from 'n8n-workflow';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -383,11 +391,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	/**
 	 * Sends a message to the AI builder service and handles the streaming response.
 	 * Prevents concurrent requests by checking streaming state.
+	 * Saves workflow first to get versionId for restore functionality.
 	 * Captures workflow state before sending for comparison in telemetry.
 	 * Creates a retry handler that preserves the original message context.
-	 * Note: This function is NOT async - streaming happens via callbacks.
 	 */
-	function sendChatMessage(options: {
+	async function sendChatMessage(options: {
 		text: string;
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
@@ -396,6 +404,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
+		versionId?: string;
 	}) {
 		if (streaming.value) {
 			return;
@@ -412,6 +421,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			type = 'message',
 			errorNodeType,
 			executionStatus,
+			versionId,
 		} = options;
 
 		// Set initial generation flag if provided
@@ -480,6 +490,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, userMessageId, retry),
+				versionId,
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
@@ -488,10 +499,70 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	/**
+	 * Extracts all revertVersionId values from an array of messages.
+	 * Only extracts from messages that have a string revertVersionId property.
+	 */
+	// @todo move these version utility functions out into util file or composable?
+	function extractRevertVersionIds(messages: ChatRequest.MessageResponse[]): string[] {
+		return messages
+			.filter(
+				(msg): msg is ChatRequest.TextMessage & { revertVersionId: string } =>
+					'revertVersionId' in msg && typeof msg.revertVersionId === 'string',
+			)
+			.map((msg) => msg.revertVersionId);
+	}
+
+	/**
+	 * Fetches which version IDs still exist in workflow history.
+	 * Returns an empty set if the fetch fails (all versions will be treated as non-existent).
+	 */
+	// @todo move these version utility functions out into util file or composable?
+	async function fetchExistingVersionIds(
+		workflowId: string,
+		versionIds: string[],
+	): Promise<Set<string>> {
+		if (versionIds.length === 0) {
+			return new Set();
+		}
+
+		try {
+			const versionsResponse = await getWorkflowVersionsByIds(
+				rootStore.restApiContext,
+				workflowId,
+				versionIds,
+			);
+			return new Set(versionsResponse.versions.map((v) => v.versionId));
+		} catch {
+			// Continue without filtering - all revertVersionIds will be removed
+			return new Set();
+		}
+	}
+
+	/**
+	 * Removes revertVersionId from messages if the version no longer exists.
+	 */
+	// @todo move these version utility functions out into util file or composable?
+	function filterNonExistentVersionIds(
+		messages: ChatRequest.MessageResponse[],
+		existingVersionIds: Set<string>,
+	): ChatRequest.MessageResponse[] {
+		return messages.map((msg) => {
+			if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
+				if (!existingVersionIds.has(msg.revertVersionId)) {
+					const { revertVersionId: _, ...rest } = msg;
+					return rest as ChatRequest.MessageResponse;
+				}
+			}
+			return msg;
+		});
+	}
+
+	/**
 	 * Loads the most recent chat session for the current workflow.
 	 * Only loads if a workflow ID exists (not for new unsaved workflows).
 	 * Replaces current chat messages entirely - does NOT merge with existing messages.
 	 * Sessions are ordered by recency, so sessions[0] is always the latest.
+	 * Filters out messages with revertVersionId pointing to non-existent versions.
 	 * Silently fails and returns empty array on error to prevent UI disruption.
 	 */
 	async function loadSessions() {
@@ -508,11 +579,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			if (sessions.length > 0) {
 				const latestSession = sessions[0];
 
+				// Extract version IDs and check which still exist
+				const versionIds = extractRevertVersionIds(latestSession.messages);
+				const existingVersionIds = await fetchExistingVersionIds(workflowId, versionIds);
+
 				// Clear existing messages
 				chatMessages.value = clearMessages();
 
-				// Convert and add messages from the session
-				const convertedMessages = latestSession.messages
+				// Filter out non-existent version IDs and convert to UI messages
+				const filteredMessages = filterNonExistentVersionIds(
+					latestSession.messages,
+					existingVersionIds,
+				);
+				const convertedMessages = filteredMessages
 					.map((msg) => {
 						const id = generateMessageId();
 						return mapAssistantMessageToUI(msg, id);
@@ -776,6 +855,63 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		{ deep: true },
 	);
 
+	// Version management for workflow history
+	const workflowHistoryStore = useWorkflowHistoryStore();
+
+	/**
+	 * Computed property to get all version card messages from chat
+	 */
+	const versionCardMessages = computed(
+		// @todo better typing here
+		() => chatMessages.value.filter(isVersionCardMessage) as ChatUI.VersionCardMessage[],
+	);
+
+	/**
+	 * Restores the workflow to a previous version and truncates chat messages.
+	 * Finds the user message with the matching revertVersionId and removes it
+	 * along with all messages after it.
+	 *
+	 * @param versionId - The workflow version ID to restore to
+	 */
+	async function restoreToVersion(versionId: string): Promise<boolean> {
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowId) {
+			console.error('Cannot restore: no workflow ID');
+			return false;
+		}
+
+		try {
+			// 1. Restore the workflow using existing workflow history store
+			await workflowHistoryStore.restoreWorkflow(workflowId, versionId, false);
+
+			// 2. Truncate messages in backend session (removes message with versionId and all after)
+			try {
+				await truncateBuilderMessages(rootStore.restApiContext, workflowId, versionId);
+			} catch (error) {
+				console.error('Failed to truncate backend messages:', error);
+				// Continue anyway - local state will be updated
+			}
+
+			// 3. Truncate local chat messages - find user message with matching revertVersionId
+			// and remove it along with all messages after it
+			const messageIndex = chatMessages.value.findIndex(
+				(msg) =>
+					msg.role === 'user' &&
+					msg.type === 'text' &&
+					'revertVersionId' in msg &&
+					msg.revertVersionId === versionId,
+			);
+			if (messageIndex !== -1) {
+				chatMessages.value = chatMessages.value.slice(0, messageIndex);
+			}
+
+			return true;
+		} catch (error) {
+			console.error('Failed to restore workflow version:', error);
+			return false;
+		}
+	}
+
 	// Public API
 	return {
 		// State
@@ -795,6 +931,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
 		workflowTodos,
+		versionCardMessages,
 
 		// Methods
 		abortStreaming,
@@ -812,5 +949,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		resetAiBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
+		// Version management
+		restoreToVersion,
 	};
 });

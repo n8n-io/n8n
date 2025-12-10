@@ -110,4 +110,9 @@ export class WorkflowBuilderService {
 		const service = await this.getService();
 		return await service.getBuilderInstanceCredits(user);
 	}
+
+	async truncateMessagesAfter(workflowId: string, user: IUser, versionId: string) {
+		const service = await this.getService();
+		return service.truncateMessagesAfter(workflowId, user, versionId);
+	}
 }

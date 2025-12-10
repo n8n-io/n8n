@@ -5,14 +5,17 @@ import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
+import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
+import { VIEWS } from '@/app/constants';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
@@ -25,6 +28,7 @@ const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -35,6 +39,9 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const processedWorkflowUpdates = ref(new Set<string>());
 const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+
+// Version management state
+const pendingRestore = ref<{ versionId: string } | null>(null);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -84,27 +91,48 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
-async function onUserMessage(content: string) {
+/**
+ * Saves the workflow and returns the version ID for message history.
+ * For new workflows, creates the workflow first.
+ * For existing workflows, only saves if there are unsaved changes.
+ * Returns the current version ID after any save operation.
+ */
+async function saveWorkflowAndGetVersionId(): Promise<string | undefined> {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
+	const hasUnsavedChanges = uiStore.stateIsDirty;
 
-	// Save the workflow to get workflow ID which is used for session
-	if (isNewWorkflow) {
+	// Save if it's a new workflow or has unsaved changes
+	if (isNewWorkflow || hasUnsavedChanges) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
 
+	// Return the current version ID (will be set after save)
+	return workflowsStore.workflowVersionId;
+}
+
+async function onUserMessage(content: string) {
 	// Reset tidy up flag for each new message exchange
 	shouldTidyUp.value = false;
 
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
-	builderStore.sendChatMessage({ text: content, initialGeneration: isInitialGeneration });
+	// Save workflow before sending message to get versionId for restore functionality
+	// @todo test if error happens while saving?
+	const versionId = await saveWorkflowAndGetVersionId();
+
+	await builderStore.sendChatMessage({
+		text: content,
+		initialGeneration: isInitialGeneration,
+		versionId,
+	});
 }
 
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	shouldTidyUp.value = false;
+	pendingRestore.value = null;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -212,17 +240,18 @@ watch(
 // we want to save the workflow
 watch(
 	() => builderStore.streaming,
-	async (isStreaming) => {
-		if (
-			builderStore.initialGeneration &&
-			!isStreaming &&
-			workflowsStore.workflow.nodes.length > 0
-		) {
-			// Check if the generation completed successfully (no error or cancellation)
-			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-			const successful =
-				lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
+	async (isStreaming, wasStreaming) => {
+		// Only process when streaming just ended (was streaming, now not)
+		if (!wasStreaming || isStreaming) {
+			return;
+		}
 
+		// Check if the response completed successfully (no error or cancellation)
+		const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+		const successful =
+			lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
+
+		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
 
 			// Only save if generation completed successfully
@@ -232,6 +261,55 @@ watch(
 		}
 	},
 );
+
+/**
+ * Handle restore button click on version card - shows confirmation
+ */
+function onRestoreRequest(versionId: string) {
+	pendingRestore.value = { versionId };
+}
+
+/**
+ * Handle restore confirmation
+ */
+async function onRestoreConfirm() {
+	if (!pendingRestore.value) return;
+
+	const { versionId } = pendingRestore.value;
+	const success = await builderStore.restoreToVersion(versionId);
+
+	if (success) {
+		// Reload the workflow to reflect the restored state
+		nodeViewEventBus.emit('importWorkflowData', {
+			data: workflowsStore.workflow,
+			tidyUp: false,
+			regenerateIds: false,
+			trackEvents: false,
+		});
+	}
+
+	pendingRestore.value = null;
+}
+
+/**
+ * Handle restore cancellation
+ */
+function onRestoreCancel() {
+	pendingRestore.value = null;
+}
+
+/**
+ * Handle "Show version" click - navigates to workflow history
+ */
+function onShowVersion(versionId: string) {
+	void router.push({
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			name: workflowsStore.workflowId,
+			versionId,
+		},
+	});
+}
 
 // Reset on route change
 watch(currentRoute, () => {
@@ -266,12 +344,21 @@ defineExpose({
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.abortStreaming"
+			@restore="onRestoreRequest"
 		>
 			<template #header>
 				<slot name="header" />
 			</template>
 			<template #messagesFooter>
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
+				<RestoreVersionConfirm
+					v-if="pendingRestore"
+					:version-id="pendingRestore.versionId"
+					:workflow-id="workflowsStore.workflowId"
+					@confirm="onRestoreConfirm"
+					@cancel="onRestoreCancel"
+					@show-version="onShowVersion"
+				/>
 			</template>
 			<template #placeholder>
 				<N8nText :class="$style.topText"

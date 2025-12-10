@@ -24,6 +24,7 @@ const emit = defineEmits<{
 	codeReplace: [];
 	codeUndo: [];
 	feedback: [RatingFeedback];
+	restore: [versionId: string];
 }>();
 
 const messageComponent = computed<Component | null>(() => {
@@ -45,6 +46,7 @@ const messageComponent = computed<Component | null>(() => {
 			@code-replace="emit('codeReplace')"
 			@code-undo="emit('codeUndo')"
 			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
+			@restore="(versionId: string) => emit('restore', versionId)"
 		/>
 		<slot
 			v-else-if="message.type === 'custom'"

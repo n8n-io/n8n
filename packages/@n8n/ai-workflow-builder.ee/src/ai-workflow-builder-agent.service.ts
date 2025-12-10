@@ -301,4 +301,12 @@ export class AiWorkflowBuilderService {
 			creditsClaimed: 0,
 		};
 	}
+
+	/**
+	 * Truncate all messages including and after the message with the specified versionId
+	 * Used when restoring to a previous version
+	 */
+	truncateMessagesAfter(workflowId: string, user: IUser, versionId: string): boolean {
+		return this.sessionManager.truncateMessagesAfter(workflowId, user.id, versionId);
+	}
 }

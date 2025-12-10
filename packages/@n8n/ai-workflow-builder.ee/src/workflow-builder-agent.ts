@@ -168,6 +168,8 @@ export interface ChatPayload {
 		expressionValues?: Record<string, ExpressionValue[]>;
 	};
 	featureFlags?: BuilderFeatureFlags;
+	/** Version ID to store in message metadata for restore functionality */
+	versionId?: string;
 }
 
 export class WorkflowBuilderAgent {
@@ -531,9 +533,13 @@ export class WorkflowBuilderAgent {
 		streamConfig: RunnableConfig,
 		agent: ReturnType<typeof this.createWorkflow>,
 	): Promise<AsyncIterable<StreamEvent>> {
+		const humanMessage = new HumanMessage({
+			content: payload.message,
+			additional_kwargs: payload.versionId ? { versionId: payload.versionId } : undefined,
+		});
 		const stream = await agent.stream(
 			{
-				messages: [new HumanMessage({ content: payload.message })],
+				messages: [humanMessage],
 				workflowJSON: this.getDefaultWorkflowJSON(payload),
 				workflowOperations: [],
 				workflowContext: payload.workflowContext,

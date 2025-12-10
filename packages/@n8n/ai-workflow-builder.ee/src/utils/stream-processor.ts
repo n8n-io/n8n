@@ -322,11 +322,19 @@ function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 	const rawText = extractHumanMessageText(msg.content);
 	const cleanedText = cleanContextTags(rawText);
 
-	return {
+	const result: Record<string, unknown> = {
 		role: 'user',
 		type: 'message',
 		text: cleanedText,
 	};
+
+	// Extract versionId from additional_kwargs and expose as revertVersionId
+	const versionId = msg.additional_kwargs?.versionId;
+	if (typeof versionId === 'string') {
+		result.revertVersionId = versionId;
+	}
+
+	return result;
 }
 
 /** Process array content from AIMessage and return formatted text messages */

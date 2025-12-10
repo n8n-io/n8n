@@ -48,6 +48,7 @@ const emit = defineEmits<{
 	codeUndo: [number];
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
+	restore: [versionId: string];
 }>();
 
 const onClose = () => emit('close');
@@ -430,6 +431,7 @@ defineExpose({
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
+									@restore="(versionId: string) => emit('restore', versionId)"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
