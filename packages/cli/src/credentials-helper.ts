@@ -370,7 +370,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Resolve dynamic credentials if configured (EE feature)
 		if (this.credentialResolutionProvider) {
 			decryptedDataOriginal = await this.credentialResolutionProvider.resolveIfNeeded(
-				credentialsEntity,
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					isResolvable: false,
+					// TODO: use the actual values from the entity once they are added
+					// isResolvable: credentialsEntity.isResolvable,
+					// resolverId: (credentialsEntity as any).resolverId,
+					// resolvableAllowFallback: (credentialsEntity as any).resolvableAllowFallback,
+				},
 				decryptedDataOriginal,
 				additionalData.executionContext,
 				additionalData.workflowSettings,

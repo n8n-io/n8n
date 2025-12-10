@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { CredentialsEntity } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, type ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import type {
@@ -7,6 +6,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 } from 'n8n-workflow';
+
+import type { CredentialResolveMetadata } from '@/credential-resolution-provider.interface';
 
 import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
@@ -21,23 +22,15 @@ describe('DynamicCredentialService', () => {
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockLogger: jest.Mocked<Logger>;
 
-	const createMockCredentialsEntity = (overrides: Partial<CredentialsEntity> = {}) =>
+	const createMockCredentialsMetadata = (overrides: Partial<CredentialResolveMetadata> = {}) =>
 		({
 			id: 'cred-123',
 			name: 'Test Credential',
-			type: 'testApi',
-			data: 'encrypted-data',
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			isManaged: false,
-			isGlobal: false,
 			isResolvable: true,
 			resolvableAllowFallback: false,
 			resolverId: 'resolver-456',
-			shared: [],
-			toJSON: jest.fn(),
 			...overrides,
-		}) as CredentialsEntity;
+		}) as CredentialResolveMetadata;
 
 	const createMockResolverEntity = (overrides: Partial<DynamicCredentialResolver> = {}) =>
 		({
@@ -129,7 +122,7 @@ describe('DynamicCredentialService', () => {
 
 		describe('should return static credentials when', () => {
 			it('credential is not resolvable', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					isResolvable: false,
 				});
 
@@ -140,7 +133,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('credential has no resolver ID', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					isResolvable: true,
 					resolverId: undefined,
 				});
@@ -152,7 +145,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver entity is not found and fallback is allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 
@@ -171,7 +164,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver instance is not found in registry and fallback is allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -186,7 +179,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('execution context is missing and fallback is allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -207,7 +200,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('credential context decryption fails and fallback is allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -234,7 +227,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver getSecret fails and fallback is allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -266,7 +259,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver throws CredentialResolverDataNotFoundError and fallback is allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -296,7 +289,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('no resolver on credential or workflow settings', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: undefined,
 				});
 				const workflowSettings = {}; // No credentialResolverId
@@ -316,7 +309,7 @@ describe('DynamicCredentialService', () => {
 
 		describe('should throw error when', () => {
 			it('resolver entity is not found and fallback is not allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: false,
 				});
 
@@ -332,7 +325,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver instance is not found in registry and fallback is not allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: false,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -346,7 +339,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('execution context is missing and fallback is not allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: false,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -367,7 +360,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver getSecret fails and fallback is not allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: false,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -400,7 +393,7 @@ describe('DynamicCredentialService', () => {
 
 		describe('should successfully resolve dynamic credentials when', () => {
 			it('all conditions are met and merges static with dynamic data', async () => {
-				const credentialsEntity = createMockCredentialsEntity();
+				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
@@ -443,7 +436,11 @@ describe('DynamicCredentialService', () => {
 					refreshToken: 'dynamic-refresh-token', // From dynamic (new field)
 				});
 				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
-					prefix: 'test',
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: {
+						prefix: 'test',
+					},
 				});
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Successfully resolved dynamic credentials',
@@ -456,7 +453,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('resolver config is parsed correctly', async () => {
-				const credentialsEntity = createMockCredentialsEntity();
+				const credentialsEntity = createMockCredentialsMetadata();
 				const customConfig = {
 					prefix: 'custom',
 					timeout: 5000,
@@ -477,15 +474,15 @@ describe('DynamicCredentialService', () => {
 
 				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
 
-				expect(mockResolver.getSecret).toHaveBeenCalledWith(
-					'cred-123',
-					credentialContext,
-					customConfig,
-				);
+				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: customConfig,
+				});
 			});
 
 			it('credential context with metadata is properly decrypted', async () => {
-				const credentialsEntity = createMockCredentialsEntity();
+				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver();
 				const credentialContext: ICredentialContext = {
@@ -522,7 +519,7 @@ describe('DynamicCredentialService', () => {
 
 		describe('should handle edge cases', () => {
 			it('execution context without credentials field', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -543,7 +540,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('invalid JSON in encrypted credentials', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolvableAllowFallback: true,
 				});
 				const resolverEntity = createMockResolverEntity();
@@ -565,7 +562,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('empty resolver config', async () => {
-				const credentialsEntity = createMockCredentialsEntity();
+				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity({
 					config: 'encrypted-empty-config', // Simulates encrypted empty config
 				});
@@ -581,13 +578,17 @@ describe('DynamicCredentialService', () => {
 
 				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
 
-				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {});
+				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: {},
+				});
 			});
 		});
 
 		describe('workflow settings fallback', () => {
 			it('should use workflow settings resolver when credential has no resolver', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: undefined, // No resolver on credential
 				});
 				const workflowSettings = {
@@ -627,7 +628,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('should prefer credential resolver over workflow settings resolver', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: 'credential-resolver-456',
 				});
 				const workflowSettings = {
@@ -667,7 +668,7 @@ describe('DynamicCredentialService', () => {
 			});
 
 			it('should fall back to static when workflow resolver not found and fallback allowed', async () => {
-				const credentialsEntity = createMockCredentialsEntity({
+				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: undefined,
 					resolvableAllowFallback: true,
 				});
