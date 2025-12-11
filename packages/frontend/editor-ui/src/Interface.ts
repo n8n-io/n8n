@@ -547,7 +547,7 @@ export interface SectionCreateElement extends CreateElementBase {
 	title: string;
 	children: INodeCreateElement[];
 	/**
-	 * Whether to show a separator a the bottom of the expanded section
+	 * Whether to show a separator at the bottom of the expanded section
 	 */
 	showSeparator?: boolean;
 }
