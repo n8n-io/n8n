@@ -1035,6 +1035,7 @@ describe('Slack V2 > GenericFunctions', () => {
 			};
 			const result = processThreadOptions(threadOptions);
 			expect(result).toEqual({
+				thread_ts: 0,
 				reply_broadcast: true,
 			});
 		});

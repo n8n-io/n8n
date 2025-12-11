@@ -2,17 +2,17 @@ import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
-	IHttpRequestMethods,
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 
-import type { SendAndWaitMessageBody } from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../../utils/utilities';
+import type { SendAndWaitMessageBody } from './MessageInterface';
 
 interface RateLimitOptions {
 	/**
@@ -390,7 +390,7 @@ export function processThreadOptions(threadOptions: IDataObject | undefined): ID
 
 	if (threadOptions?.replyValues) {
 		const replyValues = threadOptions.replyValues as IDataObject;
-		if (replyValues.thread_ts) {
+		if (replyValues.thread_ts !== undefined) {
 			result.thread_ts = replyValues.thread_ts;
 		}
 		if (replyValues.reply_broadcast !== undefined) {
@@ -448,6 +448,11 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 		],
 	};
+
+	const options = context.getNodeParameter('options', 0, {}) as IDataObject;
+	const threadOptions = options.thread_ts as IDataObject | undefined;
+	const threadParams = processThreadOptions(threadOptions);
+	Object.assign(body, threadParams);
 
 	if (config.appendAttribution) {
 		const instanceId = context.getInstanceId();

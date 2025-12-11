@@ -45,6 +45,48 @@ describe('Send and Wait utils tests', () => {
 				]),
 			);
 		});
+
+		it('should add additionalOptionsProperties to Options collections', () => {
+			const targetProperties: INodeProperties[] = [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+
+			const additionalOption: INodeProperties = {
+				displayName: 'Custom Option',
+				name: 'customOption',
+				type: 'string',
+				default: '',
+			};
+
+			const result = getSendAndWaitProperties(targetProperties, 'message', [], {
+				additionalOptionsProperties: [additionalOption],
+			});
+
+			// Find all Options collections
+			const optionsCollections = result.filter(
+				(prop) => prop.name === 'options' && prop.type === 'collection',
+			);
+
+			// Should have 2 Options collections (one for approval, one for freeText/customForm)
+			expect(optionsCollections).toHaveLength(2);
+
+			// Both should contain the additional option
+			optionsCollections.forEach((optionsCollection) => {
+				expect(optionsCollection.options).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							displayName: 'Custom Option',
+							name: 'customOption',
+						}),
+					]),
+				);
+			});
+		});
 	});
 
 	describe('getSendAndWaitConfig', () => {
