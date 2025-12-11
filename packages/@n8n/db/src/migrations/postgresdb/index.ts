@@ -120,6 +120,7 @@ import { ActivateExecuteWorkflowTriggerWorkflows1763048000000 } from '../common/
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
+import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -245,4 +246,5 @@ export const postgresMigrations: Migration[] = [
 	CreateBinaryDataTable1763716655000,
 	CreateWorkflowPublishHistoryTable1764167920585,
 	ActivateExecuteWorkflowTriggerWorkflows1763048000000,
+	BackfillMissingWorkflowHistoryRecords1765448186933,
 ];
