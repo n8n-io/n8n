@@ -83,13 +83,13 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return this.handleMissingContext(credentialsResolveMetadata, staticData);
 		}
 
-		const credentialType = this.loadNodesAndCredentials.getCredential(
-			credentialsResolveMetadata.type,
-		);
-
-		const sharedFields = extractSharedFields(credentialType.type);
-
 		try {
+			const credentialType = this.loadNodesAndCredentials.getCredential(
+				credentialsResolveMetadata.type,
+			);
+
+			const sharedFields = extractSharedFields(credentialType.type);
+
 			// Decrypt and parse resolver configuration
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
