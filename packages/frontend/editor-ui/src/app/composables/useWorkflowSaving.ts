@@ -326,6 +326,7 @@ export function useWorkflowSaving({
 			openInNewWindow,
 			parentFolderId,
 			uiContext,
+			requestNewId,
 			data,
 		}: {
 			name?: string;
@@ -333,6 +334,7 @@ export function useWorkflowSaving({
 			resetWebhookUrls?: boolean;
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
+			requestNewId?: boolean;
 			parentFolderId?: string;
 			uiContext?: string;
 			data?: WorkflowDataCreate;
@@ -344,6 +346,10 @@ export function useWorkflowSaving({
 
 			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
+
+			if (requestNewId) {
+				delete workflowDataRequest.id;
+			}
 
 			if (resetNodeIds) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
