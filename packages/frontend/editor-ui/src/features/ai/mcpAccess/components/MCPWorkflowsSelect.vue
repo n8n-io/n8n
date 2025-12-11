@@ -24,24 +24,29 @@ const isLoading = ref(false);
 const hasFetched = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
 const workflowOptions = ref<WorkflowListItem[]>([]);
+let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const showEmptyState = computed(() => {
 	return !isLoading.value && hasFetched.value && workflowOptions.value.length === 0;
 });
 
 async function searchWorkflows(query?: string) {
+	if (loadingTimeoutId) {
+		clearTimeout(loadingTimeoutId);
+		loadingTimeoutId = null;
+	}
 	isLoading.value = true;
 	hasFetched.value = false;
 	try {
 		const response = await mcpStore.getMcpEligibleWorkflows({
 			take: 10,
-			query: query || undefined,
+			query: query ?? undefined,
 		});
 		workflowOptions.value = response?.data ?? [];
 	} catch (e) {
 		toast.showError(e, i18n.baseText('settings.mcp.connectWorkflows.error'));
 	} finally {
-		setTimeout(() => {
+		loadingTimeoutId = setTimeout(() => {
 			isLoading.value = false;
 			hasFetched.value = true;
 		}, LOADING_INDICATOR_TIMEOUT);
