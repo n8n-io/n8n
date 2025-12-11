@@ -103,14 +103,14 @@ Creates the "target" function for LangSmith that does ALL the work:
 causes 403 errors when making nested traceable calls. By doing all work in the
 target, we avoid this issue.
 
-### Pairwise Evaluator (`chains/pairwise-evaluator.ts`)
+### Pairwise Judge Chain (`chains/pairwise-judge-chain.ts`)
 
 The LLM chain that acts as a judge:
 - Takes a workflow + dos/donts criteria
 - Returns violations and passes with justifications
 - Calculates `primaryPass` (no violations) and `diagnosticScore`
 
-### LangSmith Evaluator (`langsmith/pairwise-ls-evaluator.ts`)
+### LangSmith Metrics Builder (`langsmith/pairwise-metrics-builder.ts`)
 
 Builds LangSmith-compatible metrics from judge results:
 - `buildSingleGenerationResults()`: For numGenerations=1
@@ -229,10 +229,10 @@ evaluations/
 ├── langsmith/
 │   ├── pairwise-runner.ts        # Orchestration (LangSmith + local modes)
 │   ├── pairwise-generator.ts     # Target function + workflow generation
-│   └── pairwise-ls-evaluator.ts  # LangSmith metric builders
+│   └── pairwise-metrics-builder.ts  # LangSmith metric builders
 │
 ├── chains/
-│   ├── pairwise-evaluator.ts     # LLM judge chain
+│   ├── pairwise-judge-chain.ts   # LLM judge chain
 │   └── evaluators/base.ts        # Evaluator chain factory
 │
 ├── utils/

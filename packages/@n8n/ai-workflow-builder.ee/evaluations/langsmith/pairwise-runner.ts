@@ -3,7 +3,7 @@ import type { Example } from 'langsmith/schemas';
 import pc from 'picocolors';
 
 import { createPairwiseTarget, generateWorkflow } from './pairwise-generator';
-import { createPairwiseLangsmithEvaluator } from './pairwise-ls-evaluator';
+import { createPairwiseLangsmithEvaluator } from './pairwise-metrics-builder';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
@@ -91,6 +91,82 @@ function logPairwiseConfig(log: EvalLogger, options: LogPairwiseConfigOptions): 
 	}
 }
 
+/** Validate common pairwise evaluation inputs */
+function validatePairwiseInputs(numJudges: number, numGenerations: number): void {
+	if (numJudges < 1) {
+		throw new Error('numJudges must be at least 1');
+	}
+	if (numGenerations < 1) {
+		throw new Error('numGenerations must be at least 1');
+	}
+}
+
+interface DisplayLocalResultsOptions {
+	generationResults: GenerationResult[];
+	numJudges: number;
+	numGenerations: number;
+	totalTime: number;
+	verbose: boolean;
+}
+
+/** Display results for local pairwise evaluation */
+function displayLocalResults(log: EvalLogger, options: DisplayLocalResultsOptions): void {
+	const { generationResults, numJudges, numGenerations, totalTime, verbose } = options;
+	const aggregation = aggregateGenerations(generationResults);
+
+	// Display aggregated result
+	if (numGenerations > 1) {
+		log.info(
+			`\n📊 Generation Correctness: ${aggregation.passingGenerations}/${aggregation.totalGenerations} → ` +
+				`${aggregation.generationCorrectness >= 0.5 ? pc.green(aggregation.generationCorrectness.toFixed(2)) : pc.red(aggregation.generationCorrectness.toFixed(2))}`,
+		);
+		log.info(
+			`   Aggregated Diagnostic: ${(aggregation.aggregatedDiagnosticScore * 100).toFixed(0)}%`,
+		);
+	} else {
+		// Single generation - show original format
+		const firstGen = generationResults[0];
+		log.info(
+			`\n📊 Result: ${firstGen.primaryPasses}/${numJudges} judges → ` +
+				`${firstGen.majorityPass ? pc.green('PASS') : pc.red('FAIL')} ` +
+				`(${(firstGen.avgDiagnosticScore * 100).toFixed(0)}%)`,
+		);
+	}
+	log.dim(`   Timing: ${totalTime.toFixed(1)}s total`);
+
+	// Per-generation breakdown (verbose or multi-gen)
+	if (verbose && numGenerations > 1) {
+		log.info(pc.dim('\nPer-generation breakdown:'));
+		generationResults.forEach((g, i) => {
+			log.info(
+				pc.dim(
+					`  Gen ${i + 1}: ${g.majorityPass ? 'PASS' : 'FAIL'} ` +
+						`(${g.primaryPasses}/${numJudges} judges, ${(g.avgDiagnosticScore * 100).toFixed(0)}%)`,
+				),
+			);
+		});
+	}
+
+	// Show violations if any (from first generation for simplicity)
+	const allViolations = generationResults[0].judgeResults.flatMap((r, i) =>
+		r.violations.map((v) => ({ judge: i + 1, rule: v.rule, justification: v.justification })),
+	);
+	if (allViolations.length > 0) {
+		log.info(pc.yellow('\nViolations (Gen 1):'));
+		for (const v of allViolations) {
+			log.info(pc.dim(`  [Judge ${v.judge}] ${v.rule}: ${v.justification}`));
+		}
+	}
+
+	// Show workflow summary
+	if (verbose && generationResults[0].workflow.nodes) {
+		log.info(pc.dim('\nWorkflow nodes (Gen 1):'));
+		for (const node of generationResults[0].workflow.nodes) {
+			log.info(pc.dim(`  - ${node.name} (${node.type})`));
+		}
+	}
+}
+
 // ============================================================================
 // Public API - LangSmith Evaluation
 // ============================================================================
@@ -111,7 +187,6 @@ export interface PairwiseEvaluationOptions {
  * Runs pairwise evaluation using LangSmith.
  * Generates workflows from dataset prompts and evaluates them against do/don't criteria.
  */
-// eslint-disable-next-line complexity
 export async function runPairwiseLangsmithEvaluation(
 	options: PairwiseEvaluationOptions = {},
 ): Promise<void> {
@@ -140,13 +215,7 @@ export async function runPairwiseLangsmithEvaluation(
 	logFeatureFlags(log, featureFlags);
 
 	try {
-		// Validate inputs
-		if (numJudges < 1) {
-			throw new Error('numJudges must be at least 1');
-		}
-		if (numGenerations < 1) {
-			throw new Error('numGenerations must be at least 1');
-		}
+		validatePairwiseInputs(numJudges, numGenerations);
 
 		if (!process.env.LANGSMITH_API_KEY) {
 			throw new Error('LANGSMITH_API_KEY environment variable not set');
@@ -247,7 +316,6 @@ export interface LocalPairwiseOptions {
  * Runs a single pairwise evaluation locally without LangSmith.
  * Useful for testing prompts and criteria before running full dataset evaluation.
  */
-// eslint-disable-next-line complexity
 export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions): Promise<void> {
 	const {
 		prompt,
@@ -276,13 +344,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	const startTime = Date.now();
 
 	try {
-		// Validate inputs
-		if (numJudges < 1) {
-			throw new Error('numJudges must be at least 1');
-		}
-		if (numGenerations < 1) {
-			throw new Error('numGenerations must be at least 1');
-		}
+		validatePairwiseInputs(numJudges, numGenerations);
 
 		const { parsedNodeTypes, llm } = await setupTestEnvironment();
 
@@ -326,61 +388,14 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 			}
 		}
 
-		// Aggregate across generations
-		const aggregation = aggregateGenerations(generationResults);
 		const totalTime = (Date.now() - startTime) / 1000;
-
-		// Display aggregated result
-		if (numGenerations > 1) {
-			log.info(
-				`\n📊 Generation Correctness: ${aggregation.passingGenerations}/${aggregation.totalGenerations} → ` +
-					`${aggregation.generationCorrectness >= 0.5 ? pc.green(aggregation.generationCorrectness.toFixed(2)) : pc.red(aggregation.generationCorrectness.toFixed(2))}`,
-			);
-			log.info(
-				`   Aggregated Diagnostic: ${(aggregation.aggregatedDiagnosticScore * 100).toFixed(0)}%`,
-			);
-		} else {
-			// Single generation - show original format
-			const firstGen = generationResults[0];
-			log.info(
-				`\n📊 Result: ${firstGen.primaryPasses}/${numJudges} judges → ` +
-					`${firstGen.majorityPass ? pc.green('PASS') : pc.red('FAIL')} ` +
-					`(${(firstGen.avgDiagnosticScore * 100).toFixed(0)}%)`,
-			);
-		}
-		log.dim(`   Timing: ${totalTime.toFixed(1)}s total`);
-
-		// Per-generation breakdown (verbose or multi-gen)
-		if (verbose && numGenerations > 1) {
-			log.info(pc.dim('\nPer-generation breakdown:'));
-			generationResults.forEach((g, i) => {
-				log.info(
-					pc.dim(
-						`  Gen ${i + 1}: ${g.majorityPass ? 'PASS' : 'FAIL'} ` +
-							`(${g.primaryPasses}/${numJudges} judges, ${(g.avgDiagnosticScore * 100).toFixed(0)}%)`,
-					),
-				);
-			});
-		}
-
-		// Show violations if any (from first generation for simplicity)
-		const allViolations = generationResults[0].judgeResults.flatMap((r, i) =>
-			r.violations.map((v) => ({ judge: i + 1, rule: v.rule, justification: v.justification })),
-		);
-		if (allViolations.length > 0) {
-			log.info(pc.yellow('\nViolations (Gen 1):'));
-			for (const v of allViolations) {
-				log.info(pc.dim(`  [Judge ${v.judge}] ${v.rule}: ${v.justification}`));
-			}
-		}
-
-		// Show workflow summary
-		if (verbose && generationResults[0].workflow.nodes) {
-			log.info(pc.dim('\nWorkflow nodes (Gen 1):'));
-			for (const node of generationResults[0].workflow.nodes) {
-				log.info(pc.dim(`  - ${node.name} (${node.type})`));
-			}
-		}
+		displayLocalResults(log, {
+			generationResults,
+			numJudges,
+			numGenerations,
+			totalTime,
+			verbose,
+		});
 	} catch (error) {
 		log.error(
 			`✗ Local evaluation failed: ${error instanceof Error ? error.message : String(error)}`,

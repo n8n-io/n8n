@@ -2,10 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import * as baseEvaluator from '../chains/evaluators/base';
-import {
-	evaluateWorkflowPairwise,
-	type PairwiseEvaluationInput,
-} from '../chains/pairwise-evaluator';
+import { evaluateWorkflowPairwise, type PairwiseEvaluationInput } from './pairwise-judge-chain';
 
 // Mock the base evaluator module
 jest.mock('../chains/evaluators/base', () => ({

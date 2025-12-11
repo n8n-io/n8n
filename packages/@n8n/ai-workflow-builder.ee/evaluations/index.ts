@@ -39,7 +39,8 @@ function parseCliArgs() {
 		numJudges: getIntFlag('--judges', 3),
 		numGenerations: getIntFlag('--generations', 1, 10),
 		concurrency: getIntFlag('--concurrency', 5),
-		maxExamples: getIntFlag('--max-examples', 0), // 0 means no limit
+		// Use 0 as sentinel for "no limit", convert to undefined for cleaner API
+		maxExamples: getIntFlag('--max-examples', 0) || undefined,
 		verbose: process.argv.includes('--verbose') || process.argv.includes('-v'),
 		experimentName: getFlagValue('--name'),
 		outputDir: getFlagValue('--output-dir'),
@@ -87,7 +88,7 @@ async function main(): Promise<void> {
 				verbose: args.verbose,
 				experimentName: args.experimentName,
 				concurrency: args.concurrency,
-				maxExamples: args.maxExamples || undefined,
+				maxExamples: args.maxExamples,
 				featureFlags,
 			});
 		}

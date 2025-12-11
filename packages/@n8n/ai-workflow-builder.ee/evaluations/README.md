@@ -30,7 +30,7 @@ evaluations/
 ├── chains/             # LLM evaluation chains
 │   ├── test-case-generator.ts    # Dynamic test case generation
 │   ├── workflow-evaluator.ts     # Main orchestrator for parallel evaluation
-│   ├── pairwise-evaluator.ts     # Pairwise do/don't criteria evaluator
+│   ├── pairwise-judge-chain.ts   # Pairwise do/don't criteria evaluator (LLM judge)
 │   └── evaluators/               # Individual metric evaluators
 │       ├── index.ts              # Evaluator exports
 │       ├── functionality-evaluator.ts      # Functional correctness evaluation
@@ -106,7 +106,7 @@ The Langsmith integration provides two key components:
 
 Pairwise evaluation provides a criteria-based approach to workflow evaluation with hierarchical scoring and multi-judge consensus. It evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset.
 
-**Evaluator (`chains/pairwise-evaluator.ts`):**
+**Judge Chain (`chains/pairwise-judge-chain.ts`):**
 - Evaluates workflows against a checklist of criteria (dos and don'ts)
 - Uses an LLM to determine if each criterion passes or fails
 - Requires evidence-based justification for each decision

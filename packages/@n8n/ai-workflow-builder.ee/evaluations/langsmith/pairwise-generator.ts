@@ -3,7 +3,10 @@ import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/ev
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { buildSingleGenerationResults, buildMultiGenerationResults } from './pairwise-ls-evaluator';
+import {
+	buildSingleGenerationResults,
+	buildMultiGenerationResults,
+} from './pairwise-metrics-builder';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';

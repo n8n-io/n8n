@@ -99,15 +99,3 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 	const disabledNodes = getDisabledNodes();
 	return filterNodeTypes(latestNodes, disabledNodes);
 }
-
-// Helper function to get specific node version for testing
-export function getNodeVersion(nodes: INodeTypeDescription[], nodeName: string): string {
-	const node = nodes.find((n) => n.name === nodeName);
-	if (!node) return 'not found';
-
-	const version = (node as NodeWithVersion).version;
-	if (Array.isArray(version)) {
-		return `[${version.join(', ')}]`;
-	}
-	return version?.toString() || 'unknown';
-}

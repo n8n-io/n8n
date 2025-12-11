@@ -4,7 +4,7 @@ import type { SimpleWorkflow } from '../../src/types/workflow';
 import {
 	evaluateWorkflowPairwise,
 	type PairwiseEvaluationResult,
-} from '../chains/pairwise-evaluator';
+} from '../chains/pairwise-judge-chain';
 
 // ============================================================================
 // Types
