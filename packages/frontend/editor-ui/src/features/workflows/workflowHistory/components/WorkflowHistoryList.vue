@@ -183,11 +183,6 @@ const onItemMounted = ({
 			:class="$style.sentinel"
 			aria-hidden="true"
 		/>
-		<li v-if="!props.items.length && !props.isListLoading" :class="$style.empty">
-			{{ i18n.baseText('workflowHistory.empty') }}
-			<br />
-			{{ i18n.baseText('workflowHistory.hint') }}
-		</li>
 		<li
 			v-if="props.isListLoading"
 			:class="$style.loader"
@@ -230,19 +225,6 @@ const onItemMounted = ({
 	height: 100%;
 	overflow: auto;
 	padding: var(--spacing--sm) var(--spacing--2xs);
-}
-
-.empty {
-	display: flex;
-	position: absolute;
-	height: 100%;
-	padding: 0 25%;
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
 }
 
 .loader {
