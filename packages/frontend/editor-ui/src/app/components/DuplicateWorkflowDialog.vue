@@ -111,17 +111,18 @@ const save = async (): Promise<void> => {
 			);
 		}
 
-		const workflowId = await workflowSaving.saveAsNewWorkflow({
+		const duplicatedWorkflowId = await workflowSaving.saveAsNewWorkflow({
 			name: workflowName,
 			data: workflowToUpdate,
 			tags: currentTagIds.value,
 			resetWebhookUrls: true,
 			openInNewWindow: true,
 			resetNodeIds: true,
+			requestNewId: true,
 			parentFolderId,
 		});
 
-		if (workflowId) {
+		if (duplicatedWorkflowId) {
 			closeDialog();
 			telemetry.track('User duplicated workflow', {
 				old_workflow_id: currentWorkflowId,
