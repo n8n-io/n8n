@@ -32,6 +32,10 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
+// When using Currents orchestration (pwc-p), tests run with workers=1
+// In this mode, fullyParallel should be false for accurate Currents dashboard reporting
+const useOrchestration = !!process.env.CURRENTS_RECORD_KEY;
+
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
@@ -64,7 +68,7 @@ export function getProjects(): Project[] {
 					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
-					fullyParallel: false,
+					fullyParallel: !useOrchestration,
 					use: { containerConfig: config },
 				},
 				{
