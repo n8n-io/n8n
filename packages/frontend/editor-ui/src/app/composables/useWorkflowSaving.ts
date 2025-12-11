@@ -413,7 +413,7 @@ export function useWorkflowSaving({
 
 	const autoSaveWorkflow = useDebounceFn(
 		async () => {
-			const saved = await saveCurrentWorkflow({}, true, false);
+			const saved = await saveCurrentWorkflow({}, true, false, true);
 			if (saved) {
 				console.log('[AutoSave] ✅ Workflow saved successfully');
 			}
