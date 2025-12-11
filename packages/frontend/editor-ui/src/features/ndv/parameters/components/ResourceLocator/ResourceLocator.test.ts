@@ -132,9 +132,8 @@ describe('ResourceLocator', () => {
 		const { getByTestId, getByText, getAllByTestId } = renderComponent();
 
 		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
-		// Click and focus on the input to fetch resources (focus is needed for readonly inputs)
+		// Focus on the input to fetch resources (the dropdown opens on focus)
 		const input = getByTestId('rlc-input');
-		await userEvent.click(input);
 		await fireEvent.focus(input);
 		// Wait for the resources to be fetched
 		await waitFor(() => {
@@ -248,7 +247,6 @@ describe('ResourceLocator', () => {
 		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
 		const input = getByTestId('rlc-input');
-		await userEvent.click(input);
 		await fireEvent.focus(input);
 
 		expect(getByTestId('rlc-error-container')).toBeInTheDocument();
@@ -296,7 +294,6 @@ describe('ResourceLocator', () => {
 		).toBeInTheDocument();
 
 		const input = getByTestId('rlc-input');
-		await userEvent.click(input);
 		await fireEvent.focus(input);
 
 		await waitFor(() => {
@@ -369,7 +366,6 @@ describe('ResourceLocator', () => {
 			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
 			const input = getByTestId('rlc-input');
-			await userEvent.click(input);
 			await fireEvent.focus(input);
 			await waitFor(() => {
 				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
@@ -397,7 +393,6 @@ describe('ResourceLocator', () => {
 			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
 			const input = getByTestId('rlc-input');
-			await userEvent.click(input);
 			await fireEvent.focus(input);
 
 			await waitFor(() => {
@@ -524,10 +519,9 @@ describe('ResourceLocator', () => {
 				},
 			});
 
-			// Focus to open dropdown - the new N8nInput passes data-test-id to the input element directly
-			// Focus triggers onInputFocus -> showResourceDropdown
-			const input = getByTestId('rlc-input');
-			input.focus();
+			// Focus to open dropdown - Focus triggers onInputFocus -> showResourceDropdown
+			// Use fireEvent instead of userEvent because userEvent doesn't work with fake timers
+			await fireEvent.focus(getByTestId('rlc-input'));
 			await vi.advanceTimersByTimeAsync(100);
 
 			// Advance time past the slowLoadNotice timeout (500ms)
@@ -619,7 +613,8 @@ describe('ResourceLocator', () => {
 			});
 
 			// Focus to open dropdown
-			getByTestId('rlc-input').focus();
+			// Use fireEvent instead of userEvent because userEvent doesn't work with fake timers
+			await fireEvent.focus(getByTestId('rlc-input'));
 
 			// Allow time for loading to complete - the mock resolves immediately
 			await vi.advanceTimersByTimeAsync(200);
@@ -651,7 +646,8 @@ describe('ResourceLocator', () => {
 			});
 
 			// Focus to open dropdown
-			getByTestId('rlc-input').focus();
+			// Use fireEvent instead of userEvent because userEvent doesn't work with fake timers
+			await fireEvent.focus(getByTestId('rlc-input'));
 
 			await vi.advanceTimersByTimeAsync(500);
 
