@@ -70,7 +70,7 @@ onBeforeUnmount(() => {
 <template>
 	<Modal
 		:name="MCP_CONNECT_WORKFLOWS_MODAL_KEY"
-		:title="i18n.baseText('settings.mcp.connectWorkflows')"
+		:title="i18n.baseText('settings.mcp.connectWorkflows.modalTitle')"
 		width="600px"
 		:class="$style.container"
 		:event-bus="modalBus"
