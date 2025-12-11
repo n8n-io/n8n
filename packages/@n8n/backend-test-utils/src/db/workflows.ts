@@ -240,11 +240,14 @@ export const getWorkflowById = async (id: string) =>
  * Create a workflow history record for a workflow
  * @param workflow workflow to create history for
  * @param user user who created the version (optional)
+ * @param withPublishHistory publish history to create (optional)
+ * @param autosaved whether this is an autosave (optional)
  */
 export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
 	withPublishHistory?: Partial<WorkflowPublishHistory>,
+	autosaved = false,
 ): Promise<void> {
 	const authors =
 		userOrProject instanceof User
@@ -259,6 +262,7 @@ export async function createWorkflowHistory(
 		nodes: workflow.nodes,
 		connections: workflow.connections,
 		authors,
+		autosaved,
 	});
 
 	if (withPublishHistory) {
@@ -301,20 +305,12 @@ export async function createActiveWorkflow(
 	const workflow = await createWorkflowWithTriggerAndHistory(
 		{ active: true, ...attributes },
 		userOrProject,
+		{},
 	);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
 
 	workflow.activeVersionId = workflow.versionId;
-
-	if (userOrProject instanceof User) {
-		await Container.get(WorkflowPublishHistoryRepository).save({
-			workflowId: workflow.id,
-			versionId: workflow.versionId,
-			event: 'activated',
-			userId: userOrProject.id,
-		});
-	}
 
 	return workflow;
 }
