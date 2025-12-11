@@ -451,6 +451,8 @@ async function initializeWorkspaceForNewWorkflow() {
 
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = workflowId.value;
+
+	fitView();
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
