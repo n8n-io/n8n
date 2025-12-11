@@ -70,6 +70,24 @@ export const description: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions,
+		options: [
+			{
+				displayName: 'Create If Not Exists',
+				name: 'createIfNotExists',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return the existing table if one with the same name already exists, instead of throwing an error',
+			},
+		],
+	},
 ];
 
 export async function execute(
@@ -81,14 +99,30 @@ export async function execute(
 		name: string;
 		type: 'string' | 'number' | 'boolean' | 'date';
 	}>;
+	const options = this.getNodeParameter('options', index, {}) as {
+		createIfNotExists?: boolean;
+	};
+
+	const aggregateProxy = await getDataTableAggregateProxy(this);
+
+	// If "Create If Not Exists" is enabled, check if table already exists
+	if (options.createIfNotExists) {
+		const existingTables = await aggregateProxy.getManyAndCount({
+			filter: { name: tableName },
+			take: 1,
+		});
+
+		// If a table with exact name match exists, return it
+		if (existingTables.data.length > 0 && existingTables.data[0].name === tableName) {
+			return [{ json: existingTables.data[0] as unknown as IDataObject }];
+		}
+	}
 
 	const columns: CreateDataTableColumnOptions[] = columnsData.map((col, idx) => ({
 		name: col.name,
 		type: col.type,
 		index: idx,
 	}));
-
-	const aggregateProxy = await getDataTableAggregateProxy(this);
 
 	const result = await aggregateProxy.createDataTable({
 		name: tableName,
