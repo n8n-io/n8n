@@ -6,6 +6,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { buildSingleGenerationResults, buildMultiGenerationResults } from './pairwise-ls-evaluator';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
+import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import type { PairwiseDatasetInput, PairwiseTargetOutput } from '../types/pairwise';
@@ -86,7 +87,7 @@ export function createPairwiseTarget(
 
 			return { prompt, evals: evalCriteria, _feedback: multiGenFeedback };
 		},
-		{ name: 'pairwise_evaluation', run_type: 'chain' },
+		{ name: TRACEABLE_NAMES.PAIRWISE_EVALUATION, run_type: 'chain' },
 	);
 }
 
@@ -106,12 +107,12 @@ export async function generateWorkflow(
 
 	await consumeGenerator(
 		agent.chat(
-			getChatPayload('pairwise-local', prompt, runId, featureFlags),
-			'pairwise-local-user',
+			getChatPayload(EVAL_TYPES.PAIRWISE_LOCAL, prompt, runId, featureFlags),
+			EVAL_USERS.PAIRWISE_LOCAL,
 		),
 	);
 
-	const state = await agent.getState(runId, 'pairwise-local-user');
+	const state = await agent.getState(runId, EVAL_USERS.PAIRWISE_LOCAL);
 
 	if (!state.values || !isWorkflowStateValues(state.values)) {
 		throw new Error('Invalid workflow state: workflow or messages missing');

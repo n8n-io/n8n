@@ -8,6 +8,7 @@ import pc from 'picocolors';
 import { createLangsmithEvaluator } from './evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
+import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
 	generateRunId,
@@ -53,15 +54,15 @@ function createWorkflowGenerator(
 			const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
 			await consumeGenerator(
 				agent.chat(
-					getChatPayload('langsmith-evals', messageContent, runId, featureFlags),
-					'langsmith-eval-user',
+					getChatPayload(EVAL_TYPES.LANGSMITH, messageContent, runId, featureFlags),
+					EVAL_USERS.LANGSMITH,
 					undefined, // abortSignal
 					callbacks, // externalCallbacks for LangSmith tracing
 				),
 			);
 
 			// Get generated workflow with validation
-			const state = await agent.getState(runId, 'langsmith-eval-user');
+			const state = await agent.getState(runId, EVAL_USERS.LANGSMITH);
 
 			// Validate state
 			if (!state.values) {
@@ -84,7 +85,7 @@ function createWorkflowGenerator(
 				usage,
 			};
 		},
-		{ name: 'workflow_generation', run_type: 'chain' },
+		{ name: TRACEABLE_NAMES.WORKFLOW_GENERATION, run_type: 'chain' },
 	);
 
 	return generateWorkflow;
@@ -113,13 +114,12 @@ export async function runLangsmithEvaluation(
 	}
 	console.log();
 
-	// Check for Langsmith API key
-	if (!process.env.LANGSMITH_API_KEY) {
-		console.error(pc.red('✗ LANGSMITH_API_KEY environment variable not set'));
-		process.exit(1);
-	}
-
 	try {
+		// Check for Langsmith API key
+		if (!process.env.LANGSMITH_API_KEY) {
+			throw new Error('LANGSMITH_API_KEY environment variable not set');
+		}
+
 		// Setup test environment
 		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
 		// Note: Don't use the tracer from setupTestEnvironment() here.
@@ -137,19 +137,17 @@ export async function runLangsmithEvaluation(
 		// Verify dataset exists
 		try {
 			await lsClient.readDataset({ datasetName });
-		} catch (error) {
-			console.error(pc.red(`✗ Dataset "${datasetName}" not found`));
-			console.log('\nAvailable datasets:');
-
-			// List available datasets
+		} catch {
+			// List available datasets for helpful error message
+			const availableDatasets: string[] = [];
 			for await (const dataset of lsClient.listDatasets()) {
-				console.log(pc.dim(`  - ${dataset.name} (${dataset.id})`));
+				availableDatasets.push(`${dataset.name} (${dataset.id})`);
 			}
 
-			console.log(
-				'\nTo use a different dataset, set the LANGSMITH_DATASET_NAME environment variable',
+			throw new Error(
+				`Dataset "${datasetName}" not found. Available datasets: ${availableDatasets.join(', ') || 'none'}. ` +
+					'Set LANGSMITH_DATASET_NAME environment variable to use a different dataset.',
 			);
-			process.exit(1);
 		}
 
 		console.log();

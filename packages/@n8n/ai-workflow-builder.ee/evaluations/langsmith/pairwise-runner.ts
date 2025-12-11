@@ -5,19 +5,12 @@ import pc from 'picocolors';
 import { createPairwiseTarget, generateWorkflow } from './pairwise-generator';
 import { createPairwiseLangsmithEvaluator, evaluateWorkflowLocally } from './pairwise-ls-evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
+import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
 import { aggregateGenerations, type GenerationResult } from '../utils/judge-panel';
 import { createLogger, type EvalLogger } from '../utils/logger';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const DEFAULT_NUM_JUDGES = 3;
-const DEFAULT_NUM_GENERATIONS = 1;
-const DEFAULT_EXPERIMENT_NAME = 'pairwise-evals';
 
 // ============================================================================
 // Helpers
@@ -64,10 +57,10 @@ function filterExamples(
 		const filtered = allExamples.filter((e) => getNotionId(e.metadata) === notionId);
 
 		if (filtered.length === 0) {
-			log.error(`❌ No example found with notion_id: ${notionId}`);
 			const availableIds = allExamples.map((e) => getNotionId(e.metadata)).filter(Boolean);
-			log.dim(`Available: ${availableIds.join(', ')}`);
-			process.exit(1);
+			throw new Error(
+				`No example found with notion_id: ${notionId}. Available: ${availableIds.join(', ')}`,
+			);
 		}
 
 		log.success(`✅ Found ${filtered.length} example(s)`);
@@ -143,14 +136,14 @@ export async function runPairwiseLangsmithEvaluation(
 	options: PairwiseEvaluationOptions = {},
 ): Promise<void> {
 	const {
-		repetitions = 1,
+		repetitions = DEFAULTS.REPETITIONS,
 		notionId,
-		numJudges = DEFAULT_NUM_JUDGES,
-		numGenerations = DEFAULT_NUM_GENERATIONS,
+		numJudges = DEFAULTS.NUM_JUDGES,
+		numGenerations = DEFAULTS.NUM_GENERATIONS,
 		verbose = false,
-		experimentName = DEFAULT_EXPERIMENT_NAME,
+		experimentName = DEFAULTS.EXPERIMENT_NAME,
 		outputDir,
-		concurrency = 5,
+		concurrency = DEFAULTS.CONCURRENCY,
 		maxExamples,
 		featureFlags,
 	} = options;
@@ -173,18 +166,17 @@ export async function runPairwiseLangsmithEvaluation(
 
 	logFeatureFlags(featureFlags);
 
-	if (!process.env.LANGSMITH_API_KEY) {
-		log.error('✗ LANGSMITH_API_KEY environment variable not set');
-		process.exit(1);
-	}
-
-	// Ensure LANGSMITH_TRACING is enabled
-	if (!process.env.LANGSMITH_TRACING) {
-		process.env.LANGSMITH_TRACING = 'true';
-		log.verbose('➔ Enabled LANGSMITH_TRACING=true');
-	}
-
 	try {
+		if (!process.env.LANGSMITH_API_KEY) {
+			throw new Error('LANGSMITH_API_KEY environment variable not set');
+		}
+
+		// Ensure LANGSMITH_TRACING is enabled
+		if (!process.env.LANGSMITH_TRACING) {
+			process.env.LANGSMITH_TRACING = 'true';
+			log.verbose('➔ Enabled LANGSMITH_TRACING=true');
+		}
+
 		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
 
 		if (!lsClient) {
@@ -200,8 +192,7 @@ export async function runPairwiseLangsmithEvaluation(
 			const dataset = await lsClient.readDataset({ datasetName });
 			datasetId = dataset.id;
 		} catch {
-			log.error(`✗ Dataset "${datasetName}" not found`);
-			process.exit(1);
+			throw new Error(`Dataset "${datasetName}" not found`);
 		}
 
 		// Always fetch examples to inject notion_id from metadata into inputs for tracing
@@ -283,8 +274,8 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	const {
 		prompt,
 		criteria,
-		numJudges = DEFAULT_NUM_JUDGES,
-		numGenerations = DEFAULT_NUM_GENERATIONS,
+		numJudges = DEFAULTS.NUM_JUDGES,
+		numGenerations = DEFAULTS.NUM_GENERATIONS,
 		verbose = false,
 		outputDir,
 		featureFlags,

@@ -4,6 +4,7 @@ import type { Run, Example } from 'langsmith/schemas';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { PairwiseEvaluationResult } from '../chains/pairwise-evaluator';
+import { METRIC_KEYS } from '../constants';
 import { isPairwiseTargetOutput } from '../types/pairwise';
 import {
 	runJudgePanel,
@@ -45,22 +46,22 @@ export function buildSingleGenerationResults(
 	// Return results in alphabetical key order
 	return [
 		{
-			key: 'pairwise_diagnostic',
+			key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC,
 			score: avgDiagnosticScore,
 			comment: `Average diagnostic score across ${numJudges} judges`,
 		},
 		{
-			key: 'pairwise_judges_passed',
+			key: METRIC_KEYS.PAIRWISE_JUDGES_PASSED,
 			score: primaryPasses,
 			comment: `${primaryPasses} of ${numJudges} judges returned primaryPass=true`,
 		},
-		{ key: 'pairwise_primary', score: majorityPass ? 1 : 0, comment },
+		{ key: METRIC_KEYS.PAIRWISE_PRIMARY, score: majorityPass ? 1 : 0, comment },
 		{
-			key: 'pairwise_total_passes',
+			key: METRIC_KEYS.PAIRWISE_TOTAL_PASSES,
 			score: judgeResults.reduce((sum, r) => sum + r.passes.length, 0),
 		},
 		{
-			key: 'pairwise_total_violations',
+			key: METRIC_KEYS.PAIRWISE_TOTAL_VIOLATIONS,
 			score: judgeResults.reduce((sum, r) => sum + r.violations.length, 0),
 		},
 	];
@@ -110,47 +111,47 @@ export function buildMultiGenerationResults(
 	// Return results in alphabetical key order
 	return [
 		{
-			key: 'pairwise_aggregated_diagnostic',
+			key: METRIC_KEYS.PAIRWISE_AGGREGATED_DIAGNOSTIC,
 			score: aggregatedDiagnosticScore,
 			comment: `Average diagnostic score across ${totalGenerations} generations`,
 		},
 		{
-			key: 'pairwise_diagnostic',
+			key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC,
 			score: firstGen.avgDiagnosticScore,
 			comment: 'First generation diagnostic score',
 		},
 		{
-			key: 'pairwise_generation_correctness',
+			key: METRIC_KEYS.PAIRWISE_GENERATION_CORRECTNESS,
 			score: generationCorrectness,
 			comment: `${passingGenerations} of ${totalGenerations} generations passed majority vote`,
 		},
 		{
-			key: 'pairwise_generations_passed',
+			key: METRIC_KEYS.PAIRWISE_GENERATIONS_PASSED,
 			score: passingGenerations,
 			comment,
 		},
 		{
-			key: 'pairwise_judges_passed',
+			key: METRIC_KEYS.PAIRWISE_JUDGES_PASSED,
 			score: totalJudgesPassed,
 			comment: `${totalJudgesPassed} of ${totalGenerations * numJudges} total judge calls passed`,
 		},
 		{
-			key: 'pairwise_primary',
+			key: METRIC_KEYS.PAIRWISE_PRIMARY,
 			score: firstGen.majorityPass ? 1 : 0,
 			comment: `First generation: ${firstGen.primaryPasses}/${numJudges} judges passed`,
 		},
 		{
-			key: 'pairwise_total_judge_calls',
+			key: METRIC_KEYS.PAIRWISE_TOTAL_JUDGE_CALLS,
 			score: totalGenerations * numJudges,
 			comment: `${totalGenerations} generations x ${numJudges} judges`,
 		},
 		{
-			key: 'pairwise_total_passes',
+			key: METRIC_KEYS.PAIRWISE_TOTAL_PASSES,
 			score: totalPasses,
 			comment: `Total criteria passes across all ${totalGenerations} generations`,
 		},
 		{
-			key: 'pairwise_total_violations',
+			key: METRIC_KEYS.PAIRWISE_TOTAL_VIOLATIONS,
 			score: totalViolations,
 			comment: `Total violations across all ${totalGenerations} generations`,
 		},
@@ -175,11 +176,11 @@ export function createPairwiseLangsmithEvaluator() {
 		if (!isPairwiseTargetOutput(outputs)) {
 			return [
 				{
-					key: 'pairwise_primary',
+					key: METRIC_KEYS.PAIRWISE_PRIMARY,
 					score: 0,
 					comment: 'Invalid output - missing _feedback from target',
 				},
-				{ key: 'pairwise_diagnostic', score: 0 },
+				{ key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC, score: 0 },
 			];
 		}
 
