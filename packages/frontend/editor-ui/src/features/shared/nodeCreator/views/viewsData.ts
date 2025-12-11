@@ -578,6 +578,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: i18n.baseText('nodeCreator.subcategoryNames.primitives'),
 					icon: 'cube',
+					sections: [
+						{
+							key: 'development',
+							title: i18n.baseText('nodeCreator.sectionNames.development'),
+							items: [CODE_NODE_TYPE],
+						},
+					],
 				},
 			},
 			{

@@ -7,7 +7,7 @@
 	},
 	"include": [
 		"credentials/**/*.ts",
-		"credentials/translations/**/*.json",
+		"credentials/**/*.json",
 		"nodes/**/*.ts",
 		"nodes/**/*.json",
 		"types/**/*.ts",
