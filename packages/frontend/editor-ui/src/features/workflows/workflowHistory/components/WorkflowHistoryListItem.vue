@@ -299,7 +299,7 @@ $hoverBackground: var(--color--background--light-1);
 	width: $timelineMarkerDiameter;
 	height: $timelineMarkerDiameter;
 	border-radius: 50%;
-	border: $timelineMarkerBorderWidth solid var(--color--foreground--shade-1);
+	border: $timelineMarkerBorderWidth solid var(--color--text--tint-1);
 }
 
 .timelineLine {
