@@ -54,7 +54,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 
 ## 0BSD
 
-* tslib 2.8.1, Copyright (c) Microsoft Corporation.
+* tslib 2.6.2, Copyright (c) Microsoft Corporation.
 
 ## Apache*
 
@@ -67,7 +67,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 ## Apache-2.0
 
 * @ampproject/remapping 2.3.0
-* @aws-crypto/crc32 3.0.0
+* @aws-crypto/crc32 5.2.0
 * @aws-crypto/crc32c 5.2.0
 * @aws-crypto/sha1-browser 5.2.0
 * @aws-crypto/sha256-browser 5.2.0
@@ -86,13 +86,13 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @aws-sdk/client-sso-oidc 3.808.0
 * @aws-sdk/core 3.808.0
 * @aws-sdk/credential-provider-cognito-identity 3.808.0
-* @aws-sdk/credential-provider-env 3.916.0
-* @aws-sdk/credential-provider-http 3.916.0
-* @aws-sdk/credential-provider-ini 3.918.0
-* @aws-sdk/credential-provider-node 3.918.0
-* @aws-sdk/credential-provider-process 3.916.0
-* @aws-sdk/credential-provider-sso 3.916.0
-* @aws-sdk/credential-provider-web-identity 3.918.0
+* @aws-sdk/credential-provider-env 3.808.0
+* @aws-sdk/credential-provider-http 3.808.0
+* @aws-sdk/credential-provider-ini 3.808.0
+* @aws-sdk/credential-provider-node 3.808.0
+* @aws-sdk/credential-provider-process 3.808.0
+* @aws-sdk/credential-provider-sso 3.808.0
+* @aws-sdk/credential-provider-web-identity 3.808.0
 * @aws-sdk/credential-providers 3.808.0
 * @aws-sdk/eventstream-handler-node 3.804.0
 * @aws-sdk/middleware-bucket-endpoint 3.808.0
@@ -112,7 +112,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @aws-sdk/signature-v4 3.374.0
 * @aws-sdk/signature-v4-multi-region 3.808.0
 * @aws-sdk/token-providers 3.808.0
-* @aws-sdk/types 3.914.0
+* @aws-sdk/types 3.804.0
 * @aws-sdk/util-arn-parser 3.804.0
 * @aws-sdk/util-endpoints 3.808.0
 * @aws-sdk/util-locate-window 3.310.0
@@ -188,52 +188,52 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @smithy/abort-controller 4.0.2
 * @smithy/chunked-blob-reader 5.0.0
 * @smithy/chunked-blob-reader-native 4.0.0
-* @smithy/config-resolver 4.4.0
-* @smithy/core 3.17.1
-* @smithy/credential-provider-imds 4.2.3
+* @smithy/config-resolver 4.1.2
+* @smithy/core 3.3.2
+* @smithy/credential-provider-imds 4.0.4
 * @smithy/eventstream-codec 2.2.0
 * @smithy/eventstream-serde-browser 4.0.2
 * @smithy/eventstream-serde-config-resolver 4.1.0
 * @smithy/eventstream-serde-node 4.0.2
 * @smithy/eventstream-serde-universal 4.0.2
-* @smithy/fetch-http-handler 5.3.4
+* @smithy/fetch-http-handler 5.0.2
 * @smithy/hash-blob-browser 4.0.2
-* @smithy/hash-node 4.2.3
+* @smithy/hash-node 4.0.2
 * @smithy/hash-stream-node 4.0.2
-* @smithy/invalid-dependency 4.2.3
-* @smithy/is-array-buffer 2.2.0
+* @smithy/invalid-dependency 4.0.2
+* @smithy/is-array-buffer 4.0.0
 * @smithy/md5-js 4.0.2
-* @smithy/middleware-content-length 4.2.3
-* @smithy/middleware-endpoint 4.3.5
-* @smithy/middleware-retry 4.4.5
-* @smithy/middleware-serde 4.2.3
-* @smithy/middleware-stack 4.2.3
-* @smithy/node-config-provider 4.3.3
-* @smithy/node-http-handler 4.4.3
-* @smithy/property-provider 4.2.3
-* @smithy/protocol-http 3.3.0
+* @smithy/middleware-content-length 4.0.2
+* @smithy/middleware-endpoint 4.1.5
+* @smithy/middleware-retry 4.1.6
+* @smithy/middleware-serde 4.0.4
+* @smithy/middleware-stack 4.0.2
+* @smithy/node-config-provider 4.1.1
+* @smithy/node-http-handler 4.0.4
+* @smithy/property-provider 4.0.2
+* @smithy/protocol-http 5.1.0
 * @smithy/querystring-builder 4.0.2
 * @smithy/querystring-parser 4.0.2
 * @smithy/service-error-classification 4.0.3
-* @smithy/shared-ini-file-loader 4.3.3
+* @smithy/shared-ini-file-loader 4.0.2
 * @smithy/signature-v4 2.2.1
-* @smithy/smithy-client 4.9.1
-* @smithy/types 4.8.0
-* @smithy/url-parser 4.2.3
-* @smithy/util-base64 4.3.0
-* @smithy/util-body-length-browser 4.2.0
-* @smithy/util-body-length-node 4.2.1
-* @smithy/util-buffer-from 2.2.0
+* @smithy/smithy-client 4.2.5
+* @smithy/types 4.2.0
+* @smithy/url-parser 4.0.2
+* @smithy/util-base64 4.0.0
+* @smithy/util-body-length-browser 4.0.0
+* @smithy/util-body-length-node 4.0.0
+* @smithy/util-buffer-from 4.0.0
 * @smithy/util-config-provider 4.0.0
-* @smithy/util-defaults-mode-browser 4.3.4
-* @smithy/util-defaults-mode-node 4.2.6
-* @smithy/util-endpoints 3.2.3
+* @smithy/util-defaults-mode-browser 4.0.13
+* @smithy/util-defaults-mode-node 4.0.13
+* @smithy/util-endpoints 3.0.4
 * @smithy/util-hex-encoding 2.2.0
-* @smithy/util-middleware 4.2.3
-* @smithy/util-retry 4.2.3
+* @smithy/util-middleware 4.0.2
+* @smithy/util-retry 4.0.3
 * @smithy/util-stream 4.2.0
 * @smithy/util-uri-escape 2.2.0
-* @smithy/util-utf8 2.3.0
+* @smithy/util-utf8 4.0.0
 * @smithy/util-waiter 4.0.3
 * @smithy/uuid 1.1.0
 * @sqlite.org/sqlite-wasm 3.50.4-build1
@@ -266,7 +266,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * filelist 1.0.4
 * gaxios 7.1.3
 * gcp-metadata 5.3.0
-* google-auth-library 10.1.0
+* google-auth-library 9.15.1
 * google-gax 4.6.1
 * google-logging-utils 1.1.1
 * groq-sdk 0.19.0
@@ -327,12 +327,12 @@ The n8n software includes open source packages, libraries, and modules, each of 
 ## BSD-2-Clause
 
 * app-module-path 2.2.0
-* cheerio-select 2.1.0, Copyright (c) Felix Böhm. All rights reserved.
+* cheerio-select 1.6.0, Copyright (c) Felix Böhm. All rights reserved.
 * css-select 4.3.0, Copyright (c) Felix Böhm. All rights reserved.
 * css-what 6.1.0, Copyright (c) Felix Böhm. All rights reserved.
 * dingbat-to-unicode 1.0.1
 * domelementtype 2.3.0, Copyright (c) Felix Böhm. All rights reserved.
-* domhandler 5.0.3, Copyright (c) Felix Böhm. All rights reserved.
+* domhandler 4.3.1, Copyright (c) Felix Böhm. All rights reserved.
 * domutils 3.1.0, Copyright (c) Felix Böhm. All rights reserved.
 * dotenv 8.6.0, Copyright (c) 2015, Scott Motte. All rights reserved.
 * entities 6.0.1, Copyright (c) Felix Böhm. All rights reserved.
@@ -385,7 +385,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * crypt 0.0.2, Copyright © 2011, Paul Vorbach. All rights reserved.. Copyright © 2009, Jeff Mott. All rights reserved.
 * d3-dsv 2.0.0, Copyright 2013-2016 Mike Bostock. All rights reserved.
 * d3-ease 3.0.1, Copyright 2010-2021 Mike Bostock. Copyright 2001 Robert Penner. All rights reserved.
-* diff 4.0.2, Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>
+* diff 8.0.2, Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>. All rights reserved.
 * esquery 1.6.0, Copyright (c) 2013, Joel Feenstra. All rights reserved.
 * express-handlebars 8.0.1, Copyright (c) 2014, Yahoo Inc.  All rights reserved.
 * filesize 10.1.0, Copyright (c) 2023, Jason Mulligan. All rights reserved.
@@ -421,7 +421,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * shelljs 0.8.5, Copyright (c) 2012, Artur Adib <arturadib@gmail.com>. All rights reserved.
 * source-map 0.6.1
 * source-map-js 1.2.1
-* sprintf-js 1.1.2, Copyright (c) 2007-present, Alexandru Mărășteanu <hello@alexei.ro>. All rights reserved.
+* sprintf-js 1.0.3, Copyright (c) 2007-2014, Alexandru Marasteanu <hello [at) alexei (dot] ro>. All rights reserved.
 * sqlite3 5.1.7, Copyright (c) MapBox. All rights reserved.
 * swagger2openapi 7.0.8, Copyright (c) 2016, Mermade Software. All rights reserved.
 * table 6.9.0, Copyright (c) 2018, Gajus Kuizinas (http://gajus.com/). All rights reserved.
@@ -524,7 +524,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * inflight 1.0.6, Copyright (c) Isaac Z. Schlueter
 * inherits 2.0.4, Copyright (c) Isaac Z. Schlueter
 * ini 1.3.8, Copyright (c) Isaac Z. Schlueter and Contributors
-* isexe 2.0.0, Copyright (c) Isaac Z. Schlueter and Contributors
+* isexe 3.1.1, Copyright (c) 2016-2022 Isaac Z. Schlueter and Contributors
 * istanbul-lib-processinfo 2.0.3, Copyright (c) Isaac Z. Schlueter and Contributors
 * json-stringify-safe 5.0.1, Copyright (c) Isaac Z. Schlueter and Contributors
 * jsonrepair 3.13.1, Copyright (c) 2020-2025 by Jos de Jong
@@ -534,7 +534,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * markdown-it-task-lists 2.1.1, Copyright (c) 2016, Revin Guillen
 * minifaker 1.34.1
 * minimalistic-assert 1.0.1, Copyright 2015 Calvin Metcalf
-* minimatch 3.0.8, Copyright (c) Isaac Z. Schlueter and Contributors
+* minimatch 9.0.5, Copyright (c) 2011-2023 Isaac Z. Schlueter and Contributors
 * minipass 7.1.2, Copyright (c) 2017-2023 npm, Inc., Isaac Z. Schlueter, and Contributors
 * minipass-collect 1.0.2, Copyright (c) Isaac Z. Schlueter and Contributors
 * minipass-flush 1.0.5, Copyright (c) Isaac Z. Schlueter and Contributors
@@ -583,7 +583,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * unique-filename 1.1.1, Copyright npm, Inc
 * unique-slug 2.0.2, Copyright npm, Inc
 * v8-to-istanbul 9.1.0, Copyright (c) 2017, Contributors
-* which 2.0.2, Copyright (c) Isaac Z. Schlueter and Contributors
+* which 5.0.0, Copyright (c) Isaac Z. Schlueter and Contributors
 * which-module 2.0.1, Copyright (c) 2016, Contributors
 * wide-align 1.1.5, Copyright (c) 2015, Rebecca Turner <me@re-becca.org>
 * wrappy 1.0.2, Copyright (c) Isaac Z. Schlueter and Contributors
@@ -592,7 +592,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * yallist 4.0.0, Copyright (c) Isaac Z. Schlueter and Contributors
 * yaml 2.3.4, Copyright Eemeli Aro <eemeli@gmail.com>
 * yargs-parser 21.1.1, Copyright (c) 2016, Contributors
-* zod-to-json-schema 3.24.6, Copyright (c) 2020, Stefan Terdell
+* zod-to-json-schema 3.23.3, Copyright (c) 2020, Stefan Terdell
 
 ## LGPL-3.0-or-later
 
@@ -606,7 +606,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @alloc/quick-lru 5.2.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 * @antfu/install-pkg 0.3.3, Copyright (c) 2021 Anthony Fu <https://github.com/antfu>
 * @antfu/utils 0.7.10, Copyright (c) 2021 Anthony Fu <https://github.com/antfu>
-* @anthropic-ai/sdk 0.27.3, Copyright 2023 Anthropic, PBC.
+* @anthropic-ai/sdk 0.56.0, Copyright 2023 Anthropic, PBC.
 * @apidevtools/json-schema-ref-parser 12.0.2, Copyright (c) 2015 James Messinger
 * @authenio/xml-encryption 2.0.2, Copyright (c) 2015 Auth0, Inc. <support@auth0.com> (http://auth0.com)
 * @azure/abort-controller 1.1.0, Copyright (c) 2020 Microsoft
@@ -629,9 +629,9 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @azure/search-documents 12.1.0, Copyright (c) 2020 Microsoft
 * @azure/storage-blob 12.26.0, Copyright (c) 2020 Microsoft
 * @babel/code-frame 7.27.1, Copyright (c) 2014-present Sebastian McKenzie and other contributors
-* @babel/compat-data 7.27.5, Copyright (c) 2014-present Sebastian McKenzie and other contributors
+* @babel/compat-data 7.28.5, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/core 7.28.4, Copyright (c) 2014-present Sebastian McKenzie and other contributors
-* @babel/generator 7.28.5, Copyright (c) 2014-present Sebastian McKenzie and other contributors
+* @babel/generator 7.28.3, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/helper-annotate-as-pure 7.27.3, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/helper-compilation-targets 7.27.2, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/helper-create-class-features-plugin 7.28.5, Copyright (c) 2014-present Sebastian McKenzie and other contributors
@@ -730,8 +730,8 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @babel/plugin-transform-unicode-sets-regex 7.27.1, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/preset-env 7.28.5, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/preset-modules 0.1.6-no-external-plugins, Copyright (c) 2020 Babel
-* @babel/runtime 7.28.4, Copyright (c) 2014-present Sebastian McKenzie and other contributors
-* @babel/template 7.27.2, Copyright (c) 2014-present Sebastian McKenzie and other contributors
+* @babel/runtime 7.26.10, Copyright (c) 2014-present Sebastian McKenzie and other contributors
+* @babel/template 7.26.9, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/traverse 7.28.4, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @babel/types 7.28.5, Copyright (c) 2014-present Sebastian McKenzie and other contributors
 * @bcoe/v8-coverage 1.0.2, Copyright © 2015-2017 Charles Samborski
@@ -885,7 +885,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @otplib/preset-default 12.0.1, Copyright (c) 2014 Gerald Yeo <contact@fusedthought.com>
 * @otplib/preset-v11 12.0.1, Copyright (c) 2014 Gerald Yeo <contact@fusedthought.com>
 * @oxc-project/runtime 0.92.0, Copyright (c) 2024-present VoidZero Inc. & Contributors. Copyright (c) 2023 Boshen
-* @oxc-project/types 0.97.0, Copyright (c) 2024-present VoidZero Inc. & Contributors. Copyright (c) 2023 Boshen
+* @oxc-project/types 0.94.0, Copyright (c) 2024-present VoidZero Inc. & Contributors. Copyright (c) 2023 Boshen
 * @paralleldrive/cuid2 2.2.2, Copyright (c) 2022 Eric Elliott
 * @parcel/watcher 2.5.1, Copyright (c) 2017-present Devon Govett
 * @parcel/watcher-darwin-arm64 2.5.1, Copyright (c) 2017-present Devon Govett
@@ -905,11 +905,11 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @redocly/config 0.20.3, Copyright 2024 Redocly Inc.
 * @redocly/openapi-core 1.28.5
 * @replit/codemirror-indentation-markers 6.5.3, Copyright (c) 2022 Replit
-* @rolldown/binding-darwin-arm64 1.0.0-beta.50
-* @rolldown/pluginutils 1.0.0-beta.50, Copyright (c) 2024-present VoidZero Inc. & Contributors
+* @rolldown/binding-darwin-arm64 1.0.0-beta.42
+* @rolldown/pluginutils 1.0.0-beta.42, Copyright (c) 2024-present VoidZero Inc. & Contributors
 * @rollup/plugin-inject 5.0.5
 * @rollup/pluginutils 5.1.4, Copyright (c) 2019 RollupJS Plugin Contributors (https://github.com/rollup/plugins/graphs/contributors)
-* @rollup/rollup-darwin-arm64 4.52.4
+* @rollup/rollup-darwin-arm64 4.49.0
 * @rtsao/scc 1.1.0, Copyright (c) 2019 Ryan Tsao
 * @rushstack/node-core-library 5.12.0, Copyright (c) Microsoft Corporation. All rights reserved.
 * @rushstack/rig-package 0.5.3, Copyright (c) Microsoft Corporation. All rights reserved.
@@ -1024,7 +1024,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @types/ftp 0.3.33
 * @types/glob 8.0.0
 * @types/gm 1.25.0
-* @types/graceful-fs 4.1.9
+* @types/graceful-fs 4.1.6
 * @types/html-to-text 9.0.4
 * @types/http-proxy 1.17.16
 * @types/humanize-duration 3.27.1
@@ -1107,7 +1107,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * @types/tedious 4.0.14
 * @types/temp 0.9.4
 * @types/through 0.0.30
-* @types/tough-cookie 4.0.5
+* @types/tough-cookie 4.0.2
 * @types/triple-beam 1.3.5
 * @types/utf8 3.0.3
 * @types/uuencode 0.0.3
@@ -1189,7 +1189,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * agent-base 7.1.3, Copyright (c) 2013 Nathan Rajlich <nathan@tootallnate.net>
 * agentkeepalive 4.6.0, Copyright(c) node-modules and other contributors.. Copyright(c) 2012 - 2015 fengmk2 <fengmk2@gmail.com>
 * aggregate-error 3.1.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
-* ajv 8.17.1, Copyright (c) 2015-2021 Evgeny Poberezkin
+* ajv 7.2.4, Copyright (c) 2015-2021 Evgeny Poberezkin
 * ajv-draft-04 1.0.0, Copyright (c) 2021 Evgeny Poberezkin
 * ajv-formats 3.0.1, Copyright (c) 2020 Evgeny Poberezkin
 * alasql 4.4.0, Copyright (c) 2014 - present  Andrey Gershun
@@ -1270,7 +1270,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * birpc 2.8.0, Copyright (c) 2021 Anthony Fu <https://github.com/antfu>
 * bl 6.0.12, Copyright (c) 2013-2019 bl contributors. ----------------------------------
 * bluebird 3.7.2, Copyright (c) 2013-2018 Petka Antonov
-* bn.js 4.12.2, Copyright Fedor Indutny, 2015.
+* bn.js 5.2.2, Copyright Fedor Indutny, 2015.
 * body-parser 2.2.0, Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>. Copyright (c) 2014-2015 Douglas Christopher Wilson <doug@somethingdoug.com>
 * bowser 2.11.0, Copyright 2015, Dustin Diaz (the "Original Author"). All rights reserved.
 * brace-expansion 1.1.12, Copyright (c) 2013 Julian Gruber <julian@juliangruber.com>
@@ -1284,7 +1284,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * browserify-des 1.0.2, Copyright (c) 2014-2017 Calvin Metcalf, Fedor Indutny & contributors
 * browserify-rsa 4.1.1, Copyright (c) 2014-2016 Calvin Metcalf & contributors
 * browserify-zlib 0.2.0, Copyright (c) 2014-2015 Devon Govett <devongovett@gmail.com>
-* browserslist 4.25.0, Copyright 2014 Andrey Sitnik <andrey@sitnik.ru> and other contributors
+* browserslist 4.27.0, Copyright 2014 Andrey Sitnik <andrey@sitnik.ru> and other contributors
 * browserslist-to-esbuild 2.1.1, Copyright (c) Marco Fugaro <marco.fugaro@gmail.com> (https://marcofuga.ro)
 * bs-logger 0.2.6, Copyright (c) 2018 Huafu Gandon
 * buffer 5.7.1, Copyright (c) Feross Aboukhadijeh, and other contributors.
@@ -1349,7 +1349,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * co 4.6.0, Copyright (c) 2014 TJ Holowaychuk &lt;tj@vision-media.ca&gt;
 * code-block-writer 13.0.3, Copyright (c) 2015-2024 David Sherret
 * collect-v8-coverage 1.0.1, Copyright (c) 2019 Simen Bekkhus
-* color 4.2.3, Copyright (c) 2012 Heather Arthur
+* color 3.2.1, Copyright (c) 2012 Heather Arthur
 * color-convert 1.9.3, Copyright (c) 2011-2016 Heather Arthur <fayearthur@gmail.com>
 * color-name 1.1.4
 * color-string 1.9.1, Copyright (c) 2011 Heather Arthur <fayearthur@gmail.com>
@@ -1381,7 +1381,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * constants-browserify 1.0.0, Copyright (c) 2013 Julian Gruber &lt;julian@juliangruber.com&gt;
 * content-disposition 1.0.0, Copyright (c) 2014-2017 Douglas Christopher Wilson
 * content-type 1.0.5, Copyright (c) 2015 Douglas Christopher Wilson
-* convert-source-map 2.0.0, Copyright 2013 Thorsten Lorenz. . All rights reserved.
+* convert-source-map 1.9.0, Copyright 2013 Thorsten Lorenz. . All rights reserved.
 * cookie 0.7.2, Copyright (c) 2012-2014 Roman Shtylman <shtylman@gmail.com>. Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com>
 * cookie-parser 1.4.7, Copyright (c) 2014 TJ Holowaychuk <tj@vision-media.ca>. Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com>
 * cookie-signature 1.0.6, Copyright (c) 2012 LearnBoost &lt;tj@learnboost.com&gt;
@@ -1472,8 +1472,8 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * dlv 1.1.3
 * docker-compose 1.2.0, Copyright (c) 2017 - 2021 PDMLab
 * doctypes 1.1.0, Copyright (c) 2015 Forbes Lindesay
-* dom-accessibility-api 0.5.16, Copyright (c) 2020 Sebastian Silbermann
-* dom-serializer 2.0.0, Copyright (c) 2014 The cheeriojs contributors
+* dom-accessibility-api 0.6.3, Copyright (c) 2020 Sebastian Silbermann
+* dom-serializer 1.4.1, Copyright (c) 2014 The cheeriojs contributors
 * domain-browser 4.22.0
 * domexception 4.0.0, Copyright © Domenic Denicola
 * dot-case 3.0.4, Copyright (c) 2014 Blake Embrey (hello@blakeembrey.com)
@@ -1568,7 +1568,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * fast-safe-stringify 2.1.1, Copyright (c) 2016 David Mark Clements. Copyright (c) 2017 David Mark Clements & Matteo Collina. Copyright (c) 2018 David Mark Clements, Matteo Collina & Ruben Bridgewater
 * fast-unique-numbers 8.0.13, Copyright (c) 2023 Christoph Guttandin
 * fast-uri 3.0.1, Copyright (c) 2021 The Fastify Team. Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae. All rights reserved.
-* fast-xml-parser 5.2.5, Copyright (c) 2017 Amit Kumar Gupta
+* fast-xml-parser 4.4.1, Copyright (c) 2017 Amit Kumar Gupta
 * fastest-levenshtein 1.0.16, Copyright (c) 2020 Kasper Unn Weihe
 * fdir 6.5.0, Copyright 2023 Abdullah Atta
 * fecha 4.2.3, Copyright (c) 2015 Taylor Hakes
@@ -1596,8 +1596,8 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * for-each 0.3.5, Copyright (c) 2012 Raynos.
 * foreach 2.0.6, Copyright (c) 2013 Manuel Stofer
 * form-data 4.0.4, Copyright (c) 2012 Felix Geisendörfer (felix@debuggable.com) and contributors
-* form-data-encoder 1.7.2, Copyright (c) 2021-present Nick K.
-* formdata-node 4.4.1, Copyright (c) 2017-present Nick K.
+* form-data-encoder 4.0.2, Copyright (c) 2021-present Nick K.
+* formdata-node 6.0.3, Copyright (c) 2017-present Nick K.
 * formdata-polyfill 4.0.10, Copyright (c) 2016 Jimmy Karl Roland Wärting
 * formidable 3.5.4, Copyright (c) 2011-present Felix Geisendörfer, and contributors.
 * forwarded 0.2.0, Copyright (c) 2014-2017 Douglas Christopher Wilson
@@ -1608,7 +1608,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * fromentries 1.3.2, Copyright (c) Feross Aboukhadijeh
 * fs-constants 1.0.0, Copyright (c) 2018 Mathias Buus
 * fs-extra 11.3.0, Copyright (c) 2011-2024 JP Richardson
-* fsevents 2.3.2, Copyright (C) 2010-2020 by Philipp Dunkel, Ben Noordhuis, Elan Shankar, Paul Miller
+* fsevents 2.3.3, Copyright (C) 2010-2020 by Philipp Dunkel, Ben Noordhuis, Elan Shankar, Paul Miller
 * function-bind 1.1.2, Copyright (c) 2013 Raynos.
 * function.prototype.name 1.1.6, Copyright (c) 2016 Jordan Harband
 * functions-have-names 1.2.3, Copyright (c) 2019 Jordan Harband
@@ -1769,23 +1769,23 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * jest-environment-node 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-expect-message 1.1.3, Copyright (c) 2018-present Matt Phillips <matt@mattphillips.io> mattphillips.io
 * jest-get-type 29.4.3, Copyright (c) Meta Platforms, Inc. and affiliates.
-* jest-haste-map 29.7.0, Copyright (c) Meta Platforms, Inc. and affiliates.
+* jest-haste-map 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-leak-detector 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-matcher-utils 29.5.0, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-message-util 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-mock 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-mock-extended 3.0.4, Copyright (c) 2019 Marc McIntyre
-* jest-pnp-resolver 1.2.3
+* jest-pnp-resolver 1.2.2
 * jest-regex-util 29.4.3, Copyright (c) Meta Platforms, Inc. and affiliates.
-* jest-resolve 29.7.0, Copyright (c) Meta Platforms, Inc. and affiliates.
+* jest-resolve 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-resolve-dependencies 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-runner 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-runtime 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-snapshot 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-util 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
-* jest-validate 29.7.0, Copyright (c) Meta Platforms, Inc. and affiliates.
+* jest-validate 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jest-watcher 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
-* jest-worker 29.7.0, Copyright (c) Meta Platforms, Inc. and affiliates.
+* jest-worker 29.6.2, Copyright (c) Meta Platforms, Inc. and affiliates.
 * jiti 2.6.1, Copyright (c) Pooya Parsa <pooya@pi0.io>
 * jju 1.4.0, Copyright (c) 2013 Alex Kocharin
 * join-component 1.1.0
@@ -2078,8 +2078,8 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * parse-ms 2.1.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 * parse-passwd 1.0.0, Copyright (c) 2016 Brian Woodward
 * parse-srcset 1.0.2, Copyright (c) 2014 Alex Bell
-* parse5 7.1.2, Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
-* parse5-htmlparser2-tree-adapter 7.0.0, Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
+* parse5 6.0.1, Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
+* parse5-htmlparser2-tree-adapter 6.0.1, Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
 * parse5-parser-stream 7.1.2, Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
 * parseley 0.12.1, Copyright (c) 2021-2022 KillyMXI <killy@mxii.eu.org>
 * parseurl 1.3.3, Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>. Copyright (c) 2014-2017 Douglas Christopher Wilson <doug@somethingdoug.com>
@@ -2109,7 +2109,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * pg-protocol 1.6.1, Copyright (c) 2010 - 2021 Brian Carlson
 * pg-types 4.0.2, Copyright (c) 2014 Brian M. Carlson
 * pgpass 1.0.5, Copyright (c) 2013-2016 Hannes Hörl
-* picomatch 4.0.3, Copyright (c) 2017-present, Jon Schlinkert.
+* picomatch 4.0.2, Copyright (c) 2017-present, Jon Schlinkert.
 * pidtree 0.6.0, Copyright (c) 2018 Simone Primarosa
 * pify 2.3.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 * pinia 2.2.4, Copyright (c) 2019-present Eduardo San Martin Morote
@@ -2125,17 +2125,17 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * polished 4.2.2, Copyright (c) 2016 - 2021 Brian Hough and Maximilian Stoiber
 * pop-iterate 1.0.1
 * possible-typed-array-names 1.1.0, Copyright (c) 2024 Jordan Harband
-* postcss 8.5.6, Copyright 2013 Andrey Sitnik <andrey@sitnik.ru>
+* postcss 8.4.49, Copyright 2013 Andrey Sitnik <andrey@sitnik.ru>
 * postcss-html 1.8.0, Copyright (c) 2018 刘祺
 * postcss-import 15.1.0, Copyright (c) 2014 Maxime Thirouin, Jason Campbell & Kevin Mårtensson
 * postcss-js 4.0.1, Copyright 2015 Andrey Sitnik <andrey@sitnik.ru>
-* postcss-load-config 6.0.1, Copyright Michael Ciniawsky <michael.ciniawsky@gmail.com>
+* postcss-load-config 4.0.2, Copyright Michael Ciniawsky <michael.ciniawsky@gmail.com>
 * postcss-media-query-parser 0.2.3
 * postcss-nested 6.0.1, Copyright 2014 Andrey Sitnik <andrey@sitnik.ru>
 * postcss-resolve-nested-selector 0.1.6, Copyright (c) 2016 David Clark. Copyright © CSSTools Contributors
 * postcss-safe-parser 6.0.0, Copyright 2013 Andrey Sitnik <andrey@sitnik.ru>
 * postcss-scss 4.0.9, Copyright 2013 Andrey Sitnik <andrey@sitnik.ru>
-* postcss-selector-parser 7.1.0, Copyright (c) Ben Briggs <beneb.info@gmail.com> (http://beneb.info)
+* postcss-selector-parser 6.1.2, Copyright (c) Ben Briggs <beneb.info@gmail.com> (http://beneb.info)
 * postcss-value-parser 4.2.0, Copyright (c) Bogdan Chadkin <trysound@yandex.ru>
 * postgres-array 2.0.0, Copyright (c) Ben Drucker <bvdrucker@gmail.com> (bendrucker.me)
 * postgres-bytea 1.0.0, Copyright (c) Ben Drucker <bvdrucker@gmail.com> (bendrucker.me)
@@ -2149,7 +2149,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * pretender 3.4.7, Copyright (c) 2015 Trek Glowacki
 * prettier 3.6.2, Copyright © James Long and contributors
 * pretty-bytes 5.6.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
-* pretty-format 27.5.1, Copyright (c) Facebook, Inc. and its affiliates.
+* pretty-format 29.5.0, Copyright (c) Meta Platforms, Inc. and affiliates.
 * pretty-ms 7.0.1, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 * prismjs 1.29.0, Copyright (c) 2012 Lea Verou
 * process 0.11.10, Copyright (c) 2013 Roman Shtylman <shtylman@gmail.com>
@@ -2209,7 +2209,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * react 18.2.0, Copyright (c) Facebook, Inc. and its affiliates.
 * react-confetti 6.1.0, Copyright (c) 2016 Aaron Lampros
 * react-dom 18.2.0, Copyright (c) Facebook, Inc. and its affiliates.
-* react-is 17.0.2, Copyright (c) Facebook, Inc. and its affiliates.
+* react-is 18.2.0, Copyright (c) Facebook, Inc. and its affiliates.
 * react-tabs 6.0.2, Copyright (c) Matt Zabriskie and Daniel Tschinder
 * read-cache 1.0.0, Copyright 2016 Bogdan Chadkin <trysound@yandex.ru>
 * readable-stream 4.5.2
@@ -2249,7 +2249,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * resolve-dependency-path 4.0.1, Copyright (c) 2023 Dependents
 * resolve-from 5.0.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 * resolve-pkg-maps 1.0.0, Copyright (c) Hiroki Osame <hiroki.osame@gmail.com>
-* resolve.exports 2.0.3, Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com)
+* resolve.exports 2.0.0, Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com)
 * restore-cursor 3.1.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
 * retry 0.13.1, Copyright (c) 2011:. Tim Koschützki (tim@debuggable.com). Felix Geisendörfer (felix@debuggable.com)
 * retry-request 7.0.2, Copyright (c) 2015 Stephen Sawchuk
@@ -2371,7 +2371,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * strip-final-newline 4.0.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 * strip-indent 4.0.0, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 * strip-json-comments 3.1.1, Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
-* strnum 2.1.0, Copyright (c) 2021 Natural Intelligence
+* strnum 1.0.5, Copyright (c) 2021 Natural Intelligence
 * strtok3 6.3.0, Copyright (c) 2017, Borewit. All rights reserved.
 * stubs 3.0.0
 * style-mod 4.1.0, Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others

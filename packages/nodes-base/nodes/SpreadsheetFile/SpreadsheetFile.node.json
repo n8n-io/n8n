@@ -19,6 +19,6 @@
 	},
 	"alias": ["_Excel", "Excel", "CSV", "Sheet", "Spreadsheet", "xls", "xlsx", "ods"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Primitives"]
 	}
 }

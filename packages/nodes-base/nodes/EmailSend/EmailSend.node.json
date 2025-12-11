@@ -4,7 +4,7 @@
 	"codexVersion": "1.0",
 	"categories": ["Communication", "HITL", "Core Nodes"],
 	"subcategories": {
-		"HITL": ["Human in the Loop"]
+		"Core Nodes": ["Primitives"]
 	},
 	"resources": {
 		"credentialDocumentation": [

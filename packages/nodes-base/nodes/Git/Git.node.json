@@ -14,6 +14,8 @@
 				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/"
 			}
 		],
-		"subcategories": ["Primitives"]
+		"subcategories": {
+			"Core Nodes": ["Primitives"]
+		}
 	}
 }

@@ -13,6 +13,6 @@
 	},
 	"alias": ["code", "Javascript", "JS", "Script", "Custom Code", "Function", "AI", "LLM"],
 	"subcategories": {
-		"Core Nodes": ["Data Transformation"]
+		"Core Nodes": ["Primitives"]
 	}
 }

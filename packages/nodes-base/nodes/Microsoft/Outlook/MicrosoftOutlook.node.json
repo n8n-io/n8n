@@ -2,9 +2,9 @@
 	"node": "n8n-nodes-base.microsoftOutlook",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication", "HITL"],
+	"categories": ["Communication", "HITL", "Core Nodes"],
 	"subcategories": {
-		"HITL": ["Human in the Loop"]
+		"Core Nodes": ["Primitives"]
 	},
 	"resources": {
 		"credentialDocumentation": [

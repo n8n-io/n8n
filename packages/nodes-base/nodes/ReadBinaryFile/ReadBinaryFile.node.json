@@ -29,6 +29,6 @@
 	},
 	"alias": ["Text", "Open", "Import"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Primitives"]
 	}
 }

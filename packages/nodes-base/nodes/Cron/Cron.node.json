@@ -130,6 +130,6 @@
 	},
 	"alias": ["Time", "Scheduler", "Polling", "Cron", "Interval"],
 	"subcategories": {
-		"Core Nodes": ["Flow"]
+		"Core Nodes": ["Primitives"]
 	}
 }

@@ -14,6 +14,6 @@
 	},
 	"alias": ["Split", "Nested", "Transform", "Array", "List", "Item"],
 	"subcategories": {
-		"Core Nodes": ["Data Transformation"]
+		"Core Nodes": ["Primitives"]
 	}
 }

@@ -124,6 +124,6 @@
 	},
 	"alias": ["Code", "Javascript", "Custom Code", "Script", "cpde"],
 	"subcategories": {
-		"Core Nodes": ["Data Transformation"]
+		"Core Nodes": ["Primitives"]
 	}
 }

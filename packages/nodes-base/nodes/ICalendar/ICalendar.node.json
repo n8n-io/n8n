@@ -12,6 +12,6 @@
 	},
 	"alias": ["ics", ".ics"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Primitives"]
 	}
 }

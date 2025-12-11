@@ -9,8 +9,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
-	TRANSFORM_DATA_SUBCATEGORY,
-	FLOWS_CONTROL_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
 	DEFAULT_SUBCATEGORY,
@@ -29,38 +27,15 @@ import {
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
-	CONVERT_TO_FILE_NODE_TYPE,
-	EXTRACT_FROM_FILE_NODE_TYPE,
-	SET_NODE_TYPE,
-	CODE_NODE_TYPE,
-	DATETIME_NODE_TYPE,
-	FILTER_NODE_TYPE,
-	REMOVE_DUPLICATES_NODE_TYPE,
-	SPLIT_OUT_NODE_TYPE,
-	LIMIT_NODE_TYPE,
-	SUMMARIZE_NODE_TYPE,
-	AGGREGATE_NODE_TYPE,
-	MERGE_NODE_TYPE,
-	HTML_NODE_TYPE,
-	MARKDOWN_NODE_TYPE,
-	XML_NODE_TYPE,
-	CRYPTO_NODE_TYPE,
-	IF_NODE_TYPE,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-	HITL_SUBCATEGORY,
 	TRANSLATION_SUBCATEGORY,
 	APE_SUBCATEGORY,
 	LQA_SUBCATEGORY,
 	PRIMITIVES_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
-	EDIT_IMAGE_NODE_TYPE,
-	COMPRESSION_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
-	HUMAN_IN_THE_LOOP_CATEGORY,
 	TEMPLATE_CATEGORY_AI,
-	DATA_TABLE_NODE_TYPE,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -495,20 +470,6 @@ export function TriggerView() {
 export function RegularView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
-	const popularItemsSubcategory = [
-		SET_NODE_TYPE,
-		CODE_NODE_TYPE,
-		DATA_TABLE_NODE_TYPE,
-		DATETIME_NODE_TYPE,
-		AI_TRANSFORM_NODE_TYPE,
-	];
-
-	const getSendAndWaitNodes = (nodes: SimplifiedNodeType[]) => {
-		return (nodes ?? [])
-			.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
-			.map((node) => node.name);
-	};
-
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
@@ -578,13 +539,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: i18n.baseText('nodeCreator.subcategoryNames.primitives'),
 					icon: 'cube',
-					sections: [
-						{
-							key: 'development',
-							title: i18n.baseText('nodeCreator.sectionNames.development'),
-							items: [CODE_NODE_TYPE],
-						},
-					],
+					sections: [],
 				},
 			},
 			{
@@ -597,94 +552,12 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				},
 			},
 			{
-				type: 'subcategory',
-				key: TRANSFORM_DATA_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: TRANSFORM_DATA_SUBCATEGORY,
-					icon: 'pen',
-					sections: [
-						{
-							key: 'popular',
-							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: popularItemsSubcategory,
-						},
-						{
-							key: 'addOrRemove',
-							title: i18n.baseText('nodeCreator.sectionNames.transform.addOrRemove'),
-							items: [
-								FILTER_NODE_TYPE,
-								REMOVE_DUPLICATES_NODE_TYPE,
-								SPLIT_OUT_NODE_TYPE,
-								LIMIT_NODE_TYPE,
-							],
-						},
-						{
-							key: 'combine',
-							title: i18n.baseText('nodeCreator.sectionNames.transform.combine'),
-							items: [SUMMARIZE_NODE_TYPE, AGGREGATE_NODE_TYPE, MERGE_NODE_TYPE],
-						},
-						{
-							key: 'convert',
-							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
-							items: [
-								HTML_NODE_TYPE,
-								MARKDOWN_NODE_TYPE,
-								XML_NODE_TYPE,
-								CRYPTO_NODE_TYPE,
-								EXTRACT_FROM_FILE_NODE_TYPE,
-								CONVERT_TO_FILE_NODE_TYPE,
-								COMPRESSION_NODE_TYPE,
-								EDIT_IMAGE_NODE_TYPE,
-							],
-						},
-					],
-				},
-			},
-			{
-				type: 'subcategory',
-				key: FLOWS_CONTROL_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'git-branch',
-					sections: [
-						{
-							key: 'popular',
-							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [FILTER_NODE_TYPE, IF_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, MERGE_NODE_TYPE],
-						},
-					],
-				},
-			},
-			{
 				key: DEFAULT_SUBCATEGORY,
 				type: 'subcategory',
 				properties: {
 					title: 'App Regular Nodes',
 					icon: 'globe',
 					forceIncludeNodes: [RSS_READ_NODE_TYPE, EMAIL_SEND_NODE_TYPE],
-				},
-			},
-			// To add node to this subcategory:
-			// - add "HITL" to the "categories" property of the node's codex
-			// - add "HITL": ["Human in the Loop"] to the "subcategories" property of the node's codex
-			// node has to have the "sendAndWait" operation, if a new operation needs to be included here:
-			// - update getHumanInTheLoopActions in packages/frontend/editor-ui/src/components/Node/NodeCreator/Modes/NodesMode.vue
-			{
-				type: 'subcategory',
-				key: HITL_SUBCATEGORY,
-				category: HUMAN_IN_THE_LOOP_CATEGORY,
-				properties: {
-					title: HITL_SUBCATEGORY,
-					icon: 'user-check',
-					sections: [
-						{
-							key: 'sendAndWait',
-							title: i18n.baseText('nodeCreator.sectionNames.sendAndWait'),
-							items: getSendAndWaitNodes(nodes),
-						},
-					],
 				},
 			},
 		],

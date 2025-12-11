@@ -32,6 +32,6 @@
 		"Base64"
 	],
 	"subcategories": {
-		"Core Nodes": ["Files", "Data Transformation"]
+		"Core Nodes": ["Primitives"]
 	}
 }

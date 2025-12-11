@@ -24,6 +24,6 @@
 	},
 	"alias": ["Loop", "Concatenate", "Batch", "Split", "Split In Batches"],
 	"subcategories": {
-		"Core Nodes": ["Flow"]
+		"Core Nodes": ["Primitives"]
 	}
 }

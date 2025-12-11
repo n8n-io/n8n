@@ -1,10 +1,10 @@
 {
 	"node": "n8n-nodes-base.slack",
-	"nodeVersion": "1.0",
+	"nodeVersion": "3.11",
 	"codexVersion": "1.0",
-	"categories": ["Communication", "HITL"],
+	"categories": ["Communication", "HITL", "Core Nodes"],
 	"subcategories": {
-		"HITL": ["Human in the Loop"]
+		"Core Nodes": ["Primitives"]
 	},
 	"alias": ["human", "form", "wait", "hitl", "approval"],
 	"resources": {

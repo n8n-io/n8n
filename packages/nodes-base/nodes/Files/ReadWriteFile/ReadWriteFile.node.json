@@ -12,6 +12,6 @@
 	},
 	"alias": ["Binary", "File", "Text", "Open", "Import", "Save", "Export", "Disk", "Transfer"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Primitives"]
 	}
 }

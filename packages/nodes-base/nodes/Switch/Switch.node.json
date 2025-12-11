@@ -34,6 +34,6 @@
 	},
 	"alias": ["Router", "If", "Path", "Filter", "Condition", "Logic", "Branch", "Case"],
 	"subcategories": {
-		"Core Nodes": ["Flow"]
+		"Core Nodes": ["Primitives"]
 	}
 }

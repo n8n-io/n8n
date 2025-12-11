@@ -11,7 +11,7 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Primitives"]
 	},
 	"alias": ["Move Binary Data"]
 }
