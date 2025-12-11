@@ -18,6 +18,7 @@ import {
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
 	jsonParse,
+	tryToParseUrl,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -134,27 +135,17 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	});
 }
 
-const SAFE_URL_SCHEMES = ['http:', 'https:'];
-
 /**
- * Validates that a URL uses a safe scheme (http or https).
+ * Validates that a URL uses a safe scheme.
  * Returns the normalized URL if valid, or null if invalid.
  */
 export function validateSafeRedirectUrl(url: string | undefined): string | null {
 	if (!url || typeof url !== 'string') return null;
-
-	let normalized = url.trim();
-	if (!normalized) return null;
-
-	if (!normalized.includes('://')) {
-		normalized = `http://${normalized}`;
-	}
+	const trimmed = url.trim();
+	if (!trimmed) return null;
 
 	try {
-		const parsed = new URL(normalized);
-		if (!SAFE_URL_SCHEMES.includes(parsed.protocol)) return null;
-		if (parsed.username || parsed.password) return null;
-		return normalized;
+		return tryToParseUrl(trimmed);
 	} catch {
 		return null;
 	}
