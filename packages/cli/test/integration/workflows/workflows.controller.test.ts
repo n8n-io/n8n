@@ -1730,7 +1730,7 @@ describe('GET /workflows', () => {
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('take=2&skip=1')
+				.query('sortBy=name:asc&take=2&skip=1')
 				.query('filter={"query":"Special"}')
 				.expect(200);
 
@@ -2599,7 +2599,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('take=2&skip=1')
+				.query('sortBy=name:asc&take=2&skip=1')
 				.query('filter={"query":"Special"}&includeFolders=true')
 				.expect(200);
 
