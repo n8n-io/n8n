@@ -78,7 +78,6 @@ export class McpSettingsController {
 				...req.listQueryOptions?.filter,
 				active: true,
 				isArchived: false,
-				activeVersionNodeTypes: supportedTriggerNodeTypes,
 				availableInMCP: false,
 			},
 		};
