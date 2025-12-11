@@ -6,7 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import type { WorkflowListItem } from '@/Interface';
+import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 
 vi.mock('@/app/router', () => ({
 	default: {
@@ -26,36 +26,6 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 
 const createComponent = createComponentRenderer(MCPWorkflowsSelect);
-
-const createWorkflow = (overrides: Partial<WorkflowListItem> = {}): WorkflowListItem => ({
-	resource: 'workflow',
-	id: 'test-workflow-1',
-	createdAt: '2025-09-09T14:14:04.155Z',
-	updatedAt: '2025-09-23T08:13:45.000Z',
-	name: 'Test Workflow',
-	active: true,
-	activeVersionId: 'v1',
-	isArchived: false,
-	settings: {
-		executionOrder: 'v1',
-	},
-	versionId: 'v1',
-	tags: [],
-	scopes: ['workflow:read', 'workflow:update'],
-	homeProject: {
-		id: 'project1',
-		type: 'team',
-		name: 'Test Project',
-		icon: {
-			type: 'icon',
-			value: 'bot',
-		},
-		createdAt: '2025-09-09T14:13:50.000Z',
-		updatedAt: '2025-09-09T14:13:50.000Z',
-	},
-	sharedWithProjects: [],
-	...overrides,
-});
 
 describe('MCPWorkflowsSelect', () => {
 	beforeEach(() => {
