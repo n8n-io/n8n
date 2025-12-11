@@ -474,7 +474,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
-		this.applyActiveVersionNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
 	}
 
@@ -485,39 +484,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (typeof filter?.availableInMCP === 'boolean') {
 			const dbType = this.globalConfig.database.type;
 
-			if (filter.availableInMCP) {
-				// Filter for workflows where availableInMCP is explicitly true
-				if (['postgresdb'].includes(dbType)) {
-					qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
-						availableInMCP: 'true',
-					});
-				} else if (['mysqldb', 'mariadb'].includes(dbType)) {
-					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-						availableInMCP: true,
-					});
-				} else if (dbType === 'sqlite') {
-					qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
-						availableInMCP: 1,
-					});
-				}
-			} else {
-				// Filter for workflows where availableInMCP is not true (false, null, or missing)
-				if (['postgresdb'].includes(dbType)) {
-					qb.andWhere(
-						"(workflow.settings ->> 'availableInMCP' IS NULL OR workflow.settings ->> 'availableInMCP' != :availableInMCP)",
-						{ availableInMCP: 'true' },
-					);
-				} else if (['mysqldb', 'mariadb'].includes(dbType)) {
-					qb.andWhere(
-						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') != :availableInMCP)",
-						{ availableInMCP: true },
-					);
-				} else if (dbType === 'sqlite') {
-					qb.andWhere(
-						"(JSON_EXTRACT(workflow.settings, '$.availableInMCP') IS NULL OR JSON_EXTRACT(workflow.settings, '$.availableInMCP') != :availableInMCP)",
-						{ availableInMCP: 1 },
-					);
-				}
+			if (['postgresdb'].includes(dbType)) {
+				qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
+					availableInMCP: filter.availableInMCP.toString(),
+				});
+			} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP,
+				});
+			} else if (dbType === 'sqlite') {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
+				});
 			}
 		}
 	}
@@ -700,35 +678,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
 			nodeTypes,
 			this.globalConfig.database.type,
-		);
-
-		qb.andWhere(whereClause, parameters);
-	}
-
-	/**
-	 * Filter workflows by node types in the published (active) version.
-	 * This joins the workflow_history table to check nodes in the activeVersion.
-	 */
-	private applyActiveVersionNodeTypesFilter(
-		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
-	): void {
-		const nodeTypes = isStringArray(filter?.activeVersionNodeTypes)
-			? filter.activeVersionNodeTypes
-			: [];
-
-		if (!nodeTypes.length) return;
-
-		// Join the activeVersion relation if not already joined
-		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
-			qb.innerJoin('workflow.activeVersion', 'activeVersion');
-		}
-
-		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
-			nodeTypes,
-			this.globalConfig.database.type,
-			'activeVersion.nodes',
-			'activeVersion_',
 		);
 
 		qb.andWhere(whereClause, parameters);
