@@ -55,11 +55,12 @@ function onModalClosed() {
 	}
 }
 
+function onSelectReady() {
+	selectRef.value?.focusOnInput();
+}
+
 onMounted(() => {
 	modalBus.on('closed', onModalClosed);
-	setTimeout(() => {
-		selectRef.value?.focusOnInput();
-	}, 150);
 });
 
 onBeforeUnmount(() => {
@@ -87,6 +88,7 @@ onBeforeUnmount(() => {
 					v-model="selectedWorkflowId"
 					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
 					:disabled="isSaving"
+					@ready="onSelectReady"
 				/>
 			</div>
 		</template>

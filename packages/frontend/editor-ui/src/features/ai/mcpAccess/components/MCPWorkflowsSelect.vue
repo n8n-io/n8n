@@ -18,6 +18,10 @@ const toast = useToast();
 
 const modelValue = defineModel<string>();
 
+const emit = defineEmits<{
+	ready: [];
+}>();
+
 const mcpStore = useMCPStore();
 
 const isLoading = ref(false);
@@ -46,11 +50,18 @@ async function searchWorkflows(query?: string) {
 	} catch (e) {
 		toast.showError(e, i18n.baseText('settings.mcp.connectWorkflows.error'));
 	} finally {
-		loadingTimeoutId = setTimeout(() => {
-			isLoading.value = false;
-			hasFetched.value = true;
-		}, LOADING_INDICATOR_TIMEOUT);
+		await waitFor(LOADING_INDICATOR_TIMEOUT);
+		isLoading.value = false;
+		hasFetched.value = true;
 	}
+}
+
+async function waitFor(timeout: number) {
+	await new Promise<void>((resolve) => {
+		setTimeout(() => {
+			resolve();
+		}, timeout);
+	});
 }
 
 function focusOnInput() {
@@ -65,6 +76,7 @@ function removeOption(value: string) {
 
 onMounted(async () => {
 	await searchWorkflows();
+	emit('ready');
 });
 
 defineExpose({
