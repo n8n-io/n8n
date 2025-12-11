@@ -19,6 +19,7 @@ const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
+	validation: z.literal('oauth2-introspection'),
 	clientId: z.string(),
 	clientSecret: z.string(),
 });

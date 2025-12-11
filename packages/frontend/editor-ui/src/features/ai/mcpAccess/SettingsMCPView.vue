@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
@@ -16,6 +17,7 @@ import { N8nHeading, N8nTabs, N8nTooltip, N8nButton } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 
 type MCPTabs = 'workflows' | 'oauth';
 
@@ -27,6 +29,7 @@ const mcp = useMcp();
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
+const uiStore = useUIStore();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
@@ -88,6 +91,25 @@ const onRemoveMCPAccess = async (workflow: WorkflowListItem) => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 	}
+};
+
+const onUpdateDescription = (workflow: WorkflowListItem) => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+		data: {
+			workflowId: workflow.id,
+			workflowDescription: workflow.description ?? '',
+			onSave: (updatedDescription: string | null) => {
+				const index = availableWorkflows.value.findIndex((w) => w.id === workflow.id);
+				if (index !== -1) {
+					availableWorkflows.value[index] = {
+						...availableWorkflows.value[index],
+						description: updatedDescription ?? undefined,
+					};
+				}
+			},
+		},
+	});
 };
 
 const onTableRefresh = async () => {
@@ -196,6 +218,7 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 					:workflows="availableWorkflows"
 					:loading="workflowsLoading"
 					@remove-mcp-access="onRemoveMCPAccess"
+					@update-description="onUpdateDescription"
 					@refresh="onRefreshWorkflows"
 				/>
 				<OAuthClientsTable
