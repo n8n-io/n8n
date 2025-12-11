@@ -362,7 +362,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const data = stringify(dataObj);
 
 		// Extract parentExecutionId from execution data if present
-		const parentExecutionId = dataObj.parentExecution?.executionId ?? null;
+		const parentExecutionId = dataObj?.parentExecution?.executionId ?? null;
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
