@@ -7,6 +7,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
+import type { WorkflowListItem } from '@/Interface';
 
 vi.mock('@/app/router', () => ({
 	default: {

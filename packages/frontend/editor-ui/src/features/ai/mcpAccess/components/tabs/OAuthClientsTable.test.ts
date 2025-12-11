@@ -2,7 +2,7 @@ import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
-import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { createOAuthClient } from '@/features/ai/mcpAccess/mcp.test.utils';
 
 vi.mock('@/app/components/TimeAgo.vue', () => ({
 	default: {
@@ -13,17 +13,6 @@ vi.mock('@/app/components/TimeAgo.vue', () => ({
 }));
 
 const createComponent = createComponentRenderer(OAuthClientsTable);
-
-const createClient = (overrides: Partial<OAuthClientResponseDto> = {}): OAuthClientResponseDto => ({
-	id: 'client-1',
-	name: 'Test Client',
-	createdAt: '2025-09-09T14:14:04.155Z',
-	updatedAt: '2025-09-09T14:14:04.155Z',
-	redirectUris: [],
-	grantTypes: ['authorization_code'],
-	tokenEndpointAuthMethod: 'client_secret_basic',
-	...overrides,
-});
 
 describe('OAuthClientsTable', () => {
 	afterEach(() => {
@@ -60,7 +49,7 @@ describe('OAuthClientsTable', () => {
 
 	describe('Client rendering', () => {
 		it('should render client name and creation date', () => {
-			const client = createClient({
+			const client = createOAuthClient({
 				name: 'My OAuth Client',
 				createdAt: '2025-10-15T10:30:00.000Z',
 			});
@@ -78,9 +67,9 @@ describe('OAuthClientsTable', () => {
 
 		it('should render multiple clients in the table', () => {
 			const clients = [
-				createClient({ id: 'client-1', name: 'First Client' }),
-				createClient({ id: 'client-2', name: 'Second Client' }),
-				createClient({ id: 'client-3', name: 'Third Client' }),
+				createOAuthClient({ id: 'client-1', name: 'First Client' }),
+				createOAuthClient({ id: 'client-2', name: 'Second Client' }),
+				createOAuthClient({ id: 'client-3', name: 'Third Client' }),
 			];
 
 			const { getAllByTestId } = createComponent({
@@ -100,7 +89,7 @@ describe('OAuthClientsTable', () => {
 
 	describe('Actions menu', () => {
 		it('should emit revokeClient event when revoke action is clicked', async () => {
-			const client = createClient({ name: 'Client to Revoke' });
+			const client = createOAuthClient({ name: 'Client to Revoke' });
 
 			const { getByTestId, emitted } = createComponent({
 				props: {

@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { createHomeProject, createParentFolder } from '@/features/ai/mcpAccess/mcp.test.utils';
 
 vi.mock('@/app/router', () => ({
 	default: {
@@ -17,25 +17,6 @@ vi.mock('@/app/router', () => ({
 }));
 
 const createComponent = createComponentRenderer(WorkflowLocation);
-
-const createHomeProject = (overrides: Partial<ProjectSharingData> = {}): ProjectSharingData => ({
-	id: 'project-1',
-	type: 'team',
-	name: 'Test Project',
-	icon: null,
-	createdAt: '2025-01-01',
-	updatedAt: '2025-01-01',
-	...overrides,
-});
-
-const createParentFolder = (
-	overrides: Partial<{ id: string; name: string; parentFolderId: string | null }> = {},
-) => ({
-	id: 'folder-1',
-	name: 'Test Folder',
-	parentFolderId: null,
-	...overrides,
-});
 
 describe('WorkflowLocation', () => {
 	afterEach(() => {
