@@ -6,12 +6,10 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nPublishIndicator } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import SaveButton from '@/app/components/SaveButton.vue';
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -125,55 +123,33 @@ onBeforeUnmount(() => {
 defineExpose({
 	importFileRef,
 });
+
+const publishStatus = computed<'published' | 'unpublished' | 'draft' | 'unpublishedDraft'>(() => {
+	if (workflowsStore.workflow.activeVersion) {
+		if (showPublishIndicator.value) {
+			return 'unpublished';
+		}
+		return 'published';
+	}
+
+	if (showPublishIndicator.value) {
+		return 'unpublishedDraft';
+	}
+	return 'draft';
+});
 </script>
 
 <template>
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
 		<div
-			v-if="activeVersion"
+			v-if="!isArchived && workflowPermissions.update"
 			:class="$style.activeVersionIndicator"
 			data-test-id="workflow-active-version-indicator"
 		>
-			<N8nTooltip>
-				<template #content>
-					{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
-					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
-				</template>
-				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
-			</N8nTooltip>
+			<N8nPublishIndicator :status="publishStatus" @click="onPublishButtonClick" />
 		</div>
-		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
-			<N8nButton
-				:loading="autoSaveForPublish"
-				:disabled="isWorkflowSaving"
-				type="secondary"
-				data-test-id="workflow-open-publish-modal-button"
-				@click="onPublishButtonClick"
-			>
-				{{ locale.baseText('workflows.publish') }}
-			</N8nButton>
-			<span
-				v-if="showPublishIndicator"
-				:class="$style.publishButtonIndicator"
-				data-test-id="workflow-publish-indicator"
-			></span>
-		</div>
-		<SaveButton
-			type="primary"
-			:saved="isWorkflowSaved"
-			:disabled="
-				isWorkflowSaving ||
-				readOnly ||
-				isArchived ||
-				(!isNewWorkflow && !workflowPermissions.update)
-			"
-			:is-saving="isWorkflowSaving"
-			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-			data-test-id="workflow-save-button"
-			@click="$emit('workflow:saved')"
-		/>
+
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsDropdownMenu
 			:id="id"
