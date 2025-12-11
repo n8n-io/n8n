@@ -54,11 +54,6 @@ export async function executeBatch(
 	const hitlResult = processHitlResponses(response, startIndex);
 
 	if (hitlResult.hasApprovedHitlTools && hitlResult.pendingGatedToolRequest) {
-		LoggerProxy.debug('[HITL] Found approved HITL tools - returning gated tool request', {
-			pendingActionsCount: hitlResult.pendingGatedToolRequest.actions.length,
-			pendingNodeNames: hitlResult.pendingGatedToolRequest.actions.map((a) => a.nodeName),
-		});
-
 		// Return the gated tool request immediately
 		// The Agent will resume after the gated tool executes
 		return {

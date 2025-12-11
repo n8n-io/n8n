@@ -67,7 +67,6 @@ interface HitlNodeTypeFactoryParams {
 	executeData: IExecuteData;
 	mode: WorkflowExecuteMode;
 	closeFunctions: CloseFunction[];
-	itemIndex: number;
 	abortSignal?: AbortSignal;
 	parentNode?: INode;
 }
@@ -75,17 +74,14 @@ interface HitlNodeTypeFactoryParams {
 /**
  * Create an INodeType for an HITL tool node with supplyData method.
  *
- * HITL tools act as middleware that intercepts tool calls and requires human approval.
- * The key insight: Agent sees the **gated tools** directly (e.g., "HTTP Request"),
- * but those tools have `metadata.sourceNodeName` pointing to the **HITL node**.
+ * Agent sees gated tools directly but with sourceNodeName pointing to the HITL node.
  *
  * Flow:
- * 1. Agent sees gated tools (e.g., "make payment") with sourceNodeName → HITL node
- * 2. Agent calls gated tool → EngineRequest routes to HITL node
- * 3. HITL node executes sendAndWait → waiting state
- * 4. User approves/denies via webhook
- * 5. If approved: HITL executes the actual gated tool → returns result
- * 6. If denied: returns denial message → Agent knows not to retry
+ * 1. Agent calls gated tool → EngineRequest routes to HITL node
+ * 2. HITL executes sendAndWait → waiting state
+ * 3. User approves/denies via webhook
+ * 4. If approved: new EngineRequest executes gated tool → result to Agent
+ * 5. If denied: denial message → Agent knows not to retry
  */
 function createHitlNodeType(params: HitlNodeTypeFactoryParams): INodeType {
 	const {
@@ -221,7 +217,6 @@ async function createHitlToolSupplyData(
 		executeData,
 		mode,
 		closeFunctions,
-		itemIndex,
 		abortSignal,
 		parentNode,
 	});
