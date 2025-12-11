@@ -1,5 +1,3 @@
-import { expect } from '@playwright/test';
-
 import type { n8nPage } from '../pages/n8nPage';
 
 /**
@@ -10,29 +8,24 @@ export class OidcComposer {
 	constructor(private readonly n8n: n8nPage) {}
 
 	/**
-	 * Configure OIDC via API with retry (handles intermittent network issues in multi-main).
+	 * Configure OIDC via UI form.
+	 *
+	 * @param discoveryUrl - The discovery URL for n8n backend (e.g., https://keycloak:8443/...)
+	 * @param clientId - The OIDC client ID
+	 * @param clientSecret - The OIDC client secret
 	 */
 	async configureOidc(discoveryUrl: string, clientId: string, clientSecret: string): Promise<void> {
-		// Save config via API with retry
-		await expect(async () => {
-			const response = await this.n8n.page.request.post('/rest/sso/oidc/config', {
-				data: {
-					discoveryEndpoint: discoveryUrl,
-					clientId,
-					clientSecret,
-					loginEnabled: true,
-					prompt: 'select_account',
-				},
-			});
-			expect(response.ok()).toBe(true);
-		}).toPass({ timeout: 30000 });
+		const { settingsSso } = this.n8n;
 
-		// Verify settings propagated across all instances (important for multi-main)
-		await expect(async () => {
-			const response = await this.n8n.page.request.get('/rest/settings');
-			const settings = await response.json();
-			expect(settings.data.userManagement.authenticationMethod).toBe('oidc');
-		}).toPass({ timeout: 15000 });
+		await settingsSso.goto();
+		await settingsSso.selectOidcProtocol();
+		await settingsSso.fillOidcForm({
+			discoveryEndpoint: discoveryUrl,
+			clientId,
+			clientSecret,
+			enableLogin: true,
+		});
+		await settingsSso.saveOidcConfig();
 	}
 
 	/**

@@ -16,7 +16,7 @@ import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
-import { EnvHttpProxyAgent } from 'undici';
+import { Agent, EnvHttpProxyAgent } from 'undici';
 
 import {
 	getCurrentAuthenticationMethod,
@@ -501,17 +501,22 @@ export class OidcService {
 	/**
 	 * Creates a proxy-aware configuration for openid-client.
 	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+	 * It also handles NODE_TLS_REJECT_UNAUTHORIZED=0 for self-signed certificates.
 	 */
 	private async createProxyAwareConfiguration(
 		discoveryUrl: URL,
 		clientId: string,
 		clientSecret: string,
 	): Promise<client.Configuration> {
-		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
+		// Check if TLS verification should be skipped (for self-signed certs in testing)
+		const skipTlsVerification = process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0';
 
 		// Check if proxy environment variables are set
 		const hasProxyConfig =
 			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+
+		// Create appropriate dispatcher based on configuration
+		let dispatcher: Agent | EnvHttpProxyAgent | undefined;
 
 		if (hasProxyConfig) {
 			this.logger.debug('Configuring OIDC client with proxy support', {
@@ -520,19 +525,42 @@ export class OidcService {
 				NO_PROXY: process.env.NO_PROXY,
 				ALL_PROXY: process.env.ALL_PROXY,
 			});
+			dispatcher = new EnvHttpProxyAgent({
+				connect: skipTlsVerification ? { rejectUnauthorized: false } : undefined,
+			});
+		} else if (skipTlsVerification) {
+			// undici's native fetch doesn't respect NODE_TLS_REJECT_UNAUTHORIZED
+			// so we need to explicitly configure an Agent to skip TLS verification
+			this.logger.debug(
+				'Configuring OIDC client to skip TLS verification (NODE_TLS_REJECT_UNAUTHORIZED=0)',
+			);
+			dispatcher = new Agent({
+				connect: { rejectUnauthorized: false },
+			});
+		}
 
-			// Create a proxy agent that automatically reads from environment variables
-			const proxyAgent = new EnvHttpProxyAgent();
+		// Custom fetch function that uses our dispatcher
+		const customFetch = dispatcher
+			? async (url: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) =>
+					await fetch(url, {
+						...options,
+						// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+						dispatcher,
+					})
+			: undefined;
 
-			// Configure customFetch to use the proxy agent
-			configuration[client.customFetch] = async (...args) => {
-				const [url, options] = args;
-				return await fetch(url, {
-					...options,
-					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
-					dispatcher: proxyAgent,
-				});
-			};
+		// Perform discovery with custom fetch if needed
+		const configuration = await client.discovery(
+			discoveryUrl,
+			clientId,
+			clientSecret,
+			undefined, // clientAuthentication
+			customFetch ? { [client.customFetch]: customFetch as client.CustomFetch } : undefined,
+		);
+
+		// Also set customFetch on the configuration for subsequent requests (token exchange, userinfo)
+		if (customFetch) {
+			configuration[client.customFetch] = customFetch as client.CustomFetch;
 		}
 
 		return configuration;

@@ -342,12 +342,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
-	// On macOS/Windows Docker Desktop, host.docker.internal resolves natively inside containers.
-	// On Linux (including GitHub Actions CI), we need to explicitly add the host mapping.
-	// The host browser also needs /etc/hosts entry: 127.0.0.1 host.docker.internal
-	const extraHosts: Array<{ host: string; ipAddress: string }> | undefined = oidcEnabled
-		? [{ host: 'host.docker.internal', ipAddress: 'host-gateway' }]
-		: undefined;
+	// No extraHosts needed for OIDC - n8n container accesses Keycloak via Docker network alias (keycloak:8443)
+	const extraHosts: Array<{ host: string; ipAddress: string }> | undefined = undefined;
 
 	let baseUrl: string;
 
@@ -412,14 +408,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		containers.push(...instances);
 	}
 
-	// Verify OIDC connectivity from ALL n8n main containers before proceeding
+	// Verify OIDC connectivity from n8n containers before proceeding
 	// This ensures Docker networking is ready for all instances to reach Keycloak
-	// (important for multi-main where load balancer can route to any instance)
-	if (oidcEnabled && oidcDiscoveryUrl) {
+	// Use internalDiscoveryUrl (keycloak:8443) which is accessible via Docker network
+	if (oidcEnabled && oidcInternalDiscoveryUrl) {
 		log('Verifying Keycloak connectivity from n8n containers...');
-		const n8nMainContainers = containers.filter((c) => c.getName().includes('-n8n-main-'));
-		for (const container of n8nMainContainers) {
-			await waitForKeycloakFromContainer(container, oidcDiscoveryUrl);
+		// Match both multi-main containers (n8n-main-X) and single-instance containers (ends with -n8n)
+		const n8nContainers = containers.filter((c) => {
+			const name = c.getName();
+			return name.includes('-n8n-main-') || name.endsWith('-n8n');
+		});
+		for (const container of n8nContainers) {
+			await waitForKeycloakFromContainer(container, oidcInternalDiscoveryUrl);
 		}
 		log('Keycloak connectivity verified');
 	}

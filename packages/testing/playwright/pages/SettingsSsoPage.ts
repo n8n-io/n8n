@@ -112,7 +112,8 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	/**
-	 * Fill the OIDC form with the given configuration
+	 * Fill the OIDC form with the given configuration.
+	 * Clears existing values and types slowly to ensure Vue reactivity picks up the changes.
 	 */
 	async fillOidcForm(config: {
 		discoveryEndpoint: string;
@@ -120,9 +121,21 @@ export class SettingsSsoPage extends BasePage {
 		clientSecret: string;
 		enableLogin?: boolean;
 	}): Promise<void> {
-		await this.getOidcDiscoveryEndpointInput().fill(config.discoveryEndpoint);
-		await this.getOidcClientIdInput().fill(config.clientId);
-		await this.getOidcClientSecretInput().fill(config.clientSecret);
+		// Discovery endpoint has a default value that must be cleared first
+		const discoveryInput = this.getOidcDiscoveryEndpointInput();
+		await discoveryInput.click();
+		await this.page.keyboard.press('Meta+A'); // Select all
+		await discoveryInput.pressSequentially(config.discoveryEndpoint, { delay: 10 });
+
+		const clientIdInput = this.getOidcClientIdInput();
+		await clientIdInput.click();
+		await this.page.keyboard.press('Meta+A');
+		await clientIdInput.pressSequentially(config.clientId, { delay: 10 });
+
+		const clientSecretInput = this.getOidcClientSecretInput();
+		await clientSecretInput.click();
+		await this.page.keyboard.press('Meta+A');
+		await clientSecretInput.pressSequentially(config.clientSecret, { delay: 10 });
 
 		if (config.enableLogin !== false) {
 			await this.enableOidcLogin();
@@ -130,10 +143,18 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	/**
-	 * Save the OIDC configuration
+	 * Save the OIDC configuration and wait for API response
 	 */
 	async saveOidcConfig(): Promise<void> {
+		const responsePromise = this.page.waitForResponse(
+			(res) => res.url().includes('/rest/sso/oidc') && res.request().method() === 'POST',
+		);
 		await this.getOidcSaveButton().click();
+		const response = await responsePromise;
+		if (!response.ok()) {
+			const body = await response.text();
+			throw new Error(`OIDC config save failed: ${response.status()} - ${body}`);
+		}
 	}
 
 	// --- SAML Form Elements ---

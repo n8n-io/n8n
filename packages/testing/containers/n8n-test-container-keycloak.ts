@@ -75,43 +75,48 @@ function generateRealmJson(callbackUrl: string): string {
 /**
  * Generates a shell script that creates a keystore with self-signed cert using Java keytool
  * and starts Keycloak with HTTPS.
- * The KEYCLOAK_HTTPS_PORT env var is used to construct the hostname URL.
  *
- * Uses host.docker.internal which:
- * - Resolves inside containers to Docker host IP (built-in on macOS/Windows)
- * - Resolves on host via /etc/hosts entry (127.0.0.1 host.docker.internal)
+ * KC_HOSTNAME is set to localhost:{hostPort} - the frontend URL that browser uses.
+ * hostname-backchannel-dynamic=true allows n8n container to access via keycloak:8443.
+ * The issuer in tokens will be localhost:{hostPort}, matching what browser expects.
  */
 function generateStartupScript(): string {
 	return `#!/bin/bash
 set -e
 
 # Generate self-signed certificate using Java keytool (available in Keycloak image)
-# Include host.docker.internal in SANs for cross-environment compatibility
+# Note: NODE_TLS_REJECT_UNAUTHORIZED=0 is set in tests, so cert validation is skipped
 keytool -genkeypair \\
   -storepass password \\
   -storetype PKCS12 \\
   -keyalg RSA \\
   -keysize 2048 \\
-  -dname "CN=host.docker.internal" \\
+  -dname "CN=localhost" \\
   -alias server \\
-  -ext "SAN:c=DNS:localhost,DNS:keycloak,DNS:host.docker.internal,IP:127.0.0.1" \\
+  -ext "SAN=DNS:localhost,DNS:keycloak,IP:127.0.0.1" \\
   -keystore /opt/keycloak/conf/server.keystore
 
 # Start Keycloak with HTTPS using the generated keystore
-# KC_HOSTNAME sets the base URL for all Keycloak endpoints (used in issuer, redirect URIs, etc.)
-# Using host.docker.internal - accessible from both host (via /etc/hosts) and containers
+# KC_HOSTNAME uses localhost:{hostPort} - the frontend URL that browser uses
+# hostname-backchannel-dynamic=true allows n8n container to access via keycloak:8443
+# The issuer in tokens will be localhost:{hostPort}, matching what browser expects
 exec /opt/keycloak/bin/kc.sh start-dev \\
   --import-realm \\
   --https-key-store-file=/opt/keycloak/conf/server.keystore \\
   --https-key-store-password=password \\
-  --hostname=https://host.docker.internal:\${KEYCLOAK_HTTPS_PORT} \\
-  --hostname-strict=false
+  --hostname=https://localhost:\${KEYCLOAK_HOST_PORT} \\
+  --hostname-backchannel-dynamic=true
 `;
 }
 
 /**
  * Setup Keycloak container for OIDC testing.
  * Uses HTTPS with self-signed certificate generated via Java keytool.
+ *
+ * KC_HOSTNAME is set to localhost:{hostPort} (frontend URL for browser).
+ * - Browser accesses via localhost:{hostPort} (matches KC_HOSTNAME, issuer in tokens)
+ * - n8n container accesses via keycloak:8443 (Docker network alias)
+ * - hostname-backchannel-dynamic=true allows n8n to use different hostname for backend requests
  *
  * @param projectName Project name for container naming
  * @param network The shared Docker network
@@ -129,7 +134,7 @@ export async function setupKeycloak({
 }): Promise<KeycloakSetupResult> {
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
-	// Allocate a fixed host port for Keycloak so we can set KC_HOSTNAME before starting
+	// Allocate a fixed host port for Keycloak
 	const allocatedHostPort = await getPort();
 
 	const realmJson = generateRealmJson(n8nCallbackUrl);
@@ -150,7 +155,7 @@ export async function setupKeycloak({
 				KC_HEALTH_ENABLED: 'true',
 				KC_METRICS_ENABLED: 'false',
 				// Pass the host port to the startup script for KC_HOSTNAME
-				KEYCLOAK_HTTPS_PORT: String(allocatedHostPort),
+				KEYCLOAK_HOST_PORT: String(allocatedHostPort),
 			})
 			.withCopyContentToContainer([
 				{
@@ -173,20 +178,18 @@ export async function setupKeycloak({
 				'com.docker.compose.service': 'keycloak',
 			})
 			.withName(`${projectName}-keycloak`)
-			.withReuse()
 			.withLogConsumer(consumer)
 			.start();
 
-		// Discovery URL using host.docker.internal - accessible from both:
-		// - Host browser (via /etc/hosts entry: 127.0.0.1 host.docker.internal)
-		// - Containers (built-in Docker DNS on macOS/Windows)
-		const discoveryUrl = `https://host.docker.internal:${allocatedHostPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
+		// Browser uses localhost:{hostPort} to access Keycloak
+		const discoveryUrl = `https://localhost:${allocatedHostPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
+		// n8n container uses Docker network alias keycloak:8443 (same network)
+		const internalDiscoveryUrl = `https://keycloak:${httpsPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
 
-		// Both URLs are the same since host.docker.internal works everywhere
-		const internalDiscoveryUrl = discoveryUrl;
-
-		// Wait for the discovery endpoint to be available
+		// Wait for the discovery endpoint to be available (use localhost for host check)
 		await waitForKeycloakReady(allocatedHostPort);
+
+		console.log(`Keycloak discovery URL: ${discoveryUrl}`);
 
 		return {
 			container,
