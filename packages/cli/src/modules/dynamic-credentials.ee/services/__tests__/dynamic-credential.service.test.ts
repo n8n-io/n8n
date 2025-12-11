@@ -114,6 +114,11 @@ describe('DynamicCredentialService', () => {
 			loadAllCredentials: jest.fn(),
 		} as unknown as jest.Mocked<LoadNodesAndCredentials>;
 
+		mockLoadNodesAndCredentials.getCredential.mockReturnValue({
+			sourcePath: 'credentials/Test Credential',
+			type: { name: 'testCredentialType', displayName: 'Test Credential Type', properties: [] },
+		});
+
 		service = new DynamicCredentialService(
 			mockResolverRegistry,
 			mockResolverRepository,
