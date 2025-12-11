@@ -7,26 +7,31 @@ import {
 	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { type User } from '@n8n/db';
+import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	type INodeCredentials,
 	type INodePropertyOptions,
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { chatTriggerParamsShape } from './chat-hub.types';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class ChatHubModelsService {
 	constructor(
 		private readonly nodeParametersService: DynamicNodeParametersService,
+		private readonly workflowService: WorkflowService,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
@@ -153,7 +158,7 @@ export class ChatHubModelsService {
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
 			case 'n8n':
-				return { models: await this.chatHubWorkflowService.fetchAgentWorkflowsAsModels(user) };
+				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
 				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
 		}
@@ -705,6 +710,109 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
+	}
+
+	async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelDto[]> {
+		// Workflows are scanned by their latest version for chat trigger nodes.
+		// This means that we might miss some active workflow versions that had chat triggers but
+		// the latest version does not, but this trade-off is done for performance.
+		const workflowsWithChatTrigger = await this.workflowService.getWorkflowsWithNodesIncluded(
+			user,
+			[CHAT_TRIGGER_NODE_TYPE],
+			true,
+		);
+
+		const activeWorkflows = workflowsWithChatTrigger
+			// Ensure the user has chat execution access to the workflow
+			.filter((workflow) => workflow.scopes.includes('workflow:execute-chat'))
+			// The workflow has to be active
+			.filter((workflow) => !!workflow.activeVersionId);
+
+		return await this.fetchAgentWorkflowsAsModelsByIds(
+			activeWorkflows.map((workflow) => workflow.id),
+		);
+	}
+
+	async fetchAgentWorkflowsAsModelsByIds(ids: string[]): Promise<ChatModelDto[]> {
+		const workflows = await this.workflowRepository.find({
+			select: {
+				id: true,
+				name: true,
+				shared: {
+					role: true,
+					project: {
+						id: true,
+						name: true,
+						icon: { type: true, value: true },
+					},
+				},
+			},
+			where: { id: In(ids) },
+			relations: {
+				activeVersion: true,
+				shared: {
+					project: true,
+				},
+			},
+		});
+
+		return workflows.flatMap((workflow) => {
+			const model = this.convertWorkflowToChatModel(workflow);
+
+			return model ? [model] : [];
+		});
+	}
+
+	private convertWorkflowToChatModel({
+		id,
+		name,
+		shared,
+		activeVersion,
+	}: WorkflowEntity): ChatModelDto | null {
+		if (!activeVersion) {
+			return null;
+		}
+
+		const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		if (!chatTrigger) {
+			return null;
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams?.availableInChat) {
+			return null;
+		}
+
+		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+			chatTriggerParams.options,
+		);
+
+		const agentName =
+			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+				? chatTriggerParams.agentName
+				: name;
+
+		// Find the owner's project (home project)
+		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+
+		return {
+			name: agentName,
+			description: chatTriggerParams.agentDescription ?? null,
+			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			model: {
+				provider: 'n8n',
+				workflowId: id,
+			},
+			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
+			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
+			metadata: {
+				inputModalities,
+				capabilities: {
+					functionCalling: false,
+				},
+				available: true,
+			},
+		};
 	}
 
 	private transformAndFilterModels(

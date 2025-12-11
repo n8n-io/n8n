@@ -74,6 +74,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ChatHubModelsService } from './chat-hub.models.service';
 
 @Service()
 export class ChatHubService {
@@ -91,6 +92,7 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatHubModelsService: ChatHubModelsService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly instanceSettings: InstanceSettings,
@@ -1254,7 +1256,7 @@ export class ChatHubService {
 		}
 
 		if (model.provider === 'n8n') {
-			const agents = await this.chatHubWorkflowService.fetchAgentWorkflowsAsModelsByIds([
+			const agents = await this.chatHubModelsService.fetchAgentWorkflowsAsModelsByIds([
 				model.workflowId,
 			]);
 
