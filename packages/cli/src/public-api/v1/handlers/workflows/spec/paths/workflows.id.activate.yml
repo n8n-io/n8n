@@ -7,6 +7,23 @@ post:
   description: Active a workflow.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
+  requestBody:
+    description: Optional parameters for workflow activation.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            versionId:
+              type: string
+              description: The specific version ID to activate. If not provided, activates the latest version.
+            name:
+              type: string
+              description: Optional name for the workflow version during activation.
+            description:
+              type: string
+              description: Optional description for the workflow version during activation.
+    required: false
   responses:
     '200':
       description: Workflow object
@@ -14,6 +31,8 @@ post:
         application/json:
           schema:
             $ref: '../schemas/workflow.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':

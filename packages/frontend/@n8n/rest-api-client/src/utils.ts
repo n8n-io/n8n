@@ -234,6 +234,10 @@ export async function streamRequest<T extends object>(
 	separator = STREAM_SEPARATOR,
 	abortSignal?: AbortSignal,
 ): Promise<void> {
+	let onErrorOnce: ((e: Error) => void) | undefined = (e: Error) => {
+		onErrorOnce = undefined;
+		onError?.(e);
+	};
 	const headers: Record<string, string> = {
 		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
@@ -258,7 +262,15 @@ export async function streamRequest<T extends object>(
 			async function readStream() {
 				const { done, value } = await reader.read();
 				if (done) {
-					onDone?.();
+					if (response.ok) {
+						onDone?.();
+					} else {
+						onErrorOnce?.(
+							new ResponseError(response.statusText, {
+								httpStatusCode: response.status,
+							}),
+						);
+					}
 					return;
 				}
 				const chunk = decoder.decode(value);
@@ -286,7 +298,7 @@ export async function streamRequest<T extends object>(
 							} else {
 								// Otherwise, call error callback
 								const message = 'message' in data ? data.message : response.statusText;
-								onError?.(
+								onErrorOnce?.(
 									new ResponseError(String(message), {
 										httpStatusCode: response.status,
 									}),
@@ -294,7 +306,7 @@ export async function streamRequest<T extends object>(
 							}
 						} catch (e: unknown) {
 							if (e instanceof Error) {
-								onError?.(e);
+								onErrorOnce?.(e);
 							}
 						}
 					}
@@ -304,11 +316,11 @@ export async function streamRequest<T extends object>(
 
 			// Start reading the stream
 			await readStream();
-		} else if (onError) {
-			onError(new Error(response.statusText));
+		} else if (onErrorOnce) {
+			onErrorOnce(new Error(response.statusText));
 		}
 	} catch (e: unknown) {
 		assert(e instanceof Error);
-		onError?.(e);
+		onErrorOnce?.(e);
 	}
 }

@@ -46,7 +46,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items: [],
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
 				evaluatedPruneDays: -1,
@@ -63,7 +63,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items: [],
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
 				evaluatedPruneDays: -1,
@@ -84,7 +84,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: -1,
@@ -95,7 +95,7 @@ describe('WorkflowHistoryList', () => {
 
 		const listItems = getAllByTestId('workflow-history-list-item');
 		const listItem = listItems[items.length - 1];
-		await userEvent.click(within(listItem).getByText(/ID: /));
+		await userEvent.click(within(listItem).getByText(/Saved: /));
 		expect(emitted().preview).toEqual([
 			[
 				{
@@ -108,7 +108,7 @@ describe('WorkflowHistoryList', () => {
 		expect(listItems).toHaveLength(numberOfItems);
 	});
 
-	it('should scroll to active item', async () => {
+	it('should scroll to selected item', async () => {
 		const items = Array.from({ length: 30 }, workflowHistoryDataFactory);
 
 		const { getByTestId } = renderComponent({
@@ -116,7 +116,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: items[0],
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: -1,
@@ -134,7 +134,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: -1,
@@ -153,7 +153,11 @@ describe('WorkflowHistoryList', () => {
 				{
 					action,
 					id: items[index].versionId,
-					data: { formattedCreatedAt: expect.any(String) },
+					data: {
+						formattedCreatedAt: expect.any(String),
+						versionName: items[index].name,
+						description: items[index].description,
+					},
 				},
 			],
 		]);
@@ -167,7 +171,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: items[0],
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: 1,
@@ -186,7 +190,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: items[0],
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: 1,

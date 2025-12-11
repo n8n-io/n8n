@@ -152,6 +152,7 @@ import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
+import IconLucideMinus from '~icons/lucide/minus';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -592,6 +593,7 @@ export const updatedIconSet = {
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
+	minus: IconLucideMinus,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,

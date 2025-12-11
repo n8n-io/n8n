@@ -535,14 +535,39 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			},
 		];
 
-		convertArraysToPostgresFormat(item, schema, node, 0);
+		const result = convertArraysToPostgresFormat(item, schema, node, 0);
 
-		expect(item).toEqual({
+		expect(result).toEqual({
 			jsonb_array: '{"{\\"key\\":\\"value44\\"}"}',
 			json_array: '{"{\\"key\\":\\"value54\\"}"}',
 			int_array: '{1,2,5}',
 			text_array: '{"one","t\\"w\\"o"}',
 			bool_array: '{"true","false"}',
 		});
+	});
+
+	it('should not modify the original data object', () => {
+		const referenceItem = {
+			arr: [1, 2, 3],
+		};
+		const item = {
+			arr: [1, 2, 3],
+		};
+		const schema: ColumnInfo[] = [
+			{
+				column_name: 'arr',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_int4',
+				column_default: null,
+			},
+		];
+
+		const result = convertArraysToPostgresFormat(item, schema, node, 0);
+
+		expect(result).toEqual({
+			arr: '{1,2,3}',
+		});
+		expect(item).toEqual(referenceItem);
 	});
 });

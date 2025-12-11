@@ -52,7 +52,7 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1, 3.2, 3.3],
+			version: [3, 3.1, 3.2, 3.3, 3.4],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
@@ -177,7 +177,7 @@ export class SwitchV3 implements INodeType {
 										filter: {
 											caseSensitive: '={{!$parameter.options.ignoreCase}}',
 											typeValidation: getTypeValidationStrictness(3.1),
-											version: '={{ $nodeVersion >= 3.2 ? 2 : 1 }}',
+											version: '={{ $nodeVersion >=3.4 ? 3 : $nodeVersion >= 3.2 ? 2 : 1 }}',
 										},
 									},
 								},

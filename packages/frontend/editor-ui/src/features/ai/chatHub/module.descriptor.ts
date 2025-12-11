@@ -11,16 +11,18 @@ import {
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
-import SettingsChatHubView from './SettingsChatHubView.vue';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
 const ChatAgentsView = async () => await import('@/features/ai/chatHub/ChatAgentsView.vue');
+const SettingsChatHubView = async () =>
+	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
 export const ChatModule: FrontendModuleDescription = {
 	id: 'chat-hub',
 	name: 'Chat',
-	description: 'Interact with various LLM models or your n8n AI agents.',
+	description: 'Chat with LLM models or your n8n AI agents.',
 	icon: 'chat',
 	modals: [
 		{
@@ -55,7 +57,6 @@ export const ChatModule: FrontendModuleDescription = {
 					provider: null,
 					initialValue: null,
 					onSelect: () => {},
-					onCreateNew: () => {},
 				},
 			},
 		},
@@ -175,6 +176,9 @@ export const ChatModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
+			},
 		},
 	],
 };

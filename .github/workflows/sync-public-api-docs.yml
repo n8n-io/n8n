@@ -137,7 +137,7 @@ jobs:
         if: steps.verify_file.outputs.file_exists == 'true'
 
         # Pin v7.0.8
-        uses: peter-evans/create-pull-request@18e469570b1cf0dfc11d60ec121099f8ff3e617a
+        uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412
         with:
           token: ${{ steps.generate_token.outputs.token }}
 

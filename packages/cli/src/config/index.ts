@@ -1,12 +1,9 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import convict from 'convict';
-import { flatten } from 'flat';
 import { readFileSync } from 'fs';
-import merge from 'lodash/merge';
 import { setGlobalState, UserError } from 'n8n-workflow';
-import assert from 'node:assert';
 
 import { inE2ETests } from '@/constants';
 
@@ -33,42 +30,8 @@ const config = convict(schema, { args: [] });
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
 
-const logger = Container.get(Logger);
-
 // Load overwrites when not in tests
 if (!inE2ETests && !inTest) {
-	// Overwrite default configuration with settings which got defined in
-	// optional configuration files
-	const { N8N_CONFIG_FILES } = process.env;
-	if (N8N_CONFIG_FILES !== undefined) {
-		const configFiles = N8N_CONFIG_FILES.split(',');
-		for (const configFile of configFiles) {
-			if (!configFile) continue;
-			// NOTE: This is "temporary" code until we have migrated all config to the new package
-			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const data = JSON.parse(readFileSync(configFile, 'utf8'));
-				for (const prefix in data) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-					const innerData = data[prefix];
-					if (prefix in globalConfig) {
-						// @ts-ignore
-						merge(globalConfig[prefix], innerData);
-					} else {
-						const flattenedData: Record<string, string> = flatten(innerData);
-						for (const key in flattenedData) {
-							config.set(`${prefix}.${key}`, flattenedData[key]);
-						}
-					}
-				}
-				logger.debug(`Loaded config overwrites from ${configFile}`);
-			} catch (error) {
-				assert(error instanceof Error);
-				logger.error(`Error loading config file ${configFile}`, { error });
-			}
-		}
-	}
-
 	// Overwrite config from files defined in "_FILE" environment variables
 	Object.entries(process.env).forEach(([envName, fileName]) => {
 		if (envName.endsWith('_FILE') && fileName) {

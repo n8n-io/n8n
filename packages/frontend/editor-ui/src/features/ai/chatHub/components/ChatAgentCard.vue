@@ -5,6 +5,7 @@ import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vu
 import type { ChatModelDto } from '@n8n/api-types';
 import { N8nActionDropdown, N8nBadge, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
 
 const { agent } = defineProps<{
@@ -16,13 +17,15 @@ const emit = defineEmits<{
 	delete: [];
 }>();
 
+const i18n = useI18n();
+
 type MenuAction = 'edit' | 'delete';
 
 const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
 	return [
-		{ id: 'edit' as const, label: 'Edit' },
+		{ id: 'edit' as const, label: i18n.baseText('chatHub.agent.card.menu.edit') },
 		...(agent.model.provider === 'custom-agent'
-			? [{ id: 'delete' as const, label: 'Delete' }]
+			? [{ id: 'delete' as const, label: i18n.baseText('chatHub.agent.card.menu.delete') }]
 			: []),
 	];
 });
@@ -47,12 +50,16 @@ function handleSelectMenu(action: MenuAction) {
 				{{ agent.name }}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.description">
-				{{ agent.description || 'No description' }}
+				{{ agent.description || i18n.baseText('chatHub.agent.card.noDescription') }}
 			</N8nText>
 		</div>
 
 		<N8nBadge theme="tertiary" show-border :class="$style.badge">
-			{{ agent.model.provider === 'n8n' ? 'n8n workflow' : 'Custom agent' }}
+			{{
+				agent.model.provider === 'n8n'
+					? i18n.baseText('chatHub.agent.card.badge.n8nWorkflow')
+					: i18n.baseText('chatHub.agent.card.badge.customAgent')
+			}}
 		</N8nBadge>
 
 		<div :class="$style.actions">
@@ -60,7 +67,7 @@ function handleSelectMenu(action: MenuAction) {
 				icon="pen"
 				type="tertiary"
 				size="medium"
-				title="Edit"
+				:title="i18n.baseText('chatHub.agent.card.button.edit')"
 				@click.prevent="emit('edit')"
 			/>
 			<N8nActionDropdown
@@ -74,7 +81,7 @@ function handleSelectMenu(action: MenuAction) {
 						icon="ellipsis-vertical"
 						type="tertiary"
 						size="medium"
-						title="More options"
+						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
 						text
 						:class="$style.actionDropdownTrigger"
 					/>

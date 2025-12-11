@@ -31,18 +31,20 @@ import type { Response } from 'express';
 import { jsonStringify } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
+		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
@@ -55,7 +57,7 @@ export class ChatHubController {
 		_res: Response,
 		@Body payload: ChatModelsRequestDto,
 	): Promise<ChatModelsResponse> {
-		return await this.chatService.getModels(req.user, payload.credentials);
+		return await this.chatModelsService.getModels(req.user, payload.credentials);
 	}
 
 	@Get('/conversations')

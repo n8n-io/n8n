@@ -120,11 +120,13 @@ export class WorkflowIndexService {
 	}
 
 	private addNodeTypeDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		dependencyUpdates.add({
-			dependencyType: 'nodeType',
-			dependencyKey: node.type,
-			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
-		});
+		if (node.type) {
+			dependencyUpdates.add({
+				dependencyType: 'nodeType',
+				dependencyKey: node.type,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
 	}
 
 	private addCredentialDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
@@ -133,6 +135,9 @@ export class WorkflowIndexService {
 		}
 		for (const credentialDetails of Object.values(node.credentials)) {
 			const { id } = credentialDetails;
+			if (!id) {
+				continue;
+			}
 			dependencyUpdates.add({
 				dependencyType: 'credentialId',
 				dependencyKey: id,
@@ -161,11 +166,13 @@ export class WorkflowIndexService {
 			return;
 		}
 		const webhookPath = node.parameters.path as string;
-		dependencyUpdates.add({
-			dependencyType: 'webhookPath',
-			dependencyKey: webhookPath,
-			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
-		});
+		if (webhookPath) {
+			dependencyUpdates.add({
+				dependencyType: 'webhookPath',
+				dependencyKey: webhookPath,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
 	}
 
 	private getCalledWorkflowIdFrom(node: INode): string | undefined {

@@ -5,6 +5,7 @@ import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import { loadNodesFromFile } from '../load-nodes.js';
 
@@ -76,12 +77,14 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
  * @param parsedNodeTypes - Array of parsed node type descriptions
  * @param llm - Language model instance
  * @param tracer - Optional LangChain tracer
+ * @param featureFlags - Optional feature flags
  * @returns Configured WorkflowBuilderAgent
  */
 export function createAgent(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
+	featureFlags?: BuilderFeatureFlags,
 ): WorkflowBuilderAgent {
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
@@ -89,6 +92,7 @@ export function createAgent(
 		llmComplexTask: llm,
 		checkpointer: new MemorySaver(),
 		tracer,
+		featureFlags,
 	});
 }
 

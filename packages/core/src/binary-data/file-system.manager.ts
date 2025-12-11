@@ -212,7 +212,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const binaryDataIndex = fileId.indexOf('/binary_data/');
 		if (binaryDataIndex !== -1) {
 			const pathSegments = fileId.substring(0, binaryDataIndex).split('/');
-			return FileLocation.ofCustom(pathSegments);
+			return FileLocation.ofCustom({ pathSegments });
 		}
 
 		throw new UnexpectedError(`File ID ${fileId} has invalid format.`);

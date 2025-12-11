@@ -58,6 +58,23 @@ export const formFields: INodeProperties = {
 			values: [
 				{
 					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					required: true,
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Label',
 					name: 'fieldLabel',
 					type: 'string',
 					default: '',
@@ -67,6 +84,26 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['hiddenField', 'html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldLabel',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. What is your name?',
+					description: 'Label that appears above the input field',
+					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField', 'html'],
+						},
+						show: {
+							'@version': [{ _cnd: { lt: 2.4 } }],
 						},
 					},
 				},
@@ -80,6 +117,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['hiddenField'],
+							'@version': [{ _cnd: { lt: 2.4 } }],
 						},
 					},
 				},
@@ -164,6 +202,60 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description: 'Default value that will be pre-filled in the form field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['text', 'number', 'email', 'textarea'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
+					type: 'dateTime',
+					typeOptions: {
+						dateOnly: true,
+					},
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value that will be pre-selected. Must match one of the option labels.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['dropdown', 'radio'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
 						},
 					},
 				},
@@ -478,15 +570,15 @@ export const formTriggerPanel = {
 	header: 'Pull in a test form submission',
 	executionsHelp: {
 		inactive:
-			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Execute step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
+			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Execute step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Publish the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
 		active:
-			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Execute step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
+			"Form Trigger has two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Execute step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Publish the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
 	},
 	activationHint: {
 		active:
 			"This node will also trigger automatically on new form submissions (but those executions won't show up here).",
 		inactive:
-			'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new form submissions created via the Production URL.',
+			'Publish this workflow to have it also run automatically for new form submissions created via the Production URL.',
 	},
 };
 

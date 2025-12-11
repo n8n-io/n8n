@@ -23,13 +23,12 @@ describe('BinaryDataConfig', () => {
 	it('should use default values when no env variables are defined', () => {
 		const config = Container.get(BinaryDataConfig);
 
-		expect(config.availableModes).toEqual(['filesystem']);
-		expect(config.mode).toBe('default');
+		expect(config.availableModes).toEqual(['filesystem', 's3', 'database']);
+		expect(config.mode).toBe('filesystem');
 		expect(config.localStoragePath).toBe('/test/n8n/binaryData');
 	});
 
 	it('should use values from env variables when defined', () => {
-		process.env.N8N_AVAILABLE_BINARY_DATA_MODES = 'filesystem,s3';
 		process.env.N8N_DEFAULT_BINARY_DATA_MODE = 's3';
 		process.env.N8N_BINARY_DATA_STORAGE_PATH = '/custom/storage/path';
 		process.env.N8N_BINARY_DATA_SIGNING_SECRET = 'super-secret';
@@ -37,7 +36,7 @@ describe('BinaryDataConfig', () => {
 		const config = Container.get(BinaryDataConfig);
 
 		expect(config.mode).toEqual('s3');
-		expect(config.availableModes).toEqual(['filesystem', 's3']);
+		expect(config.availableModes).toEqual(['filesystem', 's3', 'database']);
 		expect(config.localStoragePath).toEqual('/custom/storage/path');
 		expect(config.signingSecret).toBe('super-secret');
 	});
@@ -48,25 +47,14 @@ describe('BinaryDataConfig', () => {
 		expect(config.signingSecret).toBe('96eHYcXMF6J1Pn6dhdkOEt6H2BMa6kR5oR0ce7llWyA=');
 	});
 
-	it('should fallback to default for mode', () => {
+	it('should fallback to filesystem for invalid mode', () => {
 		process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'invalid-mode';
 
 		const config = Container.get(BinaryDataConfig);
 
-		expect(config.mode).toEqual('default');
+		expect(config.mode).toEqual('filesystem');
 		expect(console.warn).toHaveBeenCalledWith(
 			expect.stringContaining('Invalid value for N8N_DEFAULT_BINARY_DATA_MODE'),
-		);
-	});
-
-	it('should fallback to default for available modes', () => {
-		process.env.N8N_AVAILABLE_BINARY_DATA_MODES = 'filesystem,invalid-mode,s3';
-
-		const config = Container.get(BinaryDataConfig);
-
-		expect(config.availableModes).toEqual(['filesystem']);
-		expect(console.warn).toHaveBeenCalledWith(
-			expect.stringContaining('Invalid value for N8N_AVAILABLE_BINARY_DATA_MODES'),
 		);
 	});
 });

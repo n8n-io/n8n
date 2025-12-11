@@ -86,9 +86,11 @@ onMounted(async () => {
 	if (!settingsStore.isChatFeatureEnabled) {
 		return;
 	}
-	await fetchSettings();
-	await credentialsStore.fetchAllCredentials();
-	await credentialsStore.fetchCredentialTypes(false);
+	await Promise.all([
+		fetchSettings(),
+		credentialsStore.fetchAllCredentials(),
+		credentialsStore.fetchCredentialTypes(false),
+	]);
 });
 </script>
 <template>

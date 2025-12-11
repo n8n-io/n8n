@@ -1,9 +1,5 @@
 <script lang="ts" setup>
-import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
-
 import { N8nOption, N8nSelect } from '@n8n/design-system';
-import { onMounted } from 'vue';
-import { useUserRoleProvisioningStore } from '../composables/userRoleProvisioning.store';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -20,26 +16,10 @@ const { authProtocol } = defineProps<{
 }>();
 
 const i18n = useI18n();
-const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
 	value.value = newValue;
-};
-
-const getUserRoleProvisioningValueFromConfig = (
-	config?: ProvisioningConfig,
-): UserRoleProvisioningSetting => {
-	if (!config) {
-		return 'disabled';
-	}
-	if (config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles) {
-		return 'instance_and_project_roles';
-	} else if (config.scopesProvisionInstanceRole) {
-		return 'instance_role';
-	} else {
-		return 'disabled';
-	}
 };
 
 type UserRoleProvisioningDescription = {
@@ -63,15 +43,6 @@ const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
 		value: 'instance_and_project_roles',
 	},
 ];
-
-const loadUserRoleProvisioningConfig = async () => {
-	const config = await userRoleProvisioningStore.getProvisioningConfig();
-	value.value = getUserRoleProvisioningValueFromConfig(config);
-};
-
-onMounted(async () => {
-	await loadUserRoleProvisioningConfig();
-});
 </script>
 <template>
 	<div :class="$style.group">

@@ -46,9 +46,10 @@ export const randomEmail = () => `${randomName()}@${randomName()}.${randomTopLev
 export const randomCredentialPayload = ({
 	isManaged = false,
 	isGlobal,
-}: { isManaged?: boolean; isGlobal?: boolean } = {}): CredentialPayload => ({
+	type,
+}: { isManaged?: boolean; isGlobal?: boolean; type?: string } = {}): CredentialPayload => ({
 	name: randomName(),
-	type: randomName(),
+	type: type ?? 'githubApi',
 	data: { accessToken: randomString(6, 16) },
 	isManaged,
 	isGlobal,

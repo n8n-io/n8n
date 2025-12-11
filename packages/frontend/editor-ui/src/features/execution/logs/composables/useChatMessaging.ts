@@ -31,7 +31,7 @@ export type RunWorkflowChatPayload = {
 };
 export interface ChatMessagingDependencies {
 	chatTrigger: Ref<INodeUi | null>;
-	sessionId: string;
+	sessionId: Ref<string> | ComputedRef<string>;
 	executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
 	onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
@@ -97,7 +97,7 @@ export function useChatMessaging({
 
 		const inputPayload: INodeExecutionData = {
 			json: {
-				sessionId,
+				sessionId: sessionId.value,
 				action: 'sendMessage',
 				[inputKey]: message,
 			},
@@ -181,7 +181,7 @@ export function useChatMessaging({
 		const newMessage: ChatMessage & { sessionId: string } = {
 			text: message,
 			sender: 'user',
-			sessionId,
+			sessionId: sessionId.value,
 			id: uuid(),
 			files,
 		};
@@ -190,7 +190,7 @@ export function useChatMessaging({
 		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
 			ws.value.send(
 				JSON.stringify({
-					sessionId,
+					sessionId: sessionId.value,
 					action: 'sendMessage',
 					chatInput: message,
 					files: await processFiles(files),

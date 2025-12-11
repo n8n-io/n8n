@@ -41,6 +41,17 @@ jobs:
             exit 1
           fi
 
+      - name: Block RC promotion to stable/beta
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          CHANNEL: ${{ github.event.inputs.release-channel }}
+        run: |
+          if [[ "$INPUT_VERSION" == *"-rc."* ]]; then
+            echo "::error::RC versions cannot be promoted to '$CHANNEL' channel. Version '$INPUT_VERSION' contains '-rc.'"
+            exit 1
+          fi
+          echo "✅ Version '$INPUT_VERSION' is allowed for '$CHANNEL' channel"
+
   release-to-npm:
     name: Release to NPM
     runs-on: ubuntu-latest

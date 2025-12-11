@@ -13,9 +13,15 @@ github_checks:
   annotations: false
 
 flags:
-  tests:
-    paths:
-      - '**'
+  backend-unit:
+    carryforward: true
+  backend-integration:
+    carryforward: true
+  nodes-unit:
+    carryforward: true
+  frontend:
+    carryforward: true
+  frontend-e2e:
     carryforward: true
 
 component_management:

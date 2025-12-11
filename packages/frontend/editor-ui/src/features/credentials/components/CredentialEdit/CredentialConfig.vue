@@ -34,15 +34,19 @@ import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 import {
 	N8nCallout,
+	N8nIcon,
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
+import { ElSwitch } from 'element-plus';
 
 type Props = {
 	mode: string;
@@ -89,6 +93,7 @@ const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -193,6 +198,14 @@ const isAskAssistantAvailable = computed(
 
 const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);
+});
+
+const isResolvable = computed<boolean>(() => {
+	return Boolean(props.credentialData.isResolvable);
+});
+
+const isDynamicCredentialsEnabled = computed<boolean>(() => {
+	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
 });
 
 function onDataChange(event: IUpdateInformation): void {
@@ -402,6 +415,52 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</N8nInfoTip>
 				</template>
 			</EnterpriseEdition>
+
+			<div
+				v-if="
+					isDynamicCredentialsEnabled &&
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+				"
+				:class="$style.dynamicCredentials"
+				data-test-id="dynamic-credentials-section"
+			>
+				<div :class="$style.dynamicCredentialsHeader">
+					<N8nText size="medium" weight="bold">
+						{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
+					</N8nText>
+					<N8nTooltip placement="top">
+						<template #content>
+							<div>
+								{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip') }}
+							</div>
+						</template>
+						<N8nIcon icon="circle-help" size="small" />
+					</N8nTooltip>
+				</div>
+				<ElSwitch
+					:model-value="isResolvable"
+					data-test-id="dynamic-credentials-toggle"
+					@update:model-value="onDataChange({ name: 'isResolvable', value: $event })"
+				/>
+				<div :class="$style.dynamicCredentialsDescription">
+					<N8nText :tag="'div'" size="small" color="text-light">
+						{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description1') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description2') }}
+						<N8nLink
+							:to="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.docsUrl')"
+							size="small"
+							theme="text"
+							underline
+						>
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.documentation')
+							}}
+						</N8nLink>
+					</N8nText>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
@@ -428,5 +487,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		margin-left: var(--spacing--3xs);
 		font-size: var(--font-size--sm);
 	}
+}
+
+.dynamicCredentials {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding-top: var(--spacing--lg);
+	border-top: var(--border);
+}
+
+.dynamicCredentialsHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.dynamicCredentialsDescription {
+	margin-top: var(--spacing--2xs);
 }
 </style>

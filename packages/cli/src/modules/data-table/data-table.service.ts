@@ -4,6 +4,7 @@ import type {
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	DataTableListOptions,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
@@ -171,7 +172,11 @@ export class DataTableService {
 	async addColumn(dataTableId: string, projectId: string, dto: AddDataTableColumnDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+		const result = await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
+		return result;
 	}
 
 	async moveColumn(
@@ -194,7 +199,21 @@ export class DataTableService {
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
 		return true;
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		dto: RenameDataTableColumnDto,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+
+		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {
@@ -261,6 +280,8 @@ export class DataTableService {
 		});
 
 		this.dataTableSizeValidator.reset();
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
 		return result;
 	}
@@ -336,6 +357,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -421,6 +444,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -479,6 +504,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;

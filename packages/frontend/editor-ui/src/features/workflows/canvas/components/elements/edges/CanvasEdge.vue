@@ -8,6 +8,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, watch } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
+import { useCanvas } from '../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -26,6 +28,9 @@ const props = defineProps<CanvasEdgeProps>();
 const data = toRef(props, 'data');
 
 const $style = useCssModule();
+
+const { viewport } = useCanvas();
+const { calculateEdgeLightness } = useZoomAdjustedValues(viewport);
 
 const connectionType = computed(() =>
 	isValidNodeConnectionType(props.data.source.type)
@@ -52,34 +57,16 @@ watch(
 	{ immediate: true },
 );
 
-const renderToolbar = computed(() => (props.selected || delayedHovered.value) && !props.readOnly);
+const renderToolbar = computed(() => delayedHovered.value && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionTypes.Main);
 
 const status = computed(() => props.data.status);
 
-const edgeColor = computed(() => {
-	if (status.value === 'success') {
-		return 'var(--color--success)';
-	} else if (status.value === 'pinned') {
-		return 'var(--color--secondary)';
-	} else if (!isMainConnection.value) {
-		return 'var(--node-type--supplemental--color)';
-	} else if (props.selected) {
-		return 'var(--color--background--shade-2)';
-	} else {
-		return 'var(--color--foreground--shade-2)';
-	}
-});
-
 const edgeStyle = computed(() => ({
 	...props.style,
-	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
+	...(isMainConnection.value ? {} : { strokeDasharray: '5,6' }),
 }));
-
-const edgeStroke = computed(() =>
-	delayedHovered.value ? 'var(--color--primary)' : edgeColor.value,
-);
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
@@ -116,6 +103,32 @@ const connection = computed<Connection>(() => ({
 	targetHandle: props.targetHandleId,
 }));
 
+const edgeColor = computed(() => {
+	if (status.value === 'success') {
+		return 'var(--color--success)';
+	} else if (status.value === 'pinned') {
+		return 'var(--color--secondary)';
+	}
+	return undefined;
+});
+
+// For colored edges (success/pinned), don't apply hover effect
+const hasColoredStatus = computed(() => status.value === 'success' || status.value === 'pinned');
+const hoveredForLightness = computed(() => (hasColoredStatus.value ? false : delayedHovered.value));
+
+const edgeLightness = calculateEdgeLightness(hoveredForLightness);
+
+const edgeStyles = computed(() => {
+	const styles: Record<string, string> = {
+		'--canvas-edge--color--lightness--light': edgeLightness.value.light,
+		'--canvas-edge--color--lightness--dark': edgeLightness.value.dark,
+	};
+	if (edgeColor.value) {
+		styles['--canvas-edge--color'] = edgeColor.value;
+	}
+	return styles;
+});
+
 function onAdd() {
 	emit('add', connection.value);
 }
@@ -138,6 +151,7 @@ function onEdgeLabelMouseLeave() {
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
 		:data-target-node-name="data.target?.node"
+		:style="edgeStyles"
 		v-bind="$attrs"
 	>
 		<slot name="highlight" v-bind="{ segments }" />
@@ -149,7 +163,7 @@ function onEdgeLabelMouseLeave() {
 			:class="edgeClasses"
 			:style="edgeStyle"
 			:path="segment[0]"
-			:marker-end="markerEnd"
+			:marker-end="isMainConnection ? markerEnd : undefined"
 			:interaction-width="40"
 		/>
 	</g>
@@ -178,12 +192,16 @@ function onEdgeLabelMouseLeave() {
 
 <style lang="scss" module>
 .edge {
-	transition:
-		stroke 0.3s ease,
-		fill 0.3s ease;
+	transition: fill 0.3s ease;
 	// @bugfix cat-1639-connection-colors-not-rendering-correctly
 	// Using !important here to override BaseEdge styles after Rolldown Vite migration
-	stroke: var(--canvas-edge--color, v-bind(edgeStroke)) !important;
+	stroke: var(
+		--canvas-edge--color,
+		light-dark(
+			oklch(var(--canvas-edge--color--lightness--light) 0 0),
+			oklch(var(--canvas-edge--color--lightness--dark) 0 0)
+		)
+	) !important;
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1)) !important;
 	stroke-linecap: square;
@@ -205,13 +223,8 @@ function onEdgeLabelMouseLeave() {
 .edgeLabel {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
-	color: var(--color--text);
+	color: var(--canvas--label--color);
 	font-size: var(--font-size--xs);
-	background-color: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	background-color: var(--canvas--label--color--background);
 }
 </style>

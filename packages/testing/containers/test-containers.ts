@@ -5,12 +5,26 @@
 // Use N8N_DOCKER_IMAGE env var if set, otherwise default to 'n8nio/n8n:local'
 const n8nImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
 
+// Derive the task runner image from the n8n image tag for consistency
+// e.g., 'n8nio/n8n:local' -> 'n8nio/runners:local'
+// e.g., 'n8nio/n8n:1.50.0' -> 'n8nio/runners:1.50.0'
+function getTaskRunnerImage(): string {
+	// Allow explicit override via env var
+	if (process.env.N8N_RUNNERS_IMAGE) {
+		return process.env.N8N_RUNNERS_IMAGE;
+	}
+
+	// Extract the tag from the n8n image and apply it to runners
+	const tag = n8nImage.split(':').at(-1) ?? 'local';
+	return `n8nio/runners:${tag}`;
+}
+
 export const TEST_CONTAINER_IMAGES = {
 	postgres: 'postgres:18-alpine',
 	redis: 'redis:alpine',
 	caddy: 'caddy:alpine',
 	n8n: n8nImage,
-	taskRunner: 'n8nio/runners:nightly',
+	taskRunner: getTaskRunnerImage(),
 	mailpit: 'axllent/mailpit:latest',
 	mockserver: 'mockserver/mockserver:5.15.0',
 	gitea: 'gitea/gitea:1.25.1',

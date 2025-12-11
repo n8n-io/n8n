@@ -39,6 +39,11 @@ export class AiService {
 			baseUrl,
 			logLevel,
 		});
+
+		// Register for license certificate updates
+		this.licenseService.onCertRefresh((cert) => {
+			this.client?.updateLicenseCert(cert);
+		});
 	}
 
 	async chat(payload: AiChatRequestDto, user: IUser) {

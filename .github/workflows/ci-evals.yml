@@ -47,6 +47,22 @@ jobs:
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-blacksmith
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv python install 3.11
+
+      - name: Install workflow comparison dependencies
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: just sync-all
+
       - name: Export Node Types
         run: |
           ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json

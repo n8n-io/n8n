@@ -595,7 +595,7 @@ defineExpose({
 				<slot name="empty">
 					<N8nActionBox
 						data-test-id="empty-resources-list"
-						emoji="👋"
+						:icon="{ type: 'emoji', value: '👋' }"
 						:heading="
 							getResourceText(
 								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',

@@ -103,15 +103,21 @@ export async function getWorkflowDetails(
 	endpoints: WebhookEndpoints,
 	{ workflowId }: { workflowId: string },
 ): Promise<WorkflowDetailsResult> {
-	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-		'workflow:read',
-	]);
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		['workflow:read'],
+		{ includeActiveVersion: true },
+	);
 	if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
 		throw new UserError('Workflow not found');
 	}
 
+	const nodes = workflow.activeVersion?.nodes ?? [];
+	const connections = workflow.activeVersion?.connections ?? {};
+
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	const triggers = workflow.nodes.filter(
+	const triggers = nodes.filter(
 		(node) => supportedTriggers.includes(node.type) && node.disabled !== true,
 	);
 
@@ -133,8 +139,8 @@ export async function getWorkflowDetails(
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		settings: workflow.settings ?? null,
-		connections: workflow.connections,
-		nodes: workflow.nodes.map(({ credentials: _credentials, ...node }) => node),
+		connections,
+		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
 		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,

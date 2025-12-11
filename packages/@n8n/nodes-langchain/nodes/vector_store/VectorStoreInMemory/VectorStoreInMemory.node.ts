@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 import {
 	type INodeProperties,
 	type ILoadOptionsFunctions,

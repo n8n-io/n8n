@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
@@ -644,10 +645,24 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void executePromise.then(() => {
-				const waitTracker = Container.get(WaitTracker);
-				void waitTracker.startExecution(parentExecution.executionId);
-			});
+			const executionRepository = Container.get(ExecutionRepository);
+			void executePromise
+				.then(async (subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+					await WorkflowHelpers.updateParentExecutionWithChildResults(
+						executionRepository,
+						parentExecution.executionId,
+						subworkflowResults,
+					);
+					return subworkflowResults;
+				})
+				.then((subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+					const waitTracker = Container.get(WaitTracker);
+					void waitTracker.startExecution(parentExecution.executionId);
+				});
 		}
 
 		if (!didSendResponse) {

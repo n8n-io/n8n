@@ -5,6 +5,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
+import { PythonTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonTaskRunnerSandbox';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
@@ -57,7 +58,8 @@ function getTool(
 	const workflowMode = ctx.getMode();
 
 	const runnersConfig = Container.get(TaskRunnersConfig);
-	const isRunnerEnabled = runnersConfig.enabled;
+	const isJsRunnerEnabled = runnersConfig.enabled;
+	const isPyRunnerEnabled = runnersConfig.isNativePythonRunnerEnabled;
 
 	const { typeVersion } = node;
 	const name =
@@ -100,7 +102,7 @@ function getTool(
 	};
 
 	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
-		if (language === 'javaScript' && isRunnerEnabled) {
+		if (language === 'javaScript' && isJsRunnerEnabled) {
 			const sandbox = new JsTaskRunnerSandbox(
 				code,
 				'runOnceForAllItems',
@@ -111,10 +113,20 @@ function getTool(
 					query,
 				},
 			);
-			const executionData = await sandbox.runCodeForTool();
-			return executionData;
+			return await sandbox.runCodeForTool();
+		} else if (language === 'python' && isPyRunnerEnabled) {
+			const sandbox = new PythonTaskRunnerSandbox(
+				code,
+				'runOnceForAllItems',
+				workflowMode,
+				ctx as IExecuteFunctions,
+				{
+					query,
+				},
+			);
+			return await sandbox.runCodeForTool();
 		} else {
-			// use old vm2-based sandbox for python or when without runner enabled
+			// use old vm2-based sandbox when runners disabled
 			const sandbox = getSandbox(query, itemIndex);
 			return await sandbox.runCode<string>();
 		}
@@ -326,9 +338,9 @@ export class ToolCode implements INodeType {
 					editorLanguage: 'python',
 				},
 				default:
-					'# Example: convert the incoming query to uppercase and return it\nreturn query.upper()',
+					'# Example: convert the incoming query to uppercase and return it\nreturn _query.upper()',
 				// TODO: Add proper text here later
-				hint: 'You can access the input the tool receives via the input property "query". The returned value should be a single string.',
+				hint: 'You can access the input the tool receives via the input property "_query". The returned value should be a single string.',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-final-period
 				description: 'E.g. Converts any text to uppercase',
 				noDataExpression: true,

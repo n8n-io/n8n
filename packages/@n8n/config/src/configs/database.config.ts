@@ -5,6 +5,17 @@ import { Config, Env, Nested } from '../decorators';
 const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
 type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
+class MySqlMariaDbNotSupportedError extends Error {
+	// Workaround to not get this reported to Sentry
+	readonly cause: { level: 'warning' } = {
+		level: 'warning',
+	};
+
+	constructor() {
+		super('MySQL and MariaDB have been removed. Please migrate to PostgreSQL.');
+	}
+}
+
 @Config
 class LoggingConfig {
 	/** Whether database logging is enabled. */
@@ -119,15 +130,17 @@ class MysqlConfig {
 	poolSize: number = 10;
 }
 
+const sqlitePoolSizeSchema = z.coerce.number().int().gte(1);
+
 @Config
 export class SqliteConfig {
 	/** SQLite database file name */
 	@Env('DB_SQLITE_DATABASE')
 	database: string = 'database.sqlite';
 
-	/** SQLite database pool size. Set to `0` to disable pooling. */
-	@Env('DB_SQLITE_POOL_SIZE')
-	poolSize: number = 0;
+	/** SQLite database pool size. Must be equal to or higher than `1`. */
+	@Env('DB_SQLITE_POOL_SIZE', sqlitePoolSizeSchema)
+	poolSize: number = 3;
 
 	/**
 	 * Enable SQLite WAL mode.
@@ -154,12 +167,10 @@ export class DatabaseConfig {
 	type: DbType = 'sqlite';
 
 	/**
-	 * Is true if the default sqlite data source of TypeORM is used, as opposed
-	 * to any other (e.g. postgres)
-	 * This also returns false if n8n's new pooled sqlite data source is used.
+	 * Legacy sqlite is no longer supported. Setting kept until we clean up all uses.
 	 */
 	get isLegacySqlite() {
-		return this.type === 'sqlite' && this.sqlite.poolSize === 0;
+		return false;
 	}
 
 	/** Prefix for table names */
@@ -183,4 +194,10 @@ export class DatabaseConfig {
 
 	@Nested
 	sqlite: SqliteConfig;
+
+	sanitize() {
+		if (this.type === 'mariadb' || this.type === 'mysqldb') {
+			throw new MySqlMariaDbNotSupportedError();
+		}
+	}
 }

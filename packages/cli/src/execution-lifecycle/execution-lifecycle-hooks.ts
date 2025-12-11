@@ -3,9 +3,17 @@ import { ExecutionRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { stringify } from 'flatted';
-import { ErrorReporter, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	FileLocation,
+	InstanceSettings,
+	ExecutionLifecycleHooks,
+} from 'n8n-core';
 import type {
+	IRun,
 	IWorkflowBase,
+	RelatedExecution,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -28,6 +36,7 @@ import {
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
+import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 
 @Service()
 class ModulesHooksRegistry {
@@ -99,6 +108,7 @@ type HooksSetupParameters = {
 	saveSettings: ExecutionSaveSettings;
 	pushRef?: string;
 	retryOf?: string;
+	parentExecution?: RelatedExecution;
 };
 
 function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
@@ -306,15 +316,38 @@ function hookFunctionsStatistics(hooks: ExecutionLifecycleHooks) {
 }
 
 /**
+ * Duplicates binary data from a subworkflow execution to the parent execution.
+ * This ensures the parent can access the binary data after the subworkflow
+ * execution is cleaned up. The duplicateBinaryData method also updates
+ * the binary data IDs in the data to point to the new location.
+ */
+async function duplicateBinaryDataToParent(
+	fullRunData: IRun,
+	parentExecution: RelatedExecution,
+	binaryDataService: BinaryDataService,
+) {
+	const outputData = getDataLastExecutedNodeData(fullRunData);
+	if (outputData?.data?.main) {
+		const duplicatedData = await binaryDataService.duplicateBinaryData(
+			FileLocation.ofExecution(parentExecution.workflowId, parentExecution.executionId),
+			outputData.data.main,
+		);
+		// Update the run data with the new binary data IDs
+		outputData.data.main = duplicatedData;
+	}
+}
+
+/**
  * Returns hook functions to save workflow execution and call error workflow
  */
 function hookFunctionsSave(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf, saveSettings }: HooksSetupParameters,
+	{ pushRef, retryOf, saveSettings, parentExecution }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
+	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData, newStaticData) {
@@ -324,6 +357,13 @@ function hookFunctionsSave(
 		});
 
 		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
+
+		// If this is a subworkflow execution, duplicate binary data to the parent's
+		// execution. This must happen before any potential deletion of this execution's
+		// data, and updates the binary data IDs in fullRunData to point to the parent location.
+		if (parentExecution) {
+			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+		}
 
 		const isManualMode = this.mode === 'manual';
 
@@ -481,13 +521,14 @@ export function getLifecycleHooksForSubExecutions(
 	executionId: string,
 	workflowData: IWorkflowBase,
 	userId?: string,
+	parentExecution?: RelatedExecution,
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
-	hookFunctionsSave(hooks, { saveSettings });
+	hookFunctionsSave(hooks, { saveSettings, parentExecution });
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);

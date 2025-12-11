@@ -1,5 +1,5 @@
 import { MongoDBChatMessageHistory } from '@langchain/mongodb';
-import { BufferWindowMemory } from 'langchain/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import { MongoClient } from 'mongodb';
 import type {
 	ISupplyDataFunctions,

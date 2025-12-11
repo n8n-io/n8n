@@ -269,7 +269,7 @@ export const describeCommonTests = (
 
 	describe('executeWorkflow', () => {
 		const data = [[{ json: { test: true } }]];
-		const executeWorkflowData = mock<ExecuteWorkflowData>();
+		const executeWorkflowData = mock<ExecuteWorkflowData>({ data });
 		const workflowInfo = mock<IExecuteWorkflowInfo>();
 		const parentExecution: RelatedExecution = {
 			executionId: 'parent_execution_id',
@@ -278,23 +278,18 @@ export const describeCommonTests = (
 
 		it('should execute workflow and return data', async () => {
 			additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
-			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
 
 			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
 				parentExecution,
 			});
 
 			expect(result.data).toEqual(data);
-			expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledWith(
-				{ type: 'execution', workflowId: workflow.id, executionId: additionalData.executionId },
-				executeWorkflowData.data,
-			);
+			expect(result).toBe(executeWorkflowData);
 		});
 
 		it('should put execution to wait if waitTill is returned', async () => {
 			const waitTill = new Date();
 			additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData, waitTill });
-			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
 
 			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
 				parentExecution,

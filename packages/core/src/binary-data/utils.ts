@@ -58,8 +58,18 @@ export const FileLocation = {
 	 * Create a location for a binary file at a custom path,
 	 * e.g. ["chat-hub", "sessions", "abc", "messages", "def"] -> "chat-hub/sessions/abc/messages/def"
 	 */
-	ofCustom: (pathSegments: string[]): BinaryData.FileLocation => ({
+	ofCustom: ({
+		pathSegments,
+		sourceType,
+		sourceId,
+	}: {
+		pathSegments: string[];
+		sourceType?: string;
+		sourceId?: string;
+	}): BinaryData.FileLocation => ({
 		type: 'custom',
 		pathSegments,
+		sourceType,
+		sourceId,
 	}),
 };

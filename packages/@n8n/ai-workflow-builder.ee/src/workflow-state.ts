@@ -2,7 +2,8 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { SimpleWorkflow, WorkflowOperation } from './types';
+import type { NodeConfigurationsMap, SimpleWorkflow, WorkflowOperation } from './types';
+import { appendArrayReducer, nodeConfigurationsReducer } from './utils/state-reducers';
 import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -100,5 +101,18 @@ export const WorkflowState = Annotation.Root({
 	previousSummary: Annotation<string>({
 		reducer: (x, y) => y ?? x, // Overwrite with the latest summary
 		default: () => 'EMPTY',
+	}),
+
+	// Node configurations collected from workflow examples
+	// Used to provide context when updating node parameters
+	nodeConfigurations: Annotation<NodeConfigurationsMap>({
+		reducer: nodeConfigurationsReducer,
+		default: () => ({}),
+	}),
+
+	// Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: appendArrayReducer,
+		default: () => [],
 	}),
 });

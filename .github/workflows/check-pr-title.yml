@@ -8,6 +8,7 @@ on:
       - synchronize
     branches:
       - 'master'
+      - '1.x'
 
 jobs:
   check-pr-title:

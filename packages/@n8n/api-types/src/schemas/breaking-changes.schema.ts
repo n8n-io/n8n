@@ -35,7 +35,7 @@ const affectedWorkflowSchema = z.object({
 	active: z.boolean(),
 	numberOfExecutions: z.number(),
 	lastUpdatedAt: z.date(),
-	lastExecutedAt: z.date().nullable(),
+	lastExecutedAt: z.date().optional(),
 	issues: z.array(workflowIssueSchema),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;

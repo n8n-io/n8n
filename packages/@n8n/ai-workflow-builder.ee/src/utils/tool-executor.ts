@@ -5,8 +5,81 @@ import { isCommand } from '@langchain/langgraph';
 
 import { ToolExecutionError, WorkflowStateError } from '../errors';
 import type { ToolExecutorOptions } from '../types/config';
+import type { NodeConfigurationsMap } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
 import type { WorkflowState } from '../workflow-state';
+
+type StateUpdate = Partial<typeof WorkflowState.State>;
+
+/**
+ * Type guard to check if a value is an array
+ */
+function isArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
+
+/**
+ * Collect and flatten arrays from state updates for a given key.
+ * Uses type guard for array detection and explicit typing on the result.
+ * @param updates - State updates to collect from
+ * @param key - The key to collect array values from
+ * @returns Flattened array of values from the specified key
+ */
+function collectArrayFromUpdates<T>(updates: StateUpdate[], key: keyof StateUpdate): T[] {
+	const result: T[] = [];
+	for (const update of updates) {
+		const value = update[key];
+		if (isArray(value)) {
+			// Each element is validated as part of the source StateUpdate structure
+			for (const item of value) {
+				result.push(item as T);
+			}
+		}
+	}
+	return result;
+}
+
+/**
+ * Merge node configurations from multiple state updates
+ * Configurations are grouped by node type
+ */
+function mergeNodeConfigurations(updates: StateUpdate[]): NodeConfigurationsMap {
+	const merged: NodeConfigurationsMap = {};
+
+	for (const update of updates) {
+		if (update.nodeConfigurations && typeof update.nodeConfigurations === 'object') {
+			for (const [nodeType, configs] of Object.entries(update.nodeConfigurations)) {
+				if (!merged[nodeType]) {
+					merged[nodeType] = [];
+				}
+				merged[nodeType].push(...configs);
+			}
+		}
+	}
+
+	return merged;
+}
+
+/**
+ * Create an error ToolMessage for failed tool invocations
+ */
+function createToolErrorMessage(toolName: string, toolCallId: string, error: unknown): ToolMessage {
+	const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+	const isParsingError =
+		error instanceof ToolInputParsingException || errorMessage.includes('expected schema');
+
+	const errorContent = isParsingError
+		? `Invalid input for tool ${toolName}: ${errorMessage}`
+		: `Tool ${toolName} failed: ${errorMessage}`;
+
+	return new ToolMessage({
+		content: errorContent,
+		tool_call_id: toolCallId,
+		name: toolName,
+		additional_kwargs: { error: true },
+	});
+}
 
 /**
  * PARALLEL TOOL EXECUTION
@@ -71,27 +144,7 @@ export async function executeToolsInParallel(
 			} catch (error) {
 				// Handle tool invocation errors by returning a ToolMessage with error
 				// This ensures the conversation history remains valid (every tool_use has a tool_result)
-				const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-				// Create error message content
-				let errorContent: string;
-				if (
-					error instanceof ToolInputParsingException ||
-					errorMessage.includes('expected schema')
-				) {
-					errorContent = `Invalid input for tool ${toolCall.name}: ${errorMessage}`;
-				} else {
-					errorContent = `Tool ${toolCall.name} failed: ${errorMessage}`;
-				}
-
-				// Return a ToolMessage with the error to maintain conversation continuity
-				return new ToolMessage({
-					content: errorContent,
-					tool_call_id: toolCall.id ?? '',
-					name: toolCall.name,
-					// Include error flag so tools can handle errors appropriately
-					additional_kwargs: { error: true },
-				});
+				return createToolErrorMessage(toolCall.name, toolCall.id ?? '', error);
 			}
 		}),
 	);
@@ -113,39 +166,27 @@ export async function executeToolsInParallel(
 		}
 	});
 
-	// Collect all messages from state updates
-	stateUpdates.forEach((update) => {
-		if (update.messages && Array.isArray(update.messages)) {
-			allMessages.push(...update.messages);
-		}
-	});
+	// Collect messages from state updates
+	allMessages.push(...collectArrayFromUpdates<BaseMessage>(stateUpdates, 'messages'));
 
-	// Collect all workflow operations
-	const allOperations: WorkflowOperation[] = [];
+	// Collect all state update arrays using helper function
+	const allOperations = collectArrayFromUpdates<WorkflowOperation>(
+		stateUpdates,
+		'workflowOperations',
+	);
+	const allTechniqueCategories = collectArrayFromUpdates<string>(
+		stateUpdates,
+		'techniqueCategories',
+	);
+	const allValidationHistory = collectArrayFromUpdates<
+		(typeof WorkflowState.State.validationHistory)[number]
+	>(stateUpdates, 'validationHistory');
 
-	for (const update of stateUpdates) {
-		if (update.workflowOperations && Array.isArray(update.workflowOperations)) {
-			allOperations.push(...update.workflowOperations);
-		}
-	}
+	// Merge node configurations from all updates
+	const allNodeConfigurations = mergeNodeConfigurations(stateUpdates);
 
-	// Collect all technique categories
-	const allTechniqueCategories: string[] = [];
-
-	for (const update of stateUpdates) {
-		if (update.techniqueCategories && Array.isArray(update.techniqueCategories)) {
-			allTechniqueCategories.push(...update.techniqueCategories);
-		}
-	}
-
-	// Collect all validation history
-	const allValidationHistory: Array<(typeof WorkflowState.State.validationHistory)[number]> = [];
-
-	for (const update of stateUpdates) {
-		if (update.validationHistory && Array.isArray(update.validationHistory)) {
-			allValidationHistory.push(...update.validationHistory);
-		}
-	}
+	// Collect template IDs from all updates
+	const allTemplateIds = collectArrayFromUpdates<number>(stateUpdates, 'templateIds');
 
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
@@ -162,6 +203,14 @@ export async function executeToolsInParallel(
 
 	if (allValidationHistory.length > 0) {
 		finalUpdate.validationHistory = allValidationHistory;
+	}
+
+	if (Object.keys(allNodeConfigurations).length > 0) {
+		finalUpdate.nodeConfigurations = allNodeConfigurations;
+	}
+
+	if (allTemplateIds.length > 0) {
+		finalUpdate.templateIds = allTemplateIds;
 	}
 
 	return finalUpdate;

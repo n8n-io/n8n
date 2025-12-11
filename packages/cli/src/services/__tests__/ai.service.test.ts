@@ -109,6 +109,48 @@ describe('AiService', () => {
 		});
 	});
 
+	describe('license certificate refresh', () => {
+		it('should register for license certificate updates on init', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('mock-license-cert');
+			license.getConsumerId.mockReturnValue('mock-consumer-id');
+
+			await aiService.init();
+
+			expect(license.onCertRefresh).toHaveBeenCalledWith(expect.any(Function));
+		});
+
+		it('should update client license cert when callback is invoked', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('mock-license-cert');
+			license.getConsumerId.mockReturnValue('mock-consumer-id');
+
+			// Capture the callback passed to onCertRefresh
+			let capturedCallback: ((cert: string) => void) | undefined;
+			license.onCertRefresh.mockImplementation((cb: (cert: string) => void) => {
+				capturedCallback = cb;
+				return () => {};
+			});
+
+			await aiService.init();
+
+			expect(capturedCallback).toBeDefined();
+
+			// Invoke the callback with a new cert
+			capturedCallback!('new-cert-value');
+
+			expect(client.updateLicenseCert).toHaveBeenCalledWith('new-cert-value');
+		});
+
+		it('should not register for license updates when AI assistant is disabled', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			await aiService.init();
+
+			expect(license.onCertRefresh).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('askAi', () => {
 		const payload = mock<AiAskRequestDto>();
 

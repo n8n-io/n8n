@@ -96,7 +96,7 @@ const { isReady } = useAsyncState(async () => {
 					await nodeTypesStore.getNodeTypes();
 				}
 
-				initializeWorkspace(data);
+				await initializeWorkspace(data);
 			} catch (error) {
 				toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
 			}

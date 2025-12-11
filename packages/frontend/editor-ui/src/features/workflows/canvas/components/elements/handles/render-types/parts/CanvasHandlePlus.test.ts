@@ -1,11 +1,15 @@
 import { fireEvent } from '@testing-library/vue';
 import CanvasHandlePlus from './CanvasHandlePlus.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasHandleProvide } from '@/features/workflows/canvas/__tests__/utils';
+import {
+	createCanvasHandleProvide,
+	createCanvasProvide,
+} from '@/features/workflows/canvas/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CanvasHandlePlus, {
 	global: {
 		provide: {
+			...createCanvasProvide(),
 			...createCanvasHandleProvide(),
 		},
 	},

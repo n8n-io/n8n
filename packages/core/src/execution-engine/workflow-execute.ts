@@ -206,41 +206,6 @@ export class WorkflowExecute {
 			destination = toolExecutorNode;
 			// TODO(CAT-1265): Verify that this functionality works as expected.
 			destinationNode = { nodeName: toolExecutorNode.name, mode: 'inclusive' };
-		} else {
-			// Edge Case 1:
-			// Support executing a single node that is not connected to a trigger
-			const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
-			if (destinationHasNoParents) {
-				// short cut here, only create a subgraph and the stacks
-				graph = findSubgraph({
-					graph: filterDisabledNodes(graph),
-					destination,
-					trigger: destination,
-				});
-				const filteredNodes = graph.getNodes();
-				runData = cleanRunData(runData, graph, new Set([destination]));
-				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-					recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
-
-				this.status = 'running';
-				this.runExecutionData = createRunExecutionData({
-					startData: {
-						destinationNode,
-						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
-					},
-					resultData: {
-						runData,
-						pinData,
-					},
-					executionData: {
-						nodeExecutionStack,
-						waitingExecution,
-						waitingExecutionSource,
-					},
-				});
-
-				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
-			}
 		}
 
 		// 1. Find the Trigger

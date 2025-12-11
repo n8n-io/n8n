@@ -1,6 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { initializeAgentExecutorWithOptions } from 'langchain/agents';
+import { initializeAgentExecutorWithOptions } from '@langchain/classic/agents';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 

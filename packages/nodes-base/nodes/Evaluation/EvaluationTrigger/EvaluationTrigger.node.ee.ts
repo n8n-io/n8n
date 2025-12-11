@@ -208,11 +208,27 @@ export class EvaluationTrigger implements INodeType {
 			const dataTableProxy = await this.helpers.getDataTableProxy(dataTableId);
 
 			const filter = await getDataTableFilter(this, 0);
+			const previousRunRowId = inputData?.[0]?.json?.row_id;
+
+			let effectiveFilter = filter;
+			if (typeof previousRunRowId === 'number' && previousRunRowsLeft !== 0) {
+				effectiveFilter = {
+					type: 'and',
+					filters: [
+						...filter.filters,
+						{
+							columnName: 'id',
+							condition: 'gt',
+							value: previousRunRowId,
+						},
+					],
+				};
+			}
 
 			const { data, count } = await dataTableProxy.getManyRowsAndCount({
-				skip: currentIndex,
+				skip: 0,
 				take: 1,
-				filter,
+				filter: effectiveFilter,
 			});
 
 			if (data.length === 0) {
@@ -220,7 +236,7 @@ export class EvaluationTrigger implements INodeType {
 			}
 
 			const effectiveTotal = Math.min(count, maxRows);
-			const rowsLeft = Math.max(0, effectiveTotal - (currentIndex + 1));
+			const rowsLeft = Math.max(0, effectiveTotal - 1);
 
 			const currentRow = {
 				json: {

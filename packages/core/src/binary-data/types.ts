@@ -36,7 +36,7 @@ export namespace BinaryData {
 
 	export type FileLocation =
 		| { type: 'execution'; workflowId: string; executionId: string }
-		| { type: 'custom'; pathSegments: string[] };
+		| { type: 'custom'; pathSegments: string[]; sourceType?: string; sourceId?: string };
 
 	export interface Manager {
 		init(): Promise<void>;

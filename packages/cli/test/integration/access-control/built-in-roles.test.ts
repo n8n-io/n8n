@@ -60,6 +60,8 @@ describe('Built-in Role Matrix Testing', () => {
 			passwordReset: jest.fn(),
 		});
 
+		await utils.initCredentialsTypes();
+
 		// Create standard users
 		owner = await createOwner();
 		member1 = await createMember();

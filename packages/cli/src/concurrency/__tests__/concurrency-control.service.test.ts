@@ -215,31 +215,34 @@ describe('ConcurrencyControlService', () => {
 				},
 			);
 
-			it.each(['webhook', 'trigger'])('should enqueue on %s mode', async (mode: ExecutionMode) => {
-				/**
-				 * Arrange
-				 */
-				globalConfig.executions.concurrency.productionLimit = 1;
+			it.each(['webhook', 'trigger', 'chat'])(
+				'should enqueue on %s mode',
+				async (mode: ExecutionMode) => {
+					/**
+					 * Arrange
+					 */
+					globalConfig.executions.concurrency.productionLimit = 1;
 
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-					globalConfig,
-				);
-				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventService,
+						globalConfig,
+					);
+					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
-				/**
-				 * Act
-				 */
-				await service.throttle({ mode, executionId: '1' });
+					/**
+					 * Act
+					 */
+					await service.throttle({ mode, executionId: '1' });
 
-				/**
-				 * Assert
-				 */
-				expect(enqueueSpy).toHaveBeenCalled();
-			});
+					/**
+					 * Assert
+					 */
+					expect(enqueueSpy).toHaveBeenCalled();
+				},
+			);
 
 			it('should enqueue on evaluation mode', async () => {
 				/**
@@ -298,31 +301,34 @@ describe('ConcurrencyControlService', () => {
 				},
 			);
 
-			it.each(['webhook', 'trigger'])('should dequeue on %s mode', (mode: ExecutionMode) => {
-				/**
-				 * Arrange
-				 */
-				globalConfig.executions.concurrency.productionLimit = 1;
+			it.each(['webhook', 'trigger', 'chat'])(
+				'should dequeue on %s mode',
+				(mode: ExecutionMode) => {
+					/**
+					 * Arrange
+					 */
+					globalConfig.executions.concurrency.productionLimit = 1;
 
-				const service = new ConcurrencyControlService(
-					logger,
-					executionRepository,
-					telemetry,
-					eventService,
-					globalConfig,
-				);
-				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventService,
+						globalConfig,
+					);
+					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
-				/**
-				 * Act
-				 */
-				service.release({ mode });
+					/**
+					 * Act
+					 */
+					service.release({ mode });
 
-				/**
-				 * Assert
-				 */
-				expect(dequeueSpy).toHaveBeenCalled();
-			});
+					/**
+					 * Assert
+					 */
+					expect(dequeueSpy).toHaveBeenCalled();
+				},
+			);
 
 			it('should dequeue on evaluation mode', () => {
 				/**
@@ -381,7 +387,7 @@ describe('ConcurrencyControlService', () => {
 				},
 			);
 
-			it.each(['webhook', 'trigger'])(
+			it.each(['webhook', 'trigger', 'chat'])(
 				'should remove an execution on %s mode',
 				(mode: ExecutionMode) => {
 					/**
@@ -559,6 +565,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				await service.throttle({ mode: 'trigger', executionId: '1' });
 				await service.throttle({ mode: 'webhook', executionId: '2' });
+				await service.throttle({ mode: 'chat', executionId: '3' });
 
 				/**
 				 * Assert

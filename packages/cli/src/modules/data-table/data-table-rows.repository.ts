@@ -330,7 +330,7 @@ export class DataTableRowsRepository {
 			if (!useReturning && returnData) {
 				// Only Postgres supports RETURNING statement on updates (with our typeorm),
 				// on other engines we must query the list of updates rows later by ID
-				affectedRows = await this.getAffectedRowsForUpdate(dataTableId, filter, columns, true, trx);
+				affectedRows = await this.getAffectedRowsForUpdate(dataTableId, filter, columns, true, em);
 			}
 
 			setData.updatedAt = normalizeValueForDatabase(new Date(), 'date', dbType);

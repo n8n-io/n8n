@@ -1,7 +1,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from '@langchain/textsplitters';
-import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
+import { JSONLoader } from '@langchain/classic/document_loaders/fs/json';
+import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,

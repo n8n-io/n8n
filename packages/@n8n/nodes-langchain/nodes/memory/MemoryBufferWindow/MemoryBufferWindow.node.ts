@@ -1,5 +1,5 @@
-import type { BufferWindowMemoryInput } from 'langchain/memory';
-import { BufferWindowMemory } from 'langchain/memory';
+import type { BufferWindowMemoryInput } from '@langchain/classic/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeConnectionTypes,
 	type INodeType,

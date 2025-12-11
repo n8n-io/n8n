@@ -8,8 +8,7 @@ export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
-	@Env('N8N_RUNNERS_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * Whether the task runner should run as a child process spawned by n8n (internal mode)
@@ -90,6 +89,5 @@ export class TaskRunnersConfig {
 	 * adjusted to account for breaking changes:
 	 * https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta
 	 */
-	@Env('N8N_NATIVE_PYTHON_RUNNER')
-	isNativePythonRunnerEnabled: boolean = false;
+	isNativePythonRunnerEnabled: boolean = true;
 }

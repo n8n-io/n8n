@@ -137,7 +137,7 @@ export type PlaintextExecutionContext = Omit<IExecutionContext, 'credentials'> &
 	credentials?: ICredentialContext;
 };
 
-const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
+export const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
 	const typeName = schema.meta()?.title ?? 'Object';
 	try {
 		const normalizedObject = typeof value === 'string' ? jsonParse(value) : value;

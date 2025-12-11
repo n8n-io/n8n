@@ -3,7 +3,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBecomeTemplateCreatorStore } from './becomeTemplateCreatorStore';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 const i18n = useI18n();
 const store = useBecomeTemplateCreatorStore();
 const telemetry = useTelemetry();
@@ -20,23 +20,22 @@ const onClick = () => {
 		data-test-id="become-template-creator-cta"
 	>
 		<div :class="$style.textAndCloseButton">
-			<p :class="$style.text">
+			<N8nText size="small">
 				{{ i18n.baseText('becomeCreator.text') }}
-			</p>
+			</N8nText>
 
 			<button
 				:class="$style.closeButton"
 				data-test-id="close-become-template-creator-cta"
 				@click="store.dismissCta()"
 			>
-				<N8nIcon icon="x" size="xsmall" :title="i18n.baseText('generic.close')" />
+				<N8nIcon icon="x" :title="i18n.baseText('generic.close')" />
 			</button>
 		</div>
 
 		<N8nButton
 			:class="$style.becomeCreatorButton"
 			:label="i18n.baseText('becomeCreator.buttonText')"
-			size="xmini"
 			type="secondary"
 			element="a"
 			href="https://creators.n8n.io/hub"
@@ -52,7 +51,8 @@ const onClick = () => {
 	flex-direction: column;
 	background-color: var(--color--background--light-2);
 	border: var(--border);
-	border-right: 0;
+	margin: var(--spacing--2xs);
+	border-radius: var(--radius);
 }
 
 .textAndCloseButton {

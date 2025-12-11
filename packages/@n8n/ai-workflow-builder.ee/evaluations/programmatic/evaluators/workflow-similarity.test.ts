@@ -178,6 +178,31 @@ describe('evaluateWorkflowSimilarity', () => {
 
 			expect(result.violations[0].pointsDeducted).toBe(16);
 		});
+
+		it('should pass custom preset to Python script', async () => {
+			const mockPythonOutput = JSON.stringify({
+				similarity_score: 0.9,
+				edit_cost: 10,
+				max_possible_cost: 100,
+				top_edits: [],
+				metadata: {
+					generated_nodes: 1,
+					ground_truth_nodes: 1,
+					config_name: 'lenient',
+				},
+			});
+
+			mockExecFileAsync.mockResolvedValue({ stdout: mockPythonOutput, stderr: '' });
+
+			await evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow, 'lenient');
+
+			// Verify the preset was passed to the Python script
+			expect(mockExecFileAsync).toHaveBeenCalledWith(
+				'uvx',
+				expect.arrayContaining(['--preset', 'lenient']),
+				expect.any(Object),
+			);
+		});
 	});
 
 	describe('error handling', () => {

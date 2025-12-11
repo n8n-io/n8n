@@ -27,13 +27,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRoute: vi.fn().mockReturnValue({
 		params: { name: 'test' },
 		query: { parentFolderId: '1' },
+		meta: {
+			nodeView: true,
+		},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
 		push: vi.fn().mockResolvedValue(undefined),
 		currentRoute: {
 			value: {
-				params: { name: 'test' },
+				params: {
+					name: 'test',
+				},
 				query: { parentFolderId: '1' },
 			},
 		},
@@ -109,6 +114,13 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 				template: '<div><slot name="append" /></div>',
 			},
 		},
+		directives: {
+			loading: {
+				mounted() {},
+				updated() {},
+				unmounted() {},
+			},
+		},
 	},
 });
 
@@ -125,6 +137,8 @@ const workflow = {
 	tags: ['1', '2'],
 	active: false,
 	isArchived: false,
+	scopes: [],
+	meta: {},
 };
 
 describe('WorkflowDetails', () => {
@@ -148,7 +162,7 @@ describe('WorkflowDetails', () => {
 	});
 
 	it('renders workflow name and tags', async () => {
-		(useRoute as Mock).mockReturnValue({
+		(useRoute as Mock).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		});
 		const { getByTestId, getByText } = renderComponent({
@@ -193,7 +207,8 @@ describe('WorkflowDetails', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('workflow-share-button'));
+		await userEvent.click(getByTestId('workflow-menu'));
+		await userEvent.click(getByTestId('workflow-menu-item-share'));
 		expect(openModalSpy).toHaveBeenCalledWith({
 			name: WORKFLOW_SHARE_MODAL_KEY,
 			data: { id: '1' },
@@ -202,11 +217,12 @@ describe('WorkflowDetails', () => {
 
 	describe('Workflow menu', () => {
 		beforeEach(() => {
-			(useRoute as Mock).mockReturnValue({
+			(useRoute as Mock).mockReturnValueOnce({
 				meta: {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
+				params: { name: 'test' },
 			});
 		});
 
@@ -242,6 +258,7 @@ describe('WorkflowDetails', () => {
 			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
@@ -596,7 +613,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
-			workflowsStore.workflowsById = { [workflow.id]: workflow as IWorkflowDb };
+			workflowsStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
 
 			const { getByTestId } = renderComponent({
 				props: {

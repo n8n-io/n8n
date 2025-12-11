@@ -1,46 +1,66 @@
-import { type UsersListFilterDto } from '@n8n/api-types';
+import { type UsersListFilterDto, type User } from '@n8n/api-types';
 import { ref } from 'vue';
 import * as usersApi from '@n8n/rest-api-client/api/users';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-interface AccessSettingsUserData {
-	count: number;
-	items: Array<{
-		id: string;
-		email: string;
-		role: string;
-		projectRelations: Array<{
-			id: string;
-			role: string;
-			name: string;
-		}>;
-	}>;
-}
+/**
+ * Special type since we use the "select" and "expand" filter
+ * properties to change what is fetched in the users query.
+ */
+type AccessSettingsUser = Pick<User, 'id' | 'email' | 'role' | 'projectRelations'>;
 
-function isAccessSettingsUserData(response: unknown): response is AccessSettingsUserData {
-	const topLevelsPropertiesMatch =
-		typeof response === 'object' && response !== null && 'count' in response && 'items' in response;
-	if (!topLevelsPropertiesMatch) {
-		return false;
+type AccessSettingsUserData = {
+	count: number;
+	items: AccessSettingsUser[];
+};
+
+async function fetchUsers(context: IRestApiContext): Promise<AccessSettingsUserData> {
+	const allUsers: AccessSettingsUserData['items'] = [];
+	const fieldsNeededForAccessSettingExport: Partial<UsersListFilterDto> = {
+		select: ['email', 'role'],
+		expand: ['projectRelations'],
+	};
+
+	const PAGE_SIZE = 50;
+	let currentPage = 0;
+	let totalCount = 0;
+	let hasMorePages = true;
+
+	while (hasMorePages) {
+		const filter: UsersListFilterDto = {
+			...fieldsNeededForAccessSettingExport,
+			sortBy: ['email:desc'],
+			take: PAGE_SIZE,
+			skip: currentPage * PAGE_SIZE,
+		};
+
+		const response = await usersApi.getUsers(context, filter);
+
+		if (currentPage === 0) {
+			totalCount = response.count;
+		}
+
+		allUsers.push(...response.items);
+
+		hasMorePages = response.items.length === PAGE_SIZE && allUsers.length < totalCount;
+		currentPage++;
 	}
-	if (!Array.isArray(response.items)) {
-		return false;
-	}
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const item: object = response.items.length ? response.items[0] : null;
-	if (!item) {
-		return true;
-	}
-	const isValidItem =
-		Object.hasOwn(item, 'id') &&
-		Object.hasOwn(item, 'email') &&
-		Object.hasOwn(item, 'role') &&
-		Object.hasOwn(item, 'projectRelations');
-	return isValidItem;
+
+	return {
+		count: totalCount,
+		items: allUsers,
+	};
 }
 
 export function useAccessSettingsCsvExport() {
 	const cachedUserData = ref<AccessSettingsUserData | undefined>();
+	/**
+	 * Since users can click the "download project roles" and "download instance roles"
+	 * buttons right after one another, we're tracking the active request here
+	 * to not have to fetch the users list twice.
+	 */
+	const pendingUserDataRequest = ref<Promise<AccessSettingsUserData> | undefined>();
 	const rootStore = useRootStore();
 
 	const formatDateForFilename = (): string => {
@@ -73,22 +93,25 @@ export function useAccessSettingsCsvExport() {
 		if (cachedUserData.value) {
 			return cachedUserData.value;
 		}
-		// TODO: add pagination
-		const filter: UsersListFilterDto = {
-			take: -1,
-			select: ['email', 'role'],
-			sortBy: ['email:desc'],
-			expand: ['projectRelations'],
-			skip: 0,
-		};
-		const getUsersResponse = await usersApi.getUsers(rootStore.restApiContext, filter);
-		if (isAccessSettingsUserData(getUsersResponse)) {
-			cachedUserData.value = getUsersResponse;
-			return cachedUserData.value;
+
+		// Return existing pending promise if one is in flight
+		if (pendingUserDataRequest.value) {
+			return await pendingUserDataRequest.value;
 		}
-		// This case should never happen (as that would mean a breaking backend change)
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any
-		return getUsersResponse as any;
+
+		const userDataRequest = fetchUsers(rootStore.restApiContext)
+			.then((userData) => {
+				cachedUserData.value = userData;
+				pendingUserDataRequest.value = undefined; // reset pendingUserDataRequest
+				return userData;
+			})
+			.catch((error) => {
+				pendingUserDataRequest.value = undefined; // reset pendingUserDataRequest
+				throw error;
+			});
+
+		pendingUserDataRequest.value = userDataRequest;
+		return await userDataRequest;
 	};
 
 	const hasDownloadedProjectRoleCsv = ref(false);
@@ -145,6 +168,7 @@ export function useAccessSettingsCsvExport() {
 		hasDownloadedProjectRoleCsv.value = false;
 		// ensure user data is loaded freshly whenever dialog is opened the next time
 		cachedUserData.value = undefined;
+		pendingUserDataRequest.value = undefined;
 	};
 
 	return {

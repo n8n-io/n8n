@@ -6,6 +6,7 @@ import {
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -26,6 +27,7 @@ import {
 import { NextFunction, Response } from 'express';
 import { DataTableRowReturn } from 'n8n-workflow';
 
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -33,7 +35,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
-import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
@@ -46,6 +47,26 @@ export class DataTableController {
 		private readonly dataTableService: DataTableService,
 		private readonly projectService: ProjectService,
 	) {}
+
+	private handleDataTableColumnOperationError(e: unknown): never {
+		if (
+			e instanceof DataTableColumnNameConflictError ||
+			e instanceof DataTableSystemColumnNameConflictError ||
+			e instanceof DataTableNameConflictError
+		) {
+			throw new ConflictError(e.message);
+		}
+		if (e instanceof DataTableValidationError) {
+			throw new BadRequestError(e.message);
+		}
+		if (e instanceof ResponseError) {
+			throw e;
+		}
+		if (e instanceof Error) {
+			throw new InternalServerError(e.message, e);
+		}
+		throw e;
+	}
 
 	@Middleware()
 	async validateProjectExists(
@@ -171,18 +192,7 @@ export class DataTableController {
 		try {
 			return await this.dataTableService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (
-				e instanceof DataTableColumnNameConflictError ||
-				e instanceof DataTableSystemColumnNameConflictError
-			) {
-				throw new ConflictError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
@@ -197,13 +207,7 @@ export class DataTableController {
 		try {
 			return await this.dataTableService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
@@ -224,15 +228,28 @@ export class DataTableController {
 				dto,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof DataTableValidationError) {
-				throw new BadRequestError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Patch('/:dataTableId/columns/:columnId/rename')
+	@ProjectScope('dataTable:update')
+	async renameColumn(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('columnId') columnId: string,
+		@Body dto: RenameDataTableColumnDto,
+	) {
+		try {
+			return await this.dataTableService.renameColumn(
+				dataTableId,
+				req.params.projectId,
+				columnId,
+				dto,
+			);
+		} catch (e: unknown) {
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 

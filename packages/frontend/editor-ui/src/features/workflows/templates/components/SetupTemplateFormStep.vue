@@ -95,6 +95,7 @@ const onCredentialModalOpened = () => {
 			<CredentialPicker
 				:class="$style.credentialPicker"
 				:app-name="appName"
+				personal-only
 				:credential-type="props.credentials.credentialType"
 				:selected-credential-id="selectedCredentialId"
 				@credential-selected="

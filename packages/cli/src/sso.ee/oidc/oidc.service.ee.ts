@@ -412,6 +412,16 @@ export class OidcService {
 	}
 
 	async updateConfig(newConfig: OidcConfigDto) {
+		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
+			newConfig.loginEnabled &&
+			!isEmailCurrentAuthenticationMethod() &&
+			!isOidcCurrentAuthenticationMethod();
+		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
+			throw new InternalServerError(
+				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${getCurrentAuthenticationMethod()})`,
+			);
+		}
+
 		let discoveryEndpoint: URL;
 		try {
 			// Validating that discoveryEndpoint is a valid URL
@@ -466,7 +476,9 @@ export class OidcService {
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 
-		if (enabled && !isEmailCurrentAuthenticationMethod() && !isOidcCurrentAuthenticationMethod()) {
+		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
+			enabled && !isEmailCurrentAuthenticationMethod() && !isOidcCurrentAuthenticationMethod();
+		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
 			throw new InternalServerError(
 				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${currentAuthenticationMethod})`,
 			);

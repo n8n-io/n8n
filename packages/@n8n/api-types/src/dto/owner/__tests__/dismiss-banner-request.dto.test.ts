@@ -92,6 +92,7 @@ describe('DismissBannerRequestDto', () => {
 				'EMAIL_CONFIRMATION',
 				'DATA_TABLE_STORAGE_LIMIT_WARNING',
 				'DATA_TABLE_STORAGE_LIMIT_ERROR',
+				'WORKFLOW_AUTO_DEACTIVATED',
 			];
 
 			expect(staticBannerNameSchema.options).toEqual(expectedBanners);

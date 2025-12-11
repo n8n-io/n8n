@@ -10,7 +10,7 @@ export class BinaryDataQueryDto extends Z.class({
 		.refine(
 			(id) => {
 				const [mode] = id.split(':');
-				return ['filesystem', 'filesystem-v2', 's3'].includes(mode);
+				return ['database', 'filesystem', 'filesystem-v2', 's3'].includes(mode);
 			},
 			{
 				message: 'Invalid binary data mode',

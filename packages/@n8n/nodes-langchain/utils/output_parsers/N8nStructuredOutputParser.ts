@@ -1,5 +1,5 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import { StructuredOutputParser } from '@langchain/classic/output_parsers';
 import get from 'lodash/get';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';

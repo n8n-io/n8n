@@ -11,6 +11,9 @@ dependencies = [
 [project.optional-dependencies]
 sentry = ["sentry-sdk>=2.35.2"]
 
+[tool.uv]
+constraint-dependencies = ["urllib3>=2.6.0"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.12.8",

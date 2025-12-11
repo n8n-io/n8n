@@ -17,6 +17,7 @@ export async function replyToEmail(
 	gmailId: string,
 	options: IDataObject,
 	itemIndex: number,
+	nodeVersion: number,
 ) {
 	if (options.replyToSenderOnly && options.replyToRecipientsOnly) {
 		throw new NodeOperationError(
@@ -97,14 +98,19 @@ export async function replyToEmail(
 		}
 	};
 
+	let replyToHeaderName = 'from';
+	if (nodeVersion >= 2.2 && payload.headers.some((h) => h.name.toLowerCase() === 'reply-to')) {
+		replyToHeaderName = 'reply-to';
+	}
+
 	for (const header of payload.headers) {
 		const headerName = (header.name || '').toLowerCase();
-		if (headerName === 'from' && !replyToRecipientsOnly) {
-			const from = header.value;
-			if (from.includes('<') && from.includes('>')) {
-				to.push(from);
+		if (headerName === replyToHeaderName && !replyToRecipientsOnly) {
+			const replyToEmail = header.value;
+			if (replyToEmail.includes('<') && replyToEmail.includes('>')) {
+				to.push(replyToEmail);
 			} else {
-				to.push(`<${from}>`);
+				to.push(`<${replyToEmail}>`);
 			}
 		}
 

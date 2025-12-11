@@ -127,6 +127,7 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 		dismissBanner,
 		updateBannersHeight,
 		pushBannerToStack,
+		removeBannerFromStack,
 		clearBannerStack,
 		loadStaticBanners,
 		loadDynamicBanners,

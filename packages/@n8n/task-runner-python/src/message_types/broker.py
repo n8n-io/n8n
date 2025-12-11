@@ -32,6 +32,8 @@ NodeMode = Literal["all_items", "per_item"]
 
 Items = list[dict[str, Any]]  # INodeExecutionData[]
 
+Query = str | dict[str, Any] | None  # tool input
+
 
 @dataclass
 class TaskSettings:
@@ -43,6 +45,7 @@ class TaskSettings:
     workflow_id: str
     node_name: str
     node_id: str
+    query: Query = None
 
 
 @dataclass

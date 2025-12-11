@@ -33,6 +33,7 @@ defineProps<{
 	menu: Array<Item | Divider>;
 	disabled?: boolean;
 	teleport?: boolean;
+	submenuClass?: string;
 }>();
 
 const menuRef = ref<typeof ElMenu | null>(null);
@@ -91,7 +92,7 @@ defineExpose({
 			:index="ROOT_MENU_INDEX"
 			:class="$style.trigger"
 			:popper-offset="-10"
-			:popper-class="$style.submenu"
+			:popper-class="[$style.submenu, submenuClass ?? ''].join(' ')"
 			:disabled
 			:teleported="teleport"
 		>

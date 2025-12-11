@@ -18,6 +18,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   },
   {
     "disabled": true,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -245,6 +246,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -378,6 +380,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -605,6 +608,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -750,6 +754,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -895,6 +900,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -1040,6 +1046,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {

@@ -147,4 +147,52 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 	value: vi.fn(),
 });
 
+class SpeechSynthesisUtterance {
+	text = '';
+	lang = '';
+	voice = null;
+	volume = 1;
+	rate = 1;
+	pitch = 1;
+	onstart = null;
+	onend = null;
+	onerror = null;
+	onpause = null;
+	onresume = null;
+	onmark = null;
+	onboundary = null;
+
+	constructor(text?: string) {
+		if (text) {
+			this.text = text;
+		}
+	}
+
+	addEventListener = vi.fn();
+	removeEventListener = vi.fn();
+	dispatchEvent = vi.fn(() => true);
+}
+
+Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+	writable: true,
+	value: SpeechSynthesisUtterance,
+});
+
+Object.defineProperty(window, 'speechSynthesis', {
+	writable: true,
+	value: {
+		cancel: vi.fn(),
+		speak: vi.fn(),
+		pause: vi.fn(),
+		resume: vi.fn(),
+		getVoices: vi.fn(() => []),
+		pending: false,
+		speaking: false,
+		paused: false,
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(() => true),
+	},
+});
+
 loadLanguage('en', englishBaseText as LocaleMessages);

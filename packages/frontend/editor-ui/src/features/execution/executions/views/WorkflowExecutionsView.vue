@@ -142,7 +142,7 @@ async function fetchWorkflow() {
 			try {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
-				initializeWorkspace(data);
+				await initializeWorkspace(data);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 			}

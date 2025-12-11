@@ -245,7 +245,7 @@ CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
 - Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):
   - For document input: { mode: "insert" }
   - For querying: { mode: "retrieve" }
-  - For AI tool use: { mode: "retrieve-as-tool" }
+  - For AI Agent and tool use: { mode: "retrieve-as-tool" }
 - Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):
   - For text splitter input: { textSplittingMode: "custom" }
   - For built-in splitting: { textSplittingMode: "simple" }

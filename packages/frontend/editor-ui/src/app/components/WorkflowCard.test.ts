@@ -634,7 +634,6 @@ describe('WorkflowCard', () => {
 		const { queryByTestId } = renderComponent({ props: { data } });
 
 		expect(queryByTestId('workflow-card-archived')).not.toBeInTheDocument();
-		expect(queryByTestId('workflow-card-activator')).toBeInTheDocument();
 	});
 
 	it("should show 'Duplicate' action when user has read permission and can create workflows", async () => {

@@ -22,6 +22,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import config from '@/config';
 import type { AuthlessRequest } from '@/requests';
 import { v4 as uuidv4 } from 'uuid';
+import { OwnershipService } from '@/services/ownership.service';
 
 describe('InvitationController', () => {
 	const logger: Logger = mockInstance(Logger);
@@ -33,22 +34,29 @@ describe('InvitationController', () => {
 	const userRepository: UserRepository = mockInstance(UserRepository);
 	const postHog: PostHogClient = mockInstance(PostHogClient);
 	const eventService: EventService = mockInstance(EventService);
+	const ownershipService: OwnershipService = mockInstance(OwnershipService);
+
+	function defaultInvitationController() {
+		return new InvitationController(
+			logger,
+			externalHooks,
+			authService,
+			userService,
+			license,
+			passwordUtility,
+			userRepository,
+			postHog,
+			eventService,
+			ownershipService,
+		);
+	}
 
 	describe('inviteUser', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const user = mock<User>({
 				id: '123',
@@ -77,18 +85,9 @@ describe('InvitationController', () => {
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const user = mock<User>({
 				id: '123',
@@ -112,18 +111,9 @@ describe('InvitationController', () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(config, 'getEnv').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(false));
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const user = mock<User>({
 				id: '123',
@@ -148,18 +138,9 @@ describe('InvitationController', () => {
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(config, 'getEnv').mockReturnValue(true);
 			jest.spyOn(license, 'isAdvancedPermissionsLicensed').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const user = mock<User>({
 				id: '123',
@@ -209,17 +190,9 @@ describe('InvitationController', () => {
 			jest.spyOn(config, 'getEnv').mockReturnValue(true);
 			jest.spyOn(license, 'isAdvancedPermissionsLicensed').mockReturnValue(true);
 			jest.spyOn(userService, 'inviteUsers').mockResolvedValue(inviteUsersResult);
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+
+			const invitationController = defaultInvitationController();
 
 			const user = mock<User>({
 				id: '123',
@@ -255,19 +228,11 @@ describe('InvitationController', () => {
 	describe('acceptInvitation', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+
 			const id = uuidv4();
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId: id,
@@ -291,19 +256,11 @@ describe('InvitationController', () => {
 
 		it('throws a BadRequestError if the inviter ID and invitee ID are not found in the database', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+
 			const id = uuidv4();
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId: id,
@@ -332,6 +289,8 @@ describe('InvitationController', () => {
 
 		it('throws a BadRequestError if the invitee already has a password', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+
 			const invitee = mock<User>({
 				id: '123',
 				email: 'valid@email.com',
@@ -346,17 +305,7 @@ describe('InvitationController', () => {
 			jest.spyOn(userRepository, 'find').mockResolvedValue([inviter, invitee]);
 			const id = uuidv4();
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId: id,
@@ -379,6 +328,8 @@ describe('InvitationController', () => {
 
 		it('accepts the invitation successfully', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
+
 			const id = uuidv4();
 			const inviter = mock<User>({
 				id: '124',
@@ -400,17 +351,7 @@ describe('InvitationController', () => {
 			jest.spyOn(userService, 'toPublic').mockResolvedValue(invitee as unknown as PublicUser);
 			jest.spyOn(externalHooks, 'run').mockResolvedValue(invitee as never);
 
-			const invitationController = new InvitationController(
-				logger,
-				externalHooks,
-				authService,
-				userService,
-				license,
-				passwordUtility,
-				userRepository,
-				postHog,
-				eventService,
-			);
+			const invitationController = defaultInvitationController();
 
 			const payload = new AcceptInvitationRequestDto({
 				inviterId: id,

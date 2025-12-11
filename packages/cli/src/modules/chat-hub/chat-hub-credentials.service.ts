@@ -85,10 +85,12 @@ export class ChatHubCredentialsService {
 			throw new ForbiddenError('Missing owner project for the workflow');
 		}
 
-		const allCredentials =
+		const workflowCredentials =
 			await this.credentialsService.findAllCredentialIdsForWorkflow(workflowId);
+		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds();
+		workflowCredentials.push.apply(workflowCredentials, globalCredentials);
 
-		const credential = allCredentials.find((c) => c.id === credentialId);
+		const credential = workflowCredentials.find((c) => c.id === credentialId);
 		if (!credential) {
 			throw new ForbiddenError("You don't have access to the provided credentials");
 		}

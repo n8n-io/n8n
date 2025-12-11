@@ -17,7 +17,7 @@ export const getWebhookSandboxCSP = (): string => {
  * as HTML.
  */
 export const isHtmlRenderedContentType = (contentType: string) => {
-	const contentTypeLower = contentType.toLowerCase();
+	const contentTypeLower = contentType.trim().toLowerCase();
 
 	return (
 		// The content-type can also contain a charset, e.g. "text/html; charset=utf-8"

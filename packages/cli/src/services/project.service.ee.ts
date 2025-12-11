@@ -237,7 +237,7 @@ export class ProjectService {
 
 		const project = await trx.save(
 			Project,
-			this.projectRepository.create({ ...data, type: 'team' }),
+			this.projectRepository.create({ ...data, type: 'team', creatorId: adminUser.id }),
 		);
 
 		// Link admin

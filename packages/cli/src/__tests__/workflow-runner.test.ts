@@ -2,9 +2,6 @@ import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE, Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
@@ -35,6 +32,9 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -115,8 +115,8 @@ describe('processError', () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution(
 			{
-				status: 'success',
-				finished: true,
+				status: 'waiting',
+				finished: false,
 			},
 			workflow,
 		);
@@ -238,7 +238,7 @@ describe('run', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
-			workflowData: { nodes: [], id: 'workflow-id' },
+			workflowData: { nodes: [], id: 'workflow-id', settings: undefined },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -256,6 +256,8 @@ describe('run', () => {
 		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 			userId: data.userId,
 			workflowId: 'workflow-id',
+			executionTimeoutTimestamp: undefined,
+			workflowSettings: {},
 		});
 		expect(ManualExecutionService.prototype.runManually).toHaveBeenCalledWith(
 			data,

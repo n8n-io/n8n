@@ -140,9 +140,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<WorkflowEntity>({
 					id: EXECUTION_ID,
 					name: 'Test Workflow',
-					active: false,
-					activeVersionId: null,
-					activeVersion: null,
+					active: true,
+					activeVersionId: 'active-version-id',
+					activeVersion: {
+						nodes: [],
+						connections: {},
+					},
 					nodes: [],
 					connections: {},
 				}),
@@ -211,9 +214,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const workflowWithId = mock<WorkflowEntity>({
 				id: workflowId,
 				name: 'Test Workflow',
-				active: false,
-				activeVersionId: null,
-				activeVersion: null,
+				active: true,
+				activeVersionId: 'active-version-id',
+				activeVersion: {
+					nodes: [],
+					connections: {},
+				},
 				nodes: [],
 				connections: {},
 			});
@@ -378,7 +384,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
-		it('should use current version when workflow has no active version', async () => {
+		it('should throw error when workflow has no active version', async () => {
 			const currentNodes: INode[] = [
 				mock<INode>({
 					id: 'current-node',
@@ -395,7 +401,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<WorkflowEntity>({
 					id: 'workflow-123',
 					name: 'Test Workflow',
-					active: false,
+					active: true,
 					activeVersionId: null,
 					nodes: currentNodes,
 					connections: currentConnections,
@@ -403,10 +409,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			const result = await getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
-
-			expect(result.nodes).toEqual(currentNodes);
-			expect(result.connections).toEqual(currentConnections);
+			await expect(getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id')).rejects.toThrow(
+				'Workflow is not active and cannot be executed.',
+			);
 		});
 
 		it('should load activeVersion relation when tags are disabled', async () => {
@@ -416,11 +421,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: 'workflow-123',
-					active: false,
-					activeVersionId: null,
+					active: true,
+					activeVersionId: 'active-version-id',
 					nodes: [],
 					connections: {},
-					activeVersion: null,
+					activeVersion: {
+						nodes: [],
+						connections: {},
+					},
 				}),
 			);
 
@@ -549,6 +557,18 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			expect(additionalData.executionTimeoutTimestamp).toBe(executionTimeoutTimestamp);
+		});
+
+		it('should include workflowSettings when provided', async () => {
+			const workflowSettings = {
+				executionTimeout: 300,
+				credentialResolverId: 'test-resolver-123',
+			};
+			const additionalData = await getBase({
+				workflowSettings,
+			});
+
+			expect(additionalData.workflowSettings).toBe(workflowSettings);
 		});
 	});
 });

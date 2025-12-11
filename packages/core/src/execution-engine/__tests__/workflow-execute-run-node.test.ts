@@ -8,6 +8,7 @@
 
 // Mock all external dependencies first, before any imports
 jest.mock('@n8n/config', () => ({
+	...jest.requireActual('@n8n/config'),
 	GlobalConfig: jest.fn().mockImplementation(() => ({
 		sentry: { backendDsn: '' },
 	})),

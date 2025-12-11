@@ -64,14 +64,22 @@ beforeEach(async () => {
 
 	jest.mock('@/telemetry');
 
-	config.set('userManagement.isInstanceOwnerSetUp', true);
-
 	await setCurrentAuthenticationMethod('email');
 });
 
 test('Member role should not be able to access ldap routes', async () => {
 	const member = await createUser({ role: { slug: 'global:member' } });
 	const authAgent = testServer.authAgentFor(member);
+	await authAgent.get('/ldap/config').expect(403);
+	await authAgent.put('/ldap/config').expect(403);
+	await authAgent.post('/ldap/test-connection').expect(403);
+	await authAgent.post('/ldap/sync').expect(403);
+	await authAgent.get('/ldap/sync').expect(403);
+});
+
+test('Chat user role should not be able to access ldap routes', async () => {
+	const chatUser = await createUser({ role: { slug: 'global:chatUser' } });
+	const authAgent = testServer.authAgentFor(chatUser);
 	await authAgent.get('/ldap/config').expect(403);
 	await authAgent.put('/ldap/config').expect(403);
 	await authAgent.post('/ldap/test-connection').expect(403);

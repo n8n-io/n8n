@@ -122,6 +122,35 @@ export const TEST_CREDENTIALS: ICredentialMap = {
 			'credential:update',
 		],
 	},
+	// Global OpenAI credential in another project
+	5: {
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		id: '5',
+		name: '[PROJECT] OpenAI Account (Global)',
+		data: 'test123',
+		type: 'openAiApi',
+		isManaged: false,
+		isGlobal: true,
+		homeProject: {
+			id: '2',
+			type: 'team',
+			name: 'Test Project',
+			icon: { type: 'icon', value: 'arrow-left-right' },
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+		sharedWithProjects: [],
+		scopes: [
+			'credential:create',
+			'credential:delete',
+			'credential:list',
+			'credential:move',
+			'credential:read',
+			'credential:share',
+			'credential:update',
+		],
+	},
 };
 
 export const TEST_CREDENTIAL_TYPES: ICredentialTypeMap = {
@@ -274,3 +303,4 @@ export const TEST_CREDENTIAL_TYPES: ICredentialTypeMap = {
 
 export const PERSONAL_OPENAI_CREDENTIAL = TEST_CREDENTIALS[1];
 export const PROJECT_OPENAI_CREDENTIAL = TEST_CREDENTIALS[4];
+export const GLOBAL_OPENAI_CREDENTIAL = TEST_CREDENTIALS[5];
