@@ -42,8 +42,13 @@ export interface MultiGenerationAggregation {
 
 /**
  * Calculate minimum judges needed for majority (e.g., 2 for 3 judges, 3 for 5 judges)
+ * @param numJudges - Number of judges (must be >= 1)
+ * @throws Error if numJudges < 1
  */
 export function getMajorityThreshold(numJudges: number): number {
+	if (numJudges < 1) {
+		throw new Error(`getMajorityThreshold requires numJudges >= 1, got ${numJudges}`);
+	}
 	return Math.ceil(numJudges / 2);
 }
 

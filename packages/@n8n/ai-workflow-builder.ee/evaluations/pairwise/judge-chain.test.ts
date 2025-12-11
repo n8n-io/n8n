@@ -64,6 +64,7 @@ describe('evaluateWorkflowPairwise', () => {
 				userPrompt: expect.stringContaining('[DO]'),
 				generatedWorkflow: input.workflowJSON,
 			}),
+			undefined, // config parameter (not passed in this test)
 		);
 	});
 

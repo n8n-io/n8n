@@ -112,6 +112,13 @@ interface DisplayLocalResultsOptions {
 /** Display results for local pairwise evaluation */
 function displayLocalResults(log: EvalLogger, options: DisplayLocalResultsOptions): void {
 	const { generationResults, numJudges, numGenerations, totalTime, verbose } = options;
+
+	// Defensive check - should never happen due to validation, but prevents runtime errors
+	if (generationResults.length === 0) {
+		log.error('No generation results to display');
+		return;
+	}
+
 	const aggregation = aggregateGenerations(generationResults);
 
 	// Display aggregated result
