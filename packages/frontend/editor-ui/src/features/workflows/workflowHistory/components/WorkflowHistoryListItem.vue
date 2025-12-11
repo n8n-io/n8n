@@ -26,11 +26,13 @@ const props = withDefaults(
 		isSelected?: boolean;
 		isVersionActive?: boolean;
 		isGrouped?: boolean;
+		hideBorderAbove?: boolean;
 	}>(),
 	{
 		isSelected: false,
 		isVersionActive: false,
 		isGrouped: false,
+		hideBorderAbove: false,
 	},
 );
 const emit = defineEmits<{
@@ -149,6 +151,7 @@ onMounted(() => {
 			[$style.selected]: props.isSelected,
 			[$style.actionsVisible]: actionsVisible,
 			[$style.grouped]: props.isGrouped,
+			[$style.hideBorderAbove]: props.hideBorderAbove,
 		}"
 		@click="onItemClick"
 	>
