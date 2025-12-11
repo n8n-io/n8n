@@ -615,7 +615,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: HUMAN_IN_THE_LOOP_CATEGORY,
 				properties: {
 					title: HITL_SUBCATEGORY,
-					icon: 'user-check',
+					icon: 'badge-check',
 					sections: [
 						{
 							key: 'sendAndWait',
@@ -669,7 +669,7 @@ export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
 		items: hitlToolNodes,
 		nodeIcon: {
 			type: 'icon',
-			name: 'user-check',
+			name: 'badge-check',
 		},
 	};
 }

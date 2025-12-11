@@ -57,6 +57,7 @@ import IconLucideCalculator from '~icons/lucide/calculator';
 import IconLucideCalendar from '~icons/lucide/calendar';
 import IconLucideCaseUpper from '~icons/lucide/case-upper';
 import IconLucideChartColumnDecreasing from '~icons/lucide/chart-column-decreasing';
+import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideCheck from '~icons/lucide/check';
 import IconLucideCheckCheck from '~icons/lucide/check-check';
 import IconLucideChevronDown from '~icons/lucide/chevron-down';
@@ -488,6 +489,7 @@ export const updatedIconSet = {
 	'arrow-up': IconLucideArrowUp,
 	'at-sign': IconLucideAtSign,
 	ban: IconLucideBan,
+	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
