@@ -3,6 +3,7 @@ import { useStorage } from '@/app/composables/useStorage';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -18,7 +19,9 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
+import { calculateWorkflowChecksum, INode } from 'n8n-workflow';
+import { ResponseError } from '@n8n/rest-api-client/utils';
+import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -206,22 +209,68 @@ export function useWorkflowActivate() {
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
-			return true;
+			return { success: true };
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName: 'published' },
-				}) + ':',
-			);
-			// Only update workflow state to inactive if this is not a validation error
-			if (!error.meta?.validationError) {
-				workflowsStore.setWorkflowInactive(workflowId);
+			if (isWebhookConflictError(error)) {
+				handleWebhookConflictError(error);
+				return { success: false, errorHandled: true };
+			} else {
+				toast.showError(
+					error,
+					i18n.baseText('workflowActivator.showError.title', {
+						interpolate: { newStateName: 'published' },
+					}) + ':',
+				);
+				// Only update workflow state to inactive if this is not a validation error
+				if (!error.meta?.validationError) {
+					workflowsStore.setWorkflowInactive(workflowId);
+				}
 			}
-			return false;
+			return { success: false };
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
+	};
+
+	const handleWebhookConflictError = async (error: ResponseError) => {
+		const { trigger, conflict } = parseWebhookConflictError(error)?.pop() || {};
+		let workflowName = conflict?.workflowId;
+		try {
+			if (conflict?.workflowId) {
+				const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict?.workflowId);
+				workflowName = conflictingWorkflow.name;
+			}
+		} catch {}
+
+		uiStore.openModalWithData({
+			name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+			data: {
+				triggerType: trigger?.type,
+				workflowName: workflowName,
+				...conflict,
+			},
+		});
+	};
+
+	const parseWebhookConflictError = (
+		error: ResponseError,
+	): { trigger: INode; conflict: Awaited<ReturnType<typeof findWebhook>> }[] | null => {
+		try {
+			const { errorCode, hint } = error;
+			if (errorCode === 409) {
+				const parsedHint = JSON.parse(hint ?? '');
+				if (Array.isArray(parsedHint) && parsedHint.length > 0 && parsedHint[0].trigger) {
+					return parsedHint;
+				}
+			}
+			return null;
+		} catch {
+			return null;
+		}
+	};
+
+	const isWebhookConflictError = (error: ResponseError) => {
+		return parseWebhookConflictError(error) !== null;
 	};
 
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {

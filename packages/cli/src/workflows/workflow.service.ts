@@ -64,14 +64,6 @@ import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
-type WebhookConflictEntry = {
-	node: INode;
-	conflict: {
-		workflowId: WorkflowEntity['id'];
-		nodeId: INode['id'];
-	};
-};
-
 @Service()
 export class WorkflowService {
 	constructor(
@@ -513,7 +505,7 @@ export class WorkflowService {
 		}
 	}
 
-	async findConflictingWebhooks(workflowEntity: WorkflowEntity): Promise<WebhookConflictEntry[]> {
+	async findConflictingWebhooks(workflowEntity: WorkflowEntity) {
 		const workflow = new Workflow({
 			id: workflowEntity.id,
 			nodes: workflowEntity.nodes,
@@ -526,66 +518,7 @@ export class WorkflowService {
 			workflowId: workflow.id,
 		});
 
-		const checkEntries = workflowEntity.nodes
-			.map((node) => ({
-				node,
-				webhooks: this.webhookService
-					.getNodeWebhooks(workflow, node, additionalData)
-					.map((webhookData) => ({
-						webhookData,
-						path: this.webhookService.getWebhookPath(webhookData),
-					})),
-			}))
-			.filter(({ webhooks }) => webhooks.length !== 0);
-
-		const conflicts: WebhookConflictEntry[] = [];
-
-		while (checkEntries.length > 0) {
-			const { node, webhooks } = checkEntries.pop()!;
-
-			// check if conflicts within the same workflow exist
-			const localConflict = checkEntries.find(
-				({ node: checkNode, webhooks: checkWebhooks }) =>
-					node.id !== checkNode.id &&
-					webhooks.some((webhook) =>
-						checkWebhooks.some(
-							(checkWebhook) =>
-								checkWebhook.path === webhook.path &&
-								checkWebhook.webhookData.httpMethod === webhook.webhookData.httpMethod,
-						),
-					),
-			);
-			if (localConflict) {
-				conflicts.push({
-					node,
-					conflict: {
-						workflowId: workflowEntity.id,
-						nodeId: localConflict.node.id,
-					},
-				});
-			} else {
-				// check if conflict with a published workflow exists
-				for (const { webhookData, path } of webhooks) {
-					const potentialConflict = await this.webhookService.findWebhook(
-						webhookData.httpMethod,
-						path,
-					);
-
-					if (potentialConflict && potentialConflict.workflowId !== workflowEntity.id) {
-						conflicts.push({
-							node,
-							conflict: {
-								workflowId: potentialConflict.workflowId,
-								nodeId: potentialConflict.node,
-							},
-						});
-						break;
-					}
-				}
-			}
-		}
-
-		return conflicts;
+		return this.webhookService.findWebhookConflicts(workflow, additionalData);
 	}
 
 	private async _detectWebhookConflicts(workflowEntity: WorkflowEntity) {
@@ -595,8 +528,8 @@ export class WorkflowService {
 			throw new ConflictError(
 				'There is a conflict with one of the webhooks.',
 				JSON.stringify(
-					conflicts.map(({ node, conflict }) => ({
-						nodeId: node.id,
+					conflicts.map(({ trigger, conflict }) => ({
+						trigger,
 						conflict,
 					})),
 				),

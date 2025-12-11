@@ -83,7 +83,8 @@ const onClick = async () => {
 			<div :class="$style.container">
 				<div>
 					<N8nText color="text-base"> You can deactivate </N8nText>
-					<N8nLink :to="workflowUrl" :underline="true"> {{ data.workflowName }} </N8nLink>
+					<N8nLink :to="workflowUrl" :underline="true">{{ data.workflowName }}</N8nLink>
+					{{ ' ' }}
 					<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
 						{{ webhookTypeUi.suggestion }}
 					</N8nText>
