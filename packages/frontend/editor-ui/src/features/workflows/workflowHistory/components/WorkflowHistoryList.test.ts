@@ -5,9 +5,22 @@ import { faker } from '@faker-js/faker';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryList from './WorkflowHistoryList.vue';
-import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowHistoryActionTypes,
+} from '@n8n/rest-api-client/api/workflowHistory';
 import { workflowHistoryDataFactory } from '../__tests__/utils';
 import type { IUser } from 'n8n-workflow';
+
+const namedWorkflowHistoryDataFactory = (): WorkflowHistory => ({
+	...workflowHistoryDataFactory(),
+	name: faker.lorem.words(2),
+});
+
+const unnamedWorkflowHistoryDataFactory = (): WorkflowHistory => ({
+	...workflowHistoryDataFactory(),
+	name: '',
+});
 
 vi.stubGlobal(
 	'IntersectionObserver',
@@ -40,25 +53,8 @@ describe('WorkflowHistoryList', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render empty list when not loading and no items', () => {
-		const { getByText, queryByRole } = renderComponent({
-			pinia,
-			props: {
-				items: [],
-				actions,
-				selectedItem: null,
-				requestNumberOfItems: 20,
-				lastReceivedItemsLength: 0,
-				evaluatedPruneDays: -1,
-			},
-		});
-
-		expect(queryByRole('status')).not.toBeInTheDocument();
-		expect(getByText(/No versions yet/)).toBeInTheDocument();
-	});
-
 	it('should show loader but no empty list message when loading', () => {
-		const { queryByText, getByRole } = renderComponent({
+		const { getByRole } = renderComponent({
 			pinia,
 			props: {
 				items: [],
@@ -72,12 +68,11 @@ describe('WorkflowHistoryList', () => {
 		});
 
 		expect(getByRole('status')).toBeInTheDocument();
-		expect(queryByText(/No versions yet/)).not.toBeInTheDocument();
 	});
 
 	it('should render list and delegate preview event', async () => {
 		const numberOfItems = faker.number.int({ min: 10, max: 50 });
-		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
+		const items = Array.from({ length: numberOfItems }, namedWorkflowHistoryDataFactory);
 
 		const { getAllByTestId, emitted, queryByRole } = renderComponent({
 			pinia,
@@ -95,7 +90,7 @@ describe('WorkflowHistoryList', () => {
 
 		const listItems = getAllByTestId('workflow-history-list-item');
 		const listItem = listItems[items.length - 1];
-		await userEvent.click(within(listItem).getByText(/Saved: /));
+		await userEvent.click(listItem);
 		expect(emitted().preview).toEqual([
 			[
 				{
@@ -109,7 +104,7 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	it('should scroll to selected item', async () => {
-		const items = Array.from({ length: 30 }, workflowHistoryDataFactory);
+		const items = Array.from({ length: 30 }, namedWorkflowHistoryDataFactory);
 
 		const { getByTestId } = renderComponent({
 			pinia,
@@ -127,7 +122,7 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	test.each(actionTypes)('should delegate %s event from item', async (action) => {
-		const items = Array.from({ length: 2 }, workflowHistoryDataFactory);
+		const items = Array.from({ length: 2 }, namedWorkflowHistoryDataFactory);
 		const index = 1;
 		const { getAllByTestId, emitted } = renderComponent({
 			pinia,
@@ -164,7 +159,7 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	it('should show upgrade message when shouldUpgrade is true', async () => {
-		const items = Array.from({ length: 5 }, workflowHistoryDataFactory);
+		const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
 
 		const { getByRole } = renderComponent({
 			pinia,
@@ -183,7 +178,7 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	it('should not show upgrade message when shouldUpgrade is false', async () => {
-		const items = Array.from({ length: 5 }, workflowHistoryDataFactory);
+		const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
 
 		const { queryByRole } = renderComponent({
 			pinia,
@@ -199,5 +194,148 @@ describe('WorkflowHistoryList', () => {
 		});
 
 		expect(queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument();
+	});
+
+	describe('grouping unnamed versions', () => {
+		it('should group consecutive unnamed versions under a collapsible header', async () => {
+			const items: WorkflowHistory[] = [
+				namedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+			];
+
+			const { getAllByTestId, getByTestId, queryAllByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneDays: -1,
+				},
+			});
+
+			const listItems = getAllByTestId('workflow-history-list-item');
+			expect(listItems).toHaveLength(1);
+
+			const groupHeader = getByTestId('workflow-history-group-header');
+			expect(groupHeader).toBeInTheDocument();
+
+			expect(queryAllByTestId('workflow-history-list-item')).toHaveLength(1);
+		});
+
+		it('should expand group when clicking the group header', async () => {
+			const items: WorkflowHistory[] = [
+				namedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneDays: -1,
+				},
+			});
+
+			expect(getAllByTestId('workflow-history-list-item')).toHaveLength(1);
+
+			const groupHeader = getByTestId('workflow-history-group-header');
+			await userEvent.click(groupHeader);
+
+			expect(getAllByTestId('workflow-history-list-item')).toHaveLength(3);
+		});
+
+		it('should collapse group when clicking expanded header', async () => {
+			const items: WorkflowHistory[] = [
+				namedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneDays: -1,
+				},
+			});
+
+			const groupHeader = getByTestId('workflow-history-group-header');
+
+			await userEvent.click(groupHeader);
+			expect(getAllByTestId('workflow-history-list-item')).toHaveLength(3);
+
+			await userEvent.click(groupHeader);
+			expect(getAllByTestId('workflow-history-list-item')).toHaveLength(1);
+		});
+
+		it('should not group the first item even if unnamed', async () => {
+			const items: WorkflowHistory[] = [
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneDays: -1,
+				},
+			});
+
+			expect(getAllByTestId('workflow-history-list-item')).toHaveLength(1);
+			expect(getByTestId('workflow-history-group-header')).toBeInTheDocument();
+		});
+
+		it('should emit preview event from expanded group item', async () => {
+			const items: WorkflowHistory[] = [
+				namedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+				unnamedWorkflowHistoryDataFactory(),
+			];
+
+			const { getAllByTestId, getByTestId, emitted } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneDays: -1,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-history-group-header'));
+
+			const listItems = getAllByTestId('workflow-history-list-item');
+			await userEvent.click(listItems[1]);
+
+			expect(emitted().preview).toEqual([
+				[
+					{
+						id: items[1].versionId,
+						event: expect.any(MouseEvent),
+					},
+				],
+			]);
+		});
 	});
 });

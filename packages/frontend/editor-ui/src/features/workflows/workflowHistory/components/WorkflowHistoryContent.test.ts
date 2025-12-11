@@ -43,7 +43,7 @@ describe('WorkflowHistoryContent', () => {
 		});
 	});
 
-	it('should use the list item component to render version data', () => {
+	it('should render version data with action toggle', () => {
 		const workflowVersion = workflowVersionDataFactory();
 		const { getByTestId } = renderComponent({
 			pinia,
@@ -54,7 +54,8 @@ describe('WorkflowHistoryContent', () => {
 			},
 		});
 
-		expect(getByTestId('workflow-history-list-item')).toBeInTheDocument();
+		expect(getByTestId('workflow-history-content-actions')).toBeInTheDocument();
+		expect(getByTestId('action-toggle-button')).toBeInTheDocument();
 	});
 
 	test.each(actionTypes)('should emit %s event', async (action) => {
