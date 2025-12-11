@@ -77,7 +77,7 @@ const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 		<N8nTooltip
 			v-if="type === 'tooltip'"
 			:placement="tooltipPlacement"
-			:content-class="$style.tooltipPopper"
+			:content-class="$style.tooltipContent"
 			:disabled="type !== 'tooltip'"
 			:enterable
 		>
@@ -128,7 +128,7 @@ const iconData = computed<{ icon: IconName; color: IconColor }>(() => {
 	}
 }
 
-.tooltipPopper {
+.tooltipContent {
 	composes: base;
 	display: inline-flex;
 }
