@@ -1,4 +1,42 @@
-export const SYSTEM_MESSAGE_GUIDE = `
+import type { NodeTypeGuide } from '../types';
+
+/**
+ * Checks if a node has system message parameters.
+ * Applies to AI Agent, LLM Chain, Anthropic, OpenAI, etc.
+ */
+function hasSystemMessageParameters(nodeDefinition: {
+	properties?: Array<{ name: string; type: string; options?: unknown[] }>;
+}): boolean {
+	if (!nodeDefinition.properties) return false;
+
+	return nodeDefinition.properties.some((prop) => {
+		// Pattern 1: messages parameter with role support (OpenAI, LLM Chain)
+		if (
+			prop.name === 'messages' &&
+			(prop.type === 'fixedCollection' || prop.type === 'collection')
+		) {
+			return true;
+		}
+
+		// Pattern 2 & 3: options.systemMessage (AI Agent) or options.system (Anthropic)
+		if (prop.name === 'options' && prop.type === 'collection' && Array.isArray(prop.options)) {
+			return prop.options.some(
+				(opt) =>
+					typeof opt === 'object' &&
+					opt !== null &&
+					'name' in opt &&
+					(opt.name === 'systemMessage' || opt.name === 'system'),
+			);
+		}
+
+		return false;
+	});
+}
+
+export const SYSTEM_MESSAGE_GUIDE: NodeTypeGuide = {
+	patterns: ['*'],
+	condition: (ctx) => hasSystemMessageParameters(ctx.nodeDefinition),
+	content: `
 ## CRITICAL: System Message vs User Prompt Separation
 
 AI nodes (AI Agent, LLM Chain, Anthropic, OpenAI, etc.) have TWO distinct prompt fields that MUST be used correctly:
@@ -30,12 +68,12 @@ Use for DYNAMIC, EXECUTION-SPECIFIC content:
 
 ### Common Mistakes to Avoid
 
-❌ **WRONG - Everything in text field:**
+**WRONG - Everything in text field:**
 {
   "text": "=You are an orchestrator agent that coordinates specialized agents. Your task is to: 1) Call Research Agent Tool, 2) Call Fact-Check Agent Tool, 3) Generate report. Research topic: {{ $json.researchTopic }}"
 }
 
-✅ **CORRECT - Properly separated:**
+**CORRECT - Properly separated:**
 {
   "text": "=The research topic is: {{ $json.researchTopic }}",
   "options": {
@@ -68,4 +106,5 @@ Instructions: [
 - **Maintainability**: Easy to update AI behavior without touching data flow
 - **Best Practice**: Follows standard AI prompt engineering patterns
 - **Clarity**: Separates "what the AI model is" from "what data to process"
-`;
+`,
+};
