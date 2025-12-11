@@ -23,6 +23,7 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -648,7 +649,13 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsResolversView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('DYNAMIC_CREDENTIALS');
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {
