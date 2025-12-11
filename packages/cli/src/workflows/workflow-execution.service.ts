@@ -280,11 +280,23 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.findOneBy({ id: workflowId });
+			const workflowData = await this.workflowRepository.get(
+				{ id: workflowId },
+				{ relations: ['activeVersion'] },
+			);
 			if (workflowData === null) {
-				// The error workflow could not be found
+				// The workflow could not be found
 				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find workflow "${workflowId}"`,
+					{ workflowId },
+				);
+				return;
+			}
+
+			if (workflowData.activeVersion === null) {
+				// The workflow is not active
+				this.logger.error(
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
 					{ workflowId },
 				);
 				return;
@@ -295,9 +307,9 @@ export class WorkflowExecutionService {
 				id: workflowId,
 				name: workflowData.name,
 				nodeTypes: this.nodeTypes,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: workflowData.activeVersion !== null,
+				nodes: workflowData.activeVersion.nodes,
+				connections: workflowData.activeVersion.connections,
+				active: true,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
 			});

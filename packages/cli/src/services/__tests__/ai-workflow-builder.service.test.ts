@@ -508,6 +508,92 @@ describe('WorkflowBuilderService', () => {
 		});
 	});
 
+	describe('license certificate refresh', () => {
+		it('should register for license certificate updates when client is created', async () => {
+			mockConfig.aiAssistant.baseUrl = 'https://ai-assistant.test.com';
+
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(mockLicense.onCertRefresh).toHaveBeenCalledWith(expect.any(Function));
+		});
+
+		it('should update client license cert when callback is invoked', async () => {
+			mockConfig.aiAssistant.baseUrl = 'https://ai-assistant.test.com';
+
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			// Capture the callback passed to onCertRefresh
+			let capturedCallback: ((cert: string) => void) | undefined;
+			(mockLicense.onCertRefresh as jest.Mock).mockImplementation((cb: (cert: string) => void) => {
+				capturedCallback = cb;
+				return () => {};
+			});
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(capturedCallback).toBeDefined();
+
+			// Get the mocked client instance
+			const mockClientInstance = MockedAiAssistantClient.mock.instances[0];
+
+			// Invoke the callback with a new cert
+			capturedCallback!('new-cert-value');
+
+			expect(mockClientInstance.updateLicenseCert).toHaveBeenCalledWith('new-cert-value');
+		});
+
+		it('should not register for license updates when no baseUrl is configured', async () => {
+			mockConfig.aiAssistant.baseUrl = '';
+
+			const mockPayload = {
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			};
+
+			const mockChatGenerator = (async function* () {
+				yield { messages: ['response'] };
+			})();
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(mockLicense.onCertRefresh).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getBuilderInstanceCredits', () => {
 		it('should return builder instance credits', async () => {
 			const expectedCredits = {

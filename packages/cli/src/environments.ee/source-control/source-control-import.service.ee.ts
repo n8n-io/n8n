@@ -26,11 +26,15 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
+import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -38,6 +42,7 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
@@ -71,7 +76,6 @@ import type {
 } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -154,6 +158,7 @@ export class SourceControlImportService {
 		instanceSettings: InstanceSettings,
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -678,6 +683,7 @@ export class SourceControlImportService {
 			} else {
 				importedWorkflow.active = false;
 				importedWorkflow.activeVersionId = null;
+				importedWorkflow.versionId = importedWorkflow.versionId ?? uuid();
 			}
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
@@ -696,6 +702,8 @@ export class SourceControlImportService {
 					extra: { workflowId: importedWorkflow.id ?? 'new' },
 				});
 			}
+
+			await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
 
 			const localOwner = allSharedWorkflows.find(
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
@@ -1262,5 +1270,77 @@ export class SourceControlImportService {
 		}
 
 		return teamProject;
+	}
+
+	/**
+	 * Saves or updates workflow version history during import.
+	 * - If versionId is new: Creates new history record
+	 * - If versionId exists with different nodes/connections: Updates existing record
+	 * - If versionId exists with same content: No action
+	 */
+	private async saveOrUpdateWorkflowHistory(
+		importedWorkflow: IWorkflowToImport,
+		userId: string,
+	): Promise<void> {
+		if (!importedWorkflow.versionId || !importedWorkflow.nodes || !importedWorkflow.connections) {
+			this.logger.debug('Skipping workflow history - missing versionId, nodes, or connections');
+			return;
+		}
+
+		// Fetch user for author info
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		const authors = user ? `${user.firstName} ${user.lastName}` : 'Unknown';
+
+		try {
+			const existingVersion = await this.workflowHistoryService.findVersion(
+				importedWorkflow.id,
+				importedWorkflow.versionId,
+			);
+
+			if (existingVersion) {
+				// Check if nodes or connections changed
+				const nodesChanged = !isEqual(existingVersion.nodes, importedWorkflow.nodes);
+				const connectionsChanged = !isEqual(
+					existingVersion.connections,
+					importedWorkflow.connections,
+				);
+
+				if (nodesChanged || connectionsChanged) {
+					this.logger.debug(
+						`Updating workflow history for versionId ${importedWorkflow.versionId}`,
+					);
+
+					await this.workflowHistoryService.updateVersion(
+						importedWorkflow.versionId,
+						importedWorkflow.id,
+						{
+							nodes: importedWorkflow.nodes,
+							connections: importedWorkflow.connections,
+							authors,
+						},
+					);
+				} else {
+					this.logger.debug(
+						`Workflow history unchanged for versionId ${importedWorkflow.versionId}`,
+					);
+				}
+			} else {
+				// Create new version history record
+				this.logger.debug(
+					`Creating new workflow history for versionId ${importedWorkflow.versionId}`,
+				);
+
+				await this.workflowHistoryService.saveVersion(
+					authors,
+					importedWorkflow as unknown as IWorkflowBase,
+					importedWorkflow.id,
+				);
+			}
+		} catch (error) {
+			this.logger.error(
+				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
+				{ error: ensureError(error) },
+			);
+		}
 	}
 }

@@ -12,15 +12,13 @@ import { InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { NodeApiError, Workflow } from 'n8n-workflow';
+import type * as N8nWorkflow from 'n8n-workflow';
 import type {
 	IWebhookData,
 	IWorkflowBase,
 	WorkflowActivateMode,
 	INodeTypeData,
 } from 'n8n-workflow';
-
-import { createOwner } from './shared/db/users';
-import * as utils from './shared/utils/';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -33,6 +31,9 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { createOwner } from './shared/db/users';
+import * as utils from './shared/utils/';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
@@ -53,6 +54,23 @@ let createActiveWorkflow: (
 ) => Promise<IWorkflowBase>;
 let createInactiveWorkflow: () => Promise<IWorkflowBase>;
 let owner: User;
+
+jest.mock('n8n-workflow', () => {
+	const actual = jest.requireActual<typeof N8nWorkflow>('n8n-workflow');
+	return {
+		...actual,
+		validateWorkflowHasTriggerLikeNode: jest.fn(
+			(...args: Parameters<typeof actual.validateWorkflowHasTriggerLikeNode>) =>
+				actual.validateWorkflowHasTriggerLikeNode(...args),
+		),
+	};
+});
+
+const { validateWorkflowHasTriggerLikeNode } = jest.requireMock<typeof N8nWorkflow>('n8n-workflow');
+const validateWorkflowHasTriggerLikeNodeSpy =
+	validateWorkflowHasTriggerLikeNode as jest.MockedFunction<
+		typeof N8nWorkflow.validateWorkflowHasTriggerLikeNode
+	>;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -118,13 +136,9 @@ describe('init()', () => {
 	it('should check that workflow can be activated', async () => {
 		await Promise.all([createActiveWorkflow(), createActiveWorkflow()]);
 
-		const checkSpy = jest
-			.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated')
-			.mockReturnValue(true);
-
 		await activeWorkflowManager.init();
 
-		expect(checkSpy).toHaveBeenCalledTimes(2);
+		expect(validateWorkflowHasTriggerLikeNodeSpy).toHaveBeenCalledTimes(2);
 	});
 });
 
@@ -329,7 +343,6 @@ describe('addWebhooks()', () => {
 		const [node] = dbWorkflow.nodes;
 
 		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValue(node);
-		jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
 		webhookService.createWebhookIfNotExists.mockResolvedValue(undefined);
 
 		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');
