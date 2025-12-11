@@ -30,8 +30,8 @@ export class WriteBinaryFile implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				placeholder: '/data/example.jpg',
-				description: 'Path to which the file should be written',
+				placeholder: '/data/example.jpg or ~/myfile.txt',
+				description: 'Path to which the file should be written. The tilde (~) expands to the default allowed directory (~/.n8n-files) or the first configured allowed path.',
 			},
 			{
 				displayName: 'Property Name',
