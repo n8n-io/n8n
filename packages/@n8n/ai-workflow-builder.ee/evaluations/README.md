@@ -111,6 +111,63 @@ The Langsmith integration provides two key components:
 
 Pairwise evaluation provides a criteria-based approach to workflow evaluation with hierarchical scoring and multi-judge consensus. It evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset. All pairwise-related code is consolidated in the `pairwise/` directory.
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           EVALUATION FLOW                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Dataset (LangSmith)           Local Mode                                    │
+│  ┌──────────────────┐         ┌──────────────────┐                          │
+│  │ prompt           │         │ --prompt "..."   │                          │
+│  │ evals.dos        │         │ --dos "..."      │                          │
+│  │ evals.donts      │         │ --donts "..."    │                          │
+│  └────────┬─────────┘         └────────┬─────────┘                          │
+│           │                            │                                     │
+│           ▼                            ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         GENERATION PHASE                             │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │    │
+│  │  │ Generation 1 │  │ Generation 2 │  │ Generation N │  (in parallel) │    │
+│  │  │             │  │             │  │             │                  │    │
+│  │  │ Agent.chat()│  │ Agent.chat()│  │ Agent.chat()│                  │    │
+│  │  │     ↓       │  │     ↓       │  │     ↓       │                  │    │
+│  │  │  Workflow   │  │  Workflow   │  │  Workflow   │                  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘                  │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         JUDGE PANEL PHASE                            │    │
+│  │                     (per generation, in parallel)                    │    │
+│  │                                                                      │    │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐                              │    │
+│  │  │ Judge 1 │  │ Judge 2 │  │ Judge 3 │  (default: 3 judges)         │    │
+│  │  │         │  │         │  │         │                              │    │
+│  │  │ LLM     │  │ LLM     │  │ LLM     │  Same prompt, independent    │    │
+│  │  │ Eval    │  │ Eval    │  │ Eval    │  calls for variance          │    │
+│  │  └────┬────┘  └────┬────┘  └────┬────┘                              │    │
+│  │       │            │            │                                    │    │
+│  │       ▼            ▼            ▼                                    │    │
+│  │  ┌─────────────────────────────────────────────────────────┐        │    │
+│  │  │              AGGREGATION                                 │        │    │
+│  │  │  • primaryPass: ALL criteria passed (no violations)?     │        │    │
+│  │  │  • diagnosticScore: passes / total criteria              │        │    │
+│  │  │  • majorityPass: ≥50% judges have primaryPass=true       │        │    │
+│  │  └─────────────────────────────────────────────────────────┘        │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    MULTI-GENERATION AGGREGATION                      │    │
+│  │  (only if numGenerations > 1)                                        │    │
+│  │                                                                      │    │
+│  │  • generationCorrectness: (# passing gens) / total gens             │    │
+│  │  • aggregatedDiagnosticScore: avg across all generations            │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 **Judge Chain (`pairwise/judge-chain.ts`):**
 - Evaluates workflows against a checklist of criteria (dos and don'ts)
 - Uses an LLM to determine if each criterion passes or fails
@@ -542,6 +599,24 @@ When feature flags are enabled, they are logged at the start of the evaluation:
   - Majority vote summary
   - List of violations with justifications (per judge)
   - List of passes (per judge)
+
+## Design Decisions
+
+### Why Multiple Judges?
+
+LLM outputs are stochastic. Running multiple judges (default: 3) and using majority voting reduces variance and provides more stable evaluation results.
+
+### Why Multiple Generations?
+
+The workflow builder itself is stochastic. Running multiple generations tests whether it can *consistently* produce correct workflows, not just once.
+
+### Why Pre-compute in Target?
+
+LangSmith's evaluator context has restrictions on making API calls. By doing all LLM work (generation + judging) in the target function and passing pre-computed metrics, we avoid 403 errors and ensure clean trace structure.
+
+### Why Parallel Execution?
+
+Both generations and judges run in parallel (using `Promise.all`) for speed. A typical 3-judge, 3-generation evaluation would otherwise take 9× longer.
 
 ## Adding New Test Cases
 
