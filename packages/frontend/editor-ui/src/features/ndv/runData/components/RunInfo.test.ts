@@ -45,7 +45,7 @@ describe('RunInfo', () => {
 			error: undefined,
 		});
 
-		const { getByTestId, container, baseElement } = renderComponent({
+		const { getByTestId, container } = renderComponent({
 			props: {
 				taskData: successTaskData,
 				hasStaleData: false,
@@ -91,7 +91,7 @@ describe('RunInfo', () => {
 			error: undefined,
 		});
 
-		const { getByTestId, container, queryByTestId, baseElement } = renderComponent({
+		const { getByTestId, container, queryByTestId } = renderComponent({
 			props: {
 				taskData: cancelledTaskData,
 				hasStaleData: false,
@@ -137,7 +137,7 @@ describe('RunInfo', () => {
 			},
 		});
 
-		const { getByTestId, container, baseElement } = renderComponent({
+		const { getByTestId, container } = renderComponent({
 			props: {
 				taskData: errorTaskData,
 				hasStaleData: false,

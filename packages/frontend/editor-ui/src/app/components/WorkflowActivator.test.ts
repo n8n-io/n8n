@@ -59,7 +59,7 @@ describe('WorkflowActivator', () => {
 		mockWorkflowsStore.workflowId = '1';
 		mockWorkflowsStore.workflowTriggerNodes = [];
 
-		const { getByTestId, getByRole, baseElement } = renderComponent({
+		const { getByTestId, getByRole } = renderComponent({
 			props: {
 				isArchived: false,
 				workflowActive: false,
@@ -280,7 +280,7 @@ describe('WorkflowActivator', () => {
 			},
 		};
 
-		const { getByTestId, getByRole, baseElement } = renderComponent(renderOptions);
+		const { getByTestId, getByRole } = renderComponent(renderOptions);
 		expect(getByTestId('workflow-activator-status')).toBeInTheDocument();
 		expect(getByRole('switch')).toBeInTheDocument();
 		expect(getByRole('switch')).toBeDisabled();

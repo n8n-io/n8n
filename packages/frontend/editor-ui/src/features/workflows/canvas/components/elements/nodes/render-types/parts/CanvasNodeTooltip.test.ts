@@ -10,7 +10,7 @@ const renderComponent = createComponentRenderer(CanvasNodeTooltip);
 describe('CanvasNodeTooltip', () => {
 	describe('rendering', () => {
 		it('should render tooltip when tooltip option is provided', async () => {
-			const { container } = renderComponent({
+			renderComponent({
 				props: {
 					visible: true,
 				},
@@ -35,7 +35,7 @@ describe('CanvasNodeTooltip', () => {
 		});
 
 		it('should not render tooltip when tooltip option is not provided', () => {
-			const { container } = renderComponent({
+			renderComponent({
 				props: {
 					visible: false,
 				},

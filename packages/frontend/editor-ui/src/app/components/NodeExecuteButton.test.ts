@@ -229,7 +229,7 @@ describe('NodeExecuteButton', () => {
 			mockNode({ name: 'test', type: SET_NODE_TYPE, disabled: true }),
 		);
 
-		const { getByRole, baseElement } = renderComponent();
+		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
 		expect(button).toBeDisabled();
@@ -249,7 +249,7 @@ describe('NodeExecuteButton', () => {
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
 
-		const { getByRole, baseElement } = renderComponent();
+		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
 		expect(button).toBeDisabled();

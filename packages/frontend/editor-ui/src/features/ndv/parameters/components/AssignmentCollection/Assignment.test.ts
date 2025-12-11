@@ -95,7 +95,7 @@ describe('Assignment.vue', () => {
 	});
 
 	it('should show binary data tooltip when assignment type is binary', async () => {
-		const { getByTestId, baseElement } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
 				modelValue: {

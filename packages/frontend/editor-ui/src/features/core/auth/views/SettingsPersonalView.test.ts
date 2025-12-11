@@ -179,7 +179,7 @@ describe('SettingsPersonalView', () => {
 		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
 		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
 
-		const { queryByTestId, baseElement } = renderComponent({ pinia });
+		const { queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
 		expect(queryByTestId('current-user-role')).toBeVisible();

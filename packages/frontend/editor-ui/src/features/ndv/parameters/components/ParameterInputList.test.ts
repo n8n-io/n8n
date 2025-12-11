@@ -136,7 +136,7 @@ describe('ParameterInputList', () => {
 
 	it('renders fixed collection inputs correctly with issues', async () => {
 		ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-		const { getByText, getByTestId, container, baseElement } = renderComponent({
+		const { getByText, getByTestId, container } = renderComponent({
 			props: {
 				parameters: TEST_PARAMETERS,
 				nodeValues: TEST_NODE_VALUES,
@@ -1146,7 +1146,7 @@ describe('ParameterInputList', () => {
 	describe('Issues Display', () => {
 		it('should display issues for fixedCollection parameters', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { container, baseElement } = renderComponent({
+			const { container } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,
@@ -1179,7 +1179,7 @@ describe('ParameterInputList', () => {
 
 		it('should not display issues when parameter is in hiddenIssuesInputs', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { container, baseElement } = renderComponent({
+			const { container } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,

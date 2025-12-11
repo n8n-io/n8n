@@ -22,7 +22,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 	});
 
 	it('should show waiting indefinitely tooltip', async () => {
-		const { getByText, baseElement } = renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				status: 'waiting',
 				concurrencyCap: 0,
@@ -41,7 +41,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 	});
 
 	it('should show queued tooltip for self-hosted', async () => {
-		const { getByText, baseElement } = renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				status: 'new',
 				concurrencyCap: 0,
@@ -61,7 +61,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 	});
 
 	it('should show queued tooltip for cloud', async () => {
-		const { getByText, emitted, baseElement } = renderComponent({
+		const { getByText, emitted } = renderComponent({
 			props: {
 				status: 'new',
 				concurrencyCap: 0,

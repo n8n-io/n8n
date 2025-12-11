@@ -85,7 +85,7 @@ describe('RunDataPinButton.vue', () => {
 	});
 
 	it('shows pin data discoverability tooltip immediately (not on hover)', async () => {
-		const { getByRole, baseElement } = renderComponent({
+		const { getByRole } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: false,
@@ -107,7 +107,7 @@ describe('RunDataPinButton.vue', () => {
 	});
 
 	it('shows binary data tooltip content even if discoverability tooltip enabled', async () => {
-		const { getByRole, baseElement } = renderComponent({
+		const { getByRole } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: true,
@@ -130,7 +130,7 @@ describe('RunDataPinButton.vue', () => {
 	});
 
 	it('pins data on button click', async () => {
-		const { getByTestId, emitted, baseElement } = renderComponent({});
+		const { getByTestId, emitted } = renderComponent({});
 		// Should show 'Pin data' tooltip and emit togglePinData event
 		await userEvent.hover(getByTestId('ndv-pin-data'));
 		await waitFor(() => {
@@ -142,7 +142,7 @@ describe('RunDataPinButton.vue', () => {
 	});
 
 	it('should show correct tooltip and unpin data on button click', async () => {
-		const { getByTestId, emitted, baseElement } = renderComponent({
+		const { getByTestId, emitted } = renderComponent({
 			props: {
 				pinnedData: {
 					hasData: { value: true },

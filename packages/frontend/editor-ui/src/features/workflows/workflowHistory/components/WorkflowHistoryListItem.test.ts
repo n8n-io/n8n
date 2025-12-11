@@ -29,7 +29,7 @@ describe('WorkflowHistoryListItem', () => {
 	test.each(actionTypes)('should emit %s event', async (action) => {
 		const item = workflowHistoryDataFactory();
 		const authors = item.authors.split(', ');
-		const { queryByText, getByTestId, getByText, emitted, baseElement } = renderComponent({
+		const { queryByText, getByTestId, getByText, emitted } = renderComponent({
 			pinia,
 			props: {
 				item,
