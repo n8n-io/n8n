@@ -30,7 +30,12 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	WORKFLOW_DESCRIPTION_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -148,6 +153,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 				VARIABLE_MODAL_KEY,
+				WORKFLOW_DESCRIPTION_MODAL_KEY,
+				WORKFLOW_PUBLISH_MODAL_KEY,
+				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -395,7 +405,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		const items: IMenuItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
-				items.push(...moduleItems.map((item) => ({ ...item, available: true })));
+				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
 			}
 		});
 		return items;

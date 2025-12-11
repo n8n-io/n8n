@@ -49,7 +49,7 @@ export const mockNode = ({
 	issues = undefined,
 	typeVersion = 1,
 	parameters = {},
-	draggable = true,
+	draggable = undefined,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -211,6 +211,7 @@ export function createTestWorkflow({
 		activeVersionId: active ? 'v1' : null,
 		meta: {},
 		pinData,
+		checksum: 'checksum',
 		...rest,
 	};
 }

@@ -10,9 +10,10 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
+import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
 	TagEntity,
@@ -54,6 +55,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
@@ -149,8 +151,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
 		// Common fields for both folders and workflows
 		const commonFields = {
-			createdAt: true,
 			updatedAt: true,
+			createdAt: true,
 			id: true,
 			name: true,
 		} as const;
@@ -442,6 +444,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
+		this.applyTriggerNodeTypeFilter(qb, options.filter?.triggerNodeType as string | undefined);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -492,6 +495,36 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			} else if (dbType === 'sqlite') {
 				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
 					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
+				});
+			}
+		}
+	}
+
+	private applyTriggerNodeTypeFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		triggerNodeType?: string,
+	): void {
+		if (triggerNodeType) {
+			const dbType = this.globalConfig.database.type;
+
+			// Left join the activeVersion relation if not already joined
+			// We must also addSelect to ensure TypeORM includes the join when using raw SQL in andWhere
+			if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
+				qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect('activeVersion.versionId');
+			}
+
+			// Use COALESCE to check activeVersion.nodes if exists (workflow is active),
+			// otherwise fall back to workflow.nodes (draft workflows)
+			// In PostgreSQL, cast JSON column to text for LIKE operator
+			if (['postgresdb'].includes(dbType)) {
+				qb.andWhere(
+					'COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :triggerNodeType',
+					{ triggerNodeType: `%${triggerNodeType}%` },
+				);
+			} else {
+				// SQLite and MySQL store nodes as text
+				qb.andWhere('COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType', {
+					triggerNodeType: `%${triggerNodeType}%`,
 				});
 			}
 		}
@@ -824,6 +857,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async updateActiveState(workflowId: string, newState: boolean) {
+		const workflow = await this.findById(workflowId);
+
+		if (!workflow) {
+			throw new UserError(`Workflow "${workflowId}" not found.`);
+		}
+
 		if (newState) {
 			return await this.createQueryBuilder()
 				.update(WorkflowEntity)
@@ -838,24 +877,47 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
-	async deactivateAll() {
+	/**
+	 * Publish a specific version of a workflow
+	 * @param workflowId - The ID of the workflow
+	 * @param versionId - The ID of the version to publish (optional; if not provided, uses the current version)
+	 * */
+	async publishVersion(workflowId: string, versionId?: string) {
+		let versionIdToPublish = versionId;
+		if (!versionIdToPublish) {
+			const workflow = await this.findOne({
+				where: { id: workflowId },
+				select: ['id', 'versionId'],
+			});
+
+			if (!workflow) {
+				throw new UserError(`Workflow "${workflowId}" not found.`);
+			}
+
+			versionIdToPublish = workflow.versionId;
+		}
+
+		const version = await this.workflowHistoryRepository.findOneBy({
+			workflowId,
+			versionId: versionIdToPublish,
+		});
+		if (!version) {
+			throw new UserError(
+				`Version "${versionIdToPublish}" not found for workflow "${workflowId}".`,
+			);
+		}
+
+		return await this.update(
+			{ id: workflowId },
+			{ active: true, activeVersionId: versionIdToPublish },
+		);
+	}
+
+	async unpublishAll() {
 		return await this.update(
 			{ activeVersionId: Not(IsNull()) },
 			{ active: false, activeVersionId: null },
 		);
-	}
-
-	// We're planning to remove this command in V2, so for now set activeVersion to the current version
-	async activateAll() {
-		await this.manager
-			.createQueryBuilder()
-			.update(WorkflowEntity)
-			.set({
-				active: true,
-				activeVersionId: () => 'versionId',
-			})
-			.where('activeVersionId IS NULL')
-			.execute();
 	}
 
 	async findByActiveState(activeState: boolean) {
@@ -949,5 +1011,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 
 		return await qb.getMany();
+	}
+
+	/**
+	 * Returns if the workflow is stored as `active`.
+	 *
+	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
+	 * which checks if the workflow is active in memory.
+	 */
+	async isActive(workflowId: string) {
+		const workflow = await this.findOne({ select: ['activeVersionId'], where: { id: workflowId } });
+
+		return !!workflow?.activeVersionId;
 	}
 }
