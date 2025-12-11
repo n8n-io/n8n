@@ -76,6 +76,10 @@ Purpose: Scrapes data from web pages using CSS selectors
 ### Split Out (n8n-nodes-base.splitOut)
 
 Purpose: Processes arrays of items individually for sequential operations.
+Example: If retrieving a JSON array using a HTTP request, this will return a single item,
+containing that array. If you wish to use a Loop Over Items (n8n-nodes-base.splitInBatches) node]
+then you will need to split out the array into items before looping over it. In a scenario like
+this a split out node MUST be used before looping over the items.
 
 ### Edit Fields (Set) (n8n-nodes-base.set)
 

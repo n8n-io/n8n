@@ -99,20 +99,38 @@ WHEN TO SET hasOutputParser: true on AI Agent:
 </structured_output_parser_guidance>`;
 
 /** AI sub-nodes are SOURCES (they "provide" capabilities), so arrows point FROM sub-node TO parent */
-const AI_CONNECTIONS = `<node_connections_understanding>
-n8n connections flow from SOURCE (output) to TARGET (input).
+const AI_CONNECTIONS = `<ai_node_connections>
+CRITICAL: AI node connections work OPPOSITE to intuition.
 
-Regular data flow: Source node output → Target node input
-Example: HTTP Request → Set (HTTP Request is source, Set is target)
+Regular "main" connections flow: Source → Target (data flows forward)
+Example: HTTP Request → Set (HTTP outputs data, Set receives it)
 
-AI sub-nodes PROVIDE capabilities, making them the SOURCE:
+AI CAPABILITY CONNECTIONS are REVERSED in direction:
+Sub-nodes (tools, memory, models) connect TO the AI Agent, NOT from it.
+The sub-node is the SOURCE, the AI Agent is the TARGET.
+
+⚠️ WRONG: AI Agent → Calculator Tool (NEVER do this)
+✅ CORRECT: Calculator Tool → AI Agent (tool provides capability to agent)
+
+When calling connect_nodes for AI sub-nodes:
+- sourceNodeName: The sub-node (tool, memory, model, parser)
+- targetNodeName: The AI Agent (or Vector Store, Document Loader)
+- connectionType: The appropriate ai_* type
+
+AI Connection Examples (SOURCE → TARGET [connectionType]):
 - OpenAI Chat Model → AI Agent [ai_languageModel]
 - Calculator Tool → AI Agent [ai_tool]
+- HTTP Request Tool → AI Agent [ai_tool]
 - Window Buffer Memory → AI Agent [ai_memory]
+- Structured Output Parser → AI Agent [ai_outputParser]
 - Token Splitter → Default Data Loader [ai_textSplitter]
 - Default Data Loader → Vector Store [ai_document]
 - Embeddings OpenAI → Vector Store [ai_embedding]
-</node_connections_understanding>`;
+- Vector Store (retrieve-as-tool mode) → AI Agent [ai_tool]
+
+The AI Agent only has ONE "main" output for regular data flow.
+All inputs to the AI Agent come FROM sub-nodes via ai_* connection types.
+</ai_node_connections>`;
 
 const BRANCHING = `<branching>
 If two nodes (B and C) are both connected to the same output of a node (A), both will execute (with the same data). Whether B or C executes first is determined by their position on the canvas: the highest one executes first. Execution happens depth-first, i.e. any downstream nodes connected to the higher node will execute before the lower node is executed.
@@ -244,32 +262,55 @@ CRITICAL for splitInBatches:
 - This is COUNTERINTUITIVE - always verify with examples if unsure
 </node_connection_examples>`;
 
-const CONNECTION_TYPES = `<connection_type_examples>
-**Main Connections** (regular data flow):
+const CONNECTION_TYPES = `<connection_type_reference>
+CONNECTION TYPES AND DIRECTIONS:
+
+**Main Connections** (main) - Regular data flow, source outputs TO target:
 - Trigger → HTTP Request → Set → Email
+- AI Agent → Email (AI Agent's main output goes to next node)
 
-**AI Language Model Connections** (ai_languageModel):
+**AI Capability Connections** - Sub-nodes connect TO their parent node:
+Remember: Sub-node is SOURCE, Parent is TARGET
+
+ai_languageModel - Language model provides LLM capability:
 - OpenAI Chat Model → AI Agent
+- Anthropic Chat Model → AI Agent
 
-**AI Tool Connections** (ai_tool):
+ai_tool - Tool provides action capability:
 - Calculator Tool → AI Agent
-- AI Agent Tool → AI Agent (for multi-agent systems)
+- HTTP Request Tool → AI Agent
+- Code Tool → AI Agent
+- AI Agent Tool → AI Agent (multi-agent systems)
 
-**AI Document Connections** (ai_document):
-- Document Loader → Vector Store
-
-**AI Embedding Connections** (ai_embedding):
-- OpenAI Embeddings → Vector Store
-
-**AI Text Splitter Connections** (ai_textSplitter):
-- Token Text Splitter → Document Loader
-
-**AI Memory Connections** (ai_memory):
+ai_memory - Memory provides conversation history:
 - Window Buffer Memory → AI Agent
+- Postgres Chat Memory → AI Agent
 
-**AI Vector Store in retrieve-as-tool mode** (ai_tool):
-- Vector Store → AI Agent
-</connection_type_examples>`;
+ai_outputParser - Parser provides structured output capability:
+- Structured Output Parser → AI Agent
+
+ai_document - Document loader provides documents:
+- Default Data Loader → Vector Store
+
+ai_embedding - Embeddings provides vector generation:
+- OpenAI Embeddings → Vector Store
+- Cohere Embeddings → Vector Store
+
+ai_textSplitter - Splitter provides chunking capability:
+- Token Text Splitter → Document Loader
+- Recursive Character Text Splitter → Document Loader
+
+ai_vectorStore - Vector store provides retrieval (when used as tool):
+- Vector Store (mode: retrieve-as-tool) → AI Agent [ai_tool]
+
+COMMON MISTAKES TO AVOID:
+❌ AI Agent → OpenAI Chat Model (WRONG - model provides TO agent)
+❌ AI Agent → Calculator Tool (WRONG - tool provides TO agent)
+❌ AI Agent → Window Buffer Memory (WRONG - memory provides TO agent)
+✅ OpenAI Chat Model → AI Agent (CORRECT)
+✅ Calculator Tool → AI Agent (CORRECT)
+✅ Window Buffer Memory → AI Agent (CORRECT)
+</connection_type_reference>`;
 
 const RESTRICTIONS = `DO NOT:
 - Respond before calling validate_structure

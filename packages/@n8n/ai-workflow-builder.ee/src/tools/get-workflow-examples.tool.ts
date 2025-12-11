@@ -183,6 +183,13 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				// Deduplicate template IDs
 				const uniqueTemplateIds = [...new Set(allTemplateIds)];
 
+				// Debug: Log what we're caching
+				logger?.debug('Caching workflow examples in state', {
+					workflowCount: deduplicatedResults.length,
+					workflowNames: deduplicatedResults.map((w) => w.name),
+					nodeConfigCount: Object.keys(nodeConfigurations).length,
+				});
+
 				// Return success response with workflows, node configurations, and template IDs stored in state
 				return createSuccessResponse(config, responseMessage, {
 					nodeConfigurations,
