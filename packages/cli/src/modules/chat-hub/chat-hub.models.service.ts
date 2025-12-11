@@ -712,7 +712,7 @@ export class ChatHubModelsService {
 		);
 	}
 
-	async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelDto[]> {
+	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelDto[]> {
 		// Workflows are scanned by their latest version for chat trigger nodes.
 		// This means that we might miss some active workflow versions that had chat triggers but
 		// the latest version does not, but this trade-off is done for performance.
