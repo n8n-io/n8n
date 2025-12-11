@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +15,12 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
+import {
+	getLastPublishedVersion,
+	generateVersionName,
+} from '@/features/workflows/workflowHistory/utils';
+import { nodeViewEventBus } from '@/app/event-bus';
+import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -39,9 +45,11 @@ const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
 const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+// We're dropping the save button soon with the autosave so this will also be dropped
+const autoSaveForPublish = ref(false);
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive.workflowSaving;
+	return uiStore.isActionActive.workflowSaving && !autoSaveForPublish.value;
 });
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
@@ -49,7 +57,9 @@ const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		autoSaveForPublish.value = true;
 		const saved = await saveCurrentWorkflow({}, true);
+		autoSaveForPublish.value = false;
 		if (!saved) {
 			// If save failed, don't open the modal
 			return;
@@ -79,6 +89,10 @@ const showPublishIndicator = computed(() => {
 		return false;
 	}
 
+	if (workflowsStore.nodesIssuesExist) {
+		return false;
+	}
+
 	return (
 		(workflowsStore.workflow.versionId &&
 			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||
@@ -88,6 +102,26 @@ const showPublishIndicator = computed(() => {
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
+const activeVersionName = computed(() => {
+	if (!activeVersion.value) {
+		return '';
+	}
+	return activeVersion.value.name || generateVersionName(activeVersion.value.versionId);
+});
+
+const latestPublishDate = computed(() => {
+	const latestPublish = getLastPublishedVersion(activeVersion.value?.workflowPublishHistory ?? []);
+	return latestPublish?.createdAt;
+});
+
+onMounted(() => {
+	nodeViewEventBus.on('publishWorkflow', onPublishButtonClick);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
+});
+
 defineExpose({
 	importFileRef,
 });
@@ -95,6 +129,7 @@ defineExpose({
 
 <template>
 	<div :class="$style.container">
+		<CollaborationPane v-if="!isNewWorkflow" />
 		<div
 			v-if="activeVersion"
 			:class="$style.activeVersionIndicator"
@@ -102,14 +137,16 @@ defineExpose({
 		>
 			<N8nTooltip>
 				<template #content>
-					{{ activeVersion.name }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
-					<TimeAgo :date="activeVersion.createdAt" />
+					{{ activeVersionName }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
+					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 				</template>
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
 		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
 			<N8nButton
+				:loading="autoSaveForPublish"
+				:disabled="isWorkflowSaving"
 				type="secondary"
 				data-test-id="workflow-open-publish-modal-button"
 				@click="onPublishButtonClick"
