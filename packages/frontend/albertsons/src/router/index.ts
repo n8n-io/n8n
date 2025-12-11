@@ -111,6 +111,18 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 
 export const routes: RouteRecordRaw[] = [
 	{
+		path: '/dashboard',
+		name: 'DASHBOARD',
+		components: {
+			default: () => import('@src/views/DashboardView.vue'),
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/',
 		redirect: '/workflow/new',
 		meta: {
