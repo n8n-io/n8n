@@ -93,15 +93,14 @@ interface LogPairwiseConfigOptions {
 	numJudges: number;
 	repetitions: number;
 	concurrency: number;
-	verbose: boolean;
 }
 
 /** Log configuration for pairwise evaluation */
 function logPairwiseConfig(log: EvalLogger, options: LogPairwiseConfigOptions): void {
-	const { experimentName, numGenerations, numJudges, repetitions, concurrency, verbose } = options;
+	const { experimentName, numGenerations, numJudges, repetitions, concurrency } = options;
 	log.info(`➔ Experiment: ${experimentName}`);
 	log.info(
-		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps (concurrency: ${concurrency})${verbose ? ' (verbose)' : ''}`,
+		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps (concurrency: ${concurrency})${log.isVerbose ? ' (verbose)' : ''}`,
 	);
 	if (numGenerations > 1) {
 		log.verbose('   Generation Correctness: (# passing gens) / total gens');
@@ -156,7 +155,6 @@ export async function runPairwiseLangsmithEvaluation(
 		numJudges,
 		repetitions,
 		concurrency,
-		verbose,
 	});
 
 	logFeatureFlags(featureFlags);
@@ -186,7 +184,7 @@ export async function runPairwiseLangsmithEvaluation(
 			throw new Error('Langsmith client not initialized');
 		}
 
-		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'notion-pairwise-workflows';
+		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? DEFAULTS.DATASET_NAME;
 		log.info(`➔ Dataset: ${datasetName}`);
 
 		// Verify dataset exists

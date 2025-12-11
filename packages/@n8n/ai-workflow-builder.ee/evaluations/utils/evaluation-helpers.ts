@@ -4,6 +4,7 @@ import pc from 'picocolors';
 import { v4 as uuid } from 'uuid';
 
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
+import { DEFAULTS } from '../constants';
 import type { TestResult } from '../types/test-result';
 
 /**
@@ -140,10 +141,7 @@ export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
 
 	return {
 		id: `${evalType}-${uuid()}`,
-		featureFlags: featureFlags ?? {
-			multiAgent: true,
-			templateExamples: false,
-		},
+		featureFlags: featureFlags ?? DEFAULTS.FEATURE_FLAGS,
 		message,
 		workflowContext: {
 			currentWorkflow: { id: workflowId, nodes: [], connections: {} },

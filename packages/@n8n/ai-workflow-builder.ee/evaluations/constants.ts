@@ -50,4 +50,9 @@ export const DEFAULTS = {
 	EXPERIMENT_NAME: 'pairwise-evals',
 	CONCURRENCY: 5,
 	REPETITIONS: 1,
+	DATASET_NAME: 'notion-pairwise-workflows',
+	FEATURE_FLAGS: {
+		multiAgent: true,
+		templateExamples: false,
+	},
 } as const;
