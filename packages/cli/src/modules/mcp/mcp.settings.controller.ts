@@ -79,6 +79,7 @@ export class McpSettingsController {
 				active: true,
 				isArchived: false,
 				availableInMCP: false,
+				triggerNodeTypes: supportedTriggerNodeTypes,
 			},
 		};
 

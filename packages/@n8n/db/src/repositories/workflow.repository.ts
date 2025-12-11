@@ -444,7 +444,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
-		this.applyTriggerNodeTypeFilter(qb, options.filter?.triggerNodeType as string | undefined);
+		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -500,34 +500,44 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
-	private applyTriggerNodeTypeFilter(
+	private applyTriggerNodeTypesFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		triggerNodeType?: string,
+		triggerNodeTypes?: string[],
 	): void {
-		if (triggerNodeType) {
-			const dbType = this.globalConfig.database.type;
+		if (!triggerNodeTypes || triggerNodeTypes.length === 0) {
+			return;
+		}
 
-			// Left join the activeVersion relation if not already joined
-			// We must also addSelect to ensure TypeORM includes the join when using raw SQL in andWhere
-			if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
-				qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect('activeVersion.versionId');
-			}
+		const dbType = this.globalConfig.database.type;
+
+		// Left join the activeVersion relation if not already joined
+		// We must also addSelect to ensure TypeORM includes the join when using raw SQL in andWhere
+		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'activeVersion')) {
+			qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect('activeVersion.versionId');
+		}
+
+		// Build OR conditions for each trigger node type
+		const conditions: string[] = [];
+		const parameters: Record<string, string> = {};
+
+		triggerNodeTypes.forEach((triggerNodeType, index) => {
+			const paramName = `triggerNodeType${index}`;
+			parameters[paramName] = `%${triggerNodeType}%`;
 
 			// Use COALESCE to check activeVersion.nodes if exists (workflow is active),
 			// otherwise fall back to workflow.nodes (draft workflows)
 			// In PostgreSQL, cast JSON column to text for LIKE operator
 			if (['postgresdb'].includes(dbType)) {
-				qb.andWhere(
-					'COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :triggerNodeType',
-					{ triggerNodeType: `%${triggerNodeType}%` },
+				conditions.push(
+					`COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text) LIKE :${paramName}`,
 				);
 			} else {
 				// SQLite and MySQL store nodes as text
-				qb.andWhere('COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType', {
-					triggerNodeType: `%${triggerNodeType}%`,
-				});
+				conditions.push(`COALESCE(activeVersion.nodes, workflow.nodes) LIKE :${paramName}`);
 			}
-		}
+		});
+
+		qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
 	}
 
 	/**
