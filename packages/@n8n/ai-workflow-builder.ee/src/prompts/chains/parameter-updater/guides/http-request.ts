@@ -1,4 +1,8 @@
-export const HTTP_REQUEST_GUIDE = `
+import type { NodeTypeGuide } from '../types';
+
+export const HTTP_REQUEST_GUIDE: NodeTypeGuide = {
+	patterns: ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.webhook'],
+	content: `
 ### HTTP Request Node Updates
 
 #### IMPORTANT - Credential Security
@@ -129,4 +133,5 @@ Expected Output:
 }
 
 Note: The API key is handled by the httpHeaderAuth credential, NOT hardcoded in the header parameters.
-The user will configure their API key securely in n8n's credential manager.`;
+The user will configure their API key securely in n8n's credential manager.`,
+};
