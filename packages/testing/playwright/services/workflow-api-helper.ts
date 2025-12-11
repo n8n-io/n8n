@@ -24,7 +24,7 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: IWorkflowBase) {
+	async createWorkflow(workflow: Partial<IWorkflowBase>) {
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
 		if (!response.ok()) {
@@ -35,15 +35,64 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
-	async setActive(workflowId: string, active: boolean) {
-		const response = await this.api.request.patch(`/rest/workflows/${workflowId}?forceSave=true`, {
-			data: { active },
+	/**
+	 * Creates a workflow in a project with optional folder placement (Uses Internal API not public API)
+	 * @param project - Required project ID where the workflow will be created
+	 * @param options - Optional configuration for workflow creation
+	 * @param options.folder - Optional folder ID to place the workflow in
+	 * @param options.name - Optional workflow name. If not provided, generates a unique name using nanoid
+	 * @returns Object containing the name, ID, and versionId of the created workflow
+	 */
+	async createInProject(
+		project: string,
+		options?: {
+			folder?: string;
+			name?: string;
+		},
+	): Promise<{ name: string; id: string; versionId: string }> {
+		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
+
+		const workflow = {
+			name: workflowName,
+			nodes: [],
+			connections: {},
+			settings: {},
+			active: false,
+			projectId: project,
+			...(options?.folder && { parentFolderId: options.folder }),
+		};
+
+		const response = await this.api.request.post('/rest/workflows', { data: workflow });
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to create workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		const workflowData = result.data ?? result;
+
+		return {
+			name: workflowName,
+			id: workflowData.id,
+			versionId: workflowData.versionId,
+		};
+	}
+
+	async activate(workflowId: string, versionId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/activate`, {
+			data: { versionId },
 		});
 
 		if (!response.ok()) {
-			throw new TestError(
-				`Failed to ${active ? 'activate' : 'deactivate'} workflow: ${await response.text()}`,
-			);
+			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
+		}
+	}
+
+	async deactivate(workflowId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to deactivate workflow: ${await response.text()}`);
 		}
 	}
 
@@ -52,7 +101,7 @@ export class WorkflowApiHelper {
 	 * This ensures no conflicts when importing workflows for testing.
 	 */
 	private makeWorkflowUnique(
-		workflow: IWorkflowBase,
+		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
 		const idLength = options?.idLength ?? 12;
@@ -73,12 +122,14 @@ export class WorkflowApiHelper {
 		let webhookId: string | undefined;
 		let webhookPath: string | undefined;
 
-		for (const node of workflow.nodes) {
-			if (node.type === 'n8n-nodes-base.webhook') {
-				webhookId = nanoid(idLength);
-				webhookPath = `${webhookPrefix}-${webhookId}`;
-				node.webhookId = webhookId;
-				node.parameters.path = webhookPath;
+		if (workflow.nodes) {
+			for (const node of workflow.nodes) {
+				if (node.type === 'n8n-nodes-base.webhook') {
+					webhookId = nanoid(idLength);
+					webhookPath = `${webhookPrefix}-${webhookId}`;
+					node.webhookId = webhookId;
+					node.parameters.path = webhookPath;
+				}
 			}
 		}
 
@@ -90,10 +141,13 @@ export class WorkflowApiHelper {
 	 * Returns detailed information about what was created.
 	 */
 	async createWorkflowFromDefinition(
-		workflow: IWorkflowBase,
-		options?: { webhookPrefix?: string; idLength?: number },
+		workflow: Partial<IWorkflowBase>,
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const { webhookPath, webhookId } = this.makeWorkflowUnique(workflow, options);
+		const { makeUnique = true, ...rest } = options ?? {};
+		const { webhookPath, webhookId } = makeUnique
+			? this.makeWorkflowUnique(workflow, rest)
+			: { webhookPath: undefined, webhookId: undefined };
 		const createdWorkflow = await this.createWorkflow(workflow);
 		const workflowId: string = String(createdWorkflow.id);
 
@@ -110,29 +164,35 @@ export class WorkflowApiHelper {
 	 * The workflow will be created with its original active state from the JSON file.
 	 * Returns detailed information about what was imported, including webhook info if present.
 	 */
-	async importWorkflow(
+	async importWorkflowFromFile(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number },
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const workflowDefinition: IWorkflowBase = JSON.parse(
-			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
-		);
+		const filePath = resolveFromRoot('workflows', fileName);
+		const fileContent = readFileSync(filePath, 'utf8');
+		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
 
+		return await this.importWorkflowFromDefinition(workflowDefinition, options);
+	}
+
+	async importWorkflowFromDefinition(
+		workflowDefinition: Partial<IWorkflowBase>,
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+	): Promise<WorkflowImportResult> {
+		// Store original active state
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
-		// Ensure the workflow is in the correct active state as specified in the JSON
 		if (workflowDefinition.active) {
-			await this.setActive(result.workflowId, workflowDefinition.active);
+			await this.activate(result.workflowId, result.createdWorkflow.versionId!);
 		}
-
 		return result;
 	}
 
+	// TODO: workflowId is being ignored
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);
 		params.set('limit', limit.toString());
-
 		const response = await this.api.request.get('/rest/executions', { params });
 
 		if (!response.ok()) {
@@ -191,5 +251,36 @@ export class WorkflowApiHelper {
 		}
 
 		throw new TestError(`Execution did not complete within ${timeoutMs}ms`);
+	}
+
+	/**
+	 * Wait for a workflow execution to reach a specific status
+	 * @param workflowId - The workflow ID to check
+	 * @param expectedStatus - The expected status (e.g., 'waiting', 'success', 'error')
+	 * @param timeoutMs - Maximum time to wait in milliseconds
+	 * @returns The execution once it reaches the expected status
+	 * @throws TestError if execution doesn't reach the expected status within timeout
+	 */
+	async waitForWorkflowStatus(
+		workflowId: string,
+		expectedStatus: string,
+		timeoutMs = 5000,
+	): Promise<ExecutionListResponse> {
+		const startTime = Date.now();
+
+		while (Date.now() - startTime < timeoutMs) {
+			const executions = await this.getExecutions(workflowId);
+			const execution = executions.find((e) => e.workflowId === workflowId);
+
+			if (execution && execution.status === expectedStatus) {
+				return execution;
+			}
+
+			await new Promise((resolve) => setTimeout(resolve, 200));
+		}
+
+		throw new TestError(
+			`Workflow ${workflowId} did not reach status '${expectedStatus}' within ${timeoutMs}ms`,
+		);
 	}
 }

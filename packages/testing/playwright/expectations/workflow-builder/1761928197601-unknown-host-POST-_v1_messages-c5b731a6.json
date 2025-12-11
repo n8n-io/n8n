@@ -1,0 +1,70 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["5604"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["7"],
+			"request-id": ["req_011CUfbPMrHeFhAEvnkU9Jb7"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:29:53Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15500000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:29:56Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:29:53Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:29:56 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9974889aec60eb15-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01ELgEeUZCqZSaAh3CRSdhLr",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "I'm ready to help you build n8n workflows! 👋\n\nYou can ask me to:\n- **Create new workflows** from scratch (e.g., \"Build a workflow that sends daily weather reports via email\")\n- **Modify existing workflows** by adding, updating, or removing nodes\n- **Connect APIs and services** together\n- **Add automation logic** like conditions, loops, and data transformations\n- **Set up AI-powered workflows** with agents, tools, and language models\n\nWhat would you like to build today?"
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 3,
+					"cache_creation_input_tokens": 497,
+					"cache_read_input_tokens": 10640,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 497,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 119,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFFTGdFZVVaQ3FaU2FBaDNDUlNkaExyIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiSSdtIHJlYWR5IHRvIGhlbHAgeW91IGJ1aWxkIG44biB3b3JrZmxvd3MhIPCfkYtcblxuWW91IGNhbiBhc2sgbWUgdG86XG4tICoqQ3JlYXRlIG5ldyB3b3JrZmxvd3MqKiBmcm9tIHNjcmF0Y2ggKGUuZy4sIFwiQnVpbGQgYSB3b3JrZmxvdyB0aGF0IHNlbmRzIGRhaWx5IHdlYXRoZXIgcmVwb3J0cyB2aWEgZW1haWxcIilcbi0gKipNb2RpZnkgZXhpc3Rpbmcgd29ya2Zsb3dzKiogYnkgYWRkaW5nLCB1cGRhdGluZywgb3IgcmVtb3Zpbmcgbm9kZXNcbi0gKipDb25uZWN0IEFQSXMgYW5kIHNlcnZpY2VzKiogdG9nZXRoZXJcbi0gKipBZGQgYXV0b21hdGlvbiBsb2dpYyoqIGxpa2UgY29uZGl0aW9ucywgbG9vcHMsIGFuZCBkYXRhIHRyYW5zZm9ybWF0aW9uc1xuLSAqKlNldCB1cCBBSS1wb3dlcmVkIHdvcmtmbG93cyoqIHdpdGggYWdlbnRzLCB0b29scywgYW5kIGxhbmd1YWdlIG1vZGVsc1xuXG5XaGF0IHdvdWxkIHlvdSBsaWtlIHRvIGJ1aWxkIHRvZGF5PyJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjo0OTcsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxMDY0MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6NDk3LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTE5LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		}
+	},
+	"id": "1761928197601-unknown-host-POST-_v1_messages-c5b731a6.json",
+	"priority": 1,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

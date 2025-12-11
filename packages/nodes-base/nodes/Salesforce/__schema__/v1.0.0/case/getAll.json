@@ -15,9 +15,12 @@
         "Id": {
             "type": "string"
         },
+        "OwnerId": {
+            "type": "string"
+        },
         "Status": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-import type { RatingFeedback } from '@n8n/design-system/types';
-
+import { useI18n } from '../../../composables/useI18n';
+import type { RatingFeedback } from '../../../types';
 import N8nButton from '../../N8nButton';
 import N8nIconButton from '../../N8nIconButton';
 import N8nInput from '../../N8nInput';
@@ -90,6 +89,8 @@ function onCancelFeedback() {
 					size="small"
 					text
 					icon="thumbs-up"
+					icon-size="large"
+					:class="$style.ratingButton"
 					data-test-id="message-thumbs-up-button"
 					@click="onRateButton('up')"
 				/>
@@ -98,6 +99,8 @@ function onCancelFeedback() {
 					size="small"
 					text
 					icon="thumbs-down"
+					icon-size="large"
+					:class="$style.ratingButton"
 					data-test-id="message-thumbs-down-button"
 					@click="onRateButton('down')"
 				/>
@@ -114,7 +117,6 @@ function onCancelFeedback() {
 				data-test-id="message-feedback-input"
 				:read-only="false"
 				resize="none"
-				:rows="style === 'minimal' ? 3 : 5"
 			/>
 			<div :class="$style.feedbackActions">
 				<N8nButton
@@ -127,7 +129,7 @@ function onCancelFeedback() {
 					type="primary"
 					size="small"
 					data-test-id="message-submit-feedback-button"
-					:label="t('assistantChat.builder.submit')"
+					:label="t('assistantChat.builder.feedbackSubmit')"
 					@click="onSubmitFeedback"
 				/>
 			</div>
@@ -143,55 +145,70 @@ function onCancelFeedback() {
 .rating {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	margin-top: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .buttons {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .feedbackContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .feedbackInput {
 	:global(.el-textarea__inner) {
 		resize: none;
 		font-family: var(--font-family);
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--sm);
+
+		&::placeholder {
+			font-size: var(--font-size--sm);
+		}
 	}
 }
 
 .feedbackActions {
 	display: flex;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 }
 
 .success {
-	color: var(--color-success);
-	font-size: var(--font-size-2xs);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
 	margin: 0;
 }
 
 /* Minimal style specific */
 .minimal {
-	margin-top: 0;
+	margin-top: var(--spacing--5xs);
+
 	.buttons {
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--5xs);
+	}
+
+	.ratingButton {
+		--button--color--background--hover: var(--color--foreground--tint-1);
+		--button--color--text--hover: var(--color--text);
+		--button--color--text: var(--color--text);
 	}
 
 	.feedbackContainer {
-		gap: var(--spacing-3xs);
+		gap: var(--spacing--3xs);
 	}
 
 	.feedbackInput {
 		:global(.el-textarea__inner) {
-			font-size: var(--font-size-3xs);
+			font-size: var(--font-size--2xs);
+
+			&::placeholder {
+				font-size: var(--font-size--2xs);
+			}
 		}
 	}
 }

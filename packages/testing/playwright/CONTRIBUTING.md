@@ -371,12 +371,12 @@ async fillParameterInput(labelName: string, value: string) {
 }
 
 async clickBackToCanvasButton() {
-  await this.clickByTestId('back-to-canvas');
+  await this.clickByTestId('ndv-close-button');
 }
 
 // ❌ AVOID
 async badExample() {
-  await this.page.getByTestId('back-to-canvas').click();
+  await this.page.getByTestId('ndv-close-button').click();
 }
 ```
 
@@ -562,7 +562,7 @@ test('should filter credentials by project ID', async ({ n8n, api }) => {
     NOTION_API_KEY,
   );
 
-  const credentials = await getCredentialsForProject(api, projectId);
+  const credentials = await n8n.api.credentials.getCredentialsByProject(projectId);
   expect(credentials).toHaveLength(1);
 });
 ```

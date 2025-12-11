@@ -1,6 +1,6 @@
 import { Factory } from 'miragejs';
 import { faker } from '@faker-js/faker';
-import type { EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 
 export const variableFactory = Factory.extend<EnvironmentVariable>({
 	id(i: number) {

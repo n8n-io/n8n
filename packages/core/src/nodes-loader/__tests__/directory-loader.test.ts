@@ -106,6 +106,58 @@ describe('DirectoryLoader', () => {
 
 			expect(mockFs.readFileSync).not.toHaveBeenCalled();
 		});
+
+		it('should load custom nodes when specified with CUSTOM prefix in includeNodes', async () => {
+			const loader = new CustomDirectoryLoader(directory, [], ['CUSTOM.node1', 'CUSTOM.node2']);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(2);
+		});
+
+		it('should load only specified custom nodes when includeNodes contains mixed packages', async () => {
+			const loader = new CustomDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-base.aggregate', 'CUSTOM.node1'],
+			);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
+			// node2 should not be loaded
+		});
+
+		it('should not load any custom nodes when only built-in nodes are in includeNodes', async () => {
+			const loader = new CustomDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-base.aggregate', 'n8n-nodes-base.httpRequest'],
+			);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({});
+			expect(loader.types.nodes).toEqual([]);
+		});
+
+		it('should exclude custom nodes when specified with CUSTOM prefix in excludeNodes', async () => {
+			const loader = new CustomDirectoryLoader(directory, ['CUSTOM.node1'], []);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
+		});
 	});
 
 	describe('PackageDirectoryLoader', () => {
@@ -708,9 +760,20 @@ describe('DirectoryLoader', () => {
 					sourcePath: filePath,
 				},
 			});
-
 			expect(loader.types.nodes).toEqual([mockNode1.description]);
 			expect(loader.loadedNodes).toEqual([{ name: 'node1', version: 1 }]);
+		});
+
+		it('should load node with package version if provided', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			loader.loadNodeFromFile(filePath, '1.0.0');
+
+			expect(
+				(loader.nodeTypes.node1.type.description as INodeTypeDescription)
+					.communityNodePackageVersion,
+			).toBe('1.0.0');
 		});
 
 		it('should update node icon paths', () => {
@@ -787,7 +850,7 @@ describe('DirectoryLoader', () => {
 
 			expect(loader.loadedNodes).toEqual([{ name: 'test', version: 2 }]);
 
-			const nodes = loader.types.nodes as INodeTypeDescription[];
+			const nodes = loader.types.nodes;
 			expect(nodes).toHaveLength(2);
 			expect(nodes[0]?.version).toBe(2);
 			expect(nodes[1]?.version).toBe(1);

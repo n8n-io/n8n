@@ -6,9 +6,10 @@ import { Client } from 'langsmith';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 import pc from 'picocolors';
+import { v4 as uuid } from 'uuid';
 
-import { anthropicClaudeSonnet4 } from '../../src/llm-config';
-import type { ChatPayload } from '../../src/workflow-builder-agent';
+import { anthropicClaudeSonnet45 } from '../../src/llm-config';
+import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import type { Violation } from '../types/evaluation';
 import type { TestResult } from '../types/test-result';
@@ -23,7 +24,7 @@ export async function setupLLM(): Promise<BaseChatModel> {
 	if (!apiKey) {
 		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
 	}
-	return await anthropicClaudeSonnet4({ apiKey });
+	return await anthropicClaudeSonnet45({ apiKey });
 }
 
 /**
@@ -55,12 +56,13 @@ export function createAgent(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
+	checkpointer?: MemorySaver,
 ): WorkflowBuilderAgent {
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
 		llmSimpleTask: llm,
 		llmComplexTask: llm,
-		checkpointer: new MemorySaver(),
+		checkpointer: checkpointer ?? new MemorySaver(),
 		tracer,
 	});
 }
@@ -276,11 +278,21 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	}
 }
 
-export function getChatPayload(message: string, id: string): ChatPayload {
+export function getChatPayload(
+	evalType: string,
+	message: string,
+	workflowId: string,
+	featureFlags?: BuilderFeatureFlags,
+): ChatPayload {
 	return {
+		id: `${evalType}-${uuid()}`,
+		featureFlags: featureFlags ?? {
+			multiAgent: true,
+			templateExamples: false,
+		},
 		message,
 		workflowContext: {
-			currentWorkflow: { id, nodes: [], connections: {} },
+			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
 		},
 	};
 }

@@ -56,10 +56,12 @@ export const renderFormCompletion = async (
 		customCss?: string;
 	};
 	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
-	const binary =
-		context.getNodeParameter('respondWith', '') === 'returnBinary'
-			? await binaryResponse(context)
-			: '';
+	const respondWith = context.getNodeParameter('respondWith', '') as
+		| 'text'
+		| 'redirect'
+		| 'showText'
+		| 'returnBinary';
+	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : '';
 
 	let title = options.formTitle;
 	if (!title) {
@@ -69,7 +71,10 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	res.setHeader('Content-Security-Policy', SANDBOX_CSP);
+	if (respondWith !== 'redirect') {
+		res.setHeader('Content-Security-Policy', SANDBOX_CSP);
+	}
+
 	res.render('form-trigger-completion', {
 		title: completionTitle,
 		message: sanitizeHtml(completionMessage),

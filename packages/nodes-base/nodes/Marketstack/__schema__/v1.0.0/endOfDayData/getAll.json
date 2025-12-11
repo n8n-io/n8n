@@ -4,9 +4,6 @@
         "date": {
             "type": "string"
         },
-        "dividend": {
-            "type": "integer"
-        },
         "exchange": {
             "type": "string"
         },
@@ -17,5 +14,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

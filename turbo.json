@@ -1,5 +1,5 @@
 {
-	"globalEnv": ["CI", "COVERAGE_ENABLED"],
+	"globalEnv": ["CI", "COVERAGE_ENABLED", "BUILD_WITH_COVERAGE"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
@@ -22,6 +22,14 @@
 			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
 		"test": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},

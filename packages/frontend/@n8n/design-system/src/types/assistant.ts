@@ -7,6 +7,11 @@ export namespace ChatUI {
 		codeSnippet?: string;
 	}
 
+	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {
+		role: 'assistant';
+		aborted: true;
+	}
+
 	export interface SummaryBlock {
 		role: 'assistant';
 		type: 'block';
@@ -87,6 +92,20 @@ export namespace ChatUI {
 		}>;
 	}
 
+	export interface ThinkingItem {
+		id: string;
+		displayTitle: string;
+		status: 'pending' | 'running' | 'completed' | 'error';
+	}
+
+	export interface ThinkingGroupMessage {
+		id?: string;
+		role: 'assistant';
+		type: 'thinking-group';
+		items: ThinkingItem[];
+		latestStatusText: string;
+	}
+
 	export interface CustomMessage {
 		id?: string;
 		role: 'assistant' | 'user';
@@ -107,6 +126,7 @@ export namespace ChatUI {
 
 	export type AssistantMessage = (
 		| TextMessage
+		| TaskAbortedMessage
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage
@@ -115,6 +135,7 @@ export namespace ChatUI {
 		| AgentSuggestionMessage
 		| WorkflowUpdatedMessage
 		| ToolMessage
+		| ThinkingGroupMessage
 		| CustomMessage
 	) & {
 		id?: string;
@@ -131,7 +152,13 @@ export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
 export function isTextMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.TextMessage & { id?: string; read?: boolean; quickReplies?: ChatUI.QuickReply[] } {
-	return msg.type === 'text';
+	return msg.type === 'text' && !('aborted' in msg);
+}
+
+export function isTaskAbortedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TaskAbortedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'text' && 'aborted' in msg && msg.aborted;
 }
 
 export function isSummaryBlock(msg: ChatUI.AssistantMessage): msg is ChatUI.SummaryBlock & {
@@ -202,9 +229,22 @@ export function isCustomMessage(
 	return msg.type === 'custom';
 }
 
+export function isThinkingGroupMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ThinkingGroupMessage & { id?: string; read?: boolean } {
+	return msg.type === 'thinking-group';
+}
+
 // Helper to ensure message has required id and read properties
 export function hasRequiredProps<T extends ChatUI.AssistantMessage>(
 	msg: T,
 ): msg is T & { id: string; read: boolean } {
 	return typeof msg.id === 'string' && typeof msg.read === 'boolean';
+}
+
+// Workflow suggestion interface for the N8nPromptInputSuggestions component
+export interface WorkflowSuggestion {
+	id: string;
+	summary: string;
+	prompt: string;
 }

@@ -7,11 +7,14 @@ import {
 	calculateTestMetrics,
 	calculateCategoryAverages,
 	countViolationsByType,
+	calculateProgrammaticAverages,
+	countProgrammaticViolationsByType,
 } from '../utils/evaluation-calculator.js';
 import {
 	displayTestResults,
 	displaySummaryTable,
 	displayViolationsDetail,
+	displayCacheStatistics,
 } from '../utils/evaluation-reporter.js';
 
 /**
@@ -72,18 +75,32 @@ export function displayResults(
 	const metrics = calculateTestMetrics(results);
 	const categoryAverages = calculateCategoryAverages(results);
 	const violationCounts = countViolationsByType(results);
+	const programmaticAverages = calculateProgrammaticAverages(results);
+	const programmaticViolationCounts = countProgrammaticViolationsByType(results);
 
 	const combinedMetrics = {
 		...metrics,
 		categoryAverages,
 		violationCounts,
+		programmaticAverages,
+		programmaticViolationCounts,
 	};
 
 	// Display summary
-	displaySummaryTable(results, combinedMetrics);
+	displaySummaryTable(combinedMetrics);
 
-	// Display violations if any exist
-	if (violationCounts.critical > 0 || violationCounts.major > 0 || violationCounts.minor > 0) {
+	// Display cache statistics
+	displayCacheStatistics(results);
+
+	// Display violations if any exist (from either LLM or programmatic evaluation)
+	const hasLLMViolations =
+		violationCounts.critical > 0 || violationCounts.major > 0 || violationCounts.minor > 0;
+	const hasProgViolations =
+		programmaticViolationCounts.critical > 0 ||
+		programmaticViolationCounts.major > 0 ||
+		programmaticViolationCounts.minor > 0;
+
+	if (hasLLMViolations || hasProgViolations) {
 		displayViolationsDetail(results);
 	}
 }

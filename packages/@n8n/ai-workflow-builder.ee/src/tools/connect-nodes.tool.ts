@@ -3,6 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
 import {
 	ConnectionError,
 	NodeNotFoundError,
@@ -45,16 +47,26 @@ export const nodeConnectionSchema = z.object({
 		.describe('The index of the input to connect to (default: 0)'),
 });
 
+export const CONNECT_NODES_TOOL: BuilderToolBase = {
+	toolName: 'connect_nodes',
+	displayTitle: 'Connecting nodes',
+};
+
 /**
  * Factory function to create the connect nodes tool
  */
-export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
-	const DISPLAY_TITLE = 'Connecting nodes';
-
+export function createConnectNodesTool(
+	nodeTypes: INodeTypeDescription[],
+	logger?: Logger,
+): BuilderTool {
 	const dynamicTool = tool(
 		// eslint-disable-next-line complexity
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'connect_nodes', DISPLAY_TITLE);
+			const reporter = createProgressReporter(
+				config,
+				CONNECT_NODES_TOOL.toolName,
+				CONNECT_NODES_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -290,7 +302,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 			}
 		},
 		{
-			name: 'connect_nodes',
+			name: CONNECT_NODES_TOOL.toolName,
 			description: `Connect two nodes in the workflow. The tool automatically determines the connection type based on node capabilities and ensures correct connection direction.
 
 UNDERSTANDING CONNECTIONS:
@@ -321,6 +333,6 @@ CONNECTION EXAMPLES:
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
+		...CONNECT_NODES_TOOL,
 	};
 }

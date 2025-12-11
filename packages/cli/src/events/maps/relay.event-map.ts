@@ -16,7 +16,7 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: {
+	role?: {
 		slug: string;
 	};
 };
@@ -39,7 +39,7 @@ export type RelayEventMap = {
 	'first-production-workflow-succeeded': {
 		projectId: string;
 		workflowId: string;
-		userId: string;
+		userId: string | null;
 	};
 
 	'first-workflow-data-loaded': {
@@ -84,6 +84,22 @@ export type RelayEventMap = {
 
 	'workflow-saved': {
 		user: UserLike;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+		previousWorkflow?: IWorkflowDb;
+		aiBuilderAssisted?: boolean;
+	};
+
+	'workflow-activated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
+	'workflow-deactivated': {
+		user: UserLike;
+		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
 	};
@@ -216,6 +232,11 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'user-retrieved-workflow-version': {
+		userId: string;
+		publicApi: boolean;
+	};
+
 	'user-retrieved-all-workflows': {
 		userId: string;
 		publicApi: boolean;
@@ -244,6 +265,7 @@ export type RelayEventMap = {
 			| 'Reset password'
 			| 'New user invite'
 			| 'Resend invite'
+			| 'Workflow auto-deactivated'
 			| 'Workflow shared'
 			| 'Credentials shared'
 			| 'Project shared';
@@ -282,6 +304,7 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
+			| 'Workflow auto-deactivated'
 			| 'Credentials shared'
 			| 'Project shared';
 		publicApi: boolean;
@@ -408,6 +431,7 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {
@@ -462,7 +486,13 @@ export type RelayEventMap = {
 
 	// #region Variable
 
-	'variable-created': {};
+	'variable-created': {
+		projectId?: string;
+	};
+
+	'variable-updated': {
+		projectId?: string;
+	};
 
 	// #endregion
 
@@ -511,6 +541,19 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region SSO
+
+	'sso-user-project-access-updated': {
+		projectsRemoved: number;
+		projectsAdded: number;
+		userId: string;
+	};
+
+	'sso-user-instance-role-updated': {
+		role: string;
+		userId: string;
+	};
 
 	// #region runner
 

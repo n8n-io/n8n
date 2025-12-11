@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { RunDataPanel } from './components/RunDataPanel';
+import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
 import { locatorByIndex } from '../utils/index-helper';
@@ -10,6 +11,7 @@ import { locatorByIndex } from '../utils/index-helper';
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
+	readonly clipboard: ClipboardHelper;
 	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
 	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
 
@@ -17,6 +19,7 @@ export class NodeDetailsViewPage extends BasePage {
 		super(page);
 		this.setupHelper = new NodeParameterHelper(this);
 		this.editFields = new EditFieldsNode(page);
+		this.clipboard = new ClipboardHelper(page);
 	}
 
 	getNodeCredentialsSelect() {
@@ -39,8 +42,12 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
 	}
 
+	getCredentialSelectInput() {
+		return this.getNodeCredentialsSelect().locator('input');
+	}
+
 	async clickBackToCanvasButton() {
-		await this.clickByTestId('back-to-canvas');
+		await this.clickByTestId('ndv-close-button');
 	}
 
 	getParameterByLabel(labelName: string) {
@@ -148,10 +155,7 @@ export class NodeDetailsViewPage extends BasePage {
 		await editor.click();
 		await editor.fill('');
 
-		await this.page.evaluate(async (jsonData) => {
-			await navigator.clipboard.writeText(JSON.stringify(jsonData));
-		}, data);
-		await this.page.keyboard.press('ControlOrMeta+V');
+		await this.clipboard.paste(JSON.stringify(data));
 
 		await this.savePinnedData();
 	}
@@ -201,6 +205,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-input-hint');
 	}
 
+	getInputLabel() {
+		return this.page.getByTestId('input-label');
+	}
+
+	getNthParameter(index: number) {
+		return this.getNodeParameters().locator('.parameter-item').nth(index);
+	}
+
+	getCredentialsLabel() {
+		return this.page.getByTestId('credentials-label');
+	}
+
 	async makeWebhookRequest(path: string) {
 		return await this.page.request.get(path);
 	}
@@ -232,6 +248,11 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputField(parameterName: string, index?: number) {
 		return this.getParameterInput(parameterName, index).locator('input');
+	}
+
+	getParameterEditor(parameterName: string, index?: number) {
+		// CodeMirror editor
+		return this.getParameterInput(parameterName, index).locator('.cm-content');
 	}
 
 	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
@@ -736,7 +757,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+		return this.page.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {
@@ -872,12 +893,41 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
 	}
 
-	async setRLCValue(paramName: string, value: string): Promise<void> {
+	getResourceLocatorModeSelectorInput(paramName: string) {
+		return this.getResourceLocatorModeSelector(paramName).locator('input');
+	}
+
+	getResourceLocatorErrorMessage(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+	}
+
+	getResourceLocatorAddCredentials(paramName: string) {
+		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+	}
+
+	getResourceLocatorSearch(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+	}
+
+	getParameterInputIssues() {
+		return this.page.getByTestId('parameter-issues');
+	}
+
+	getResourceLocatorItems() {
+		return this.page.getByTestId('rlc-item');
+	}
+
+	getAddResourceItem() {
+		return this.page.getByTestId('rlc-item-add-resource');
+	}
+
+	getExpressionModeToggle(index: number = 1) {
+		return this.page.getByTestId('radio-button-expression').nth(index);
+	}
+
+	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
 		await this.getResourceLocatorModeSelector(paramName).click();
-
-		const visibleOptions = this.page.locator('.el-popper:visible .el-select-dropdown__item');
-		await visibleOptions.last().click();
-
+		await this.page.getByTestId('mode-id').nth(index).click();
 		const input = this.getResourceLocatorInput(paramName).locator('input');
 		await input.fill(value);
 	}
@@ -972,5 +1022,27 @@ export class NodeDetailsViewPage extends BasePage {
 
 		// Step 3: Set the parameter value
 		await this.setupHelper.setParameter(parameterName, parameterValue);
+	}
+
+	async setInvalidExpression({
+		fieldName,
+		invalidExpression,
+	}: {
+		fieldName: string;
+		invalidExpression?: string;
+	}): Promise<void> {
+		await this.activateParameterExpressionEditor(fieldName);
+		const editor = this.getInlineExpressionEditorInput(fieldName);
+		await editor.click();
+		await this.page.keyboard.type(invalidExpression ?? '{{ =()');
+	}
+
+	/**
+	 * Opens a resource locator dropdown for a given parameter
+	 * @param paramName - The parameter name for the resource locator
+	 */
+	async openResourceLocator(paramName: string): Promise<void> {
+		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
+		await this.getResourceLocatorInput(paramName).click();
 	}
 }

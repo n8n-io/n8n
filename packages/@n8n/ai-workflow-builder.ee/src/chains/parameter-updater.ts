@@ -4,10 +4,13 @@ import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/
 import type { Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	instanceUrlPrompt,
+	ParameterUpdatePromptBuilder,
+} from '@/prompts/chains/parameter-updater';
+
 import { LLMServiceError } from '../errors';
 import type { ParameterUpdaterOptions } from '../types/config';
-import { instanceUrlPrompt } from './prompts/instance-url';
-import { ParameterUpdatePromptBuilder } from './prompts/prompt-builder';
 
 export const parametersSchema = z
 	.object({
@@ -88,6 +91,7 @@ export const createParameterUpdaterChain = (
 			{
 				type: 'text',
 				text: systemPromptContent,
+				cache_control: { type: 'ephemeral' },
 			},
 		],
 	});
@@ -98,6 +102,7 @@ export const createParameterUpdaterChain = (
 				{
 					type: 'text',
 					text: nodeDefinitionPrompt,
+					cache_control: { type: 'ephemeral' },
 				},
 				{
 					type: 'text',
