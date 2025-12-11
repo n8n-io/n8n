@@ -9,11 +9,9 @@ import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
-import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
-	const workflowService = mock<WorkflowService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
@@ -30,7 +28,6 @@ describe('ChatHubWorkflowService', () => {
 
 		service = new ChatHubWorkflowService(
 			logger,
-			workflowService,
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
