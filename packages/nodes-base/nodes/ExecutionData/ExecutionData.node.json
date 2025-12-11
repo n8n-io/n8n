@@ -4,7 +4,7 @@
 	"codexVersion": "1.0",
 	"categories": ["Development", "Core Nodes"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Primitives"]
 	},
 	"resources": {
 		"primaryDocumentation": [

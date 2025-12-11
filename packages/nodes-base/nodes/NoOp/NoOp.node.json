@@ -73,6 +73,6 @@
 	},
 	"alias": ["nothing"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Primitives"]
 	}
 }

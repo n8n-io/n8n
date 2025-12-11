@@ -25,6 +25,6 @@
 	},
 	"alias": ["Shell", "Command", "OS", "Bash"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Primitives"]
 	}
 }
