@@ -178,7 +178,7 @@ async function onSave() {
 			...selectedModel.value,
 			credentialId: credentialIdForSelectedModelProvider.value,
 			tools: tools.value,
-			icon: icon.value as AgentIconOrEmoji,
+			icon: icon.value,
 		};
 
 		if (isEditMode.value && props.data.agentId) {

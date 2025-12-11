@@ -734,6 +734,10 @@ export class ChatHubModelsService {
 	}
 
 	async fetchAgentWorkflowsAsModelsByIds(ids: string[]): Promise<ChatModelDto[]> {
+		if (ids.length === 0) {
+			return [];
+		}
+
 		const workflows = await this.workflowRepository.find({
 			select: {
 				id: true,

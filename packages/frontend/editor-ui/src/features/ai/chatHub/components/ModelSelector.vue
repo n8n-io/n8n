@@ -114,6 +114,12 @@ const menu = computed(() => {
 				title: i18n.baseText('generic.loadingEllipsis'),
 				disabled: true,
 			});
+		} else if (agents.value.n8n.models.length === 0) {
+			n8nAgentsSubmenu.push({
+				id: 'no-agents',
+				title: i18n.baseText('chatHub.workflowAgents.empty.noAgents'),
+				disabled: true,
+			});
 		} else {
 			n8nAgentsSubmenu.push(
 				...agents.value.n8n.models.map((agent) => {
