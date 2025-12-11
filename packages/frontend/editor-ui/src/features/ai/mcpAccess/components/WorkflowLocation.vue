@@ -69,7 +69,7 @@ const hasGrandparentFolder = computed(() => !!props.parentFolder?.parentFolderId
 				data-test-id="workflow-location-project-link"
 				:to="projectLink"
 				:theme="'text'"
-				:class="[$style['location-link'], $style['project-link'], $style.truncate]"
+				:class="[$style['location-link'], $style.truncate]"
 				:new-window="true"
 			>
 				<N8nText :class="$style.truncate" data-test-id="workflow-location-project-name">
