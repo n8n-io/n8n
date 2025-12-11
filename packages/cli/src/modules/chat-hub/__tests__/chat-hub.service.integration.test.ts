@@ -2,12 +2,13 @@ import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
-import type { INodePropertyOptions } from 'n8n-workflow';
+import type { INodePropertyOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { createAdmin, createMember } from '@test-integration/db/users';
 
 import { PROVIDER_NODE_TYPE_MAP } from '../chat-hub.constants';
+import { ChatHubModelsService } from '../chat-hub.models.service';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
@@ -32,6 +33,7 @@ describe('chatHub', () => {
 	let messagesRepository: ChatHubMessageRepository;
 	let sessionsRepository: ChatHubSessionRepository;
 	let nodeParametersService: DynamicNodeParametersService;
+	let chatHubModelsService: ChatHubModelsService;
 
 	let admin: User;
 	let member: User;
@@ -41,6 +43,7 @@ describe('chatHub', () => {
 		messagesRepository = Container.get(ChatHubMessageRepository);
 		sessionsRepository = Container.get(ChatHubSessionRepository);
 		nodeParametersService = Container.get(DynamicNodeParametersService);
+		chatHubModelsService = Container.get(ChatHubModelsService);
 	});
 
 	beforeEach(async () => {
@@ -741,81 +744,42 @@ describe('chatHub', () => {
 	});
 
 	describe('fetchBurnCloudModels', () => {
-		// Mock the PROVIDER_NODE_TYPE_MAP constant
-		const originalProviderMap = { ...PROVIDER_NODE_TYPE_MAP };
-
 		const mockCredentials = {
-			apiKey: 'test-api-key',
+			burnCloudApi: {
+				id: 'cred-id',
+				name: 'BurnCloud Credential',
+			},
 		};
 
-		const mockAdditionalData = {
-			credentials: {},
-			hooks: {},
-		} as never;
+		const mockAdditionalData = {} as IWorkflowExecuteAdditionalData;
 
-		beforeAll(() => {
-			// Mock the PROVIDER_NODE_TYPE_MAP to include burnCloud
-			(PROVIDER_NODE_TYPE_MAP as Record<ChatHubLLMProvider, INodeTypeNameVersion>).burnCloud =
-				'burnCloudNodeType';
-		});
-
-		afterAll(() => {
-			// Restore original PROVIDER_NODE_TYPE_MAP
-			Object.assign(PROVIDER_NODE_TYPE_MAP, originalProviderMap);
-		});
+		const mockApiResponse: INodePropertyOptions[] = [
+			{
+				name: 'gpt-3.5-turbo',
+				value: 'gpt-3.5-turbo',
+				description: 'Fast and capable model',
+			},
+			{
+				name: 'gpt-4',
+				value: 'gpt-4',
+				description: 'More capable than gpt-3.5-turbo',
+			},
+		];
 
 		beforeEach(() => {
 			jest.clearAllMocks();
 		});
 
-		/**
-		 * TC001: Successfully fetch and transform models with complete data
-		 */
-		it('should successfully fetch and transform burn cloud models with complete data', async () => {
-			const mockApiResponse = [
-				{
-					name: 'Model One',
-					value: 'model-one-id',
-					description: 'First model description',
-				},
-				{
-					name: 'Model Two',
-					value: 'model-two-id',
-					description: 'Second model description',
-				},
-			];
-
-			// Use jest.spyOn with the properly initialized service
+		it('should fetch models from BurnCloud API', async () => {
+			// 使用 jest.spyOn 来模拟方法
 			const spy = jest
 				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
 				.mockResolvedValue(mockApiResponse);
 
-			const result = await chatHubService.fetchBurnCloudModels(mockCredentials, mockAdditionalData);
-
-			expect(result).toEqual({
-				models: [
-					{
-						name: 'Model One',
-						description: 'First model description',
-						model: {
-							provider: 'burnCloud',
-							model: 'model-one-id',
-						},
-						createdAt: null,
-						updatedAt: null,
-					},
-					{
-						name: 'Model Two',
-						description: 'Second model description',
-						model: {
-							provider: 'burnCloud',
-							model: 'model-two-id',
-						},
-						createdAt: null,
-						updatedAt: null,
-					},
-				],
-			});
+			const result = await chatHubModelsService.fetchBurnCloudModels(
+				mockCredentials,
+				mockAdditionalData,
+			);
 
 			expect(spy).toHaveBeenCalledWith(
 				{
@@ -850,88 +814,40 @@ describe('chatHub', () => {
 					},
 				},
 				mockAdditionalData,
-				'burnCloudNodeType',
+				PROVIDER_NODE_TYPE_MAP.burnCloud,
 				{},
 				mockCredentials,
 			);
 
+			expect(result).toEqual(mockApiResponse);
+
+			// 清理模拟
 			spy.mockRestore();
 		});
 
-		/**
-		 * TC002: Handle null description values
-		 */
-		it('should handle null description values correctly', async () => {
-			const mockApiResponse = [
-				{
-					name: 'Model With Null Description',
-					value: 'model-null-desc-id',
-					description: null,
-				},
-			];
-
+		it('should handle API errors gracefully', async () => {
 			const spy = jest
 				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
-				.mockResolvedValue(mockApiResponse);
+				.mockRejectedValue(new Error('API Error'));
 
-			const result = await chatHubService.fetchBurnCloudModels(mockCredentials, mockAdditionalData);
-
-			expect(result.models[0].description).toBeNull();
-
-			spy.mockRestore();
-		});
-
-		/**
-		 * TC003: Convert undefined description to null
-		 */
-		it('should convert undefined description to null', async () => {
-			const mockApiResponse: INodePropertyOptions[] = [
-				{
-					name: 'Model Without Description',
-					value: 'model-no-desc-id',
-				},
-			];
-
-			const spy = jest
-				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
-				.mockResolvedValue(mockApiResponse);
-
-			const result = await chatHubService.fetchBurnCloudModels(mockCredentials, mockAdditionalData);
-
-			expect(result.models[0].description).toBeNull();
+			await expect(
+				chatHubModelsService.fetchBurnCloudModels(mockCredentials, mockAdditionalData),
+			).rejects.toThrow('API Error');
 
 			spy.mockRestore();
 		});
 
-		/**
-		 * TC004: Return empty models array when API returns empty response
-		 */
-		it('should return empty models array when API returns empty response', async () => {
+		it('should handle empty response', async () => {
 			const spy = jest
 				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
 				.mockResolvedValue([]);
 
-			const result = await chatHubService.fetchBurnCloudModels(mockCredentials, mockAdditionalData);
+			const result = await chatHubModelsService.fetchBurnCloudModels(
+				mockCredentials,
+				mockAdditionalData,
+			);
 
-			expect(result).toEqual({
-				models: [],
-			});
-
-			spy.mockRestore();
-		});
-
-		/**
-		 * TC005: Propagate errors when API call fails
-		 */
-		it('should propagate errors when API call fails', async () => {
-			const errorMessage = 'Network error occurred';
-			const spy = jest
-				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
-				.mockRejectedValue(new Error(errorMessage));
-
-			await expect(
-				chatHubService.fetchBurnCloudModels(mockCredentials, mockAdditionalData),
-			).rejects.toThrow(errorMessage);
+			expect(result).toEqual([]);
 
 			spy.mockRestore();
 		});
