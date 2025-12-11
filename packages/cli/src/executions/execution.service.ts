@@ -157,7 +157,7 @@ export class ExecutionService {
 	 */
 	private async mergeSubExecutions(parentExecution: IExecutionFlattedResponse): Promise<void> {
 		try {
-			const subExecutions = await this.findSubExecutions(
+			const subExecutions = await this.executionRepository.findSubExecutions(
 				parentExecution.id,
 				parentExecution.workflowId,
 				parentExecution.startedAt,
@@ -212,24 +212,6 @@ export class ExecutionService {
 				error,
 			});
 		}
-	}
-
-	/**
-	 * Fetches sub-executions for a parent execution.
-	 * Returns executions with mode='integrated' and parentExecutionId matching the parent.
-	 */
-	async findSubExecutions(
-		parentExecutionId: string,
-		workflowId: string,
-		startedAt: Date,
-		stoppedAt: Date,
-	): Promise<IExecutionFlattedResponse[]> {
-		return await this.executionRepository.findSubExecutions(
-			parentExecutionId,
-			workflowId,
-			startedAt,
-			stoppedAt,
-		);
 	}
 
 	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {

@@ -1000,6 +1000,100 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowData,
 					undefined,
 					parentExecution,
+					pushRef,
+				);
+			});
+
+			it('should include parentExecutionId in nodeExecuteBefore push messages', async () => {
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					{
+						type: 'nodeExecuteBefore',
+						data: {
+							executionId,
+							nodeName,
+							data: taskStartedData,
+							parentExecutionId,
+						},
+					},
+					pushRef,
+				);
+			});
+
+			it('should include parentExecutionId in nodeExecuteAfter push messages', async () => {
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: {
+						main: [
+							[
+								{
+									json: { key: 'value' },
+								},
+							],
+						],
+					},
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				const { data: _, ...taskDataWithoutData } = mockTaskData;
+
+				expect(push.send).toHaveBeenNthCalledWith(
+					1,
+					{
+						type: 'nodeExecuteAfter',
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: taskDataWithoutData,
+							parentExecutionId,
+						},
+					},
+					pushRef,
+				);
+
+				expect(push.send).toHaveBeenNthCalledWith(
+					2,
+					{
+						type: 'nodeExecuteAfterData',
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: mockTaskData,
+							parentExecutionId,
+						},
+					},
+					pushRef,
+					true,
+				);
+			});
+
+			it('should skip workflow-level push events for sub-executions', async () => {
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				// Should not send executionStarted or executionFinished push events
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'executionStarted' }),
+					pushRef,
+				);
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'executionFinished' }),
+					pushRef,
 				);
 			});
 
