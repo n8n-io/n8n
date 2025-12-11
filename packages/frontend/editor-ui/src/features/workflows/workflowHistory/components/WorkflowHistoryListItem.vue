@@ -189,11 +189,11 @@ onMounted(() => {
 					<div :class="$style.metaRow">
 						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
 							<template #content>{{ props.item.authors }}</template>
-							<N8nText ref="authorElement" size="small" color="text-light" :class="$style.metaItem">
+							<N8nText ref="authorElement" size="small" color="text-base" :class="$style.metaItem">
 								{{ authors.label }},
 							</N8nText>
 						</N8nTooltip>
-						<N8nText tag="time" size="small" color="text-light" :class="$style.metaItem">
+						<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
 							{{ formattedCreatedAt }}
 						</N8nText>
 					</div>
@@ -211,7 +211,7 @@ onMounted(() => {
 							{{ authors.label }},
 						</N8nText>
 					</N8nTooltip>
-					<N8nText tag="time" size="small" color="text-light" :class="$style.unnamedTime">
+					<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
 						{{ formattedCreatedAt }}
 					</N8nText>
 				</div>
@@ -312,7 +312,7 @@ $hoverBackground: var(--color--background--light-1);
 .content {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--3xs);
 	flex: 1 1 auto;
 	min-width: 0;
 }
