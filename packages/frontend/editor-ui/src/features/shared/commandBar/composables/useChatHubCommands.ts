@@ -76,10 +76,8 @@ export function useChatHubCommands(options: {
 			return allSesssions;
 		}
 
-		const filtered = allSesssions.filter(
-			(session) =>
-				session.title?.toLowerCase().includes(trimmed) ||
-				session.agentName?.toLowerCase().includes(trimmed),
+		const filtered = allSesssions.filter((session) =>
+			session.title?.toLowerCase().includes(trimmed),
 		);
 
 		return filtered;

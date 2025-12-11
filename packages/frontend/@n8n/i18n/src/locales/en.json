@@ -4237,6 +4237,6 @@
 	"commandBar.chat.delete": "Delete conversation",
 	"commandBar.chat.deleteCurrent": "Delete current conversation",
 	"commandBar.chat.deleteSession": "Delete \"{title}\"",
-	"commandBar.chat.open.searchPlaceholder": "Search by session or agent name ...",
+	"commandBar.chat.open.searchPlaceholder": "Search by session title...",
 	"commandBar.chat.stop": "Stop message generation"
 }

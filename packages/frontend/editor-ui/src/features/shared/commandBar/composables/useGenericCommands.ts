@@ -9,6 +9,7 @@ import { useBugReporting } from '@/app/composables/useBugReporting';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const ITEM_ID = {
 	CHAT_HUB: 'chat-hub',
@@ -31,6 +32,7 @@ export function useGenericCommands(): CommandGroup {
 	const uiStore = useUIStore();
 	const router = useRouter();
 	const settingsStore = useSettingsStore();
+	const projectsStore = useProjectsStore();
 	const { getReportingURL } = useBugReporting();
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
@@ -71,51 +73,63 @@ export function useGenericCommands(): CommandGroup {
 					},
 				]
 			: []),
-		{
-			id: ITEM_ID.TEMPLATES,
-			title: i18n.baseText('generic.templates'),
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'package-open',
-				},
-			},
-			keywords: [i18n.baseText('generic.templates').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.VARIABLES,
-			title: i18n.baseText('mainSidebar.variables'),
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				void router.push({ name: VIEWS.HOME_VARIABLES });
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'variable',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.variables').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.INSIGHTS,
-			title: 'Insights',
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				void router.push({ name: VIEWS.INSIGHTS });
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'chart-column-decreasing',
-				},
-			},
-			keywords: ['insights'],
-		},
+		...(projectsStore.canViewProjects
+			? [
+					{
+						id: ITEM_ID.TEMPLATES,
+						title: i18n.baseText('generic.templates'),
+						section: i18n.baseText('commandBar.sections.general'),
+						handler: () => {
+							void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'package-open',
+							},
+						},
+						keywords: [i18n.baseText('generic.templates').toLowerCase()],
+					},
+				]
+			: []),
+		...(projectsStore.canViewProjects
+			? [
+					{
+						id: ITEM_ID.VARIABLES,
+						title: i18n.baseText('mainSidebar.variables'),
+						section: i18n.baseText('commandBar.sections.general'),
+						handler: () => {
+							void router.push({ name: VIEWS.HOME_VARIABLES });
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'variable',
+							},
+						},
+						keywords: [i18n.baseText('mainSidebar.variables').toLowerCase()],
+					},
+				]
+			: []),
+		...(projectsStore.canViewProjects
+			? [
+					{
+						id: ITEM_ID.INSIGHTS,
+						title: 'Insights',
+						section: i18n.baseText('commandBar.sections.general'),
+						handler: () => {
+							void router.push({ name: VIEWS.INSIGHTS });
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'chart-column-decreasing',
+							},
+						},
+						keywords: ['insights'],
+					},
+				]
+			: []),
 		{
 			id: ITEM_ID.QUICKSTART,
 			title: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
