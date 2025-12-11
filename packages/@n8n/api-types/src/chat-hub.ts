@@ -425,7 +425,7 @@ export interface ChatHubAgentDto {
 	id: string;
 	name: string;
 	description: string | null;
-	icon: AgentIconOrEmoji;
+	icon: AgentIconOrEmoji | null;
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;

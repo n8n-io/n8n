@@ -28,11 +28,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
-	agentDefaultIcon,
+	personalAgentDefaultIcon,
 	flattenModel,
 	fromStringToModel,
 	isLlmProviderModel,
 	stringifyModel,
+	workflowAgentDefaultIcon,
 } from '@/features/ai/chatHub/chat.utils';
 import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -120,7 +121,7 @@ const menu = computed(() => {
 					fullNamesMap[id] = agent.name;
 					return {
 						id,
-						icon: agent.icon ?? agentDefaultIcon,
+						icon: agent.icon ?? workflowAgentDefaultIcon,
 						iconSize: 'large',
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,
@@ -136,7 +137,7 @@ const menu = computed(() => {
 					fullNamesMap[id] = agent.name;
 					return {
 						id,
-						icon: agent.icon ?? agentDefaultIcon,
+						icon: agent.icon ?? personalAgentDefaultIcon,
 						iconSize: 'large',
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,

@@ -23,8 +23,8 @@ export class ChatHubAgent extends WithTimestamps {
 	/**
 	 * The icon or emoji for the chat agent.
 	 */
-	@JsonColumn()
-	icon: AgentIconOrEmoji;
+	@JsonColumn({ nullable: true })
+	icon: AgentIconOrEmoji | null;
 
 	/**
 	 * The system prompt for the chat agent.

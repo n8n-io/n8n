@@ -21,6 +21,7 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import { v4 as uuidv4 } from 'uuid';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
@@ -369,7 +370,12 @@ export function createMimeTypes(modalities: ChatHubInputModality[]): string {
 	return mimeTypes.join(',');
 }
 
-export const agentDefaultIcon: AgentIconOrEmoji = {
+export const personalAgentDefaultIcon: AgentIconOrEmoji = {
 	type: 'icon',
-	value: 'bot',
+	value: 'message-square' satisfies IconName,
+};
+
+export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'bot' satisfies IconName,
 };

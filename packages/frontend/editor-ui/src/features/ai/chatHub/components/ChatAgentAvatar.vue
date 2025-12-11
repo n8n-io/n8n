@@ -5,10 +5,14 @@ import { type ChatModelDto, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types'
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { computed } from 'vue';
-import { isLlmProviderModel } from '../chat.utils';
+import {
+	isLlmProviderModel,
+	personalAgentDefaultIcon,
+	workflowAgentDefaultIcon,
+} from '../chat.utils';
 
 defineProps<{
-	agent: ChatModelDto | null;
+	agent: ChatModelDto;
 	size: 'sm' | 'md' | 'lg';
 	tooltip?: boolean;
 }>();
@@ -19,15 +23,21 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 
 <template>
 	<N8nTooltip :show-after="100" placement="left" :disabled="!tooltip">
-		<template v-if="agent" #content>{{ agent.name }}</template>
-		<span v-if="agent?.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
+		<template #content>{{ agent.name }}</template>
+		<span v-if="agent.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
 			{{ agent.icon.value }}
 		</span>
 		<N8nIcon
-			v-else-if="!agent || !isLlmProviderModel(agent.model)"
-			color="text-light"
+			v-else-if="!isLlmProviderModel(agent.model)"
+			:color="size === 'sm' ? 'text-base' : 'text-light'"
 			:class="[$style.n8nIcon, $style[size]]"
-			:icon="agent ? ((agent.icon?.value ?? 'bot') as IconName) : 'messages-square'"
+			:icon="
+				(agent.icon?.value ??
+					(agent.model.provider === 'custom-agent'
+						? personalAgentDefaultIcon
+						: workflowAgentDefaultIcon
+					).value) as IconName
+			"
 			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
 		/>
 		<CredentialIcon
@@ -50,13 +60,6 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 		& g,
 		& path {
 			stroke-width: 1.25;
-		}
-	}
-
-	&.md {
-		& g,
-		& path {
-			stroke-width: 1.5;
 		}
 	}
 }
