@@ -5,6 +5,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
 import { createLangsmithEvaluator } from './evaluator';
+import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
@@ -20,12 +21,14 @@ import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluat
  * @param parsedNodeTypes - Node types
  * @param llm - Language model
  * @param tracer - Optional tracer
+ * @param featureFlags - Optional feature flags to pass to the agent
  * @returns Function that generates workflows from inputs
  */
 function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
+	featureFlags?: BuilderFeatureFlags,
 ) {
 	return async (inputs: typeof WorkflowState.State) => {
 		// Generate a unique ID for this evaluation run
@@ -43,7 +46,10 @@ function createWorkflowGenerator(
 		// Create agent for this run
 		const agent = createAgent(parsedNodeTypes, llm, tracer);
 		await consumeGenerator(
-			agent.chat(getChatPayload(messageContent, runId), 'langsmith-eval-user'),
+			agent.chat(
+				getChatPayload('langsmith-evals', messageContent, runId, featureFlags),
+				'langsmith-eval-user',
+			),
 		);
 
 		// Get generated workflow with validation
@@ -74,9 +80,25 @@ function createWorkflowGenerator(
 
 /**
  * Runs evaluation using Langsmith
+ * @param repetitions - Number of times to run each example (default: 1)
+ * @param featureFlags - Optional feature flags to pass to the agent
  */
-export async function runLangsmithEvaluation(): Promise<void> {
+export async function runLangsmithEvaluation(
+	repetitions: number = 1,
+	featureFlags?: BuilderFeatureFlags,
+): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Langsmith Evaluation', 70));
+	if (repetitions > 1) {
+		console.log(pc.yellow(`➔ Each example will be run ${repetitions} times`));
+	}
+	if (featureFlags) {
+		const enabledFlags = Object.entries(featureFlags)
+			.filter(([, v]) => v === true)
+			.map(([k]) => k);
+		if (enabledFlags.length > 0) {
+			console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+		}
+	}
 	console.log();
 
 	// Check for Langsmith API key
@@ -119,10 +141,10 @@ export async function runLangsmithEvaluation(): Promise<void> {
 		const startTime = Date.now();
 
 		// Create workflow generation function
-		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, tracer);
+		const generateWorkflow = createWorkflowGenerator(parsedNodeTypes, llm, tracer, featureFlags);
 
-		// Create LLM-based evaluator
-		const evaluator = createLangsmithEvaluator(llm);
+		// Create evaluator with both LLM-based and programmatic evaluation
+		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {
@@ -130,6 +152,7 @@ export async function runLangsmithEvaluation(): Promise<void> {
 			evaluators: [evaluator],
 			maxConcurrency: 7,
 			experimentPrefix: 'workflow-builder-evaluation',
+			numRepetitions: repetitions,
 			metadata: {
 				evaluationType: 'llm-based',
 				modelName: process.env.LLM_MODEL ?? 'default',

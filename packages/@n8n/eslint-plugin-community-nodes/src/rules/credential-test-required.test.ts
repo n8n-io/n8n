@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 
 const ruleTester = new RuleTester();
@@ -20,13 +21,13 @@ function createCredentialCode(options: {
 	} = options;
 
 	const imports = hasTest
-		? `import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';`
-		: `import type { ICredentialType, INodeProperties } from 'n8n-workflow';`;
+		? "import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';"
+		: "import type { ICredentialType, INodeProperties } from 'n8n-workflow';";
 
 	const extendsStr = extendsArray ? `\n\textends = ${JSON.stringify(extendsArray)};` : '';
 
 	const testProperty = hasTest
-		? `\n\n\ttest: ICredentialTestRequest = {\n\t\trequest: {\n\t\t\tbaseURL: 'https://api.example.com',\n\t\t\turl: '/test',\n\t\t},\n\t};`
+		? "\n\n\ttest: ICredentialTestRequest = {\n\t\trequest: {\n\t\t\tbaseURL: 'https://api.example.com',\n\t\t\turl: '/test',\n\t\t},\n\t};"
 		: '';
 
 	return `
@@ -43,57 +44,6 @@ function createNonCredentialClass(className: string = 'SomeOtherClass'): string 
 	return `
 export class ${className} {
 	name = 'notACredential';
-}`;
-}
-
-function createNodeCode(options: {
-	name?: string;
-	displayName?: string;
-	credentials?: Array<string | { name: string; testedBy?: string }>;
-	extendsClass?: string;
-}): string {
-	const { name = 'myNode', displayName = 'My Node', credentials = [], extendsClass } = options;
-
-	const credentialsArray = credentials
-		.map((cred) => {
-			if (typeof cred === 'string') {
-				return `'${cred}'`;
-			}
-			const testedByStr = cred.testedBy ? `, testedBy: '${cred.testedBy}'` : '';
-			return `{ name: '${cred.name}'${testedByStr} }`;
-		})
-		.join(', ');
-
-	const classDeclaration = extendsClass
-		? `export class ${name.charAt(0).toUpperCase() + name.slice(1)} extends ${extendsClass}`
-		: `export class ${name.charAt(0).toUpperCase() + name.slice(1)} implements INodeType`;
-
-	const descriptionProperty = extendsClass
-		? `description = {` // Extending classes might not need full INodeTypeDescription
-		: `description: INodeTypeDescription = {`;
-
-	return `
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-${classDeclaration} {
-	${descriptionProperty}
-		displayName: '${displayName}',
-		name: '${name}',
-		group: ['transform'],
-		version: 1,
-		description: 'A test node',
-		defaults: {
-			name: '${displayName}',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [${credentialsArray}],
-		properties: [],
-	};
-
-	execute() {
-		return Promise.resolve([]);
-	}
 }`;
 }
 
@@ -129,19 +79,96 @@ ruleTester.run('credential-test-required', CredentialTestRequiredRule, {
 			name: 'credential class missing test property and no testedBy in package',
 			filename: 'MyApi.credentials.ts',
 			code: createCredentialCode({}),
-			errors: [{ messageId: 'missingCredentialTest', data: { className: 'MyApi' } }],
+			errors: [
+				{
+					messageId: 'missingCredentialTest',
+					data: { className: 'MyApi' },
+					suggestions: [
+						{
+							messageId: 'addTemplate',
+							output: `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class MyApi implements ICredentialType {
+	name = 'myApi';
+	displayName = 'My API';
+	properties: INodeProperties[] = [];
+
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			url: '={{$credentials.server}}/test', // Replace with actual endpoint
+		},
+	};
+}`,
+						},
+					],
+				},
+			],
 		},
 		{
 			name: 'credential class with extends but not oAuth2Api and no testedBy in package',
 			filename: 'MyApi.credentials.ts',
 			code: createCredentialCode({ extends: ['someOtherApi'] }),
-			errors: [{ messageId: 'missingCredentialTest', data: { className: 'MyApi' } }],
+			errors: [
+				{
+					messageId: 'missingCredentialTest',
+					data: { className: 'MyApi' },
+					suggestions: [
+						{
+							messageId: 'addTemplate',
+							output: `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class MyApi implements ICredentialType {
+	name = 'myApi';
+	extends = ["someOtherApi"];
+	displayName = 'My API';
+	properties: INodeProperties[] = [];
+
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			url: '={{$credentials.server}}/test', // Replace with actual endpoint
+		},
+	};
+}`,
+						},
+					],
+				},
+			],
 		},
 		{
 			name: 'credential class with empty extends array and no testedBy in package',
 			filename: 'MyApi.credentials.ts',
 			code: createCredentialCode({ extends: [] }),
-			errors: [{ messageId: 'missingCredentialTest', data: { className: 'MyApi' } }],
+			errors: [
+				{
+					messageId: 'missingCredentialTest',
+					data: { className: 'MyApi' },
+					suggestions: [
+						{
+							messageId: 'addTemplate',
+							output: `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class MyApi implements ICredentialType {
+	name = 'myApi';
+	extends = [];
+	displayName = 'My API';
+	properties: INodeProperties[] = [];
+
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			url: '={{$credentials.server}}/test', // Replace with actual endpoint
+		},
+	};
+}`,
+						},
+					],
+				},
+			],
 		},
 	],
 });

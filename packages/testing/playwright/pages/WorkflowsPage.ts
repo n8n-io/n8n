@@ -154,7 +154,6 @@ export class WorkflowsPage extends BasePage {
 	async filterByTag(tag: string) {
 		await this.filterByTags([tag]);
 	}
-
 	getFolderBreadcrumbsActions() {
 		return this.page.getByTestId('folder-breadcrumbs-actions');
 	}
@@ -187,9 +186,51 @@ export class WorkflowsPage extends BasePage {
 	/**
 	 * Fill the folder modal
 	 * @param folderName - The name of the folder
+	 * @param buttonText - The text of the button to click (default: 'Create')
 	 */
-	async fillFolderModal(folderName: string) {
+	async fillFolderModal(folderName: string, buttonText: string = 'Create') {
 		await this.baseModal.fillInput(folderName);
-		await this.baseModal.clickButton('Create');
+		await this.baseModal.clickButton(buttonText);
+	}
+
+	deleteFolderModal() {
+		return this.page.getByTestId('deleteFolder-modal');
+	}
+
+	deleteModalTransferRadioButton() {
+		return this.deleteFolderModal().getByTestId('transfer-content-radio');
+	}
+
+	deleteModalDeleteRadioButton() {
+		return this.deleteFolderModal().getByTestId('delete-content-radio');
+	}
+
+	deleteModalConfirmButton() {
+		return this.deleteFolderModal().getByTestId('confirm-delete-folder-button');
+	}
+
+	transferFolderDropdown() {
+		return this.deleteFolderModal().getByRole('combobox', { name: 'Select a folder' });
+	}
+
+	transferFolderOption(folderName: string) {
+		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+	}
+
+	// Move folder modal methods
+	moveFolderModal() {
+		return this.page.getByTestId('moveFolder-modal');
+	}
+
+	moveFolderDropdown() {
+		return this.moveFolderModal().getByTestId('move-to-folder-dropdown').getByRole('combobox');
+	}
+
+	moveFolderOption(folderName: string) {
+		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+	}
+
+	moveFolderConfirmButton() {
+		return this.moveFolderModal().getByTestId('confirm-move-folder-button');
 	}
 }

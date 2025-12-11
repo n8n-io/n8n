@@ -1,0 +1,90 @@
+{
+	"name": "Google Contacts Get All Fields Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "c123456789",
+				"fields": ["*"],
+				"rawData": false
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-get-all",
+			"name": "Get Contact All Fields",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Contact All Fields": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "John Doe",
+						"familyName": "Doe",
+						"givenName": "John"
+					},
+					"emailAddresses": {
+						"work": ["john@example.com"]
+					},
+					"phoneNumbers": {
+						"mobile": ["+1234567890"]
+					},
+					"addresses": {
+						"home": [
+							{
+								"formattedValue": "123 Main St\nAnytown, CA 12345",
+								"streetAddress": "123 Main St",
+								"city": "Anytown",
+								"region": "CA",
+								"postalCode": "12345"
+							}
+						]
+					},
+					"organizations": [
+						{
+							"name": "Example Corp",
+							"title": "Software Engineer",
+							"current": true
+						}
+					],
+					"contactId": "c123456789"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Contact All Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

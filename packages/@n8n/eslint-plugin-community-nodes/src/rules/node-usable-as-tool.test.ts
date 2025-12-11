@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 
 const ruleTester = new RuleTester();

@@ -25,6 +25,10 @@ export const LOG_SCOPES = [
 	'cron',
 	'community-nodes',
 	'legacy-sqlite-execution-recovery',
+	'chat-hub',
+	'breaking-changes',
+	'circuit-breaker',
+	'dynamic-credentials',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -118,6 +122,7 @@ export class LoggingConfig {
 	 * - `task-runner-py`
 	 * - `workflow-activation`
 	 * - `insights`
+	 * - `chat-hub`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

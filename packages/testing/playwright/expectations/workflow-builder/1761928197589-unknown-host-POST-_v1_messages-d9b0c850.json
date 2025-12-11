@@ -1,0 +1,78 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["3977"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["47"],
+			"request-id": ["req_011CUfbLWZqFN7pR91xpUv2p"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:29:14Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15496000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:29:16Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:29:14Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["14996000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:29:16 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["997487a8de36a935-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01UASSwpfuTy84911cfsBg3z",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01UMr1SPqpURfUMstpp1ZYQk",
+						"name": "extract",
+						"input": {
+							"parameters": {
+								"hasOutputParser": false,
+								"text": "=You are an expert at analyzing video transcripts and creating YouTube chapter timestamps.\n\nYour task is to analyze the provided video transcript and generate chapter timestamps with descriptive titles. Follow these rules:\n\n1. Chapters must start at 00:00\n2. Use format: MM:SS or HH:MM:SS for timestamps\n3. Each chapter should have a clear, descriptive title\n4. Aim for 5-10 chapters depending on video length\n5. Chapters should mark significant topic changes or sections\n6. Return ONLY the formatted chapters, one per line\n\nVideo Title: {{ $json.videoTitle }}\n\nTranscript:\n{{ $json.transcript }}\n\nGenerate the chapter timestamps now:",
+								"promptType": "define"
+							}
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1326,
+					"cache_creation_input_tokens": 6806,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 6806,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 231,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFVQVNTd3BmdVR5ODQ5MTFjZnNCZzN6IiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMVVNcjFTUHFwVVJmVU1zdHBwMVpZUWsiLCJuYW1lIjoiZXh0cmFjdCIsImlucHV0Ijp7InBhcmFtZXRlcnMiOnsiaGFzT3V0cHV0UGFyc2VyIjpmYWxzZSwidGV4dCI6Ij1Zb3UgYXJlIGFuIGV4cGVydCBhdCBhbmFseXppbmcgdmlkZW8gdHJhbnNjcmlwdHMgYW5kIGNyZWF0aW5nIFlvdVR1YmUgY2hhcHRlciB0aW1lc3RhbXBzLlxuXG5Zb3VyIHRhc2sgaXMgdG8gYW5hbHl6ZSB0aGUgcHJvdmlkZWQgdmlkZW8gdHJhbnNjcmlwdCBhbmQgZ2VuZXJhdGUgY2hhcHRlciB0aW1lc3RhbXBzIHdpdGggZGVzY3JpcHRpdmUgdGl0bGVzLiBGb2xsb3cgdGhlc2UgcnVsZXM6XG5cbjEuIENoYXB0ZXJzIG11c3Qgc3RhcnQgYXQgMDA6MDBcbjIuIFVzZSBmb3JtYXQ6IE1NOlNTIG9yIEhIOk1NOlNTIGZvciB0aW1lc3RhbXBzXG4zLiBFYWNoIGNoYXB0ZXIgc2hvdWxkIGhhdmUgYSBjbGVhciwgZGVzY3JpcHRpdmUgdGl0bGVcbjQuIEFpbSBmb3IgNS0xMCBjaGFwdGVycyBkZXBlbmRpbmcgb24gdmlkZW8gbGVuZ3RoXG41LiBDaGFwdGVycyBzaG91bGQgbWFyayBzaWduaWZpY2FudCB0b3BpYyBjaGFuZ2VzIG9yIHNlY3Rpb25zXG42LiBSZXR1cm4gT05MWSB0aGUgZm9ybWF0dGVkIGNoYXB0ZXJzLCBvbmUgcGVyIGxpbmVcblxuVmlkZW8gVGl0bGU6IHt7ICRqc29uLnZpZGVvVGl0bGUgfX1cblxuVHJhbnNjcmlwdDpcbnt7ICRqc29uLnRyYW5zY3JpcHQgfX1cblxuR2VuZXJhdGUgdGhlIGNoYXB0ZXIgdGltZXN0YW1wcyBub3c6IiwicHJvbXB0VHlwZSI6ImRlZmluZSJ9fX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMzI2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjY4MDYsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjo2ODA2LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MjMxLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		}
+	},
+	"id": "1761928197589-unknown-host-POST-_v1_messages-d9b0c850.json",
+	"priority": 7,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

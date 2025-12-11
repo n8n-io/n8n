@@ -15,6 +15,7 @@ export function calculateCategoryAverages(results: TestResult[]): Record<string,
 		efficiency: 0,
 		dataFlow: 0,
 		maintainability: 0,
+		bestPractices: 0,
 	};
 
 	results
@@ -27,6 +28,7 @@ export function calculateCategoryAverages(results: TestResult[]): Record<string,
 			categoryAverages.efficiency += r.evaluationResult.efficiency.score;
 			categoryAverages.dataFlow += r.evaluationResult.dataFlow.score;
 			categoryAverages.maintainability += r.evaluationResult.maintainability.score;
+			categoryAverages.bestPractices += r.evaluationResult.bestPractices.score;
 		});
 
 	Object.keys(categoryAverages).forEach((key) => {
@@ -60,6 +62,7 @@ export function countViolationsByType(results: TestResult[]): {
 				...r.evaluationResult.efficiency.violations,
 				...r.evaluationResult.dataFlow.violations,
 				...r.evaluationResult.maintainability.violations,
+				...r.evaluationResult.bestPractices.violations,
 			];
 			criticalCount += allViolations.filter((v) => v.type === 'critical').length;
 			majorCount += allViolations.filter((v) => v.type === 'major').length;
@@ -130,4 +133,94 @@ export function groupResultsByStatus(results: TestResult[]): {
 		successful: results.filter((r) => !r.error),
 		failed: results.filter((r) => r.error),
 	};
+}
+
+/**
+ * Calculates average scores for programmatic evaluators
+ * @param results - Array of test results
+ * @returns Object with average scores per programmatic evaluator
+ */
+export function calculateProgrammaticAverages(results: TestResult[]): Record<string, number> {
+	const successfulTests = results.filter((r) => !r.error);
+
+	const programmaticAverages: Record<string, number> = {
+		connections: 0,
+		trigger: 0,
+		agentPrompt: 0,
+		tools: 0,
+		fromAi: 0,
+		similarity: 0,
+		overall: 0,
+	};
+
+	let similarityCount = 0;
+
+	successfulTests.forEach((r) => {
+		programmaticAverages.connections += r.programmaticEvaluationResult.connections.score;
+		programmaticAverages.trigger += r.programmaticEvaluationResult.trigger.score;
+		programmaticAverages.agentPrompt += r.programmaticEvaluationResult.agentPrompt.score;
+		programmaticAverages.tools += r.programmaticEvaluationResult.tools.score;
+		programmaticAverages.fromAi += r.programmaticEvaluationResult.fromAi.score;
+		programmaticAverages.overall += r.programmaticEvaluationResult.overallScore;
+
+		// Include similarity if available
+		if (r.programmaticEvaluationResult.similarity) {
+			programmaticAverages.similarity += r.programmaticEvaluationResult.similarity.score;
+			similarityCount++;
+		}
+	});
+
+	Object.keys(programmaticAverages).forEach((key) => {
+		if (key === 'similarity') {
+			// Use -1 as sentinel value when no tests had similarity data
+			// This distinguishes "no reference workflows" from "0% similarity"
+			if (similarityCount === 0) {
+				programmaticAverages[key] = -1;
+			} else {
+				programmaticAverages[key] /= similarityCount;
+			}
+		} else {
+			programmaticAverages[key] /= successfulTests.length || 1;
+		}
+	});
+
+	return programmaticAverages;
+}
+
+/**
+ * Counts programmatic violations by severity type across all test results
+ * @param results - Array of test results
+ * @returns Object with counts for each violation type
+ */
+export function countProgrammaticViolationsByType(results: TestResult[]): {
+	critical: number;
+	major: number;
+	minor: number;
+} {
+	let criticalCount = 0;
+	let majorCount = 0;
+	let minorCount = 0;
+
+	results.forEach((r) => {
+		if (!r.error) {
+			const allViolations = [
+				...r.programmaticEvaluationResult.connections.violations,
+				...r.programmaticEvaluationResult.trigger.violations,
+				...r.programmaticEvaluationResult.agentPrompt.violations,
+				...r.programmaticEvaluationResult.tools.violations,
+				...r.programmaticEvaluationResult.fromAi.violations,
+			];
+
+			// Include similarity violations if available
+			if (r.programmaticEvaluationResult.similarity) {
+				allViolations.push(...r.programmaticEvaluationResult.similarity.violations);
+			}
+
+			criticalCount += allViolations.filter((v) => v.type === 'critical').length;
+			majorCount += allViolations.filter((v) => v.type === 'major').length;
+			minorCount += allViolations.filter((v) => v.type === 'minor').length;
+		}
+	});
+
+	return { critical: criticalCount, major: majorCount, minor: minorCount };
 }

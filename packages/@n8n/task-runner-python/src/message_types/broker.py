@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, Union, List, Dict, Any
+from typing import Literal, Any
 
 from src.constants import (
     BROKER_INFO_REQUEST,
@@ -30,7 +30,9 @@ class BrokerTaskOfferAccept:
 
 NodeMode = Literal["all_items", "per_item"]
 
-Items = List[Dict[str, Any]]  # INodeExecutionData[]
+Items = list[dict[str, Any]]  # INodeExecutionData[]
+
+Query = str | dict[str, Any] | None  # tool input
 
 
 @dataclass
@@ -43,7 +45,7 @@ class TaskSettings:
     workflow_id: str
     node_name: str
     node_id: str
-    can_log: bool
+    query: Query = None
 
 
 @dataclass
@@ -68,11 +70,11 @@ class BrokerRpcResponse:
     type: Literal["broker:rpcresponse"] = BROKER_RPC_RESPONSE
 
 
-BrokerMessage = Union[
-    BrokerInfoRequest,
-    BrokerRunnerRegistered,
-    BrokerTaskOfferAccept,
-    BrokerTaskSettings,
-    BrokerTaskCancel,
-    BrokerRpcResponse,
-]
+BrokerMessage = (
+    BrokerInfoRequest
+    | BrokerRunnerRegistered
+    | BrokerTaskOfferAccept
+    | BrokerTaskSettings
+    | BrokerTaskCancel
+    | BrokerRpcResponse
+)

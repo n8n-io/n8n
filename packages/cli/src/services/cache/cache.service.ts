@@ -4,7 +4,6 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import config from '@/config';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
@@ -31,7 +30,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 	async init() {
 		const { backend } = this.globalConfig.cache;
-		const mode = config.getEnv('executions.mode');
+		const { mode } = this.globalConfig.executions;
 
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
@@ -86,6 +85,11 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 	isMemory() {
 		return this.cache.kind === 'memory';
+	}
+
+	async exists(key: string) {
+		const ttl = await this.cache?.store.ttl(key);
+		return !!ttl;
 	}
 
 	// ----------------------------------

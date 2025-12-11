@@ -59,7 +59,7 @@ export class TaskBrokerWsServer {
 					void this.removeConnection(
 						runnerId,
 						'failed-heartbeat-check',
-						WsStatusCodes.CloseNoStatus,
+						WsStatusCodes.CloseProtocolError,
 					);
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;

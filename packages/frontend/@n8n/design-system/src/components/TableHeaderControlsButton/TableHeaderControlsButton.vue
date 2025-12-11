@@ -1,9 +1,8 @@
 <script setup lang="ts" generic="ColumnType extends ColumnHeader">
 import { computed, ref } from 'vue';
 
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-import type { ButtonSize, IconSize } from '@n8n/design-system/types';
-
+import { useI18n } from '../../composables/useI18n';
+import type { ButtonSize, IconSize } from '../../types';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPopoverReka from '../N8nPopoverReka/N8nPopoverReka.vue';
@@ -229,13 +228,13 @@ const handleDragEnd = () => {
 
 <style lang="scss" module>
 .header {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	margin-bottom: var(--spacing--xs);
 }
 
 .grip {
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 	cursor: move;
 
 	&.hidden {
@@ -244,18 +243,18 @@ const handleDragEnd = () => {
 }
 
 .contentContainer {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 }
 
 .column {
 	display: flex;
 	gap: 12px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 	padding: 6px 0;
 	align-items: center;
 
 	label {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 		flex-grow: 1;
 	}
 }
@@ -284,7 +283,7 @@ const handleDragEnd = () => {
 	left: 0;
 	right: 0;
 	height: 3px;
-	background-color: var(--prim-color-secondary);
+	background-color: var(--color--secondary);
 	border-radius: 2px;
 	z-index: 10;
 }
@@ -296,10 +295,10 @@ const handleDragEnd = () => {
 }
 
 .hidden {
-	color: var(--color-text-lighter);
+	color: var(--color--text--tint-2);
 
 	label {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 	}
 }
 

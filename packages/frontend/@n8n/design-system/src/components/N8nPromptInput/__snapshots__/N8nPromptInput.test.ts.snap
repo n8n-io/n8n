@@ -17,7 +17,7 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
       >
         <textarea
           class="singleLineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
-          maxlength="1000"
+          maxlength="5000"
           placeholder=""
           rows="1"
         />
@@ -82,7 +82,7 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
       >
         <textarea
           class="singleLineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
-          maxlength="1000"
+          maxlength="5000"
           placeholder=""
           rows="1"
         />

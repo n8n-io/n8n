@@ -28,6 +28,12 @@
         "error_message": {
             "type": "null"
         },
+        "from": {
+            "type": "string"
+        },
+        "messaging_service_sid": {
+            "type": "string"
+        },
         "num_media": {
             "type": "string"
         },
@@ -58,5 +64,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

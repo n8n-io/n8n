@@ -13,7 +13,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-xlight' },
+		backgrounds: { default: '--color--background--light-3' },
 	},
 };
 

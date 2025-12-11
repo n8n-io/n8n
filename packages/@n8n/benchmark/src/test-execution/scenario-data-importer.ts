@@ -1,6 +1,8 @@
 import type { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
 import { CredentialApiClient } from '@/n8n-api-client/credentials-api-client';
-import type { Workflow, Credential } from '@/n8n-api-client/n8n-api-client.types';
+import { DataTableApiClient } from '@/n8n-api-client/data-table-api-client';
+import type { Workflow, Credential, DataTable } from '@/n8n-api-client/n8n-api-client.types';
+import { ProjectApiClient } from '@/n8n-api-client/project-api-client';
 import { WorkflowApiClient } from '@/n8n-api-client/workflows-api-client';
 import type { LoadableScenarioData } from '@/scenario/scenario-data-loader';
 
@@ -10,10 +12,14 @@ import type { LoadableScenarioData } from '@/scenario/scenario-data-loader';
 export class ScenarioDataImporter {
 	private readonly workflowApiClient: WorkflowApiClient;
 	private readonly credentialApiClient: CredentialApiClient;
+	private readonly dataTableApiClient: DataTableApiClient;
+	private readonly projectApiClient: ProjectApiClient;
 
 	constructor(n8nApiClient: AuthenticatedN8nApiClient) {
 		this.workflowApiClient = new WorkflowApiClient(n8nApiClient);
 		this.credentialApiClient = new CredentialApiClient(n8nApiClient);
+		this.dataTableApiClient = new DataTableApiClient(n8nApiClient);
+		this.projectApiClient = new ProjectApiClient(n8nApiClient);
 	}
 
 	private replaceValuesInObject(obj: unknown, searchText: string, targetText: string) {
@@ -33,6 +39,7 @@ export class ScenarioDataImporter {
 	async importTestScenarioData(data: LoadableScenarioData) {
 		const existingWorkflows = await this.workflowApiClient.getAllWorkflows();
 		const existingCredentials = await this.credentialApiClient.getAllCredentials();
+		const existingDataTables = await this.dataTableApiClient.getAllDataTables();
 
 		for (const credential of data.credentials) {
 			const createdCredential = await this.importCredentials({ existingCredentials, credential });
@@ -47,6 +54,13 @@ export class ScenarioDataImporter {
 		for (const workflow of data.workflows) {
 			await this.importWorkflow({ existingWorkflows, workflow });
 		}
+
+		let dataTableId: string | undefined;
+		if (data.dataTable) {
+			dataTableId = await this.importDataTable({ existingDataTables, dataTable: data.dataTable });
+		}
+
+		return { dataTableId };
 	}
 
 	/**
@@ -72,6 +86,27 @@ export class ScenarioDataImporter {
 			...opts.credential,
 			name: this.getBenchmarkCredentialName(opts.credential),
 		});
+	}
+
+	private async importDataTable(opts: { existingDataTables: DataTable[]; dataTable: DataTable }) {
+		const { existingDataTables, dataTable } = opts;
+
+		const projectId = await this.projectApiClient.getPersonalProject();
+
+		const existingTable = existingDataTables.find(
+			(dt) => dt.name === this.getBenchmarkDataTableName(dataTable),
+		);
+
+		if (existingTable) {
+			await this.dataTableApiClient.deleteDataTable(projectId, existingTable.id);
+		}
+
+		const { id } = await this.dataTableApiClient.createDataTable(projectId, {
+			...dataTable,
+			name: this.getBenchmarkDataTableName(dataTable),
+		});
+
+		return id;
 	}
 
 	/**
@@ -122,5 +157,9 @@ export class ScenarioDataImporter {
 
 	private getBenchmarkWorkflowName(workflow: Workflow) {
 		return `[BENCHMARK] ${workflow.name}`;
+	}
+
+	private getBenchmarkDataTableName(dataTable: DataTable) {
+		return `[BENCHMARK] ${dataTable.name}`;
 	}
 }

@@ -7,7 +7,7 @@ export class WorkflowFilter extends BaseFilter {
 	@IsString()
 	@IsOptional()
 	@Expose()
-	name?: string;
+	query?: string;
 
 	@IsBoolean()
 	@IsOptional()
@@ -39,6 +39,17 @@ export class WorkflowFilter extends BaseFilter {
 	@IsOptional()
 	@Expose()
 	availableInMCP?: boolean;
+
+	@IsArray()
+	@IsString({ each: true })
+	@IsOptional()
+	@Expose()
+	nodeTypes?: string[];
+
+	@IsString()
+	@IsOptional()
+	@Expose()
+	triggerNodeType?: string;
 
 	static async fromString(rawFilter: string) {
 		return await this.toFilter(rawFilter, WorkflowFilter);
