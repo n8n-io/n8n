@@ -660,11 +660,11 @@ export class WorkflowService {
 			throw error;
 		}
 
-		await this._detectWebhookConflicts(workflow);
-
 		if (options?.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
+
+		await this._detectWebhookConflicts(workflow);
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
 
