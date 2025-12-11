@@ -43,7 +43,7 @@ const displayContent = computed(() =>
 				'data-action-parameter-creatorview',
 			],
 		},
-		allowedTags: ['ul', 'li'],
+		allowedTags: ['a', 'ul', 'li'],
 	}),
 );
 
