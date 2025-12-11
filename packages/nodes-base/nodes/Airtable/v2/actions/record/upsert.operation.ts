@@ -97,6 +97,10 @@ export async function execute(
 				typecast: options.typecast ? true : false,
 			};
 
+			if (options.returnFieldsByFieldId !== undefined) {
+				body.returnFieldsByFieldId = options.returnFieldsByFieldId as boolean;
+			}
+
 			if (!columnsToMatchOn.includes('id')) {
 				body.performUpsert = { fieldsToMergeOn: columnsToMatchOn };
 			}
