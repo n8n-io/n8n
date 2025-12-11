@@ -114,14 +114,9 @@ export function useWorkflowActivate() {
 
 			// Update local state
 			if (workflow.activeVersion) {
-				workflowsStore.setWorkflowActive(
-					currWorkflowId,
-					workflow.activeVersion,
-					true,
-					workflow.checksum,
-				);
+				workflowsStore.setWorkflowActive(currWorkflowId, workflow.activeVersion, true);
 			} else {
-				workflowsStore.setWorkflowInactive(currWorkflowId, workflow.checksum);
+				workflowsStore.setWorkflowInactive(currWorkflowId);
 			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
@@ -195,12 +190,7 @@ export function useWorkflowActivate() {
 				throw new Error('Failed to publish workflow');
 			}
 
-			workflowsStore.setWorkflowActive(
-				workflowId,
-				updatedWorkflow.activeVersion,
-				true,
-				updatedWorkflow.checksum,
-			);
+			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
 
 			if (workflowId === workflowsStore.workflowId) {
 				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);

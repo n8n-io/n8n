@@ -851,22 +851,15 @@ export function useWorkflowHelpers() {
 			throw new Error('Failed to update workflow');
 		}
 
-		workflowsStore.setWorkflowVersionId(workflow.versionId, workflow.checksum);
-
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
 			uiStore.stateIsDirty = false;
 		}
 
 		if (workflow.activeVersion) {
-			workflowsStore.setWorkflowActive(
-				workflowId,
-				workflow.activeVersion,
-				isCurrentWorkflow,
-				workflow.checksum,
-			);
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
 		} else {
-			workflowsStore.setWorkflowInactive(workflowId, workflow.checksum);
+			workflowsStore.setWorkflowInactive(workflowId);
 		}
 	}
 

@@ -901,7 +901,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		targetWorkflowId: string,
 		activeVersion: WorkflowHistory,
 		clearDirtyState: boolean,
-		newChecksum: string,
 	) {
 		if (activeWorkflows.value.indexOf(targetWorkflowId) === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
@@ -921,11 +920,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.active = true;
 			workflow.value.activeVersionId = activeVersion.versionId;
 			workflow.value.activeVersion = activeVersion;
-			workflowChecksum.value = newChecksum;
 		}
 	}
 
-	function setWorkflowInactive(targetWorkflowId: string, newChecksum: string) {
+	function setWorkflowInactive(targetWorkflowId: string) {
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index !== -1) {
 			activeWorkflows.value.splice(index, 1);
@@ -940,7 +938,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.active = false;
 			workflow.value.activeVersionId = null;
 			workflow.value.activeVersion = null;
-			workflowChecksum.value = newChecksum;
 		}
 	}
 
@@ -1633,7 +1630,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (id === workflow.value.id) {
-			workflowChecksum.value = updatedWorkflow.checksum;
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 
 		if (

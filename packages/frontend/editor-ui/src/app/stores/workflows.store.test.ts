@@ -908,7 +908,7 @@ describe('useWorkflowsStore', () => {
 				workflowPublishHistory: [],
 			};
 
-			workflowsStore.setWorkflowActive('1', mockActiveVersion, true, 'checksum');
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -931,7 +931,7 @@ describe('useWorkflowsStore', () => {
 				workflowPublishHistory: [],
 			};
 
-			workflowsStore.setWorkflowActive('1', mockActiveVersion, true, 'checksum');
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -953,7 +953,7 @@ describe('useWorkflowsStore', () => {
 				workflowPublishHistory: [],
 			};
 
-			workflowsStore.setWorkflowActive('2', mockActiveVersion, true, 'checksum');
+			workflowsStore.setWorkflowActive('2', mockActiveVersion, true);
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
@@ -963,7 +963,7 @@ describe('useWorkflowsStore', () => {
 		it('should set workflow as inactive when it exists', () => {
 			workflowsStore.activeWorkflows = ['1', '2'];
 			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
-			workflowsStore.setWorkflowInactive('1', 'checksum');
+			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsStore.activeWorkflows).toEqual(['2']);
 		});
