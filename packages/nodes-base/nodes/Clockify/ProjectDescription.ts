@@ -66,10 +66,10 @@ export const projectFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -224,10 +224,10 @@ export const projectFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
