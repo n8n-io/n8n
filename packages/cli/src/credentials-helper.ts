@@ -364,6 +364,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				id: credentialsEntity.id,
 				name: credentialsEntity.name,
 				isResolvable: false,
+				type: credentialsEntity.type,
 				// TODO: use the actual values from the entity once they are added
 				// isResolvable: credentialsEntity.isResolvable,
 				// resolverId: (credentialsEntity as any).resolverId,
