@@ -139,11 +139,7 @@ export function processHitlResponses(
 			};
 			processedActionResponses.push(modifiedResponse);
 		} else {
-			// Unknown approval status - pass through with warning
-			LoggerProxy.warn('[HITL] Could not determine approval status from HITL response', {
-				toolName: hitl.toolName,
-				responseData: actionResponse.data,
-			});
+			// Unknown approval status - pass through
 			processedActionResponses.push(actionResponse);
 		}
 	}
