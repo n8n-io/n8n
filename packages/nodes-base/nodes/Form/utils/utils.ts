@@ -140,7 +140,7 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
  * Returns the normalized URL if valid, or null if invalid.
  */
 export function validateSafeRedirectUrl(url: string | undefined): string | null {
-	if (!url || typeof url !== 'string') return null;
+	if (!url) return null;
 	const trimmed = url.trim();
 	if (!trimmed) return null;
 

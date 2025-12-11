@@ -22,6 +22,7 @@ import {
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
+	validateSafeRedirectUrl,
 } from '../utils/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -397,7 +398,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		await formWebhook(executeFunctions);
 
@@ -492,7 +496,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		for (const { description, expected } of formDescription) {
 			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
@@ -751,7 +758,7 @@ describe('FormTrigger, prepareFormData', () => {
 		});
 	});
 
-	it('should set redirectUrl with http if protocol is missing', () => {
+	it('should set redirectUrl with https if protocol is missing', () => {
 		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
@@ -773,7 +780,7 @@ describe('FormTrigger, prepareFormData', () => {
 			query,
 		});
 
-		expect(result.redirectUrl).toBe('http://example.com/thank-you');
+		expect(result.redirectUrl).toBe('https://example.com/thank-you');
 	});
 
 	it('should return invalid form data when formFields are empty', () => {
@@ -2169,6 +2176,43 @@ describe('addFormResponseDataToReturnItem', () => {
 			expect(returnItem.json['Last Name']).toBeUndefined();
 			expect(returnItem.json['Email Address']).toBeUndefined();
 		});
+	});
+});
+
+describe('validateSafeRedirectUrl', () => {
+	it('should return null for undefined input', () => {
+		expect(validateSafeRedirectUrl(undefined)).toBeNull();
+	});
+
+	it('should return null for empty string', () => {
+		expect(validateSafeRedirectUrl('')).toBeNull();
+		expect(validateSafeRedirectUrl('   ')).toBeNull();
+	});
+
+	it('should return valid http/https URLs', () => {
+		expect(validateSafeRedirectUrl('https://example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('http://example.com/path')).toBe('http://example.com/path');
+	});
+
+	it('should add https:// prefix to URLs without protocol', () => {
+		expect(validateSafeRedirectUrl('example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('example.com/path')).toBe('https://example.com/path');
+	});
+
+	it('should trim whitespace from URLs', () => {
+		expect(validateSafeRedirectUrl('  https://example.com  ')).toBe('https://example.com');
+	});
+
+	it('should return null for javascript: URLs', () => {
+		expect(validateSafeRedirectUrl('javascript:alert(1)')).toBeNull();
+	});
+
+	it('should return null for data: URLs', () => {
+		expect(validateSafeRedirectUrl('data:text/html,<script>alert(1)</script>')).toBeNull();
+	});
+
+	it('should return null for invalid URLs', () => {
+		expect(validateSafeRedirectUrl('not a valid url')).toBeNull();
 	});
 });
 
