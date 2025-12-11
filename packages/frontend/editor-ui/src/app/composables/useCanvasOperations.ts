@@ -1219,7 +1219,10 @@ export function useCanvasOperations() {
 						const yDiff = (targetY - sourceY) / 2;
 						const middleY = sourceY + yDiff;
 
-						position = [lastInteractedWithNode.position[0], middleY];
+						position = [
+							lastInteractedWithNode.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
+							middleY,
+						];
 
 						const isTooClose = Math.abs(middleY - targetY) < PUSH_NODES_OFFSET;
 						if (isTooClose) {
