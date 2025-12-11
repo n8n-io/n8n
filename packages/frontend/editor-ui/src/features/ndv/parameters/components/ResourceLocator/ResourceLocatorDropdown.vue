@@ -24,6 +24,7 @@ type Props = {
 	width?: number;
 	allowNewResources?: { label?: string };
 	eventBus?: EventBus;
+	disableInactiveItems?: boolean;
 	slowLoadNotice?: string;
 	showSlowLoadNotice?: boolean;
 };
@@ -40,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 	filterRequired: false,
 	width: undefined,
 	allowNewResources: () => ({}),
+	disableInactiveItems: false,
 	eventBus: () => createEventBus(),
 	slowLoadNotice: undefined,
 	showSlowLoadNotice: false,
@@ -177,10 +179,15 @@ function onKeyDown(e: KeyboardEvent) {
 			return;
 		}
 
-		const selected = sortedResources.value[hoverIndex.value - 1]?.value;
+		const item = sortedResources.value[hoverIndex.value - 1];
+		const selected = item?.value;
 
 		// Selected resource can be empty when loading or empty results
 		if (selected && typeof selected !== 'boolean') {
+			if (props.disableInactiveItems && item && 'active' in item && item.active === false) {
+				return;
+			}
+
 			emit('update:modelValue', selected);
 		}
 	}
@@ -190,8 +197,13 @@ function onFilterInput(value: string) {
 	emit('filter', value);
 }
 
-function onItemClick(selected: string | number | boolean) {
+function onItemClick(selected: string | number | boolean, item?: IResourceLocatorResultExpanded) {
 	if (typeof selected === 'boolean') {
+		return;
+	}
+
+	// Prevent selection of inactive items
+	if (props.disableInactiveItems && item && 'active' in item && item.active === false) {
 		return;
 	}
 
@@ -334,27 +346,34 @@ watch(
 					[$style.resourceItem]: true,
 					[$style.selected]: result.value === props.modelValue?.value,
 					[$style.hovering]: hoverIndex === i + 1,
+					[$style.disabled]:
+						props.disableInactiveItems && 'active' in result && result.active === false,
 				}"
 				data-test-id="rlc-item"
-				@click="() => onItemClick(result.value)"
+				@click="() => onItemClick(result.value, result)"
 				@mouseenter="() => onItemHover(i + 1)"
 				@mouseleave="() => onItemHoverLeave()"
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
-					<span v-if="result.isArchived">
+					<div :class="$style.urlLink">
+						<N8nIcon
+							v-if="showHoverUrl && result.url && hoverIndex === i + 1"
+							icon="external-link"
+							:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
+							@click="openUrl($event, result.url)"
+						/>
+					</div>
+					<span v-if="result.isArchived" :class="$style.badgesContainer">
 						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
 							{{ i18n.baseText('workflows.item.archived') }}
 						</N8nBadge>
 					</span>
-				</div>
-				<div :class="$style.urlLink">
-					<N8nIcon
-						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-						icon="external-link"
-						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
-						@click="openUrl($event, result.url)"
-					/>
+					<slot
+						name="item-badge"
+						:item="result"
+						:is-hovered="showHoverUrl && hoverIndex === i + 1"
+					></slot>
 				</div>
 			</div>
 			<div v-if="props.loading && !props.errorView">
@@ -437,6 +456,14 @@ watch(
 	&:hover {
 		background-color: var(--color--background);
 	}
+
+	&.disabled {
+		opacity: 0.6;
+
+		&:hover {
+			background-color: transparent;
+		}
+	}
 }
 
 .loadingItem {
@@ -478,12 +505,19 @@ watch(
 	}
 }
 
+.badgesContainer {
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+}
+
 .resourceNameContainer {
 	display: flex;
 	align-items: center;
 	font-size: var(--font-size--2xs);
 	min-width: 0;
 	align-self: center;
+	flex: 1;
 }
 
 .resourceNameContainer > :first-child {

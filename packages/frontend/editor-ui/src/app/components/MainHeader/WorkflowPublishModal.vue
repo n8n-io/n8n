@@ -10,7 +10,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
 import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
@@ -33,6 +33,7 @@ const uiStore = useUIStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const workflowHelpers = useWorkflowHelpers();
+const publishing = ref(false);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
 
@@ -54,7 +55,9 @@ const wfHasAnyChanges = computed(() => {
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
 const inputsDisabled = computed(() => {
-	return !wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value;
+	return (
+		!wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value || publishing.value
+	);
 });
 
 const isPublishDisabled = computed(() => {
@@ -162,6 +165,8 @@ async function handlePublish() {
 		return;
 	}
 
+	publishing.value = true;
+
 	// Check for conflicting webhooks before activating
 	const conflictData = await workflowHelpers.checkConflictingWebhooks(workflowsStore.workflow.id);
 
@@ -178,6 +183,7 @@ async function handlePublish() {
 			},
 		});
 
+		publishing.value = false;
 		return;
 	}
 
@@ -212,6 +218,8 @@ async function handlePublish() {
 		// Display activation error if it fails
 		await displayActivationError();
 	}
+
+	publishing.value = false;
 }
 </script>
 
@@ -233,15 +241,22 @@ async function handlePublish() {
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
-					<strong>
-						{{
-							i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title')
-						}}
-					</strong>
-					<br />
 					{{
-						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message')
+						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+							interpolate: { count: workflowsStore.nodesWithIssues.length },
+							adjustToNumber: workflowsStore.nodesWithIssues.length,
+						})
 					}}
+					<ul :class="$style.nodeLinks">
+						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
+							<N8nLink
+								size="small"
+								:to="`/workflow/${workflowsStore.workflow.id}/${node.id}`"
+								@click="modalBus.emit('close')"
+								>{{ node.name }}</N8nLink
+							>
+						</li>
+					</ul>
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
@@ -257,6 +272,7 @@ async function handlePublish() {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
+						:disabled="publishing"
 						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-publish-cancel-button"
@@ -264,6 +280,7 @@ async function handlePublish() {
 					/>
 					<N8nButton
 						:disabled="isPublishDisabled"
+						:loading="publishing"
 						:label="i18n.baseText('workflows.publish')"
 						data-test-id="workflow-publish-button"
 						@click="handlePublish"
@@ -285,5 +302,20 @@ async function handlePublish() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
+}
+
+.nodeLinks {
+	list-style-type: disc;
+	margin-top: var(--spacing--4xs);
+	padding-left: var(--spacing--sm);
+}
+
+.nodeLinks li {
+	margin-bottom: var(--spacing--4xs);
+}
+
+.nodeLinks a span {
+	text-decoration: underline;
+	color: var(--callout--color--text--danger);
 }
 </style>
