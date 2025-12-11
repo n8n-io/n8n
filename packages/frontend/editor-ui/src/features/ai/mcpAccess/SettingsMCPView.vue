@@ -20,6 +20,7 @@ import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 
 type MCPTabs = 'workflows' | 'oauth';
 
@@ -103,6 +104,25 @@ const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean)
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 		throw error;
 	}
+};
+
+const onUpdateDescription = (workflow: WorkflowListItem) => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+		data: {
+			workflowId: workflow.id,
+			workflowDescription: workflow.description ?? '',
+			onSave: (updatedDescription: string | null) => {
+				const index = availableWorkflows.value.findIndex((w) => w.id === workflow.id);
+				if (index !== -1) {
+					availableWorkflows.value[index] = {
+						...availableWorkflows.value[index],
+						description: updatedDescription ?? undefined,
+					};
+				}
+			},
+		},
+	});
 };
 
 const onTableRefresh = async () => {
@@ -234,6 +254,7 @@ onMounted(async () => {
 					:loading="workflowsLoading"
 					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
 					@connect-workflows="openConnectWorkflowsModal"
+					@update-description="onUpdateDescription"
 					@refresh="onRefreshWorkflows"
 				/>
 				<OAuthClientsTable

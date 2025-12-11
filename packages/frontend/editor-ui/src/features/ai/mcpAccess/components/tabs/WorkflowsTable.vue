@@ -29,6 +29,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
 	connectWorkflows: [];
+	updateDescription: [workflow: WorkflowListItem];
 }>();
 
 const i18n = useI18n();
@@ -82,6 +83,11 @@ const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<Workf
 			value: 'removeFromMCP',
 			disabled: !permissions.workflow.update,
 		},
+		{
+			label: i18n.baseText('settings.mcp.workflows.table.action.updateDescription'),
+			value: 'updateDescription',
+			disabled: !permissions.workflow.update,
+		},
 	];
 };
 
@@ -89,6 +95,9 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	switch (action) {
 		case 'removeFromMCP':
 			emit('removeMcpAccess', workflow);
+			break;
+		case 'updateDescription':
+			emit('updateDescription', workflow);
 			break;
 		default:
 			break;
@@ -174,7 +183,11 @@ const onConnectClick = () => {
 						:show-after="MCP_TOOLTIP_DELAY"
 						:popper-class="$style['description-popper']"
 					>
-						<div :class="$style['description-cell']">
+						<div
+							data-test-id="mcp-workflow-description-cell"
+							:class="$style['description-cell']"
+							@click="emit('updateDescription', item)"
+						>
 							<span v-if="item.description">
 								<N8nText data-test-id="mcp-workflow-description">
 									{{ item.description }}
@@ -254,6 +267,11 @@ const onConnectClick = () => {
 	overflow: hidden;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
+	cursor: pointer;
+
+	&:hover span {
+		color: var(--color--text--shade-1);
+	}
 
 	span {
 		display: flex;
