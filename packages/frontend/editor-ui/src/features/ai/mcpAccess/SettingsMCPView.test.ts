@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import type { WorkflowListItem } from '@/Interface';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -76,6 +77,37 @@ const clickTab = async (container: Element, tabTestId: string) => {
 		await userEvent.click(clickableTab);
 	}
 };
+
+const createWorkflow = (overrides: Partial<WorkflowListItem> = {}): WorkflowListItem => ({
+	resource: 'workflow',
+	id: 'test-workflow-1',
+	createdAt: '2025-09-09T14:14:04.155Z',
+	updatedAt: '2025-09-23T08:13:45.000Z',
+	name: 'Test Workflow',
+	active: true,
+	activeVersionId: 'v1',
+	isArchived: false,
+	settings: {
+		availableInMCP: true,
+		executionOrder: 'v1',
+	},
+	versionId: 'v1',
+	tags: [],
+	scopes: ['workflow:read', 'workflow:update'],
+	homeProject: {
+		id: 'project1',
+		type: 'team',
+		name: 'Test Project',
+		icon: {
+			type: 'icon',
+			value: 'bot',
+		},
+		createdAt: '2025-09-09T14:13:50.000Z',
+		updatedAt: '2025-09-09T14:13:50.000Z',
+	},
+	sharedWithProjects: [],
+	...overrides,
+});
 
 describe('SettingsMCPView', () => {
 	beforeEach(() => {
@@ -365,8 +397,8 @@ describe('SettingsMCPView', () => {
 
 		it('should show Connect Workflows button when there are workflows', async () => {
 			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
-				{ id: '1', name: 'Workflow 1' },
-				{ id: '2', name: 'Workflow 2' },
+				createWorkflow({ id: '1', name: 'Workflow 1' }),
+				createWorkflow({ id: '2', name: 'Workflow 2' }),
 			]);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -378,7 +410,9 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should not show Connect Workflows button when on OAuth tab', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([{ id: '1', name: 'Workflow 1' }]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
+				createWorkflow({ id: '1', name: 'Workflow 1' }),
+			]);
 			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 
 			const { queryByTestId, getByTestId, container } = createComponent({ pinia });
@@ -398,7 +432,9 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should open Connect Workflows modal when button is clicked', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([{ id: '1', name: 'Workflow 1' }]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
+				createWorkflow({ id: '1', name: 'Workflow 1' }),
+			]);
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();

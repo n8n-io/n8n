@@ -22,6 +22,7 @@ const createHomeProject = (overrides: Partial<ProjectSharingData> = {}): Project
 	id: 'project-1',
 	type: 'team',
 	name: 'Test Project',
+	icon: null,
 	createdAt: '2025-01-01',
 	updatedAt: '2025-01-01',
 	...overrides,
