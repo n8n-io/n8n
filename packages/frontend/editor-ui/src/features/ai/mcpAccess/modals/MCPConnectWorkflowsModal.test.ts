@@ -289,8 +289,8 @@ describe('MCPConnectWorkflowsModal', () => {
 			// Create a promise that doesn't resolve immediately
 			let resolvePromise: (value?: unknown) => void;
 			mockOnEnableMcpAccess.mockImplementation(
-				() =>
-					new Promise((resolve) => {
+				async () =>
+					await new Promise((resolve) => {
 						resolvePromise = resolve;
 					}),
 			);
