@@ -1,4 +1,9 @@
-export const RESOURCE_LOCATOR_EXAMPLES = `
+import type { NodeTypeExamples } from '../types';
+
+export const RESOURCE_LOCATOR_EXAMPLES: NodeTypeExamples = {
+	patterns: ['*'],
+	condition: (ctx) => ctx.hasResourceLocatorParams === true,
+	content: `
 ### ResourceLocator Examples
 
 #### Example 1: Slack Node - Channel by ID
@@ -72,4 +77,5 @@ Expected Output:
     "mode": "id",
     "value": "={{ $('Previous Node').item.json.pageId }}"
   }
-}`;
+}`,
+};

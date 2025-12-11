@@ -1,4 +1,8 @@
-export const IF_NODE_EXAMPLES = `
+import type { NodeTypeExamples } from '../types';
+
+export const IF_NODE_EXAMPLES: NodeTypeExamples = {
+	patterns: ['n8n-nodes-base.if'],
+	content: `
 ### IF Node Examples
 
 #### Example 1: Simple String Condition
@@ -131,4 +135,5 @@ Expected Output:
     "combinator": "and"
   }
 }
-`;
+`,
+};
