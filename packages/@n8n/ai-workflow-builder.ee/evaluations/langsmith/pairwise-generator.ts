@@ -19,6 +19,15 @@ export type { PairwiseDatasetInput, PairwiseTargetOutput };
 // Target Factory
 // ============================================================================
 
+export interface CreatePairwiseTargetOptions {
+	parsedNodeTypes: INodeTypeDescription[];
+	llm: BaseChatModel;
+	numJudges: number;
+	numGenerations: number;
+	featureFlags?: BuilderFeatureFlags;
+	experimentName?: string;
+}
+
 /**
  * Creates a target function that does ALL the work:
  * - Generates all workflows (each wrapped in traceable)
@@ -28,14 +37,9 @@ export type { PairwiseDatasetInput, PairwiseTargetOutput };
  * The evaluator then just extracts the pre-computed feedback.
  * This avoids 403 errors from nested traceable in evaluator context.
  */
-export function createPairwiseTarget(
-	parsedNodeTypes: INodeTypeDescription[],
-	llm: BaseChatModel,
-	numJudges: number,
-	numGenerations: number,
-	featureFlags?: BuilderFeatureFlags,
-	experimentName?: string,
-) {
+export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
+	const { parsedNodeTypes, llm, numJudges, numGenerations, featureFlags, experimentName } = options;
+
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
 			const { prompt, evals: evalCriteria, notion_id: notionId } = inputs;
@@ -67,16 +71,8 @@ export function createPairwiseTarget(
 			);
 
 			if (numGenerations === 1) {
-				const result = generationResults[0];
-				const singleGenFeedback: LangsmithEvaluationResult[] = buildSingleGenerationResults(
-					result.judgeResults,
-					numJudges,
-					result.primaryPasses,
-					result.majorityPass,
-					result.avgDiagnosticScore,
-				);
-
-				return { prompt, evals: evalCriteria, _feedback: singleGenFeedback };
+				const singleGenFeedback = buildSingleGenerationResults(generationResults[0], numJudges);
+				return { prompt, evals: evalCriteria, feedback: singleGenFeedback };
 			}
 
 			const aggregation = aggregateGenerations(generationResults);
@@ -85,7 +81,7 @@ export function createPairwiseTarget(
 				numJudges,
 			);
 
-			return { prompt, evals: evalCriteria, _feedback: multiGenFeedback };
+			return { prompt, evals: evalCriteria, feedback: multiGenFeedback };
 		},
 		{ name: TRACEABLE_NAMES.PAIRWISE_EVALUATION, run_type: 'chain' },
 	);
@@ -103,11 +99,16 @@ export async function generateWorkflow(
 ): Promise<SimpleWorkflow> {
 	const runId = generateRunId();
 
-	const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
+	const agent = createAgent({ parsedNodeTypes, llm, featureFlags });
 
 	await consumeGenerator(
 		agent.chat(
-			getChatPayload(EVAL_TYPES.PAIRWISE_LOCAL, prompt, runId, featureFlags),
+			getChatPayload({
+				evalType: EVAL_TYPES.PAIRWISE_LOCAL,
+				message: prompt,
+				workflowId: runId,
+				featureFlags,
+			}),
 			EVAL_USERS.PAIRWISE_LOCAL,
 		),
 	);

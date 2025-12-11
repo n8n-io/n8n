@@ -100,7 +100,12 @@ export async function runSingleTest(
 		const startTime = Date.now();
 		await consumeGenerator(
 			agent.chat(
-				getChatPayload('single-eval', testCase.prompt, testCase.id, opts?.featureFlags),
+				getChatPayload({
+					evalType: 'single-eval',
+					message: testCase.prompt,
+					workflowId: testCase.id,
+					featureFlags: opts?.featureFlags,
+				}),
 				userId,
 			),
 		);

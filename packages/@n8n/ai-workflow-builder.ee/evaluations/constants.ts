@@ -24,7 +24,6 @@ export const TRACEABLE_NAMES = {
 
 /**
  * Metric keys for LangSmith evaluation results.
- * Keys are sorted alphabetically to ensure consistent column order in LangSmith dashboard.
  */
 export const METRIC_KEYS = {
 	// Single generation metrics

@@ -128,12 +128,16 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	}
 }
 
-export function getChatPayload(
-	evalType: string,
-	message: string,
-	workflowId: string,
-	featureFlags?: BuilderFeatureFlags,
-): ChatPayload {
+export interface GetChatPayloadOptions {
+	evalType: string;
+	message: string;
+	workflowId: string;
+	featureFlags?: BuilderFeatureFlags;
+}
+
+export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
+	const { evalType, message, workflowId, featureFlags } = options;
+
 	return {
 		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? {

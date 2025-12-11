@@ -51,10 +51,15 @@ function createWorkflowGenerator(
 			const callbacks = await getLangchainCallbacks();
 
 			// Create agent for this run (no tracer - callbacks passed at invocation)
-			const agent = createAgent(parsedNodeTypes, llm, undefined, featureFlags);
+			const agent = createAgent({ parsedNodeTypes, llm, featureFlags });
 			await consumeGenerator(
 				agent.chat(
-					getChatPayload(EVAL_TYPES.LANGSMITH, messageContent, runId, featureFlags),
+					getChatPayload({
+						evalType: EVAL_TYPES.LANGSMITH,
+						message: messageContent,
+						workflowId: runId,
+						featureFlags,
+					}),
 					EVAL_USERS.LANGSMITH,
 					undefined, // abortSignal
 					callbacks, // externalCallbacks for LangSmith tracing

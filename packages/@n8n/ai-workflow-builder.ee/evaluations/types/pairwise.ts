@@ -19,8 +19,8 @@ export interface PairwiseDatasetInput {
 export interface PairwiseTargetOutput {
 	prompt: string;
 	evals: EvalCriteria;
-	/** Pre-computed feedback results. Named with underscore to avoid LangSmith auto-processing */
-	_feedback: LangsmithEvaluationResult[];
+	/** Pre-computed feedback results */
+	feedback: LangsmithEvaluationResult[];
 }
 
 // ============================================================================
@@ -32,7 +32,7 @@ export function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTar
 	const obj = outputs as Record<string, unknown>;
 	return (
 		typeof obj.prompt === 'string' &&
-		Array.isArray(obj._feedback) &&
+		Array.isArray(obj.feedback) &&
 		obj.evals !== undefined &&
 		typeof obj.evals === 'object'
 	);

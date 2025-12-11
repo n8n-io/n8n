@@ -67,21 +67,22 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
 	return { parsedNodeTypes, llm, tracer, lsClient };
 }
 
+export interface CreateAgentOptions {
+	parsedNodeTypes: INodeTypeDescription[];
+	llm: BaseChatModel;
+	tracer?: LangChainTracer;
+	featureFlags?: BuilderFeatureFlags;
+	experimentName?: string;
+}
+
 /**
  * Creates a new WorkflowBuilderAgent instance
- * @param parsedNodeTypes - Array of parsed node type descriptions
- * @param llm - Language model instance
- * @param tracer - Optional LangChain tracer
- * @param featureFlags - Optional feature flags
+ * @param options - Agent configuration options
  * @returns Configured WorkflowBuilderAgent
  */
-export function createAgent(
-	parsedNodeTypes: INodeTypeDescription[],
-	llm: BaseChatModel,
-	tracer?: LangChainTracer,
-	featureFlags?: BuilderFeatureFlags,
-	experimentName?: string,
-): WorkflowBuilderAgent {
+export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
+	const { parsedNodeTypes, llm, tracer, featureFlags, experimentName } = options;
+
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
 		llmSimpleTask: llm,

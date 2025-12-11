@@ -3,7 +3,6 @@ import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/ev
 import type { Run, Example } from 'langsmith/schemas';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { PairwiseEvaluationResult } from '../chains/pairwise-evaluator';
 import { METRIC_KEYS } from '../constants';
 import { isPairwiseTargetOutput } from '../types/pairwise';
 import {
@@ -19,15 +18,13 @@ import {
 
 /**
  * Build LangSmith-compatible evaluation results from judge panel output.
- * Results are returned in alphabetical key order to match LangSmith column display.
  */
 export function buildSingleGenerationResults(
-	judgeResults: PairwiseEvaluationResult[],
+	result: JudgePanelResult,
 	numJudges: number,
-	primaryPasses: number,
-	majorityPass: boolean,
-	avgDiagnosticScore: number,
 ): LangsmithEvaluationResult[] {
+	const { judgeResults, primaryPasses, majorityPass, avgDiagnosticScore } = result;
+
 	const allViolations = judgeResults.flatMap((r, i) =>
 		r.violations.map((v) => `[Judge ${i + 1}] ${v.rule}: ${v.justification}`),
 	);
@@ -43,7 +40,6 @@ export function buildSingleGenerationResults(
 		.filter(Boolean)
 		.join('');
 
-	// Return results in alphabetical key order
 	return [
 		{
 			key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC,
@@ -69,7 +65,6 @@ export function buildSingleGenerationResults(
 
 /**
  * Build LangSmith-compatible evaluation results for multi-generation aggregation.
- * Results are returned in alphabetical key order.
  */
 export function buildMultiGenerationResults(
 	aggregation: MultiGenerationAggregation,
@@ -108,7 +103,6 @@ export function buildMultiGenerationResults(
 		0,
 	);
 
-	// Return results in alphabetical key order
 	return [
 		{
 			key: METRIC_KEYS.PAIRWISE_AGGREGATED_DIAGNOSTIC,
@@ -178,13 +172,13 @@ export function createPairwiseLangsmithEvaluator() {
 				{
 					key: METRIC_KEYS.PAIRWISE_PRIMARY,
 					score: 0,
-					comment: 'Invalid output - missing _feedback from target',
+					comment: 'Invalid output - missing feedback from target',
 				},
 				{ key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC, score: 0 },
 			];
 		}
 
-		return outputs._feedback;
+		return outputs.feedback;
 	};
 }
 

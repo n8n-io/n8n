@@ -87,16 +87,18 @@ function logFeatureFlags(featureFlags?: BuilderFeatureFlags): void {
 	}
 }
 
+interface LogPairwiseConfigOptions {
+	experimentName: string;
+	numGenerations: number;
+	numJudges: number;
+	repetitions: number;
+	concurrency: number;
+	verbose: boolean;
+}
+
 /** Log configuration for pairwise evaluation */
-function logPairwiseConfig(
-	log: EvalLogger,
-	experimentName: string,
-	numGenerations: number,
-	numJudges: number,
-	repetitions: number,
-	concurrency: number,
-	verbose: boolean,
-): void {
+function logPairwiseConfig(log: EvalLogger, options: LogPairwiseConfigOptions): void {
+	const { experimentName, numGenerations, numJudges, repetitions, concurrency, verbose } = options;
 	log.info(`➔ Experiment: ${experimentName}`);
 	log.info(
 		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps (concurrency: ${concurrency})${verbose ? ' (verbose)' : ''}`,
@@ -150,15 +152,14 @@ export async function runPairwiseLangsmithEvaluation(
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
-	logPairwiseConfig(
-		log,
+	logPairwiseConfig(log, {
 		experimentName,
 		numGenerations,
 		numJudges,
 		repetitions,
 		concurrency,
 		verbose,
-	);
+	});
 
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
@@ -210,14 +211,14 @@ export async function runPairwiseLangsmithEvaluation(
 		log.info(`➔ Running ${data.length} example(s) × ${repetitions} rep(s)`);
 
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
-		const target = createPairwiseTarget(
+		const target = createPairwiseTarget({
 			parsedNodeTypes,
 			llm,
 			numJudges,
 			numGenerations,
 			featureFlags,
 			experimentName,
-		);
+		});
 		const evaluator = createPairwiseLangsmithEvaluator();
 
 		const evalStartTime = Date.now();
