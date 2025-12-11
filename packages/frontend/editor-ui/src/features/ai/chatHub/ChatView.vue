@@ -374,6 +374,14 @@ watch(
 		}
 
 		if (
+			defaultModel.value &&
+			agent?.icon &&
+			(agent.icon.type !== prevAgent?.icon?.type || agent.icon.value !== prevAgent.icon.value)
+		) {
+			defaultModel.value = { ...defaultModel.value, cachedIcon: agent.icon };
+		}
+
+		if (
 			agent &&
 			!agent.metadata.capabilities.functionCalling &&
 			(defaultTools.value ?? []).length > 0
@@ -468,17 +476,24 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	);
 }
 
-async function handleSelectModel(selection: ChatHubConversationModel, displayName?: string) {
-	const agentName = displayName ?? chatStore.getAgent(selection)?.name ?? '';
+async function handleSelectModel(
+	selection: ChatHubConversationModel,
+	selectedAgent?: ChatModelDto,
+) {
+	const agent = selectedAgent ?? chatStore.getAgent(selection);
 
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
+			await chatStore.updateSessionModel(sessionId.value, selection);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
-		defaultModel.value = { ...selection, cachedDisplayName: agentName };
+		defaultModel.value = {
+			...selection,
+			cachedDisplayName: agent.name,
+			cachedIcon: agent.icon ?? undefined,
+		};
 
 		// Remove query params (if exists) and focus input
 		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
@@ -486,7 +501,7 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 }
 
 async function handleSelectAgent(selection: ChatModelDto) {
-	await handleSelectModel(selection.model, selection.name);
+	await handleSelectModel(selection.model, selection);
 }
 
 function handleSwitchAlternative(messageId: string) {
