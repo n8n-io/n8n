@@ -49,6 +49,7 @@ export interface IExecutionBase {
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId: string;
+	parentExecutionId?: string | null; // ID of parent execution if this is a subworkflow (mode='integrated')
 
 	/**
 	 * @deprecated Use `status` instead

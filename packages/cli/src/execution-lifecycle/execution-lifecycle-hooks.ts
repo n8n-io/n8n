@@ -164,6 +164,7 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 
 /**
  * Returns hook functions to push data to Editor-UI
+ * Supports both regular executions and sub-executions (parentExecutionId from hooks instance)
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
@@ -172,12 +173,14 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
+
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
-		const { executionId } = this;
+		const { executionId, parentExecutionId } = this;
 		// Push data to session which started workflow before each
 		// node which starts rendering
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
+			parentExecutionId,
 			pushRef,
 			workflowId: this.workflowData.id,
 		});
@@ -187,11 +190,13 @@ function hookFunctionsPush(
 			pushRef,
 		);
 	});
+
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
-		const { executionId } = this;
+		const { executionId, parentExecutionId } = this;
 		// Push data to session which started workflow after each rendered node
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
+			parentExecutionId,
 			pushRef,
 			workflowId: this.workflowData.id,
 		});
@@ -202,7 +207,12 @@ function hookFunctionsPush(
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfter',
-				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
+				data: {
+					executionId,
+					nodeName,
+					itemCountByConnectionType,
+					data: taskData,
+				},
 			},
 			pushRef,
 		);
@@ -223,52 +233,56 @@ function hookFunctionsPush(
 			asBinary,
 		);
 	});
-	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
-		const { executionId } = this;
-		const { id: workflowId, name: workflowName } = this.workflowData;
-		logger.debug('Executing hook (hookFunctionsPush)', {
-			executionId,
-			pushRef,
-			workflowId,
-		});
-		// Push data to session which started the workflow
-		pushInstance.send(
-			{
-				type: 'executionStarted',
-				data: {
-					executionId,
-					mode: this.mode,
-					startedAt: new Date(),
-					retryOf,
-					workflowId,
-					workflowName,
-					flattedRunData: data?.resultData.runData
-						? stringify(data.resultData.runData)
-						: stringify({}),
-				},
-			},
-			pushRef,
-		);
-	});
-	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
-		const { executionId } = this;
-		const { id: workflowId } = this.workflowData;
-		logger.debug('Executing hook (hookFunctionsPush)', {
-			executionId,
-			pushRef,
-			workflowId,
-		});
 
-		const { status } = fullRunData;
-		if (status === 'waiting') {
-			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
-		} else {
+	// Skip workflow-level events for sub-executions to avoid conflicts with parent execution state
+	if (!hooks.parentExecutionId) {
+		hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
+			const { executionId } = this;
+			const { id: workflowId, name: workflowName } = this.workflowData;
+			logger.debug('Executing hook (hookFunctionsPush)', {
+				executionId,
+				pushRef,
+				workflowId,
+			});
+			// Push data to session which started the workflow
 			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status } },
+				{
+					type: 'executionStarted',
+					data: {
+						executionId,
+						mode: this.mode,
+						startedAt: new Date(),
+						retryOf,
+						workflowId,
+						workflowName,
+						flattedRunData: data?.resultData.runData
+							? stringify(data.resultData.runData)
+							: stringify({}),
+					},
+				},
 				pushRef,
 			);
-		}
-	});
+		});
+		hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+			const { executionId } = this;
+			const { id: workflowId } = this.workflowData;
+			logger.debug('Executing hook (hookFunctionsPush)', {
+				executionId,
+				pushRef,
+				workflowId,
+			});
+
+			const { status } = fullRunData;
+			if (status === 'waiting') {
+				pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
+			} else {
+				pushInstance.send(
+					{ type: 'executionFinished', data: { executionId, workflowId, status } },
+					pushRef,
+				);
+			}
+		});
+	}
 }
 
 function hookFunctionsExternalHooks(hooks: ExecutionLifecycleHooks) {
@@ -522,8 +536,14 @@ export function getLifecycleHooksForSubExecutions(
 	workflowData: IWorkflowBase,
 	userId?: string,
 	parentExecution?: RelatedExecution,
+	pushRef?: string,
 ): ExecutionLifecycleHooks {
-	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		mode,
+		executionId,
+		workflowData,
+		parentExecution?.executionId,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsNodeEvents(hooks);
@@ -532,6 +552,14 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+
+	if (pushRef) {
+		hookFunctionsPush(hooks, {
+			pushRef,
+			retryOf: undefined,
+			saveSettings,
+		});
+	}
 	return hooks;
 }
 

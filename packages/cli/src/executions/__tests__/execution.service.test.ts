@@ -2,8 +2,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
-import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	ManualExecutionCancelledError,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -39,6 +44,61 @@ describe('ExecutionService', () => {
 		mock(),
 	);
 
+	/**
+	 * Helper function to create mock workflow data for testing.
+	 */
+	const createMockWorkflowData = (overrides: Partial<IExecutionResponse['workflowData']> = {}) => {
+		const baseDate = new Date('2025-01-15T10:00:00Z');
+		return {
+			id: 'workflow-456',
+			name: 'Test Workflow',
+			createdAt: baseDate,
+			nodes: [],
+			connections: {},
+			active: false,
+			settings: {},
+			isArchived: false,
+			updatedAt: baseDate,
+			activeVersionId: null,
+			...overrides,
+		};
+	};
+
+	/**
+	 * Helper function to create mock execution objects for testing.
+	 * Can create both IExecutionResponse and IExecutionFlattedDb types depending on usage.
+	 * Automatically stringifies the `data` field if provided in overrides.
+	 */
+	const createMockExecution = (overrides: Partial<IExecutionResponse> = {}): any => {
+		const baseDate = new Date('2025-01-15T10:00:00Z');
+		const defaults = {
+			id: 'exec-123',
+			workflowId: 'workflow-456',
+			mode: 'manual' as const,
+			status: 'success' as const,
+			startedAt: baseDate,
+			stoppedAt: new Date(baseDate.getTime() + 5 * 60 * 1000), // 5 minutes later
+			createdAt: new Date(baseDate.getTime() - 60 * 1000), // 1 minute before
+			data: stringify(
+				createRunExecutionData({
+					resultData: { runData: {} },
+				}),
+			),
+			workflowData: createMockWorkflowData(),
+			customData: {},
+			annotation: { tags: [] },
+			finished: true,
+		};
+
+		// Stringify data if provided in overrides and not already a string
+		const processedOverrides = { ...overrides };
+		if (processedOverrides.data && typeof processedOverrides.data !== 'string') {
+			(processedOverrides as any).data = stringify(processedOverrides.data);
+		}
+
+		return { ...defaults, ...processedOverrides };
+	};
+
 	beforeEach(() => {
 		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
@@ -63,6 +123,194 @@ describe('ExecutionService', () => {
 			 * Assert
 			 */
 			await expect(retry).rejects.toThrow(AbortedExecutionRetryError);
+		});
+	});
+
+	describe('findOne with subworkflow merging', () => {
+		it('should merge sub-executions into parent execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const parentExecution = createMockExecution({
+				id: 'parent-123',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							ExecuteWorkflow: [
+								{ executionIndex: 1, startTime: 1, executionTime: 100, source: [] },
+							],
+						},
+					},
+				}),
+				workflowData: createMockWorkflowData({
+					name: 'Parent Workflow',
+					nodes: [
+						{
+							id: '1',
+							name: 'Execute Workflow',
+							type: 'n8n-nodes-base.executeWorkflow',
+							disabled: false,
+							parameters: {},
+							position: [0, 0],
+							typeVersion: 1,
+						},
+					],
+				}),
+			});
+
+			const subExecution = createMockExecution({
+				id: 'sub-789',
+				mode: 'integrated',
+				startedAt: new Date('2025-01-15T10:01:00Z'),
+				createdAt: new Date('2025-01-15T10:01:00Z'),
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							SubWorkflowNode: [{ executionIndex: 0, startTime: 2, executionTime: 50, source: [] }],
+						},
+					},
+				}),
+				finished: false,
+			});
+
+			executionRepository.findIfShared.mockResolvedValue(parentExecution);
+			executionRepository.findSubExecutions.mockResolvedValue([subExecution]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.findOne(
+				mock<ExecutionRequest.GetOne>({ params: { id: 'parent-123' } }),
+				['workflow-456'],
+			);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRepository.findSubExecutions).toHaveBeenCalledWith(
+				'parent-123',
+				'workflow-456',
+				parentExecution.startedAt,
+				parentExecution.stoppedAt,
+			);
+
+			// Verify the merged data contains both parent and sub-execution runData
+			expect(result!.data).toContain('ExecuteWorkflow');
+			expect(result!.data).toContain('SubWorkflowNode');
+		});
+
+		it('should not merge sub-executions when execution has no executeWorkflow nodes', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = createMockExecution({
+				workflowData: createMockWorkflowData({
+					name: 'Simple Workflow',
+					nodes: [
+						{
+							id: '1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							disabled: false,
+							parameters: {},
+							position: [0, 0],
+							typeVersion: 1,
+						},
+					],
+				}),
+			});
+
+			executionRepository.findIfShared.mockResolvedValue(execution);
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(
+				mock<ExecutionRequest.GetOne>({ params: { id: 'exec-123' } }),
+				['workflow-456'],
+			);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRepository.findSubExecutions).not.toHaveBeenCalled();
+		});
+
+		it('should not merge sub-executions for integrated mode executions', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = createMockExecution({
+				mode: 'integrated',
+				workflowData: createMockWorkflowData({
+					name: 'Sub Workflow',
+				}),
+			});
+
+			executionRepository.findIfShared.mockResolvedValue(execution);
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(
+				mock<ExecutionRequest.GetOne>({ params: { id: 'exec-123' } }),
+				['workflow-456'],
+			);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRepository.findSubExecutions).not.toHaveBeenCalled();
+		});
+
+		it('should handle when no sub-executions are found', async () => {
+			/**
+			 * Arrange
+			 */
+			const parentExecution = createMockExecution({
+				id: 'parent-123',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							execute_workflow: [
+								{ executionIndex: 0, startTime: 1, executionTime: 100, source: [] },
+							],
+						},
+					},
+				}),
+				workflowData: createMockWorkflowData({
+					name: 'Parent Workflow',
+					nodes: [
+						{
+							id: '1',
+							name: 'Execute Workflow',
+							type: 'n8n-nodes-base.executeWorkflow',
+							disabled: false,
+							parameters: {},
+							position: [0, 0],
+							typeVersion: 1,
+						},
+					],
+				}),
+			});
+
+			executionRepository.findIfShared.mockResolvedValue(parentExecution);
+			executionRepository.findSubExecutions.mockResolvedValue([]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.findOne(
+				mock<ExecutionRequest.GetOne>({ params: { id: 'parent-123' } }),
+				['workflow-456'],
+			);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRepository.findSubExecutions).toHaveBeenCalled();
+			// Data should remain unchanged
+			expect(JSON.stringify(result!.data)).toContain('execute_workflow');
 		});
 	});
 

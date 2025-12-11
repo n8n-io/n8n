@@ -14,11 +14,13 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { parse, stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
 	ExecutionStatus,
 	INode,
+	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -128,7 +130,85 @@ export class ExecutionService {
 			return undefined;
 		}
 
+		// Automatically merge sub-execution data for parent executions
+		// This ensures that sub-workflow nodes show as executed in the execution history
+		if (
+			execution.mode !== 'integrated' &&
+			execution.workflowId &&
+			execution.startedAt &&
+			execution.stoppedAt &&
+			execution.workflowData.nodes.some(
+				(n) => !n.disabled && n.type === 'n8n-nodes-base.executeWorkflow',
+			)
+		) {
+			await this.mergeSubExecutions(execution);
+		}
+
 		return execution;
+	}
+
+	/**
+	 * Merges sub-execution data into a parent execution.
+	 * This modifies the parent execution's data in place by appending runData from sub-executions.
+	 * For sub-executions called in loops, runData is appended instead of overwritten.
+	 */
+	private async mergeSubExecutions(parentExecution: IExecutionFlattedResponse): Promise<void> {
+		try {
+			const subExecutions = await this.executionRepository.findSubExecutions(
+				parentExecution.id,
+				parentExecution.workflowId,
+				parentExecution.startedAt,
+				parentExecution.stoppedAt!,
+			);
+
+			if (subExecutions.length === 0) {
+				return;
+			}
+
+			// Parse parent execution data
+			const parentData = parse(parentExecution.data) as IRunExecutionData;
+			if (!parentData.resultData) {
+				parentData.resultData = { runData: {} };
+			}
+			if (!parentData.resultData.runData) {
+				parentData.resultData.runData = {};
+			}
+
+			// Merge runData from all sub-executions
+			for (const subExecution of subExecutions) {
+				try {
+					const subData = parse(subExecution.data) as IRunExecutionData;
+					if (!subData?.resultData?.runData) {
+						continue;
+					}
+
+					// For each node in the sub-execution, append its runData to preserve all iterations
+					for (const [nodeName, nodeRunData] of Object.entries(subData.resultData.runData)) {
+						if (!parentData.resultData.runData[nodeName]) {
+							// First time seeing this node - initialize with the runData
+							parentData.resultData.runData[nodeName] = nodeRunData;
+						} else {
+							// Node already exists - append the runData to preserve all iterations
+							parentData.resultData.runData[nodeName].push(...nodeRunData);
+						}
+					}
+				} catch (error) {
+					this.logger.warn('Failed to merge sub-execution data', {
+						parentExecutionId: parentExecution.id,
+						subExecutionId: subExecution.id,
+						error,
+					});
+				}
+			}
+
+			// Stringify the modified data back using flatted to handle circular references
+			parentExecution.data = stringify(parentData);
+		} catch (error) {
+			this.logger.error('Failed to merge sub-executions', {
+				parentExecutionId: parentExecution.id,
+				error,
+			});
+		}
 	}
 
 	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {

@@ -874,6 +874,22 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowData,
 					undefined,
 					parentExecution,
+					pushRef,
+				);
+			});
+
+			it('should skip workflow-level push events for sub-executions', async () => {
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				// Should not send executionStarted or executionFinished push events
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'executionStarted' }),
+					pushRef,
+				);
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'executionFinished' }),
+					pushRef,
 				);
 			});
 

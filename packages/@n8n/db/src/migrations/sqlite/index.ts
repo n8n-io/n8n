@@ -120,6 +120,7 @@ import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/176416
 import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
 import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
+import { AddParentExecutionIdToExecutionEntity1765454727253 } from '../common/1765454727253-AddParentExecutionIdToExecutionEntity';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -245,6 +246,7 @@ const sqliteMigrations: Migration[] = [
 	CreateDynamicCredentialResolverTable1764682447000,
 	AddDynamicCredentialEntryTable1764689388394,
 	BackfillMissingWorkflowHistoryRecords1765448186933,
+	AddParentExecutionIdToExecutionEntity1765454727253,
 ];
 
 export { sqliteMigrations };
