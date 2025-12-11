@@ -32,8 +32,8 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
-// When using Currents orchestration (pwc-p), tests run with workers=1
-// In this mode, fullyParallel should be false for accurate Currents dashboard reporting
+// Disable fullyParallel when using Currents with orchestration
+// Community PRs don't have CURRENTS_RECORD_KEY and use standard Playwright sharding
 const useOrchestration = !!process.env.CURRENTS_RECORD_KEY;
 
 export function getProjects(): Project[] {

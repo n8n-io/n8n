@@ -108,7 +108,6 @@ jobs:
             --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
-          RESET_E2E_DB: true
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
