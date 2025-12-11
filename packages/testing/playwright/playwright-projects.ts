@@ -32,9 +32,9 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
-// Disable fullyParallel when using Currents with orchestration
-// Community PRs don't have CURRENTS_RECORD_KEY and use standard Playwright sharding
-const useOrchestration = !!process.env.CURRENTS_RECORD_KEY;
+// Enable fullyParallel for standard Playwright runs (community PRs, local)
+// Disable for Currents orchestration
+const enableParallelism = !process.env.CURRENTS_RECORD_KEY;
 
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
@@ -68,7 +68,7 @@ export function getProjects(): Project[] {
 					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
-					fullyParallel: !useOrchestration,
+					fullyParallel: enableParallelism,
 					use: { containerConfig: config },
 				},
 				{
