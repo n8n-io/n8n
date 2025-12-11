@@ -41,7 +41,8 @@ const i18n = useI18n();
 .container {
 	display: flex;
 	gap: var(--spacing--md);
-	align-items: center;
+	align-items: baseline;
+	padding-top: var(--spacing--5xs);
 
 	// Docs link doesn't have outline when not hovered
 	// so we pull it closer to the rest of the elements
