@@ -232,7 +232,7 @@ onMounted(() => {
 
 $timelineMarkerDiameter: 13px;
 $timelineMarkerBorderWidth: 1.33px;
-$hoverBackground: var(--color--foreground--tint-1);
+$hoverBackground: var(--color--background--light-1);
 
 .item {
 	display: flex;
