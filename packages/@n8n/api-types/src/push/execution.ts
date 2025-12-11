@@ -48,8 +48,6 @@ export type NodeExecuteBefore = {
 		executionId: string;
 		nodeName: string;
 		data: ITaskStartedData;
-		/** Parent execution ID for sub-workflow executions on the same canvas */
-		parentExecutionId?: string;
 	};
 };
 
@@ -71,8 +69,6 @@ export type NodeExecuteAfter = {
 		 * can know how many items to expect when receiving the `NodeExecuteAfterData` message.
 		 */
 		itemCountByConnectionType: Partial<Record<NodeConnectionType, number[]>>;
-		/** Parent execution ID for sub-workflow executions on the same canvas */
-		parentExecutionId?: string;
 	};
 };
 
@@ -92,8 +88,6 @@ export type NodeExecuteAfterData = {
 		 */
 		data: ITaskData;
 		itemCountByConnectionType: NodeExecuteAfter['data']['itemCountByConnectionType'];
-		/** Parent execution ID for sub-workflow executions on the same canvas */
-		parentExecutionId?: string;
 	};
 };
 
