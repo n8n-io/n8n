@@ -102,8 +102,8 @@ defineExpose({
 			[$style['mcp-workflows-select-empty']]: showEmptyState,
 		}"
 	>
-		<template #prepend>
-			<N8nIcon :class="$style['search-icon']" icon="search" size="large" color="text-light" />
+		<template #prefix>
+			<N8nIcon :class="$style['search-icon']" icon="search" size="large" />
 		</template>
 		<N8nOption
 			v-for="workflow in workflowOptions"
@@ -122,10 +122,6 @@ defineExpose({
 </template>
 
 <style module lang="scss">
-.search-icon {
-	min-width: var(--spacing--lg);
-}
-
 .mcp-workflows-select-loading,
 .mcp-workflows-select-empty {
 	display: flex;
