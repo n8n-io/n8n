@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { Toolkit } from '@langchain/classic/agents';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import type {
 	AINodeConnectionType,
@@ -438,6 +439,23 @@ export async function getInputConnectionData(
 			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
+				const response = supplyData.response;
+
+				// Ensure sourceNodeName is set for proper routing
+				if (response instanceof DynamicStructuredTool) {
+					response.metadata ??= {};
+					response.metadata.sourceNodeName = connectedNode.name;
+				}
+
+				if (response instanceof Toolkit) {
+					for (const tool of response.tools) {
+						if (tool instanceof DynamicStructuredTool) {
+							tool.metadata ??= {};
+							tool.metadata.sourceNodeName = connectedNode.name;
+						}
+					}
+				}
+
 				if (supplyData.closeFunction) {
 					closeFunctions.push(supplyData.closeFunction);
 				}
