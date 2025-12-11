@@ -731,7 +731,6 @@ export class ChatHubModelsService {
 					},
 					createdAt: null,
 					updatedAt: null,
-					projectName: null,
 					metadata,
 				},
 			];

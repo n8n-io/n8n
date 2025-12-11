@@ -335,7 +335,6 @@ export class ChatHubWorkflowService {
 
 		// Find the owner's project (home project)
 		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
-		const projectName = ownerSharedWorkflow?.project?.name ?? null;
 
 		return {
 			name: agentName,
@@ -347,7 +346,6 @@ export class ChatHubWorkflowService {
 			},
 			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
 			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-			projectName,
 			metadata: {
 				inputModalities,
 				capabilities: {

@@ -37,7 +37,6 @@ export class ChatHubAgentService {
 				},
 				createdAt: agent.createdAt.toISOString(),
 				updatedAt: agent.updatedAt.toISOString(),
-				projectName: null,
 				metadata: getModelMetadata(agent.provider, agent.model),
 			})),
 		};

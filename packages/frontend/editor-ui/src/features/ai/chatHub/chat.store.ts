@@ -786,7 +786,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			icon: customAgent.icon,
 			createdAt: customAgent.createdAt,
 			updatedAt: customAgent.updatedAt,
-			projectName: null,
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
 				inputModalities: [],
@@ -860,7 +859,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			icon: fallback?.icon ?? null,
 			createdAt: null,
 			updatedAt: null,
-			projectName: null,
 			// Assume file attachment and tools are supported
 			metadata: {
 				inputModalities: ['text', 'file'],

@@ -239,7 +239,6 @@ export interface ChatModelDto {
 	icon: AgentIconOrEmoji | null;
 	updatedAt: string | null;
 	createdAt: string | null;
-	projectName: string | null;
 	metadata: ChatModelMetadataDto;
 }
 

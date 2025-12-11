@@ -226,7 +226,6 @@ const menu = computed(() => {
 					},
 					createdAt: '',
 					updatedAt: null,
-					projectName: null,
 					// Assume file attachment and tools are supported
 					metadata: {
 						inputModalities: ['text', 'image', 'audio', 'video', 'file'],
