@@ -19,7 +19,7 @@ const licenseMock = mock<LicenseState>();
 licenseMock.isLicensed.mockReturnValue(true);
 Container.set(LicenseState, licenseMock);
 
-process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
+process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
