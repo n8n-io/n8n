@@ -167,6 +167,7 @@ async function handlePublish() {
 
 	publishing.value = true;
 
+	/*
 	// Check for conflicting webhooks before activating
 	const conflictData = await workflowHelpers.checkConflictingWebhooks(workflowsStore.workflow.id);
 
@@ -186,6 +187,7 @@ async function handlePublish() {
 		publishing.value = false;
 		return;
 	}
+	*/
 
 	// Activate the workflow
 	const success = await workflowActivate.publishWorkflow(
