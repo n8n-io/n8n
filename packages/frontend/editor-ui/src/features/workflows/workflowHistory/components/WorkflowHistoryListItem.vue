@@ -9,7 +9,13 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nTooltip,
+	N8nBadge,
+	N8nPublishIndicator,
+	N8nText,
+} from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -155,8 +161,9 @@ onMounted(() => {
 		<!-- Timeline column -->
 		<span :class="$style.timelineColumn">
 			<template v-if="!props.isGrouped">
-				<N8nIcon v-if="props.isVersionActive" size="large" icon="circle-check" color="success" />
-				<span v-else :class="$style.timelineMarker" />
+				<N8nPublishIndicator v-if="props.isVersionActive" status="published" variant="dot" />
+				<N8nPublishIndicator v-else-if="!versionName" status="unpublished" variant="dot" />
+				<N8nPublishIndicator v-else status="draft" variant="dot" />
 			</template>
 			<span v-else :class="$style.timelineLine" />
 		</span>
@@ -169,7 +176,7 @@ onMounted(() => {
 						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
 							{{ versionName }}
 						</N8nText>
-						<N8nTooltip v-if="props.isVersionActive" placement="top" :disabled="!publishedAt">
+						<N8nTooltip v-if="props.isVersionActive" placement="bottom" :disabled="!publishedAt">
 							<template #content>
 								<div :class="$style.tooltipContent">
 									<N8nText size="small">
@@ -366,8 +373,8 @@ $hoverBackground: var(--color--background--light-1);
 }
 
 .publishedBadge {
-	background-color: var(--color--success);
-	color: var(--color--foreground--tint-2);
+	background-color: var(--color--mint-800);
+	color: var(--color--neutral-50);
 }
 
 .tooltipContent {

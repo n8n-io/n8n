@@ -18,8 +18,12 @@ defineEmits<{
 }>();
 
 const indicatorText = computed(() => {
-	if (props.status === 'published' || props.status === 'unpublished') {
+	if (props.status === 'published') {
 		return 'Published';
+	}
+
+	if (props.status === 'unpublished') {
+		return 'Update';
 	}
 	return 'Draft';
 });
@@ -38,7 +42,16 @@ const unpublishedChanges = computed(() => {
 			:class="$style.indicatorChangesText"
 			>Unpublished changes</N8nText
 		>
-		<div :class="$style.indicatorBadge" @click="$emit('click', $event)">
+		<div
+			:class="[
+				$style.indicatorBadge,
+				{
+					[$style.published]: props.status === 'published',
+					[$style.unpublished]: unpublishedChanges,
+				},
+			]"
+			@click="$emit('click', $event)"
+		>
 			<span
 				:class="[
 					$style.indicatorDot,
@@ -48,7 +61,7 @@ const unpublishedChanges = computed(() => {
 					},
 				]"
 			/>
-			<N8nText size="small" color="text-base" compact>{{ indicatorText }}</N8nText>
+			<N8nText size="small" bold compact>{{ indicatorText }}</N8nText>
 		</div>
 	</div>
 	<span
@@ -63,22 +76,21 @@ const unpublishedChanges = computed(() => {
 	/>
 </template>
 
-<style module>
+<style lang="scss" module>
 .indicatorDot {
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;
 	background-color: var(--color--foreground--shade-2);
 	display: inline-block;
-	margin-right: 8px;
-}
 
-.published {
-	background-color: var(--color--mint-600);
-}
+	&.published {
+		background-color: var(--color--mint-600);
+	}
 
-.unpublished {
-	background-color: var(--color--yellow-500);
+	&.unpublished {
+		background-color: var(--color--yellow-500);
+	}
 }
 
 .indicatorBadge {
@@ -90,6 +102,17 @@ const unpublishedChanges = computed(() => {
 	font-size: var(--font-size--sm);
 	font-weight: 500;
 	color: var(--color--text--base);
+	gap: 8px;
+
+	/* &.published {
+		background-color: var(--color--mint-900);
+		border-color: var(--color--mint-700);
+	}
+
+	&.unpublished {
+		background-color: var(--color--yellow-900);
+		border-color: var(--color--yellow-700);
+	} */
 }
 
 .indicatorChangesText {
