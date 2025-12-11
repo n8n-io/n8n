@@ -1,4 +1,5 @@
 import isbot from 'isbot';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -28,6 +29,7 @@ import {
 	prepareFormData,
 	prepareFormReturnItem,
 	resolveRawData,
+	sanitizeHtml,
 } from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 
@@ -337,6 +339,7 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 		formDescription = options.responseFormDescription;
 	}
 	formDescription = formDescription.replace(/\\n/g, '\n').replace(/<br>/g, '\n');
+	formDescription = sanitizeHtml(formDescription);
 
 	let buttonLabel = 'Submit';
 	if (options.responseFormButtonLabel) {
@@ -390,6 +393,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -443,6 +447,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
