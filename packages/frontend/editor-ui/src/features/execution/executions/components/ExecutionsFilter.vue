@@ -25,8 +25,11 @@ import {
 	N8nSelect,
 	N8nTooltip,
 } from '@n8n/design-system';
+
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
+	popoverSide?: 'top' | 'right' | 'bottom' | 'left';
+	popoverAlign?: 'start' | 'center' | 'end';
 	teleported?: boolean;
 };
 
@@ -40,6 +43,8 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	workflows: () => [] as Array<IWorkflowDb | IWorkflowShortResponse>,
+	popoverSide: 'bottom',
+	popoverAlign: 'center',
 	teleported: true,
 });
 const emit = defineEmits<{
@@ -166,7 +171,13 @@ onBeforeMount(() => {
 });
 </script>
 <template>
-	<N8nPopover side="bottom" width="440px" :content-class="$style['popover-content']">
+	<N8nPopover
+		:side="props.popoverSide"
+		:align="props.popoverAlign"
+		width="440px"
+		:content-class="$style['popover-content']"
+		show-arrow
+	>
 		<template #trigger>
 			<N8nButton
 				icon="funnel"

@@ -215,5 +215,7 @@ watch(
 
 .popoverArrow {
 	fill: var(--color--foreground--tint-2);
+	stroke: var(--color--foreground);
+	stroke-width: 1px;
 }
 </style>
