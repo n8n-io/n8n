@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 
 const renderComponent = createComponentRenderer(GlobalExecutionsListItemQueuedTooltip);
@@ -34,7 +35,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 		await userEvent.hover(getByText('Waiting'));
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/waiting indefinitely/);
 		});
 	});
@@ -53,7 +54,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 		await userEvent.hover(getByText('Queued'));
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/instance is limited/);
 			expect(tooltip).toHaveTextContent('View docs');
 		});
@@ -75,7 +76,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 
 		let tooltipElement: HTMLElement | null = null;
 		await waitFor(() => {
-			tooltipElement = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			tooltipElement = getTooltip();
 			expect(tooltipElement).toHaveTextContent(/plan is limited/);
 			expect(tooltipElement).toHaveTextContent('Upgrade now');
 		});

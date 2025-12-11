@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { ITaskData } from 'n8n-workflow';
 import RunInfo from './RunInfo.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -72,7 +73,7 @@ describe('RunInfo', () => {
 		await userEvent.hover(infoIconSvg!);
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Success');
 			expect(tooltip).toHaveTextContent('Start time:');
 			expect(tooltip).toHaveTextContent('Jan 15 at 10:30:00');
@@ -115,7 +116,7 @@ describe('RunInfo', () => {
 		await userEvent.hover(infoIconSvg!);
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Canceled');
 			expect(tooltip).toHaveTextContent('Start time:');
 			expect(tooltip).toHaveTextContent('Jan 15 at 10:30:00');
@@ -164,7 +165,7 @@ describe('RunInfo', () => {
 		await userEvent.hover(infoIconSvg!);
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Failed');
 			expect(tooltip).toHaveTextContent('Start time:');
 			expect(tooltip).toHaveTextContent('Jan 15 at 10:30:00');

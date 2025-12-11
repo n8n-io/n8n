@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { cleanup, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, queryTooltip } from '@/__tests__/utils';
 import RunDataPinButton from '@/features/ndv/runData/components/RunDataPinButton.vue';
 import { STORES } from '@n8n/stores';
 import type { usePinnedData } from '@/app/composables/usePinnedData';
@@ -40,18 +41,16 @@ describe('RunDataPinButton.vue', () => {
 	beforeEach(cleanup);
 
 	it('shows default tooltip content only on button hover', async () => {
-		const { getByRole, emitted, baseElement } = renderComponent();
+		const { getByRole, emitted } = renderComponent();
 
 		expect(getByRole('button')).toBeEnabled();
 		// Verify tooltip is not visible before hover
-		expect(
-			baseElement.ownerDocument.querySelector('[data-dismissable-layer]'),
-		).not.toBeInTheDocument();
+		expect(queryTooltip()).not.toBeInTheDocument();
 
 		await userEvent.hover(getByRole('button'));
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('More info');
 		});
 
@@ -60,7 +59,7 @@ describe('RunDataPinButton.vue', () => {
 	});
 
 	it('shows binary data tooltip content only on disabled button hover', async () => {
-		const { getByRole, emitted, baseElement } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: {
 				tooltipContentsVisibility: {
 					binaryDataTooltipContent: true,
@@ -72,14 +71,12 @@ describe('RunDataPinButton.vue', () => {
 
 		expect(getByRole('button')).toBeDisabled();
 		// Verify tooltip is not visible before hover
-		expect(
-			baseElement.ownerDocument.querySelector('[data-dismissable-layer]'),
-		).not.toBeInTheDocument();
+		expect(queryTooltip()).not.toBeInTheDocument();
 
 		await userEvent.hover(getByRole('button'));
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/disabled/);
 		});
 
@@ -98,14 +95,14 @@ describe('RunDataPinButton.vue', () => {
 		});
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/instead of waiting/);
 		});
 		expect(getByRole('button')).toBeEnabled();
 
 		await userEvent.hover(getByRole('button'));
 
-		const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+		const tooltip = getTooltip();
 		expect(tooltip).toHaveTextContent(/instead of waiting/);
 	});
 
@@ -121,14 +118,14 @@ describe('RunDataPinButton.vue', () => {
 		});
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/disabled/);
 		});
 		expect(getByRole('button')).toBeDisabled();
 
 		await userEvent.hover(getByRole('button'));
 
-		const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+		const tooltip = getTooltip();
 		expect(tooltip).toHaveTextContent(/disabled/);
 	});
 
@@ -137,7 +134,7 @@ describe('RunDataPinButton.vue', () => {
 		// Should show 'Pin data' tooltip and emit togglePinData event
 		await userEvent.hover(getByTestId('ndv-pin-data'));
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/Pin data/);
 		});
 		await userEvent.click(getByTestId('ndv-pin-data'));
@@ -155,7 +152,7 @@ describe('RunDataPinButton.vue', () => {
 		// Should show 'Unpin data' tooltip and emit togglePinData event
 		await userEvent.hover(getByTestId('ndv-pin-data'));
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(/Unpin data/);
 		});
 		await userEvent.click(getByTestId('ndv-pin-data'));

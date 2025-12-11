@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, mockedStore } from '@/__tests__/utils';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
 import {
 	createTestWorkflowObject,
 	createTestNode,
@@ -158,7 +158,7 @@ describe('ParameterInputList', () => {
 		await userEvent.hover(issueIcon!);
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(TEST_ISSUE);
 		});
 	});
@@ -1159,7 +1159,7 @@ describe('ParameterInputList', () => {
 			await userEvent.hover(issueIcon!);
 
 			await waitFor(() => {
-				const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+				const tooltip = getTooltip();
 				expect(tooltip).toHaveTextContent(TEST_ISSUE);
 			});
 		});
@@ -1195,7 +1195,7 @@ describe('ParameterInputList', () => {
 			await userEvent.hover(issueIcon!);
 
 			await waitFor(() => {
-				const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+				const tooltip = getTooltip();
 				expect(tooltip).toHaveTextContent(TEST_ISSUE);
 			});
 		});

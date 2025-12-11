@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 
 const baseUser: UsersList['items'][number] = {
 	id: '1',
@@ -72,7 +73,7 @@ describe('SettingsUsersProjectsCell', () => {
 				],
 			},
 		};
-		const { baseElement } = renderComponent({ props });
+		renderComponent({ props });
 
 		// Visible projects
 		expect(screen.getByText('Project A')).toBeInTheDocument();
@@ -86,9 +87,9 @@ describe('SettingsUsersProjectsCell', () => {
 
 		// Projects inside the tooltip content
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toBeInTheDocument();
-			const list = within(tooltip as HTMLElement).getByRole('list');
+			const list = within(tooltip).getByRole('list');
 			expect(within(list).getByText('Project C')).toBeInTheDocument();
 			expect(within(list).getByText('Project D')).toBeInTheDocument();
 		});

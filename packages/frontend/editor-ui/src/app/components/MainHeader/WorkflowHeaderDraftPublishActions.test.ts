@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
@@ -181,12 +181,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			// Hover on the SVG to show the tooltip
 			await userEvent.hover(svgTrigger as Element);
 
-			// Wait for tooltip content to appear (Reka UI uses data-dismissable-layer attribute)
+			// Wait for tooltip content to appear
 			await waitFor(() => {
-				const tooltip = document.querySelector('[data-dismissable-layer]');
+				const tooltip = getTooltip();
 				expect(tooltip).toBeInTheDocument();
 				// TimeAgo component has a title attribute with the full date
-				const timeAgoElement = tooltip?.querySelector('[title]');
+				const timeAgoElement = tooltip.querySelector('[title]');
 				expect(timeAgoElement).toHaveAttribute('title', expect.stringContaining('Jun'));
 			});
 		});

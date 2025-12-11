@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, queryTooltip } from '@/__tests__/utils';
 import CanvasRunWorkflowButton from './CanvasRunWorkflowButton.vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -60,10 +61,6 @@ describe('CanvasRunWorkflowButton', () => {
 		const wrapper = renderComponent({ props: { executing: false } });
 		await userEvent.hover(wrapper.getByRole('button'));
 
-		function getTooltip() {
-			return wrapper.baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
-		}
-
 		await waitFor(() => expect(getTooltip()).toBeInTheDocument());
 	});
 
@@ -71,13 +68,9 @@ describe('CanvasRunWorkflowButton', () => {
 		const wrapper = renderComponent({ props: { executing: true } });
 		await userEvent.hover(wrapper.getByRole('button'));
 
-		function getTooltip() {
-			return wrapper.baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
-		}
-
 		// Wait longer than showAfter (500ms) then verify tooltip didn't appear
 		await new Promise((r) => setTimeout(r, 600));
-		expect(getTooltip()).not.toBeInTheDocument();
+		expect(queryTooltip()).not.toBeInTheDocument();
 	});
 
 	it('should render split button if multiple triggers are available', () => {

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { AI_TRANSFORM_NODE_TYPE, AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT } from 'n8n-workflow';
@@ -237,7 +237,7 @@ describe('NodeExecuteButton', () => {
 		await userEvent.hover(button);
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Enable node to execute');
 		});
 	});
@@ -257,7 +257,7 @@ describe('NodeExecuteButton', () => {
 		await userEvent.hover(button);
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Workflow is already running');
 		});
 	});

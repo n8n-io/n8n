@@ -1,5 +1,6 @@
 import CanvasNodeTooltip from './CanvasNodeTooltip.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { queryTooltip } from '@/__tests__/utils';
 import type { CanvasNodeDefaultRender } from '../../../../../canvas.types';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
@@ -27,7 +28,7 @@ describe('CanvasNodeTooltip', () => {
 			});
 
 			await waitFor(() => {
-				const tooltipContent = container.querySelector('[data-dismissable-layer]');
+				const tooltipContent = queryTooltip();
 				expect(tooltipContent).toBeVisible();
 				expect(tooltipContent).toHaveTextContent('Test tooltip text');
 			});
@@ -51,7 +52,7 @@ describe('CanvasNodeTooltip', () => {
 				},
 			});
 
-			expect(container.querySelector('[data-dismissable-layer]')).not.toBeInTheDocument();
+			expect(queryTooltip()).not.toBeInTheDocument();
 		});
 	});
 });

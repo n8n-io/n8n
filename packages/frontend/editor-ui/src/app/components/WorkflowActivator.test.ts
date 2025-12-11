@@ -7,7 +7,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, mockedStore } from '@/__tests__/utils';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useToast } from '@/app/composables/useToast';
@@ -71,7 +71,7 @@ describe('WorkflowActivator', () => {
 		await userEvent.hover(getByRole('switch'));
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(
 				'This workflow has no trigger nodes that require activation',
 			);
@@ -288,7 +288,7 @@ describe('WorkflowActivator', () => {
 		await userEvent.hover(getByRole('switch'));
 
 		await waitFor(() => {
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('This workflow is archived so it cannot be activated');
 		});
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');

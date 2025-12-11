@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
 import { workflowHistoryDataFactory } from '../__tests__/utils';
@@ -43,7 +44,7 @@ describe('WorkflowHistoryListItem', () => {
 		await userEvent.hover(authorsTag);
 		await waitFor(() => {
 			// Tooltip shows all author names
-			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent(authors[1]);
 		});
 
