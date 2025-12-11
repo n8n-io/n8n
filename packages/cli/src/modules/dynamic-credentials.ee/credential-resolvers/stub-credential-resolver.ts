@@ -110,6 +110,6 @@ export class StubCredentialResolver implements ICredentialResolver {
 	}
 
 	async validateIdentity(_identity: string, _handle: CredentialResolverHandle): Promise<void> {
-		return Promise.resolve();
+		return;
 	}
 }

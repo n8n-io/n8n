@@ -84,7 +84,7 @@ describe('StubCredentialResolver', () => {
 			const resolver = new StubCredentialResolver(mockLogger);
 			const identity = 'test-identity';
 			const handle = testHelpers.createHandle({});
-			expect(resolver.validateIdentity(identity, handle)).resolves.toBeUndefined();
+			await expect(resolver.validateIdentity(identity, handle)).resolves.toBeUndefined();
 		});
 	});
 });
