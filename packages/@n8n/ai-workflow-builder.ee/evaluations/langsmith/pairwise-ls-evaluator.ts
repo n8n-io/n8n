@@ -1,5 +1,5 @@
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
-import type { Run, Example } from 'langsmith/schemas';
+import type { Run } from 'langsmith/schemas';
 
 import { METRIC_KEYS } from '../constants';
 import { isPairwiseTargetOutput } from '../types/pairwise';
@@ -157,7 +157,8 @@ export function buildMultiGenerationResults(
  * This avoids 403 errors from nested traceable calls in evaluator context.
  */
 export function createPairwiseLangsmithEvaluator() {
-	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
+	// Second parameter is the LangSmith Example but we don't need it
+	return async (rootRun: Run): Promise<LangsmithEvaluationResult[]> => {
 		const outputs = rootRun.outputs;
 
 		if (!isPairwiseTargetOutput(outputs)) {

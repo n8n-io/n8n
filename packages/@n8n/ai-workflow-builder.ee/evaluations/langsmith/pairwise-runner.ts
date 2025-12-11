@@ -57,13 +57,13 @@ function filterExamples(
 }
 
 /** Log enabled feature flags */
-function logFeatureFlags(featureFlags?: BuilderFeatureFlags): void {
+function logFeatureFlags(log: EvalLogger, featureFlags?: BuilderFeatureFlags): void {
 	if (!featureFlags) return;
 	const enabledFlags = Object.entries(featureFlags)
 		.filter(([, v]) => v === true)
 		.map(([k]) => k);
 	if (enabledFlags.length > 0) {
-		console.log(pc.green(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`));
+		log.success(`➔ Feature flags enabled: ${enabledFlags.join(', ')}`);
 	}
 }
 
@@ -137,7 +137,7 @@ export async function runPairwiseLangsmithEvaluation(
 		concurrency,
 	});
 
-	logFeatureFlags(featureFlags);
+	logFeatureFlags(log, featureFlags);
 
 	try {
 		// Validate inputs

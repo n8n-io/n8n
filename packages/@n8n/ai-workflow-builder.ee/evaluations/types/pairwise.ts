@@ -7,10 +7,7 @@ import type { EvalCriteria } from '../utils/judge-panel';
 // ============================================================================
 
 export interface PairwiseDatasetInput {
-	evals: {
-		dos: string;
-		donts: string;
-	};
+	evals: EvalCriteria;
 	prompt: string;
 }
 
