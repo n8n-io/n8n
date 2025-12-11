@@ -97,6 +97,8 @@ export type ContentBlock =
 export type RequestResponseMetadata = {
 	/** Item index being processed */
 	itemIndex?: number;
+	/** Custom parent node name for log tree structure (overrides default parent) */
+	parentNodeName?: string;
 	/** Previous tool call requests (for multi-turn conversations) */
 	previousRequests?: ToolCallData[];
 	/** Current iteration count (for max iterations enforcement) */
@@ -115,23 +117,14 @@ export type RequestResponseMetadata = {
 		/** Cryptographic signature for thinking blocks */
 		thinkingSignature?: string;
 	};
-	/** HITL (Human-in-the-Loop) metadata */
+	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
 	hitl?: {
-		/** Whether this is an HITL tool action */
-		isHitlTool: boolean;
-		/** The original source node name (gated tool) */
-		originalSourceNodeName: string;
+		/** The gated tool node name that will be executed after approval */
+		gatedToolNodeName: string;
 		/** The tool name as seen by the LLM */
 		toolName: string;
 		/** Original input for the gated tool */
 		originalInput: IDataObject;
-	};
-	/** HITL approval follow-up metadata (for gated tool execution after approval) */
-	hitlApprovalFollowUp?: {
-		/** The original HITL action ID */
-		originalHitlActionId: string;
-		/** The HITL tool name that was approved */
-		hitlToolName: string;
 	};
 };
 

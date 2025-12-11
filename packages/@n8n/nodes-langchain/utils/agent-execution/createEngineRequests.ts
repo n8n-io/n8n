@@ -102,8 +102,7 @@ export async function createEngineRequests(
 					// HITL metadata for handling approval flow
 					...(isHitlTool && {
 						hitl: {
-							isHitlTool: true,
-							originalSourceNodeName,
+							gatedToolNodeName: originalSourceNodeName,
 							toolName: toolCall.tool,
 							originalInput: toolCall.toolInput as IDataObject,
 						},

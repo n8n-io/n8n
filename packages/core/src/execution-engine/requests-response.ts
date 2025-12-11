@@ -56,13 +56,18 @@ function prepareRequestedNodesForExecution(
 			// tools always have only one input
 			index: 0,
 		};
-		// Gated tools (from HITL approval) are children of the AI Agent (currentNode),
-		// just like HITL tools themselves. This ensures consistent display in the logs panel.
-		const parentNode = currentNode.name;
+		// Allow metadata to specify a custom parent node for log tree structure
+		// This is used for HITL gated tools to display them under the HITL node
+		const actionMetadata = action.metadata as { parentNodeName?: string } | undefined;
+		const parentNode = actionMetadata?.parentNodeName ?? currentNode.name;
 		const parentSourceData = executionData.source?.main?.[runIndex];
 		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
-		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
 		const parentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
+		// For nodes with custom parent (e.g., HITL gated tools), get the parent node's run index from runData
+		// For regular tools, use the source data's run index
+		const parentRunIndex = actionMetadata?.parentNodeName
+			? (runData[parentNode]?.length ?? 1) - 1
+			: (parentSourceData?.previousNodeRun ?? 0);
 
 		// Get the item index from action metadata to access the correct agent input data
 		const itemIndex = (action.metadata as { itemIndex?: number })?.itemIndex ?? 0;
@@ -99,18 +104,17 @@ function prepareRequestedNodesForExecution(
 		const nodeRunIndex = nodeRunData.length;
 
 		// TODO: Remove when AI-723 lands.
+		const sourceData = {
+			previousNode: parentNode,
+			previousNodeOutput: parentOutputIndex,
+			previousNodeRun: actionMetadata?.parentNodeName ? parentRunIndex : runIndex,
+		};
 		nodeRunData.push({
 			// Necessary for the log on the canvas.
 			inputOverride: { ai_tool: parentOutputData },
-			// Source must point to the parent node (AI Agent) for the frontend logs panel
+			// Source must point to the parent node for the frontend logs panel
 			// to correctly display this sub-node under the parent.
-			source: [
-				{
-					previousNode: parentNode,
-					previousNodeOutput: parentOutputIndex,
-					previousNodeRun: runIndex,
-				},
-			],
+			source: [sourceData],
 			executionIndex: 0,
 			executionTime: 0,
 			startTime: 0,
@@ -121,7 +125,9 @@ function prepareRequestedNodesForExecution(
 			parentOutputIndex: 0, // Tools connect to agent's output 0 (agents have only one main output)
 			parentNode,
 			parentOutputData,
-			runIndex,
+			// Use parentRunIndex when custom parent is set to preserve previousNodeRun value
+			// (avoid 0 being converted to undefined by || undefined pattern)
+			runIndex: actionMetadata?.parentNodeName ? parentRunIndex : runIndex,
 			nodeRunIndex,
 			metadata: { preserveSourceOverwrite: true },
 		});

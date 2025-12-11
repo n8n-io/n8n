@@ -213,8 +213,25 @@ export class WaitingWebhooks implements IWebhookManager {
 			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 		}
 
+		// Preserve inputOverride before popping (needed for tool nodes like HITL to show input in logs)
+		const runDataArray = execution.data.resultData.runData[lastNodeExecuted];
+		const entryToPop = runDataArray[runDataArray.length - 1];
+		const preservedInputOverride = entryToPop?.inputOverride;
+
 		// Remove the data of the node execution again else it will display the node as executed twice
-		execution.data.resultData.runData[lastNodeExecuted].pop();
+		runDataArray.pop();
+
+		// If we preserved inputOverride, create a placeholder entry so it can be retrieved
+		// when the node resumes and the taskData is created
+		if (preservedInputOverride) {
+			runDataArray.push({
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: 0,
+				source: entryToPop?.source ?? [],
+				inputOverride: preservedInputOverride,
+			});
+		}
 
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);

@@ -476,8 +476,8 @@ export class WorkflowExecute {
 					waitingNodeIndex
 				].main[connectionData.index] = {
 					previousNode: parentNodeName,
-					previousNodeOutput: outputIndex || undefined,
-					previousNodeRun: runIndex || undefined,
+					previousNodeOutput: outputIndex ?? undefined,
+					previousNodeRun: runIndex ?? undefined,
 				};
 			}
 
@@ -712,8 +712,8 @@ export class WorkflowExecute {
 									main: [
 										{
 											previousNode: parentNodeName,
-											previousNodeOutput: outputIndex || undefined,
-											previousNodeRun: runIndex || undefined,
+											previousNodeOutput: outputIndex ?? undefined,
+											previousNodeRun: runIndex ?? undefined,
 										},
 									],
 								},
@@ -783,8 +783,8 @@ export class WorkflowExecute {
 					main: [
 						{
 							previousNode: parentNodeName,
-							previousNodeOutput: outputIndex || undefined,
-							previousNodeRun: runIndex || undefined,
+							previousNodeOutput: outputIndex ?? undefined,
+							previousNodeRun: runIndex ?? undefined,
 						},
 					],
 				},
@@ -1901,7 +1901,7 @@ export class WorkflowExecute {
 						// TODO: Remove when AI-723 lands.
 						// Try to get inputOverride from existing run data
 						taskData.inputOverride =
-							this.runExecutionData.resultData.runData[executionNode.name][runIndex]
+							this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]
 								?.inputOverride || {};
 						taskData.data = {
 							[executionNode.rewireOutputLogTo]: nodeSuccessData,

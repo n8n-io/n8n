@@ -1,4 +1,4 @@
-import { NodeConnectionTypes, LoggerProxy } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { EngineResponse, EngineRequest, IDataObject, ExecuteNodeResult } from 'n8n-workflow';
 
 import type { RequestResponseMetadata } from './types';
@@ -29,7 +29,7 @@ function isHitlActionResponse(
 	action: { metadata: RequestResponseMetadata & { hitl: HitlMetadata } };
 } {
 	const hitl = (actionResponse.action?.metadata as { hitl?: HitlMetadata } | undefined)?.hitl;
-	return !!hitl?.isHitlTool;
+	return hitl !== undefined;
 }
 
 /**
@@ -101,17 +101,14 @@ export function processHitlResponses(
 
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,
-				nodeName: hitl.originalSourceNodeName,
+				nodeName: hitl.gatedToolNodeName,
 				input: hitl.originalInput,
 				type: NodeConnectionTypes.AiTool,
 				id: `hitl_approved_${actionResponse.action.id}`,
 				metadata: {
 					itemIndex,
-					// Mark this as a follow-up from HITL approval (for debugging/logging)
-					hitlApprovalFollowUp: {
-						originalHitlActionId: actionResponse.action.id,
-						hitlToolName: hitl.toolName,
-					},
+					// Set the parent node to the HITL node for proper log tree structure
+					parentNodeName: actionResponse.action.nodeName,
 				},
 			});
 
