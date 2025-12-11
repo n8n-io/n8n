@@ -3,12 +3,7 @@ import { type ApiKey, type AuthenticatedRequest, WorkflowEntity, User, Role } fr
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-	type INode,
-} from 'n8n-workflow';
+import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { ListQuery } from '@/requests';
