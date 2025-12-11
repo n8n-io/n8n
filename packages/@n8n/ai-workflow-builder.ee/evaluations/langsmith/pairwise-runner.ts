@@ -3,13 +3,13 @@ import type { Example } from 'langsmith/schemas';
 import pc from 'picocolors';
 
 import { createPairwiseTarget, generateWorkflow } from './pairwise-generator';
-import { createPairwiseLangsmithEvaluator, evaluateWorkflowLocally } from './pairwise-ls-evaluator';
+import { createPairwiseLangsmithEvaluator } from './pairwise-ls-evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
-import { aggregateGenerations, type GenerationResult } from '../utils/judge-panel';
+import { aggregateGenerations, runJudgePanel, type GenerationResult } from '../utils/judge-panel';
 import { createLogger, type EvalLogger } from '../utils/logger';
 
 // ============================================================================
@@ -23,26 +23,6 @@ function getNotionId(metadata: unknown): string | undefined {
 		return typeof id === 'string' ? id : undefined;
 	}
 	return undefined;
-}
-
-/**
- * Enrich examples by injecting notion_id from metadata into inputs.
- * This allows the target function to access notion_id for tracing.
- */
-function enrichExamplesWithNotionId(examples: Example[]): Example[] {
-	return examples.map((example) => {
-		const notionId = getNotionId(example.metadata);
-		if (notionId && example.inputs) {
-			return {
-				...example,
-				inputs: {
-					...example.inputs,
-					notion_id: notionId,
-				},
-			};
-		}
-		return example;
-	});
 }
 
 /** Filter examples by notion_id or limit count */
@@ -196,7 +176,7 @@ export async function runPairwiseLangsmithEvaluation(
 			throw new Error(`Dataset "${datasetName}" not found`);
 		}
 
-		// Always fetch examples to inject notion_id from metadata into inputs for tracing
+		// Fetch and filter examples
 		const allExamples: Example[] = [];
 		log.verbose('➔ Fetching examples from dataset...');
 		for await (const example of lsClient.listExamples({ datasetId })) {
@@ -204,10 +184,7 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		// Filter if needed, then enrich with notion_id
-		const filteredExamples = filterExamples(allExamples, notionId, maxExamples, log);
-		const data = enrichExamplesWithNotionId(filteredExamples);
-
+		const data = filterExamples(allExamples, notionId, maxExamples, log);
 		log.info(`➔ Running ${data.length} example(s) × ${repetitions} rep(s)`);
 
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
@@ -332,7 +309,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				);
 
 				// Run judge panel
-				const panelResult = await evaluateWorkflowLocally(llm, workflow, criteria, numJudges);
+				const panelResult = await runJudgePanel(llm, workflow, criteria, numJudges);
 
 				log.verbose(
 					`  Gen ${genIndex + 1}: ${panelResult.majorityPass ? '✓ PASS' : '✗ FAIL'} (${panelResult.primaryPasses}/${numJudges} judges, ${(panelResult.avgDiagnosticScore * 100).toFixed(0)}%)`,

@@ -42,7 +42,7 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
-			const { prompt, evals: evalCriteria, notion_id: notionId } = inputs;
+			const { prompt, evals: evalCriteria } = inputs;
 
 			// Generate ALL workflows and run judges in parallel
 			const generationResults: GenerationResult[] = await Promise.all(
@@ -56,7 +56,6 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 							run_type: 'chain',
 							metadata: {
 								...(experimentName && { experiment_name: experimentName }),
-								...(notionId && { notion_id: notionId }),
 							},
 						},
 					);
@@ -64,7 +63,6 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
 						generationIndex,
 						experimentName,
-						notionId,
 					});
 					return { workflow, ...panelResult };
 				}),

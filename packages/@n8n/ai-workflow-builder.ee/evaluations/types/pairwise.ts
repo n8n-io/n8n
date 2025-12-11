@@ -12,8 +12,6 @@ export interface PairwiseDatasetInput {
 		donts: string;
 	};
 	prompt: string;
-	/** Optional notion_id from dataset for tracing */
-	notion_id?: string;
 }
 
 export interface PairwiseTargetOutput {

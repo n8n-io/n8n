@@ -1,16 +1,9 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
 import { METRIC_KEYS } from '../constants';
 import { isPairwiseTargetOutput } from '../types/pairwise';
-import {
-	runJudgePanel,
-	type JudgePanelResult,
-	type MultiGenerationAggregation,
-	type EvalCriteria,
-} from '../utils/judge-panel';
+import type { JudgePanelResult, MultiGenerationAggregation } from '../utils/judge-panel';
 
 // ============================================================================
 // Result Builders
@@ -180,17 +173,4 @@ export function createPairwiseLangsmithEvaluator() {
 
 		return outputs.feedback;
 	};
-}
-
-/**
- * Run evaluation locally (without LangSmith).
- * Executes judge panel and returns results.
- */
-export async function evaluateWorkflowLocally(
-	llm: BaseChatModel,
-	workflow: SimpleWorkflow,
-	evalCriteria: EvalCriteria,
-	numJudges: number,
-): Promise<JudgePanelResult> {
-	return await runJudgePanel(llm, workflow, evalCriteria, numJudges);
 }
