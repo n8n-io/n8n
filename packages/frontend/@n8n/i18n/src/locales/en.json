@@ -2392,6 +2392,7 @@
 	"settings.mcp.workflows.table.empty.button.label": "Find workflows",
 	"settings.mcp.oauth.table.empty.title": "No OAuth clients connected",
 	"settings.mcp.oauth.table.empty.description": "Clients that connect via OAuth will show up here",
+	"settings.mcp.oauth.table.empty.button": "See connection instructions",
 	"settings.mcp.toggle.disabled.tooltip": "Only instance admins can change this",
 	"settings.mcp.toggle.error": "Error updating MCP access",
 	"settings.mcp.instructions.rotateKey.tooltip": "Generate new token.<br/>This one will be automatically revoked",
