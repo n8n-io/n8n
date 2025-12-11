@@ -161,63 +161,70 @@ onMounted(() => {
 			<span v-else :class="$style.timelineLine" />
 		</span>
 
-		<div :class="$style.content">
-			<!-- Named version: show name + badge on first row, author + time on second -->
-			<template v-if="versionName">
-				<div :class="$style.mainRow">
-					<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
-						{{ versionName }}
-					</N8nText>
-					<N8nTooltip v-if="props.isVersionActive" placement="top" :disabled="!publishedAt">
-						<template #content>
-							<div :class="$style.tooltipContent">
-								<N8nText size="small">
-									{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
-									{{ publishedAt }}
-								</N8nText>
-								<N8nText v-if="publishedByUserName" size="small">
-									{{ publishedByUserName }}
-								</N8nText>
-							</div>
-						</template>
-						<N8nBadge size="xsmall" :class="$style.publishedBadge" :show-border="false">
-							{{ i18n.baseText('workflowHistory.item.active') }}
-						</N8nBadge>
-					</N8nTooltip>
-				</div>
-				<div :class="$style.metaRow">
+		<div :class="$style.wrapper">
+			<div :class="$style.content">
+				<!-- Named version: show name + badge on first row, author + time on second -->
+				<template v-if="versionName">
+					<div :class="$style.mainRow">
+						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
+							{{ versionName }}
+						</N8nText>
+						<N8nTooltip v-if="props.isVersionActive" placement="top" :disabled="!publishedAt">
+							<template #content>
+								<div :class="$style.tooltipContent">
+									<N8nText size="small">
+										{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
+										{{ publishedAt }}
+									</N8nText>
+									<N8nText v-if="publishedByUserName" size="small">
+										{{ publishedByUserName }}
+									</N8nText>
+								</div>
+							</template>
+							<N8nBadge size="xsmall" :class="$style.publishedBadge" :show-border="false">
+								{{ i18n.baseText('workflowHistory.item.active') }}
+							</N8nBadge>
+						</N8nTooltip>
+					</div>
+					<div :class="$style.metaRow">
+						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
+							<template #content>{{ props.item.authors }}</template>
+							<N8nText ref="authorElement" size="small" color="text-light" :class="$style.metaItem">
+								{{ authors.label }},
+							</N8nText>
+						</N8nTooltip>
+						<N8nText tag="time" size="small" color="text-light" :class="$style.metaItem">
+							{{ formattedCreatedAt }}
+						</N8nText>
+					</div>
+				</template>
+				<!-- Unnamed version: show author and time on single row -->
+				<div v-else :class="$style.unnamedRow">
 					<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
 						<template #content>{{ props.item.authors }}</template>
-						<N8nText ref="authorElement" size="small" color="text-light" :class="$style.metaItem">
+						<N8nText
+							ref="authorElement"
+							size="small"
+							color="text-base"
+							:class="$style.unnamedAuthor"
+						>
 							{{ authors.label }},
 						</N8nText>
 					</N8nTooltip>
-					<N8nText tag="time" size="small" color="text-light" :class="$style.metaItem">
+					<N8nText tag="time" size="small" color="text-light" :class="$style.unnamedTime">
 						{{ formattedCreatedAt }}
 					</N8nText>
 				</div>
-			</template>
-			<!-- Unnamed version: show author and time on single row -->
-			<div v-else :class="$style.unnamedRow">
-				<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
-					<template #content>{{ props.item.authors }}</template>
-					<N8nText ref="authorElement" size="small" color="text-base" :class="$style.unnamedAuthor">
-						{{ authors.label }},
-					</N8nText>
-				</N8nTooltip>
-				<N8nText tag="time" size="small" color="text-light" :class="$style.unnamedTime">
-					{{ formattedCreatedAt }}
-				</N8nText>
 			</div>
+			<N8nActionToggle
+				:class="$style.actions"
+				:actions="props.actions"
+				placement="bottom-end"
+				@action="onAction"
+				@click.stop
+				@visible-change="onVisibleChange"
+			/>
 		</div>
-		<N8nActionToggle
-			:class="$style.actions"
-			:actions="props.actions"
-			placement="bottom-end"
-			@action="onAction"
-			@click.stop
-			@visible-change="onVisibleChange"
-		/>
 	</li>
 </template>
 <style module lang="scss">
@@ -225,6 +232,7 @@ onMounted(() => {
 
 $timelineMarkerDiameter: 13px;
 $timelineMarkerBorderWidth: 1.33px;
+$hoverBackground: var(--color--foreground--tint-1);
 
 .item {
 	display: flex;
@@ -236,9 +244,11 @@ $timelineMarkerBorderWidth: 1.33px;
 	border-radius: var(--radius);
 	cursor: pointer;
 
-	&.selected,
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
+	&:not(.grouped) {
+		&.selected,
+		&:hover {
+			background-color: $hoverBackground;
+		}
 	}
 
 	margin-top: var(--spacing--lg);
@@ -255,7 +265,22 @@ $timelineMarkerBorderWidth: 1.33px;
 	// Grouped items have smaller gap with line going through
 	&.grouped {
 		margin-top: var(--spacing--xs);
+
+		.wrapper {
+			border-radius: var(--radius);
+		}
+
+		&.selected .wrapper,
+		&:hover .wrapper {
+			background-color: $hoverBackground;
+		}
 	}
+}
+
+.wrapper {
+	display: flex;
+	flex: 1;
+	align-items: center;
 }
 
 .timelineColumn {

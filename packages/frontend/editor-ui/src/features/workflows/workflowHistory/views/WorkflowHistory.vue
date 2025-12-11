@@ -2,7 +2,6 @@
 import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
 import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
