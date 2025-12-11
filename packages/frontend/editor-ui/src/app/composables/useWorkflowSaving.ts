@@ -30,6 +30,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 export function useWorkflowSaving({
 	router,
@@ -47,6 +48,7 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
+	const builderStore = useBuilderStore();
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -219,6 +221,9 @@ export function useWorkflowSaving({
 			}
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
+			// Check if AI Builder made edits since last save
+			workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
+			workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
 
 			const deactivateReason = await getWorkflowDeactivationInfo(
 				currentWorkflow,
@@ -240,6 +245,9 @@ export function useWorkflowSaving({
 				forceSave,
 			);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			if (workflowData.checksum) {
+				workflowsStore.setWorkflowChecksum(workflowData.checksum);
+			}
 
 			if (name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
@@ -254,6 +262,9 @@ export function useWorkflowSaving({
 			uiStore.stateIsDirty = false;
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
+
+			// Reset AI Builder edits flag only after successful save
+			builderStore.resetAiBuilderMadeEdits();
 
 			return true;
 		} catch (error) {

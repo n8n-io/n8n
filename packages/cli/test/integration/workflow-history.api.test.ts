@@ -1,5 +1,5 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { User, WorkflowHistory } from '@n8n/db';
 
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflowHistoryItem } from './shared/db/workflow-history';
@@ -149,31 +149,52 @@ describe('GET /workflow-history/:workflowId', () => {
 		expect(resp.body.data).toHaveLength(5);
 		expect(resp.body.data[0]).toEqual(last);
 	});
+
 	test('should include workflowPublishHistory records related to each history item', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const v1 = await createWorkflowHistoryItem(workflow.id);
 		const v2 = await createWorkflowHistoryItem(workflow.id);
+
 		const wph1 = await createWorkflowPublishHistoryItem(v1);
 		const wph2 = await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
 		const wph3 = await createWorkflowPublishHistoryItem(v2);
 
-		const resp = await authOwnerAgent.get(`/workflow-history/workflow/${workflow.id}`);
+		const response = await authOwnerAgent.get(`/workflow-history/workflow/${workflow.id}`);
+		expect(response.status).toBe(200);
 
-		expect(resp.status).toBe(200);
-		expect(resp.body.data[0].workflowPublishHistory).toHaveLength(1);
-		expect(resp.body.data[0].workflowPublishHistory).toContainEqual({
-			...wph3,
-			createdAt: wph3.createdAt.toISOString(),
-		});
-		expect(resp.body.data[1].workflowPublishHistory).toHaveLength(2);
-		expect(resp.body.data[1].workflowPublishHistory).toContainEqual({
-			...wph1,
-			createdAt: wph1.createdAt.toISOString(),
-		});
-		expect(resp.body.data[1].workflowPublishHistory).toContainEqual({
-			...wph2,
-			createdAt: wph2.createdAt.toISOString(),
-		});
+		const body = response.body as { data: WorkflowHistory[] };
+
+		expect(body.data).toHaveLength(2);
+
+		const publishHistories = body.data.map((history) => history.workflowPublishHistory);
+		expect(publishHistories).toEqual(
+			expect.arrayContaining([expect.any(Array), expect.any(Array)]),
+		);
+
+		const publishHistory1 = publishHistories.find((ph) => ph.length === 1)!;
+		const publishHistory2 = publishHistories.find((ph) => ph.length === 2)!;
+
+		expect(publishHistory1).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					...wph3,
+					createdAt: wph3.createdAt.toISOString(),
+				}),
+			]),
+		);
+
+		expect(publishHistory2).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					...wph1,
+					createdAt: wph1.createdAt.toISOString(),
+				}),
+				expect.objectContaining({
+					...wph2,
+					createdAt: wph2.createdAt.toISOString(),
+				}),
+			]),
+		);
 	});
 });
 

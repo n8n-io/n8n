@@ -95,12 +95,14 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
+		multiAgent?: boolean;
 	}
 
 	export interface UserChatMessage {
 		role: 'user';
 		type: 'message';
 		text: string;
+		id: string;
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;

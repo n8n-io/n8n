@@ -27,7 +27,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 });
 
 describe('PUT /:workflowId/transfer', () => {

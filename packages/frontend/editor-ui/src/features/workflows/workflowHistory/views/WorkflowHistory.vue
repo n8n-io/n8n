@@ -265,6 +265,11 @@ const restoreWorkflowVersion = async (
 		id,
 		deactivateAndRestore,
 	);
+
+	if (workflowId.value === workflowsStore.workflowId && activeWorkflow.value.checksum) {
+		workflowsStore.setWorkflowChecksum(activeWorkflow.value.checksum);
+	}
+
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
 	});
@@ -279,13 +284,21 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 	const publishEventBus = createEventBus<WorkflowHistoryPublishModalEventBusEvents>();
 
 	publishEventBus.once('publish', (publishData) => {
-		// Update the history list with the new name and description
+		// Refresh the active workflow to get the updated activeVersion with workflowPublishHistory
+		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+
+		// Update the history list with the new name, description, and workflowPublishHistory
 		const historyItem = workflowHistory.value.find(
 			(item) => item.versionId === publishData.versionId,
 		);
 		if (historyItem) {
 			historyItem.name = publishData.name;
 			historyItem.description = publishData.description;
+			// Update workflowPublishHistory from the store's activeVersion
+			if (activeWorkflow.value?.activeVersion?.workflowPublishHistory) {
+				historyItem.workflowPublishHistory =
+					activeWorkflow.value.activeVersion.workflowPublishHistory;
+			}
 		}
 
 		// Refresh the selected workflow version if it's the one that was published
@@ -294,11 +307,11 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 				...selectedWorkflowVersion.value,
 				name: publishData.name,
 				description: publishData.description,
+				workflowPublishHistory:
+					activeWorkflow.value?.activeVersion?.workflowPublishHistory ??
+					selectedWorkflowVersion.value.workflowPublishHistory,
 			};
 		}
-
-		// Refresh the active workflow to get the updated activeVersion
-		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
 
 		sendTelemetry('User published version from history');
 	});

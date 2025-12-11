@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -376,7 +376,7 @@ export class AgentV1 implements INodeType {
 					default: 'toolsAgent',
 				},
 				{
-					...promptTypeOptions,
+					...promptTypeOptionsDeprecated,
 					displayOptions: {
 						hide: {
 							'@version': [{ _cnd: { lte: 1.2 } }],

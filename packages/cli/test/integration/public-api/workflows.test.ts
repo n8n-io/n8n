@@ -9,24 +9,29 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
-import { ProjectRepository, WorkflowHistoryRepository, SharedWorkflowRepository } from '@n8n/db';
+import {
+	WorkflowRepository,
+	ProjectRepository,
+	WorkflowHistoryRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { STARTING_NODES } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
-
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { STARTING_NODES } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
 
@@ -37,6 +42,7 @@ let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let activeWorkflowManager: ActiveWorkflowManager;
+let workflowRepository: WorkflowRepository;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
@@ -61,6 +67,7 @@ beforeAll(async () => {
 	await utils.initNodeTypes();
 
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	workflowRepository = Container.get(WorkflowRepository);
 
 	await activeWorkflowManager.init();
 });
@@ -73,6 +80,7 @@ beforeEach(async () => {
 		'WorkflowEntity',
 		'CredentialsEntity',
 		'WorkflowHistory',
+		'WorkflowPublishHistory',
 	]);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
@@ -898,7 +906,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
 	test('should set activeVersionId when activating workflow', async () => {
@@ -974,7 +982,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 });
 
@@ -1039,7 +1047,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
 	});
 
 	test('should clear activeVersionId when deactivating workflow', async () => {
@@ -1126,7 +1134,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
 	});
 });
 

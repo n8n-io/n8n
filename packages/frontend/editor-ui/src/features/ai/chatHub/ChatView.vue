@@ -9,6 +9,7 @@ import {
 	findOneFromModelsResponse,
 	isLlmProvider,
 	unflattenModel,
+	createMimeTypes,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -31,7 +32,7 @@ import {
 	type ChatModelDto,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -47,6 +48,7 @@ import {
 	chatHubConversationModelWithCachedDisplayNameSchema,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
+import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 
 const router = useRouter();
 const route = useRoute();
@@ -60,20 +62,26 @@ const i18n = useI18n();
 
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
+const scrollableRef = useTemplateRef('scrollable');
+
+const scrollableSize = useElementSize(scrollableRef);
+
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
 const isResponding = computed(() => chatStore.isResponding(sessionId.value));
 const isNewSession = computed(() => sessionId.value !== route.params.id);
-const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const currentConversation = computed(() =>
 	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 
-// TODO: This also depends on the model, not all base LLM models support tools.
-const canSelectTools = computed(() => isLlmProvider(selectedModel.value?.model.provider));
+const canSelectTools = computed(
+	() =>
+		selectedModel.value?.model.provider === 'custom-agent' ||
+		!!selectedModel.value?.metadata.capabilities.functionCalling,
+);
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -99,8 +107,8 @@ const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayNa
 	},
 );
 
-const defaultModelName = computed(() =>
-	defaultModel.value ? chatStore.getAgent(defaultModel.value).name : undefined,
+const defaultAgent = computed(() =>
+	defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined,
 );
 
 const defaultTools = useLocalStorage<INode[] | null>(
@@ -122,21 +130,7 @@ const defaultTools = useLocalStorage<INode[] | null>(
 	},
 );
 
-const toolsSelection = ref<INode[] | null>(null);
 const shouldSkipNextScrollTrigger = ref(false);
-
-const selectedTools = computed<INode[]>(() => {
-	if (currentConversation.value?.tools) {
-		return currentConversation.value.tools;
-	}
-
-	// As soon as the user selects tools use the selection over the default
-	if (toolsSelection.value !== null) {
-		return toolsSelection.value;
-	}
-
-	return defaultTools.value ?? [];
-});
 
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
@@ -184,6 +178,25 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
+});
+
+const customAgentId = computed(() =>
+	selectedModel.value?.model.provider === 'custom-agent'
+		? selectedModel.value.model.agentId
+		: undefined,
+);
+const customAgent = useCustomAgent(customAgentId);
+
+const selectedTools = computed<INode[]>(() => {
+	if (customAgent.value) {
+		return customAgent.value.tools;
+	}
+
+	if (currentConversation.value?.tools) {
+		return currentConversation.value.tools;
+	}
+
+	return modelFromQuery.value ? [] : (defaultTools.value ?? []);
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -240,7 +253,7 @@ const didSubmitInCurrentSession = ref(false);
 const canAcceptFiles = computed(
 	() =>
 		editingMessageId.value === undefined &&
-		!!selectedModel.value?.allowFileUploads &&
+		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
 		!isMissingSelectedCredential.value,
 );
 
@@ -307,12 +320,13 @@ watch(
 	[sessionId, isNewSession],
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
+		editingMessageId.value = undefined;
 
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
-				toast.showError(error, 'Error fetching a conversation');
+				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
@@ -350,10 +364,18 @@ watch(
 
 // Keep cached display name up-to-date
 watch(
-	defaultModelName,
-	(name) => {
-		if (defaultModel.value && name) {
-			defaultModel.value = { ...defaultModel.value, cachedDisplayName: name };
+	defaultAgent,
+	(agent, prevAgent) => {
+		if (defaultModel.value && agent?.name && agent.name !== prevAgent?.name) {
+			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
+		}
+
+		if (
+			agent &&
+			!agent.metadata.capabilities.functionCalling &&
+			(defaultTools.value ?? []).length > 0
+		) {
+			defaultTools.value = [];
 		}
 	},
 	{ immediate: true },
@@ -451,10 +473,13 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 		try {
 			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected model');
+			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
 		defaultModel.value = { ...selection, cachedDisplayName: agentName };
+
+		// Remove query params (if exists) and focus input
+		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
 	}
 }
 
@@ -476,14 +501,13 @@ function handleConfigureModel() {
 }
 
 async function handleUpdateTools(newTools: INode[]) {
-	toolsSelection.value = newTools;
 	defaultTools.value = newTools;
 
 	if (currentConversation.value) {
 		try {
 			await chatStore.updateToolsInSession(sessionId.value, newTools);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected tools');
+			toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
 		}
 	}
 }
@@ -494,7 +518,7 @@ function handleEditAgent(agentId: string) {
 		data: {
 			agentId,
 			credentials: credentialsByProvider,
-			onCreateCustomAgent: handleSelectModel,
+			onCreateCustomAgent: handleSelectAgent,
 		},
 	});
 }
@@ -504,7 +528,7 @@ function openNewAgentCreator() {
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
 			credentials: credentialsByProvider,
-			onCreateCustomAgent: handleSelectModel,
+			onCreateCustomAgent: handleSelectAgent,
 		},
 	});
 }
@@ -546,7 +570,8 @@ function onFilesDropped(files: File[]) {
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="isNewSession || !!currentConversation"
-			@select-model="handleSelectAgent"
+			:is-new-session="isNewSession"
+			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
@@ -584,6 +609,7 @@ function onFilesDropped(files: File[]) {
 								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
+						:container-width="scrollableSize.width.value ?? 0"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -617,6 +643,7 @@ function onFilesDropped(files: File[]) {
 						@select-model="handleConfigureModel"
 						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
+						@edit-agent="handleEditAgent"
 					/>
 				</div>
 			</div>
