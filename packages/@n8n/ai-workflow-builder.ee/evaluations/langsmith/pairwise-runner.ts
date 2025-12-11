@@ -207,6 +207,7 @@ export async function runPairwiseLangsmithEvaluation(
 			numJudges,
 			numGenerations,
 			featureFlags,
+			experimentName,
 		);
 		const evaluator = createPairwiseLangsmithEvaluator();
 

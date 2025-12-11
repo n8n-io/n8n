@@ -54,6 +54,7 @@ export function createPairwiseTarget(
 	numJudges: number,
 	numGenerations: number,
 	featureFlags?: BuilderFeatureFlags,
+	experimentName?: string,
 ) {
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
@@ -62,13 +63,23 @@ export function createPairwiseTarget(
 			// Generate ALL workflows and run judges in parallel
 			const generationResults: GenerationResult[] = await Promise.all(
 				Array.from({ length: numGenerations }, async (_, i) => {
+					const generationIndex = i + 1;
 					// Wrap each generation in traceable for proper visibility
 					const generate = traceable(
 						async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
-						{ name: `generation_${i + 1}`, run_type: 'chain' },
+						{
+							name: `generation_${generationIndex}`,
+							run_type: 'chain',
+							metadata: {
+								...(experimentName && { experiment_name: experimentName }),
+							},
+						},
 					);
 					const workflow = await generate();
-					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges);
+					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+						generationIndex,
+						experimentName,
+					});
 					return { workflow, ...panelResult };
 				}),
 			);

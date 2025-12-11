@@ -54,6 +54,13 @@ export function getMajorityThreshold(numJudges: number): number {
 // Judge Panel Execution
 // ============================================================================
 
+export interface JudgePanelOptions {
+	/** Generation index (1-based) for metadata */
+	generationIndex?: number;
+	/** Experiment name for metadata */
+	experimentName?: string;
+}
+
 /**
  * Run a panel of judges on a workflow.
  * Executes judges in parallel and aggregates their results.
@@ -62,6 +69,7 @@ export function getMajorityThreshold(numJudges: number): number {
  * @param workflow - Workflow to evaluate
  * @param evalCriteria - Evaluation criteria (dos/donts)
  * @param numJudges - Number of judges to run
+ * @param options - Optional metadata for tracing
  * @returns Aggregated judge panel results
  */
 export async function runJudgePanel(
@@ -69,14 +77,23 @@ export async function runJudgePanel(
 	workflow: SimpleWorkflow,
 	evalCriteria: EvalCriteria,
 	numJudges: number,
+	options?: JudgePanelOptions,
 ): Promise<JudgePanelResult> {
+	const { generationIndex, experimentName } = options ?? {};
+
 	// Run all judges in parallel
 	const judgeResults = await Promise.all(
 		Array.from({ length: numJudges }, async (_, judgeIndex) => {
 			return await evaluateWorkflowPairwise(
 				llm,
 				{ workflowJSON: workflow, evalCriteria },
-				{ runName: `judge_${judgeIndex + 1}` },
+				{
+					runName: `judge_${judgeIndex + 1}`,
+					metadata: {
+						...(experimentName && { experiment_name: experimentName }),
+						...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
+					},
+				},
 			);
 		}),
 	);
