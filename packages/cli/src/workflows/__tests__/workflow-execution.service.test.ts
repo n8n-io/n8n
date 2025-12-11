@@ -671,17 +671,21 @@ describe('WorkflowExecutionService', () => {
 				id: 'error-workflow-id',
 				name: 'Error Workflow',
 				active: false,
-				activeVersionId: null,
+				activeVersionId: 'active-version-id',
 				isArchived: false,
 				pinData: {},
 				nodes: [errorTriggerNode],
 				connections: {},
 				createdAt: new Date(),
 				updatedAt: new Date(),
+				activeVersion: {
+					nodes: [errorTriggerNode],
+					connections: {},
+				},
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.findOneBy.mockResolvedValue(errorWorkflow);
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
 			const service = new WorkflowExecutionService(
 				mock(),

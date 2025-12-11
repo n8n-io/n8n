@@ -46,6 +46,51 @@ describe('WorkflowHistoryService', () => {
 				nodes: workflow.nodes,
 				versionId: workflow.versionId,
 				workflowId,
+				autosaved: false,
+			});
+		});
+
+		it('should save a new version with autosaved: true when autosaved parameter is true', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, true);
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
+				authors: 'John Doe',
+				connections: {},
+				nodes: workflow.nodes,
+				versionId: workflow.versionId,
+				workflowId,
+				autosaved: true,
+			});
+		});
+
+		it('should save a new version with autosaved: false when autosaved parameter is false', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+
+			// Act
+			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false);
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
+				authors: 'John Doe',
+				connections: {},
+				nodes: workflow.nodes,
+				versionId: workflow.versionId,
+				workflowId,
+				autosaved: false,
 			});
 		});
 

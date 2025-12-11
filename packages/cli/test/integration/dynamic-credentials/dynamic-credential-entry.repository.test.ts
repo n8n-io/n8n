@@ -14,15 +14,15 @@ describe('DynamicCredentialEntryRepository', () => {
 	let previousEnvVar: string | undefined;
 
 	beforeAll(async () => {
-		previousEnvVar = process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
-		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
+		previousEnvVar = process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS;
+		process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 		await testModules.loadModules(['dynamic-credentials']);
 		await testDb.init();
 		repository = Container.get(DynamicCredentialEntryRepository);
 	});
 
 	afterAll(async () => {
-		process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = previousEnvVar;
+		process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = previousEnvVar;
 		await testDb.terminate();
 	});
 

@@ -58,9 +58,11 @@ import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 import {
+	N8nIcon,
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nMenuItem,
+	N8nTag,
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
@@ -1020,7 +1022,10 @@ async function oAuthCredentialAuthorize() {
 	const types = parentTypes.value;
 
 	try {
-		const credData = { id: credential.id, ...credentialData.value };
+		// We exclude sharedWithProjects because it's not needed for the authorization and it causes the request to be too large
+		const { sharedWithProjects, ...sanitizedCredData } = credentialData.value;
+		const credData = { id: credential.id, ...sanitizedCredData };
+
 		if (credentialTypeName.value === 'oAuth2Api' || types.includes('oAuth2Api')) {
 			if (isValidCredentialResponse(credData)) {
 				url = await credentialsStore.oAuth2Authorize(credData);
@@ -1139,6 +1144,10 @@ function resetCredentialData(): void {
 
 const credNameRef = useTemplateRef('credNameRef');
 const { width } = useElementSize(credNameRef);
+
+const isResolvable = computed<boolean>(() => {
+	return Boolean(credentialData.value.isResolvable);
+});
 </script>
 
 <template>
@@ -1158,21 +1167,37 @@ const { width } = useElementSize(credNameRef);
 						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
 					<div ref="credNameRef" :class="$style.credName">
-						<N8nInlineTextEdit
-							v-if="credentialName"
-							data-test-id="credential-name"
-							:model-value="credentialName"
-							:max-width="width - 10"
-							:readonly="
-								!(
-									(credentialPermissions.create && props.mode === 'new') ||
-									credentialPermissions.update
-								) ||
-								!credentialType ||
-								isEditingManagedCredential
-							"
-							@update:model-value="onNameEdit"
-						/>
+						<div :class="$style.credNameRow">
+							<N8nInlineTextEdit
+								v-if="credentialName"
+								data-test-id="credential-name"
+								:model-value="credentialName"
+								:max-width="width - 10"
+								:readonly="
+									!(
+										(credentialPermissions.create && props.mode === 'new') ||
+										credentialPermissions.update
+									) ||
+									!credentialType ||
+									isEditingManagedCredential
+								"
+								@update:model-value="onNameEdit"
+							/>
+							<N8nTag
+								v-if="isResolvable"
+								:text="i18n.baseText('credentialEdit.credentialEdit.dynamic')"
+								:clickable="false"
+								:class="$style.dynamicTag"
+								data-test-id="credential-dynamic-tag"
+							>
+								<template #tag>
+									<span :class="$style.dynamicTagContent">
+										<N8nIcon icon="key-round" size="xsmall" />
+										{{ i18n.baseText('credentialEdit.credentialEdit.dynamic') }}
+									</span>
+								</template>
+							</N8nTag>
+						</div>
 						<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
 							credentialType.displayName
 						}}</N8nText>
@@ -1294,6 +1319,19 @@ const { width } = useElementSize(credNameRef);
 	width: 100%;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.credNameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--md);
+}
+
+.dynamicTagContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 
 .sidebar {

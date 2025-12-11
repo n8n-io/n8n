@@ -122,7 +122,9 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 
 		await expect(
 			n8n.canvas.getConnectionLabelBetweenNodes('Edit Fields1', MERGE_NODE_NAME).first(),
-		).toContainText('2 items');
+		).toContainText('1 item');
+
+		await expect(n8n.canvas.getNodeOutputHandle(MERGE_NODE_NAME).first()).toContainText('2 items');
 	});
 
 	test('should add nodes and check execution success', async ({ n8n }) => {
