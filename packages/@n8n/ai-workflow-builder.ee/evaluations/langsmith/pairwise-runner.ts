@@ -32,6 +32,26 @@ function getNotionId(metadata: unknown): string | undefined {
 	return undefined;
 }
 
+/**
+ * Enrich examples by injecting notion_id from metadata into inputs.
+ * This allows the target function to access notion_id for tracing.
+ */
+function enrichExamplesWithNotionId(examples: Example[]): Example[] {
+	return examples.map((example) => {
+		const notionId = getNotionId(example.metadata);
+		if (notionId && example.inputs) {
+			return {
+				...example,
+				inputs: {
+					...example.inputs,
+					notion_id: notionId,
+				},
+			};
+		}
+		return example;
+	});
+}
+
 /** Filter examples by notion_id or limit count */
 function filterExamples(
 	allExamples: Example[],
@@ -184,21 +204,19 @@ export async function runPairwiseLangsmithEvaluation(
 			process.exit(1);
 		}
 
-		// Fetch examples for filtering (only if notionId or maxExamples specified)
-		let data: string | Example[] = datasetName;
-
-		if (notionId || maxExamples) {
-			const allExamples: Example[] = [];
-			log.verbose('➔ Fetching examples from dataset...');
-			for await (const example of lsClient.listExamples({ datasetId })) {
-				allExamples.push(example);
-			}
-			log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
-			data = filterExamples(allExamples, notionId, maxExamples, log);
+		// Always fetch examples to inject notion_id from metadata into inputs for tracing
+		const allExamples: Example[] = [];
+		log.verbose('➔ Fetching examples from dataset...');
+		for await (const example of lsClient.listExamples({ datasetId })) {
+			allExamples.push(example);
 		}
+		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		const exampleCount = typeof data === 'string' ? '(all)' : data.length;
-		log.info(`➔ Running ${exampleCount} example(s) × ${repetitions} rep(s)`);
+		// Filter if needed, then enrich with notion_id
+		const filteredExamples = filterExamples(allExamples, notionId, maxExamples, log);
+		const data = enrichExamplesWithNotionId(filteredExamples);
+
+		log.info(`➔ Running ${data.length} example(s) × ${repetitions} rep(s)`);
 
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
 		const target = createPairwiseTarget(

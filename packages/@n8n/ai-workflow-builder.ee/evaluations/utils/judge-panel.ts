@@ -59,6 +59,8 @@ export interface JudgePanelOptions {
 	generationIndex?: number;
 	/** Experiment name for metadata */
 	experimentName?: string;
+	/** Notion ID from dataset for tracing */
+	notionId?: string;
 }
 
 /**
@@ -79,7 +81,7 @@ export async function runJudgePanel(
 	numJudges: number,
 	options?: JudgePanelOptions,
 ): Promise<JudgePanelResult> {
-	const { generationIndex, experimentName } = options ?? {};
+	const { generationIndex, experimentName, notionId } = options ?? {};
 
 	// Run all judges in parallel
 	const judgeResults = await Promise.all(
@@ -92,6 +94,7 @@ export async function runJudgePanel(
 					metadata: {
 						...(experimentName && { experiment_name: experimentName }),
 						...(generationIndex && { evaluating_generation: `generation_${generationIndex}` }),
+						...(notionId && { notion_id: notionId }),
 					},
 				},
 			);
