@@ -13,7 +13,7 @@ import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue'
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
-import { N8nHeading, N8nTabs, N8nTooltip, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
@@ -179,7 +179,12 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 <template>
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
-			<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+			<div :class="$style.headings">
+				<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+				<N8nText v-show="mcpStore.mcpAccessEnabled" size="small" color="text-light">
+					{{ i18n.baseText('settings.mcp.description') }}
+				</N8nText>
+			</div>
 			<MCpHeaderActions
 				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
@@ -243,7 +248,12 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 .main-header {
 	display: flex;
 	justify-content: space-between;
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--2xl);
+}
+
+.headings {
+	display: flex;
+	flex-direction: column;
 }
 
 .tabs-header {
