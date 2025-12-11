@@ -293,3 +293,32 @@ export async function uploadToFileSearchStore(
 
 	return operation.response;
 }
+
+export async function listFileSearchStores(
+	this: IExecuteFunctions,
+	pageSize?: number,
+	pageToken?: string,
+): Promise<IDataObject> {
+	const qs: IDataObject = {};
+	if (pageSize !== undefined) {
+		qs.pageSize = pageSize;
+	}
+	if (pageToken) {
+		qs.pageToken = pageToken;
+	}
+
+	return (await apiRequest.call(this, 'GET', '/v1beta/fileSearchStores', { qs })) as IDataObject;
+}
+
+export async function deleteFileSearchStore(
+	this: IExecuteFunctions,
+	name: string,
+	force?: boolean,
+): Promise<IDataObject> {
+	const qs: IDataObject = {};
+	if (force !== undefined) {
+		qs.force = force;
+	}
+
+	return (await apiRequest.call(this, 'DELETE', `/v1beta/${name}`, { qs })) as IDataObject;
+}

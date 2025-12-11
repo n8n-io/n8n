@@ -5,9 +5,11 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	createFileSearchStore,
+	deleteFileSearchStore,
 	downloadFile,
-	uploadFile,
+	listFileSearchStores,
 	transferFile,
+	uploadFile,
 	uploadToFileSearchStore,
 } from './utils';
 import * as transport from '../transport';
@@ -925,6 +927,137 @@ describe('GoogleGemini -> utils', () => {
 			);
 
 			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('listFileSearchStores', () => {
+		it('should list file search stores without pagination', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store1',
+						displayName: 'Store 1',
+					},
+					{
+						name: 'fileSearchStores/store2',
+						displayName: 'Store 2',
+					},
+				],
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: {},
+			});
+		});
+
+		it('should list file search stores with pageSize', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store1',
+						displayName: 'Store 1',
+					},
+				],
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions, 20);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: { pageSize: 20 },
+			});
+		});
+
+		it('should list file search stores with pageToken', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store3',
+						displayName: 'Store 3',
+					},
+				],
+				nextPageToken: 'token123',
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions, undefined, 'token123');
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: { pageToken: 'token123' },
+			});
+		});
+
+		it('should list file search stores with both pageSize and pageToken', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store1',
+						displayName: 'Store 1',
+					},
+				],
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions, 10, 'token123');
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: { pageSize: 10, pageToken: 'token123' },
+			});
+		});
+	});
+
+	describe('deleteFileSearchStore', () => {
+		it('should delete file search store without force', async () => {
+			const name = 'fileSearchStores/abc123';
+			const mockResponse = {};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
+				qs: {},
+			});
+		});
+
+		it('should delete file search store with force', async () => {
+			const name = 'fileSearchStores/abc123';
+			const mockResponse = {};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name, true);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
+				qs: { force: true },
+			});
+		});
+
+		it('should delete file search store with force false', async () => {
+			const name = 'fileSearchStores/abc123';
+			const mockResponse = {};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name, false);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
+				qs: { force: false },
+			});
 		});
 	});
 });

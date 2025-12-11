@@ -7,7 +7,7 @@ type NodeMap = {
 	audio: 'transcribe' | 'analyze';
 	document: 'analyze';
 	file: 'upload';
-	fileSearch: 'createStore' | 'uploadToStore';
+	fileSearch: 'createStore' | 'deleteStore' | 'listStores' | 'uploadToStore';
 };
 
 export type GoogleGeminiType = AllEntities<NodeMap>;
