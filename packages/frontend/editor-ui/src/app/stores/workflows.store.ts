@@ -860,7 +860,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
 		}
 
-		setWorkflowInactive(id, updatedWorkflow.checksum);
+		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
 			setIsArchived(true);
@@ -1670,7 +1670,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			throw new Error('Failed to deactivate workflow');
 		}
 
-		setWorkflowInactive(id, updatedWorkflow.checksum);
+		setWorkflowInactive(id);
+
+		if (id === workflow.value.id) {
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+		}
 
 		return updatedWorkflow;
 	}

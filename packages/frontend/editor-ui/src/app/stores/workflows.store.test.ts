@@ -971,7 +971,7 @@ describe('useWorkflowsStore', () => {
 		it('should not modify active workflows when workflow is not active', () => {
 			workflowsStore.workflowsById = { '2': { active: true } as IWorkflowDb };
 			workflowsStore.activeWorkflows = ['2'];
-			workflowsStore.setWorkflowInactive('1', 'checksum');
+			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.activeWorkflows).toEqual(['2']);
 			expect(workflowsStore.workflowsById['2'].active).toBe(true);
 		});
@@ -979,7 +979,7 @@ describe('useWorkflowsStore', () => {
 		it('should set current workflow as inactive when it is the target', () => {
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflow.active = true;
-			workflowsStore.setWorkflowInactive('1', 'checksum');
+			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.workflow.active).toBe(false);
 		});
 	});
