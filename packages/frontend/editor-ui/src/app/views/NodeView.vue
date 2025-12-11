@@ -1931,6 +1931,8 @@ onBeforeRouteLeave(async (to, from, next) => {
 			return true;
 		},
 	});
+
+	toast.clearAllStickyNotifications();
 });
 
 /**
