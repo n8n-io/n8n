@@ -3,18 +3,15 @@ import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/ev
 import { traceable } from 'langsmith/traceable';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	buildSingleGenerationResults,
-	buildMultiGenerationResults,
-} from './pairwise-metrics-builder';
+import { runJudgePanel, aggregateGenerations, type GenerationResult } from './judge-panel';
+import { buildSingleGenerationResults, buildMultiGenerationResults } from './metrics-builder';
+import type { PairwiseDatasetInput, PairwiseTargetOutput } from './types';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
-import type { PairwiseDatasetInput, PairwiseTargetOutput } from '../types/pairwise';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
-import { runJudgePanel, aggregateGenerations, type GenerationResult } from '../utils/judge-panel';
 
 export type { PairwiseDatasetInput, PairwiseTargetOutput };
 

@@ -1,9 +1,9 @@
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 import type { Run } from 'langsmith/schemas';
 
+import type { JudgePanelResult, MultiGenerationAggregation } from './judge-panel';
+import { isPairwiseTargetOutput } from './types';
 import { METRIC_KEYS } from '../constants';
-import { isPairwiseTargetOutput } from '../types/pairwise';
-import type { JudgePanelResult, MultiGenerationAggregation } from '../utils/judge-panel';
 
 // ============================================================================
 // Result Builders

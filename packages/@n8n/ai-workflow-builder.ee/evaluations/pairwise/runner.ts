@@ -2,14 +2,14 @@ import { evaluate } from 'langsmith/evaluation';
 import type { Example } from 'langsmith/schemas';
 import pc from 'picocolors';
 
-import { createPairwiseTarget, generateWorkflow } from './pairwise-generator';
-import { createPairwiseLangsmithEvaluator } from './pairwise-metrics-builder';
+import { createPairwiseTarget, generateWorkflow } from './generator';
+import { aggregateGenerations, runJudgePanel, type GenerationResult } from './judge-panel';
+import { createPairwiseLangsmithEvaluator } from './metrics-builder';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
-import { aggregateGenerations, runJudgePanel, type GenerationResult } from '../utils/judge-panel';
 import { createLogger, type EvalLogger } from '../utils/logger';
 
 // ============================================================================

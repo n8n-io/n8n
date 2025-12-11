@@ -1,6 +1,6 @@
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
 
-import type { EvalCriteria } from '../utils/judge-panel';
+import type { EvalCriteria } from './judge-panel';
 
 // ============================================================================
 // Dataset Input/Output Types

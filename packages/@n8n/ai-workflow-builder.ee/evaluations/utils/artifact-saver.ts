@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import type { GenerationResult, MultiGenerationAggregation } from './judge-panel';
 import type { EvalLogger } from './logger';
+import type { GenerationResult, MultiGenerationAggregation } from '../pairwise/judge-panel';
 
 export interface ArtifactSaver {
 	savePrompt(promptId: string, prompt: string, criteria: { dos: string; donts: string }): void;

@@ -1,11 +1,8 @@
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { runCliEvaluation } from './cli/runner.js';
-import {
-	runLocalPairwiseEvaluation,
-	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
+import { runLocalPairwiseEvaluation, runPairwiseLangsmithEvaluation } from './pairwise/runner.js';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
 
 // Re-export for external use if needed
@@ -14,7 +11,7 @@ export { runLangsmithEvaluation } from './langsmith/runner.js';
 export {
 	runLocalPairwiseEvaluation,
 	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
+} from './pairwise/runner.js';
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
 

@@ -86,13 +86,13 @@ Parses CLI arguments and routes to the appropriate evaluation mode:
 - `USE_LANGSMITH_EVAL=true`: Legacy LangSmith evaluation
 - Default: CLI evaluation
 
-### Pairwise Runner (`langsmith/pairwise-runner.ts`)
+### Pairwise Runner (`pairwise/runner.ts`)
 
 Orchestrates the evaluation:
 - **LangSmith mode**: Fetches dataset, creates target/evaluator, calls `evaluate()`
 - **Local mode**: Runs generations, judges, displays results
 
-### Pairwise Generator (`langsmith/pairwise-generator.ts`)
+### Pairwise Generator (`pairwise/generator.ts`)
 
 Creates the "target" function for LangSmith that does ALL the work:
 1. Generates workflows (via `generateWorkflow()`)
@@ -103,21 +103,21 @@ Creates the "target" function for LangSmith that does ALL the work:
 causes 403 errors when making nested traceable calls. By doing all work in the
 target, we avoid this issue.
 
-### Pairwise Judge Chain (`chains/pairwise-judge-chain.ts`)
+### Pairwise Judge Chain (`pairwise/judge-chain.ts`)
 
 The LLM chain that acts as a judge:
 - Takes a workflow + dos/donts criteria
 - Returns violations and passes with justifications
 - Calculates `primaryPass` (no violations) and `diagnosticScore`
 
-### LangSmith Metrics Builder (`langsmith/pairwise-metrics-builder.ts`)
+### Metrics Builder (`pairwise/metrics-builder.ts`)
 
 Builds LangSmith-compatible metrics from judge results:
 - `buildSingleGenerationResults()`: For numGenerations=1
 - `buildMultiGenerationResults()`: For numGenerations>1
 - `createPairwiseLangsmithEvaluator()`: Simple extractor that returns pre-computed feedback
 
-### Judge Panel (`utils/judge-panel.ts`)
+### Judge Panel (`pairwise/judge-panel.ts`)
 
 Runs multiple judges and aggregates results:
 - Executes judges in parallel
@@ -226,23 +226,27 @@ evaluations/
 ├── constants.ts                  # DEFAULTS, METRIC_KEYS, EVAL_TYPES
 ├── load-nodes.ts                 # Node type loading from nodes.json
 │
-├── langsmith/
-│   ├── pairwise-runner.ts        # Orchestration (LangSmith + local modes)
-│   ├── pairwise-generator.ts     # Target function + workflow generation
-│   └── pairwise-metrics-builder.ts  # LangSmith metric builders
+├── pairwise/                     # All pairwise evaluation code
+│   ├── runner.ts                 # Orchestration (LangSmith + local modes)
+│   ├── generator.ts              # Target function + workflow generation
+│   ├── metrics-builder.ts        # LangSmith metric builders
+│   ├── judge-chain.ts            # LLM judge chain
+│   ├── judge-panel.ts            # Judge execution + aggregation
+│   └── types.ts                  # Dataset input/output types
+│
+├── langsmith/                    # Non-pairwise LangSmith evaluation
+│   ├── evaluator.ts              # Langsmith evaluator function
+│   └── runner.ts                 # Langsmith evaluation orchestrator
 │
 ├── chains/
-│   ├── pairwise-judge-chain.ts   # LLM judge chain
 │   └── evaluators/base.ts        # Evaluator chain factory
 │
 ├── utils/
-│   ├── judge-panel.ts            # Judge execution + aggregation
 │   ├── artifact-saver.ts         # Disk persistence for local mode
 │   ├── evaluation-helpers.ts     # Formatting, utility functions
 │   └── logger.ts                 # Simple logger with verbose mode
 │
 ├── types/
-│   ├── pairwise.ts               # Dataset input/output types
 │   └── langsmith.ts              # Type guards, workflow state types
 │
 └── core/
