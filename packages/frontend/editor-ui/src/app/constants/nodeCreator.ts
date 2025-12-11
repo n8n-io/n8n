@@ -35,6 +35,7 @@ export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
+export const PRIMITIVES_SUBCATEGORY = 'Primitives';
 export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 export const HITL_SUBCATEGORY = 'Human in the Loop';

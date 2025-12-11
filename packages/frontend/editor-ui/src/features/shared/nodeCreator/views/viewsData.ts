@@ -53,6 +53,7 @@ import {
 	TRANSLATION_SUBCATEGORY,
 	APE_SUBCATEGORY,
 	LQA_SUBCATEGORY,
+	PRIMITIVES_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
@@ -563,6 +564,34 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				},
 			},
 			{
+				type: 'view',
+				key: AI_NODE_CREATOR_VIEW,
+				properties: {
+					title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+					icon: 'robot',
+					description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+					borderless: true,
+				},
+			},
+			{
+				type: 'subcategory',
+				key: PRIMITIVES_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: i18n.baseText('nodeCreator.subcategoryNames.primitives'),
+					icon: 'cube',
+				},
+			},
+			{
+				key: TRIGGER_NODE_CREATOR_VIEW,
+				type: 'view',
+				properties: {
+					title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
+					icon: 'bolt-filled',
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
+				},
+			},
+			{
 				type: 'subcategory',
 				key: TRANSFORM_DATA_SUBCATEGORY,
 				category: CORE_NODES_CATEGORY,
@@ -676,29 +705,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 			},
 		],
 	};
-
-	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if (hasAINodes)
-		view.items.splice(3, 0, {
-			key: AI_NODE_CREATOR_VIEW,
-			type: 'view',
-			properties: {
-				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-				icon: 'robot',
-				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				borderless: true,
-			},
-		} as NodeViewItem);
-
-	view.items.push({
-		key: TRIGGER_NODE_CREATOR_VIEW,
-		type: 'view',
-		properties: {
-			title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
-			icon: 'bolt-filled',
-			description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
-		},
-	});
 
 	return view;
 }
