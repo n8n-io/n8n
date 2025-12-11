@@ -744,18 +744,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	}
 
-	function setWorkflowVersionId(versionId: string) {
+	function setWorkflowVersionId(versionId: string, newChecksum?: string) {
 		workflow.value.versionId = versionId;
-	}
-
-	function setWorkflowChecksum(checksum: string) {
-		workflowChecksum.value = checksum;
-	}
-
-	async function updateWorkflowChecksum() {
-		const updatedWorkflow = await fetchWorkflow(workflow.value.id);
-		if (updatedWorkflow.checksum) {
-			setWorkflowChecksum(updatedWorkflow.checksum);
+		if (newChecksum) {
+			workflowChecksum.value = newChecksum;
 		}
 	}
 
@@ -860,20 +852,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'POST',
 			`/workflows/${id}/archive`,
 		);
+		if (!updatedWorkflow.checksum) {
+			throw new Error('Failed to archive workflow');
+		}
 		if (workflowsById.value[id]) {
 			workflowsById.value[id].isArchived = true;
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
-		}
-
-		if (id === workflow.value.id && updatedWorkflow.checksum) {
-			setWorkflowChecksum(updatedWorkflow.checksum);
 		}
 
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
 			setIsArchived(true);
-			setWorkflowVersionId(updatedWorkflow.versionId);
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 	}
 
@@ -883,19 +874,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'POST',
 			`/workflows/${id}/unarchive`,
 		);
+		if (!updatedWorkflow.checksum) {
+			throw new Error('Failed to unarchive workflow');
+		}
 		if (workflowsById.value[id]) {
 			workflowsById.value[id].isArchived = false;
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
 		}
-
-		// Update checksum if unarchiving the currently open workflow
-		if (id === workflow.value.id && updatedWorkflow.checksum) {
-			setWorkflowChecksum(updatedWorkflow.checksum);
-		}
-
 		if (id === workflow.value.id) {
 			setIsArchived(false);
-			setWorkflowVersionId(updatedWorkflow.versionId);
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 	}
 
@@ -912,7 +900,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function setWorkflowActive(
 		targetWorkflowId: string,
 		activeVersion: WorkflowHistory,
-		clearDirtyState: boolean = true,
+		clearDirtyState: boolean,
 	) {
 		if (activeWorkflows.value.indexOf(targetWorkflowId) === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
@@ -1637,6 +1625,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			data as unknown as IDataObject,
 		);
 
+		if (!updatedWorkflow.checksum) {
+			throw new Error('Failed to update workflow');
+		}
+
+		if (id === workflow.value.id) {
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+		}
+
 		if (
 			workflowHelpers.containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
 			!usersStore.isEasyAIWorkflowOnboardingDone
@@ -1670,8 +1666,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'POST',
 			`/workflows/${id}/deactivate`,
 		);
+		if (!updatedWorkflow.checksum) {
+			throw new Error('Failed to deactivate workflow');
+		}
 
 		setWorkflowInactive(id);
+
+		if (id === workflow.value.id) {
+			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+		}
 
 		return updatedWorkflow;
 	}
@@ -1717,10 +1720,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow) {
-			setWorkflowVersionId(updated.versionId);
-			if (updated.checksum) {
-				setWorkflowChecksum(updated.checksum);
-			}
 			setWorkflowSettings(updated.settings ?? {});
 		} else if (workflowsById.value[id]) {
 			workflowsById.value[id] = {
@@ -1771,12 +1770,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Update local store state
 		if (isCurrentWorkflow) {
 			setDescription(updated.description ?? '');
-			if (updated.versionId !== currentVersionId) {
-				setWorkflowVersionId(updated.versionId);
-			}
-			if (updated.checksum) {
-				setWorkflowChecksum(updated.checksum);
-			}
 		}
 
 		return updated;
@@ -2040,8 +2033,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addNodeExecutionStartedData,
 		setUsedCredentials,
 		setWorkflowVersionId,
-		setWorkflowChecksum,
-		updateWorkflowChecksum,
 		setWorkflowActiveVersion,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,

@@ -15,6 +15,7 @@ import { CredentialStorageError } from '../errors/credential-storage.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { extractSharedFields } from './shared-fields';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {
@@ -67,12 +68,12 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
-			// @ts-ignore -- to be fixed in future PR
-			const _credential = this.loadNodesAndCredentials.getCredential(credentialStoreMetadata.type);
+			const credentialType = this.loadNodesAndCredentials.getCredential(
+				credentialStoreMetadata.type,
+			);
 
-			// TODO: Get shared fields based on credential type
-			// We will have to solve this in https://linear.app/n8n/issue/PAY-4301/solve-shared-fields-for-write-path-for-dynamic-credentials
-			const sharedFields: string[] = ['clientId', 'clientSecret', 'scopes'];
+			// Get shared fields based on credential type
+			const sharedFields = extractSharedFields(credentialType.type);
 
 			const mergedDynamicData = {
 				...(staticData ?? {}),

@@ -1,4 +1,8 @@
-export const GMAIL_GUIDE = `
+import type { NodeTypeGuide } from '../types';
+
+export const GMAIL_GUIDE: NodeTypeGuide = {
+	patterns: ['n8n-nodes-base.gmail'],
+	content: `
 ### Gmail Node Updates
 
 #### Common Parameters
@@ -18,4 +22,5 @@ export const GMAIL_GUIDE = `
 2. **Using Expressions**:
    - Can use expressions: "={{ $('Previous Node').item.json.email }}"
    - Can reference previous node data for dynamic values
-`;
+`,
+};

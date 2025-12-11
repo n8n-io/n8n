@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { CredentialResolveMetadata } from '@/credentials/credential-resolution-provider.interface';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
@@ -19,6 +20,7 @@ describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
 	let mockResolverRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
 	let mockResolverRepository: jest.Mocked<DynamicCredentialResolverRepository>;
+	let mockLoadNodesAndCredentials: jest.Mocked<LoadNodesAndCredentials>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockLogger: jest.Mocked<Logger>;
 
@@ -106,9 +108,21 @@ describe('DynamicCredentialService', () => {
 			decrypt: jest.fn(),
 		} as unknown as jest.Mocked<Cipher>;
 
+		mockLoadNodesAndCredentials = {
+			getCredential: jest.fn(),
+			loadCredentials: jest.fn(),
+			loadAllCredentials: jest.fn(),
+		} as unknown as jest.Mocked<LoadNodesAndCredentials>;
+
+		mockLoadNodesAndCredentials.getCredential.mockReturnValue({
+			sourcePath: 'credentials/Test Credential',
+			type: { name: 'testCredentialType', displayName: 'Test Credential Type', properties: [] },
+		});
+
 		service = new DynamicCredentialService(
 			mockResolverRegistry,
 			mockResolverRepository,
+			mockLoadNodesAndCredentials,
 			mockCipher,
 			mockLogger,
 		);

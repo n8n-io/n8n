@@ -151,8 +151,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
 		// Common fields for both folders and workflows
 		const commonFields = {
-			createdAt: true,
 			updatedAt: true,
+			createdAt: true,
 			id: true,
 			name: true,
 		} as const;
