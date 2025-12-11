@@ -908,7 +908,7 @@ describe('useWorkflowsStore', () => {
 				workflowPublishHistory: [],
 			};
 
-			workflowsStore.setWorkflowActive('1', mockActiveVersion);
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true, 'checksum');
 
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -931,7 +931,7 @@ describe('useWorkflowsStore', () => {
 				workflowPublishHistory: [],
 			};
 
-			workflowsStore.setWorkflowActive('1', mockActiveVersion);
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true, 'checksum');
 
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -953,7 +953,7 @@ describe('useWorkflowsStore', () => {
 				workflowPublishHistory: [],
 			};
 
-			workflowsStore.setWorkflowActive('2', mockActiveVersion);
+			workflowsStore.setWorkflowActive('2', mockActiveVersion, true, 'checksum');
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
@@ -963,7 +963,7 @@ describe('useWorkflowsStore', () => {
 		it('should set workflow as inactive when it exists', () => {
 			workflowsStore.activeWorkflows = ['1', '2'];
 			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
-			workflowsStore.setWorkflowInactive('1');
+			workflowsStore.setWorkflowInactive('1', 'checksum');
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsStore.activeWorkflows).toEqual(['2']);
 		});
@@ -971,7 +971,7 @@ describe('useWorkflowsStore', () => {
 		it('should not modify active workflows when workflow is not active', () => {
 			workflowsStore.workflowsById = { '2': { active: true } as IWorkflowDb };
 			workflowsStore.activeWorkflows = ['2'];
-			workflowsStore.setWorkflowInactive('1');
+			workflowsStore.setWorkflowInactive('1', 'checksum');
 			expect(workflowsStore.activeWorkflows).toEqual(['2']);
 			expect(workflowsStore.workflowsById['2'].active).toBe(true);
 		});
@@ -979,7 +979,7 @@ describe('useWorkflowsStore', () => {
 		it('should set current workflow as inactive when it is the target', () => {
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflow.active = true;
-			workflowsStore.setWorkflowInactive('1');
+			workflowsStore.setWorkflowInactive('1', 'checksum');
 			expect(workflowsStore.workflow.active).toBe(false);
 		});
 	});
@@ -1490,6 +1490,7 @@ describe('useWorkflowsStore', () => {
 				.spyOn(apiUtils, 'makeRestApiRequest')
 				.mockImplementation(async () => ({
 					versionId: updatedVersionId,
+					checksum: 'checksum',
 				}));
 
 			await workflowsStore.archiveWorkflow(workflowId);
@@ -1529,6 +1530,7 @@ describe('useWorkflowsStore', () => {
 				.spyOn(apiUtils, 'makeRestApiRequest')
 				.mockImplementation(async () => ({
 					versionId: updatedVersionId,
+					checksum: 'checksum',
 				}));
 
 			await workflowsStore.unarchiveWorkflow(workflowId);
@@ -1566,7 +1568,7 @@ describe('useWorkflowsStore', () => {
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
 					id: 'w1',
-					versionId: 'v2',
+					versionId: 'v1',
 					settings: {
 						executionOrder: 'v1',
 						timezone: 'UTC',
@@ -1592,8 +1594,8 @@ describe('useWorkflowsStore', () => {
 			);
 
 			// Assert returned value and store updates
-			expect(result.versionId).toBe('v2');
-			expect(workflowsStore.workflow.versionId).toBe('v2');
+			expect(result.versionId).toBe('v1');
+			expect(workflowsStore.workflow.versionId).toBe('v1');
 			expect(workflowsStore.workflow.settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'UTC',
