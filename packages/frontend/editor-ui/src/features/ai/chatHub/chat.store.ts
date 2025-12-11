@@ -45,6 +45,7 @@ import type {
 	ChatMessage,
 	ChatConversation,
 	ChatStreamingState,
+	FetchOptions,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -287,14 +288,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message.updatedAt = new Date().toISOString();
 	}
 
-	async function fetchAgents(credentialMap: CredentialsMap) {
-		agents.value = await fetchChatModelsApi(rootStore.restApiContext, {
-			credentials: credentialMap,
-		});
+	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
+		[agents.value] = await Promise.all([
+			fetchChatModelsApi(rootStore.restApiContext, {
+				credentials: credentialMap,
+			}),
+			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
+		]);
 		return agents.value;
 	}
 
-	async function fetchSessions(reset: boolean) {
+	async function fetchSessions(reset: boolean, options: FetchOptions = {}) {
 		if (sessionsLoadingMore.value) {
 			return;
 		}
@@ -316,7 +320,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
 				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
-				new Promise((resolve) => setTimeout(resolve, 500)),
+				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
 			if (reset || sessions.value.ids === null) {
@@ -335,9 +339,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	async function fetchMoreSessions() {
+	async function fetchMoreSessions(options: FetchOptions = {}) {
 		if (sessions.value?.hasMore && !sessionsLoadingMore.value) {
-			await fetchSessions(false);
+			await fetchSessions(false, options);
 		}
 	}
 
@@ -728,13 +732,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		updateSession(sessionId, updated.session);
 	}
 
-	async function updateSessionModel(
-		sessionId: ChatSessionId,
-		model: ChatHubConversationModel,
-		agentName: string,
-	) {
-		await updateConversationApi(rootStore.restApiContext, sessionId, { model });
-		updateSession(sessionId, { ...model, agentName });
+	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
+		const result = await updateConversationApi(rootStore.restApiContext, sessionId, { model });
+		updateSession(sessionId, result.session);
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {

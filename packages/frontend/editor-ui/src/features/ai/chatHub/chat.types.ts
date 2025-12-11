@@ -106,3 +106,7 @@ export const chatHubConversationModelWithCachedDisplayNameSchema = chatHubConver
 export type ChatHubConversationModelWithCachedDisplayName = z.infer<
 	typeof chatHubConversationModelWithCachedDisplayNameSchema
 >;
+
+export interface FetchOptions {
+	minLoadingTime?: number;
+}

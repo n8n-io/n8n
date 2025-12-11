@@ -15,6 +15,7 @@ import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 import { useRouter } from 'vue-router';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
+import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import { useI18n } from '@n8n/i18n';
 
 const chatStore = useChatStore();
@@ -49,7 +50,7 @@ watch(
 	credentialsByProvider,
 	(credentials) => {
 		if (credentials) {
-			void chatStore.fetchAgents(credentials);
+			void chatStore.fetchAgents(credentials, { minLoadingTime: 250 });
 		}
 	},
 	{ immediate: true },
@@ -72,7 +73,9 @@ watch(
 
 			<ChatAgentSearchSort v-if="readyToShowList && allModels.length > 0" v-model="agentFilter" />
 
-			<template v-if="!readyToShowList" />
+			<div v-if="!readyToShowList" :class="$style.agentsGrid">
+				<SkeletonAgentCard v-for="i in 5" :key="i" />
+			</div>
 
 			<div v-else-if="agents.length === 0" :class="$style.empty">
 				<N8nText color="text-light" size="medium">

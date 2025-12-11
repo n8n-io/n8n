@@ -115,7 +115,7 @@ useIntersectionObserver(
 	loadMoreTrigger,
 	([{ isIntersecting }]) => {
 		if (isIntersecting) {
-			void chatStore.fetchMoreSessions();
+			void chatStore.fetchMoreSessions({ minLoadingTime: 250 });
 		}
 	},
 	{ threshold: 0.1 },
@@ -123,7 +123,7 @@ useIntersectionObserver(
 
 onMounted(() => {
 	if (!chatStore.sessionsReady) {
-		void chatStore.fetchSessions(true);
+		void chatStore.fetchSessions(true, { minLoadingTime: 250 });
 	}
 });
 </script>
@@ -165,17 +165,17 @@ onMounted(() => {
 				@click="handleNewChatClick"
 			/>
 			<ChatSidebarLink
-				:to="{ name: CHAT_WORKFLOW_AGENTS_VIEW }"
-				:label="i18n.baseText('chatHub.sidebar.link.workflowAgents')"
-				icon="robot"
-				:active="route.name === CHAT_WORKFLOW_AGENTS_VIEW"
-				@click="sidebar.toggleOpen(false)"
-			/>
-			<ChatSidebarLink
 				:to="{ name: CHAT_PERSONAL_AGENTS_VIEW }"
 				:label="i18n.baseText('chatHub.sidebar.link.personalAgents')"
 				icon="message-square"
 				:active="route.name === CHAT_PERSONAL_AGENTS_VIEW"
+				@click="sidebar.toggleOpen(false)"
+			/>
+			<ChatSidebarLink
+				:to="{ name: CHAT_WORKFLOW_AGENTS_VIEW }"
+				:label="i18n.baseText('chatHub.sidebar.link.workflowAgents')"
+				icon="robot"
+				:active="route.name === CHAT_WORKFLOW_AGENTS_VIEW"
 				@click="sidebar.toggleOpen(false)"
 			/>
 		</div>
