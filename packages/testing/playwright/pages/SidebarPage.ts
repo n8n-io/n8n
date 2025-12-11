@@ -40,6 +40,10 @@ export class SidebarPage {
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
 	}
 
+	getProjectButtonInUniversalAdd(): Locator {
+		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
+	}
+
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
 		await this.page.getByTestId('universal-add').getByText('Workflow').click();
@@ -65,20 +69,28 @@ export class SidebarPage {
 		return this.page.getByTestId('add-first-project-button');
 	}
 
-	getUserMenu(): Locator {
-		return this.page.getByTestId('main-sidebar-user-menu');
+	getSettings(): Locator {
+		return this.page.getByTestId('main-sidebar-settings');
 	}
 
 	getLogoutMenuItem(): Locator {
-		return this.page.getByTestId('user-menu-item-logout');
+		return this.page.getByTestId('main-sidebar-log-out');
 	}
 
 	getAboutModal(): Locator {
 		return this.page.getByTestId('about-modal');
 	}
 
+	getHelp(): Locator {
+		return this.page.getByTestId('main-sidebar-help');
+	}
+
+	async clickHelpMenuItem(): Promise<void> {
+		await this.getHelp().click();
+	}
+
 	async clickAboutMenuItem(): Promise<void> {
-		await this.page.getByTestId('help').click();
+		await this.getHelp().click();
 		await this.page.getByTestId('about').click();
 	}
 
@@ -91,7 +103,7 @@ export class SidebarPage {
 	}
 
 	getAdminPanel(): Locator {
-		return this.page.getByTestId('cloud-admin');
+		return this.page.getByTestId('main-sidebar-cloud-admin');
 	}
 
 	getTrialBanner(): Locator {
@@ -103,16 +115,20 @@ export class SidebarPage {
 	}
 
 	getTemplatesLink(): Locator {
-		return this.page.getByTestId('templates').locator('a');
+		return this.page.getByTestId('main-sidebar-templates').locator('a');
 	}
 
-	async openUserMenu(): Promise<void> {
-		await this.getUserMenu().click();
+	getVersionUpdateItem(): Locator {
+		return this.page.getByTestId('version-update-cta-button');
+	}
+
+	async openSettings(): Promise<void> {
+		await this.getSettings().click();
 	}
 
 	async clickSignout(): Promise<void> {
 		await this.expand();
-		await this.openUserMenu();
+		await this.openSettings();
 		await this.getLogoutMenuItem().click();
 	}
 
@@ -126,13 +142,15 @@ export class SidebarPage {
 	}
 
 	async expand() {
-		const collapseButton = this.page.locator('#collapse-change-button');
-		const chevronRight = this.page.locator(
-			'#collapse-change-button svg[data-icon="chevron-right"]',
-		);
+		// First ensure the sidebar is visible before checking if it is expanded
+		await expect(this.getSettings()).toBeVisible();
 
-		await expect(collapseButton).toBeVisible();
-		if (await chevronRight.isVisible()) {
+		const logo = this.page.getByTestId('n8n-logo');
+		const isExpanded = await logo.isVisible();
+
+		if (!isExpanded) {
+			const collapseButton = this.page.locator('#toggle-sidebar-button');
+			await expect(collapseButton).toBeVisible();
 			await collapseButton.click();
 		}
 	}

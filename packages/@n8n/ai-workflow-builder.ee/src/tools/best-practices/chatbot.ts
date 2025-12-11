@@ -11,13 +11,9 @@ export class ChatbotBestPractices implements BestPracticesDocument {
 
 Break chatbot logic into manageable steps and use error handling nodes (IF, Switch) with fallback mechanisms to manage unexpected inputs.
 
-Most chatbots run through external platforms like Slack, Telegram, or WhatsApp rather than through the n8n chat interface - if the user
-requests a service like this don't use the built in chat interface nodes. If the user mentions chatting but does not mention a service
-then use the built in n8n chat node.
+Most chatbots run through external platforms like Slack, Telegram, or WhatsApp rather than through the n8n chat interface - if the user requests a service like this don't use the built in chat interface nodes. But, the n8n chat node is easier to get started with tests. If the user mentions chatting but does not mention a service then use the built in n8n chat node.
 
-CRITICAL: The user may ask to be able to chat to a workflow as well as trigger it via some other method, for example scheduling information
-gathering but also being able to chat with the agent - in scenarios like this the two separate workflows MUST be connected through shared memory,
-vector stores, data storage, or direct connections.
+CRITICAL: The user may ask to be able to chat to a workflow as well as trigger it via some other method, for example scheduling information gathering but also being able to chat with the agent - in scenarios like this the two separate workflows MUST be connected through shared memory, vector stores, data storage, or direct connections.
 
 Example pattern:
 - Schedule Trigger → News Gathering Agent → [memory node via ai_memory]
@@ -59,7 +55,10 @@ Pitfalls:
 
 ### AI Agent (@n8n/n8n-nodes-langchain.agent)
 
-Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses
+Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses.
+
+Unless user asks for a node by name, always use the AI Agent node over provider-specific nodes (like OpenAI, Google Gemini) or use-case-specific AI nodes (like Message a model) for chatbot workflows. The AI Agent node provides better orchestration, tool integration, and memory management capabilities essential for conversational interfaces.
+For example, for "create a chatbot using OpenAI", implement: AI Agent -- OpenAI Chat Model.
 
 ### Chat Model Nodes
 

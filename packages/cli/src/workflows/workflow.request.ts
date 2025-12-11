@@ -27,6 +27,7 @@ export declare namespace WorkflowRequest {
 		projectId: string;
 		parentFolderId?: string;
 		uiContext?: string;
+		expectedChecksum?: string;
 		aiBuilderAssisted?: boolean;
 	}>;
 
@@ -97,7 +98,7 @@ export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ workflowId: string },
 		{},
-		{ versionId: string; name?: string; description?: string }
+		{ versionId: string; name?: string; description?: string; expectedChecksum?: string }
 	>;
 
 	type Deactivate = AuthenticatedRequest<{ workflowId: string }>;

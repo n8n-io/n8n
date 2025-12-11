@@ -848,14 +848,17 @@ export function useWorkflowHelpers() {
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
+		if (workflow.checksum) {
+			workflowsStore.setWorkflowChecksum(workflow.checksum);
+		}
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
 			uiStore.stateIsDirty = false;
 		}
 
-		if (workflow.activeVersionId !== null) {
-			workflowsStore.setWorkflowActive(workflowId);
+		if (workflow.activeVersion) {
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
 		}
@@ -938,7 +941,7 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	function initState(workflowData: IWorkflowDb) {
+	async function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
 		workflowState.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
@@ -951,6 +954,9 @@ export function useWorkflowHelpers() {
 		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		if (workflowData.checksum) {
+			workflowsStore.setWorkflowChecksum(workflowData.checksum);
+		}
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 

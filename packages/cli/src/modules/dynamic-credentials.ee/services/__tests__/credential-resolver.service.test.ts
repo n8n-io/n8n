@@ -277,6 +277,43 @@ describe('DynamicCredentialResolverService', () => {
 
 			expect(mockRepository.save).not.toHaveBeenCalled();
 		});
+
+		it('should re-validate existing config when only type is updated', async () => {
+			const entity = createMockEntity({ type: 'old.resolver' });
+			const existingConfig: CredentialResolverConfiguration = { prefix: 'test' };
+			const updatedEntity = createMockEntity({ type: 'new.resolver' });
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(existingConfig));
+			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+
+			await service.update('resolver-id-123', { type: 'new.resolver' });
+
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('encrypted-config-data');
+			expect(mockRegistry.getResolverByName).toHaveBeenCalledWith('new.resolver');
+			expect(mockResolverImplementation.validateOptions).toHaveBeenCalledWith(existingConfig);
+			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('should throw CredentialResolverValidationError when existing config is incompatible with new type', async () => {
+			const entity = createMockEntity({ type: 'old.resolver' });
+			const existingConfig: CredentialResolverConfiguration = { prefix: 'test' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(existingConfig));
+			mockRegistry.getResolverByName.mockReturnValue(mockResolverImplementation);
+			mockResolverImplementation.validateOptions.mockRejectedValue(
+				new CredentialResolverValidationError('Config incompatible with new resolver type'),
+			);
+
+			await expect(service.update('resolver-id-123', { type: 'new.resolver' })).rejects.toThrow(
+				CredentialResolverValidationError,
+			);
+
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('delete', () => {
