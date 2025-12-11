@@ -39,6 +39,7 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
+	N8nPublishIndicator,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
@@ -643,32 +644,11 @@ const tags = computed(
 					data-test-id="workflow-card-activator"
 					@update:workflow-active="onWorkflowActiveToggle"
 				/>
-				<div
+				<N8nPublishIndicator
 					v-if="isDraftPublishEnabled && !data.isArchived"
-					:class="$style.publishIndicator"
-					data-test-id="workflow-card-publish-indicator"
-				>
-					<N8nTooltip
-						:content="
-							isWorkflowPublished
-								? locale.baseText('generic.published')
-								: locale.baseText('generic.notPublished')
-						"
-					>
-						<N8nIcon
-							v-if="isWorkflowPublished"
-							icon="circle-check"
-							size="large"
-							:class="$style.publishIndicatorColor"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-minus"
-							size="large"
-							:class="$style.notPublishedIndicatorColor"
-						/>
-					</N8nTooltip>
-				</div>
+					:status="isWorkflowPublished ? 'published' : 'draft'"
+					data-test-id="workflow-card-publish-indicator-component"
+				/>
 
 				<N8nActionToggle
 					:actions="actions"

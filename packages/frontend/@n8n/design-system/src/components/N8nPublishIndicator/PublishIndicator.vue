@@ -48,7 +48,7 @@ const unpublishedChanges = computed(() => {
 					},
 				]"
 			/>
-			<N8nText size="small" compact>{{ indicatorText }}</N8nText>
+			<N8nText size="small" color="text-base" compact>{{ indicatorText }}</N8nText>
 		</div>
 	</div>
 	<span
