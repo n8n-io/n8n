@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { CredentialResolver } from '@n8n/api-types';
 import {
 	N8nActionBox,
@@ -17,21 +13,22 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import {
-	deleteCredentialResolver,
-	getCredentialResolvers,
-	getCredentialResolverTypes,
-} from '@n8n/rest-api-client';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useAsyncState } from '@vueuse/core';
 import dateformat from 'dateformat';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useCredentialResolvers } from './composables/useCredentialResolvers';
 
-const uiStore = useUIStore();
-const message = useMessage();
-const toast = useToast();
-const rootStore = useRootStore();
 const i18n = useI18n();
+
+const {
+	resolvers,
+	resolverTypes,
+	isLoading,
+	fetchResolvers,
+	fetchResolverTypes,
+	deleteResolver,
+	openCreateModal,
+	openEditModal,
+} = useCredentialResolvers();
 
 // TODO: use actual docs link when available
 const docsUrl = 'https://docs.n8n.io/';
@@ -41,21 +38,9 @@ const RESOLVER_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 } as const;
 
-const {
-	state: resolvers,
-	isLoading,
-	execute: fetchResolvers,
-} = useAsyncState(
-	async () => {
-		return await getCredentialResolvers(rootStore.restApiContext);
-	},
-	[],
-	{ shallow: false, resetOnExecute: false },
-);
-
-const { state: types } = useAsyncState(async () => {
-	return await getCredentialResolverTypes(rootStore.restApiContext);
-}, []);
+onMounted(async () => {
+	await Promise.all([fetchResolvers(), fetchResolverTypes()]);
+});
 
 const currentYear = new Date().getFullYear().toString();
 
@@ -77,55 +62,18 @@ const actions = computed(() => {
 });
 
 function createResolver() {
-	uiStore.openModalWithData({
-		name: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-		data: {
-			onSave: fetchResolvers,
-		},
-	});
+	openCreateModal();
 }
 
 function editResolver(resolver: CredentialResolver) {
-	uiStore.openModalWithData({
-		name: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-		data: {
-			resolverId: resolver.id,
-			onSave: fetchResolvers,
-			onDelete: fetchResolvers,
-		},
-	});
+	openEditModal(resolver.id);
 }
 
-async function deleteResolver(resolver: CredentialResolver) {
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
-			interpolate: { savedResolverName: resolver.name },
-		}),
-		i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialResolverEdit.confirmMessage.deleteResolver.confirmButtonText',
-			),
-		},
-	);
-
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
+async function handleDeleteResolver(resolver: CredentialResolver) {
+	const deleted = await deleteResolver(resolver);
+	if (deleted) {
+		void fetchResolvers();
 	}
-
-	try {
-		await deleteCredentialResolver(rootStore.restApiContext, resolver.id);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('credentialResolverEdit.error.delete'));
-		return;
-	}
-
-	void fetchResolvers();
-
-	toast.showMessage({
-		title: i18n.baseText('credentialResolverEdit.deleteSuccess.title'),
-		type: 'success',
-	});
 }
 
 async function onAction(action: string, resolver: CredentialResolver) {
@@ -134,7 +82,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 			editResolver(resolver);
 			break;
 		case RESOLVER_LIST_ITEM_ACTIONS.DELETE:
-			await deleteResolver(resolver);
+			await handleDeleteResolver(resolver);
 			break;
 	}
 }
@@ -206,7 +154,10 @@ async function onAction(action: string, resolver: CredentialResolver) {
 				</template>
 				<div :class="$style.cardDescription">
 					<N8nText color="text-light" size="small">
-						{{ types.find(({ name }) => name === resolver.type)?.displayName || resolver.type }} |
+						{{
+							resolverTypes.find(({ name }) => name === resolver.type)?.displayName || resolver.type
+						}}
+						|
 					</N8nText>
 					<N8nText color="text-light" size="small">
 						{{ i18n.baseText('credentialResolver.item.updated') }}
