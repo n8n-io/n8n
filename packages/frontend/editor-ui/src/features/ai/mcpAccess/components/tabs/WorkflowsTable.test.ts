@@ -4,17 +4,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import type { WorkflowListItem } from '@/Interface';
 
-const { mockRouterPush } = vi.hoisted(() => ({
-	mockRouterPush: vi.fn(),
-}));
-
 vi.mock('@/app/router', () => ({
 	default: {
 		resolve: vi.fn(({ name, params }) => ({
 			fullPath:
 				name === 'NodeViewExisting' ? `/workflows/${params.name}` : `/projects/${params.projectId}`,
 		})),
-		push: mockRouterPush,
 	},
 }));
 
@@ -69,8 +64,8 @@ describe('WorkflowsTable', () => {
 			expect(getByTestId('mcp-workflow-table-empty-state-description')).toBeVisible();
 		});
 
-		it('should navigate to workflows list when button is clicked', async () => {
-			const { getByTestId } = createComponent({
+		it('should emit connectWorkflows event when button is clicked', async () => {
+			const { getByTestId, emitted } = createComponent({
 				props: {
 					workflows: [],
 					loading: false,
@@ -80,7 +75,7 @@ describe('WorkflowsTable', () => {
 			const button = getByTestId('mcp-workflow-table-empty-state-button');
 			await userEvent.click(button);
 
-			expect(mockRouterPush).toHaveBeenCalledWith({ name: 'WorkflowsView' });
+			expect(emitted('connectWorkflows')).toBeTruthy();
 		});
 	});
 
@@ -121,9 +116,9 @@ describe('WorkflowsTable', () => {
 			});
 
 			expect(getByTestId('mcp-workflow-name')).toHaveTextContent('Workflow In Project Root');
-			expect(getByTestId('mcp-workflow-project-name')).toHaveTextContent('My Project');
-			expect(queryByTestId('mcp-workflow-folder-name')).not.toBeInTheDocument();
-			expect(queryByTestId('mcp-workflow-ellipsis-separator')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-location-project-name')).toHaveTextContent('My Project');
+			expect(queryByTestId('workflow-location-folder-name')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-location-ellipsis-separator')).not.toBeInTheDocument();
 		});
 
 		it('should render personal project name correctly', () => {
@@ -145,7 +140,7 @@ describe('WorkflowsTable', () => {
 				},
 			});
 
-			expect(getByTestId('mcp-workflow-project-name')).toHaveTextContent('Personal');
+			expect(getByTestId('workflow-location-project-name')).toHaveTextContent('Personal');
 		});
 	});
 
@@ -175,11 +170,11 @@ describe('WorkflowsTable', () => {
 				},
 			});
 
-			expect(getByTestId('mcp-workflow-project-name')).toHaveTextContent('My Project');
-			expect(getByTestId('mcp-workflow-folder-name')).toHaveTextContent('Parent Folder');
-			// Only one separator (between project and folder)
-			expect(getByTestId('mcp-workflow-ellipsis-separator')).toBeVisible();
-			expect(queryByTestId('mcp-workflow-grandparent-folder')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-location-project-name')).toHaveTextContent('My Project');
+			expect(getByTestId('workflow-location-folder-name')).toHaveTextContent('Parent Folder');
+			// Separator between project and folder should be visible
+			expect(getByTestId('workflow-location-separator')).toBeVisible();
+			expect(queryByTestId('workflow-location-grandparent')).not.toBeInTheDocument();
 		});
 
 		it('should render workflow in nested folder with ellipsis', () => {
@@ -200,18 +195,18 @@ describe('WorkflowsTable', () => {
 				},
 			});
 
-			const { getByTestId, getAllByTestId } = createComponent({
+			const { getByTestId } = createComponent({
 				props: {
 					workflows: [workflow],
 					loading: false,
 				},
 			});
 
-			expect(getByTestId('mcp-workflow-project-name')).toHaveTextContent('My Project');
-			expect(getByTestId('mcp-workflow-folder-name')).toHaveTextContent('Child Folder');
-			expect(getByTestId('mcp-workflow-grandparent-folder')).toBeVisible();
-			// Multiple separators (between project and ellipsis, and between ellipsis and folder)
-			expect(getAllByTestId('mcp-workflow-ellipsis-separator').length).toBeGreaterThanOrEqual(2);
+			expect(getByTestId('workflow-location-project-name')).toHaveTextContent('My Project');
+			expect(getByTestId('workflow-location-folder-name')).toHaveTextContent('Child Folder');
+			expect(getByTestId('workflow-location-grandparent')).toBeVisible();
+			// Ellipsis separator (between ellipsis and folder)
+			expect(getByTestId('workflow-location-ellipsis-separator')).toBeVisible();
 		});
 	});
 
@@ -439,7 +434,7 @@ describe('WorkflowsTable', () => {
 				},
 			});
 
-			const projectLink = getByTestId('mcp-workflow-project-link');
+			const projectLink = getByTestId('workflow-location-project-link');
 			expect(projectLink).toHaveAttribute('href', '/projects/project-456');
 		});
 	});
@@ -517,7 +512,7 @@ describe('WorkflowsTable', () => {
 			expect(workflowNames[2]).toHaveTextContent('Third Workflow');
 
 			// Verify project names (second one should show "Personal")
-			const projectNames = getAllByTestId('mcp-workflow-project-name');
+			const projectNames = getAllByTestId('workflow-location-project-name');
 			expect(projectNames).toHaveLength(3);
 			expect(projectNames[0]).toHaveTextContent('Project A');
 			expect(projectNames[1]).toHaveTextContent('Personal');
@@ -530,13 +525,13 @@ describe('WorkflowsTable', () => {
 			expect(emptyDescriptions).toHaveLength(1);
 
 			// Verify folder names (only workflows 2 and 3 have folders)
-			const folderNames = getAllByTestId('mcp-workflow-folder-name');
+			const folderNames = getAllByTestId('workflow-location-folder-name');
 			expect(folderNames).toHaveLength(2);
 			expect(folderNames[0]).toHaveTextContent('My Folder');
 			expect(folderNames[1]).toHaveTextContent('Nested Folder');
 
 			// Verify ellipsis for nested folder (only workflow 3)
-			const grandparentFolders = getAllByTestId('mcp-workflow-grandparent-folder');
+			const grandparentFolders = getAllByTestId('workflow-location-grandparent');
 			expect(grandparentFolders).toHaveLength(1);
 		});
 	});
