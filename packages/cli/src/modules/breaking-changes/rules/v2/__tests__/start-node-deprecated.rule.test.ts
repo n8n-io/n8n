@@ -29,7 +29,7 @@ describe('StartNodeDeprecatedRule', () => {
 		it('should return recommendations', async () => {
 			const recommendations = await rule.getRecommendations([]);
 
-			expect(recommendations).toHaveLength(2);
+			expect(recommendations).toHaveLength(3);
 			expect(recommendations[0]).toMatchObject({
 				action: 'Replace with Manual Trigger',
 				description:
@@ -39,6 +39,10 @@ describe('StartNodeDeprecatedRule', () => {
 				action: 'Replace with Execute Workflow Trigger',
 				description:
 					'If the workflow is called as a sub-workflow, replace the Start node with the Execute Workflow Trigger node and activate the workflow.',
+			});
+			expect(recommendations[2]).toMatchObject({
+				action: 'Delete disabled Start nodes',
+				description: 'If the Start node is disabled, delete it from the workflow.',
 			});
 		});
 	});
@@ -57,7 +61,7 @@ describe('StartNodeDeprecatedRule', () => {
 			});
 		});
 
-		it('should return no issues when start node is disabled', async () => {
+		it('should detect disabled start node with delete message', async () => {
 			const disabledStartNode = {
 				...createNode('Start', 'n8n-nodes-base.start'),
 				disabled: true,
@@ -68,13 +72,16 @@ describe('StartNodeDeprecatedRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result).toEqual({
-				isAffected: false,
-				issues: [],
+			expect(result.isAffected).toBe(true);
+			expect(result.issues).toHaveLength(1);
+			expect(result.issues[0]).toMatchObject({
+				title: "Start node 'Start' is deprecated",
+				description: 'Delete this disabled Start node from the workflow.',
+				level: 'error',
 			});
 		});
 
-		it('should detect enabled start node', async () => {
+		it('should detect enabled start node with replace message', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Start', 'n8n-nodes-base.start'),
 			]);
@@ -93,7 +100,7 @@ describe('StartNodeDeprecatedRule', () => {
 			});
 		});
 
-		it('should detect multiple enabled start nodes', async () => {
+		it('should detect multiple start nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Start 1', 'n8n-nodes-base.start'),
 				createNode('Start 2', 'n8n-nodes-base.start'),
@@ -105,7 +112,7 @@ describe('StartNodeDeprecatedRule', () => {
 			expect(result.issues).toHaveLength(2);
 		});
 
-		it('should only detect enabled start nodes and ignore disabled ones', async () => {
+		it('should detect both enabled and disabled start nodes with appropriate messages', async () => {
 			const disabledStartNode = {
 				...createNode('Start Disabled', 'n8n-nodes-base.start'),
 				disabled: true,
@@ -118,8 +125,15 @@ describe('StartNodeDeprecatedRule', () => {
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].nodeName).toBe('Start Enabled');
+			expect(result.issues).toHaveLength(2);
+
+			const enabledIssue = result.issues.find((i) => i.nodeName === 'Start Enabled');
+			const disabledIssue = result.issues.find((i) => i.nodeName === 'Start Disabled');
+
+			expect(enabledIssue?.description).toBe(
+				'Replace with Manual Trigger for manual executions, or Execute Workflow Trigger if used as a sub-workflow.',
+			);
+			expect(disabledIssue?.description).toBe('Delete this disabled Start node from the workflow.');
 		});
 	});
 });

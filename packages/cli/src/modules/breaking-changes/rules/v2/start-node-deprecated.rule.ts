@@ -41,6 +41,10 @@ export class StartNodeDeprecatedRule implements IBreakingChangeWorkflowRule {
 				description:
 					'If the workflow is called as a sub-workflow, replace the Start node with the Execute Workflow Trigger node and activate the workflow.',
 			},
+			{
+				action: 'Delete disabled Start nodes',
+				description: 'If the Start node is disabled, delete it from the workflow.',
+			},
 		];
 	}
 
@@ -49,16 +53,16 @@ export class StartNodeDeprecatedRule implements IBreakingChangeWorkflowRule {
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const startNodes = nodesGroupedByType.get(this.START_NODE_TYPE) ?? [];
-		const enabledStartNodes = startNodes.filter((node) => !node.disabled);
 
-		if (enabledStartNodes.length === 0) return { isAffected: false, issues: [] };
+		if (startNodes.length === 0) return { isAffected: false, issues: [] };
 
 		return {
 			isAffected: true,
-			issues: enabledStartNodes.map((node) => ({
+			issues: startNodes.map((node) => ({
 				title: `Start node '${node.name}' is deprecated`,
-				description:
-					'Replace with Manual Trigger for manual executions, or Execute Workflow Trigger if used as a sub-workflow.',
+				description: node.disabled
+					? 'Delete this disabled Start node from the workflow.'
+					: 'Replace with Manual Trigger for manual executions, or Execute Workflow Trigger if used as a sub-workflow.',
 				level: 'error',
 				nodeId: node.id,
 				nodeName: node.name,
