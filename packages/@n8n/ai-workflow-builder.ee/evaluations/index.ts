@@ -86,7 +86,6 @@ async function main(): Promise<void> {
 				numGenerations: args.numGenerations,
 				verbose: args.verbose,
 				experimentName: args.experimentName,
-				outputDir: args.outputDir,
 				concurrency: args.concurrency,
 				maxExamples: args.maxExamples || undefined,
 				featureFlags,

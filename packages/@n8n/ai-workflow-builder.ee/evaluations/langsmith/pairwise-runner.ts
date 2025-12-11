@@ -123,7 +123,6 @@ export interface PairwiseEvaluationOptions {
 	numGenerations?: number;
 	verbose?: boolean;
 	experimentName?: string;
-	outputDir?: string;
 	concurrency?: number;
 	maxExamples?: number;
 	featureFlags?: BuilderFeatureFlags;
@@ -144,7 +143,6 @@ export async function runPairwiseLangsmithEvaluation(
 		numGenerations = DEFAULTS.NUM_GENERATIONS,
 		verbose = false,
 		experimentName = DEFAULTS.EXPERIMENT_NAME,
-		outputDir,
 		concurrency = DEFAULTS.CONCURRENCY,
 		maxExamples,
 		featureFlags,
@@ -161,13 +159,17 @@ export async function runPairwiseLangsmithEvaluation(
 		verbose,
 	});
 
-	if (outputDir) {
-		log.info(`➔ Output directory: ${outputDir}`);
-	}
-
 	logFeatureFlags(featureFlags);
 
 	try {
+		// Validate inputs
+		if (numJudges < 1) {
+			throw new Error('numJudges must be at least 1');
+		}
+		if (numGenerations < 1) {
+			throw new Error('numGenerations must be at least 1');
+		}
+
 		if (!process.env.LANGSMITH_API_KEY) {
 			throw new Error('LANGSMITH_API_KEY environment variable not set');
 		}
@@ -299,6 +301,14 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	const startTime = Date.now();
 
 	try {
+		// Validate inputs
+		if (numJudges < 1) {
+			throw new Error('numJudges must be at least 1');
+		}
+		if (numGenerations < 1) {
+			throw new Error('numGenerations must be at least 1');
+		}
+
 		const { parsedNodeTypes, llm } = await setupTestEnvironment();
 
 		// Create artifact saver if output directory is configured

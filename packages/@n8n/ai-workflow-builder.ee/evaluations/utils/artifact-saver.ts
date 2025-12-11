@@ -1,36 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import type { GenerationResult, MultiGenerationAggregation } from './judge-panel';
 import type { EvalLogger } from './logger';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface GenerationResult {
-	workflow: {
-		name?: string;
-		nodes?: Array<{ name: string; type: string }>;
-		connections?: Record<string, unknown>;
-	};
-	judgeResults: Array<{
-		primaryPass: boolean;
-		diagnosticScore: number;
-		violations: Array<{ rule: string; justification: string }>;
-		passes: Array<{ rule: string }>;
-	}>;
-	primaryPasses: number;
-	majorityPass: boolean;
-	avgDiagnosticScore: number;
-}
-
-interface MultiGenerationAggregation {
-	generationCorrectness: number;
-	aggregatedDiagnosticScore: number;
-	passingGenerations: number;
-	totalGenerations: number;
-	generationDetails: GenerationResult[];
-}
 
 export interface ArtifactSaver {
 	savePrompt(promptId: string, prompt: string, criteria: { dos: string; donts: string }): void;
