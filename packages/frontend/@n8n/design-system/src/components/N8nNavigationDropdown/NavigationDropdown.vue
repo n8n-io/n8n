@@ -202,12 +202,6 @@ defineExpose({
 			}
 		}
 	}
-
-	& hr {
-		border-top: none;
-		border-bottom: var(--border);
-		margin-block: var(--spacing--4xs);
-	}
 }
 
 .nestedSubmenu {
@@ -248,6 +242,12 @@ defineExpose({
 
 	:global(.el-sub-menu__icon-arrow svg) {
 		margin-top: auto;
+	}
+
+	& hr {
+		border-top: none;
+		border-bottom: var(--border);
+		margin-block: var(--spacing--4xs);
 	}
 }
 

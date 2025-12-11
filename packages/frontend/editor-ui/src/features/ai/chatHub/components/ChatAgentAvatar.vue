@@ -44,8 +44,20 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 	outline: none;
 
 	&.lg {
-		width: 32px;
-		height: 32px;
+		width: 24px;
+		height: 24px;
+
+		& g,
+		& path {
+			stroke-width: 1.25;
+		}
+	}
+
+	&.md {
+		& g,
+		& path {
+			stroke-width: 1.5;
+		}
 	}
 }
 
@@ -66,9 +78,9 @@ const isCredentialsIconReady = computed(() => credentialsStore.allCredentialType
 	}
 
 	&.lg {
-		width: 32px;
-		height: 32px;
-		font-size: 28px;
+		width: 24px;
+		height: 24px;
+		font-size: 24px;
 	}
 }
 

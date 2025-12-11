@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nIcon, N8nInput2, N8nSelect2 } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { refDebounced } from '@vueuse/core';
@@ -47,29 +47,25 @@ function updateSortBy(value: 'updatedAt' | 'createdAt') {
 
 <template>
 	<div :class="$style.controls">
-		<N8nInput
+		<N8nInput2
 			v-model="localSearch"
 			:class="$style.search"
+			size="medium"
 			:placeholder="i18n.baseText('chatHub.agents.search.placeholder')"
 			clearable
 		>
 			<template #prefix>
 				<N8nIcon icon="search" />
 			</template>
-		</N8nInput>
+		</N8nInput2>
 
-		<N8nSelect
+		<N8nSelect2
+			size="medium"
 			:model-value="modelValue.sortBy"
 			:class="$style.sort"
+			:items="sortOptions"
 			@update:model-value="updateSortBy"
-		>
-			<N8nOption
-				v-for="option in sortOptions"
-				:key="option.value"
-				:label="option.label"
-				:value="option.value"
-			/>
-		</N8nSelect>
+		/>
 	</div>
 </template>
 
