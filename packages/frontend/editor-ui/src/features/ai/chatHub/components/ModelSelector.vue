@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
@@ -82,6 +82,7 @@ const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
+const styles = useCssModule();
 
 const credentialsName = computed(() =>
 	selectedAgent
@@ -324,6 +325,9 @@ function onSelect(id: string) {
 onClickOutside(
 	computed(() => dropdownRef.value?.$el),
 	() => dropdownRef.value?.close(),
+	{
+		ignore: [`.${styles.component} [role=menuitem]`],
+	},
 );
 
 // Update agents when credentials are updated
