@@ -143,7 +143,7 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			return UserInfoResponseSchema.parse(data);
 		} catch (error) {
 			this.logger.error('Invalid userinfo response format', { error });
-			throw new IdentifierValidationError('Invalid token introspection response format');
+			throw new IdentifierValidationError('Invalid userinfo response format');
 		}
 	}
 
@@ -163,7 +163,7 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 				status: response.status,
 				data: response.data,
 			});
-			throw new IdentifierValidationError('Token introspection failed');
+			throw new IdentifierValidationError('UserInfo query failed');
 		}
 
 		// TODO: Add support for JWT responses in addition to JSON
