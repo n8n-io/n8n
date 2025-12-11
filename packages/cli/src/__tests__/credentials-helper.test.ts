@@ -446,6 +446,7 @@ describe('CredentialsHelper', () => {
 					id: mockCredentialEntity.id,
 					name: mockCredentialEntity.name,
 					isResolvable: false,
+					type: 'testApi',
 				},
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
