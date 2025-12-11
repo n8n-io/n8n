@@ -81,6 +81,7 @@ describe('DynamicCredentialsController', () => {
 			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('1');
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockCredential, {
 				cid: '1',
+				origin: 'dynamic-credential',
 				authorizationHeader: 'Bearer token123',
 			});
 		});
@@ -107,6 +108,7 @@ describe('DynamicCredentialsController', () => {
 			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('1');
 			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockCredential, {
 				cid: '1',
+				origin: 'dynamic-credential',
 				authorizationHeader: 'Bearer token123',
 			});
 		});
@@ -132,7 +134,8 @@ describe('DynamicCredentialsController', () => {
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockCredential, {
 				cid: '1',
-				authorizationHeader: undefined,
+				origin: 'dynamic-credential',
+				authorizationHeader: '',
 			});
 		});
 	});

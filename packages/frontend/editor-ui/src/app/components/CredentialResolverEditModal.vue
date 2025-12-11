@@ -111,6 +111,7 @@ const selectedType = computed(() => {
 // The explicit return type provides type narrowing from unknown to INodeProperties
 const toNodeProperty = (option: Record<string, unknown>): INodeProperties => {
 	return {
+		...option,
 		name: typeof option.name === 'string' ? option.name : '',
 		type: (typeof option.type === 'string' ? option.type : 'string') as INodeProperties['type'],
 		displayName: typeof option.displayName === 'string' ? option.displayName : '',
