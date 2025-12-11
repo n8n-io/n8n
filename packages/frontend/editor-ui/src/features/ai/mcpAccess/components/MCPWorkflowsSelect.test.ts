@@ -102,8 +102,8 @@ describe('MCPWorkflowsSelect', () => {
 			// Create a promise that doesn't resolve immediately
 			let resolvePromise: (value: { count: number; data: WorkflowListItem[] }) => void;
 			mcpStore.getMcpEligibleWorkflows.mockImplementation(
-				() =>
-					new Promise((resolve) => {
+				async () =>
+					await new Promise((resolve) => {
 						resolvePromise = resolve;
 					}),
 			);
