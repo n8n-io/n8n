@@ -6,6 +6,8 @@ export const createWorkflow = (id: string, name: string, nodes: INode[], active 
 		id,
 		name,
 		active,
+		activeVersionId: active ? 'v1' : null,
+		versionId: 'v1',
 		nodes,
 		statistics: [
 			{

@@ -24,7 +24,7 @@ function generateExperimentalVersion(currentVersion) {
 
 const rootDir = process.cwd();
 const releaseType = process.env.RELEASE_TYPE;
-assert.match(releaseType, /^(patch|minor|major|experimental)$/, 'Invalid RELEASE_TYPE');
+assert.match(releaseType, /^(patch|minor|major|experimental|premajor)$/, 'Invalid RELEASE_TYPE');
 
 // TODO: if releaseType is `auto` determine release type based on the changelog
 
@@ -63,7 +63,9 @@ for (const packageName in packageMap) {
 		)
 			? releaseType === 'experimental'
 				? generateExperimentalVersion(version)
-				: semver.inc(version, releaseType)
+				: releaseType === 'premajor'
+				? semver.inc(version, version.includes('-rc.') ? 'prerelease' : 'premajor', undefined, 'rc')
+					: semver.inc(version, releaseType)
 			: version;
 
 	await writeFile(packageFile, JSON.stringify(packageJson, null, 2) + '\n');

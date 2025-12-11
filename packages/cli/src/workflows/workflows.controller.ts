@@ -1,4 +1,9 @@
-import { ImportWorkflowFromUrlDto, ROLE, TransferWorkflowBodyDto } from '@n8n/api-types';
+import {
+	ActivateWorkflowDto,
+	ImportWorkflowFromUrlDto,
+	ROLE,
+	TransferWorkflowBodyDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
@@ -30,7 +35,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -96,6 +101,18 @@ export class WorkflowsController {
 		// mess with relations of other workflows
 		delete req.body.shared;
 
+		// @ts-expect-error: We shouldn't accept this, this will be set when activating
+		if (req.body.activeVersionId || req.body.active) {
+			this.logger.warn(
+				'Creating a workflow as active is not supported. The workflow will be created as inactive.',
+				{ userId: req.user.id },
+			);
+
+			// @ts-expect-error: We shouldn't accept this
+			req.body.activeVersionId = undefined;
+			req.body.active = false;
+		}
+
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, req.body);
@@ -120,7 +137,9 @@ export class WorkflowsController {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
 
-			const allCredentials = await this.credentialsService.getMany(req.user);
+			const allCredentials = await this.credentialsService.getMany(req.user, {
+				includeGlobal: true,
+			});
 
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
@@ -136,28 +155,32 @@ export class WorkflowsController {
 
 		const { manager: dbManager } = this.projectRepository;
 
-		let project: Project | null;
+		let project: Project | null = null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const { projectId, parentFolderId } = req.body;
-			project =
-				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
-					: await this.projectService.getProjectWithScope(
-							req.user,
-							projectId,
-							['workflow:create'],
-							transactionManager,
-						);
+			const { parentFolderId } = req.body;
+			let { projectId } = req.body;
 
-			if (typeof projectId === 'string' && project === null) {
+			if (projectId === undefined) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					req.user.id,
+					transactionManager,
+				);
+				// Chat users are not allowed to create workflows even within their personal project,
+				// so even though we found the project ensure it gets found via expected scope too.
+				projectId = personalProject.id;
+			}
+
+			project = await this.projectService.getProjectWithScope(
+				req.user,
+				projectId,
+				['workflow:create'],
+				transactionManager,
+			);
+
+			if (project === null) {
 				throw new BadRequestError(
 					"You don't have the permissions to save the workflow in this project.",
 				);
-			}
-
-			// Safe guard in case the personal project does not exist for whatever reason.
-			if (project === null) {
-				throw new UnexpectedError('No personal project found');
 			}
 
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
@@ -181,11 +204,29 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
+			await this.workflowHistoryService.saveVersion(
+				req.user,
+				workflow,
+				workflow.id,
+				transactionManager,
+			);
+
+			const shouldActivate = req.body.active === true;
+			if (shouldActivate) {
+				workflow.activeVersionId = workflow.versionId;
+				await transactionManager.save(workflow);
+			}
+
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true, includeParentFolder: true },
+				{
+					em: transactionManager,
+					includeTags: true,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 		});
 
@@ -193,8 +234,6 @@ export class WorkflowsController {
 			this.logger.error('Failed to create workflow', { userId: req.user.id });
 			throw new InternalServerError('Failed to save workflow');
 		}
-
-		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
 
 		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
@@ -221,7 +260,9 @@ export class WorkflowsController {
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
-		return { ...savedWorkflowWithMetaData, scopes };
+		const checksum = await calculateWorkflowChecksum(savedWorkflow);
+
+		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -325,7 +366,11 @@ export class WorkflowsController {
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+				{
+					includeTags: !this.globalConfig.tags.disabled,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 
 			if (!workflow) {
@@ -343,8 +388,9 @@ export class WorkflowsController {
 			delete workflowWithMetaData.shared;
 
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+			const checksum = await calculateWorkflowChecksum(workflow);
 
-			return { ...workflowWithMetaData, scopes };
+			return { ...workflowWithMetaData, scopes, checksum };
 		}
 
 		// sharing disabled
@@ -353,7 +399,11 @@ export class WorkflowsController {
 			workflowId,
 			req.user,
 			['workflow:read'],
-			{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+			{
+				includeTags: !this.globalConfig.tags.disabled,
+				includeParentFolder: true,
+				includeActiveVersion: true,
+			},
 		);
 
 		if (!workflow) {
@@ -367,8 +417,9 @@ export class WorkflowsController {
 		}
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes };
+		return { ...workflow, scopes, checksum };
 	}
 
 	@Patch('/:workflowId')
@@ -378,7 +429,16 @@ export class WorkflowsController {
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
-		const { tags, parentFolderId, ...rest } = req.body;
+		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, ...rest } = req.body;
+
+		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
+		if (
+			rest.settings?.timeSavedMode !== undefined &&
+			!['fixed', 'dynamic'].includes(rest.settings.timeSavedMode)
+		) {
+			throw new BadRequestError('Invalid timeSavedMode');
+		}
+
 		Object.assign(updateData, rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -390,18 +450,18 @@ export class WorkflowsController {
 			);
 		}
 
-		const updatedWorkflow = await this.workflowService.update(
-			req.user,
-			updateData,
-			workflowId,
-			tags,
+		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
+			tagIds: tags,
 			parentFolderId,
-			isSharingEnabled ? forceSave : true,
-		);
+			forceSave: isSharingEnabled ? forceSave : true,
+			expectedChecksum,
+			aiBuilderAssisted,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 
-		return { ...updatedWorkflow, scopes };
+		return { ...updatedWorkflow, scopes, checksum };
 	}
 
 	@Delete('/:workflowId')
@@ -439,7 +499,9 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		return { ...workflow, checksum };
 	}
 
 	@Post('/:workflowId/unarchive')
@@ -460,7 +522,45 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		return { ...workflow, checksum };
+	}
+
+	@Post('/:workflowId/activate')
+	@ProjectScope('workflow:update')
+	async activate(
+		req: WorkflowRequest.Activate,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: ActivateWorkflowDto,
+	) {
+		const { versionId, name, description, expectedChecksum } = body;
+
+		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
+			versionId,
+			name,
+			description,
+			expectedChecksum,
+		});
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		return { ...workflow, scopes, checksum };
+	}
+
+	@Post('/:workflowId/deactivate')
+	@ProjectScope('workflow:update')
+	async deactivate(req: WorkflowRequest.Deactivate) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+		const checksum = await calculateWorkflowChecksum(workflow);
+
+		return { ...workflow, scopes, checksum };
 	}
 
 	@Post('/:workflowId/run')

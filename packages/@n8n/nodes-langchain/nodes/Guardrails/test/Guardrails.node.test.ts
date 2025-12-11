@@ -4,11 +4,10 @@ import type { IExecuteFunctions, INodeExecutionData, INode } from 'n8n-workflow'
 import { NodeOperationError } from 'n8n-workflow';
 
 import * as ProcessActions from '../actions/process';
-import { Guardrails } from '../Guardrails.node';
 import * as ModelHelpers from '../helpers/model';
+import { execute } from '../actions/execute';
 
 describe('Guardrails', () => {
-	let guardrailsNode: Guardrails;
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
 	let mockNode: jest.Mocked<INode>;
 	let mockModel: jest.Mocked<BaseChatModel>;
@@ -16,13 +15,12 @@ describe('Guardrails', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		guardrailsNode = new Guardrails();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockNode = mock<INode>({
 			id: 'test-node',
 			name: 'Guardrails Node',
 			type: 'n8n-nodes-langchain.guardrails',
-			typeVersion: 1,
+			typeVersion: 2,
 			position: [0, 0],
 			parameters: {},
 		});
@@ -41,6 +39,13 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
 						operation: 'classify',
+						guardrails: {
+							nsfw: {
+								value: {
+									threshold: 0.5,
+								},
+							},
+						},
 					};
 					return params[paramName];
 				});
@@ -52,19 +57,18 @@ describe('Guardrails', () => {
 				processSpy.mockResolvedValue({
 					guardrailsInput: 'processed text',
 					passed: {
-						checks: [{ name: 'test', triggered: false }],
+						checks: [{ name: 'nsfw', triggered: false }],
 					},
 					failed: null,
 				});
-
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toHaveLength(1);
 				expect(result[0][0]).toEqual({
 					json: {
 						guardrailsInput: 'processed text',
-						checks: [{ name: 'test', triggered: false }],
+						checks: [{ name: 'nsfw', triggered: false }],
 					},
 					pairedItem: { item: 0 },
 				});
@@ -83,6 +87,13 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
 						operation: 'classify',
+						guardrails: {
+							nsfw: {
+								value: {
+									threshold: 0.5,
+								},
+							},
+						},
 					};
 					return params[paramName];
 				});
@@ -114,7 +125,7 @@ describe('Guardrails', () => {
 						failed: null,
 					});
 
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toHaveLength(3);
@@ -167,7 +178,7 @@ describe('Guardrails', () => {
 						failed: null,
 					});
 
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toHaveLength(2);
@@ -218,9 +229,7 @@ describe('Guardrails', () => {
 				const testError = new NodeOperationError(mockNode, 'Process failed');
 				processSpy.mockRejectedValue(testError);
 
-				await expect(guardrailsNode.execute.bind(mockExecuteFunctions)()).rejects.toThrow(
-					NodeOperationError,
-				);
+				await expect(execute.bind(mockExecuteFunctions)()).rejects.toThrow(NodeOperationError);
 			});
 
 			it('should handle error gracefully when continueOnFail is true', async () => {
@@ -242,7 +251,7 @@ describe('Guardrails', () => {
 				const testError = new Error('Process failed');
 				processSpy.mockRejectedValue(testError);
 
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toHaveLength(0);
@@ -290,7 +299,7 @@ describe('Guardrails', () => {
 						failed: null,
 					});
 
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toHaveLength(2);
@@ -342,7 +351,7 @@ describe('Guardrails', () => {
 					failed: null,
 				});
 
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(1);
 				expect(result[0]).toHaveLength(1);
@@ -371,7 +380,7 @@ describe('Guardrails', () => {
 					failed: null,
 				});
 
-				const result = await guardrailsNode.execute.call(mockExecuteFunctions);
+				const result = await execute.call(mockExecuteFunctions);
 
 				expect(result).toHaveLength(2);
 				expect(result[0]).toHaveLength(1);

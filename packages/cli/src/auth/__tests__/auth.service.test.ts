@@ -6,6 +6,7 @@ import type {
 	InvalidAuthTokenRepository,
 	UserRepository,
 } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
@@ -15,6 +16,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
+import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -35,10 +37,11 @@ describe('AuthService', () => {
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
+	const license = mock<License>();
 	const authService = new AuthService(
 		globalConfig,
 		mock(),
-		mock(),
+		license,
 		jwtService,
 		urlService,
 		userRepository,
@@ -61,6 +64,7 @@ describe('AuthService', () => {
 		globalConfig.userManagement.jwtSessionDurationHours = 168;
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
+		license.isWithinUsersLimit.mockReturnValue(true);
 	});
 
 	describe('createJWTHash', () => {
@@ -517,6 +521,29 @@ describe('AuthService', () => {
 				maxAge: 604800000,
 				sameSite: 'lax',
 				secure: true,
+			});
+		});
+
+		describe('when user limit is reached', () => {
+			it('should block issuance if the user is not the global owner', async () => {
+				license.isWithinUsersLimit.mockReturnValue(false);
+				expect(() => {
+					authService.issueCookie(res, user, false, browserId);
+				}).toThrowError('Maximum number of users reached');
+			});
+
+			it('should allow issuance if the user is the global owner', async () => {
+				license.isWithinUsersLimit.mockReturnValue(false);
+				user.role = GLOBAL_OWNER_ROLE;
+				expect(() => {
+					authService.issueCookie(res, user, false, browserId);
+				}).not.toThrowError('Maximum number of users reached');
+				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+					httpOnly: true,
+					maxAge: 604800000,
+					sameSite: 'lax',
+					secure: true,
+				});
 			});
 		});
 

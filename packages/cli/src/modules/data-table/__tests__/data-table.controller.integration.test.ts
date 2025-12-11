@@ -4134,7 +4134,7 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 
 	test('should handle CSV with different data types', async () => {
 		const csvContent =
-			'name,age,active,joinDate\nAlice,30,true,2024-01-15\nBob,25,false,2024-02-20';
+			'name,age,active,joinDate\nAlice,30,true,2024-01-15T00:00:00Z\nBob,25,false,2024-02-20T00:00:00Z';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
 			.attach('file', Buffer.from(csvContent), {

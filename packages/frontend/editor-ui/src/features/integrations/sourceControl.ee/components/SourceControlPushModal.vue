@@ -16,7 +16,7 @@ import type {
 } from '@/features/collaboration/projects/projects.types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
-import type { SourceControlledFile } from '@n8n/api-types';
+import type { SourceControlledFile, SourceControlledFileStatus } from '@n8n/api-types';
 import {
 	ROLE,
 	SOURCE_CONTROL_FILE_LOCATION,
@@ -133,8 +133,6 @@ const projectsForFilters = computed(() => {
 
 const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
-
-type SourceControlledFileStatus = SourceControlledFile['status'];
 
 type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
 
@@ -654,6 +652,7 @@ function castProject(project: ProjectListItem): WorkflowResource {
 		id: '',
 		name: '',
 		active: false,
+		activeVersionId: null,
 		createdAt: '',
 		updatedAt: '',
 		isArchived: false,
@@ -664,7 +663,7 @@ function castProject(project: ProjectListItem): WorkflowResource {
 	return resource;
 }
 
-function openDiffModal(id: string) {
+function openDiffModal(id: string, workflowStatus: SourceControlledFileStatus) {
 	telemetry.track('User clicks compare workflows', {
 		workflow_id: id,
 		context: 'source_control_push',
@@ -675,6 +674,7 @@ function openDiffModal(id: string) {
 		query: {
 			...route.query,
 			diff: id,
+			workflowStatus,
 			direction: 'push',
 		},
 	});
@@ -928,9 +928,10 @@ onMounted(async () => {
 														placement="top"
 													>
 														<N8nIconButton
+															data-test-id="source-control-workflow-diff-button"
 															icon="file-diff"
 															type="secondary"
-															@click="openDiffModal(file.id)"
+															@click="openDiffModal(file.id, file.status)"
 														/>
 													</N8nTooltip>
 												</template>

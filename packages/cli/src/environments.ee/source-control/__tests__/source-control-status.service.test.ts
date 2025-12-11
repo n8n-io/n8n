@@ -1053,6 +1053,91 @@ describe('getStatus', () => {
 				});
 			});
 
+			describe('isGlobal changes', () => {
+				it('should detect when isGlobal changes from false to true', async () => {
+					const local = createCredential({ isGlobal: false });
+					const remote = createCredential({ isGlobal: true });
+
+					sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([remote]);
+					sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([local]);
+
+					const result = await sourceControlStatusService.getStatus(user, {
+						direction: 'push',
+						verbose: true,
+						preferLocalVersion: false,
+					});
+
+					if (Array.isArray(result)) fail('Expected result to be an object.');
+					expect(result.credModifiedInEither).toHaveLength(1);
+				});
+
+				it('should detect when isGlobal changes from true to false', async () => {
+					const local = createCredential({ isGlobal: true });
+					const remote = createCredential({ isGlobal: false });
+
+					sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([remote]);
+					sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([local]);
+
+					const result = await sourceControlStatusService.getStatus(user, {
+						direction: 'push',
+						verbose: true,
+						preferLocalVersion: false,
+					});
+
+					if (Array.isArray(result)) fail('Expected result to be an object.');
+					expect(result.credModifiedInEither).toHaveLength(1);
+				});
+
+				it('should detect when isGlobal changes from undefined to true', async () => {
+					const local = createCredential({ isGlobal: undefined });
+					const remote = createCredential({ isGlobal: true });
+
+					sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([remote]);
+					sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([local]);
+
+					const result = await sourceControlStatusService.getStatus(user, {
+						direction: 'push',
+						verbose: true,
+						preferLocalVersion: false,
+					});
+
+					if (Array.isArray(result)) fail('Expected result to be an object.');
+					expect(result.credModifiedInEither).toHaveLength(1);
+				});
+
+				it('should not detect changes when isGlobal is the same (both true)', async () => {
+					const credential = createCredential({ isGlobal: true });
+
+					sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([credential]);
+					sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([credential]);
+
+					const result = await sourceControlStatusService.getStatus(user, {
+						direction: 'push',
+						verbose: true,
+						preferLocalVersion: false,
+					});
+
+					if (Array.isArray(result)) fail('Expected result to be an object.');
+					expect(result.credModifiedInEither).toHaveLength(0);
+				});
+
+				it('should not detect changes when isGlobal is the same (both false/undefined)', async () => {
+					const credential = createCredential({ isGlobal: false });
+
+					sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([credential]);
+					sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([credential]);
+
+					const result = await sourceControlStatusService.getStatus(user, {
+						direction: 'push',
+						verbose: true,
+						preferLocalVersion: false,
+					});
+
+					if (Array.isArray(result)) fail('Expected result to be an object.');
+					expect(result.credModifiedInEither).toHaveLength(0);
+				});
+			});
+
 			it('should not detect as modified when everything is the same', async () => {
 				const credential = createCredential({
 					ownedBy: { type: 'team', projectId: 'team1', projectName: 'Team 1' } as any,

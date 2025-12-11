@@ -3,6 +3,7 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
+	createActiveWorkflow,
 	createWorkflowWithHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
@@ -21,7 +22,12 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
-import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
+import {
+	ApplicationError,
+	WorkflowActivationError,
+	calculateWorkflowChecksum,
+	type INode,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -92,7 +98,13 @@ beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
 
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory', 'TagEntity']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+		'TagEntity',
+	]);
 });
 
 afterEach(() => {
@@ -1176,6 +1188,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const ownerChecksum = await calculateWorkflowChecksum(createResponse.body.data);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1193,7 +1207,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const updateAttemptResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: ownerVersionId });
+				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1219,6 +1233,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner re-updates workflow
 
@@ -1230,7 +1245,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: memberVersionId });
+				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1241,6 +1256,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const ownerChecksum = await calculateWorkflowChecksum(createResponse.body.data);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1254,9 +1271,12 @@ describe('PATCH /workflows/:workflowId', () => {
 				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
 			// owner blocked from activating workflow
 
-			const activationAttemptResponse = await authOwnerAgent
-				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: ownerVersionId, name: 'Update by owner' });
+			const activationAttemptResponse = await authOwnerAgent.patch(`/workflows/${id}`).send({
+				active: true,
+				versionId: ownerVersionId,
+				name: 'Update by owner',
+				expectedChecksum: ownerChecksum,
+			});
 
 			expect(activationAttemptResponse.status).toBe(400);
 			expect(activationAttemptResponse.body.code).toBe(100);
@@ -1281,6 +1301,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner activates workflow
 
@@ -1290,9 +1311,12 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from activating workflow
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				active: true,
+				versionId: memberVersionId,
+				name: 'Update by member',
+				expectedChecksum: memberChecksum,
+			});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1311,6 +1335,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner updates workflow name
 
@@ -1320,9 +1345,11 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from updating workflow settings
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				settings: { saveManualExecutions: true },
+				versionId: memberVersionId,
+				expectedChecksum: memberChecksum,
+			});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1341,6 +1368,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`).expect(200);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner updates workflow settings
 
@@ -1350,9 +1378,11 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from updating workflow name
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				settings: { saveManualExecutions: true },
+				versionId: memberVersionId,
+				expectedChecksum: memberChecksum,
+			});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1419,49 +1449,36 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 	});
 
-	describe('activate workflow', () => {
-		test('should activate workflow without changing version ID', async () => {
-			const workflow = await createWorkflow({}, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: true,
-			};
+	test('should include activeVersion relation in response for active workflows', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createActiveWorkflow({}, teamProject);
 
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).toBeCalled();
-
-			const {
-				data: { id, versionId, active },
-			} = response.body;
-
-			expect(id).toBe(workflow.id);
-			expect(versionId).toBe(workflow.versionId);
-			expect(active).toBe(true);
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated Name',
+			versionId: workflow.versionId,
 		});
 
-		test('should deactivate workflow without changing version ID', async () => {
-			const workflow = await createWorkflowWithHistory({ active: true }, owner);
-			const payload = {
-				versionId: workflow.versionId,
-				active: false,
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).not.toBeCalled();
-			expect(activeWorkflowManager.remove).toBeCalled();
-
-			const {
-				data: { id, versionId, active },
-			} = response.body;
-
-			expect(id).toBe(workflow.id);
-			expect(versionId).toBe(workflow.versionId);
-			expect(active).toBe(false);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('activeVersion');
+		expect(response.body.data.activeVersion).toBeDefined();
+		expect(response.body.data.activeVersion).toMatchObject({
+			versionId: expect.any(String),
+			workflowId: workflow.id,
 		});
+	});
+
+	test('should include activeVersion as null for inactive workflows', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createWorkflow({}, teamProject);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated Name',
+			versionId: workflow.versionId,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('activeVersion');
+		expect(response.body.data.activeVersion).toBeNull();
 	});
 });
 
@@ -1636,7 +1653,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		//
 		// ACT
@@ -1664,10 +1681,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflowWithHistory(
-			{ active: true, parentFolder: folder },
-			member,
-		);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1699,10 +1713,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflowWithHistory(
-			{ active: true, parentFolder: folder },
-			member,
-		);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1742,10 +1753,7 @@ describe('PUT /:workflowId/transfer', () => {
 			name: 'Another Test Folder',
 		});
 
-		const workflow = await createWorkflow(
-			{ active: true, parentFolder: folderInDestinationProject },
-			member,
-		);
+		const workflow = await createWorkflow({ parentFolder: folderInDestinationProject }, member);
 
 		//
 		// ACT
@@ -1766,7 +1774,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
 
@@ -1795,7 +1803,8 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
-		expect(workflowFromDB).toMatchObject({ active: false });
+		expect(workflowFromDB.active).toBe(false);
+		expect(workflowFromDB.activeVersionId).toBeNull();
 	});
 
 	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
@@ -2136,7 +2145,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
 

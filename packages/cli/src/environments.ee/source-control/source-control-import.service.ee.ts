@@ -20,16 +20,21 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
+import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -37,6 +42,7 @@ import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
@@ -151,6 +157,8 @@ export class SourceControlImportService {
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -388,6 +396,7 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
+				isGlobal: true,
 				shared: {
 					project: {
 						id: true,
@@ -418,6 +427,7 @@ export class SourceControlImportService {
 				type: local.type,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+				isGlobal: local.isGlobal,
 			};
 		}) as StatusExportableCredential[];
 	}
@@ -634,7 +644,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -662,9 +672,19 @@ export class SourceControlImportService {
 			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
 			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
-			importedWorkflow.active = existingWorkflow
-				? existingWorkflow.active && !importedWorkflow.isArchived
-				: false;
+			if (existingWorkflow) {
+				if (importedWorkflow.isArchived) {
+					importedWorkflow.active = false;
+					importedWorkflow.activeVersionId = null;
+				} else {
+					importedWorkflow.active = !!existingWorkflow.activeVersionId;
+					importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
+				}
+			} else {
+				importedWorkflow.active = false;
+				importedWorkflow.activeVersionId = null;
+				importedWorkflow.versionId = importedWorkflow.versionId ?? uuid();
+			}
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -683,6 +703,8 @@ export class SourceControlImportService {
 				});
 			}
 
+			await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
+
 			const localOwner = allSharedWorkflows.find(
 				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 			);
@@ -695,9 +717,10 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			if (existingWorkflow?.active) {
-				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
-			}
+			await this.activateImportedWorkflowIfAlreadyActive(
+				{ existingWorkflow, importedWorkflow },
+				userId,
+			);
 
 			importWorkflowsResult.push({
 				id: importedWorkflow.id ?? 'unknown',
@@ -724,19 +747,28 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflow({
-		existingWorkflow,
-		importedWorkflow,
-	}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport }) {
+	private async activateImportedWorkflowIfAlreadyActive(
+		{
+			existingWorkflow,
+			importedWorkflow,
+		}: {
+			existingWorkflow?: WorkflowEntity;
+			importedWorkflow: IWorkflowToImport;
+		},
+		userId: string,
+	) {
+		if (!existingWorkflow?.activeVersionId) return;
+		let didAdd = false;
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
-			if (importedWorkflow.active) {
+			if (importedWorkflow.activeVersionId) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				didAdd = true;
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -747,6 +779,21 @@ export class SourceControlImportService {
 				{ id: existingWorkflow.id },
 				{ versionId: importedWorkflow.versionId },
 			);
+			if (didAdd) {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'activated',
+					userId,
+				});
+			} else {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'deactivated',
+					userId,
+				});
+			}
 		}
 	}
 
@@ -778,7 +825,7 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id } = credential;
+				const { name, type, data, id, isGlobal = false } = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
@@ -792,7 +839,7 @@ export class SourceControlImportService {
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert(newCredentialObject, ['id']);
+				await this.credentialsRepository.upsert({ ...newCredentialObject, isGlobal }, ['id']);
 
 				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
@@ -855,7 +902,7 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				await this.tagRepository.upsert(tagCopy, {
+				await this.tagRepository.upsert(tagCopy as QueryDeepPartialEntity<TagEntity>, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1223,5 +1270,77 @@ export class SourceControlImportService {
 		}
 
 		return teamProject;
+	}
+
+	/**
+	 * Saves or updates workflow version history during import.
+	 * - If versionId is new: Creates new history record
+	 * - If versionId exists with different nodes/connections: Updates existing record
+	 * - If versionId exists with same content: No action
+	 */
+	private async saveOrUpdateWorkflowHistory(
+		importedWorkflow: IWorkflowToImport,
+		userId: string,
+	): Promise<void> {
+		if (!importedWorkflow.versionId || !importedWorkflow.nodes || !importedWorkflow.connections) {
+			this.logger.debug('Skipping workflow history - missing versionId, nodes, or connections');
+			return;
+		}
+
+		// Fetch user for author info
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		const authors = user ? `${user.firstName} ${user.lastName}` : 'Unknown';
+
+		try {
+			const existingVersion = await this.workflowHistoryService.findVersion(
+				importedWorkflow.id,
+				importedWorkflow.versionId,
+			);
+
+			if (existingVersion) {
+				// Check if nodes or connections changed
+				const nodesChanged = !isEqual(existingVersion.nodes, importedWorkflow.nodes);
+				const connectionsChanged = !isEqual(
+					existingVersion.connections,
+					importedWorkflow.connections,
+				);
+
+				if (nodesChanged || connectionsChanged) {
+					this.logger.debug(
+						`Updating workflow history for versionId ${importedWorkflow.versionId}`,
+					);
+
+					await this.workflowHistoryService.updateVersion(
+						importedWorkflow.versionId,
+						importedWorkflow.id,
+						{
+							nodes: importedWorkflow.nodes,
+							connections: importedWorkflow.connections,
+							authors,
+						},
+					);
+				} else {
+					this.logger.debug(
+						`Workflow history unchanged for versionId ${importedWorkflow.versionId}`,
+					);
+				}
+			} else {
+				// Create new version history record
+				this.logger.debug(
+					`Creating new workflow history for versionId ${importedWorkflow.versionId}`,
+				);
+
+				await this.workflowHistoryService.saveVersion(
+					authors,
+					importedWorkflow as unknown as IWorkflowBase,
+					importedWorkflow.id,
+				);
+			}
+		} catch (error) {
+			this.logger.error(
+				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
+				{ error: ensureError(error) },
+			);
+		}
 	}
 }

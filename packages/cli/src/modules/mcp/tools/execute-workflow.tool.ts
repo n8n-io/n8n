@@ -16,6 +16,7 @@ import {
 	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import z from 'zod';
 
@@ -175,9 +176,12 @@ export const executeWorkflow = async (
 	workflowId: string,
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 ): Promise<ExecuteWorkflowOutput> => {
-	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-		'workflow:execute',
-	]);
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		['workflow:execute'],
+		{ includeActiveVersion: true },
+	);
 
 	if (!workflow || workflow.isArchived) {
 		throw new UserError('Workflow not found');
@@ -189,7 +193,10 @@ export const executeWorkflow = async (
 		);
 	}
 
-	const triggerNode = findMcpSupportedTrigger(workflow);
+	const nodes = workflow.activeVersion?.nodes ?? [];
+	const connections = workflow.activeVersion?.connections ?? {};
+
+	const triggerNode = findMcpSupportedTrigger(nodes);
 
 	if (!triggerNode) {
 		throw new UserError(
@@ -199,7 +206,7 @@ export const executeWorkflow = async (
 
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: getExecutionModeForTrigger(triggerNode),
-		workflowData: workflow,
+		workflowData: { ...workflow, nodes, connections },
 		userId: user.id,
 	};
 
@@ -208,7 +215,7 @@ export const executeWorkflow = async (
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
 
-	runData.executionData = {
+	runData.executionData = createRunExecutionData({
 		startData: {},
 		resultData: {
 			pinData: runData.pinData,
@@ -229,7 +236,7 @@ export const executeWorkflow = async (
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
-	};
+	});
 
 	const executionId = await workflowRunner.run(runData);
 

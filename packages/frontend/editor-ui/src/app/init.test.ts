@@ -20,6 +20,7 @@ import merge from 'lodash/merge';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
+import { usePostHog } from './stores/posthog.store';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -33,6 +34,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
+		setUserQuota: vi.fn(),
 	}),
 }));
 
@@ -46,6 +48,7 @@ describe('Init', () => {
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
+	let posthogStore: ReturnType<typeof mockedStore<typeof usePostHog>>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -66,6 +69,7 @@ describe('Init', () => {
 		ssoStore = mockedStore(useSSOStore);
 		rootStore = mockedStore(useRootStore);
 		bannersStore = mockedStore(useBannersStore);
+		posthogStore = mockedStore(usePostHog);
 	});
 
 	describe('initializeCore()', () => {
@@ -78,14 +82,11 @@ describe('Init', () => {
 		});
 
 		it('should initialize core features only once', async () => {
-			const usersStoreSpy = vi.spyOn(usersStore, 'initialize');
 			const settingsStoreSpy = vi.spyOn(settingsStore, 'initialize');
 
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalled();
-			expect(usersStoreSpy).toHaveBeenCalled();
-
 			await initializeCore();
 
 			expect(settingsStoreSpy).toHaveBeenCalledTimes(1);
@@ -152,18 +153,6 @@ describe('Init', () => {
 				},
 			});
 		});
-
-		it('should initialize bannersStore with banners based on settings', async () => {
-			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
-			settingsStore.settings.banners = { dismissed: [] };
-			settingsStore.settings.versionCli = '1.2.3';
-
-			await initializeCore();
-
-			expect(bannersStore.loadStaticBanners).toHaveBeenCalledWith({
-				banners: ['NON_PRODUCTION_LICENSE', 'V1'],
-			});
-		});
 	});
 
 	describe('initializeAuthenticatedFeatures()', () => {
@@ -205,6 +194,7 @@ describe('Init', () => {
 			expect(sourceControlSpy).toHaveBeenCalled();
 			expect(nodeTranslationSpy).toHaveBeenCalled();
 			expect(versionsSpy).toHaveBeenCalled();
+			expect(usersStore.setUserQuota).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();
 
@@ -260,6 +250,21 @@ describe('Init', () => {
 			);
 		});
 
+		it('should push banners based on settings', async () => {
+			settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner = true;
+			settingsStore.settings.banners = { dismissed: [] };
+			settingsStore.settings.versionCli = '1.2.3';
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
+
+			const pushBannerSpy = vi.spyOn(bannersStore, 'pushBannerToStack');
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(pushBannerSpy).toHaveBeenCalledWith('NON_PRODUCTION_LICENSE');
+			expect(pushBannerSpy).toHaveBeenCalledWith('V1');
+		});
+
 		describe('cloudPlanStore', () => {
 			it('should initialize cloudPlanStore correctly', async () => {
 				settingsStore.settings.deployment.type = 'cloud';
@@ -289,7 +294,7 @@ describe('Init', () => {
 				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
 			});
 
-			it('should push TRIAL banner if trial is active', async () => {
+			it('should push TRIAL banner if trial is active and does not have feature flag set', async () => {
 				settingsStore.settings.deployment.type = 'cloud';
 				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
 				usersStore.currentUserId = '123';
@@ -303,6 +308,42 @@ describe('Init', () => {
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
 				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+			});
+
+			it('should push TRIAL banner if trial is active and has feature flag control', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = true;
+				cloudPlanStore.trialExpired = false;
+
+				const posthogStoreSpy = vi.spyOn(posthogStore, 'getVariant').mockReturnValueOnce('control');
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(posthogStoreSpy).toHaveBeenCalled();
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+			});
+
+			it('should not push TRIAL banner if trial is active and has feature flag variant', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = true;
+				cloudPlanStore.trialExpired = false;
+
+				const posthogStoreSpy = vi.spyOn(posthogStore, 'getVariant').mockReturnValueOnce('variant');
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(posthogStoreSpy).toHaveBeenCalled();
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(bannersStore.pushBannerToStack).not.toHaveBeenCalledWith('TRIAL');
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {

@@ -371,12 +371,12 @@ async fillParameterInput(labelName: string, value: string) {
 }
 
 async clickBackToCanvasButton() {
-  await this.clickByTestId('back-to-canvas');
+  await this.clickByTestId('ndv-close-button');
 }
 
 // ❌ AVOID
 async badExample() {
-  await this.page.getByTestId('back-to-canvas').click();
+  await this.page.getByTestId('ndv-close-button').click();
 }
 ```
 

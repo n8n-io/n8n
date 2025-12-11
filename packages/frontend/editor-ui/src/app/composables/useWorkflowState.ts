@@ -15,6 +15,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
 	type INodeIssueData,
@@ -111,8 +112,9 @@ export function useWorkflowState() {
 		return true;
 	}
 
-	function setActive(active: boolean) {
-		ws.workflow.active = active;
+	function setActive(activeVersionId: string | null) {
+		ws.workflow.active = activeVersionId !== null;
+		ws.workflow.activeVersionId = activeVersionId;
 	}
 
 	function setWorkflowId(id?: string) {
@@ -223,7 +225,7 @@ export function useWorkflowState() {
 		setWorkflowExecutionData(null);
 		resetAllNodesIssues();
 
-		setActive(ws.defaults.active);
+		setActive(ws.defaults.activeVersionId);
 		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });
@@ -232,6 +234,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
+		useBuilderStore().resetManualExecutionStats();
 	}
 
 	////

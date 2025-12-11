@@ -24,6 +24,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"

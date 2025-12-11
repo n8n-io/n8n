@@ -7,6 +7,7 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
 import { InsightsModule } from '../insights.module';
+import { InsightsService } from '../insights.service';
 
 describe('InsightsModule', () => {
 	let insightsModule: InsightsModule;
@@ -23,11 +24,23 @@ describe('InsightsModule', () => {
 	beforeEach(async () => {
 		jest.clearAllMocks();
 		await testDb.truncate(['Project']);
-		insightsModule = Container.get(InsightsModule);
+
 		mockInstanceSettings = mock<InstanceSettings>();
 		Container.set(InstanceSettings, mockInstanceSettings);
 		Container.set(Logger, mockLogger());
 		Container.set(LicenseState, mock<LicenseState>());
+		Container.set(
+			InsightsService,
+			new InsightsService(
+				mock(),
+				mock(),
+				mock(),
+				Container.get(LicenseState),
+				mockInstanceSettings,
+				Container.get(Logger),
+			),
+		);
+		insightsModule = Container.get(InsightsModule);
 		await createTeamProject();
 	});
 
