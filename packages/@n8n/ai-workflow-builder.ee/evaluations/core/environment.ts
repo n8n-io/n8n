@@ -50,7 +50,7 @@ export function createLangsmithClient(): Client | undefined {
 	if (!apiKey) {
 		return undefined;
 	}
-	return new Client({ apiKey, debug: true });
+	return new Client({ apiKey });
 }
 
 /**
@@ -62,7 +62,7 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
 	const llm = await setupLLM();
 	const lsClient = createLangsmithClient();
 
-	const tracer = createTracer(lsClient!, 'workflow-builder-evaluation');
+	const tracer = lsClient ? createTracer(lsClient, 'workflow-builder-evaluation') : undefined;
 
 	return { parsedNodeTypes, llm, tracer, lsClient };
 }

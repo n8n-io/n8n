@@ -4,29 +4,13 @@ import type { Run, Example } from 'langsmith/schemas';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { PairwiseEvaluationResult } from '../chains/pairwise-evaluator';
+import { isPairwiseTargetOutput } from '../types/pairwise';
 import {
 	runJudgePanel,
 	type JudgePanelResult,
 	type MultiGenerationAggregation,
 	type EvalCriteria,
 } from '../utils/judge-panel';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface PairwiseTargetOutput {
-	prompt: string;
-	evals: EvalCriteria;
-	/** Pre-computed feedback results. Named with underscore to avoid LangSmith auto-processing */
-	_feedback: LangsmithEvaluationResult[];
-}
-
-function isPairwiseTargetOutput(outputs: unknown): outputs is PairwiseTargetOutput {
-	if (!outputs || typeof outputs !== 'object') return false;
-	const obj = outputs as Record<string, unknown>;
-	return typeof obj.prompt === 'string' && Array.isArray(obj._feedback);
-}
 
 // ============================================================================
 // Result Builders

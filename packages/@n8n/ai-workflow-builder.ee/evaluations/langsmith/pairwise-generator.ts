@@ -8,34 +8,11 @@ import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
+import type { PairwiseDatasetInput, PairwiseTargetOutput } from '../types/pairwise';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
-import {
-	runJudgePanel,
-	aggregateGenerations,
-	type GenerationResult,
-	type EvalCriteria,
-} from '../utils/judge-panel';
+import { runJudgePanel, aggregateGenerations, type GenerationResult } from '../utils/judge-panel';
 
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface PairwiseDatasetInput {
-	evals: {
-		dos: string;
-		donts: string;
-	};
-	prompt: string;
-	/** Optional notion_id from dataset for tracing */
-	notion_id?: string;
-}
-
-export interface PairwiseTargetOutput {
-	prompt: string;
-	evals: EvalCriteria;
-	/** Pre-computed feedback results. Named with underscore to avoid LangSmith auto-processing */
-	_feedback: LangsmithEvaluationResult[];
-}
+export type { PairwiseDatasetInput, PairwiseTargetOutput };
 
 // ============================================================================
 // Target Factory
