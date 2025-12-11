@@ -1146,7 +1146,10 @@ export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
 	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
-	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
+	getWorkflowNodeContext(
+		nodeType: string,
+		useActiveVersion?: boolean,
+	): Promise<IWorkflowNodeContext | null>;
 }
 
 export interface IWorkflowLoader {
@@ -1600,6 +1603,8 @@ export interface INodeProperties {
 	ignoreValidationDuringExecution?: boolean;
 	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
 	allowArbitraryValues?: boolean;
+	// This field indicates that the field is a resolvable field that should be resolved in dynamic credential setup
+	resolvableField?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -2599,8 +2604,21 @@ export interface IWorkflowBase {
 	pinData?: IPinData;
 	versionId?: string;
 	activeVersionId: string | null;
+	activeVersion?: IWorkflowHistory | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
+}
+
+interface IWorkflowHistory {
+	versionId: string;
+	workflowId: string;
+	nodes: INode[];
+	connections: IConnections;
+	authors: string;
+	name: string | null;
+	description: string | null;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface IWorkflowCredentials {
@@ -2769,6 +2787,7 @@ export interface IWorkflowSettings {
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
+	credentialResolverId?: string;
 }
 
 export interface WorkflowFEMeta {

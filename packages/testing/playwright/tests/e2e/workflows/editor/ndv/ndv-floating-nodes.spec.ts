@@ -88,7 +88,7 @@ test.describe('NDV Floating Nodes Navigation', () => {
 		await n8n.ndv.connectAISubNode('ai_memory', 'Simple Memory');
 		await n8n.ndv.connectAISubNode('ai_tool', 'HTTP Request Tool');
 
-		expect(await n8n.ndv.getNodesWithIssuesCount()).toBeGreaterThanOrEqual(2);
+		await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(2);
 	});
 
 	test('should have the floating nodes in correct order', async ({ n8n }) => {
