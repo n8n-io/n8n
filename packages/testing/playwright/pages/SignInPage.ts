@@ -19,6 +19,13 @@ export class SignInPage extends BasePage {
 		return this.page.getByTestId('form-submit-button');
 	}
 
+	/**
+	 * Get the SSO login button (Continue with SSO)
+	 */
+	getSsoButton(): Locator {
+		return this.page.getByRole('button', { name: /continue with sso/i });
+	}
+
 	async goToSignIn(): Promise<void> {
 		await this.page.goto('/signin');
 	}

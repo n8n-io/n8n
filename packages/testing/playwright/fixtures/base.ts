@@ -31,6 +31,13 @@ type WorkerFixtures = {
 	n8nContainer: N8NStack;
 	containerConfig: ContainerConfig;
 	addContainerCapability: ContainerConfig;
+	/** OIDC configuration when oidc capability is enabled */
+	oidcConfig: {
+		/** External discovery URL (for browser) */
+		discoveryUrl: string;
+		/** Internal discovery URL (for n8n backend in container) */
+		internalDiscoveryUrl: string;
+	} | null;
 };
 
 interface ContainerConfig {
@@ -44,6 +51,8 @@ interface ContainerConfig {
 	taskRunner?: boolean;
 	sourceControl?: boolean;
 	email?: boolean;
+	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
+	oidc?: boolean;
 	resourceQuota?: {
 		memory?: number; // in GB
 		cpu?: number; // in cores
@@ -128,6 +137,14 @@ export const test = base.extend<
 		async ({ n8nContainer }, use) => {
 			const envBaseURL = process.env.N8N_BASE_URL ?? n8nContainer?.baseUrl;
 			await use(envBaseURL);
+		},
+		{ scope: 'worker' },
+	],
+
+	// OIDC configuration from the container (when oidc capability is enabled)
+	oidcConfig: [
+		async ({ n8nContainer }, use) => {
+			await use(n8nContainer?.oidc ?? null);
 		},
 		{ scope: 'worker' },
 	],
