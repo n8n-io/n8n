@@ -2388,7 +2388,6 @@
 	"settings.mcp.workflows.table.column.description.emptyContent": "No description",
 	"settings.mcp.workflows.table.column.description.emptyTooltip": "Helps MCP clients understand when and how to use this workflow",
 	"settings.mcp.workflows.table.empty.title": "No workflows connected",
-	"settings.mcp.workflows.table.empty.description": "Enable MCP access in each workflow's settings to see them here",
 	"settings.mcp.workflows.table.empty.button.label": "Find workflows",
 	"settings.mcp.oauth.table.empty.title": "No OAuth clients connected",
 	"settings.mcp.oauth.table.empty.description": "Clients that connect via OAuth will show up here",

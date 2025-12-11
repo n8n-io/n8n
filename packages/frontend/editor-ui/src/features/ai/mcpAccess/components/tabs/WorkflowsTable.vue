@@ -128,13 +128,6 @@ const onConnectClick = () => {
 						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.title') }}
 						</N8nText>
-						<N8nText
-							data-test-id="mcp-workflow-table-empty-state-description"
-							size="small"
-							color="text-base"
-						>
-							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
-						</N8nText>
 						<N8nButton
 							data-test-id="mcp-workflow-table-empty-state-button"
 							type="primary"
