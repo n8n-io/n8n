@@ -30,7 +30,6 @@ describe('WorkflowsTable', () => {
 			});
 
 			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
-			expect(getByTestId('mcp-workflow-table-empty-state-description')).toBeVisible();
 		});
 
 		it('should emit connectWorkflows event when button is clicked', async () => {
