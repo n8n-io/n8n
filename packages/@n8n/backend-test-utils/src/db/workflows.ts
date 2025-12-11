@@ -301,20 +301,12 @@ export async function createActiveWorkflow(
 	const workflow = await createWorkflowWithTriggerAndHistory(
 		{ active: true, ...attributes },
 		userOrProject,
+		{},
 	);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
 
 	workflow.activeVersionId = workflow.versionId;
-
-	if (userOrProject instanceof User) {
-		await Container.get(WorkflowPublishHistoryRepository).save({
-			workflowId: workflow.id,
-			versionId: workflow.versionId,
-			event: 'activated',
-			userId: userOrProject.id,
-		});
-	}
 
 	return workflow;
 }

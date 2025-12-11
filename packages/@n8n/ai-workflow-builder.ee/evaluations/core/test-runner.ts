@@ -62,6 +62,7 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 			agentPrompt: { violations: [], score: 0 },
 			tools: { violations: [], score: 0 },
 			fromAi: { violations: [], score: 0 },
+			credentials: { violations: [], score: 0 },
 			similarity: null,
 		},
 		generationTime: 0,

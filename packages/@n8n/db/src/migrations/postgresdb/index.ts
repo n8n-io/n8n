@@ -123,6 +123,7 @@ import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/176416
 import { AddCreatorIdToProjectTable1764276827837 } from '../common/1764276827837-AddCreatorIdToProjectTable';
 import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
 import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
+import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -251,4 +252,5 @@ export const postgresMigrations: Migration[] = [
 	AddCreatorIdToProjectTable1764276827837,
 	CreateDynamicCredentialResolverTable1764682447000,
 	AddDynamicCredentialEntryTable1764689388394,
+	BackfillMissingWorkflowHistoryRecords1765448186933,
 ];

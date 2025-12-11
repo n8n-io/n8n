@@ -649,13 +649,17 @@ export async function executeWebhook(
 			void executePromise
 				.then(async (subworkflowResults) => {
 					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 					await WorkflowHelpers.updateParentExecutionWithChildResults(
 						executionRepository,
 						parentExecution.executionId,
 						subworkflowResults,
 					);
+					return subworkflowResults;
 				})
-				.then(() => {
+				.then((subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 					const waitTracker = Container.get(WaitTracker);
 					void waitTracker.startExecution(parentExecution.executionId);
 				});
