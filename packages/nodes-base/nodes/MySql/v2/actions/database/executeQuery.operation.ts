@@ -84,7 +84,15 @@ export async function execute(
 
 		if ((nodeOptions.nodeVersion as number) >= 2.3) {
 			const parsedNumbers = preparedQuery.values.map((value) => {
-				return Number(value) ? Number(value) : value;
+				// Convert string numbers to integers for MySQL queries (e.g., LIMIT clauses)
+				// Only convert safe integers to prevent precision loss
+				if (typeof value === 'string') {
+					const numValue = Number(value);
+					if (!isNaN(numValue) && Number.isSafeInteger(numValue) && numValue.toString() === value) {
+						return numValue;
+					}
+				}
+				return value;
 			});
 			preparedQuery.values = parsedNumbers;
 		}
