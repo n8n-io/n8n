@@ -29,7 +29,6 @@ import {
 	prepareFormData,
 	prepareFormReturnItem,
 	resolveRawData,
-	sanitizeHtml,
 } from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 
@@ -339,7 +338,6 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 		formDescription = options.responseFormDescription;
 	}
 	formDescription = formDescription.replace(/\\n/g, '\n').replace(/<br>/g, '\n');
-	formDescription = sanitizeHtml(formDescription);
 
 	let buttonLabel = 'Submit';
 	if (options.responseFormButtonLabel) {
