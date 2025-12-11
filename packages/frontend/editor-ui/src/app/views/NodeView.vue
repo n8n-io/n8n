@@ -1931,8 +1931,6 @@ onBeforeRouteLeave(async (to, from, next) => {
 			return true;
 		},
 	});
-
-	toast.clearAllStickyNotifications();
 });
 
 /**
@@ -2003,6 +2001,7 @@ onActivated(() => {
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	toast.clearAllStickyNotifications();
 });
 
 onBeforeUnmount(() => {
