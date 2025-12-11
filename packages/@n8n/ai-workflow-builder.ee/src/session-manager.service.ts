@@ -1,5 +1,5 @@
 import { RunnableConfig } from '@langchain/core/runnables';
-import { MemorySaver } from '@langchain/langgraph';
+import { type Checkpoint, MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -92,15 +92,17 @@ export class SessionManagerService {
 	 * Truncate all messages including and after the message with the specified versionId in metadata.
 	 * Used when restoring to a previous version.
 	 *
-	 * Note: MemorySaver doesn't support direct message manipulation, so this creates a new
-	 * checkpoint with truncated messages. This approach works because MemorySaver stores
-	 * checkpoints in memory and we can overwrite by putting a new checkpoint.
+	 * @param workflowId - The workflow ID
+	 * @param userId - The user ID
+	 * @param versionId - The versionId to find in HumanMessage's additional_kwargs. Messages from this
+	 *                    point onward (including the message with this versionId) will be removed.
+	 * @returns True if truncation was successful, false if thread or message not found
 	 */
-	truncateMessagesAfter(
+	async truncateMessagesAfter(
 		workflowId: string,
 		userId: string | undefined,
 		versionId: string,
-	): boolean {
+	): Promise<boolean> {
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
 			configurable: {
@@ -108,24 +110,62 @@ export class SessionManagerService {
 			},
 		};
 
-		// Note: For full implementation, we would need to:
-		// 1. Get the current checkpoint
-		// 2. Find the HumanMessage with versionId in additional_kwargs
-		// 3. Remove that message and all messages after it
-		// 4. Create a new checkpoint with the truncated messages
-		//
-		// However, MemorySaver's put() method requires specific checkpoint structure.
-		// For now, we log the intent and return true - the actual truncation
-		// will happen when the full implementation is added.
+		try {
+			const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
 
-		this.logger?.debug('Truncate messages requested', {
-			threadId,
-			versionId,
-			threadConfig,
-		});
+			if (!checkpointTuple?.checkpoint) {
+				this.logger?.debug('No checkpoint found for truncation', { threadId, versionId });
+				return false;
+			}
 
-		// @TODO: Implement full checkpoint manipulation when LangGraph provides better APIs
-		// For now, we return true as the frontend will handle filtering
-		return true;
+			const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
+			if (!isLangchainMessagesArray(rawMessages)) {
+				this.logger?.debug('No valid messages found for truncation', { threadId, versionId });
+				return false;
+			}
+
+			// Find the index of the message with the target versionId in additional_kwargs
+			const messageIndex = rawMessages.findIndex(
+				(msg) => msg.additional_kwargs?.versionId === versionId,
+			);
+
+			if (messageIndex === -1) {
+				this.logger?.debug('Message with versionId not found', { threadId, versionId });
+				return false;
+			}
+
+			// Keep messages before the target message (excluding the target message)
+			const truncatedMessages = rawMessages.slice(0, messageIndex);
+
+			// Create updated checkpoint with truncated messages
+			const updatedCheckpoint: Checkpoint = {
+				...checkpointTuple.checkpoint,
+				channel_values: {
+					...checkpointTuple.checkpoint.channel_values,
+					messages: truncatedMessages,
+				},
+			};
+
+			// Put the updated checkpoint back with metadata indicating this is an update
+			const metadata = checkpointTuple.metadata ?? {
+				source: 'update' as const,
+				step: -1,
+				parents: {},
+			};
+
+			await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+
+			this.logger?.debug('Messages truncated successfully', {
+				threadId,
+				versionId,
+				originalCount: rawMessages.length,
+				newCount: truncatedMessages.length,
+			});
+
+			return true;
+		} catch (error) {
+			this.logger?.error('Failed to truncate messages', { threadId, versionId, error });
+			return false;
+		}
 	}
 }

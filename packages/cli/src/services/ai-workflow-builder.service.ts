@@ -111,8 +111,12 @@ export class WorkflowBuilderService {
 		return await service.getBuilderInstanceCredits(user);
 	}
 
-	async truncateMessagesAfter(workflowId: string, user: IUser, versionId: string) {
+	async truncateMessagesAfter(
+		workflowId: string,
+		user: IUser,
+		versionId: string,
+	): Promise<boolean> {
 		const service = await this.getService();
-		return service.truncateMessagesAfter(workflowId, user, versionId);
+		return await service.truncateMessagesAfter(workflowId, user, versionId);
 	}
 }
