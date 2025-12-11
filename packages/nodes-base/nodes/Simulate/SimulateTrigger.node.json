@@ -6,6 +6,6 @@
 	"resources": {},
 	"alias": ["placeholder", "stub", "dummy"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Primitives"]
 	}
 }

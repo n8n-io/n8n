@@ -1136,7 +1136,7 @@ const executeWorkflowNode: LoadedClass<INodeType> = {
 			],
 			codex: {
 				categories: ['Core Nodes'],
-				subcategories: { 'Core Nodes': ['Helpers', 'Flow'] },
+				subcategories: { 'Core Nodes': ['Primitives', 'Flow'] },
 				alias: ['n8n', 'call', 'sub', 'workflow', 'sub-workflow', 'subworkflow'],
 				resources: {
 					primaryDocumentation: [

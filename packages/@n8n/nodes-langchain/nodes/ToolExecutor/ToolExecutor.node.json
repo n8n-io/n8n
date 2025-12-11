@@ -12,6 +12,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Primitives"]
 	}
 }

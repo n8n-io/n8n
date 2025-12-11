@@ -3,7 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Core Nodes"],
-	"subcategories": ["Helpers"],
+	"subcategories": ["Primitives"],
 	"details": "Generate a time-based one-time password",
 	"alias": ["2FA", "MFA", "authentication", "Security", "OTP", "password", "multi", "factor"],
 	"resources": {

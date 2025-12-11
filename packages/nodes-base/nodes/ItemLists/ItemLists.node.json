@@ -43,6 +43,6 @@
 		"Max"
 	],
 	"subcategories": {
-		"Core Nodes": ["Helpers", "Data Transformation"]
+		"Core Nodes": ["Primitives", "Data Transformation"]
 	}
 }

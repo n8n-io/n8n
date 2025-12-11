@@ -13,7 +13,7 @@
 			{
 				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/"
 			}
-		]
-	},
-	"subcategories": ["Helpers"]
+		],
+		"subcategories": ["Primitives"]
+	}
 }

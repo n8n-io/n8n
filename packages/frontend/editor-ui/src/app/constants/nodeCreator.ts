@@ -37,7 +37,6 @@ export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const PRIMITIVES_SUBCATEGORY = 'Primitives';
 export const AI_SUBCATEGORY = 'AI';
-export const HELPERS_SUBCATEGORY = 'Helpers';
 export const HITL_SUBCATEGORY = 'Human in the Loop';
 export const TRANSLATION_SUBCATEGORY = 'Translation';
 export const APE_SUBCATEGORY = 'Automatic Post Editing';

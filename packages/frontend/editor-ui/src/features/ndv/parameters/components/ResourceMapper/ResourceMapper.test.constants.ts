@@ -277,7 +277,7 @@ export const EXECUTE_WORKFLOW_NODE_TYPE_TEST: INodeTypeDescription = {
 	],
 	codex: {
 		categories: ['Core Nodes'],
-		subcategories: { 'Core Nodes': ['Helpers', 'Flow'] },
+		subcategories: { 'Core Nodes': ['Primitives', 'Flow'] },
 		alias: ['n8n', 'call', 'sub', 'workflow', 'sub-workflow', 'subworkflow'],
 		resources: {
 			primaryDocumentation: [

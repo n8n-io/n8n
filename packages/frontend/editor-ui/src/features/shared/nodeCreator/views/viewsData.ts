@@ -47,8 +47,6 @@ import {
 	CRYPTO_NODE_TYPE,
 	IF_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HELPERS_SUBCATEGORY,
 	HITL_SUBCATEGORY,
 	TRANSLATION_SUBCATEGORY,
 	APE_SUBCATEGORY,
@@ -648,27 +646,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 							key: 'popular',
 							title: i18n.baseText('nodeCreator.sectionNames.popular'),
 							items: [FILTER_NODE_TYPE, IF_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, MERGE_NODE_TYPE],
-						},
-					],
-				},
-			},
-			{
-				type: 'subcategory',
-				key: HELPERS_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: HELPERS_SUBCATEGORY,
-					icon: 'toolbox',
-					sections: [
-						{
-							key: 'popular',
-							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [
-								HTTP_REQUEST_NODE_TYPE,
-								WEBHOOK_NODE_TYPE,
-								CODE_NODE_TYPE,
-								DATA_TABLE_NODE_TYPE,
-							],
 						},
 					],
 				},

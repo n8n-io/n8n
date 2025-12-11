@@ -11,5 +11,5 @@
 		]
 	},
 	"alias": ["remote"],
-	"subcategories": ["Helpers"]
+	"subcategories": ["Primitives"]
 }
