@@ -41,12 +41,19 @@ defineSlots<InputSlots>();
 const attrs = useAttrs();
 const inputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
+// Check if attr should go to input element
+// - id: needed for <label for="..."> association
+// - data-*, aria-*: semantic/accessibility attributes
+// - on*: event handlers
+const isInputAttr = (key: string) =>
+	key === 'id' || key.startsWith('data-') || key.startsWith('aria-') || key.startsWith('on');
+
 // Separate attrs for container vs input element
-// data-* and aria-* attributes go to the input, rest to container
+// data-*, aria-*, and event handlers (on*) go to the input, rest to container
 const inputAttrs = computed(() => {
 	const result: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(attrs)) {
-		if (key.startsWith('data-') || key.startsWith('aria-')) {
+		if (isInputAttr(key)) {
 			result[key] = value;
 		}
 	}
@@ -56,7 +63,7 @@ const inputAttrs = computed(() => {
 const containerAttrs = computed(() => {
 	const result: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(attrs)) {
-		if (!key.startsWith('data-') && !key.startsWith('aria-')) {
+		if (!isInputAttr(key)) {
 			result[key] = value;
 		}
 	}
