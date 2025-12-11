@@ -11,6 +11,7 @@ import { OAuthRequest } from '@/requests';
 import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oauth.service';
 import { Logger } from '@n8n/backend-common';
 import { ExternalHooks } from '@/external-hooks';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -27,6 +28,7 @@ export class OAuth2CredentialController {
 
 		const uri = await this.oauthService.generateAOauth2AuthUri(credential, {
 			cid: credential.id,
+			origin: 'static-credential',
 			userId: req.user.id,
 		});
 		return uri;
@@ -45,7 +47,7 @@ export class OAuth2CredentialController {
 				);
 			}
 
-			const [credential, decryptedDataOriginal, oauthCredentials] =
+			const [credential, decryptedDataOriginal, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
 			let options: Partial<ClientOAuth2Options> = {};
@@ -88,15 +90,39 @@ export class OAuth2CredentialController {
 			oauthTokenData = {
 				...(typeof oauthTokenData === 'object' ? oauthTokenData : {}),
 				...oauthToken.data,
-			};
+			} as ICredentialDataDecryptedObject;
 
-			await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+			if (!state.origin || state.origin === 'static-credential') {
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
-			this.logger.debug('OAuth2 callback successful for credential', {
-				credentialId: credential.id,
-			});
+				this.logger.debug('OAuth2 callback successful for credential', {
+					credentialId: credential.id,
+				});
 
-			return res.render('oauth-callback');
+				return res.render('oauth-callback');
+			}
+
+			if (state.origin === 'dynamic-credential') {
+				if (!state.credentialResolverId || typeof state.credentialResolverId !== 'string') {
+					return this.oauthService.renderCallbackError(res, 'Credential resolver ID is required');
+				}
+
+				if (
+					!state.authorizationHeader ||
+					typeof state.authorizationHeader !== 'string' ||
+					!state.authorizationHeader.startsWith('Bearer ')
+				) {
+					return this.oauthService.renderCallbackError(res, 'Authorization header is required');
+				}
+
+				await this.oauthService.saveDynamicCredential(
+					credential,
+					decryptedDataOriginal,
+					state.authorizationHeader.split('Bearer ')[1],
+					state.credentialResolverId,
+				);
+				return res.render('oauth-callback');
+			}
 		} catch (e) {
 			const error = ensureError(e);
 			return this.oauthService.renderCallbackError(
