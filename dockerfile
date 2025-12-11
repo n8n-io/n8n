@@ -1,3 +1,2 @@
-FROM n8nio/n8n
-EXPOSE 5678
-CMD ["n8n"]
+FROM n8nio/n8n:latest
+CMD ["n8n", "start"]
