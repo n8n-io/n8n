@@ -1,13 +1,18 @@
 # AI Workflow Builder Prompts
 
 Centralized prompts for the n8n AI Workflow Builder. This directory contains all prompts used by agents and chains.
+
 ## Directory Structure
 
 ```
 src/prompts/
 ├── index.ts                      # Central exports
 ├── README.md                     # This file
-├── legacy-agent.prompt.ts        # Single-agent mode (~650 lines)
+├── legacy-agent.prompt.ts        # Single-agent mode prompt
+│
+├── builder/                      # PromptBuilder utility
+│   ├── prompt-builder.ts         # Fluent builder class
+│   └── types.ts                  # Type definitions
 │
 ├── agents/                       # Multi-agent system prompts
 │   ├── supervisor.prompt.ts      # Routes requests to specialists
@@ -21,184 +26,128 @@ src/prompts/
     ├── compact.prompt.ts         # Conversation summarization
     ├── workflow-name.prompt.ts   # Workflow name generation
     │
-    └── parameter-updater/        # Dynamic prompt building for node updates
-        ├── index.ts              # Exports
-        ├── prompt-builder.ts     # ParameterUpdatePromptBuilder class
-        ├── prompt-config.ts      # Node detection config
-        ├── instance-url.ts       # Instance URL template
-        ├── base/                 # Core instructions
-        ├── node-types/           # Node-specific guides
-        ├── parameter-types/      # Parameter-specific guides
+    └── parameter-updater/        # Dynamic prompt system for node updates
+        ├── registry.ts           # Pattern-matching registry
+        ├── types.ts              # Type definitions
+        ├── parameter-updater.prompt.ts  # Base prompts
+        ├── guides/               # Node & parameter guides
         └── examples/             # Few-shot examples
 ```
 
+## PromptBuilder Utility
+
+A type-safe, fluent builder for composing LLM prompts with conditional sections.
+
+### Basic Usage
+
+```typescript
+const systemPrompt = prompt()
+  .section('role', 'You are an assistant')
+  .sectionIf(hasContext, 'context', () => buildContext())
+  .examples('examples', data, (ex) => `${ex.input} → ${ex.output}`)
+  .build();
+```
+
+### Key Features
+
+- **Fluent API**: Chain methods for readable prompt composition
+- **Conditional sections**: `sectionIf()` and `examplesIf()` for dynamic content
+- **Lazy evaluation**: Factory functions evaluated only at build time
+- **Output formats**: XML tags (default) or Markdown headers
+- **LangChain integration**: `buildAsMessageBlocks()` with cache_control support
+
 ## Multi-Agent Prompts
 
-### Supervisor (`agents/supervisor.prompt.ts`)
+The `agents/` directory contains prompts for the multi-agent workflow builder system. Each agent has a specialized role:
 
-Routes user requests to the appropriate specialist agent.
+| Agent | Purpose |
+|-------|---------|
+| **Supervisor** | Routes user requests to the appropriate specialist |
+| **Discovery** | Identifies relevant n8n nodes and categorizes techniques |
+| **Builder** | Creates workflow structure (nodes and connections) |
+| **Configurator** | Sets node parameters using natural language |
+| **Responder** | Generates user-facing responses |
 
-| Export | Description |
-|--------|-------------|
-| `buildSupervisorPrompt()` | Builds the supervisor system prompt |
-| `SUPERVISOR_PROMPT_SUFFIX` | Suffix asking "which agent should act next?" |
-
-**Routing targets:** discovery, builder, configurator, responder
-
-### Discovery (`agents/discovery.prompt.ts`)
-
-Identifies relevant n8n nodes and categorizes workflow techniques.
-
-| Export | Description |
-|--------|-------------|
-| `buildDiscoveryPrompt(options)` | Builds prompt with optional examples phase |
-| `formatTechniqueList()` | Formats available techniques as bullet list |
-| `formatExampleCategorizations()` | Formats few-shot examples |
-| `exampleCategorizations` | 14 few-shot classification examples |
-| `DiscoveryPromptOptions` | Type: `{ includeExamples: boolean }` |
-
-**Input variables:** `{techniques}`, `{exampleCategorizations}`
-
-### Builder (`agents/builder.prompt.ts`)
-
-Constructs workflow structure by creating nodes and connections.
-
-| Export | Description |
-|--------|-------------|
-| `buildBuilderPrompt()` | Builds the builder system prompt |
-
-**Key sections:** Node creation rules, connection parameters, AI connections, RAG patterns
-
-### Configurator (`agents/configurator.prompt.ts`)
-
-Sets up node parameters using natural language instructions.
-
-| Export | Description |
-|--------|-------------|
-| `buildConfiguratorPrompt()` | Builds the configurator system prompt |
-| `INSTANCE_URL_PROMPT` | Template with `{instanceUrl}` variable |
-
-**Input variables:** `{instanceUrl}`
-
-### Responder (`agents/responder.prompt.ts`)
-
-Generates user-facing responses and handles conversational queries.
-
-| Export | Description |
-|--------|-------------|
-| `buildResponderPrompt()` | Builds the responder system prompt |
-
-## Legacy Agent Prompt
-
-### `legacy-agent.prompt.ts`
-
-Comprehensive monolithic prompt for single-agent mode. Contains all workflow building logic.
-
-| Export | Description |
-|--------|-------------|
-| `createMainAgentPrompt(options?)` | Creates ChatPromptTemplate with options |
-| `mainAgentPrompt` | Default prompt instance |
-| `MainAgentPromptOptions` | Type: `{ includeExamplesPhase?: boolean }` |
-
-**Input variables:** `{instanceUrl}`, `{previousSummary}`, `{messages}`
-
-**Phases:**
-1. Categorization (mandatory)
-2. Examples (optional, feature-flagged)
-3. Discovery (parallel)
-4. Analysis (parallel)
-5. Creation (parallel)
-6. Connection (parallel)
-7. Configuration (mandatory)
-8. Validation (mandatory)
+All agent prompts use PromptBuilder for consistent composition.
 
 ## Chain Prompts
 
-### Categorization (`chains/categorization.prompt.ts`)
+The `chains/` directory contains prompts for specific LLM chain operations:
 
-Analyzes user prompts to identify workflow techniques.
-
-| Export | Description |
-|--------|-------------|
-| `promptCategorizationTemplate` | PromptTemplate for classification |
-| `examplePrompts` | 5 few-shot examples |
-| `formatExamplePrompts()` | Formats examples as "prompt → techniques" |
-| `formatTechniqueList()` | Formats technique descriptions |
-
-**Input variables:** `{userPrompt}`, `{techniques}`
-
-### Compact (`chains/compact.prompt.ts`)
-
-Summarizes multi-turn conversations for context management.
-
-| Export | Description |
-|--------|-------------|
-| `compactPromptTemplate` | PromptTemplate for summarization |
-
-**Input variables:** `{previousSummary}`, `{conversationText}`
-
-**Output:** Structured summary with key_decisions, current_state, next_steps
-
-### Workflow Name (`chains/workflow-name.prompt.ts`)
-
-Generates descriptive workflow names.
-
-| Export | Description |
-|--------|-------------|
-| `workflowNamingPromptTemplate` | PromptTemplate for naming |
-
-**Input variables:** `{initialPrompt}`
+| Chain | Purpose |
+|-------|---------|
+| **Categorization** | Analyzes user prompts to identify workflow techniques |
+| **Compact** | Summarizes conversations for context management |
+| **Workflow Name** | Generates descriptive workflow names |
+| **Parameter Updater** | Builds context-aware prompts for node parameter updates |
 
 ## Parameter Updater System
 
-A modular system for building context-aware prompts for node parameter updates.
+A registry-based system that automatically selects relevant guides and examples based on node type patterns.
 
-### ParameterUpdatePromptBuilder (`chains/parameter-updater/prompt-builder.ts`)
+### How It Works
 
-Dynamically assembles prompts based on node context.
+1. **Pattern Matching**: Guides and examples declare patterns they match against
+2. **Context-Based Selection**: Registry filters content based on node type and conditions
+3. **Dynamic Assembly**: PromptBuilder combines base prompts with matched content
+
+### Pattern Types
+
+| Pattern | Example | Matches |
+|---------|---------|---------|
+| Exact match | `n8n-nodes-base.set` | Only that specific node |
+| Suffix wildcard | `*Tool` | `gmailTool`, `slackTool`, etc. |
+| Prefix wildcard | `n8n-nodes-base.*` | Any n8n-nodes-base node |
+| Substring | `.set` | Any node containing `.set` |
+
+### Adding a New Guide
+
+1. Create a file in `guides/` with the guide content and patterns
+2. Export from `guides/index.ts`
+3. Add to the registry array in `registry.ts`
+
+Example guide structure:
 
 ```typescript
-import { ParameterUpdatePromptBuilder } from '@/prompts';
-
-const prompt = ParameterUpdatePromptBuilder.buildSystemPrompt({
-  nodeType: 'n8n-nodes-base.set',
-  nodeDefinition: nodeTypeDescription,
-  requestedChanges: ['set name to John'],
-  hasResourceLocatorParams: false,
-});
+export const MY_NODE_GUIDE: NodeTypeGuide = {
+  patterns: ['n8n-nodes-base.myNode'],  // Which nodes to match
+  condition: (ctx) => true,              // Optional: extra conditions
+  content: `Your guide content here...`,
+};
 ```
 
-**Build logic:**
-1. Always: CORE_INSTRUCTIONS + EXPRESSION_RULES
-2. Node-type guide (Set, IF, Switch, HTTP, Tool)
-3. Parameter-type guides if applicable
-4. COMMON_PATTERNS
-5. Relevant examples
-6. OUTPUT_FORMAT
+### Conditional Guides
 
-### Base Prompts (`chains/parameter-updater/base/`)
+Some guides only apply in certain contexts. Use the `condition` property:
 
-| File | Export | Description |
-|------|--------|-------------|
-| `core-instructions.ts` | `CORE_INSTRUCTIONS` | Parameter update guidelines |
-| `expression-rules.ts` | `EXPRESSION_RULES` | n8n expression syntax rules |
-| `common-patterns.ts` | `COMMON_PATTERNS` | HTTP Request patterns |
-| `output-format.ts` | `OUTPUT_FORMAT` | Expected output structure |
+```typescript
+export const RESOURCE_LOCATOR_GUIDE: NodeTypeGuide = {
+  patterns: ['*'],  // Matches all nodes
+  condition: (ctx) => ctx.hasResourceLocatorParams === true,
+  content: `...`,
+};
+```
 
-### Node Type Guides (`chains/parameter-updater/node-types/`)
+### Current Guides
 
-| File | Export | Description |
-|------|--------|-------------|
-| `set-node.ts` | `SET_NODE_GUIDE` | Assignment structure & types |
-| `if-node.ts` | `IF_NODE_GUIDE` | Filter conditions & operators |
-| `switch-node.ts` | `SWITCH_NODE_GUIDE` | Rules and routing patterns |
-| `http-request.ts` | `HTTP_REQUEST_GUIDE` | URL, headers, body, auth |
-| `tool-nodes.ts` | `TOOL_NODES_GUIDE` | $fromAI expressions |
+| Guide | Pattern | Purpose |
+|-------|---------|---------|
+| Set Node | `n8n-nodes-base.set` | Assignment structure & types |
+| IF Node | `n8n-nodes-base.if` | Filter conditions & operators |
+| Switch Node | `n8n-nodes-base.switch` | Rules and routing |
+| HTTP Request | `n8n-nodes-base.httpRequest` | URL, headers, body, auth |
+| Tool Nodes | `*Tool` | $fromAI expressions |
+| Resource Locator | `*` (conditional) | __rl structure & modes |
+| System Message | `*` (conditional) | AI node message separation |
+| Text Fields | `*` (conditional) | Expression embedding |
 
-### Parameter Type Guides (`chains/parameter-updater/parameter-types/`)
+### Current Examples
 
-| File | Export | Description |
-|------|--------|-------------|
-| `resource-locator.ts` | `RESOURCE_LOCATOR_GUIDE` | __rl structure & modes |
-| `system-message.ts` | `SYSTEM_MESSAGE_GUIDE` | AI node message separation |
-| `text-fields.ts` | `TEXT_FIELDS_GUIDE` | Expression embedding |
+| Examples | Pattern | Purpose |
+|----------|---------|---------|
+| Set Node | `n8n-nodes-base.set` | Set node examples |
+| IF Node | `n8n-nodes-base.if` | IF node examples |
+| Switch Node | `n8n-nodes-base.switch` | Switch node examples |
+| Tool Nodes | `*Tool` | Tool node examples |
+| Resource Locator | `*` (conditional) | ResourceLocator examples |
+| Simple Updates | `*` | Generic fallback examples |
