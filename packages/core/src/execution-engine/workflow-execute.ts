@@ -1301,32 +1301,8 @@ export class WorkflowExecute {
 			executionStackEntry.node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
-			const lastRunData = this.runExecutionData.resultData.runData[lastNodeExecuted];
 
-			// For HITL nodes resuming from wait, restore rewireOutputLogTo so output is logged correctly
-			// HITL nodes need to log output with ai_tool connection type for the UI to display them
-			if (lastRunData && lastRunData.length > 0) {
-				const lastRun = lastRunData[lastRunData.length - 1];
-				// Check if this node has metadata indicating it's an HITL tool execution
-				// and preserve inputOverride for the resume
-				const isHitlNode = executionStackEntry.node.type.endsWith('HitlTool');
-				if (lastRun.metadata?.subExecution || isHitlNode) {
-					// Set rewireOutputLogTo on the node so output is logged with ai_tool type
-					executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
-				}
-
-				// Preserve inputOverride from the popped run data for HITL nodes
-				// This ensures the input data is available after the resume
-				if (isHitlNode && lastRun.inputOverride) {
-					// Store inputOverride in execution metadata so it can be restored after the pop
-					executionStackEntry.metadata = {
-						...executionStackEntry.metadata,
-						preservedInputOverride: lastRun.inputOverride,
-					};
-				}
-			}
-
-			lastRunData.pop();
+			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
 		}
 	}
 
@@ -1946,12 +1922,10 @@ export class WorkflowExecute {
 					// Rewire output data log to the given connectionType
 					if (executionNode.rewireOutputLogTo) {
 						// TODO: Remove when AI-723 lands.
-						// Try to get inputOverride from existing run data, or from preserved metadata (for HITL resume)
+						// Try to get inputOverride from existing run data
 						taskData.inputOverride =
 							this.runExecutionData.resultData.runData[executionNode.name][runIndex]
-								?.inputOverride ||
-							executionData.metadata?.preservedInputOverride ||
-							{};
+								?.inputOverride || {};
 						taskData.data = {
 							[executionNode.rewireOutputLogTo]: nodeSuccessData,
 						} as ITaskDataConnections;

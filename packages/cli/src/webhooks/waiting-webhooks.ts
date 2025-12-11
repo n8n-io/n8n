@@ -209,22 +209,11 @@ export class WaitingWebhooks implements IWebhookManager {
 		// For HITL nodes, preserve inputOverride and set rewireOutputLogTo before popping run data
 		const nodeExecutionStack = execution.data.executionData?.nodeExecutionStack;
 		const executionStackEntry = nodeExecutionStack?.[0];
-		const lastRunData = execution.data.resultData.runData[lastNodeExecuted];
 		const isHitlNode = executionStackEntry?.node?.type?.endsWith('HitlTool') ?? false;
 
-		if (isHitlNode && executionStackEntry && lastRunData && lastRunData.length > 0) {
-			const lastRun = lastRunData[lastRunData.length - 1];
-
+		if (isHitlNode && executionStackEntry) {
 			// Set rewireOutputLogTo on the node so output is logged with ai_tool type
 			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
-
-			// Preserve inputOverride in execution metadata for restoration after pop
-			if (lastRun.inputOverride) {
-				executionStackEntry.metadata = {
-					...executionStackEntry.metadata,
-					preservedInputOverride: lastRun.inputOverride,
-				};
-			}
 		}
 
 		// Remove the data of the node execution again else it will display the node as executed twice
