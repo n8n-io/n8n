@@ -71,7 +71,7 @@ export const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['uploadToStore'],
-		resource: ['file'],
+		resource: ['fileSearch'],
 	},
 };
 
@@ -98,7 +98,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: response,
+			json: response ?? {},
 			pairedItem: {
 				item: i,
 			},

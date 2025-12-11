@@ -18,7 +18,7 @@ export const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['createStore'],
-		resource: ['file'],
+		resource: ['fileSearch'],
 	},
 };
 
