@@ -131,6 +131,7 @@ export function useWorkflowSaving({
 		{ id, name, tags }: { id?: string; name?: string; tags?: string[] } = {},
 		redirect = true,
 		forceSave = false,
+		autosaved = false,
 	): Promise<boolean> {
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 		if (readOnlyEnv) {
@@ -143,7 +144,10 @@ export function useWorkflowSaving({
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
+			return !!(await saveAsNewWorkflow(
+				{ name, tags, parentFolderId, uiContext, autosaved },
+				redirect,
+			));
 		}
 
 		// Workflow exists already so update it
@@ -172,6 +176,7 @@ export function useWorkflowSaving({
 			// Check if AI Builder made edits since last save
 			workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
 			workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
+			workflowDataRequest.autosaved = autosaved;
 
 			const workflowData = await workflowsStore.updateWorkflow(
 				currentWorkflow,
@@ -261,6 +266,7 @@ export function useWorkflowSaving({
 			parentFolderId,
 			uiContext,
 			data,
+			autosaved,
 		}: {
 			name?: string;
 			tags?: string[];
@@ -270,6 +276,7 @@ export function useWorkflowSaving({
 			parentFolderId?: string;
 			uiContext?: string;
 			data?: WorkflowDataCreate;
+			autosaved?: boolean;
 		} = {},
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
@@ -312,6 +319,10 @@ export function useWorkflowSaving({
 
 			if (uiContext) {
 				workflowDataRequest.uiContext = uiContext;
+			}
+
+			if (autosaved) {
+				workflowDataRequest.autosaved = autosaved;
 			}
 
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);

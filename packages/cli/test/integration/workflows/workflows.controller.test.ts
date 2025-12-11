@@ -260,6 +260,83 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
+	test('should set autosaved: true in workflow history when autosaved parameter is sent', async () => {
+		const payload = {
+			name: 'testing autosave',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+			activeVersionId: null,
+			autosaved: true,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id },
+		} = response.body as { data: WorkflowEntity };
+
+		expect(id).toBeDefined();
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.autosaved).toBe(true);
+	});
+
+	test('should set autosaved: false in workflow history when autosaved is not sent', async () => {
+		const payload = {
+			name: 'testing manual save',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+			activeVersionId: null,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id },
+		} = response.body as { data: WorkflowEntity };
+
+		expect(id).toBeDefined();
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.autosaved).toBe(false);
+	});
+
 	test('should create workflow as inactive even when active: true is provided in POST body', async () => {
 		const payload = {
 			name: 'active workflow',
@@ -1653,7 +1730,7 @@ describe('GET /workflows', () => {
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('take=2&skip=1')
+				.query('sortBy=name:asc&take=2&skip=1')
 				.query('filter={"query":"Special"}')
 				.expect(200);
 
@@ -2522,7 +2599,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('take=2&skip=1')
+				.query('sortBy=name:asc&take=2&skip=1')
 				.query('filter={"query":"Special"}&includeFolders=true')
 				.expect(200);
 
@@ -2649,6 +2726,69 @@ describe('PATCH /workflows/:workflowId', () => {
 		const versions = await workflowHistoryRepository.find({ where: { workflowId: id } });
 		expect(versions).toHaveLength(1);
 		expect(versions[0].versionId).toBe(workflow.versionId);
+	});
+
+	test('should set autosaved: true in workflow history when autosaved parameter is sent on update', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const payload = {
+			nodes: [
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			autosaved: true,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, versionId: updatedVersionId },
+		} = response.body as { data: WorkflowEntity };
+
+		const versions = await workflowHistoryRepository.find({ where: { workflowId: id } });
+		expect(versions).toHaveLength(2);
+		const newVersion = versions.find((v) => v.versionId === updatedVersionId);
+		expect(newVersion).not.toBeNull();
+		expect(newVersion!.autosaved).toBe(true);
+	});
+
+	test('should set autosaved: false in workflow history when autosaved is not sent on update', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const payload = {
+			nodes: [
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, versionId: updatedVersionId },
+		} = response.body as { data: WorkflowEntity };
+
+		const versions = await workflowHistoryRepository.find({ where: { workflowId: id } });
+		expect(versions).toHaveLength(2);
+		const newVersion = versions.find((v) => v.versionId === updatedVersionId);
+		expect(newVersion).not.toBeNull();
+		expect(newVersion!.autosaved).toBe(false);
 	});
 
 	test('should ignore provided version id', async () => {
