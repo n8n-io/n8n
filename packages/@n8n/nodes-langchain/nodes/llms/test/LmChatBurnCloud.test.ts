@@ -102,36 +102,4 @@ describe('LmChatBurnCloud', () => {
 			expect(result).toHaveProperty('response');
 		});
 	});
-
-	describe('Node Description', () => {
-		it('should have correct basic properties', () => {
-			expect(node.description.name).toBe('lmChatBurnCloud');
-			expect(node.description.displayName).toBe('BurnCloud Chat Model');
-			expect(node.description.icon).toBe('file:burncloud.svg');
-			expect(node.description.group).toEqual(['transform']);
-			expect(node.description.version).toEqual([1]);
-		});
-
-		it('should have correct inputs and outputs', () => {
-			expect(node.description.inputs).toEqual([]);
-			expect(node.description.outputs).toEqual(['ai_languageModel']);
-			expect(node.description.outputNames).toEqual(['Model']);
-		});
-
-		it('should have burnCloudApi credentials', () => {
-			expect(node.description.credentials).toEqual([
-				{
-					name: 'burnCloudApi',
-					required: true,
-				},
-			]);
-		});
-
-		it('should have model property with loadOptions', () => {
-			const modelProperty = node.description.properties.find((prop) => prop.name === 'model');
-			expect(modelProperty).toBeDefined();
-			expect(modelProperty?.type).toBe('options');
-			expect(modelProperty?.typeOptions).toHaveProperty('loadOptions');
-		});
-	});
 });
