@@ -80,7 +80,7 @@ export const renderFormCompletion = async (
 		message: sanitizeHtml(completionMessage),
 		formTitle: title,
 		appendAttribution,
-		responseText: sanitizeHtml(responseText),
+		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
