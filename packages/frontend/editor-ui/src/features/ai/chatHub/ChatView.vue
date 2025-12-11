@@ -170,10 +170,7 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.agent.model, {
-			name: chatStore.streaming.agent.name,
-			icon: chatStore.streaming.agent.icon,
-		});
+		return chatStore.streaming.agent;
 	}
 
 	if (!defaultModel.value) {
