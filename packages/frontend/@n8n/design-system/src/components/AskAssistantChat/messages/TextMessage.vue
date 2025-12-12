@@ -138,8 +138,9 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					<div :class="$style.restoreLine"></div>
 					<button
 						ref="restoreButtonRef"
-						:class="$style.restoreButton"
+						:class="[$style.restoreButton, { [$style.disabled]: streaming }]"
 						type="button"
+						:disabled="streaming"
 						@click="handleRestoreClick"
 					>
 						<N8nIcon icon="undo-2" size="medium" />
@@ -311,6 +312,15 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 	&:active {
 		background-color: var(--color--foreground);
+	}
+
+	&.disabled {
+		cursor: not-allowed;
+
+		&:hover,
+		&:active {
+			background-color: transparent;
+		}
 	}
 }
 
