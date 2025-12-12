@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, mockedStore } from '@/__tests__/utils';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useToast } from '@/app/composables/useToast';
@@ -56,6 +57,7 @@ describe('WorkflowActivator', () => {
 
 	it('display an inactive tooltip when there are no nodes available', async () => {
 		mockWorkflowsStore.workflowId = '1';
+		mockWorkflowsStore.workflowTriggerNodes = [];
 
 		const { getByTestId, getByRole } = renderComponent({
 			props: {
@@ -67,11 +69,13 @@ describe('WorkflowActivator', () => {
 		});
 
 		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
 
-		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow has no trigger nodes that require activation',
-		);
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent(
+				'This workflow has no trigger nodes that require activation',
+			);
+		});
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 
@@ -282,10 +286,11 @@ describe('WorkflowActivator', () => {
 		expect(getByRole('switch')).toBeDisabled();
 
 		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
-		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow is archived so it cannot be activated',
-		);
+
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('This workflow is archived so it cannot be activated');
+		});
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 });

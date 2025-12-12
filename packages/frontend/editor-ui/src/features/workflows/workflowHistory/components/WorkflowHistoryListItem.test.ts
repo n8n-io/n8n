@@ -1,7 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
 import { workflowHistoryDataFactory } from '../__tests__/utils';
@@ -27,7 +29,7 @@ describe('WorkflowHistoryListItem', () => {
 	test.each(actionTypes)('should emit %s event', async (action) => {
 		const item = workflowHistoryDataFactory();
 		const authors = item.authors.split(', ');
-		const { queryByText, getByRole, getByTestId, container, emitted } = renderComponent({
+		const { queryByText, getByTestId, getByText, emitted } = renderComponent({
 			pinia,
 			props: {
 				item,
@@ -37,10 +39,14 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		const authorsTag = container.querySelector('.el-tooltip__trigger')!;
-		expect(authorsTag).toHaveTextContent(`${authors[0]} + ${authors.length - 1}`);
+		const authorsTag = getByText(`${authors[0]} + ${authors.length - 1}`);
+		expect(authorsTag).toBeInTheDocument();
 		await userEvent.hover(authorsTag);
-		expect(getByRole('tooltip')).toBeInTheDocument();
+		await waitFor(() => {
+			// Tooltip shows all author names
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent(authors[1]);
+		});
 
 		await userEvent.click(getByTestId('action-toggle'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();

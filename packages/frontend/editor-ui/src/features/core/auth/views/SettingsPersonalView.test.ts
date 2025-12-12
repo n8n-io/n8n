@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createPinia } from 'pinia';
-import { waitAllPromises } from '@/__tests__/utils';
+import { waitAllPromises, getTooltip } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -178,7 +179,7 @@ describe('SettingsPersonalView', () => {
 		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
 		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
 
-		const { queryByTestId, getByText } = renderComponent({ pinia });
+		const { queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
 		expect(queryByTestId('current-user-role')).toBeVisible();
@@ -187,6 +188,9 @@ describe('SettingsPersonalView', () => {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await userEvent.hover(queryByTestId('current-user-role')!);
 
-		expect(getByText(tooltipText)).toBeVisible();
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent(tooltipText);
+		});
 	});
 });

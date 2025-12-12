@@ -8,20 +8,16 @@ exports[`CanvasControlButtons > should render correctly 1`] = `
     </svg>
     <!---->
   </button>
-  <n8n-icon-button-stub icon="maximize" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="zoom-to-fit" class="el-tooltip__trigger"></n8n-icon-button-stub>
-  <!--teleport start-->
-  <!--teleport end-->
-  <n8n-icon-button-stub icon="zoom-in" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="zoom-in-button" class="el-tooltip__trigger"></n8n-icon-button-stub>
-  <!--teleport start-->
-  <!--teleport end-->
-  <n8n-icon-button-stub icon="zoom-out" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="zoom-out-button" class="el-tooltip__trigger"></n8n-icon-button-stub>
-  <!--teleport start-->
-  <!--teleport end-->
+  <n8n-icon-button-stub icon="maximize" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-state="closed" data-grace-area-trigger="" data-test-id="zoom-to-fit"></n8n-icon-button-stub>
+  <!--v-if-->
+  <n8n-icon-button-stub icon="zoom-in" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-state="closed" data-grace-area-trigger="" data-test-id="zoom-in-button"></n8n-icon-button-stub>
+  <!--v-if-->
+  <n8n-icon-button-stub icon="zoom-out" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-state="closed" data-grace-area-trigger="" data-test-id="zoom-out-button"></n8n-icon-button-stub>
   <!--v-if-->
   <!--v-if-->
-  <n8n-button-stub block="false" element="button" label="" square="true" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="tidy-up-button" class="iconButton el-tooltip__trigger el-tooltip__trigger"></n8n-button-stub>
-  <!--teleport start-->
-  <!--teleport end-->
+  <!--v-if-->
+  <n8n-button-stub block="false" element="button" label="" square="true" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-state="closed" data-grace-area-trigger="" data-test-id="tidy-up-button" class="iconButton"></n8n-button-stub>
+  <!--v-if-->
   <!--v-if-->
   <!--v-if-->
 </div>"

@@ -11,6 +11,36 @@ process.env.TZ = 'UTC';
 
 configure({ testIdAttribute: 'data-test-id' });
 
+/**
+ * Fixes missing pointer APIs and defaultPrevented issues for jsdom + user-event
+ * Required for Reka UI components (tooltips, etc.) to work properly in tests
+ */
+beforeAll(() => {
+	// Patch missing pointer APIs
+	const elementProto = HTMLElement.prototype as HTMLElement & {
+		hasPointerCapture?: (pointerId: number) => boolean;
+		setPointerCapture?: (pointerId: number) => void;
+		releasePointerCapture?: (pointerId: number) => void;
+	};
+
+	if (!elementProto.hasPointerCapture) {
+		Object.defineProperties(elementProto, {
+			hasPointerCapture: {
+				value: (_: number) => false,
+				writable: true,
+			},
+			setPointerCapture: {
+				value: (_: number) => {},
+				writable: true,
+			},
+			releasePointerCapture: {
+				value: (_: number) => {},
+				writable: true,
+			},
+		});
+	}
+});
+
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {
 	// Create app-grid container for toasts

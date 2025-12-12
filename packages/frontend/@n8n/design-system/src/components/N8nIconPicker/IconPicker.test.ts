@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { fireEvent, render } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
@@ -65,7 +65,7 @@ describe('IconPicker', () => {
 	it('renders icon picker with custom icon and tooltip', async () => {
 		const ICON = 'layers';
 		const TOOLTIP = 'Select something...';
-		const { getByTestId, getByRole } = render(IconPicker, {
+		const { getByTestId, baseElement } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'icon', value: ICON },
 				buttonTooltip: TOOLTIP,
@@ -77,14 +77,17 @@ describe('IconPicker', () => {
 			},
 		});
 		await userEvent.hover(getByTestId('icon-picker-button'));
-		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(TOOLTIP);
+		});
 		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ICON);
 	});
 
 	it('renders emoji as default icon correctly', async () => {
 		const ICON = '🔥';
 		const TOOLTIP = 'Select something...';
-		const { getByTestId, getByRole } = render(IconPicker, {
+		const { getByTestId, baseElement } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'emoji', value: ICON },
 				buttonTooltip: TOOLTIP,
@@ -95,7 +98,10 @@ describe('IconPicker', () => {
 			},
 		});
 		await userEvent.hover(getByTestId('icon-picker-button'));
-		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
+		await waitFor(() => {
+			const tooltip = baseElement.ownerDocument.querySelector('[data-dismissable-layer]');
+			expect(tooltip).toHaveTextContent(TOOLTIP);
+		});
 		expect(getByTestId('icon-picker-button')).toHaveTextContent(ICON);
 	});
 

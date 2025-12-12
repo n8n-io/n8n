@@ -131,7 +131,7 @@ describe('ExecutionsFilter', () => {
 			await userEvent.hover(getByTestId('execution-filter-saved-data-key-input'));
 
 			if (advancedExecutionFilters) {
-				expect(queryByTestId('executions-filter-view-plans-link')).not.toBeVisible();
+				expect(queryByTestId('executions-filter-view-plans-link')).not.toBeInTheDocument();
 			}
 
 			expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();

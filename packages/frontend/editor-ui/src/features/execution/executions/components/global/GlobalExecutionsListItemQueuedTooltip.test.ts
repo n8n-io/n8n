@@ -1,5 +1,7 @@
 import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 
 const renderComponent = createComponentRenderer(GlobalExecutionsListItemQueuedTooltip);
@@ -13,7 +15,7 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 					concurrencyCap: 0,
 				},
 				slots: {
-					default: 'Waiting',
+					default: '<span>Waiting</span>',
 				},
 			}),
 		).not.toThrow();
@@ -26,13 +28,16 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 				concurrencyCap: 0,
 			},
 			slots: {
-				default: 'Waiting',
+				default: '<span>Waiting</span>',
 			},
 		});
 
 		await userEvent.hover(getByText('Waiting'));
 
-		expect(getByText(/waiting indefinitely/)).toBeVisible();
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent(/waiting indefinitely/);
+		});
 	});
 
 	it('should show queued tooltip for self-hosted', async () => {
@@ -42,14 +47,17 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 				concurrencyCap: 0,
 			},
 			slots: {
-				default: 'Queued',
+				default: '<span>Queued</span>',
 			},
 		});
 
 		await userEvent.hover(getByText('Queued'));
 
-		expect(getByText(/instance is limited/)).toBeVisible();
-		expect(getByText('View docs')).toBeVisible();
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent(/instance is limited/);
+			expect(tooltip).toHaveTextContent('View docs');
+		});
 	});
 
 	it('should show queued tooltip for cloud', async () => {
@@ -60,16 +68,20 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 				isCloudDeployment: true,
 			},
 			slots: {
-				default: 'Queued',
+				default: '<span>Queued</span>',
 			},
 		});
 
 		await userEvent.hover(getByText('Queued'));
 
-		expect(getByText(/plan is limited/)).toBeVisible();
-		expect(getByText('Upgrade now')).toBeVisible();
+		let tooltipElement: HTMLElement | null = null;
+		await waitFor(() => {
+			tooltipElement = getTooltip();
+			expect(tooltipElement).toHaveTextContent(/plan is limited/);
+			expect(tooltipElement).toHaveTextContent('Upgrade now');
+		});
 
-		await userEvent.click(getByText('Upgrade now'));
+		await userEvent.click(within(tooltipElement!).getByText('Upgrade now'));
 
 		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
