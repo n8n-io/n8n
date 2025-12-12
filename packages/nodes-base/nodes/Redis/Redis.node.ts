@@ -7,13 +7,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { RedisCredential } from './types';
+import type { RedisCredential, RedisCommandClient } from './types';
 import {
 	setupRedisClient,
 	redisConnectionTest,
 	convertInfoToObject,
 	getValue,
 	setValue,
+	getKeys,
 } from './utils';
 
 export class Redis implements INodeType {
@@ -550,17 +551,19 @@ export class Redis implements INodeType {
 		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const client = setupRedisClient(credentials);
+		// Type assertion is safe here as both RedisClient and RedisClusterClient implement these commands
+		const commandClient = client as RedisCommandClient;
 
 		try {
+			// Connect to Redis (works for both standalone and cluster)
 			await client.connect();
-			await client.ping();
 
 			const operation = this.getNodeParameter('operation', 0);
 			const returnItems: INodeExecutionData[] = [];
 
 			if (operation === 'info') {
 				try {
-					const result = await client.info();
+					const result = await commandClient.info();
 					returnItems.push({ json: convertInfoToObject(result) });
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -585,11 +588,11 @@ export class Redis implements INodeType {
 					try {
 						item = { json: {}, pairedItem: { item: itemIndex } };
 
-						if (operation === 'delete') {
-							const keyDelete = this.getNodeParameter('key', itemIndex) as string;
+					if (operation === 'delete') {
+						const keyDelete = this.getNodeParameter('key', itemIndex) as string;
 
-							await client.del(keyDelete);
-							returnItems.push(items[itemIndex]);
+						await commandClient.del(keyDelete);
+						returnItems.push(items[itemIndex]);
 						} else if (operation === 'get') {
 							const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
 							const keyGet = this.getNodeParameter('key', itemIndex) as string;
@@ -610,7 +613,8 @@ export class Redis implements INodeType {
 							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
 							const getValues = this.getNodeParameter('getValues', itemIndex, true) as boolean;
 
-							const keys = await client.keys(keyPattern);
+							// Use getKeys helper which properly handles cluster mode
+							const keys = await getKeys(client, keyPattern, credentials.clusterMode === true);
 
 							if (!getValues) {
 								returnItems.push({ json: { keys } });
@@ -636,38 +640,38 @@ export class Redis implements INodeType {
 
 							await setValue.call(this, client, keySet, value, expire, ttl, keyType, valueIsJSON);
 							returnItems.push(items[itemIndex]);
-						} else if (operation === 'incr') {
-							const keyIncr = this.getNodeParameter('key', itemIndex) as string;
-							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
-							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
-							const incrementVal = await client.incr(keyIncr);
-							if (expire && ttl > 0) {
-								await client.expire(keyIncr, ttl);
-							}
-							returnItems.push({ json: { [keyIncr]: incrementVal } });
-						} else if (operation === 'publish') {
-							const channel = this.getNodeParameter('channel', itemIndex) as string;
-							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-							await client.publish(channel, messageData);
-							returnItems.push(items[itemIndex]);
-						} else if (operation === 'push') {
-							const redisList = this.getNodeParameter('list', itemIndex) as string;
-							const messageData = this.getNodeParameter('messageData', itemIndex) as string;
-							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-							await client[tail ? 'rPush' : 'lPush'](redisList, messageData);
-							returnItems.push(items[itemIndex]);
-						} else if (operation === 'pop') {
-							const redisList = this.getNodeParameter('list', itemIndex) as string;
-							const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-							const propertyName = this.getNodeParameter(
-								'propertyName',
-								itemIndex,
-								'propertyName',
-							) as string;
+					} else if (operation === 'incr') {
+						const keyIncr = this.getNodeParameter('key', itemIndex) as string;
+						const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+						const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
+						const incrementVal = await commandClient.incr(keyIncr);
+						if (expire && ttl > 0) {
+							await commandClient.expire(keyIncr, ttl);
+						}
+						returnItems.push({ json: { [keyIncr]: incrementVal } });
+					} else if (operation === 'publish') {
+						const channel = this.getNodeParameter('channel', itemIndex) as string;
+						const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+						await commandClient.publish(channel, messageData);
+						returnItems.push(items[itemIndex]);
+					} else if (operation === 'push') {
+						const redisList = this.getNodeParameter('list', itemIndex) as string;
+						const messageData = this.getNodeParameter('messageData', itemIndex) as string;
+						const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+						await commandClient[tail ? 'rPush' : 'lPush'](redisList, messageData);
+						returnItems.push(items[itemIndex]);
+					} else if (operation === 'pop') {
+						const redisList = this.getNodeParameter('list', itemIndex) as string;
+						const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
+						const propertyName = this.getNodeParameter(
+							'propertyName',
+							itemIndex,
+							'propertyName',
+						) as string;
 
-							const value = await client[tail ? 'rPop' : 'lPop'](redisList);
+						const value = await commandClient[tail ? 'rPop' : 'lPop'](redisList);
 
-							let outputValue;
+						let outputValue;
 							try {
 								outputValue = value && JSON.parse(value);
 							} catch {
