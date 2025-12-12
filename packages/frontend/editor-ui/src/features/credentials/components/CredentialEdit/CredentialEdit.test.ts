@@ -396,7 +396,7 @@ describe('CredentialEdit', () => {
 					list: false,
 					move: false,
 				},
-			} as any);
+			} as permissionsModule.PermissionsRecord);
 
 			const credentialsStore = mockedStore(useCredentialsStore);
 
