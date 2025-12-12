@@ -162,6 +162,11 @@ export class SourceControlPreferencesService {
 	}
 
 	async getPublicKey() {
+		// Don't attempt to read SSH keys if using HTTPS connection
+		if (this.getPreferences().connectionType === 'https') {
+			return '';
+		}
+
 		try {
 			const dbPublicKey = await this.getPublicKeyFromDatabase();
 
@@ -304,21 +309,50 @@ export class SourceControlPreferencesService {
 		const loadedPreferences = await this.settingsRepository.findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
+
+		let preferences: Partial<SourceControlPreferences> = {};
+
 		if (loadedPreferences) {
 			try {
-				const preferences = jsonParse<SourceControlPreferences>(loadedPreferences.value);
-				if (preferences) {
-					// set local preferences but don't write back to db
-					await this.setPreferences(preferences, false);
-					return preferences;
-				}
+				preferences = jsonParse<SourceControlPreferences>(loadedPreferences.value) ?? {};
 			} catch (error) {
 				this.logger.warn(
 					`Could not parse Source Control settings from database: ${(error as Error).message}`,
 				);
 			}
 		}
-		await this.setPreferences(new SourceControlPreferences(), true);
+
+		// Use environment variables only if there's no database config
+		// Database settings take priority over environment variables
+		if (!loadedPreferences) {
+			const envDefaults: Partial<SourceControlPreferences> = {};
+
+			if (this.sourceControlConfig.repositoryUrl) {
+				envDefaults.repositoryUrl = this.sourceControlConfig.repositoryUrl;
+				envDefaults.connected = true;
+				envDefaults.branchName = this.sourceControlConfig.branchName;
+				envDefaults.branchReadOnly = this.sourceControlConfig.branchReadOnly;
+				envDefaults.branchColor = '#5296D6';
+			}
+
+			if (this.sourceControlConfig.httpsUsername) {
+				envDefaults.httpsUsername = this.sourceControlConfig.httpsUsername;
+				envDefaults.connectionType = 'https';
+			}
+
+			if (this.sourceControlConfig.httpsPassword) {
+				envDefaults.httpsPassword = this.sourceControlConfig.httpsPassword;
+			}
+
+			preferences = { ...envDefaults, ...preferences };
+		}
+
+		const shouldSaveToDb = !loadedPreferences;
+		await this.setPreferences(
+			Object.keys(preferences).length > 0 ? preferences : new SourceControlPreferences(),
+			shouldSaveToDb,
+		);
+
 		return this.sourceControlPreferences;
 	}
 }
