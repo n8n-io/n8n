@@ -50,6 +50,8 @@ describe('Git Node', () => {
 			continueOnFail: jest.fn(() => false),
 			helpers: {
 				returnJsonArray: jest.fn((data: any[]) => data.map((item: any) => ({ json: item }))),
+				resolvePath: jest.fn(async (path: string) => path as any),
+				isFilePathBlocked: jest.fn(() => false),
 			},
 		});
 		jest.clearAllMocks();

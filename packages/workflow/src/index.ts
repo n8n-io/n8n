@@ -24,8 +24,10 @@ export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './workflow';
+export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';
+export * from './workflow-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
@@ -51,6 +53,7 @@ export {
 	setSafeObjectProperty,
 	isDomainAllowed,
 	isCommunityPackageName,
+	dedupe,
 } from './utils';
 export {
 	isINodeProperties,
