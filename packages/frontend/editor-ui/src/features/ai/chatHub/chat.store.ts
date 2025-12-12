@@ -41,6 +41,7 @@ import {
 	type ChatModelDto,
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
+	type AgentIconOrEmoji,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -61,7 +62,6 @@ import {
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
-import type { AgentIconOrEmoji, ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 
