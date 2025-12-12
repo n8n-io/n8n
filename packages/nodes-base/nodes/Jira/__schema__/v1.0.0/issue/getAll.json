@@ -16,9 +16,6 @@
                         "description": {
                             "type": "string"
                         },
-                        "entityId": {
-                            "type": "string"
-                        },
                         "hierarchyLevel": {
                             "type": "integer"
                         },
@@ -36,23 +33,6 @@
                         },
                         "subtask": {
                             "type": "boolean"
-                        }
-                    }
-                },
-                "priority": {
-                    "type": "object",
-                    "properties": {
-                        "iconUrl": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
                         }
                     }
                 },
@@ -111,5 +91,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }
