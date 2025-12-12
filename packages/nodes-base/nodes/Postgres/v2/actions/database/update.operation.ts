@@ -352,6 +352,6 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	const results = await runQueries(queries, items, nodeOptions);
+	const results = await runQueries(queries, nodeOptions);
 	return results;
 }
