@@ -115,14 +115,6 @@
         "source": {
             "type": "string"
         },
-        "stats": {
-            "type": "object",
-            "properties": {
-                "avg_click_rate": {
-                    "type": "integer"
-                }
-            }
-        },
         "status": {
             "type": "string"
         },
@@ -159,5 +151,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

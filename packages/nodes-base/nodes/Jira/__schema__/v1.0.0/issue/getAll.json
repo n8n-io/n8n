@@ -7,6 +7,9 @@
         "fields": {
             "type": "object",
             "properties": {
+                "created": {
+                    "type": "string"
+                },
                 "issuetype": {
                     "type": "object",
                     "properties": {
@@ -39,6 +42,12 @@
                         }
                     }
                 },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "priority": {
                     "type": "object",
                     "properties": {
@@ -52,6 +61,89 @@
                             "type": "string"
                         },
                         "self": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "project": {
+                    "type": "object",
+                    "properties": {
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "projectTypeKey": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "simplified": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "reporter": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
+                            "type": "boolean"
+                        },
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "timeZone": {
                             "type": "string"
                         }
                     }
@@ -98,6 +190,9 @@
                 },
                 "summary": {
                     "type": "string"
+                },
+                "updated": {
+                    "type": "string"
                 }
             }
         },
@@ -111,5 +206,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

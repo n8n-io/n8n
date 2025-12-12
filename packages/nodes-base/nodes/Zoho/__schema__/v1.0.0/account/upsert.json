@@ -1,0 +1,37 @@
+{
+    "type": "object",
+    "properties": {
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Created_Time": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "Modified_By": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Modified_Time": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

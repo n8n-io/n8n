@@ -1,0 +1,246 @@
+{
+    "type": "object",
+    "properties": {
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "objectId": {
+            "type": "integer"
+        },
+        "objectType": {
+            "type": "string"
+        },
+        "portalId": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_conversations_originating_thread_id": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "updatedByUserId": {
+                            "type": "null"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "hs_pipeline_stage": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
+                        "requestId": {
+                            "type": "string"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceUpstreamDeployable": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "subject": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -129,24 +129,6 @@
                 "type": "integer"
             }
         },
-        "date_modified": {
-            "type": "string"
-        },
-        "date_modified_gmt": {
-            "type": "string"
-        },
-        "date_on_sale_from": {
-            "type": "null"
-        },
-        "date_on_sale_from_gmt": {
-            "type": "null"
-        },
-        "date_on_sale_to": {
-            "type": "null"
-        },
-        "date_on_sale_to_gmt": {
-            "type": "null"
-        },
         "default_attributes": {
             "type": "array",
             "items": {
@@ -189,23 +171,6 @@
         },
         "downloadable": {
             "type": "boolean"
-        },
-        "downloads": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "file": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
         },
         "external_url": {
             "type": "string"
@@ -254,7 +219,16 @@
                     "name": {
                         "type": "string"
                     },
+                    "sizes": {
+                        "type": "string"
+                    },
                     "src": {
+                        "type": "string"
+                    },
+                    "srcset": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
                         "type": "string"
                     }
                 }
@@ -315,6 +289,9 @@
         },
         "reviews_allowed": {
             "type": "boolean"
+        },
+        "sale_price": {
+            "type": "string"
         },
         "shipping_class": {
             "type": "string"
@@ -391,5 +368,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

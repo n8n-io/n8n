@@ -4,11 +4,11 @@
         "data": {
             "type": "object",
             "properties": {
-                "text": {
-                    "type": "string"
+                "approved": {
+                    "type": "boolean"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }
