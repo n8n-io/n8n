@@ -246,13 +246,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		it('should save workflow first when isNewWorkflow is true then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			uiStore.stateIsDirty = false;
-			setupEnabledPublishButton({
-				workflow: {
-					...workflowsStore.workflow,
-					versionId: 'version-1',
-					activeVersion: createMockActiveVersion('version-2'),
-				},
-			});
+			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent({
 				props: {
