@@ -90,4 +90,9 @@ export default {
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',
+	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
+	'aiAssistant.versionCard.restoreModal.description':
+		'This will replace your current version. Existing version will be saved for 24 hours in version history.',
+	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
+	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
 } as N8nLocale;

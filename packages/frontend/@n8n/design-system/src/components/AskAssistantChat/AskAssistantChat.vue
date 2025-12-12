@@ -38,6 +38,7 @@ interface Props {
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
+	workflowId?: string;
 }
 
 const emit = defineEmits<{
@@ -49,6 +50,9 @@ const emit = defineEmits<{
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
 	restore: [versionId: string];
+	restoreConfirm: [versionId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 
 const onClose = () => emit('close');
@@ -428,10 +432,14 @@ defineExpose({
 									:is-last-message="i === normalizedMessages.length - 1"
 									:class="getMessageStyles(message, i)"
 									:color="getMessageColor(message)"
+									:workflow-id="workflowId"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
 									@restore="(versionId: string) => emit('restore', versionId)"
+									@restore-confirm="(versionId: string) => emit('restoreConfirm', versionId)"
+									@restore-cancel="emit('restoreCancel')"
+									@show-version="(versionId: string) => emit('showVersion', versionId)"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />

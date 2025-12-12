@@ -12,7 +12,6 @@ import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/type
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
-import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
@@ -39,9 +38,6 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const processedWorkflowUpdates = ref(new Set<string>());
 const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
-
-// Version management state
-const pendingRestore = ref<{ versionId: string } | null>(null);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -142,7 +138,6 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	shouldTidyUp.value = false;
-	pendingRestore.value = null;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -273,19 +268,9 @@ watch(
 );
 
 /**
- * Handle restore button click on version card - shows confirmation
- */
-function onRestoreRequest(versionId: string) {
-	pendingRestore.value = { versionId };
-}
-
-/**
  * Handle restore confirmation
  */
-async function onRestoreConfirm() {
-	if (!pendingRestore.value) return;
-
-	const { versionId } = pendingRestore.value;
+async function onRestoreConfirm(versionId: string) {
 	const success = await builderStore.restoreToVersion(versionId);
 
 	if (success) {
@@ -297,28 +282,20 @@ async function onRestoreConfirm() {
 			trackEvents: false,
 		});
 	}
-
-	pendingRestore.value = null;
 }
 
 /**
- * Handle restore cancellation
- */
-function onRestoreCancel() {
-	pendingRestore.value = null;
-}
-
-/**
- * Handle "Show version" click - navigates to workflow history
+ * Handle "Show version" click - opens workflow history in a new tab
  */
 function onShowVersion(versionId: string) {
-	void router.push({
+	const route = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
-			name: workflowsStore.workflowId,
+			workflowId: workflowsStore.workflowId,
 			versionId,
 		},
 	});
+	window.open(route.href, '_blank');
 }
 
 // Reset on route change
@@ -349,26 +326,20 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:workflow-id="workflowsStore.workflowId"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.abortStreaming"
-			@restore="onRestoreRequest"
+			@restore-confirm="onRestoreConfirm"
+			@show-version="onShowVersion"
 		>
 			<template #header>
 				<slot name="header" />
 			</template>
 			<template #messagesFooter>
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
-				<RestoreVersionConfirm
-					v-if="pendingRestore"
-					:version-id="pendingRestore.versionId"
-					:workflow-id="workflowsStore.workflowId"
-					@confirm="onRestoreConfirm"
-					@cancel="onRestoreCancel"
-					@show-version="onShowVersion"
-				/>
 			</template>
 			<template #placeholder>
 				<N8nText :class="$style.topText"

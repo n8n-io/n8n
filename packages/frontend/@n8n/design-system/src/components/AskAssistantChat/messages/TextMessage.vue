@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core';
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
+import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
@@ -26,6 +28,9 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
 	restore: [versionId: string];
+	restoreConfirm: [versionId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
@@ -52,6 +57,18 @@ const isOverflowing = ref(false);
 // Should match --assistant--text-message--collapsed--max-height in _tokens.scss
 const MAX_HEIGHT = 200;
 
+// Restore version confirm dialog
+const showRestoreConfirm = ref(false);
+const restoreButtonRef = ref<HTMLElement | null>(null);
+const restoreConfirmRef = ref<HTMLElement | null>(null);
+
+// Close confirm dialog when clicking outside
+onClickOutside(restoreConfirmRef, () => {
+	if (showRestoreConfirm.value) {
+		showRestoreConfirm.value = false;
+	}
+});
+
 function checkOverflow() {
 	if (userContentRef.value) {
 		isOverflowing.value = userContentRef.value.scrollHeight > MAX_HEIGHT;
@@ -60,6 +77,26 @@ function checkOverflow() {
 
 function toggleExpanded() {
 	isExpanded.value = !isExpanded.value;
+}
+
+function handleRestoreClick() {
+	showRestoreConfirm.value = true;
+}
+
+function handleRestoreConfirm() {
+	if (props.message.revertVersion) {
+		emit('restoreConfirm', props.message.revertVersion.id);
+	}
+	showRestoreConfirm.value = false;
+}
+
+function handleRestoreCancel() {
+	emit('restoreCancel');
+	showRestoreConfirm.value = false;
+}
+
+function handleShowVersion(versionId: string) {
+	emit('showVersion', versionId);
 }
 
 onMounted(() => {
@@ -96,17 +133,32 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	>
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
 			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
-			<div v-if="message.role === 'user' && message.revertVersion" :class="$style.restoreContainer">
-				<div :class="$style.restoreLine"></div>
-				<button
-					:class="$style.restoreButton"
-					type="button"
-					@click="emit('restore', message.revertVersion.id)"
+			<div v-if="message.role === 'user' && message.revertVersion" :class="$style.restoreWrapper">
+				<div :class="$style.restoreContainer">
+					<div :class="$style.restoreLine"></div>
+					<button
+						ref="restoreButtonRef"
+						:class="$style.restoreButton"
+						type="button"
+						@click="handleRestoreClick"
+					>
+						<N8nIcon icon="undo-2" size="medium" />
+						{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
+					</button>
+					<div :class="$style.restoreLine"></div>
+				</div>
+				<div
+					v-if="showRestoreConfirm && message.revertVersion"
+					ref="restoreConfirmRef"
+					:class="$style.restoreConfirm"
 				>
-					<N8nIcon icon="undo-2" size="xsmall" />
-					{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
-				</button>
-				<div :class="$style.restoreLine"></div>
+					<RestoreVersionConfirm
+						:version-id="message.revertVersion.id"
+						@confirm="handleRestoreConfirm"
+						@cancel="handleRestoreCancel"
+						@show-version="handleShowVersion"
+					/>
+				</div>
 			</div>
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
@@ -206,25 +258,40 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
+.restoreWrapper {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+	margin-bottom: var(--spacing--2xs);
+}
+
 .restoreContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
 	width: 100%;
-	margin-bottom: var(--spacing--2xs);
 	padding: 0 var(--spacing--md);
+}
+
+.restoreConfirm {
+	position: absolute;
+	top: 100%;
+	right: var(--spacing--md);
+	z-index: 10;
+	margin-top: var(--spacing--2xs);
 }
 
 .restoreLine {
 	flex: 1;
 	height: 1px;
-	background-color: var(--color--foreground);
+	background-color: var(--color--text--tint-1);
 }
 
 .restoreButton {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	background: none;
 	border: none;
 	border-radius: var(--radius--lg);
@@ -236,6 +303,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	transition:
 		background-color 0.15s ease,
 		color 0.15s ease;
+	font-weight: var(--font-weight--medium);
 
 	&:hover {
 		background-color: var(--color--foreground--tint-1);
