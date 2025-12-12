@@ -4,9 +4,6 @@
         "creation": {
             "type": "string"
         },
-        "disabled": {
-            "type": "integer"
-        },
         "docstatus": {
             "type": "integer"
         },
@@ -22,6 +19,9 @@
         "modified_by": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "naming_series": {
             "type": "string"
         },
@@ -29,5 +29,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
