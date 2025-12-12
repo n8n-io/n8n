@@ -48,7 +48,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
-		private readonly instanceSettings: InstanceSettings,
+		protected readonly instanceSettings: InstanceSettings,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support

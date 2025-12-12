@@ -418,6 +418,7 @@ export class Form extends Node {
 		}
 
 		const waitTill = configureWaitTillDate(context, 'root');
+		context.setSignatureValidationRequired();
 		await context.putExecutionToWait(waitTill);
 
 		context.sendResponse({
