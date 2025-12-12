@@ -80,7 +80,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
 	);
 	const canViewProjects = computed(
-		() => settingsStore.isChatFeatureEnabled && !hasRole(['global:chatUser']),
+		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
 
 	const projectNavActiveId = computed<string | string[] | null>({

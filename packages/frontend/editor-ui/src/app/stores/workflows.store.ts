@@ -368,7 +368,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const canViewWorkflows = computed(
-		() => settingsStore.isChatFeatureEnabled && !hasRole(['global:chatUser']),
+		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
 
 	/**
