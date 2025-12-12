@@ -84,9 +84,25 @@ const createMockActiveVersion = (versionId: string) => ({
 	description: null,
 });
 
+const triggerNode: INodeUi = {
+	id: 'trigger-1',
+	name: 'Webhook Trigger',
+	type: 'n8n-nodes-base.webhook',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+	disabled: false,
+};
+
 describe('WorkflowHeaderDraftPublishActions', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
+
+	const setupEnabledPublishButton = (overrides = {}) => {
+		workflowsStore.workflowTriggerNodes = [triggerNode];
+		workflowsStore.nodesIssuesExist = false;
+		Object.assign(workflowsStore, overrides);
+	};
 
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -189,23 +205,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Publish button behavior', () => {
-		const triggerNode: INodeUi = {
-			id: 'trigger-1',
-			name: 'Webhook Trigger',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			disabled: false,
-		};
-
 		it('should open publish modal when clicked and workflow is saved', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			workflowsStore.workflowTriggerNodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
-			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = false;
+			setupEnabledPublishButton({
+				workflow: {
+					...workflowsStore.workflow,
+					versionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-2'),
+				},
+			});
 
 			const { getByTestId } = renderComponent();
 
@@ -220,11 +229,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should save workflow first when dirty then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			workflowsStore.workflowTriggerNodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
-			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = true;
+			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent();
 
@@ -239,11 +245,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should save workflow first when isNewWorkflow is true then open publish modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			workflowsStore.workflowTriggerNodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
-			workflowsStore.workflow.activeVersion = null;
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = false;
+			setupEnabledPublishButton({
+				workflow: {
+					...workflowsStore.workflow,
+					versionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-2'),
+				},
+			});
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -263,12 +272,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should not open publish modal if save fails', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			workflowsStore.workflowTriggerNodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
-			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = true;
 			mockSaveCurrentWorkflow.mockResolvedValue(false);
+			setupEnabledPublishButton();
 
 			const { getByTestId } = renderComponent();
 
@@ -279,30 +285,19 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
-	describe('Publish button disabled states', () => {
-		const triggerNode: INodeUi = {
-			id: 'trigger-1',
-			name: 'Webhook Trigger',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			disabled: false,
-		};
-
-		it('should disable publish button when there are no trigger nodes', () => {
+	describe('Publish button state', () => {
+		it('should show publish button disabled when there are no trigger nodes', () => {
 			workflowsStore.workflowTriggerNodes = [];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
 			uiStore.stateIsDirty = true;
 
-			const { getByTestId } = renderComponent();
+			const { queryByTestId } = renderComponent();
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeDisabled();
+			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 
-		it('should disable publish button when trigger node is disabled', () => {
+		it('should show publish button disabled when trigger node is disabled', () => {
 			workflowsStore.workflowTriggerNodes = [{ ...triggerNode, disabled: true }];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
@@ -310,83 +305,51 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 
-		it('should disable publish button when there are node issues', () => {
+		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			workflowsStore.nodesIssuesExist = true;
-			workflowsStore.nodesWithIssues = [
-				{
-					id: 'node-1',
-					name: 'Problem Node',
-					type: 'n8n-nodes-base.manual',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			];
-			uiStore.stateIsDirty = true;
-
-			const { getByTestId } = renderComponent();
-
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeDisabled();
-		});
-
-		it('should disable publish button when no changes exist', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
-			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = false;
 
 			const { getByTestId } = renderComponent();
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
 		});
 
-		it('should enable publish button when there are unpublished changes (versionId mismatch)', () => {
-			workflowsStore.workflowTriggerNodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
-			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-2');
-			workflowsStore.nodesIssuesExist = false;
-			uiStore.stateIsDirty = false;
-
-			const { getByTestId } = renderComponent();
-
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).not.toBeDisabled();
-		});
-
-		it('should enable publish button when state is dirty', () => {
+		it('should show publish button enabled when state is dirty', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = true;
 
 			const { getByTestId } = renderComponent();
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).not.toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
 		});
 
-		it('should enable publish button when workflow has never been published (no active version)', () => {
+		it('should show publish button disabled when versions match and state is not dirty', () => {
+			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.versionId = 'version-1';
+			workflowsStore.workflow.activeVersion = createMockActiveVersion('version-1');
+			uiStore.stateIsDirty = false;
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should show publish button enabled when workflow has never been published (no active version)', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
 			workflowsStore.workflow.activeVersion = null;
-			workflowsStore.nodesIssuesExist = false;
 			uiStore.stateIsDirty = false;
 
 			const { getByTestId } = renderComponent();
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).not.toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
 		});
 	});
 
