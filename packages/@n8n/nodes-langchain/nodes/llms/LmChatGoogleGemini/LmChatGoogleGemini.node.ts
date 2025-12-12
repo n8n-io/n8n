@@ -13,6 +13,7 @@ import type {
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import type { GeminiModelOptions } from '../gemini-common/types';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -130,19 +131,12 @@ export class LmChatGoogleGemini implements INodeType {
 		const credentials = await this.getCredentials('googlePalmApi');
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {
+		const options: GeminiModelOptions = this.getNodeParameter('options', itemIndex, {
 			maxOutputTokens: 1024,
 			temperature: 0.7,
 			topK: 40,
 			topP: 0.9,
-		}) as {
-			maxOutputTokens: number;
-			temperature: number;
-			topK: number;
-			topP: number;
-			useGoogleSearchGrounding?: boolean;
-			dynamicRetrievalThreshold?: number;
-		};
+		});
 
 		const safetySettings = this.getNodeParameter(
 			'options.safetySettings.values',

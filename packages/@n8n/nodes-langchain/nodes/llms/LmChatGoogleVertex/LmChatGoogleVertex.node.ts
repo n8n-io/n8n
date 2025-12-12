@@ -18,6 +18,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import type { GeminiModelOptions } from '../gemini-common/types';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -139,20 +140,12 @@ export class LmChatGoogleVertex implements INodeType {
 			extractValue: true,
 		}) as string;
 
-		const options = this.getNodeParameter('options', itemIndex, {
+		const options: GeminiModelOptions = this.getNodeParameter('options', itemIndex, {
 			maxOutputTokens: 2048,
 			temperature: 0.4,
 			topK: 40,
 			topP: 0.9,
-		}) as {
-			maxOutputTokens?: number;
-			temperature?: number;
-			topK?: number;
-			topP?: number;
-			thinkingBudget?: number;
-			useGoogleSearchGrounding?: boolean;
-			dynamicRetrievalThreshold?: number;
-		};
+		});
 
 		// Validate options parameter
 		validateNodeParameters(
