@@ -95,6 +95,19 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		@feedback="(feedback) => emit('feedback', feedback)"
 	>
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
+			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
+			<div v-if="message.role === 'user' && message.revertVersion" :class="$style.restoreContainer">
+				<div :class="$style.restoreLine"></div>
+				<button
+					:class="$style.restoreButton"
+					type="button"
+					@click="emit('restore', message.revertVersion.id)"
+				>
+					<N8nIcon icon="undo-2" size="xsmall" />
+					{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
+				</button>
+				<div :class="$style.restoreLine"></div>
+			</div>
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
 				<div
@@ -112,16 +125,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
 			</div>
-			<!-- Restore version link for user messages with revertVersion -->
-			<button
-				v-if="message.role === 'user' && message.revertVersion"
-				:class="$style.restoreLink"
-				type="button"
-				@click="emit('restore', message.revertVersion.id)"
-			>
-				<N8nIcon icon="undo-2" size="xsmall" />
-				{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
-			</button>
 			<!-- Assistant message - simple text without container -->
 			<div
 				v-else
@@ -203,21 +206,43 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
-.restoreLink {
+.restoreContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	width: 100%;
+	margin-bottom: var(--spacing--2xs);
+	padding: 0 var(--spacing--md);
+}
+
+.restoreLine {
+	flex: 1;
+	height: 1px;
+	background-color: var(--color--foreground);
+}
+
+.restoreButton {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	background: none;
 	border: none;
-	padding: 0;
-	margin-top: var(--spacing--3xs);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	cursor: pointer;
-	align-self: flex-end;
+	white-space: nowrap;
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
 
 	&:hover {
-		text-decoration: underline;
+		background-color: var(--color--foreground--tint-1);
+	}
+
+	&:active {
+		background-color: var(--color--foreground);
 	}
 }
 
