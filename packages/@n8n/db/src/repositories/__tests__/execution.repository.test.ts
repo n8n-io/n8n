@@ -406,4 +406,57 @@ describe('ExecutionRepository', () => {
 			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
 		});
 	});
+
+	describe('setRunning', () => {
+		test('should set startedAt when execution has no startedAt', async () => {
+			const executionId = '123';
+			const mockExecution = { startedAt: null };
+
+			entityManager.findOne.mockResolvedValueOnce(mockExecution);
+			entityManager.update.mockResolvedValueOnce({ affected: 1 });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			// Should query for existing startedAt
+			expect(entityManager.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
+
+			// Should update with both status and new startedAt
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: expect.any(Date) },
+			);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+
+		test('should preserve existing startedAt when resuming execution', async () => {
+			const executionId = '456';
+			const existingStartedAt = new Date('2025-12-02T09:04:47.150Z');
+			const mockExecution = { startedAt: existingStartedAt };
+
+			entityManager.findOne.mockResolvedValueOnce(mockExecution);
+			entityManager.update.mockResolvedValueOnce({ affected: 1 });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			// Should query for existing startedAt
+			expect(entityManager.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
+
+			// Should update ONLY status (not startedAt)
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running' },
+			);
+
+			expect(result).toBe(existingStartedAt);
+		});
+	});
 });

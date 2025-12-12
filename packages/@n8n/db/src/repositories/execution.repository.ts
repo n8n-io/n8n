@@ -418,9 +418,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		await this.update({ id: executionId }, { status: 'running', startedAt });
+		// Check if execution already has a startedAt timestamp
+		const execution = await this.findOne({
+			select: ['startedAt'],
+			where: { id: executionId },
+		});
 
-		return startedAt;
+		// Only set startedAt if it's not already set (to preserve original start time for resumed executions)
+		if (execution?.startedAt) {
+			await this.update({ id: executionId }, { status: 'running' });
+			return execution.startedAt;
+		} else {
+			await this.update({ id: executionId }, { status: 'running', startedAt });
+			return startedAt;
+		}
 	}
 
 	/**
