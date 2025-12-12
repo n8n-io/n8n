@@ -110,7 +110,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return route.query.new === 'true';
+	return !workflowsStore.isWorkflowSaved[props.id];
 });
 
 const isWorkflowSaving = computed(() => {
@@ -162,7 +162,7 @@ async function onSaveButtonClick() {
 	const tags = props.tags as string[];
 
 	// Capture the "new" state before saving, as the route will be replaced during save
-	const wasNewWorkflow = route.query.new === 'true';
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
 
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
@@ -253,7 +253,7 @@ async function onNameSubmit(name: string) {
 	const id = getWorkflowId(props.id, route.params.name);
 
 	// Capture the "new" state before saving, as the route will be replaced during save
-	const wasNewWorkflow = route.query.new === 'true';
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
 
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
