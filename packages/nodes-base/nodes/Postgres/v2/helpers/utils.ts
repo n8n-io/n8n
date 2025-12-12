@@ -20,6 +20,7 @@ import type {
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
+import { operatorOptions } from '../actions/common.descriptions';
 
 export function isJSON(str: string) {
 	try {
@@ -626,4 +627,27 @@ export const convertArraysToPostgresFormat = (
 	}
 
 	return newData;
+};
+
+const conditionSet = new Set(operatorOptions.map((option) => option.value));
+
+export const isWhereClause = (clause: unknown): clause is WhereClause => {
+	if (typeof clause !== 'object' || clause === null) return false;
+	if ('condition' in clause && !conditionSet.has(clause.condition as string)) return false;
+	return true;
+};
+
+export const getWhereClauses = (ctx: IExecuteFunctions, itemIndex: number): WhereClause[] => {
+	const whereClauses = ctx.getNodeParameter('where', itemIndex, []) as IDataObject;
+	const whereClausesValues = whereClauses.values as unknown[];
+	if (!Array.isArray(whereClausesValues)) {
+		return [];
+	}
+	const someInvalid = whereClausesValues.some((clause) => !isWhereClause(clause));
+	if (someInvalid) {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid where clause', {
+			itemIndex,
+		});
+	}
+	return whereClausesValues as WhereClause[];
 };
