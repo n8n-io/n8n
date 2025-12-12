@@ -168,7 +168,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 					</RouterView>
 				</div>
 				<div v-if="hasContentFooter" :class="$style.contentFooter">
-					<!-- <RouterView name="footer" /> -->
+					<RouterView name="footer" />
 				</div>
 			</div>
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">

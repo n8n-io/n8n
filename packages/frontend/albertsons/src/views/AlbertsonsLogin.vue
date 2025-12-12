@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import albertsonsLogo from '../assets/albertsons-logo.png';
 
@@ -81,6 +81,11 @@ import { useUserSessionStore } from '../stores/userSession.js';
 const router = useRouter();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+
+onMounted(async () => {
+	const value = await settingsStore.getSettings();
+	console.log('Settings loaded:', settingsStore);
+});
 
 const isLogin = ref(true);
 const email = ref('');

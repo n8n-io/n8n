@@ -34,6 +34,7 @@ const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
 const AlbertsonsLoginView = async () => await import('@src/views/AlbertsonsLogin.vue');
 const MainHeader = async () => await import('@src/components/MainHeader/MainHeader.vue');
+const EditorHeader = async () => await import('@src/app/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@src/components/MainSidebar.vue');
 const LogsPanel = async () => await import('@/features/execution/logs/components/LogsPanel.vue');
 const DemoFooter = async () => await import('@/features/execution/logs/components/DemoFooter.vue');
@@ -124,7 +125,7 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/',
-		redirect: '/workflow/new',
+		redirect: '/dashboard',
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -404,7 +405,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.NEW_WORKFLOW,
 		components: {
 			default: NodeView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 			footer: LogsPanel,
 		},
