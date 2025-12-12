@@ -196,7 +196,7 @@
     "@langchain/groq": "1.0.2",
     "@langchain/mistralai": "1.0.1",
     "@langchain/mongodb": "1.0.1",
-    "@langchain/ollama": "1.0.2",
+    "@langchain/ollama": "1.0.3",
     "@langchain/openai": "catalog:",
     "@langchain/pinecone": "1.0.1",
     "@langchain/qdrant": "1.0.1",
