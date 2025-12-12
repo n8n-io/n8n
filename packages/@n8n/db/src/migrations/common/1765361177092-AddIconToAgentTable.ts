@@ -1,19 +1,49 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const agentsTableName = 'chat_hub_agents';
-const sessionsTableName = 'chat_hub_sessions';
+const tableName = 'chat_hub_agents';
 
 export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
-	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
-		// Add icon column to agents table (nullable)
-		await addColumns(agentsTableName, [column('icon').json]);
+	async up({
+		schemaBuilder: { addColumns, column },
+		runQuery,
+		isMysql,
+		isPostgres,
+		escape,
+	}: MigrationContext) {
+		const escapedTableName = escape.tableName(tableName);
+		const escapedIdColumn = escape.columnName('id');
 
-		// Add agentIcon column to sessions table (nullable)
-		await addColumns(sessionsTableName, [column('agentIcon').json]);
+		// Add icon column to agents table (nullable)
+		await addColumns(tableName, [column('icon').json]);
+
+		// Change agents.id from UUID to varchar to match foreign key references
+		if (isPostgres) {
+			await runQuery(
+				`ALTER TABLE ${escapedTableName} ALTER COLUMN ${escapedIdColumn} TYPE VARCHAR`,
+			);
+		} else if (isMysql) {
+			await runQuery(`ALTER TABLE ${escapedTableName} MODIFY COLUMN \`id\` VARCHAR(255)`);
+		}
 	}
 
-	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(agentsTableName, ['icon']);
-		await dropColumns(sessionsTableName, ['agentIcon']);
+	async down({
+		schemaBuilder: { dropColumns },
+		runQuery,
+		isMysql,
+		isPostgres,
+		escape,
+	}: MigrationContext) {
+		const escapedTableName = escape.tableName(tableName);
+		const escapedIdColumn = escape.columnName('id');
+
+		if (isPostgres) {
+			await runQuery(
+				`ALTER TABLE ${escapedTableName} ALTER COLUMN ${escapedIdColumn} TYPE UUID USING ${escapedIdColumn}::UUID`,
+			);
+		} else if (isMysql) {
+			await runQuery(`ALTER TABLE ${escapedTableName} MODIFY COLUMN \`id\` CHAR(36)`);
+		}
+
+		await dropColumns(tableName, ['icon']);
 	}
 }

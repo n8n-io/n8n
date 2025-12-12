@@ -564,6 +564,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 				tools,
 				attachments,
+				agentName: agent.name,
 				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
@@ -732,8 +733,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		updateSession(sessionId, updated.session);
 	}
 
-	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
-		const result = await updateConversationApi(rootStore.restApiContext, sessionId, { model });
+	async function updateSessionModel(
+		sessionId: ChatSessionId,
+		model: ChatHubConversationModel,
+		agentName: string,
+	) {
+		const result = await updateConversationApi(rootStore.restApiContext, sessionId, {
+			agent: { model, name: agentName },
+		});
 		updateSession(sessionId, result.session);
 	}
 

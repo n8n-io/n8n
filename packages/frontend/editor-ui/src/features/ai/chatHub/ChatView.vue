@@ -484,7 +484,7 @@ async function handleSelectModel(
 
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection);
+			await chatStore.updateSessionModel(sessionId.value, selection, agent.name);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}

@@ -1,7 +1,7 @@
 import type {
-	ChatModelsResponse,
 	ChatHubUpdateAgentRequest,
 	ChatHubCreateAgentRequest,
+	ChatModelDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -23,22 +23,24 @@ export class ChatHubAgentService {
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 	) {}
 
-	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelsResponse['custom-agent']> {
+	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
 		const agents = await this.getAgentsByUserId(userId);
 
+		return agents.map((agent) => this.convertAgentEntityToModel(agent));
+	}
+
+	convertAgentEntityToModel(agent: ChatHubAgent): ChatModelDto {
 		return {
-			models: agents.map((agent) => ({
-				name: agent.name,
-				description: agent.description ?? null,
-				icon: agent.icon,
-				model: {
-					provider: 'custom-agent',
-					agentId: agent.id,
-				},
-				createdAt: agent.createdAt.toISOString(),
-				updatedAt: agent.updatedAt.toISOString(),
-				metadata: getModelMetadata(agent.provider, agent.model),
-			})),
+			name: agent.name,
+			description: agent.description ?? null,
+			icon: agent.icon,
+			model: {
+				provider: 'custom-agent',
+				agentId: agent.id,
+			},
+			createdAt: agent.createdAt.toISOString(),
+			updatedAt: agent.updatedAt.toISOString(),
+			metadata: getModelMetadata(agent.provider, agent.model),
 		};
 	}
 

@@ -14,7 +14,7 @@ import {
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
 	type ChatHubUpdateConversationRequest,
-	type ChatModelDto,
+	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -173,7 +173,15 @@ export class ChatHubService {
 		try {
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
-				session ??= await this.createChatSession(user, sessionId, model, credentialId, tools, trx);
+				session ??= await this.createChatSession(
+					user,
+					sessionId,
+					model,
+					credentialId,
+					tools,
+					payload.agentName,
+					trx,
+				);
 
 				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
@@ -1247,44 +1255,23 @@ export class ChatHubService {
 		return await this.sessionRepository.getOneById(sessionId, user.id, trx);
 	}
 
-	private async getAgentNameAndIcon(
-		user: User,
-		model: ChatHubConversationModel,
-	): Promise<Pick<ChatModelDto, 'name' | 'icon'>> {
-		if (model.provider === 'custom-agent') {
-			return await this.chatHubAgentService.getAgentById(model.agentId, user.id);
-		}
-
-		if (model.provider === 'n8n') {
-			const agents = await this.chatHubModelsService.fetchAgentWorkflowsAsModelsByIds([
-				model.workflowId,
-			]);
-
-			return { icon: agents[0]?.icon ?? null, name: agents[0]?.name ?? '' };
-		}
-
-		return { icon: null, name: model.model };
-	}
-
 	private async createChatSession(
 		user: User,
 		sessionId: ChatSessionId,
 		model: ChatHubConversationModel,
 		credentialId: string | null,
 		tools: INode[],
+		agentName?: string,
 		trx?: EntityManager,
 	) {
 		await this.ensureValidModel(user, model);
-
-		const nameAndIcon = await this.getAgentNameAndIcon(user, model);
 
 		return await this.sessionRepository.createChatSession(
 			{
 				id: sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
-				agentName: nameAndIcon.name,
-				agentIcon: nameAndIcon.icon,
+				agentName,
 				tools,
 				credentialId,
 				...model,
@@ -1321,22 +1308,7 @@ export class ChatHubService {
 		const nextCursor = hasMore ? data[data.length - 1].id : null;
 
 		return {
-			data: data.map((session) => ({
-				id: session.id,
-				title: session.title,
-				ownerId: session.ownerId,
-				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
-				credentialId: session.credentialId,
-				provider: session.provider,
-				model: session.model,
-				workflowId: session.workflowId,
-				agentId: session.agentId,
-				agentName: session.agentName ?? '',
-				agentIcon: session.agentIcon,
-				createdAt: session.createdAt.toISOString(),
-				updatedAt: session.updatedAt.toISOString(),
-				tools: session.tools,
-			})),
+			data: data.map((session) => this.convertSessionEntityToDto(session)),
 			nextCursor,
 			hasMore,
 		};
@@ -1354,22 +1326,7 @@ export class ChatHubService {
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
 		return {
-			session: {
-				id: session.id,
-				title: session.title,
-				ownerId: session.ownerId,
-				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
-				credentialId: session.credentialId,
-				provider: session.provider,
-				model: session.model,
-				workflowId: session.workflowId,
-				agentId: session.agentId,
-				agentName: session.agentName ?? '',
-				agentIcon: session.agentIcon,
-				createdAt: session.createdAt.toISOString(),
-				updatedAt: session.updatedAt.toISOString(),
-				tools: session.tools,
-			},
+			session: this.convertSessionEntityToDto(session),
 			conversation: {
 				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
 			},
@@ -1463,25 +1420,24 @@ export class ChatHubService {
 		// Prepare the actual updates to be sent to the repository
 		const sessionUpdates: Partial<ChatHubSession> = {};
 
-		if (updates.model) {
-			await this.ensureValidModel(user, updates.model);
+		if (updates.agent) {
+			const model = updates.agent.model;
 
-			const nameAndIcon = await this.getAgentNameAndIcon(user, updates.model);
+			await this.ensureValidModel(user, model);
 
-			sessionUpdates.agentName = nameAndIcon.name;
-			sessionUpdates.agentIcon = nameAndIcon.icon;
-			sessionUpdates.provider = updates.model.provider;
+			sessionUpdates.agentName = updates.agent.name;
+			sessionUpdates.provider = model.provider;
 			sessionUpdates.model = null;
 			sessionUpdates.credentialId = null;
 			sessionUpdates.agentId = null;
 			sessionUpdates.workflowId = null;
 
-			if (updates.model.provider === 'n8n') {
-				sessionUpdates.workflowId = updates.model.workflowId;
-			} else if (updates.model.provider === 'custom-agent') {
-				sessionUpdates.agentId = updates.model.agentId;
+			if (updates.agent.model.provider === 'n8n') {
+				sessionUpdates.workflowId = updates.agent.model.workflowId;
+			} else if (updates.agent.model.provider === 'custom-agent') {
+				sessionUpdates.agentId = updates.agent.model.agentId;
 			} else {
-				sessionUpdates.model = updates.model.model;
+				sessionUpdates.model = updates.agent.model.model;
 			}
 		}
 
@@ -1538,5 +1494,30 @@ export class ChatHubService {
 				);
 			}
 		}
+	}
+
+	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
+		const agent = session.workflow
+			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow)
+			: session.agent
+				? this.chatHubAgentService.convertAgentEntityToModel(session.agent)
+				: undefined;
+
+		return {
+			id: session.id,
+			title: session.title,
+			ownerId: session.ownerId,
+			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+			credentialId: session.credentialId,
+			provider: session.provider,
+			model: session.model,
+			workflowId: session.workflowId,
+			agentId: session.agentId,
+			agentName: agent?.name ?? session.agentName ?? session.model ?? '',
+			agentIcon: agent?.icon ?? null,
+			createdAt: session.createdAt.toISOString(),
+			updatedAt: session.updatedAt.toISOString(),
+			tools: session.tools,
+		};
 	}
 }

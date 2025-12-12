@@ -1,16 +1,15 @@
-import { createActiveWorkflow, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
+import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { createAdmin, createMember } from '@test-integration/db/users';
-import { saveCredential } from '@test-integration/db/credentials';
 
-import { ChatHubAgentService } from '../chat-hub-agent.service';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
+import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 
 mockInstance(BinaryDataService);
 
@@ -20,14 +19,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate([
-		'ChatHubMessage',
-		'ChatHubSession',
-		'ChatHubAgent',
-		'SharedCredentials',
-		'SharedWorkflow',
-		'WorkflowEntity',
-	]);
+	await testDb.truncate(['ChatHubMessage', 'ChatHubSession', 'ChatHubAgent']);
 });
 
 afterAll(async () => {
@@ -38,6 +30,7 @@ describe('chatHub', () => {
 	let chatHubService: ChatHubService;
 	let messagesRepository: ChatHubMessageRepository;
 	let sessionsRepository: ChatHubSessionRepository;
+	let agentRepository: ChatHubAgentRepository;
 
 	let admin: User;
 	let member: User;
@@ -46,6 +39,7 @@ describe('chatHub', () => {
 		chatHubService = Container.get(ChatHubService);
 		messagesRepository = Container.get(ChatHubMessageRepository);
 		sessionsRepository = Container.get(ChatHubSessionRepository);
+		agentRepository = Container.get(ChatHubAgentRepository);
 	});
 
 	beforeEach(async () => {
@@ -99,6 +93,83 @@ describe('chatHub', () => {
 			expect(conversations.data[0].id).toBe(session1.id);
 			expect(conversations.data[1].id).toBe(session2.id);
 			expect(conversations.data[2].id).toBe(session3.id);
+		});
+
+		it('should return agentIcon for sessions with custom agents', async () => {
+			const agent = await agentRepository.createAgent({
+				id: crypto.randomUUID(),
+				name: 'Test Agent',
+				description: 'Test agent description',
+				icon: { type: 'emoji', value: '🤖' },
+				systemPrompt: 'You are a helpful assistant',
+				ownerId: member.id,
+				provider: 'openai',
+				model: 'gpt-4',
+				credentialId: null,
+				tools: [],
+			});
+
+			await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
+				ownerId: member.id,
+				title: 'session with agent',
+				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				provider: 'custom-agent',
+				agentId: agent.id,
+				tools: [],
+			});
+
+			const conversations = await chatHubService.getConversations(member.id, 20);
+			expect(conversations.data).toHaveLength(1);
+			expect(conversations.data[0].agentIcon).toEqual({ type: 'emoji', value: '🤖' });
+		});
+
+		it('should return agentIcon for sessions with n8n workflow agents', async () => {
+			const projectRepository = Container.get(ProjectRepository);
+
+			// Get member's personal project
+			const project = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+
+			// Update the project with an icon
+			await projectRepository.update(project.id, {
+				icon: { type: 'icon', value: 'workflow' },
+			});
+
+			// Create an active workflow with chat trigger
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+							},
+						},
+					],
+					connections: {},
+				},
+				member,
+			);
+
+			// Create a session with the workflow
+			await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
+				ownerId: member.id,
+				title: 'session with workflow',
+				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				provider: 'n8n',
+				workflowId: workflow.id,
+				tools: [],
+			});
+
+			const conversations = await chatHubService.getConversations(member.id, 20);
+			expect(conversations.data).toHaveLength(1);
+			expect(conversations.data[0].agentIcon).toEqual({ type: 'icon', value: 'workflow' });
 		});
 
 		describe('pagination', () => {
@@ -305,6 +376,83 @@ describe('chatHub', () => {
 			expect(conversation).toBeDefined();
 			expect(conversation.session.id).toBe(session.id);
 			expect(conversation.conversation.messages).toEqual({});
+		});
+
+		it('should return agentIcon for conversation with custom agent', async () => {
+			const agent = await agentRepository.createAgent({
+				id: crypto.randomUUID(),
+				name: 'Test Agent',
+				description: 'Test agent description',
+				icon: { type: 'emoji', value: '🤖' },
+				systemPrompt: 'You are a helpful assistant',
+				ownerId: member.id,
+				provider: 'openai',
+				model: 'gpt-4',
+				credentialId: null,
+				tools: [],
+			});
+
+			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
+				ownerId: member.id,
+				title: 'session with agent',
+				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				provider: 'custom-agent',
+				agentId: agent.id,
+				tools: [],
+			});
+
+			const conversation = await chatHubService.getConversation(member.id, session.id);
+			expect(conversation).toBeDefined();
+			expect(conversation.session.agentIcon).toEqual({ type: 'emoji', value: '🤖' });
+		});
+
+		it('should return agentIcon for conversation with n8n workflow agent', async () => {
+			const projectRepository = Container.get(ProjectRepository);
+
+			// Get member's personal project
+			const project = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+
+			// Update the project with an icon
+			await projectRepository.update(project.id, {
+				icon: { type: 'icon', value: 'workflow' },
+			});
+
+			// Create an active workflow with chat trigger
+			const workflow = await createActiveWorkflow(
+				{
+					name: 'Chat Workflow',
+					nodes: [
+						{
+							id: 'chat-trigger-1',
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1.4,
+							position: [0, 0],
+							parameters: {
+								availableInChat: true,
+							},
+						},
+					],
+					connections: {},
+				},
+				member,
+			);
+
+			// Create a session with the workflow
+			const session = await sessionsRepository.createChatSession({
+				id: crypto.randomUUID(),
+				ownerId: member.id,
+				title: 'session with workflow',
+				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				provider: 'n8n',
+				workflowId: workflow.id,
+				tools: [],
+			});
+
+			const conversation = await chatHubService.getConversation(member.id, session.id);
+			expect(conversation).toBeDefined();
+			expect(conversation.session.agentIcon).toEqual({ type: 'icon', value: 'workflow' });
 		});
 
 		it('should get conversation with messages in expected order', async () => {
@@ -742,137 +890,6 @@ describe('chatHub', () => {
 
 			expect(messages[msg2r.id].previousMessageId).toBe(msg1.id);
 			expect(messages[msg2r.id].retryOfMessageId).toBe(msg2.id);
-		});
-	});
-
-	describe('updateSession', () => {
-		it('should update session model with base LLM provider', async () => {
-			const session = await sessionsRepository.createChatSession({
-				id: crypto.randomUUID(),
-				ownerId: member.id,
-				title: 'Test Session',
-				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				provider: 'openai',
-				model: 'gpt-4',
-				tools: [],
-			});
-
-			await chatHubService.updateSession(member, session.id, {
-				model: {
-					provider: 'anthropic',
-					model: 'claude-3-5-sonnet-20241022',
-				},
-			});
-
-			const updatedSession = await sessionsRepository.getOneById(session.id, member.id);
-
-			expect(updatedSession).toBeDefined();
-			expect(updatedSession?.provider).toBe('anthropic');
-			expect(updatedSession?.model).toBe('claude-3-5-sonnet-20241022');
-			expect(updatedSession?.agentName).toBe('claude-3-5-sonnet-20241022');
-			expect(updatedSession?.agentIcon).toBeNull();
-		});
-
-		it('should update session model with n8n provider and set agentName and agentIcon', async () => {
-			const session = await sessionsRepository.createChatSession({
-				id: crypto.randomUUID(),
-				ownerId: member.id,
-				title: 'Test Session',
-				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				provider: 'openai',
-				model: 'gpt-4',
-				tools: [],
-			});
-
-			// Set project icon for the member's personal project
-			const projectRepository = Container.get(ProjectRepository);
-			const personalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
-			const projectIcon = { type: 'emoji' as const, value: '🚀' };
-			await projectRepository.update(personalProject.id, { icon: projectIcon });
-
-			// Create a workflow with chat trigger for the n8n provider
-			const workflow = await createActiveWorkflow(
-				{
-					name: 'Test Workflow',
-					nodes: [
-						{
-							id: crypto.randomUUID(),
-							name: 'Chat Trigger',
-							type: CHAT_TRIGGER_NODE_TYPE,
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {
-								availableInChat: true,
-							},
-						},
-					],
-					connections: {},
-				},
-				member,
-			);
-
-			await chatHubService.updateSession(member, session.id, {
-				model: {
-					provider: 'n8n',
-					workflowId: workflow.id,
-				},
-			});
-
-			const updatedSession = await sessionsRepository.getOneById(session.id, member.id);
-
-			expect(updatedSession).toBeDefined();
-			expect(updatedSession?.provider).toBe('n8n');
-			expect(updatedSession?.workflowId).toBe(workflow.id);
-			expect(updatedSession?.agentName).toBe('Test Workflow');
-			expect(updatedSession?.agentIcon).toStrictEqual(projectIcon);
-		});
-
-		it('should update session model with custom-agent provider and set agentName and agentIcon', async () => {
-			const session = await sessionsRepository.createChatSession({
-				id: crypto.randomUUID(),
-				ownerId: member.id,
-				title: 'Test Session',
-				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				provider: 'openai',
-				model: 'gpt-4',
-				tools: [],
-			});
-
-			// Create a credential for the custom agent
-			const credential = await saveCredential(
-				{
-					name: 'Test OpenAI Credential',
-					type: 'openAiApi',
-					data: { apiKey: 'test-api-key' },
-				},
-				{ user: member, role: 'credential:owner' },
-			);
-
-			// Create a custom agent
-			const agent = await Container.get(ChatHubAgentService).createAgent(member, {
-				name: 'Test Agent',
-				icon: { type: 'emoji', value: '🤖' },
-				systemPrompt: 'You are a helpful assistant',
-				provider: 'openai',
-				model: 'gpt-4',
-				credentialId: credential.id,
-				tools: [],
-			});
-
-			await chatHubService.updateSession(member, session.id, {
-				model: {
-					provider: 'custom-agent',
-					agentId: agent.id,
-				},
-			});
-
-			const updatedSession = await sessionsRepository.getOneById(session.id, member.id);
-
-			expect(updatedSession).toBeDefined();
-			expect(updatedSession?.provider).toBe('custom-agent');
-			expect(updatedSession?.agentId).toBe(agent.id);
-			expect(updatedSession?.agentName).toBe('Test Agent');
-			expect(updatedSession?.agentIcon).toStrictEqual({ type: 'emoji', value: '🤖' });
 		});
 	});
 });

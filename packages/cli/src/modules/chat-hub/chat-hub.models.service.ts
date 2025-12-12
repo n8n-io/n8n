@@ -7,7 +7,7 @@ import {
 	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { In, WorkflowRepository, type User } from '@n8n/db';
+import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -160,7 +160,7 @@ export class ChatHubModelsService {
 			case 'n8n':
 				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
-				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
+				return { models: await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id) };
 		}
 	}
 
@@ -728,13 +728,7 @@ export class ChatHubModelsService {
 			// The workflow has to be active
 			.filter((workflow) => !!workflow.activeVersionId);
 
-		return await this.fetchAgentWorkflowsAsModelsByIds(
-			activeWorkflows.map((workflow) => workflow.id),
-		);
-	}
-
-	async fetchAgentWorkflowsAsModelsByIds(ids: string[]): Promise<ChatModelDto[]> {
-		if (ids.length === 0) {
+		if (activeWorkflows.length === 0) {
 			return [];
 		}
 
@@ -750,7 +744,7 @@ export class ChatHubModelsService {
 					},
 				},
 			},
-			where: { id: In(ids) },
+			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
 			relations: {
 				activeVersion: true,
 				shared: {
@@ -759,56 +753,63 @@ export class ChatHubModelsService {
 			},
 		});
 
-		const models: ChatModelDto[] = [];
+		return workflows.flatMap((workflow) => {
+			const model = this.extractModelFromWorkflow(workflow);
 
-		for (const { id, name, shared, activeVersion } of workflows) {
-			if (!activeVersion) {
-				continue;
-			}
+			return model ? [model] : [];
+		});
+	}
 
-			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-			if (!chatTrigger) {
-				continue;
-			}
-
-			const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-			if (!chatTriggerParams?.availableInChat) {
-				continue;
-			}
-
-			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
-				chatTriggerParams.options,
-			);
-
-			const agentName =
-				chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
-					? chatTriggerParams.agentName
-					: name;
-
-			// Find the owner's project (home project)
-			const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
-
-			models.push({
-				name: agentName,
-				description: chatTriggerParams.agentDescription ?? null,
-				icon: ownerSharedWorkflow?.project?.icon ?? null,
-				model: {
-					provider: 'n8n',
-					workflowId: id,
-				},
-				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
-				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-				metadata: {
-					inputModalities,
-					capabilities: {
-						functionCalling: false,
-					},
-					available: true,
-				},
-			});
+	extractModelFromWorkflow({
+		name,
+		activeVersion,
+		id,
+		shared,
+	}: WorkflowEntity): ChatModelDto | null {
+		if (!activeVersion) {
+			return null;
 		}
 
-		return models;
+		const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		if (!chatTrigger) {
+			return null;
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams?.availableInChat) {
+			return null;
+		}
+
+		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+			chatTriggerParams.options,
+		);
+
+		const agentName =
+			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+				? chatTriggerParams.agentName
+				: name;
+
+		// Find the owner's project (home project)
+		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+
+		return {
+			name: agentName,
+			description: chatTriggerParams.agentDescription ?? null,
+			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			model: {
+				provider: 'n8n',
+				workflowId: id,
+			},
+			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
+			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
+			metadata: {
+				inputModalities,
+				capabilities: {
+					functionCalling: false,
+				},
+				available: true,
+			},
+		};
 	}
 
 	private transformAndFilterModels(

@@ -1,13 +1,10 @@
 import { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
-import { WithTimestamps, User, CredentialsEntity, JsonColumn } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { WithTimestampsAndStringId, User, CredentialsEntity, JsonColumn } from '@n8n/db';
+import { Column, Entity, ManyToOne, JoinColumn } from '@n8n/typeorm';
 import { INode } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_agents' })
-export class ChatHubAgent extends WithTimestamps {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
-
+export class ChatHubAgent extends WithTimestampsAndStringId {
 	/**
 	 * The name of the chat agent.
 	 */

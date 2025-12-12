@@ -321,6 +321,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 	),
 	tools: z.array(INodeSchema),
 	attachments: z.array(chatAttachmentSchema),
+	agentName: z.string().optional(),
 	timeZone: TimeZoneSchema,
 }) {}
 
@@ -351,7 +352,12 @@ export class ChatHubEditMessageRequest extends Z.class({
 export class ChatHubUpdateConversationRequest extends Z.class({
 	title: z.string().optional(),
 	credentialId: z.string().max(36).optional(),
-	model: chatHubConversationModelSchema.optional(),
+	agent: z
+		.object({
+			model: chatHubConversationModelSchema,
+			name: z.string(),
+		})
+		.optional(),
 	tools: z.array(INodeSchema).optional(),
 }) {}
 
