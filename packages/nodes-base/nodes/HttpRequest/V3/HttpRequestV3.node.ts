@@ -23,6 +23,7 @@ import {
 	removeCircularRefs,
 	sleep,
 	isDomainAllowed,
+	sanitizeUiMessage,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -37,7 +38,6 @@ import {
 	prepareRequestBody,
 	reduceAsync,
 	replaceNullValues,
-	sanitizeUiMessage,
 	setAgentOptions,
 	updadeQueryParameterConfig,
 } from '../GenericFunctions';
@@ -93,6 +93,8 @@ export class HttpRequestV3 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
+
+		this.nodeLogger.debug(`Node version: ${nodeVersion}`, { tag: 'node version' });
 
 		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
