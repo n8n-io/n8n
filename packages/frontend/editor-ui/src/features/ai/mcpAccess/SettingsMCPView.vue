@@ -2,7 +2,6 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import type { WorkflowListItem } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
@@ -10,6 +9,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
+	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 	MCP_DOCS_PAGE_URL,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
@@ -20,6 +20,7 @@ import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText, N8nLink } from '@n
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 
 type MCPTabs = 'workflows' | 'oauth';
@@ -28,8 +29,8 @@ const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
+const telemetry = useTelemetry();
 
-const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
@@ -59,12 +60,17 @@ const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
 
+const showConnectWorkflowsButton = computed(() => {
+	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
+});
+
 const onTabSelected = async (tab: MCPTabs) => {
 	selectedTab.value = tab;
 	if (tab === 'workflows' && availableWorkflows.value.length === 0) {
 		await fetchAvailableWorkflows();
 	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
 		await fetchoAuthCLients();
+		telemetry.track('User clicked connected clients tab');
 	}
 };
 
@@ -87,12 +93,17 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
-const onRemoveMCPAccess = async (workflow: WorkflowListItem) => {
+const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
 	try {
-		await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
-		availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflow.id);
+		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
+		if (isEnabled) {
+			await fetchAvailableWorkflows();
+		} else {
+			availableWorkflows.value = availableWorkflows.value.filter((w) => w.id !== workflowId);
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+		throw error;
 	}
 };
 
@@ -122,14 +133,6 @@ const onTableRefresh = async () => {
 		await fetchoAuthCLients();
 	}
 };
-
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.mcp'));
-	if (!mcpStore.mcpAccessEnabled) {
-		return;
-	}
-	await fetchAvailableWorkflows();
-});
 
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
@@ -178,6 +181,26 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
 	}
 };
+
+const openConnectWorkflowsModal = () => {
+	uiStore.openModalWithData({
+		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+		data: {
+			onEnableMcpAccess: async (workflowId: string) => {
+				await onToggleWorkflowMCPAccess(workflowId, true);
+			},
+		},
+	});
+	telemetry.track('User clicked connect workflows from mcp settings');
+};
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.mcp'));
+	if (!mcpStore.mcpAccessEnabled) {
+		return;
+	}
+	await fetchAvailableWorkflows();
+});
 </script>
 <template>
 	<div :class="$style.container">
@@ -223,16 +246,26 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		>
 			<header :class="$style['tabs-header']">
 				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
-				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+				<div :class="$style.actions">
 					<N8nButton
-						data-test-id="mcp-workflows-refresh-button"
+						v-if="showConnectWorkflowsButton"
+						:label="i18n.baseText('settings.mcp.connectWorkflows')"
+						data-test-id="mcp-connect-workflows-header-button"
 						size="small"
-						type="tertiary"
-						icon="refresh-cw"
-						:square="true"
-						@click="onTableRefresh"
+						type="primary"
+						@click="openConnectWorkflowsModal"
 					/>
-				</N8nTooltip>
+					<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
+						<N8nButton
+							data-test-id="mcp-workflows-refresh-button"
+							size="small"
+							type="tertiary"
+							icon="refresh-cw"
+							:square="true"
+							@click="onTableRefresh"
+						/>
+					</N8nTooltip>
+				</div>
 			</header>
 			<main>
 				<WorkflowsTable
@@ -240,7 +273,8 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 					:data-test-id="'mcp-workflow-table'"
 					:workflows="availableWorkflows"
 					:loading="workflowsLoading"
-					@remove-mcp-access="onRemoveMCPAccess"
+					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
+					@connect-workflows="openConnectWorkflowsModal"
 					@update-description="onUpdateDescription"
 					@refresh="onRefreshWorkflows"
 				/>
@@ -291,5 +325,10 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing--2xs);
 }
 </style>
