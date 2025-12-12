@@ -159,7 +159,8 @@ function onFeedback(feedback: RatingFeedback) {
 	}
 }
 
-function onWorkflowExecuted() {
+async function onWorkflowExecuted() {
+	const revertVersion = await saveWorkflowAndGetRevertVersion();
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
@@ -168,20 +169,22 @@ function onWorkflowExecuted() {
 		: undefined;
 
 	if (!executionData) {
-		void builderStore.sendChatMessage({
+		await builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
 			type: 'execution',
 			executionStatus: 'error',
 			errorMessage: 'Workflow execution data missing after run attempt.',
+			revertVersion,
 		});
 		return;
 	}
 
 	if (executionStatus === 'success') {
-		void builderStore.sendChatMessage({
+		await builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
 			type: 'execution',
 			executionStatus,
+			revertVersion,
 		});
 		return;
 	}
@@ -200,12 +203,13 @@ function onWorkflowExecuted() {
 
 	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
 
-	void builderStore.sendChatMessage({
+	await builderStore.sendChatMessage({
 		text: scopedErrorMessage,
 		type: 'execution',
 		errorMessage: executionError,
 		errorNodeType,
 		executionStatus: failureStatus,
+		revertVersion,
 	});
 }
 
