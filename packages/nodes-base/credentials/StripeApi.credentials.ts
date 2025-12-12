@@ -31,7 +31,7 @@ export class StripeApi implements ICredentialType {
 		},
 		{
 			displayName:
-				'We strongly recommend setting up a <a href="https://stripe.com/docs/webhooks/signatures" target="_blank">signing secret</a> to ensure the authenticity of requests.',
+				'We strongly recommend setting up a <a href="https://stripe.com/docs/webhooks" target="_blank">signing secret</a> to ensure the authenticity of requests.',
 			name: 'notice',
 			type: 'notice',
 			default: '',
