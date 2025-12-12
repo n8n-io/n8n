@@ -46,6 +46,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			'createdAt',
 			'updatedAt',
 			'isGlobal',
+			'isResolvable',
+			'resolverId',
+			'resolvableAllowFallback',
 		];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };

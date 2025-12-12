@@ -9,6 +9,7 @@ export type CredentialPayload = {
 	data: ICredentialDataDecryptedObject;
 	isManaged?: boolean;
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 };
 
 export const randomApiKey = () => `n8n_api_${randomString(40)}`;
@@ -46,14 +47,27 @@ export const randomEmail = () => `${randomName()}@${randomName()}.${randomTopLev
 export const randomCredentialPayload = ({
 	isManaged = false,
 	isGlobal,
+	isResolvable,
 	type,
-}: { isManaged?: boolean; isGlobal?: boolean; type?: string } = {}): CredentialPayload => ({
-	name: randomName(),
-	type: type ?? 'githubApi',
-	data: { accessToken: randomString(6, 16) },
-	isManaged,
-	isGlobal,
-});
+}: {
+	isManaged?: boolean;
+	isGlobal?: boolean;
+	isResolvable?: boolean;
+	type?: string;
+} = {}): CredentialPayload => {
+	const payload: CredentialPayload = {
+		name: randomName(),
+		type: type ?? 'githubApi',
+		data: { accessToken: randomString(6, 16) },
+		isManaged,
+	};
+
+	// Only include optional fields if they have defined values
+	if (isGlobal !== undefined) payload.isGlobal = isGlobal;
+	if (isResolvable !== undefined) payload.isResolvable = isResolvable;
+
+	return payload;
+};
 
 export const randomCredentialPayloadWithOauthTokenData = ({
 	isManaged = false,

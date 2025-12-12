@@ -20,6 +20,7 @@ interface CredentialResponse {
 		projectId: string;
 		role: string;
 	}>;
+	isResolvable?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
