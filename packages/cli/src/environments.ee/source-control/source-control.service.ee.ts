@@ -358,16 +358,23 @@ export class SourceControlService {
 			throw error;
 		}
 
+		const branchName = this.sourceControlPreferencesService.getBranchName();
 		let pushResult: PushResult | undefined;
 		try {
 			pushResult = await this.gitService.push({
-				branch: this.sourceControlPreferencesService.getBranchName(),
+				branch: branchName,
 				force: options.force ?? false,
 			});
 
+			// Only mark files as pushed after successful push
 			statusResult.forEach((result) => (result.pushed = true));
 		} catch (error) {
-			this.gitService.resetBranch({ hard: true, target: 'HEAD~1' });
+			this.logger.error('Failed to push changes', { error });
+			try {
+				await this.gitService.resetBranch({ hard: true, target: `origin/${branchName}` });
+			} catch (resetError) {
+				this.logger.error('Failed to reset branch after push error', { error: resetError });
+			}
 			throw error;
 		}
 
