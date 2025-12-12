@@ -199,6 +199,9 @@ export class Mocean implements INodeType {
 					qs: query,
 					uri: 'https://rest.moceanapi.com/rest/2/account/balance',
 					json: true,
+					headers: {
+						Authorization: `Bearer ${credentials!['mocean-api-token']}`,
+					},
 				};
 				try {
 					await this.helpers.request(options);
