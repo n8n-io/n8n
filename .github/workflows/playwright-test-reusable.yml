@@ -84,7 +84,7 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
 
       - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
           enable-docker-cache: ${{ inputs.test-mode != 'local' }}

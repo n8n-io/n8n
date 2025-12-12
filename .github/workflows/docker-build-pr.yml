@@ -38,7 +38,7 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
