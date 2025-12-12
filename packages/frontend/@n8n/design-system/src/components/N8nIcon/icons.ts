@@ -72,6 +72,7 @@ import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
+import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
 import IconLucideCircleMinus from '~icons/lucide/circle-minus';
 import IconLucideCirclePause from '~icons/lucide/circle-pause';
@@ -518,6 +519,7 @@ export const updatedIconSet = {
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
 	'circle-dot': IconLucideCircleDot,
+	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
 	'circle-minus': IconLucideCircleMinus,
 	'circle-pause': IconLucideCirclePause,

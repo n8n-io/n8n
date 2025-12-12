@@ -10,12 +10,14 @@ const {
 	label,
 	menuItems = [],
 	icon,
+	compact,
 } = defineProps<{
 	active?: boolean;
 	to: RouteLocationRaw;
 	label: string;
 	menuItems?: Array<ActionDropdownItem<T>>;
 	icon?: IconName;
+	compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,17 +37,17 @@ defineSlots<{
 		<template v-else>
 			<RouterLink
 				:to="to"
-				:class="$style.menuItemLink"
+				:class="[$style.menuItemLink, { [$style.compact]: compact }]"
 				:title="label"
 				@click="emit('click', $event)"
 			>
 				<slot name="icon">
 					<N8nIcon v-if="icon" size="large" :icon="icon" />
 				</slot>
-				<N8nText :class="$style.label">{{ label }}</N8nText>
+				<N8nText v-if="!compact" :class="$style.label">{{ label }}</N8nText>
 			</RouterLink>
 			<N8nActionDropdown
-				v-if="menuItems.length > 0"
+				v-if="!compact && menuItems.length > 0"
 				:items="menuItems"
 				:class="$style.actionDropdown"
 				placement="bottom-start"
@@ -83,14 +85,18 @@ defineSlots<{
 .menuItemLink {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--3xs);
-	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs);
+	gap: var(--spacing--4xs);
 	cursor: pointer;
 	color: var(--color--text);
 	min-width: 0;
 	flex: 1;
 	text-decoration: none;
 	outline: none;
+
+	&.compact {
+		margin-left: -1px;
+	}
 
 	&:active {
 		color: var(--color--text--shade-1);

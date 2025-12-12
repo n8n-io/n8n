@@ -16,7 +16,6 @@ import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useMediaQuery } from '@vueuse/core';
 import { AGENT_EDITOR_MODAL_KEY, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
-import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
 import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import { useI18n } from '@n8n/i18n';
 
@@ -134,7 +133,6 @@ watch(
 				</template>
 			</div>
 		</div>
-		<ChatSidebarOpener :class="$style.menuButton" />
 	</ChatLayout>
 </template>
 

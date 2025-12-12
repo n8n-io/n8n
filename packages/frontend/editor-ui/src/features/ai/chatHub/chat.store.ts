@@ -322,7 +322,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		try {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
-				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
+				fetchSessionsApi(rootStore.restApiContext, 20, cursor),
 				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
