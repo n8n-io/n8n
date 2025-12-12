@@ -141,7 +141,7 @@ describe('package manager utils', () => {
 			expect(result).toBe('npm');
 		});
 
-		tmpdirTest('returns null when no user agent and no lock files exist', async () => {
+		tmpdirTest('returns null when no user agent and no lock files exist', async ({ tmpdir }) => {
 			delete process.env.npm_config_user_agent;
 
 			const result = await detectPackageManager();

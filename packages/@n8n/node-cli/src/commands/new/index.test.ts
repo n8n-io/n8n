@@ -20,6 +20,7 @@ describe('new command', () => {
 	});
 
 	tmpdirTest('creates new node project with user prompts', async ({ tmpdir }) => {
+		process.env.npm_config_user_agent = 'pnpm/8.6.0 npm/? node/v18.16.0 darwin x64';
 		MockPrompt.setup([
 			{
 				question: 'What kind of node are you building?',

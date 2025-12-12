@@ -28,7 +28,6 @@
     "bin"
   ],
   "devDependencies": {
-    "@babel/preset-env": "^7.23.0",
     "@n8n/errors": "workspace:^",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
@@ -37,8 +36,7 @@
     "@types/mime-types": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
-    "@types/xml2js": "catalog:",
-    "babel-jest": "^29.7.0"
+    "@types/xml2js": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",

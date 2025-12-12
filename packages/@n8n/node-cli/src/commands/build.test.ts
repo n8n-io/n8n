@@ -8,6 +8,7 @@ import { tmpdirTest } from '../test-utils/temp-fs';
 
 describe('build command', () => {
 	beforeEach(() => {
+		process.env.npm_config_user_agent = 'pnpm/8.6.0 npm/? node/v18.16.0 darwin x64';
 		vi.clearAllMocks();
 	});
 

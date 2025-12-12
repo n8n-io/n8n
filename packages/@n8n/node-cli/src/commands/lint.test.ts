@@ -12,6 +12,7 @@ describe('lint command', () => {
 	vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
 	beforeEach(() => {
+		process.env.npm_config_user_agent = 'pnpm/8.6.0 npm/? node/v18.16.0 darwin x64';
 		vi.clearAllMocks();
 	});
 
