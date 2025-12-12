@@ -1,0 +1,106 @@
+{
+	"name": "Test Group Chat Create Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6666-9999-77777",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 380]
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "create",
+				"chatType": "group",
+				"members": {
+					"membersList": [
+						{
+							"userId": "8c0a1a67-50ce-4114-bb6c-da9c5dbcf6ca",
+							"role": "owner"
+						},
+						{
+							"userId": "82fe7758-5bb3-4f0d-a43f-e555fd399c6f",
+							"role": "owner"
+						},
+						{
+							"userId": "3626a173-f2bc-4883-bcf7-01514c3bfb82",
+							"role": "owner"
+						}
+					]
+				},
+				"options": {
+					"topic": "Group chat title"
+				}
+			},
+			"id": "6666-5555-77777",
+			"name": "Microsoft Teams",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 2,
+			"position": [1100, 380],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "6isd5ytvA0qV78eK",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1400, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#chats/$entity",
+					"id": "19:1c5b01696d2e4a179c292bc9cf04e63b@thread.v2",
+					"topic": "Group chat title",
+					"createdDateTime": "2020-12-04T23:11:16.175Z",
+					"lastUpdatedDateTime": "2020-12-04T23:11:16.175Z",
+					"chatType": "group"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Teams",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Teams": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ec0b4e3d-2fd7-4fac-90e5-f18ecd620a8f",
+	"id": "i3NYGF0LXV4qDFV9",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}
