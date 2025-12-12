@@ -1,27 +1,58 @@
-<script setup lang="ts">
-import { ref } from 'vue';
+<script setup>
+import { ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import albertsonsLogo from '@src/assets/albertsons-logo.png';
+import albertsonsLogo from '../assets/albertsons-logo.png';
 
 const router = useRouter();
 const route = useRoute();
 
 const menuItems = ref([
-	{ label: 'Dashboard', key: 'dashboard', routeName: 'DASHBOARD' },
-	{ label: 'Playground', key: 'playground', routeName: null },
-	{ label: 'AI Agent Builder', key: 'builder', routeName: null },
-	{ label: 'Templates', key: 'templates', routeName: 'ALBERTSONS_TEMPLATES' },
-	{ label: 'How to use', key: 'howto', routeName: null },
-	{ label: 'FAQs', key: 'faqs', routeName: null },
+	{ label: 'Dashboard', key: 'dashboard', path: '/dashboard', active: false },
+	{ label: 'Playground', key: 'playground', path: '/workflow/new', active: false },
+	{ label: 'AI Agent Builder', key: 'builder', path: '/workflow/new', active: false },
+	{ label: 'Templates', key: 'templates', path: '/templates', active: false },
+	{ label: 'How to use', key: 'howto', path: '/how-to', active: false },
+	{ label: 'FAQs', key: 'faqs', path: '/faqs', active: false },
 ]);
 
-const onItemClick = (item: { key: string; routeName: string | null }) => {
-	if (item.routeName) {
-		router.push({ name: item.routeName });
-	}
-};
+// Special logic for Playground & Builder (both use same URL)
+const activeSpecialMenu = ref(null);
 
-const renderIcon = (key: string) => {
+// Handle navigation
+function navigate(item) {
+	activeSpecialMenu.value = item.key; // remember which was clicked
+	router.push(item.path);
+	updateActiveState();
+}
+
+// Update active state when route changes
+function updateActiveState() {
+	menuItems.value.forEach((i) => (i.active = false));
+
+	// If it is workflow/new → only activate the clicked one
+	if (route.path.startsWith('/workflow/new')) {
+		if (activeSpecialMenu.value) {
+			const clicked = menuItems.value.find((i) => i.key === activeSpecialMenu.value);
+			if (clicked) clicked.active = true;
+		}
+		return;
+	}
+
+	// For all other pages → highlight based on path
+	menuItems.value.forEach((i) => {
+		if (route.path.startsWith(i.path)) {
+			i.active = true;
+		}
+	});
+}
+
+watch(
+	() => route.path,
+	() => updateActiveState(),
+	{ immediate: true },
+);
+
+const renderIcon = (key) => {
 	switch (key) {
 		case 'dashboard':
 			return `
@@ -31,18 +62,21 @@ const renderIcon = (key: string) => {
           <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" />
           <rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" />
         </svg>`;
+
 		case 'playground':
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6" />
           <path d="M9 7.5L13 10L9 12.5V7.5Z" fill="currentColor" />
         </svg>`;
+
 		case 'builder':
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <path d="M10 2.5L11.4 6.3L15.5 6.7L12.4 9.3L13.3 13.3L10 11.3L6.7 13.3L7.6 9.3L4.5 6.7L8.6 6.3L10 2.5Z"
                 fill="currentColor" />
         </svg>`;
+
 		case 'templates':
 			return `
         <svg viewBox="0 0 20 20" fill="none">
@@ -52,6 +86,7 @@ const renderIcon = (key: string) => {
                 stroke="currentColor" stroke-width="1.6"
                 stroke-linecap="round" />
         </svg>`;
+
 		case 'howto':
 			return `
         <svg viewBox="0 0 20 20" fill="none">
@@ -60,6 +95,7 @@ const renderIcon = (key: string) => {
           <path d="M6 5h5" stroke="currentColor" stroke-width="1.6"
                 stroke-linecap="round" />
         </svg>`;
+
 		case 'faqs':
 			return `
         <svg viewBox="0 0 20 20" fill="none">
@@ -70,15 +106,12 @@ const renderIcon = (key: string) => {
                 stroke-linecap="round" />
           <circle cx="10" cy="13.6" r=".8" fill="currentColor" />
         </svg>`;
-		default:
-			return '';
 	}
 };
 </script>
 
 <template>
 	<aside class="sidebar">
-		<!-- Logo / brand -->
 		<div class="sidebar-header">
 			<img :src="albertsonsLogo" alt="Albertsons" class="sidebar-logo" />
 			<div class="sidebar-title">
@@ -87,17 +120,13 @@ const renderIcon = (key: string) => {
 			</div>
 		</div>
 
-		<!-- Navigation -->
 		<nav class="sidebar-nav">
 			<button
 				v-for="item in menuItems"
-				:key="item.label"
+				:key="item.key"
 				class="sidebar-nav-item"
-				:class="{
-					'sidebar-nav-item--active': item.routeName && route.name === item.routeName,
-				}"
-				type="button"
-				@click="onItemClick(item)"
+				:class="{ 'sidebar-nav-item--active': item.active }"
+				@click="navigate(item)"
 			>
 				<span class="sidebar-nav-icon" v-html="renderIcon(item.key)" />
 				<span class="sidebar-nav-label">{{ item.label }}</span>
@@ -122,7 +151,6 @@ const renderIcon = (key: string) => {
 		sans-serif;
 }
 
-/* Header */
 .sidebar-header {
 	display: flex;
 	align-items: center;
@@ -148,7 +176,6 @@ const renderIcon = (key: string) => {
 	color: #6b7280;
 }
 
-/* Nav */
 .sidebar-nav {
 	padding: 10px 8px 0;
 	flex: 1 1 auto;
@@ -177,7 +204,6 @@ const renderIcon = (key: string) => {
 	color: #ffffff;
 }
 
-/* SVG icon container */
 .sidebar-nav-icon {
 	width: 18px;
 	height: 18px;

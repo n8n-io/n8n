@@ -170,20 +170,20 @@ export const routes: RouteRecordRaw[] = [
 	// Pre-built agents route disabled (no external redirect)
 	/*
   {
-    path: '/templates/agents',
-    name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
-    components: {
-      default: PrebuiltAgentTemplatesView,
-      sidebar: MainSidebar,
-    },
-    meta: {
-      templatesEnabled: true,
-      getRedirect: getTemplatesRedirect,
-      middleware: ['authenticated'],
-    },
-    beforeEnter: (_to, _from, next) => {
-      next();
-    },
+	path: '/templates/agents',
+	name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
+	components: {
+	  default: PrebuiltAgentTemplatesView,
+	  sidebar: MainSidebar,
+	},
+	meta: {
+	  templatesEnabled: true,
+	  getRedirect: getTemplatesRedirect,
+	  middleware: ['authenticated'],
+	},
+	beforeEnter: (_to, _from, next) => {
+	  next();
+	},
   },
   */
 
@@ -251,32 +251,32 @@ export const routes: RouteRecordRaw[] = [
 	// Original n8n /templates/ route fully disabled (no external redirect)
 	/*
   {
-    path: '/templates/',
-    name: VIEWS.TEMPLATES,
-    components: {
-      default: TemplatesSearchView,
-      sidebar: MainSidebar,
-    },
-    meta: {
-      templatesEnabled: true,
-      getRedirect: getTemplatesRedirect,
-      scrollOffset: 0,
-      telemetry: {
-        getProperties() {
-          const templatesStore = useTemplatesStore();
-          return {
-            wf_template_repo_session_id: templatesStore.currentSessionId,
-          };
-        },
-      },
-      setScrollPosition(pos: number) {
-        this.scrollOffset = pos;
-      },
-      middleware: ['authenticated'],
-    },
-    beforeEnter: (_to, _from, next) => {
-      next();
-    },
+	path: '/templates/',
+	name: VIEWS.TEMPLATES,
+	components: {
+	  default: TemplatesSearchView,
+	  sidebar: MainSidebar,
+	},
+	meta: {
+	  templatesEnabled: true,
+	  getRedirect: getTemplatesRedirect,
+	  scrollOffset: 0,
+	  telemetry: {
+		getProperties() {
+		  const templatesStore = useTemplatesStore();
+		  return {
+			wf_template_repo_session_id: templatesStore.currentSessionId,
+		  };
+		},
+	  },
+	  setScrollPosition(pos: number) {
+		this.scrollOffset = pos;
+	  },
+	  middleware: ['authenticated'],
+	},
+	beforeEnter: (_to, _from, next) => {
+	  next();
+	},
   },
   */
 
