@@ -52,6 +52,12 @@ function isHitlTool(node: INode): boolean {
 	return node.type.endsWith('HitlTool');
 }
 
+class GatedToolkit extends Toolkit {
+	constructor(public tools: DynamicStructuredTool[]) {
+		super();
+	}
+}
+
 /**
  * Create supplyData for an HITL tool node.
  *
@@ -100,24 +106,22 @@ async function createHitlToolSupplyData(
 		itemIndex,
 	)) as DynamicStructuredTool[] | DynamicStructuredTool | undefined;
 
-	// Wrap each tool with sourceNodeName pointing to HITL node
-	const gatedTools = ensureArray(connectedTools).map((originalTool) => {
+	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
+	const gatedTools = ensureArray(connectedTools).map((tool) => {
 		return new DynamicStructuredTool({
-			name: originalTool.name,
-			description: originalTool.description,
-			schema: originalTool.schema,
+			name: tool.name,
+			description: tool.description,
+			schema: tool.schema,
 			func: async () => await Promise.resolve(''),
 			metadata: {
 				sourceNodeName: hitlNode.name,
-				originalSourceNodeName: originalTool.metadata?.sourceNodeName as string | undefined,
+				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
 			},
 		});
 	});
 
-	if (gatedTools.length === 1) {
-		return { response: gatedTools[0] };
-	}
-	return { response: gatedTools };
+	const toolkit = new GatedToolkit(gatedTools);
+	return { response: toolkit };
 }
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {

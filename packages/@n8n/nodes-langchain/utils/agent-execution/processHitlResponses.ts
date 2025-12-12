@@ -33,25 +33,35 @@ function isHitlActionResponse(
 }
 
 /**
- * Extract approval status from HITL response data
- * SendAndWait webhook returns { data: { approved: boolean } }
+ * Type guard to check if data contains an approval field
+ */
+function isApprovalData(data: unknown): data is { approved: boolean } {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'approved' in data &&
+		typeof (data as Record<string, unknown>).approved === 'boolean'
+	);
+}
+
+/**
+ * Extract approval status from HITL response data.
+ * SendAndWait webhook returns { approved: boolean } or { data: { approved: boolean } }
  */
 function getApprovalStatus(
 	actionResponse: ExecuteNodeResult<RequestResponseMetadata>,
 ): boolean | undefined {
-	const data = actionResponse.data?.data?.ai_tool?.[0]?.[0]?.json;
-	// Check for approval data in various possible locations
-	if (typeof data === 'object' && data !== null) {
-		// Direct approval field
-		if ('approved' in data && typeof data.approved === 'boolean') {
-			return data.approved;
-		}
-		// Nested in data object (webhook response format)
-		const nestedData = (data as IDataObject).data as IDataObject | undefined;
-		if (nestedData && 'approved' in nestedData && typeof nestedData.approved === 'boolean') {
-			return nestedData.approved;
-		}
+	const json = actionResponse.data?.data?.ai_tool?.[0]?.[0]?.json;
+
+	if (isApprovalData(json)) {
+		return json.approved;
 	}
+
+	const nestedData = (json as IDataObject | undefined)?.data;
+	if (isApprovalData(nestedData)) {
+		return nestedData.approved;
+	}
+
 	return undefined;
 }
 
@@ -60,16 +70,12 @@ function getApprovalStatus(
  *
  * When the Agent receives responses from HITL tools:
  * 1. Check if the response indicates approval or denial
- * 2. If approved: Generate EngineRequest for the gated tool (originalSourceNodeName)
+ * 2. If approved: Generate EngineRequest for the gated tool
  * 3. If denied: Modify response to indicate denial so Agent knows not to retry
  *
  * This enables the flow:
  * Agent calls tool → HITL intercepts → sendAndWait → User approves →
  * Agent generates new request for gated tool → Gated tool executes → Result to Agent
- *
- * @param response - The engine response containing tool call results
- * @param itemIndex - The current item index
- * @returns Processing result with pending requests and modified response
  */
 export function processHitlResponses(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
@@ -93,7 +99,7 @@ export function processHitlResponses(
 			continue;
 		}
 
-		const hitl = actionResponse.action.metadata.hitl as HitlMetadata;
+		const { hitl } = actionResponse.action.metadata;
 		const approved = getApprovalStatus(actionResponse);
 
 		if (approved === true) {
