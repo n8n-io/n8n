@@ -67,7 +67,7 @@ export class CredentialResolversController {
 		_res: Response,
 		@Body dto: CreateCredentialResolverDto,
 	): Promise<CredentialResolver> {
-		if (!isNodeParameters(dto.config)) {
+		if (dto.config && !isNodeParameters(dto.config)) {
 			throw new BadRequestError('Invalid config format');
 		}
 
@@ -117,7 +117,7 @@ export class CredentialResolversController {
 		@Param('id') id: string,
 		@Body dto: UpdateCredentialResolverDto,
 	): Promise<CredentialResolver> {
-		if (!isNodeParameters(dto.config)) {
+		if (dto.config && !isNodeParameters(dto.config)) {
 			throw new BadRequestError('Invalid config format');
 		}
 		try {
