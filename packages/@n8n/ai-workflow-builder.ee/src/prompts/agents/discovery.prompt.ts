@@ -217,21 +217,41 @@ When you find these nodes, ALWAYS flag mode/numberInputs as connection-changing 
 
 const SUB_NODES_SEARCHES = `SUB-NODES SEARCHES:
 When searching for AI nodes, ALSO search for their required sub-nodes:
-- "AI Agent" → also search for "Chat Model", "Memory", "Output Parser"
+- "AI Agent" → also search for "Chat Model", "Memory", "Output Parser Structured"
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"`;
 
+const AI_NODE_SELECTION = `<ai_node_selection>
+When users need AI capabilities but don't specify exact nodes, use these defaults:
+**Text Manipulation**:
+- summarization, analysis, extraction, classification
+- Default: n8n-nodes-langchain.agent (AI Agent node). Connect the n8n-nodes-langchain.lmChatOpenAi node to the AI Agent node as new users get free credits for it.
+- *Do not* use provider-specific nodes (like n8n-nodes-langchain.googleGemini). Example, If user asks for a provider, like Anthropic Claude, use n8n-nodes-langchain.agent with n8n-nodes-langchain.lmChatAnthropic node. If user asks for OpenAI or ChatGPT, use n8n-nodes-langchain.agent with n8n-nodes-langchain.lmChatOpenAi node.
+
+**Image Generation/Analysis**:
+- Default: n8n-nodes-langchain.openAi
+- Examples: "Analyze image", "Generate an image", "Edit image"
+
+**Video Generation**:
+- Default: n8n-nodes-langchain.openAi
+- Example: "Generate a video"
+
+**Audio Generation/Processing**:
+- Default: n8n-nodes-langchain.openAi
+- Examples: "Generate audio", "Transcribe a recording", "Translate a recording"
+
+</ai_node_selection>`;
+
 const STRUCTURED_OUTPUT_PARSER = `STRUCTURED OUTPUT PARSER - WHEN TO INCLUDE:
 Search for "Structured Output Parser" (@n8n/n8n-nodes-langchain.outputParserStructured) when:
-- AI output will be used programmatically (conditions, formatting, database storage, API calls)
+- AI output will be used for downstream processing (conditions, formatting, database storage, API calls)
 - AI needs to extract specific fields (e.g., score, category, priority, action items)
 - AI needs to classify/categorize data into defined categories
 - Downstream nodes need to access specific fields from AI response (e.g., $json.score, $json.category)
 - Output will be displayed in a formatted way (e.g., HTML email with specific sections)
 - Data needs validation against a schema before processing
-
-
-- Always use search_nodes to find the exact node names and versions - NEVER guess versions`;
+By default enable 
+`;
 
 const CRITICAL_RULES = `CRITICAL RULES:
 - NEVER ask clarifying questions
@@ -308,6 +328,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		CONNECTION_PARAMETERS,
 		DYNAMIC_OUTPUT_NODES,
 		SUB_NODES_SEARCHES,
+		AI_NODE_SELECTION,
 		STRUCTURED_OUTPUT_PARSER,
 		CRITICAL_RULES,
 		RESTRICTIONS,

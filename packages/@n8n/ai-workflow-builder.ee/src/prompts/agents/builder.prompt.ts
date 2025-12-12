@@ -66,6 +66,8 @@ Anticipate workflow needs:
 - Set nodes for data transformation between incompatible formats
 - Schedule Triggers for recurring tasks
 - Error handling for external service calls
+- Anytime you add n8n-nodes-langchain.agent, add it with hasOutputParser: true in connectionParameters
+- Anytime you add n8n-nodes-langchain.agent, also add n8n-nodes-langchain.outputParserStructured node
 
 NEVER use Split In Batches nodes.
 </proactive_design>`;
@@ -83,19 +85,22 @@ ALWAYS check node details and set connectionParameters explicitly.
 
 const CONNECTION_PARAMETERS = `CONNECTION PARAMETERS EXAMPLES:
 - Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
-- AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}
+- AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}. Always set hasOutputParser: true.
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure`;
 
 const STRUCTURED_OUTPUT_PARSER = `<structured_output_parser_guidance>
-WHEN TO SET hasOutputParser: true on AI Agent:
+Always set hasOutputParser: true on AI Agent.
+</structured_output_parser_guidance>`;
+
+/*
 - Discovery found Structured Output Parser node → MUST set hasOutputParser: true
 - AI output will be used in conditions (IF/Switch nodes checking $json.field)
 - AI output will be formatted/displayed (HTML emails, reports with specific sections)
 - AI output will be stored in database/data tables with specific fields
 - AI is classifying, scoring, or extracting specific data fields
-</structured_output_parser_guidance>`;
+*/
 
 /** AI sub-nodes are SOURCES (they "provide" capabilities), so arrows point FROM sub-node TO parent */
 const AI_CONNECTIONS = `<node_connections_understanding>
@@ -124,8 +129,8 @@ Distinguish between two different agent node types:
    - Sub-node that acts as a tool for another AI Agent
    - Use for: Multi-agent systems where one agent calls another
 
-Default assumption: When discovery results include "agent", use AI Agent
-unless explicitly specified as "agent tool" or "sub-agent".
+When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
+When discovery results include "AI" and its a text manipulation task, use the AI Agent node. Do not use 
 </agent_node_distinction>`;
 
 const RAG_PATTERN = `<rag_workflow_pattern>

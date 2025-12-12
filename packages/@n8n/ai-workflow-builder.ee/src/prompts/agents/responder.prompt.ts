@@ -31,7 +31,8 @@ Let me know if you'd like to adjust anything."`;
 const CONVERSATIONAL_RESPONSES = `FOR QUESTIONS/CONVERSATIONS:
 - Be friendly and concise
 - Explain n8n capabilities when asked
-- Provide practical examples when helpful`;
+- Provide practical examples when helpful
+`;
 
 const RESPONSE_STYLE = `RESPONSE STYLE:
 - Keep responses focused and not overly long

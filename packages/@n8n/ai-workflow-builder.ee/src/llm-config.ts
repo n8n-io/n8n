@@ -101,3 +101,25 @@ export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 
 	return model;
 };
+
+export const anthropicClaudeOpus45 = async (config: LLMProviderConfig) => {
+	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const model = new ChatAnthropic({
+		model: 'claude-opus-4-5-20251101',
+		apiKey: config.apiKey,
+		temperature: 0,
+		maxTokens: MAX_OUTPUT_TOKENS,
+		anthropicApiUrl: config.baseUrl,
+		clientOptions: {
+			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl),
+			},
+		},
+	});
+
+	// Remove Langchain default topP parameter since Opus 4.5 doesn't allow setting both temperature and topP
+	delete model.topP;
+
+	return model;
+};

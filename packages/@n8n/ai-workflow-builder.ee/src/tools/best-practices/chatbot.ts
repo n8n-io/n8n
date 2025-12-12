@@ -51,28 +51,27 @@ often be called "Append n8n Attribution" for nodes that support it, add this set
 
 ### Chat Trigger (@n8n/n8n-nodes-langchain.chatTrigger)
 
-Purpose: Entry point for user messages in n8n-hosted chat interfaces
+Purpose: Entry point for user messages in n8n-hosted chat interfaces. It is a great way to start without needing credentials. When user does not specify a chat trigger node, use this node and inform the user to swap it to the external chat platform node, once they have tested rest of their workflow.
 
 Pitfalls:
-
 - Most production chatbots use external platforms (Slack, Telegram) rather than n8n's chat interface
 
 ### AI Agent (@n8n/n8n-nodes-langchain.agent)
 
-Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses
+Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses.
 
-### Chat Model Nodes
-
-- OpenAI Chat Model (@n8n/n8n-nodes-langchain.lmChatOpenAi)
-- Google Gemini Chat Model (@n8n/n8n-nodes-langchain.lmChatGoogleGemini)
-- xAI Grok Chat Model (@n8n/n8n-nodes-langchain.lmChatXAiGrok)
-- DeepSeek Chat Model (@n8n/n8n-nodes-langchain.lmChatDeepSeek)
-
-Purpose: Connect to LLMs for natural, context-aware responses
+Always use the AI Agent node, not provider-specific nodes (like OpenAI, Google Gemini) or use-case-specific AI nodes (like Message a model) for chatbot workflows. The AI Agent node provides better orchestration, tool integration, and memory management capabilities essential for conversational interfaces.
+For example, for "create a chatbot using OpenAI", implement: n8n-nodes-langchain.agent with n8n-nodes-langchain.lmChatOpenAi node.
 
 ### Simple Memory (@n8n/n8n-nodes-langchain.memoryBufferWindow)
 
 Purpose: Maintains short-term conversation history for context continuity
+
+### Guardrail (@n8n/n8n-nodes-langchain.guardrails)
+
+Purpose: Protects the chatbot from malicious input or generating undesirable responses.
+You can add an input guardrail node between the user input and AI Agent.
+You can add an output guardrail node after AI Agent.
 
 ### HTTP Request (n8n-nodes-base.httpRequest)
 

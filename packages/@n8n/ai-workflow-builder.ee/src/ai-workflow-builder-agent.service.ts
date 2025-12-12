@@ -135,7 +135,7 @@ export class AiWorkflowBuilderService {
 			'@n8n/n8n-nodes-langchain.toolVectorStore',
 			'@n8n/n8n-nodes-langchain.documentGithubLoader',
 			'@n8n/n8n-nodes-langchain.code',
-		]);
+		]); // 'n8n-nodes-base.code',
 
 		const visibleNodeTypes = nodeTypes.filter(
 			(nodeType) =>
