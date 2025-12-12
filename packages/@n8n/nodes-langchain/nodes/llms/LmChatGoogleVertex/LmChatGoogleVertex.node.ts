@@ -91,7 +91,7 @@ export class LmChatGoogleVertex implements INodeType {
 					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
 				default: 'gemini-2.5-flash',
 			},
-			getAdditionalOptions({ supportsThinkingBudget: true }),
+			getAdditionalOptions({ supportsThinkingBudget: true, supportsGoogleSearchGrounding: true }),
 		],
 	};
 
@@ -144,7 +144,15 @@ export class LmChatGoogleVertex implements INodeType {
 			temperature: 0.4,
 			topK: 40,
 			topP: 0.9,
-		});
+		}) as {
+			maxOutputTokens?: number;
+			temperature?: number;
+			topK?: number;
+			topP?: number;
+			thinkingBudget?: number;
+			useGoogleSearchGrounding?: boolean;
+			dynamicRetrievalThreshold?: number;
+		};
 
 		// Validate options parameter
 		validateNodeParameters(
@@ -155,6 +163,8 @@ export class LmChatGoogleVertex implements INodeType {
 				topK: { type: 'number', required: false },
 				topP: { type: 'number', required: false },
 				thinkingBudget: { type: 'number', required: false },
+				useGoogleSearchGrounding: { type: 'boolean', required: false },
+				dynamicRetrievalThreshold: { type: 'number', required: false },
 			},
 			this.getNode(),
 		);
@@ -203,6 +213,34 @@ export class LmChatGoogleVertex implements INodeType {
 			}
 
 			const model = new ChatVertexAI(modelConfig);
+
+			// If Google Search grounding is enabled, wrap the model to include the search tool
+			// Use googleSearch for Gemini 2.0+ models, googleSearchRetrieval for Gemini 1.x
+			if (options.useGoogleSearchGrounding) {
+				// Check if it's a legacy model (Gemini 1.x) that uses googleSearchRetrieval
+				const isLegacyModel = /gemini-1\./.test(modelName);
+
+				const googleSearchTool = isLegacyModel
+					? {
+							googleSearchRetrieval: {
+								dynamicRetrievalConfig: {
+									mode: 'MODE_DYNAMIC',
+									dynamicThreshold: options.dynamicRetrievalThreshold ?? 0.3,
+								},
+							},
+						}
+					: {
+							// Gemini 2.0+ and Gemini 3 use the simpler googleSearch tool
+							googleSearch: {},
+						};
+
+				// Override bindTools to prepend the Google Search tool to any tools the agent provides
+				const originalBindTools = model.bindTools.bind(model);
+				model.bindTools = (tools, kwargs) => {
+					const allTools = [googleSearchTool, ...tools];
+					return originalBindTools(allTools, kwargs);
+				};
+			}
 
 			return {
 				response: model,

@@ -1,4 +1,5 @@
 import type { SafetySetting } from '@google/generative-ai';
+import { DynamicRetrievalMode } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -121,7 +122,7 @@ export class LmChatGoogleGemini implements INodeType {
 			},
 			// thinking budget not supported in @langchain/google-genai
 			// as it utilises the old google generative ai SDK
-			getAdditionalOptions({ supportsThinkingBudget: false }),
+			getAdditionalOptions({ supportsThinkingBudget: false, supportsGoogleSearchGrounding: true }),
 		],
 	};
 
@@ -139,6 +140,8 @@ export class LmChatGoogleGemini implements INodeType {
 			temperature: number;
 			topK: number;
 			topP: number;
+			useGoogleSearchGrounding?: boolean;
+			dynamicRetrievalThreshold?: number;
 		};
 
 		const safetySettings = this.getNodeParameter(
@@ -147,7 +150,42 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
-		const model = new ChatGoogleGenerativeAI({
+		// Build Google Search grounding tool if enabled
+		// Use googleSearch for Gemini 2.0+ models, googleSearchRetrieval for Gemini 1.x
+		// Model names can be like "models/gemini-1.5-pro" or "gemini-3-pro-preview"
+		type GoogleSearchTool =
+			| {
+					googleSearchRetrieval: {
+						dynamicRetrievalConfig: { mode: DynamicRetrievalMode; dynamicThreshold: number };
+					};
+			  }
+			| { googleSearch: Record<string, never> };
+
+		let googleSearchTool: GoogleSearchTool | undefined;
+		if (options.useGoogleSearchGrounding) {
+			// Check if it's a legacy model (Gemini 1.x) that uses googleSearchRetrieval
+			// Look for "gemini-1." anywhere in the model name (covers 1.0, 1.5, etc.)
+			const isLegacyModel = /gemini-1\./.test(modelName);
+
+			if (isLegacyModel) {
+				// Gemini 1.x uses googleSearchRetrieval with dynamic retrieval config
+				googleSearchTool = {
+					googleSearchRetrieval: {
+						dynamicRetrievalConfig: {
+							mode: DynamicRetrievalMode.MODE_DYNAMIC,
+							dynamicThreshold: options.dynamicRetrievalThreshold ?? 0.3,
+						},
+					},
+				};
+			} else {
+				// Gemini 2.0+ and Gemini 3 use the simpler googleSearch tool
+				googleSearchTool = {
+					googleSearch: {},
+				};
+			}
+		}
+
+		const modelConfig: ConstructorParameters<typeof ChatGoogleGenerativeAI>[0] = {
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
 			model: modelName,
@@ -158,7 +196,20 @@ export class LmChatGoogleGemini implements INodeType {
 			safetySettings,
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
-		});
+		};
+
+		const model = new ChatGoogleGenerativeAI(modelConfig);
+
+		// If Google Search grounding is enabled, wrap the model to include the search tool
+		// We override bindTools to prepend the Google Search tool to any tools the agent provides
+		if (googleSearchTool) {
+			const originalBindTools = model.bindTools.bind(model);
+			model.bindTools = (tools, kwargs) => {
+				// Prepend Google Search tool to the tools array
+				const allTools = [googleSearchTool, ...tools];
+				return originalBindTools(allTools, kwargs);
+			};
+		}
 
 		return {
 			response: model,
