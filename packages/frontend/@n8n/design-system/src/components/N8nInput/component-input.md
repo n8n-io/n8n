@@ -13,7 +13,7 @@ A versatile text input component for collecting user text, numbers, passwords, a
 **Props**
 
 - `modelValue?: string | number | null` - The bound value of the input (v-model). Default: `''`
-- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password'`. Default: `'text'`
+- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password' | 'number' | 'email'`. Default: `'text'`
 - `size?: InputSize` - Size of the input. Values: `'xlarge' | 'large' | 'medium' | 'small' | 'mini'`. Default: `'large'`
 - `placeholder?: string` - Placeholder text displayed when input is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the input. Default: `false`
@@ -28,7 +28,8 @@ A versatile text input component for collecting user text, numbers, passwords, a
 
 **Events**
 
-- `update:modelValue` - Emitted when input value changes. Payload: `[value: string | number | null]`
+- `update:modelValue` - Emitted when input value changes. Payload: `[value: string]`
+- `input` - Emitted when input value changes (for backwards compatibility). Payload: `[value: string]`
 - `focus` - Emitted when input gains focus. Payload: `[event: FocusEvent]`
 - `blur` - Emitted when input loses focus. Payload: `[event: FocusEvent]`
 - `keydown` - Emitted on keydown event. Payload: `[event: KeyboardEvent]`
@@ -37,6 +38,8 @@ A versatile text input component for collecting user text, numbers, passwords, a
 
 - `prefix` - Content inside input box, before the text (typically for search icons)
 - `suffix` - Content inside input box, after the text (typically for icons or indicators)
+- `prepend` - Content outside input box, before the input (typically for labels or grouped buttons)
+- `append` - Content outside input box, after the input (typically for units or grouped buttons)
 
 **Exposed Methods**
 
