@@ -18,13 +18,10 @@ defineEmits<{
 }>();
 
 const indicatorText = computed(() => {
-	if (props.status === 'published') {
+	if (props.status === 'published' || props.status === 'unpublished') {
 		return 'Published';
 	}
 
-	if (props.status === 'unpublished') {
-		return 'Update';
-	}
 	return 'Draft';
 });
 
