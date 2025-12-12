@@ -38,7 +38,7 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: false,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
 			});
 		});
@@ -57,7 +57,7 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: true,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
 			});
 		});
@@ -78,7 +78,7 @@ describe('Redis Node', () => {
 					tls: true,
 					rejectUnauthorized: false,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
 			});
 		});
@@ -98,7 +98,7 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: true,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
 			});
 		});
@@ -118,7 +118,7 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: false,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
 			});
 		});
@@ -140,7 +140,7 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: false,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
 			});
 		});
@@ -165,8 +165,64 @@ describe('Redis Node', () => {
 					tls: true,
 					rejectUnauthorized: false,
 					connectTimeout: 10000,
-					reconnectStrategy: undefined,
+					reconnectStrategy: expect.any(Function),
 				},
+			});
+		});
+
+		describe('reconnectStrategy behavior', () => {
+			it('should stop retrying on ECONNREFUSED', () => {
+				setupRedisClient({
+					host: 'redis.domain',
+					port: 1234,
+					database: 0,
+				});
+
+				const call = createClient.mock.calls[0][0];
+				const strategy = call.socket.reconnectStrategy;
+
+				const cause = { code: 'ECONNREFUSED' } as NodeJS.ErrnoException;
+
+				expect(strategy(0, cause)).toBe(false);
+			});
+
+			it('should stop retrying after 10 retries', () => {
+				setupRedisClient({
+					host: 'redis.domain',
+					port: 1234,
+					database: 0,
+				});
+
+				const call = createClient.mock.calls[0][0];
+				const strategy = call.socket.reconnectStrategy;
+
+				const cause = { code: 'OTHER' } as NodeJS.ErrnoException;
+
+				expect(strategy(10, cause)).toBe(false);
+				expect(strategy(11, cause)).toBe(false);
+			});
+
+			it('should return a delay with jitter for valid retry attempts', () => {
+				setupRedisClient({
+					host: 'redis.domain',
+					port: 1234,
+					database: 0,
+				});
+
+				const call = createClient.mock.calls[0][0];
+				const strategy = call.socket.reconnectStrategy;
+
+				const cause = { code: 'OTHER' } as NodeJS.ErrnoException;
+
+				const retry = 3;
+				const result = strategy(retry, cause);
+
+				// delay = min(2^retries * 50, 2000)
+				const baseDelay = Math.min(2 ** retry * 50, 2000);
+
+				// jitter added is between 0 and 199
+				expect(result).toBeGreaterThanOrEqual(baseDelay);
+				expect(result).toBeLessThanOrEqual(baseDelay + 199);
 			});
 		});
 	});
@@ -188,7 +244,7 @@ describe('Redis Node', () => {
 				port: 6379,
 				tls: false,
 				connectTimeout: 10000,
-				reconnectStrategy: false,
+				reconnectStrategy: expect.any(Function),
 			},
 			database: 0,
 			username: 'username',
@@ -249,7 +305,7 @@ describe('Redis Node', () => {
 					tls: true,
 					rejectUnauthorized: false,
 					connectTimeout: 10000,
-					reconnectStrategy: false,
+					reconnectStrategy: expect.any(Function),
 				},
 				database: 0,
 				username: 'username',
