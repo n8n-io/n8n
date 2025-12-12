@@ -17,6 +17,7 @@ import NodeSuccess from './custom/node-success.svg';
 import NodeTrash from './custom/node-trash.svg';
 import NodeValidationError from './custom/node-validation-error.svg';
 import PopOut from './custom/pop-out.svg';
+import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
@@ -43,6 +44,7 @@ import IconLucideArrowRight from '~icons/lucide/arrow-right';
 import IconLucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line';
 import IconLucideArrowRightToLine from '~icons/lucide/arrow-right-to-line';
 import IconLucideArrowUp from '~icons/lucide/arrow-up';
+import IconLucideArrowUpRight from '~icons/lucide/arrow-up-right';
 import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
@@ -187,6 +189,7 @@ import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
+import IconLucideSplit from '~icons/lucide/split';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
@@ -474,6 +477,7 @@ export const updatedIconSet = {
 	'node-trash': NodeTrash,
 	mcp: Mcp,
 	lovable: Lovable,
+	resolver: Resolver,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
@@ -486,6 +490,7 @@ export const updatedIconSet = {
 	'arrow-right-from-line': IconLucideArrowRightFromLine,
 	'arrow-right-to-line': IconLucideArrowRightToLine,
 	'arrow-up': IconLucideArrowUp,
+	'arrow-up-right': IconLucideArrowUpRight,
 	'at-sign': IconLucideAtSign,
 	ban: IconLucideBan,
 	bell: IconLucideBell,
@@ -629,6 +634,7 @@ export const updatedIconSet = {
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
+	split: IconLucideSplit,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
 	'square-minus': IconLucideSquareMinus,
