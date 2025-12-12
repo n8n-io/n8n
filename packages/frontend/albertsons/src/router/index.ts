@@ -33,7 +33,6 @@ const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
 const AlbertsonsLoginView = async () => await import('@src/views/AlbertsonsLogin.vue');
-const MainHeader = async () => await import('@src/components/MainHeader/MainHeader.vue');
 const EditorHeader = async () => await import('@src/app/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@src/components/MainSidebar.vue');
 const LogsPanel = async () => await import('@/features/execution/logs/components/LogsPanel.vue');
@@ -286,7 +285,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.EXECUTION_DEBUG,
 		components: {
 			default: NodeView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 			footer: LogsPanel,
 		},
@@ -307,7 +306,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		components: {
 			default: WorkflowExecutionsView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -345,7 +344,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.EVALUATION,
 		components: {
 			default: EvaluationRootView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 		},
 		props: {
@@ -388,7 +387,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
 			default: NodeView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -404,7 +403,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.WORKFLOW_ONBOARDING,
 		components: {
 			default: WorkflowOnboardingView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -456,7 +455,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.WORKFLOW,
 		components: {
 			default: NodeView,
-			header: MainHeader,
+			header: EditorHeader,
 			sidebar: MainSidebar,
 			footer: LogsPanel,
 		},

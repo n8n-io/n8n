@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TabBar from '@/app/components/MainHeader/TabBar.vue';
+import TabBar from '@src/app/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/app/composables/usePushConnection';
@@ -62,7 +62,7 @@ const tabBarItems = computed(() => {
 	return [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+		// { value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 	];
 });
 

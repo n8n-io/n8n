@@ -6,7 +6,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-
+import vueDevTools from 'vite-plugin-vue-devtools';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
@@ -80,6 +80,7 @@ const { RELEASE: release } = process.env;
 
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
+	vueDevTools(),
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,
@@ -193,14 +194,14 @@ export default mergeConfig(
 			BASE_PATH: `'${publicPath}'`,
 		},
 		server: {
-		  port: 8080,
-		  proxy: {
-		    '/rest': {
-		      target: 'http://localhost:5678',
-		      changeOrigin: true,
-		      rewrite: (path) => path.replace(/^\/rest/, '/rest'),
-		    },
-		  },
+			port: 8080,
+			proxy: {
+				'/rest': {
+					target: 'http://localhost:5678',
+					changeOrigin: true,
+					rewrite: (path) => path.replace(/^\/rest/, '/rest'),
+				},
+			},
 		},
 		plugins,
 		resolve: { alias },

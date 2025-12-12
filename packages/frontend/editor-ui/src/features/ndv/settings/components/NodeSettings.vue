@@ -457,7 +457,7 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
 const iconSource = computed(() =>

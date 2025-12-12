@@ -32,6 +32,7 @@ import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import * as settingsApi from '@n8n/rest-api-client/api/settings';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -81,9 +82,23 @@ const chatPanelWidth = computed(() => chatPanelStore.width);
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
 onMounted(async () => {
+	setTimeout(async () => {
+		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
+		const overwriteSettings = {
+			...fetchedSettings,
+			aiAssistant: { enabled: true, setup: true },
+			aiBuilder: { enabled: true, setup: true },
+			askAi: { enabled: true },
+		};
+		settingsStore.setSettings(overwriteSettings);
+		loading.value = false;
+	}, 2000);
+});
+
+onMounted(async () => {
 	setAppZIndexes();
 	logHiringBanner();
-	loading.value = false;
+	//loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
 });

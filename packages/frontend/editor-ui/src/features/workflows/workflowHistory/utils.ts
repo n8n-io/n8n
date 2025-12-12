@@ -1,10 +1,8 @@
 import type { WorkflowPublishHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
 
-export const getLastPublishedByUser = (workflowPublishHistory: WorkflowPublishHistory[]) => {
-	return workflowPublishHistory.findLast(
-		(history) => history.event === 'activated' && history.userId !== null,
-	);
+export const getLastPublishedVersion = (workflowPublishHistory: WorkflowPublishHistory[]) => {
+	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 
 export const generateVersionName = (versionId: string) => {
