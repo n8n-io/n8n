@@ -106,23 +106,37 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 	if (!isTemplatesEnabled) {
 		return { name: `${defaultRedirect}` || VIEWS.NOT_FOUND };
 	}
-
 	return false;
 }
 
 export const routes: RouteRecordRaw[] = [
+	// Albertsons dashboard
 	{
 		path: '/dashboard',
 		name: 'DASHBOARD',
 		components: {
 			default: () => import('@src/views/DashboardView.vue'),
-			header: MainHeader,
+
 			sidebar: MainSidebar,
 		},
 		meta: {
 			middleware: ['authenticated'],
 		},
 	},
+
+	// Albertsons templates
+	{
+		path: '/templates',
+		name: 'ALBERTSONS_TEMPLATES',
+		components: {
+			default: () => import('@src/views/AlbertsonsTemplates.vue'),
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+
 	{
 		path: '/',
 		redirect: '/dashboard',
@@ -130,6 +144,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,
@@ -152,32 +167,27 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
-	{
-		path: '/templates/agents',
-		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
-		components: {
-			default: PrebuiltAgentTemplatesView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			middleware: ['authenticated'],
-		},
-		beforeEnter: (_to, _from, next) => {
-			const calloutHelpers = useCalloutHelpers();
-			const templatesStore = useTemplatesStore();
 
-			if (!calloutHelpers.isPreBuiltAgentsCalloutVisible.value) {
-				window.location.href = templatesStore.websiteTemplateRepositoryURL;
-			} else {
-				next();
-			}
-		},
-	},
-	// Following two routes are kept in-app:
-	// Single workflow view, used when a custom template host is set
-	// Also, reachable directly from this URL
+	// Pre-built agents route disabled (no external redirect)
+	/*
+  {
+    path: '/templates/agents',
+    name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
+    components: {
+      default: PrebuiltAgentTemplatesView,
+      sidebar: MainSidebar,
+    },
+    meta: {
+      templatesEnabled: true,
+      getRedirect: getTemplatesRedirect,
+      middleware: ['authenticated'],
+    },
+    beforeEnter: (_to, _from, next) => {
+      next();
+    },
+  },
+  */
+
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
@@ -202,7 +212,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
-	// Template setup view, this is the landing view for website users
+
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
@@ -238,40 +248,39 @@ export const routes: RouteRecordRaw[] = [
 			}
 		},
 	},
-	{
-		path: '/templates/',
-		name: VIEWS.TEMPLATES,
-		components: {
-			default: TemplatesSearchView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			// Templates view remembers it's scroll position on back
-			scrollOffset: 0,
-			telemetry: {
-				getProperties() {
-					const templatesStore = useTemplatesStore();
-					return {
-						wf_template_repo_session_id: templatesStore.currentSessionId,
-					};
-				},
-			},
-			setScrollPosition(pos: number) {
-				this.scrollOffset = pos;
-			},
-			middleware: ['authenticated'],
-		},
-		beforeEnter: (_to, _from, next) => {
-			const templatesStore = useTemplatesStore();
-			if (!templatesStore.hasCustomTemplatesHost) {
-				window.location.href = templatesStore.websiteTemplateRepositoryURL;
-			} else {
-				next();
-			}
-		},
-	},
+
+	// Original n8n /templates/ route fully disabled (no external redirect)
+	/*
+  {
+    path: '/templates/',
+    name: VIEWS.TEMPLATES,
+    components: {
+      default: TemplatesSearchView,
+      sidebar: MainSidebar,
+    },
+    meta: {
+      templatesEnabled: true,
+      getRedirect: getTemplatesRedirect,
+      scrollOffset: 0,
+      telemetry: {
+        getProperties() {
+          const templatesStore = useTemplatesStore();
+          return {
+            wf_template_repo_session_id: templatesStore.currentSessionId,
+          };
+        },
+      },
+      setScrollPosition(pos: number) {
+        this.scrollOffset = pos;
+      },
+      middleware: ['authenticated'],
+    },
+    beforeEnter: (_to, _from, next) => {
+      next();
+    },
+  },
+  */
+
 	{
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
@@ -292,6 +301,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+
 	{
 		path: '/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
@@ -329,6 +339,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		],
 	},
+
 	{
 		path: '/workflow/:name/evaluation',
 		name: VIEWS.EVALUATION,
@@ -359,6 +370,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		],
 	},
+
 	{
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
@@ -370,6 +382,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
@@ -385,6 +398,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/workflows/onboarding/:id',
 		name: VIEWS.WORKFLOW_ONBOARDING,
@@ -400,6 +414,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
@@ -415,6 +430,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
@@ -434,6 +450,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+
 	{
 		path: '/workflow/:name/:nodeId?',
 		name: VIEWS.WORKFLOW,
@@ -449,10 +466,12 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/workflow',
 		redirect: '/workflow/new',
 	},
+
 	{
 		path: '/signin',
 		name: VIEWS.SIGNIN,
@@ -466,6 +485,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['guest'],
 		},
 	},
+
 	{
 		path: '/login',
 		name: 'ALBERTSONS_LOGIN',
@@ -473,6 +493,7 @@ export const routes: RouteRecordRaw[] = [
 			default: AlbertsonsLoginView,
 		},
 	},
+
 	{
 		path: '/signup',
 		name: VIEWS.SIGNUP,
@@ -486,6 +507,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['guest'],
 		},
 	},
+
 	{
 		path: '/signout',
 		name: VIEWS.SIGNOUT,
@@ -499,6 +521,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/oauth/consent',
 		name: VIEWS.OAUTH_CONSENT,
@@ -509,6 +532,7 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
+
 	{
 		path: '/setup',
 		name: VIEWS.SETUP,
@@ -522,6 +546,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+
 	{
 		path: '/forgot-password',
 		name: VIEWS.FORGOT_PASSWORD,
@@ -535,6 +560,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+
 	{
 		path: '/change-password',
 		name: VIEWS.CHANGE_PASSWORD,
@@ -548,6 +574,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+
 	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
@@ -585,6 +612,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'migration-report',
 				components: {
@@ -620,6 +648,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'personal',
 				name: VIEWS.PERSONAL_SETTINGS,
@@ -638,6 +667,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
@@ -661,6 +691,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'project-roles',
 				components: {
@@ -700,6 +731,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'api',
 				name: VIEWS.API_SETTINGS,
@@ -723,6 +755,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
@@ -746,6 +779,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
@@ -769,6 +803,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'sso',
 				name: VIEWS.SSO_SETTINGS,
@@ -792,6 +827,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
@@ -810,6 +846,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'workers',
 				name: VIEWS.WORKER_VIEW,
@@ -820,6 +857,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated'],
 				},
 			},
+
 			{
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
@@ -842,6 +880,7 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+
 			{
 				path: 'ldap',
 				name: VIEWS.LDAP_SETTINGS,
@@ -859,6 +898,7 @@ export const routes: RouteRecordRaw[] = [
 			},
 		],
 	},
+
 	{
 		path: '/saml/onboarding',
 		name: VIEWS.SAML_ONBOARDING,
@@ -879,7 +919,9 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+
 	...projectsRoutes,
+
 	{
 		path: '/entity-not-found/:entityType(credential|workflow)',
 		props: true,
@@ -889,6 +931,7 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 	},
+
 	{
 		path: '/entity-not-authorized/:entityType(credential|workflow)',
 		props: true,
@@ -898,6 +941,7 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 	},
+
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
@@ -933,9 +977,7 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : (window.BASE_PATH ?? '/')),
 	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
-		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {
-			// for templates view, reset scroll position in this case
 			to.meta.setScrollPosition(0);
 		}
 	},
@@ -944,31 +986,16 @@ const router = createRouter({
 
 router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
-		/**
-		 * Initialize application core
-		 * This step executes before first route is loaded and is required for permission checks
-		 */
-
 		await initializeCore();
-		// Pass undefined for first param to use default
 		await initializeAuthenticatedFeatures(undefined, to.name as string);
-
-		/**
-		 * Redirect to setup page. User should be redirected to this only once
-		 */
 
 		const settingsStore = useSettingsStore();
 		if (settingsStore.showSetupPage) {
 			if (to.name === VIEWS.SETUP) {
 				return next();
 			}
-
 			return next({ name: VIEWS.SETUP });
 		}
-
-		/**
-		 * Verify user permissions for current route
-		 */
 
 		const routeMiddleware = to.meta?.middleware ?? [];
 		const routeMiddlewareOptions = to.meta?.middlewareOptions ?? {};
@@ -1012,21 +1039,13 @@ router.afterEach((to, from) => {
 		const uiStore = useUIStore();
 		const templatesStore = useTemplatesStore();
 
-		/**
-		 * Run external hooks
-		 */
-
 		void useExternalHooks().run('main.routeChange', { from, to });
-
-		/**
-		 * Track current view for telemetry
-		 */
 
 		uiStore.currentView = (to.name as string) ?? '';
 		if (to.meta?.templatesEnabled) {
 			templatesStore.setSessionId();
 		} else {
-			templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+			templatesStore.resetSessionId();
 		}
 		telemetry.page(to);
 
