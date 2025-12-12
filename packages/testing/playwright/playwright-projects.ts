@@ -32,6 +32,9 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
+// Disable fullyParallel when running with single worker (no benefit, used by Currents orchestration)
+const enableParallelism = process.env.PLAYWRIGHT_WORKERS !== '1';
+
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
@@ -64,7 +67,7 @@ export function getProjects(): Project[] {
 					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
-					fullyParallel: true,
+					fullyParallel: enableParallelism,
 					use: { containerConfig: config },
 				},
 				{
