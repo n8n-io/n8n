@@ -245,7 +245,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
-			// that need the full set of auntenticated settings
+			// that need the full set of authenticated settings
 			return;
 		}
 
