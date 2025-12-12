@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
-import { createHmac } from 'crypto';
 import type {
 	IDataObject,
 	IHookFunctions,
@@ -13,6 +12,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
+import { verifySignature } from './StripeTriggerHelpers';
 
 export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -949,43 +949,13 @@ export class StripeTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
-		const headerData = this.getHeaderData();
-		const webhookData = this.getWorkflowStaticData('node');
 
-		const stripeSignature = headerData['stripe-signature'] as string | undefined;
-		if (!stripeSignature) {
-			return {};
-		}
-
-		const webhookSecret = webhookData.webhookSecret as string | undefined;
-		if (!webhookSecret) {
-			return {};
-		}
-
-		const elements = stripeSignature.split(',');
-		let timestamp: string | undefined;
-		let signature: string | undefined;
-
-		for (const element of elements) {
-			if (element.startsWith('t=')) {
-				timestamp = element.substring(2);
-			} else if (element.startsWith('v1=')) {
-				signature = element.substring(3);
-			}
-		}
-
-		if (!timestamp || !signature) {
-			return {};
-		}
-
-		const signedPayload = `${timestamp}.${req.rawBody.toString()}`;
-
-		const expectedSignature = createHmac('sha256', webhookSecret)
-			.update(signedPayload)
-			.digest('hex');
-
-		if (signature !== expectedSignature) {
-			return {};
+		if (!(await verifySignature.call(this))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
 		}
 
 		const events = this.getNodeParameter('events', []) as string[];

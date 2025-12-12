@@ -1,14 +1,19 @@
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
-import { createHmac } from 'crypto';
 
 import { stripeApiRequest } from '../helpers';
 import { StripeTrigger } from '../StripeTrigger.node';
+import { verifySignature } from '../StripeTriggerHelpers';
 
 jest.mock('../helpers', () => ({
 	stripeApiRequest: jest.fn(),
 }));
 
+jest.mock('../StripeTriggerHelpers', () => ({
+	verifySignature: jest.fn().mockResolvedValue(true),
+}));
+
 const mockedStripeApiRequest = jest.mocked(stripeApiRequest);
+const mockedVerifySignature = jest.mocked(verifySignature);
 
 describe('Stripe Trigger Node', () => {
 	let node: StripeTrigger;
@@ -100,8 +105,6 @@ describe('Stripe Trigger Node', () => {
 
 	describe('webhook signature verification', () => {
 		let mockWebhookFunctions: IWebhookFunctions;
-		const webhookSecret = 'whsec_test123456789';
-		const timestamp = '1234567890';
 		const testBody = { type: 'charge.succeeded', id: 'ch_123' };
 		const rawBody = JSON.stringify(testBody);
 
@@ -112,118 +115,45 @@ describe('Stripe Trigger Node', () => {
 					rawBody: Buffer.from(rawBody),
 					body: testBody,
 				}),
-				getHeaderData: jest.fn(),
-				getWorkflowStaticData: jest.fn().mockReturnValue({
-					webhookSecret,
+				getResponseObject: jest.fn().mockReturnValue({
+					status: jest.fn().mockReturnThis(),
+					send: jest.fn().mockReturnThis(),
+					end: jest.fn(),
 				}),
 				getNodeParameter: jest.fn().mockReturnValue(['*']),
 				helpers: {
 					returnJsonArray: jest.fn().mockImplementation((data) => [data]),
 				},
 			} as unknown as IWebhookFunctions;
+
+			// Reset the verifySignature mock to return true by default
+			mockedVerifySignature.mockResolvedValue(true);
 		});
 
-		function generateValidSignature(timestamp: string, body: string, secret: string): string {
-			const signedPayload = `${timestamp}.${body}`;
-			const signature = createHmac('sha256', secret).update(signedPayload).digest('hex');
-			return `t=${timestamp},v1=${signature}`;
-		}
-
 		it('should process webhook with valid signature', async () => {
-			const validSignature = generateValidSignature(timestamp, rawBody, webhookSecret);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': validSignature,
-			});
+			mockedVerifySignature.mockResolvedValue(true);
 
 			const result = await node.webhook.call(mockWebhookFunctions);
 
 			expect(result).toEqual({
 				workflowData: [[testBody]],
 			});
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
 		});
 
-		it('should reject webhook with missing signature', async () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
+		it('should reject webhook with invalid signature', async () => {
+			mockedVerifySignature.mockResolvedValue(false);
 
 			const result = await node.webhook.call(mockWebhookFunctions);
 
-			expect(result).toEqual({});
-		});
-
-		it('should reject webhook with missing webhook secret', async () => {
-			const validSignature = generateValidSignature(timestamp, rawBody, webhookSecret);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': validSignature,
+			expect(result).toEqual({
+				noWebhookResponse: true,
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({});
-		});
-
-		it('should reject webhook with invalid signature format', async () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': 'invalid-format',
-			});
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({});
-		});
-
-		it('should reject webhook with missing timestamp in signature', async () => {
-			const signature = createHmac('sha256', webhookSecret)
-				.update(`${timestamp}.${rawBody}`)
-				.digest('hex');
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': `v1=${signature}`,
-			});
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({});
-		});
-
-		it('should reject webhook with missing v1 signature', async () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': `t=${timestamp}`,
-			});
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({});
-		});
-
-		it('should reject webhook with incorrect signature', async () => {
-			const wrongSecret = 'wrong_secret';
-			const invalidSignature = generateValidSignature(timestamp, rawBody, wrongSecret);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': invalidSignature,
-			});
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({});
-		});
-
-		it('should reject webhook with signature for different body', async () => {
-			const differentBody = JSON.stringify({ type: 'payment_intent.succeeded' });
-			const invalidSignature = generateValidSignature(timestamp, differentBody, webhookSecret);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': invalidSignature,
-			});
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({});
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
 		});
 
 		it('should handle events filtering correctly', async () => {
-			const validSignature = generateValidSignature(timestamp, rawBody, webhookSecret);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': validSignature,
-			});
+			mockedVerifySignature.mockResolvedValue(true);
 			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue([
 				'payment_intent.succeeded',
 			]);
@@ -234,27 +164,8 @@ describe('Stripe Trigger Node', () => {
 		});
 
 		it('should process webhook when event type matches filter', async () => {
-			const validSignature = generateValidSignature(timestamp, rawBody, webhookSecret);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': validSignature,
-			});
+			mockedVerifySignature.mockResolvedValue(true);
 			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue(['charge.succeeded']);
-
-			const result = await node.webhook.call(mockWebhookFunctions);
-
-			expect(result).toEqual({
-				workflowData: [[testBody]],
-			});
-		});
-
-		it('should handle complex signature header with multiple elements', async () => {
-			const signature = createHmac('sha256', webhookSecret)
-				.update(`${timestamp}.${rawBody}`)
-				.digest('hex');
-			const complexHeader = `t=${timestamp},v1=${signature},v0=old_signature`;
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
-				'stripe-signature': complexHeader,
-			});
 
 			const result = await node.webhook.call(mockWebhookFunctions);
 
