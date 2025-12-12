@@ -23,7 +23,6 @@ export const READY_TO_RUN_WORKFLOW_V5: WorkflowDataCreate = {
 					value: 'gpt-4.1-mini',
 				},
 				responsesApiEnabled: false,
-				builtInTools: {},
 				options: {},
 			},
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
