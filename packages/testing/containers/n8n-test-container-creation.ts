@@ -415,8 +415,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (taskRunnerEnabled && network) {
 		const taskBrokerUri = queueConfig?.workers
-			? `http://${uniqueProjectName}-n8n-worker-1:5679`
-			: `http://${uniqueProjectName}-n8n-main-1:5679`;
+			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
+			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
 
 		const taskRunnerContainer = await setupTaskRunner({
 			projectName: uniqueProjectName,
@@ -508,8 +508,8 @@ interface CreateInstancesOptions {
 	network?: StartedNetwork;
 	directPort?: number;
 	resourceQuota?: {
-		memory?: number;
-		cpu?: number;
+		memory?: number; // in GB
+		cpu?: number; // in cores
 	};
 	keycloakCertPem?: string;
 }
@@ -520,6 +520,7 @@ async function createN8NInstances({
 	uniqueProjectName,
 	environment,
 	network,
+	/** The host port to use for the main instance */
 	directPort,
 	resourceQuota,
 	keycloakCertPem,
@@ -540,7 +541,7 @@ async function createN8NInstances({
 			isWorker: false,
 			instanceNumber: i,
 			networkAlias,
-			directPort: i === 1 ? directPort : undefined,
+			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
 			keycloakCertPem,
 		});
@@ -579,8 +580,8 @@ interface CreateContainerOptions {
 	networkAlias?: string;
 	directPort?: number;
 	resourceQuota?: {
-		memory?: number;
-		cpu?: number;
+		memory?: number; // in GB
+		cpu?: number; // in cores
 	};
 	keycloakCertPem?: string;
 }
