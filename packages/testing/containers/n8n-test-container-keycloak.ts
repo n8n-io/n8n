@@ -1,6 +1,7 @@
 import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
+import { Agent } from 'undici';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
@@ -198,17 +199,12 @@ export async function setupKeycloak({
 		// n8n container uses Docker network alias keycloak:8443 (same network)
 		const internalDiscoveryUrl = `https://keycloak:${httpsPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
 
-		// Wait for the discovery endpoint to be available (use localhost for host check)
-		await waitForKeycloakReady(allocatedHostPort);
+		// Extract the CA certificate first - it's created by the startup script before Keycloak starts
+		// This allows us to use proper TLS validation for health checks
+		const certPem = await extractCertificate(container);
 
-		// Extract the CA certificate in PEM format for n8n containers to trust
-		const certResult = await container.exec(['cat', KEYCLOAK_CERT_PATH]);
-		if (certResult.exitCode !== 0) {
-			throw new Error(
-				`Failed to read Keycloak certificate from ${KEYCLOAK_CERT_PATH}: ${certResult.output}`,
-			);
-		}
-		const certPem = certResult.output;
+		// Wait for the discovery endpoint to be available using the cert for TLS validation
+		await waitForKeycloakReady(allocatedHostPort, certPem);
 
 		console.log(`Keycloak discovery URL: ${discoveryUrl}`);
 
@@ -224,21 +220,59 @@ export async function setupKeycloak({
 }
 
 /**
- * Poll the Keycloak HTTPS discovery endpoint until it's ready.
+ * Extract the CA certificate from the Keycloak container.
+ * The certificate is created by the startup script before Keycloak server starts.
  */
-async function waitForKeycloakReady(port: number, timeoutMs: number = 60000): Promise<void> {
+async function extractCertificate(
+	container: StartedTestContainer,
+	timeoutMs: number = 30000,
+): Promise<string> {
 	const startTime = Date.now();
-	// Use localhost for health check - this runs on the host machine where localhost works
-	// (The actual OIDC URLs use host.docker.internal for cross-environment compatibility)
+	const retryIntervalMs = 500;
+
+	// The cert file is created early in the startup script, but we may need to wait
+	// for the container's entrypoint to actually run
+	while (Date.now() - startTime < timeoutMs) {
+		try {
+			const certResult = await container.exec(['cat', KEYCLOAK_CERT_PATH]);
+			if (certResult.exitCode === 0 && certResult.output.includes('BEGIN CERTIFICATE')) {
+				return certResult.output;
+			}
+		} catch {
+			// Retry on error
+		}
+		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+	}
+
+	throw new Error(
+		`Failed to extract Keycloak certificate from ${KEYCLOAK_CERT_PATH} within ${timeoutMs}ms`,
+	);
+}
+
+/**
+ * Poll the Keycloak HTTPS discovery endpoint until it's ready.
+ * Uses the provided CA certificate for proper TLS validation.
+ */
+async function waitForKeycloakReady(
+	port: number,
+	certPem: string,
+	timeoutMs: number = 60000,
+): Promise<void> {
+	const startTime = Date.now();
 	const url = `https://localhost:${port}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
 	const retryIntervalMs = 2000;
 
-	// Ignore self-signed certificate errors for this check
-	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+	// Create an undici Agent that trusts the Keycloak CA certificate
+	const agent = new Agent({
+		connect: { ca: certPem },
+	});
 
 	while (Date.now() - startTime < timeoutMs) {
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, {
+				// @ts-expect-error - dispatcher is an undici-specific option
+				dispatcher: agent,
+			});
 			if (response.ok) {
 				return;
 			}
