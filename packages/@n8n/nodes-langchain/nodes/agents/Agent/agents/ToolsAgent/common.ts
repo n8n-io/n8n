@@ -13,6 +13,8 @@ import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
+import { isN8nChatModel } from 'n8n-workflow';
 
 /* -----------------------------------------------------------
    Output Parser Helper
@@ -334,6 +336,7 @@ export const getAgentStepsParser =
 /**
  * Retrieves the language model from the input connection.
  * Throws an error if the model is not a valid chat instance or does not support tools.
+ * Automatically wraps n8n chat models with the LangChain adapter.
  *
  * @param ctx - The execution context
  * @returns The validated chat model
@@ -352,18 +355,24 @@ export async function getChatModel(
 		}
 		// We get the models in reversed order from the workflow so we need to reverse them to match the right index
 		const reversedModels = [...connectedModels].reverse();
-		model = reversedModels[index] as BaseChatModel;
+		model = reversedModels[index];
 	} else {
-		model = connectedModels as BaseChatModel;
+		model = connectedModels;
 	}
 
+	// If this is an n8n chat model (from community node), wrap it with LangChain adapter
+	if (isN8nChatModel(model)) {
+		return new N8nChatModelToLangChain(model);
+	}
+
+	// Otherwise, expect a LangChain chat model
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			'Tools Agent requires Chat Model which supports Tools calling',
 		);
 	}
-	return model;
+	return model as BaseChatModel;
 }
 
 /**
