@@ -2,16 +2,35 @@ name: E2E Tests for CI
 
 on:
   workflow_call:
+    inputs:
+      is_fork:
+        description: 'Whether this is a fork PR'
+        required: false
+        type: boolean
+        default: false
+      docker_image:
+        description: 'Pre-built n8n Docker image to use (for internal PRs)'
+        required: false
+        type: string
+        default: ''
+      runners_image:
+        description: 'Pre-built runners Docker image to use (for internal PRs)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
+  # Uses pre-built images from docker-build-pr job (docker-pull mode)
   multi-main-ui:
     name: 'Multi-Main: UI'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    if: ${{ !inputs.is_fork && inputs.docker_image != '' }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-build
+      test-mode: docker-pull
+      docker-image: ${{ inputs.docker_image }}
+      runners-image: ${{ inputs.runners_image }}
       test-command: pnpm --filter=n8n-playwright exec npx pwc-p -- --project=multi-main:ui
       shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
       runner: blacksmith-4vcpu-ubuntu-2204
@@ -20,10 +39,12 @@ jobs:
 
   multi-main-isolated:
     name: 'Multi-Main: Isolated'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    if: ${{ !inputs.is_fork && inputs.docker_image != '' }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-build
+      test-mode: docker-pull
+      docker-image: ${{ inputs.docker_image }}
+      runners-image: ${{ inputs.runners_image }}
       test-command: pnpm --filter=n8n-playwright exec npx pwc-p -- --project=multi-main:ui:isolated
       shards: '[1]'
       runner: blacksmith-4vcpu-ubuntu-2204
@@ -34,7 +55,7 @@ jobs:
   # Runs on GitHub-hosted runners without Currents reporting
   community-ui:
     name: 'Community: UI'
-    if: ${{ github.event.pull_request.head.repo.fork }}
+    if: ${{ inputs.is_fork || inputs.docker_image == '' }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: local
@@ -45,7 +66,7 @@ jobs:
 
   community-isolated:
     name: 'Community: Isolated'
-    if: ${{ github.event.pull_request.head.repo.fork }}
+    if: ${{ inputs.is_fork || inputs.docker_image == '' }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: local
