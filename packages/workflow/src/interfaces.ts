@@ -2758,6 +2758,12 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	/**
+	 * When true, sub-workflow executions can load draft (unpublished) workflows.
+	 * This is enabled for manual and chat execution modes to allow iterating
+	 * on sub-workflows without requiring them to be published first.
+	 */
+	allowDraftSubWorkflows?: boolean;
 }
 
 export type WorkflowActivateMode =

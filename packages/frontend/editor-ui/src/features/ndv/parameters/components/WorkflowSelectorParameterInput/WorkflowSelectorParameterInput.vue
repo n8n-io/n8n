@@ -341,7 +341,7 @@ const onAddResourceClicked = async () => {
 			:width="width"
 			:event-bus="eventBus"
 			:model-value="modelValue"
-			:disable-inactive-items="true"
+			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"

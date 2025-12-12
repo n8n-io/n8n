@@ -253,6 +253,9 @@ export class WorkflowRunner {
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
+		// Allow draft sub-workflows for manual/chat executions to enable
+		// iterating on sub-workflows without requiring them to be published
+		additionalData.allowDraftSubWorkflows = ['manual', 'chat'].includes(data.executionMode);
 
 		additionalData.executionId = executionId;
 
