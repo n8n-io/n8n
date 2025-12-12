@@ -14,7 +14,7 @@ import type {
 	FormFieldsParameter,
 } from 'n8n-workflow';
 
-import { limitWaitTimeProperties } from './descriptions';
+import { limitWaitTimeOption } from './descriptions';
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
@@ -49,22 +49,6 @@ type FormResponseTypeOptions = {
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
-const limitWaitTimeOption: INodeProperties = {
-	displayName: 'Limit Wait Time',
-	name: 'limitWaitTime',
-	type: 'fixedCollection',
-	description:
-		'Whether the workflow will automatically resume execution after the specified limit type',
-	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
-	options: [
-		{
-			displayName: 'Values',
-			name: 'values',
-			values: limitWaitTimeProperties,
-		},
-	],
-};
-
 const appendAttributionOption: INodeProperties = {
 	displayName: 'Append n8n Attribution',
 	name: 'appendAttribution',
@@ -77,7 +61,7 @@ const appendAttributionOption: INodeProperties = {
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
-	resource: string = 'message',
+	resource: string | null = 'message',
 	additionalProperties: INodeProperties[] = [],
 	options?: {
 		noButtonStyle?: boolean;
@@ -315,7 +299,7 @@ export function getSendAndWaitProperties(
 	return updateDisplayOptions(
 		{
 			show: {
-				resource: [resource],
+				...(resource ? { resource: [resource] } : {}),
 				operation: [SEND_AND_WAIT_OPERATION],
 			},
 		},
