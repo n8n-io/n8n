@@ -1,3 +1,25 @@
+## [1.123.5](https://github.com/n8n-io/n8n/compare/n8n@1.123.0...n8n@1.123.5) (2025-12-12)
+
+
+### Bug Fixes
+
+* Add `HOME` env var to distroless runners image ([#22796](https://github.com/n8n-io/n8n/issues/22796)) ([173fa08](https://github.com/n8n-io/n8n/commit/173fa0868a980f05d35ba14acc6bf91d8016bcd9))
+* **core:** Allowlist `HOME` env var in JS runner config ([#22839](https://github.com/n8n-io/n8n/issues/22839)) ([7bd2b8d](https://github.com/n8n-io/n8n/commit/7bd2b8d6175bc41aa115cb191103ab6a8d12092f))
+* **core:** Do not prevent credential save if property has default value ([#22720](https://github.com/n8n-io/n8n/issues/22720)) ([9cdc03e](https://github.com/n8n-io/n8n/commit/9cdc03e0492b630a415c8a34018f8df6f264435b))
+* **core:** Fix html header check ([#22713](https://github.com/n8n-io/n8n/issues/22713)) ([158afd1](https://github.com/n8n-io/n8n/commit/158afd1d150c705c9dc7a6aaf457c11830587fbf))
+* **core:** Hide migration rule issues not relevant to cloud ([#22749](https://github.com/n8n-io/n8n/issues/22749)) ([56b43c8](https://github.com/n8n-io/n8n/commit/56b43c8b732bdf13dc7fcaf5eeb25e8736bf728d))
+* **core:** Prevent execution data from being overwritten on manual workflow resume ([#22665](https://github.com/n8n-io/n8n/issues/22665)) ([7f27e06](https://github.com/n8n-io/n8n/commit/7f27e06b2245acbee7686284c989b5c03a496b7f))
+* **MCP Client Node:** Make "Use Dynamic Client Registration" toggle not required ([#22645](https://github.com/n8n-io/n8n/issues/22645)) ([0fe8682](https://github.com/n8n-io/n8n/commit/0fe86822ef81c315b14f66f2419c28fc3b4104f3))
+
+
+### Features
+
+* **core:** Add toolCode nodes to the pyodide check for v2 migration ([#22659](https://github.com/n8n-io/n8n/issues/22659)) ([cc38055](https://github.com/n8n-io/n8n/commit/cc380559d30bbb0f2123f9197329206bd567a0db))
+* **core:** Introduce native Python code tool for AI agent ([#22657](https://github.com/n8n-io/n8n/issues/22657)) ([86d9ce1](https://github.com/n8n-io/n8n/commit/86d9ce1ca2423f934fd63194e26977183696f726))
+* **core:** Make chat hub workflows treat activeWorkflowId correctly ([#22546](https://github.com/n8n-io/n8n/issues/22546)) ([d6b9e7c](https://github.com/n8n-io/n8n/commit/d6b9e7c8fb76123e2e881e1113b8241e115a8406))
+
+
+
 ## [1.123.4](https://github.com/n8n-io/n8n/compare/n8n@1.123.3...n8n@1.123.4) (2025-12-08)
 
 
