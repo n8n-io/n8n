@@ -204,8 +204,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
-			<N8nIcon v-else icon="sparkles" width="20" height="20" />
+			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">

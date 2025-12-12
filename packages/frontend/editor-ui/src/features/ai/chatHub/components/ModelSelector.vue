@@ -422,7 +422,6 @@ defineExpose({
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" :text="text">
 			<ChatAgentAvatar
-				v-if="selectedAgent"
 				:agent="selectedAgent"
 				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
 				:class="$style.icon"

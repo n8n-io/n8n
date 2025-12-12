@@ -10,33 +10,35 @@ import {
 	personalAgentDefaultIcon,
 	workflowAgentDefaultIcon,
 } from '../chat.utils';
+import { useI18n } from '@n8n/i18n';
 
 defineProps<{
-	agent: ChatModelDto;
+	agent: ChatModelDto | null;
 	size: 'sm' | 'md' | 'lg';
 	tooltip?: boolean;
 }>();
 
 const credentialsStore = useCredentialsStore();
 const isCredentialsIconReady = computed(() => credentialsStore.allCredentialTypes.length > 0);
+const i18n = useI18n();
 </script>
 
 <template>
 	<N8nTooltip :show-after="100" placement="left" :disabled="!tooltip">
-		<template #content>{{ agent.name }}</template>
-		<span v-if="agent.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
+		<template #content>{{
+			agent?.name || i18n.baseText('chatHub.agent.unavailableAgent')
+		}}</template>
+		<span v-if="agent?.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
 			{{ agent.icon.value }}
 		</span>
 		<N8nIcon
-			v-else-if="!isLlmProviderModel(agent.model)"
+			v-else-if="!agent || !isLlmProviderModel(agent.model)"
 			:color="size === 'sm' ? 'text-base' : 'text-light'"
 			:class="[$style.n8nIcon, $style[size]]"
 			:icon="
-				(agent.icon?.value ??
-					(agent.model.provider === 'custom-agent'
-						? personalAgentDefaultIcon
-						: workflowAgentDefaultIcon
-					).value) as IconName
+				(agent?.icon?.value ??
+					(agent?.model.provider === 'n8n' ? workflowAgentDefaultIcon : personalAgentDefaultIcon)
+						.value) as IconName
 			"
 			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
 		/>

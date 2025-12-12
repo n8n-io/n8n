@@ -117,7 +117,7 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<ChatAgentAvatar v-if="agent" :agent="agent" size="sm" />
+			<ChatAgentAvatar :agent="agent" size="sm" />
 		</template>
 	</ChatSidebarLink>
 </template>
