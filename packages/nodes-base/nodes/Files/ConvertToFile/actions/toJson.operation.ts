@@ -75,6 +75,14 @@ export const properties: INodeProperties[] = [
 				placeholder: 'e.g. myFile.json',
 				description: 'Name of the output file',
 			},
+			{
+				displayName: 'JSONL',
+				name: 'jsonl',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to output data and comments formatted as JSONL or JSON. This option will also ignore the Format option.',
+			},
 		],
 	},
 ];
@@ -102,7 +110,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				items.map((item) => item.json),
 				{
 					fileName: options.fileName as string,
-					mimeType: 'application/json',
+					mimeType: options.jsonl ? 'application/jsonl' : 'application/json',
 					encoding: options.encoding as string,
 					addBOM: options.addBOM as boolean,
 					format: options.format as boolean,
@@ -140,7 +148,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					encoding: options.encoding as string,
 					addBOM: options.addBOM as boolean,
 					format: options.format as boolean,
-					mimeType: 'application/json',
+					mimeType: options.jsonl ? 'application/jsonl' : 'application/json',
 					itemIndex: i,
 				});
 
