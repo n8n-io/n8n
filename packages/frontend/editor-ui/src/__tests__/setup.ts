@@ -6,6 +6,75 @@ import englishBaseText from '@n8n/i18n/locales/en.json';
 import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 
+// Global stub for Reka UI Popover components used by N8nPopover.
+// Unlike Element+ popover which always renders content regardless of visibility,
+// Reka UI respects the `open` prop and only renders content when open.
+// This stub implements realistic open/close behavior while rendering inline
+// (no teleportation), so tests can interact with popovers naturally.
+// - Controlled mode (open prop provided): respects open state
+// - Uncontrolled mode (no open prop): clicking trigger toggles visibility
+vi.mock('reka-ui', async (importOriginal) => {
+	const actual = await importOriginal<object>();
+	const { ref, provide, inject, computed, defineComponent, h } = await import('vue');
+
+	const POPOVER_OPEN_KEY = Symbol('popover-open');
+
+	return {
+		...actual,
+		PopoverRoot: defineComponent({
+			name: 'PopoverRoot',
+			props: { open: { type: Boolean, default: undefined } },
+			emits: ['update:open'],
+			setup(props, { slots, emit }) {
+				const internalOpen = ref(false);
+				// Controlled mode when open prop is explicitly provided
+				const isControlled = computed(() => props.open !== undefined);
+				const isOpen = computed(() => (isControlled.value ? props.open : internalOpen.value));
+				const setOpen = (value: boolean) => {
+					if (!isControlled.value) {
+						internalOpen.value = value;
+					}
+					emit('update:open', value);
+				};
+				provide(POPOVER_OPEN_KEY, { isOpen, setOpen });
+				return () => h('div', slots.default?.());
+			},
+		}),
+		PopoverTrigger: defineComponent({
+			name: 'PopoverTrigger',
+			props: { asChild: Boolean },
+			setup(_, { slots }) {
+				const context = inject<{ isOpen: { value: boolean }; setOpen: (v: boolean) => void }>(
+					POPOVER_OPEN_KEY,
+				);
+				return () =>
+					h('div', { onClick: () => context?.setOpen(!context.isOpen.value) }, slots.default?.());
+			},
+		}),
+		PopoverPortal: defineComponent({
+			name: 'PopoverPortal',
+			props: { disabled: Boolean },
+			setup(_, { slots }) {
+				return () => h('div', slots.default?.());
+			},
+		}),
+		PopoverContent: defineComponent({
+			name: 'PopoverContent',
+			props: ['side', 'sideOffset', 'align', 'class', 'style', 'reference'],
+			setup(_, { slots, attrs }) {
+				const context = inject<{ isOpen: { value: boolean } }>(POPOVER_OPEN_KEY);
+				return () => (context?.isOpen.value ? h('div', attrs, slots.default?.()) : null);
+			},
+		}),
+		PopoverArrow: defineComponent({
+			name: 'PopoverArrow',
+			setup() {
+				return () => h('div');
+			},
+		}),
+	};
+});
+
 // Avoid tests failing because of difference between local and GitHub actions timezone
 process.env.TZ = 'UTC';
 

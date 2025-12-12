@@ -11,7 +11,7 @@ import {
 	N8nMenuItem,
 	isCustomMenuItem,
 	N8nLogo,
-	N8nPopoverReka,
+	N8nPopover,
 	N8nScrollArea,
 	N8nText,
 	N8nIcon,
@@ -567,7 +567,7 @@ const onLogout = () => {
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<!-- Help popover -->
-							<N8nPopoverReka
+							<N8nPopover
 								v-if="item.children && item.id === 'help'"
 								key="help"
 								side="right"
@@ -608,9 +608,9 @@ const onLogout = () => {
 										@click="() => handleSelect(item.id)"
 									/>
 								</template>
-							</N8nPopoverReka>
+							</N8nPopover>
 							<!-- Settings popover -->
-							<N8nPopoverReka
+							<N8nPopover
 								v-else-if="item.children && item.id === 'settings'"
 								key="settings"
 								side="right"
@@ -643,7 +643,7 @@ const onLogout = () => {
 										@click="() => handleSelect(item.id)"
 									/>
 								</template>
-							</N8nPopoverReka>
+							</N8nPopover>
 							<!-- Items without children -->
 							<N8nMenuItem
 								v-else

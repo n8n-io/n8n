@@ -82,14 +82,16 @@ watch(
 		<div v-if="shouldRenderItems" :class="$style.groups">
 			<div v-for="group of groups" :key="group.name">
 				<N8nPopover
-					:visible="submenu === group.id"
-					placement="right-start"
+					:open="submenu === group.id"
+					side="right"
+					align="start"
+					:side-offset="2"
 					:show-arrow="false"
-					:offset="2"
-					:popper-style="{ padding: 'var(--spacing--3xs) 0' }"
 					width="auto"
+					:content-class="$style.submenuContent"
+					:enable-scrolling="false"
 				>
-					<template #reference>
+					<template #trigger>
 						<div
 							:class="[
 								$style.group,
@@ -108,14 +110,16 @@ watch(
 							<N8nIcon icon="chevron-right" color="text-light" size="xsmall" />
 						</div>
 					</template>
-					<div>
-						<N8nOption
-							v-for="operator in group.children"
-							:key="getOperatorId(operator)"
-							:value="getOperatorId(operator)"
-							:label="i18n.baseText(operator.name)"
-						/>
-					</div>
+					<template #content>
+						<div>
+							<N8nOption
+								v-for="operator in group.children"
+								:key="getOperatorId(operator)"
+								:value="getOperatorId(operator)"
+								:label="i18n.baseText(operator.name)"
+							/>
+						</div>
+					</template>
 				</N8nPopover>
 			</div>
 		</div>
@@ -167,5 +171,9 @@ watch(
 	display: flex;
 	gap: var(--spacing--2xs);
 	align-items: center;
+}
+
+.submenuContent {
+	padding: var(--spacing--3xs) 0;
 }
 </style>
