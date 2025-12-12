@@ -115,7 +115,7 @@ const publishTooltipText = computed(() => {
 		});
 	}
 
-	if (!wfHasAnyChanges) {
+	if (!wfHasAnyChanges && !uiStore.stateIsDirty) {
 		return i18n.baseText('workflows.publishModal.noChanges');
 	}
 
