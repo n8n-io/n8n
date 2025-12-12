@@ -2129,7 +2129,7 @@ The n8n software includes open source packages, libraries, and modules, each of 
 * postcss-html 1.8.0, Copyright (c) 2018 刘祺
 * postcss-import 15.1.0, Copyright (c) 2014 Maxime Thirouin, Jason Campbell & Kevin Mårtensson
 * postcss-js 4.0.1, Copyright 2015 Andrey Sitnik <andrey@sitnik.ru>
-* postcss-load-config 4.0.2, Copyright Michael Ciniawsky <michael.ciniawsky@gmail.com>
+* postcss-load-config 6.0.1, Copyright Michael Ciniawsky <michael.ciniawsky@gmail.com>
 * postcss-media-query-parser 0.2.3
 * postcss-nested 6.0.1, Copyright 2014 Andrey Sitnik <andrey@sitnik.ru>
 * postcss-resolve-nested-selector 0.1.6, Copyright (c) 2016 David Clark. Copyright © CSSTools Contributors

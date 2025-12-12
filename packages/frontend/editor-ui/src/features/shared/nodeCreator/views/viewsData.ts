@@ -481,13 +481,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: i18n.baseText('nodeCreator.subcategoryNames.translation'),
 					icon: 'language',
-					sections: [
-						{
-							key: 'translationNodes',
-							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [],
-						},
-					],
 				},
 			},
 			{

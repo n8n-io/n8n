@@ -14,12 +14,6 @@ export class TranslationAgent extends VersionedNodeType {
 				dark: 'file:translate_white.svg',
 				light: 'file:translate_blue.svg',
 			},
-			codex: {
-				categories: ['Translation'],
-				subcategories: {
-					Translation: ['Root Nodes'],
-				},
-			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
