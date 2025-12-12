@@ -27,6 +27,11 @@ on:
         required: false
         default: 'n8nio/n8n:nightly'
         type: string
+      runners-image:
+        description: 'Runners Docker image to use (for docker-pull mode). If not set, derived from docker-image.'
+        required: false
+        default: ''
+        type: string
       workers:
         description: 'Number of parallel workers'
         required: false
@@ -97,6 +102,7 @@ jobs:
           npx tsx packages/testing/containers/pull-test-images.ts || true
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+          N8N_RUNNERS_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/runners:local' || inputs.runners-image }}
 
       - name: Prepare Test Image
         if: inputs.test-mode == 'docker-pull'
@@ -109,6 +115,7 @@ jobs:
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+          N8N_RUNNERS_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/runners:local' || inputs.runners-image }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
