@@ -267,8 +267,8 @@ function onSelectTools() {
 					:required="true"
 				>
 					<N8nInput
-						ref="nameInput"
 						id="agent-name"
+						ref="nameInput"
 						v-model="name"
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 						:maxlength="128"

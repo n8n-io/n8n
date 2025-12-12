@@ -486,7 +486,7 @@ watch(currentMode, (mode) => {
 	}
 });
 
-watch([currentQueryLoading, resourceDropdownVisible], (isLoading, isDropdownVisible) => {
+watch([currentQueryLoading, resourceDropdownVisible], ([isLoading, isDropdownVisible]) => {
 	if (!slowLoadNoticeMessage.value) return;
 
 	if (isLoading && isDropdownVisible) {

@@ -336,7 +336,7 @@ onBeforeMount(() => {
 							:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 							:model-value="filter.metadata[0]?.key"
 							data-test-id="execution-filter-saved-data-key-input"
-							@update:model-value="onFilterMetaChange(0, 'key', $event)"
+							@update:model-value="onFilterMetaChange(0, 'key', String($event ?? ''))"
 						/>
 					</N8nTooltip>
 					<div :class="$style.checkboxWrapper">
@@ -380,7 +380,7 @@ onBeforeMount(() => {
 							:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 							:model-value="filter.metadata[0]?.value"
 							data-test-id="execution-filter-saved-data-value-input"
-							@update:model-value="onFilterMetaChange(0, 'value', $event)"
+							@update:model-value="onFilterMetaChange(0, 'value', String($event ?? ''))"
 						/>
 					</N8nTooltip>
 				</div>

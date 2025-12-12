@@ -203,16 +203,17 @@ const trackSearch = () => {
 	}
 };
 
-const onSearchInput = (searchText: string) => {
+const onSearchInput = (searchText: string | number | null) => {
+	const stringValue = String(searchText ?? '');
 	loadingWorkflows.value = true;
 	loadingCollections.value = true;
-	search.value = searchText;
+	search.value = stringValue;
 	void callDebounced(updateSearch, {
 		debounceTime: 500,
 		trailing: true,
 	});
 
-	if (searchText.length === 0) {
+	if (stringValue.length === 0) {
 		trackSearch();
 	}
 };

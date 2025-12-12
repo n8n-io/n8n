@@ -455,9 +455,10 @@ const onUpdateFiltersLength = (length: number) => {
 	hasFilters.value = length > 0;
 };
 
-const onSearch = (s: string) => {
-	filtersModel.value.search = s;
-	emit('update:search', s);
+const onSearch = (s: string | number | null) => {
+	const searchValue = String(s ?? '');
+	filtersModel.value.search = searchValue;
+	emit('update:search', searchValue);
 };
 
 const findNearestPageSize = (size: number): number => {

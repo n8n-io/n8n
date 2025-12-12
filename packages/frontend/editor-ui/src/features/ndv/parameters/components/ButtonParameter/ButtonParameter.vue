@@ -149,11 +149,12 @@ async function onSubmit() {
 	}
 }
 
-function onPromptInput(inputValue: string) {
-	prompt.value = inputValue;
+function onPromptInput(inputValue: string | number | null) {
+	const value = String(inputValue ?? '');
+	prompt.value = value;
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
-		value: inputValue,
+		value,
 	});
 }
 
@@ -235,7 +236,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 						:maxlength="inputFieldMaxLength"
 						:placeholder="parameter.placeholder"
 						:disabled="isReadOnly"
-						@input="onPromptInput"
+						@update:model-value="onPromptInput"
 						@mousemove="updateCursorPositionOnMouseMove($event, activeDrop)"
 						@mouseleave="cleanTextareaRowsData"
 					/>

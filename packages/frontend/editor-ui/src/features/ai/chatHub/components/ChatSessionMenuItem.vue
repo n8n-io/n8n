@@ -109,9 +109,9 @@ watch(
 	>
 		<template v-if="isRenaming" #default>
 			<N8nInput
-				size="small"
 				ref="input"
 				v-model="editedLabel"
+				size="small"
 				@blur="handleBlur"
 				@keydown="handleKeyDown"
 			/>

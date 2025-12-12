@@ -1277,7 +1277,7 @@ const isResolvable = computed<boolean>(() => {
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
-						:isSharedGlobally="isSharedGlobally"
+						:is-shared-globally="isSharedGlobally"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"

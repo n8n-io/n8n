@@ -41,8 +41,7 @@ export function useChatHubSidebarState() {
 		canBeStatic,
 		isStatic: computed(() => canBeStatic.value && isStatic.value),
 		isCollapsed: computed(
-			() =>
-				!isStatic.value && uiStore.isModalActiveById[CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY] !== true,
+			() => !isStatic.value && !uiStore.isModalActiveById[CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY],
 		),
 		toggleOpen,
 		toggleStatic,

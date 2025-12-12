@@ -128,8 +128,8 @@ onUnmounted(() => {
 						<button
 							:class="$style.dismissButton"
 							type="button"
-							@click="handleDismiss"
 							:aria-label="'Dismiss tooltip'"
+							@click="handleDismiss"
 						>
 							<N8nIcon icon="x" size="small" />
 						</button>

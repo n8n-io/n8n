@@ -24,21 +24,23 @@ import {
 	updateChatSettingsApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import {
-	emptyChatModelsResponse,
-	type ChatHubConversationModel,
-	type ChatHubSendMessageRequest,
-	type ChatModelsResponse,
-	type ChatHubSessionDto,
-	type ChatMessageId,
-	type ChatSessionId,
-	type ChatHubMessageDto,
-	type ChatHubAgentDto,
-	type ChatHubCreateAgentRequest,
-	type ChatHubUpdateAgentRequest,
-	type EnrichedStructuredChunk,
-	type ChatHubMessageStatus,
-	type ChatModelDto,
+import { emptyChatModelsResponse } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatProviderSettingsDto,
+	ChatHubConversationModel,
+	ChatHubSendMessageRequest,
+	ChatModelsResponse,
+	ChatHubSessionDto,
+	ChatMessageId,
+	ChatSessionId,
+	ChatHubMessageDto,
+	ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	EnrichedStructuredChunk,
+	ChatHubMessageStatus,
+	ChatModelDto,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -52,12 +54,12 @@ import {
 	createSessionFromStreamingState,
 	isLlmProviderModel,
 	isMatchedAgent,
+	createAiMessageFromStreamingState,
+	flattenModel,
 } from './chat.utils';
-import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
-import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 

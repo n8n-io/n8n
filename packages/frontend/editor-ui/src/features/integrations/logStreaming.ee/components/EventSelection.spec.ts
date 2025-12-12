@@ -253,13 +253,11 @@ describe('EventSelection.ee.vue', () => {
 			});
 
 			// The anonymization checkbox should be checked
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			expect(anonymizeCheckbox?.checked).toBe(true);
 		});
@@ -287,13 +285,11 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			anonymizeCheckbox?.click();
 
@@ -309,13 +305,11 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			anonymizeCheckbox?.click();
 
@@ -384,13 +378,11 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
+			const checkboxes = container.querySelectorAll('.el-checkbox input');
 			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
 				const parent = cb.closest('.el-checkbox');
 				return parent?.textContent?.includes('Anonymize');
-			});
+			}) as HTMLInputElement | undefined;
 
 			const initialValue =
 				logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages;
