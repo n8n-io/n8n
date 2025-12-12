@@ -28,6 +28,7 @@ export interface InputProps {
 
 export interface InputEmits {
 	'update:modelValue': [value: string | number | null];
+	input: [value: string | number | null];
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 	keydown: [event: KeyboardEvent];

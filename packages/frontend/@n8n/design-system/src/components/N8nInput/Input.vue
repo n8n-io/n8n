@@ -100,6 +100,7 @@ const isFocused = ref(false);
 const onInput = (event: Event) => {
 	const target = event.target as HTMLInputElement | HTMLTextAreaElement;
 	emit('update:modelValue', target.value);
+	emit('input', target.value);
 };
 
 // Handle blur event
