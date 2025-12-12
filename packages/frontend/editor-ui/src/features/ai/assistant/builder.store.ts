@@ -6,7 +6,7 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
@@ -38,6 +38,8 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { dedupe } from 'n8n-workflow';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -120,6 +122,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
+	const uiStore = useUIStore();
+	const router = useRouter();
+	const workflowSaver = useWorkflowSaving({ router });
 
 	// Composables
 	const {
@@ -388,6 +393,35 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('User submitted builder message', trackingPayload);
 	}
 
+	/**
+	 * Saves the workflow and returns the version info for message history.
+	 * For new workflows, creates the workflow first.
+	 * For existing workflows, only saves if there are unsaved changes.
+	 * Returns the version ID and timestamp after any save operation.
+	 */
+	async function saveWorkflowAndGetRevertVersion(): Promise<
+		{ id: string; createdAt: string } | undefined
+	> {
+		const isNewWorkflow = workflowsStore.isNewWorkflow;
+		const hasUnsavedChanges = uiStore.stateIsDirty;
+
+		// Save if it's a new workflow or has unsaved changes
+		if (isNewWorkflow || hasUnsavedChanges) {
+			await workflowSaver.saveCurrentWorkflow();
+		}
+
+		const versionId = workflowsStore.workflowVersionId;
+		if (!versionId) return undefined;
+
+		// Use workflow updatedAt as version timestamp
+		// might not be the same as "version.createdAt" but close enough
+		const updatedAt = workflowsStore.workflow.updatedAt;
+		return {
+			id: versionId,
+			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
+		};
+	}
+
 	// Core API functions
 	/**
 	 * Sends a message to the AI builder service and handles the streaming response.
@@ -405,11 +439,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
-		revertVersion?: { id: string; createdAt: string };
 	}) {
 		if (streaming.value) {
 			return;
 		}
+
+		// @todo test error saving
+		const revertVersion = await saveWorkflowAndGetRevertVersion();
 
 		// Close NDV on new message
 		ndvStore.unsetActiveNodeName();
@@ -422,7 +458,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			type = 'message',
 			errorNodeType,
 			executionStatus,
-			revertVersion,
 		} = options;
 
 		// Set initial generation flag if provided

@@ -5,7 +5,6 @@ import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
@@ -28,10 +27,9 @@ const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
-const uiStore = useUIStore();
+const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
-const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
@@ -89,35 +87,6 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
 });
 
-/**
- * Saves the workflow and returns the version info for message history.
- * For new workflows, creates the workflow first.
- * For existing workflows, only saves if there are unsaved changes.
- * Returns the version ID and timestamp after any save operation.
- */
-async function saveWorkflowAndGetRevertVersion(): Promise<
-	{ id: string; createdAt: string } | undefined
-> {
-	const isNewWorkflow = workflowsStore.isNewWorkflow;
-	const hasUnsavedChanges = uiStore.stateIsDirty;
-
-	// Save if it's a new workflow or has unsaved changes
-	if (isNewWorkflow || hasUnsavedChanges) {
-		await workflowSaver.saveCurrentWorkflow();
-	}
-
-	const versionId = workflowsStore.workflowVersionId;
-	if (!versionId) return undefined;
-
-	// Use workflow updatedAt as version timestamp
-	// might not be the same as "version.createdAt" but close enough
-	const updatedAt = workflowsStore.workflow.updatedAt;
-	return {
-		id: versionId,
-		createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
-	};
-}
-
 async function onUserMessage(content: string) {
 	// Reset tidy up flag for each new message exchange
 	shouldTidyUp.value = false;
@@ -125,14 +94,9 @@ async function onUserMessage(content: string) {
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
-	// Save workflow before sending message to get revertVersion for restore functionality
-	// @todo test if error happens while saving?
-	const revertVersion = await saveWorkflowAndGetRevertVersion();
-
 	await builderStore.sendChatMessage({
 		text: content,
 		initialGeneration: isInitialGeneration,
-		revertVersion,
 	});
 }
 
@@ -160,7 +124,6 @@ function onFeedback(feedback: RatingFeedback) {
 }
 
 async function onWorkflowExecuted() {
-	const revertVersion = await saveWorkflowAndGetRevertVersion();
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
@@ -174,7 +137,6 @@ async function onWorkflowExecuted() {
 			type: 'execution',
 			executionStatus: 'error',
 			errorMessage: 'Workflow execution data missing after run attempt.',
-			revertVersion,
 		});
 		return;
 	}
@@ -184,7 +146,6 @@ async function onWorkflowExecuted() {
 			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
 			type: 'execution',
 			executionStatus,
-			revertVersion,
 		});
 		return;
 	}
@@ -209,7 +170,6 @@ async function onWorkflowExecuted() {
 		errorMessage: executionError,
 		errorNodeType,
 		executionStatus: failureStatus,
-		revertVersion,
 	});
 }
 
