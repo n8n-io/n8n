@@ -211,6 +211,7 @@ export function createTestWorkflow({
 		activeVersionId: active ? 'v1' : null,
 		meta: {},
 		pinData,
+		checksum: 'checksum',
 		...rest,
 	};
 }
