@@ -74,6 +74,7 @@ jobs:
     name: Test (Machine ${{ matrix.shard }})
     env:
       CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
