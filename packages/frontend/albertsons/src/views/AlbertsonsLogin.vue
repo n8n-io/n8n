@@ -82,11 +82,6 @@ const router = useRouter();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
-onMounted(async () => {
-	const value = await settingsStore.getSettings();
-	console.log('Settings loaded:', settingsStore);
-});
-
 const isLogin = ref(true);
 const email = ref('');
 const password = ref('');
