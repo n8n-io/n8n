@@ -28,6 +28,12 @@ import {
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
 import { setupGitea } from './n8n-test-container-gitea';
+import {
+	setupKeycloak,
+	getKeycloakN8nEnvironment,
+	waitForKeycloakFromContainer,
+	N8N_KEYCLOAK_CERT_PATH,
+} from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
@@ -92,12 +98,21 @@ export interface N8NConfig {
 	sourceControl?: boolean;
 	taskRunner?: boolean;
 	email?: boolean;
+	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
+	oidc?: boolean;
 }
 
 export interface N8NStack {
 	baseUrl: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
+	/** OIDC configuration when oidc is enabled */
+	oidc?: {
+		/** Discovery URL for OIDC configuration (accessible from host/browser) */
+		discoveryUrl: string;
+		/** Internal discovery URL for n8n container to access Keycloak via Docker network */
+		internalDiscoveryUrl: string;
+	};
 }
 
 /**
@@ -135,12 +150,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		taskRunner = false,
 		sourceControl = false,
 		email = false,
+		oidc = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
-	const usePostgres = postgres || !!queueConfig;
+	const oidcEnabled = !!oidc;
+	// OIDC requires PostgreSQL for SSO support
+	const usePostgres = postgres || !!queueConfig || oidcEnabled;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
 
@@ -155,7 +173,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled ||
 		taskRunnerEnabled ||
 		sourceControlEnabled ||
-		emailEnabled;
+		emailEnabled ||
+		oidcEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -282,6 +301,43 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
+	let earlyAllocatedPort: number | undefined;
+	let earlyAllocatedLoadBalancerPort: number | undefined;
+	if (oidcEnabled) {
+		if (needsLoadBalancer) {
+			earlyAllocatedLoadBalancerPort = await getPort();
+		} else {
+			earlyAllocatedPort = await getPort();
+		}
+	}
+
+	let oidcDiscoveryUrl: string | undefined;
+	let oidcInternalDiscoveryUrl: string | undefined;
+	let keycloakCertPem: string | undefined;
+
+	if (oidcEnabled && network) {
+		log('Starting Keycloak for OIDC...');
+		const n8nPort = needsLoadBalancer ? earlyAllocatedLoadBalancerPort! : earlyAllocatedPort!;
+		const n8nCallbackUrl = `http://localhost:${n8nPort}/rest/sso/oidc/callback`;
+
+		const keycloakResult = await setupKeycloak({
+			projectName: uniqueProjectName,
+			network,
+			n8nCallbackUrl,
+		});
+		containers.push(keycloakResult.container);
+		oidcDiscoveryUrl = keycloakResult.discoveryUrl;
+		oidcInternalDiscoveryUrl = keycloakResult.internalDiscoveryUrl;
+		keycloakCertPem = keycloakResult.certPem;
+
+		log(`Keycloak ready. Discovery URL: ${oidcDiscoveryUrl}`);
+
+		environment = {
+			...environment,
+			...getKeycloakN8nEnvironment(),
+		};
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
@@ -292,11 +348,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			projectName: uniqueProjectName,
 			mainCount,
 			network,
+			hostPort: earlyAllocatedLoadBalancerPort,
 		});
 		containers.push(loadBalancerContainer);
 		log('Caddy load balancer ready');
 
-		const loadBalancerPort = loadBalancerContainer.getMappedPort(80);
+		const loadBalancerPort =
+			earlyAllocatedLoadBalancerPort ?? loadBalancerContainer.getMappedPort(80);
 		baseUrl = `http://localhost:${loadBalancerPort}`;
 		environment = {
 			...environment,
@@ -311,6 +369,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			environment,
 			network,
 			resourceQuota,
+			keycloakCertPem,
 		});
 		containers.push(...instances);
 		log('All n8n instances started');
@@ -320,7 +379,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
 		log('Load balancer is ready');
 	} else {
-		const assignedPort = await getPort();
+		// Use early allocated port if available (OIDC), otherwise allocate new
+		const assignedPort = earlyAllocatedPort ?? (await getPort());
 		baseUrl = `http://localhost:${assignedPort}`;
 		environment = {
 			...environment,
@@ -336,13 +396,24 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			network,
 			directPort: assignedPort,
 			resourceQuota,
+			keycloakCertPem,
 		});
 		containers.push(...instances);
 	}
 
+	if (oidcEnabled && oidcInternalDiscoveryUrl) {
+		log('Verifying Keycloak connectivity from n8n containers...');
+		const n8nContainers = containers.filter((c) => {
+			const name = c.getName();
+			return name.includes('-n8n-main-') || name.endsWith('-n8n');
+		});
+		for (const container of n8nContainers) {
+			await waitForKeycloakFromContainer(container, oidcInternalDiscoveryUrl);
+		}
+		log('Keycloak connectivity verified');
+	}
+
 	if (taskRunnerEnabled && network) {
-		// Connect to first available broker (main or worker)
-		// In queue mode, workers also run task brokers
 		const taskBrokerUri = queueConfig?.workers
 			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
 			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
@@ -371,6 +442,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			await stopN8NStack(containers, network, uniqueProjectName);
 		},
 		containers,
+		...(oidcDiscoveryUrl && {
+			oidc: {
+				discoveryUrl: oidcDiscoveryUrl,
+				internalDiscoveryUrl: oidcInternalDiscoveryUrl!,
+			},
+		}),
 	};
 }
 
@@ -434,6 +511,7 @@ interface CreateInstancesOptions {
 		memory?: number; // in GB
 		cpu?: number; // in cores
 	};
+	keycloakCertPem?: string;
 }
 
 async function createN8NInstances({
@@ -445,6 +523,7 @@ async function createN8NInstances({
 	/** The host port to use for the main instance */
 	directPort,
 	resourceQuota,
+	keycloakCertPem,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 	const log = createElapsedLogger('n8n-instances');
@@ -464,6 +543,7 @@ async function createN8NInstances({
 			networkAlias,
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
+			keycloakCertPem,
 		});
 		instances.push(container);
 		log(`Main ${i}/${mainCount} ready`);
@@ -481,6 +561,7 @@ async function createN8NInstances({
 			isWorker: true,
 			instanceNumber: i,
 			resourceQuota,
+			keycloakCertPem,
 		});
 		instances.push(container);
 		log(`Worker ${i}/${workerCount} ready`);
@@ -502,6 +583,7 @@ interface CreateContainerOptions {
 		memory?: number; // in GB
 		cpu?: number; // in cores
 	};
+	keycloakCertPem?: string;
 }
 
 async function createN8NContainer({
@@ -514,6 +596,7 @@ async function createN8NContainer({
 	networkAlias,
 	directPort,
 	resourceQuota,
+	keycloakCertPem,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
 	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
@@ -531,6 +614,15 @@ async function createN8NContainer({
 		.withName(name)
 		.withLogConsumer(consumer)
 		.withReuse();
+
+	if (keycloakCertPem) {
+		container = container.withCopyContentToContainer([
+			{
+				content: keycloakCertPem,
+				target: N8N_KEYCLOAK_CERT_PATH,
+			},
+		]);
+	}
 
 	if (resourceQuota) {
 		container = container.withResourcesQuota({

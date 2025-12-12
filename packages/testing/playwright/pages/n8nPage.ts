@@ -25,6 +25,7 @@ import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
+import { SettingsSsoPage } from './SettingsSsoPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
@@ -44,6 +45,7 @@ import { DataTableComposer } from '../composables/DataTablesComposer';
 import { ExecutionsComposer } from '../composables/ExecutionsComposer';
 import { MfaComposer } from '../composables/MfaComposer';
 import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
+import { OidcComposer } from '../composables/OidcComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TemplatesComposer } from '../composables/TemplatesComposer';
@@ -88,6 +90,7 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+	readonly settingsSso: SettingsSsoPage;
 
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
@@ -109,6 +112,7 @@ export class n8nPage {
 	readonly credentialsComposer: CredentialsComposer;
 	readonly executionsComposer: ExecutionsComposer;
 	readonly mfaComposer: MfaComposer;
+	readonly oidcComposer: OidcComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly ndvComposer: NodeDetailsViewComposer;
 	readonly templatesComposer: TemplatesComposer;
@@ -156,6 +160,7 @@ export class n8nPage {
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
+		this.settingsSso = new SettingsSsoPage(page);
 
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
@@ -175,6 +180,7 @@ export class n8nPage {
 		this.credentialsComposer = new CredentialsComposer(this);
 		this.executionsComposer = new ExecutionsComposer(this);
 		this.mfaComposer = new MfaComposer(this);
+		this.oidcComposer = new OidcComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.ndvComposer = new NodeDetailsViewComposer(this);
 		this.templatesComposer = new TemplatesComposer(this);
