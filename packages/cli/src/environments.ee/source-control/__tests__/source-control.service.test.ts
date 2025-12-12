@@ -339,6 +339,46 @@ describe('SourceControlService', () => {
 			expect(result).toHaveProperty('statusCode', 200);
 		});
 
+		it('should reset branch to HEAD when export fails', async () => {
+			// ARRANGE
+			const user = mock<User>();
+
+			const mockFile: SourceControlledFile = {
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+
+			(isContainedWithin as jest.Mock).mockReturnValue(true);
+
+			// Mock workflow export to fail
+			const exportError = new Error('Failed to export workflows');
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockRejectedValueOnce(exportError);
+
+			// ACT & ASSERT
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [mockFile],
+					commitMessage: 'Test commit',
+				}),
+			).rejects.toThrow(exportError);
+
+			// Verify no git operations were performed
+			expect(gitService.stage).not.toHaveBeenCalled();
+			expect(gitService.commit).not.toHaveBeenCalled();
+			expect(gitService.push).not.toHaveBeenCalled();
+
+			// Verify resetBranch was called with HEAD to clean up any potential state
+			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
+		});
+
 		it('should reset branch to origin/branch when push fails after commit', async () => {
 			// ARRANGE
 			const user = mock<User>();
