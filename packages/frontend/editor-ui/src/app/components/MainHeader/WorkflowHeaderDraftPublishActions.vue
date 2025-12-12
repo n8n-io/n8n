@@ -231,15 +231,4 @@ defineExpose({
 	position: relative;
 	display: inline-block;
 }
-
-.publishButtonIndicator {
-	position: absolute;
-	top: -2px;
-	right: -2px;
-	width: 7px;
-	height: 7px;
-	background-color: var(--color--primary);
-	border-radius: 50%;
-	box-shadow: 0 0 0 2px var(--color--background--light-3);
-}
 </style>
