@@ -1,4 +1,5 @@
 import getPort from 'get-port';
+import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 import { Agent } from 'undici';
@@ -81,10 +82,6 @@ const KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
 /**
  * Generates a shell script that creates a keystore with self-signed cert using Java keytool,
  * exports the certificate to PEM format, and starts Keycloak with HTTPS.
- *
- * KC_HOSTNAME is set to localhost:{hostPort} - the frontend URL that browser uses.
- * hostname-backchannel-dynamic=true allows n8n container to access via keycloak:8443.
- * The issuer in tokens will be localhost:{hostPort}, matching what browser expects.
  */
 function generateStartupScript(): string {
 	return `#!/bin/bash
@@ -109,10 +106,6 @@ keytool -exportcert \\
   -file ${KEYCLOAK_CERT_PATH} \\
   -storepass password
 
-# Start Keycloak with HTTPS using the generated keystore
-# KC_HOSTNAME uses localhost:{hostPort} - the frontend URL that browser uses
-# hostname-backchannel-dynamic=true allows n8n container to access via keycloak:8443
-# The issuer in tokens will be localhost:{hostPort}, matching what browser expects
 exec /opt/keycloak/bin/kc.sh start-dev \\
   --import-realm \\
   --https-key-store-file=/opt/keycloak/conf/server.keystore \\
@@ -125,16 +118,6 @@ exec /opt/keycloak/bin/kc.sh start-dev \\
 /**
  * Setup Keycloak container for OIDC testing.
  * Uses HTTPS with self-signed certificate generated via Java keytool.
- *
- * KC_HOSTNAME is set to localhost:{hostPort} (frontend URL for browser).
- * - Browser accesses via localhost:{hostPort} (matches KC_HOSTNAME, issuer in tokens)
- * - n8n container accesses via keycloak:8443 (Docker network alias)
- * - hostname-backchannel-dynamic=true allows n8n to use different hostname for backend requests
- *
- * @param projectName Project name for container naming
- * @param network The shared Docker network
- * @param n8nCallbackUrl The n8n OIDC callback URL
- * @returns Container and discovery URLs
  */
 export async function setupKeycloak({
 	projectName,
@@ -160,28 +143,18 @@ export async function setupKeycloak({
 		const container = await new GenericContainer(TEST_CONTAINER_IMAGES.keycloak)
 			.withNetwork(network)
 			.withNetworkAliases(hostname)
-			// Bind container port 8443 to the pre-allocated host port
 			.withExposedPorts({ container: httpsPort, host: allocatedHostPort })
 			.withEnvironment({
 				KEYCLOAK_ADMIN: KEYCLOAK_ADMIN_USER,
 				KEYCLOAK_ADMIN_PASSWORD,
 				KC_HEALTH_ENABLED: 'true',
 				KC_METRICS_ENABLED: 'false',
-				// Pass the host port to the startup script for KC_HOSTNAME
 				KEYCLOAK_HOST_PORT: String(allocatedHostPort),
 			})
 			.withCopyContentToContainer([
-				{
-					content: realmJson,
-					target: '/opt/keycloak/data/import/realm.json',
-				},
-				{
-					content: startupScript,
-					target: '/startup.sh',
-					mode: 0o755,
-				},
+				{ content: realmJson, target: '/opt/keycloak/data/import/realm.json' },
+				{ content: startupScript, target: '/startup.sh', mode: 0o755 },
 			])
-			// Override entrypoint to run our startup script that generates certs
 			.withEntrypoint(['/bin/bash', '/startup.sh'])
 			.withWaitStrategy(
 				Wait.forLogMessage(/Running the server in development mode/).withStartupTimeout(120000),
@@ -192,18 +165,13 @@ export async function setupKeycloak({
 			})
 			.withName(`${projectName}-keycloak`)
 			.withLogConsumer(consumer)
+			.withReuse()
 			.start();
 
-		// Browser uses localhost:{hostPort} to access Keycloak
 		const discoveryUrl = `https://localhost:${allocatedHostPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
-		// n8n container uses Docker network alias keycloak:8443 (same network)
-		const internalDiscoveryUrl = `https://keycloak:${httpsPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
+		const internalDiscoveryUrl = `https://${hostname}:${httpsPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
 
-		// Extract the CA certificate first - it's created by the startup script before Keycloak starts
-		// This allows us to use proper TLS validation for health checks
 		const certPem = await extractCertificate(container);
-
-		// Wait for the discovery endpoint to be available using the cert for TLS validation
 		await waitForKeycloakReady(allocatedHostPort, certPem);
 
 		console.log(`Keycloak discovery URL: ${discoveryUrl}`);
@@ -219,10 +187,7 @@ export async function setupKeycloak({
 	}
 }
 
-/**
- * Extract the CA certificate from the Keycloak container.
- * The certificate is created by the startup script before Keycloak server starts.
- */
+/** Extract the CA certificate from the Keycloak container. */
 async function extractCertificate(
 	container: StartedTestContainer,
 	timeoutMs: number = 30000,
@@ -230,8 +195,6 @@ async function extractCertificate(
 	const startTime = Date.now();
 	const retryIntervalMs = 500;
 
-	// The cert file is created early in the startup script, but we may need to wait
-	// for the container's entrypoint to actually run
 	while (Date.now() - startTime < timeoutMs) {
 		try {
 			const certResult = await container.exec(['cat', KEYCLOAK_CERT_PATH]);
@@ -241,7 +204,7 @@ async function extractCertificate(
 		} catch {
 			// Retry on error
 		}
-		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+		await wait(retryIntervalMs);
 	}
 
 	throw new Error(
@@ -249,10 +212,7 @@ async function extractCertificate(
 	);
 }
 
-/**
- * Poll the Keycloak HTTPS discovery endpoint until it's ready.
- * Uses the provided CA certificate for proper TLS validation.
- */
+/** Poll the Keycloak HTTPS discovery endpoint until it's ready. */
 async function waitForKeycloakReady(
 	port: number,
 	certPem: string,
@@ -262,7 +222,6 @@ async function waitForKeycloakReady(
 	const url = `https://localhost:${port}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
 	const retryIntervalMs = 2000;
 
-	// Create an undici Agent that trusts the Keycloak CA certificate
 	const agent = new Agent({
 		connect: { ca: certPem },
 	});
@@ -280,7 +239,7 @@ async function waitForKeycloakReady(
 			// Retry on connection errors
 		}
 
-		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+		await wait(retryIntervalMs);
 	}
 
 	console.warn(
@@ -288,13 +247,7 @@ async function waitForKeycloakReady(
 	);
 }
 
-/**
- * Poll Keycloak discovery endpoint from inside an n8n container.
- * This ensures Docker networking is ready before proceeding with OIDC configuration.
- * @param n8nContainer The started n8n container to exec into
- * @param discoveryUrl The Keycloak discovery URL to check
- * @param timeoutMs Maximum time to wait for connectivity (default 30s)
- */
+/** Poll Keycloak discovery endpoint from inside an n8n container. */
 export async function waitForKeycloakFromContainer(
 	n8nContainer: StartedTestContainer,
 	discoveryUrl: string,
@@ -305,8 +258,6 @@ export async function waitForKeycloakFromContainer(
 
 	while (Date.now() - startTime < timeoutMs) {
 		try {
-			// Use wget since curl might not be available in n8n image
-			// --no-check-certificate skips TLS verification for self-signed certs
 			const result = await n8nContainer.exec([
 				'wget',
 				'--no-check-certificate',
@@ -316,12 +267,12 @@ export async function waitForKeycloakFromContainer(
 				discoveryUrl,
 			]);
 			if (result.exitCode === 0) {
-				return; // Success - n8n container can reach Keycloak
+				return;
 			}
 		} catch {
 			// Retry on error
 		}
-		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+		await wait(retryIntervalMs);
 	}
 
 	throw new Error(
@@ -332,20 +283,15 @@ export async function waitForKeycloakFromContainer(
 /** Path where the CA certificate will be mounted in n8n containers */
 export const N8N_KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
 
-/**
- * Get environment variables to configure n8n for OIDC with Keycloak.
- * These should be added to the n8n container environment.
- * The Keycloak CA certificate must be mounted at N8N_KEYCLOAK_CERT_PATH.
- */
-export function getKeycloakN8nEnvironment(): Record<string, string> {
+/** Get environment variables to configure n8n for OIDC with Keycloak. */
+export function getKeycloakN8nEnvironment(
+	hostname = 'keycloak',
+	certPath = N8N_KEYCLOAK_CERT_PATH,
+): Record<string, string> {
 	return {
-		// Enable E2E tests mode
 		E2E_TESTS: 'true',
-		// Trust the Keycloak CA certificate via NODE_EXTRA_CA_CERTS
-		NODE_EXTRA_CA_CERTS: N8N_KEYCLOAK_CERT_PATH,
-		// Bypass proxy for all relevant hosts including host.docker.internal
-		NO_PROXY: 'localhost,127.0.0.1,keycloak,host.docker.internal',
-		// Clear any proxy settings that might interfere
+		NODE_EXTRA_CA_CERTS: certPath,
+		NO_PROXY: `localhost,127.0.0.1,${hostname},host.docker.internal`,
 		HTTP_PROXY: '',
 		HTTPS_PROXY: '',
 	};

@@ -73,10 +73,6 @@ export class SidebarPage {
 		return this.page.getByTestId('main-sidebar-settings');
 	}
 
-	getUserMenu(): Locator {
-		return this.page.getByTestId('main-sidebar-settings');
-	}
-
 	getLogoutMenuItem(): Locator {
 		return this.page.getByTestId('main-sidebar-log-out');
 	}
