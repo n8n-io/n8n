@@ -106,7 +106,7 @@ export function useWorkflowSaving({
 				return;
 			case MODAL_CLOSE:
 				// For new workflows that are not saved yet, don't do anything, only close modal
-				if (!workflowsStore.isNewWorkflow) {
+				if (workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 					stayOnCurrentWorkflow(next);
 				}
 

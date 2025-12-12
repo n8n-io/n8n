@@ -114,9 +114,7 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 	return undefined;
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
-});
+
 const workflowName = computed(() => workflowsStore.workflowName);
 const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
 
@@ -199,7 +197,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		<template #customContent>
 			<footer class="mt-2xs">
 				{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer') }}
-				<N8nTooltip :disabled="!isNewWorkflowRoute">
+				<N8nTooltip :disabled="workflowsStore.isWorkflowSaved[currentWorkflowId.value]">
 					<template #content>
 						<div>
 							<N8nLink @click.prevent="onSaveWorkflowClick">{{
@@ -209,7 +207,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 						</div>
 					</template>
 					<N8nLink
-						:class="{ [$style.disabled]: isNewWorkflowRoute }"
+						:class="{ [$style.disabled]: !workflowsStore.isWorkflowSaved[currentWorkflowId.value] }"
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>

@@ -41,10 +41,6 @@ const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
 
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
-});
-
 const runs = computed(() => {
 	return Object.values(evaluationStore.testRunsById ?? {}).filter(
 		({ workflowId }) => workflowId === props.name,
@@ -91,7 +87,7 @@ const { isReady } = useAsyncState(async () => {
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
 	if (isAlreadyInitialized) return;
 
-	if (!isNewWorkflowRoute.value) {
+	if (workflowsStore.isWorkflowSaved[props.name]) {
 		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
 		if (!workflowsStore.workflow.id) {
 			try {

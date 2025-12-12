@@ -85,7 +85,7 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 });
 
 async function onUserMessage(content: string) {
-	const isNewWorkflow = workflowsStore.isNewWorkflow;
+	const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
 	// Save the workflow to get workflow ID which is used for session
 	if (isNewWorkflow) {

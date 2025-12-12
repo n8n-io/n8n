@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, watch, onMounted, nextTick } from 'vue';
 import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
@@ -10,7 +10,7 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -29,7 +29,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
-const route = useRoute();
+
 const workflowSaving = useWorkflowSaving({ router });
 const workflowHelpers = useWorkflowHelpers();
 const { showMessage, showError } = useToast();
@@ -48,10 +48,6 @@ const modalBus = createEventBus();
 const dropdownBus = createEventBus();
 
 const nameInputRef = ref<HTMLElement>();
-
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
-});
 
 const focusOnSelect = () => {
 	dropdownBus.emit('focus');
@@ -93,7 +89,7 @@ const save = async (): Promise<void> => {
 
 	try {
 		let workflowToUpdate: WorkflowDataUpdate | undefined;
-		if (!isNewWorkflowRoute.value) {
+		if (workflowsStore.isWorkflowSaved[props.data.id]) {
 			const {
 				createdAt,
 				updatedAt,

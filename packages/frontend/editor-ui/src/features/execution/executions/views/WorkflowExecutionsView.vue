@@ -41,10 +41,6 @@ const workflowId = computed(() => {
 	return typeof name === 'string' ? name : undefined;
 });
 
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
-});
-
 const executionId = computed(() => {
 	const id = route.params.executionId;
 	return typeof id === 'string' ? id : undefined;
@@ -144,7 +140,7 @@ async function fetchWorkflow() {
 	if (workflowId.value) {
 		// Check if we are loading the Executions tab directly, without having loaded the workflow
 		// Skip fetching if it's a new workflow that hasn't been saved yet
-		if (!workflowsStore.workflow.id && !isNewWorkflowRoute.value) {
+		if (!workflowsStore.workflow.id && workflowsStore.isWorkflowSaved[workflowId.value]) {
 			try {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
@@ -155,7 +151,7 @@ async function fetchWorkflow() {
 		}
 
 		// For new workflows, use the current workflow from the store
-		if (isNewWorkflowRoute.value) {
+		if (!workflowsStore.isWorkflowSaved[workflowId.value]) {
 			workflow.value = workflowsStore.workflow;
 			return;
 		}
