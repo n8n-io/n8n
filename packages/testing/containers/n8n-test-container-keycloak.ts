@@ -21,6 +21,8 @@ export interface KeycloakSetupResult {
 	container: StartedTestContainer;
 	discoveryUrl: string;
 	internalDiscoveryUrl: string;
+	/** PEM-encoded CA certificate for the Keycloak HTTPS server */
+	certPem: string;
 }
 
 /**
@@ -72,9 +74,12 @@ function generateRealmJson(callbackUrl: string): string {
 	});
 }
 
+/** Path where the CA certificate is exported in PEM format inside the container */
+const KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
+
 /**
- * Generates a shell script that creates a keystore with self-signed cert using Java keytool
- * and starts Keycloak with HTTPS.
+ * Generates a shell script that creates a keystore with self-signed cert using Java keytool,
+ * exports the certificate to PEM format, and starts Keycloak with HTTPS.
  *
  * KC_HOSTNAME is set to localhost:{hostPort} - the frontend URL that browser uses.
  * hostname-backchannel-dynamic=true allows n8n container to access via keycloak:8443.
@@ -85,7 +90,6 @@ function generateStartupScript(): string {
 set -e
 
 # Generate self-signed certificate using Java keytool (available in Keycloak image)
-# Note: NODE_TLS_REJECT_UNAUTHORIZED=0 is set in tests, so cert validation is skipped
 keytool -genkeypair \\
   -storepass password \\
   -storetype PKCS12 \\
@@ -95,6 +99,14 @@ keytool -genkeypair \\
   -alias server \\
   -ext "SAN=DNS:localhost,DNS:keycloak,IP:127.0.0.1" \\
   -keystore /opt/keycloak/conf/server.keystore
+
+# Export the certificate to PEM format for Node.js NODE_EXTRA_CA_CERTS
+keytool -exportcert \\
+  -alias server \\
+  -keystore /opt/keycloak/conf/server.keystore \\
+  -rfc \\
+  -file ${KEYCLOAK_CERT_PATH} \\
+  -storepass password
 
 # Start Keycloak with HTTPS using the generated keystore
 # KC_HOSTNAME uses localhost:{hostPort} - the frontend URL that browser uses
@@ -189,12 +201,22 @@ export async function setupKeycloak({
 		// Wait for the discovery endpoint to be available (use localhost for host check)
 		await waitForKeycloakReady(allocatedHostPort);
 
+		// Extract the CA certificate in PEM format for n8n containers to trust
+		const certResult = await container.exec(['cat', KEYCLOAK_CERT_PATH]);
+		if (certResult.exitCode !== 0) {
+			throw new Error(
+				`Failed to read Keycloak certificate from ${KEYCLOAK_CERT_PATH}: ${certResult.output}`,
+			);
+		}
+		const certPem = certResult.output;
+
 		console.log(`Keycloak discovery URL: ${discoveryUrl}`);
 
 		return {
 			container,
 			discoveryUrl,
 			internalDiscoveryUrl,
+			certPem,
 		};
 	} catch (error) {
 		return throwWithLogs(error);
@@ -273,16 +295,20 @@ export async function waitForKeycloakFromContainer(
 	);
 }
 
+/** Path where the CA certificate will be mounted in n8n containers */
+export const N8N_KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
+
 /**
  * Get environment variables to configure n8n for OIDC with Keycloak.
  * These should be added to the n8n container environment.
+ * The Keycloak CA certificate must be mounted at N8N_KEYCLOAK_CERT_PATH.
  */
 export function getKeycloakN8nEnvironment(): Record<string, string> {
 	return {
 		// Enable E2E tests mode
 		E2E_TESTS: 'true',
-		// Accept self-signed certificates from Keycloak (test only!)
-		NODE_TLS_REJECT_UNAUTHORIZED: '0',
+		// Trust the Keycloak CA certificate via NODE_EXTRA_CA_CERTS
+		NODE_EXTRA_CA_CERTS: N8N_KEYCLOAK_CERT_PATH,
 		// Bypass proxy for all relevant hosts including host.docker.internal
 		NO_PROXY: 'localhost,127.0.0.1,keycloak,host.docker.internal',
 		// Clear any proxy settings that might interfere

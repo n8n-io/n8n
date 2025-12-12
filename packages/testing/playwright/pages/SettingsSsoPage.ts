@@ -113,7 +113,6 @@ export class SettingsSsoPage extends BasePage {
 
 	/**
 	 * Fill the OIDC form with the given configuration.
-	 * Clears existing values and types slowly to ensure Vue reactivity picks up the changes.
 	 */
 	async fillOidcForm(config: {
 		discoveryEndpoint: string;
@@ -124,18 +123,11 @@ export class SettingsSsoPage extends BasePage {
 		// Discovery endpoint has a default value that must be cleared first
 		const discoveryInput = this.getOidcDiscoveryEndpointInput();
 		await discoveryInput.click();
-		await this.page.keyboard.press('Meta+A'); // Select all
+		await this.page.keyboard.press('ControlOrMeta+a');
 		await discoveryInput.pressSequentially(config.discoveryEndpoint, { delay: 10 });
 
-		const clientIdInput = this.getOidcClientIdInput();
-		await clientIdInput.click();
-		await this.page.keyboard.press('Meta+A');
-		await clientIdInput.pressSequentially(config.clientId, { delay: 10 });
-
-		const clientSecretInput = this.getOidcClientSecretInput();
-		await clientSecretInput.click();
-		await this.page.keyboard.press('Meta+A');
-		await clientSecretInput.pressSequentially(config.clientSecret, { delay: 10 });
+		await this.getOidcClientIdInput().fill(config.clientId);
+		await this.getOidcClientSecretInput().fill(config.clientSecret);
 
 		if (config.enableLogin !== false) {
 			await this.enableOidcLogin();
