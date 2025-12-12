@@ -5,7 +5,9 @@ import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
@@ -13,6 +15,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { extractSharedFields } from './shared-fields';
+import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
@@ -32,6 +35,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly expressionService: ResolverConfigExpressionService,
 	) {}
 
 	/**
@@ -42,6 +46,9 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 * @param staticData The decrypted static credential data
 	 * @param executionContext Optional execution context containing credential context
 	 * @param workflowSettings Optional workflow settings containing resolver ID fallback
+	 * @param additionalData Additional workflow execution data for expression resolution
+	 * @param mode Workflow execution mode
+	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
 	 * @returns Resolved credential data (either dynamic or static)
 	 * @throws {CredentialResolutionError} If resolution fails and fallback is not allowed
 	 */
@@ -50,6 +57,9 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		additionalData?: IWorkflowExecuteAdditionalData,
+		mode?: WorkflowExecuteMode,
+		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
 		const resolverId =
@@ -92,7 +102,17 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 			// Decrypt and parse resolver configuration
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
-			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
+			let resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
+
+			// Resolve expressions in resolver configuration if context is available
+			if (additionalData && mode) {
+				resolverConfig = this.expressionService.resolveForRuntime(
+					resolverConfig,
+					additionalData,
+					mode,
+					canUseExternalSecrets ?? false,
+				);
+			}
 
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(

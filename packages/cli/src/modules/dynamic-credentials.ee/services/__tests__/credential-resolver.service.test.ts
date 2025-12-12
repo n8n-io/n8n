@@ -12,6 +12,7 @@ import type { DynamicCredentialResolverRepository } from '../../database/reposit
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialResolverService } from '../credential-resolver.service';
+import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
 
 describe('DynamicCredentialResolverService', () => {
 	let service: DynamicCredentialResolverService;
@@ -19,6 +20,7 @@ describe('DynamicCredentialResolverService', () => {
 	let mockRepository: jest.Mocked<DynamicCredentialResolverRepository>;
 	let mockRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
 	let mockCipher: jest.Mocked<Cipher>;
+	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
 
 	const mockResolverImplementation: jest.Mocked<ICredentialResolver> = {
 		metadata: {
@@ -72,11 +74,17 @@ describe('DynamicCredentialResolverService', () => {
 			decrypt: jest.fn(),
 		} as unknown as jest.Mocked<Cipher>;
 
+		mockExpressionService = {
+			resolveForRuntime: jest.fn((config) => config),
+			resolveForValidation: jest.fn(async (config) => await Promise.resolve(config)),
+		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
+
 		service = new DynamicCredentialResolverService(
 			mockLogger,
 			mockRepository,
 			mockRegistry,
 			mockCipher,
+			mockExpressionService,
 		);
 	});
 

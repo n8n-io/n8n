@@ -9,6 +9,7 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
@@ -30,6 +31,7 @@ export interface UpdateResolverParams {
  * Provides CRUD operations with:
  * - Config encryption at rest
  * - Validation against resolver type's config schema
+ * - Expression resolution in config values
  */
 @Service()
 export class DynamicCredentialResolverService {
@@ -38,6 +40,7 @@ export class DynamicCredentialResolverService {
 		private readonly repository: DynamicCredentialResolverRepository,
 		private readonly registry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
+		private readonly expressionService: ResolverConfigExpressionService,
 	) {
 		this.logger = this.logger.scoped('dynamic-credentials');
 	}
@@ -143,18 +146,35 @@ export class DynamicCredentialResolverService {
 
 	/**
 	 * Validates the config against the resolver type's schema.
+	 * Resolves expressions
 	 * @throws {CredentialResolverValidationError} When the resolver type is unknown or config is invalid
 	 */
 	private async validateConfig(
 		type: string,
 		config: CredentialResolverConfiguration,
+		canUseExternalSecrets?: boolean,
 	): Promise<void> {
 		const resolverImplementation = this.registry.getResolverByTypename(type);
 		if (!resolverImplementation) {
 			throw new CredentialResolverValidationError(`Unknown resolver type: ${type}`);
 		}
 
-		await resolverImplementation.validateOptions(config);
+		// Resolve expressions in the config with mock/empty values to validate syntax
+		let resolvedConfig = config;
+		try {
+			resolvedConfig = await this.expressionService.resolveForValidation(
+				config,
+				canUseExternalSecrets ?? false,
+			);
+		} catch (error) {
+			// If expression resolution fails, it means there's a syntax error
+			throw new CredentialResolverValidationError(
+				`Invalid expression in resolver config: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+
+		// Validate the resolved config against the resolver's schema
+		await resolverImplementation.validateOptions(resolvedConfig);
 	}
 
 	/**
