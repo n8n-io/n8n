@@ -1,49 +1,53 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const tableName = 'chat_hub_agents';
+const table = {
+	agents: 'chat_hub_agents',
+	sessions: 'chat_hub_sessions',
+} as const;
 
 export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
 	async up({
-		schemaBuilder: { addColumns, column },
+		schemaBuilder: { addColumns, column, addForeignKey },
 		runQuery,
-		isMysql,
 		isPostgres,
 		escape,
 	}: MigrationContext) {
-		const escapedTableName = escape.tableName(tableName);
-		const escapedIdColumn = escape.columnName('id');
-
 		// Add icon column to agents table (nullable)
-		await addColumns(tableName, [column('icon').json]);
+		await addColumns(table.agents, [column('icon').json]);
 
-		// Change agents.id from UUID to varchar to match foreign key references
+		// For PostgreSQL: convert agentId from varchar(36) to uuid to match agents.id type
 		if (isPostgres) {
 			await runQuery(
-				`ALTER TABLE ${escapedTableName} ALTER COLUMN ${escapedIdColumn} TYPE VARCHAR`,
+				`ALTER TABLE ${escape.tableName(table.sessions)} ALTER COLUMN "agentId" TYPE uuid USING "agentId"::uuid`,
 			);
-		} else if (isMysql) {
-			await runQuery(`ALTER TABLE ${escapedTableName} MODIFY COLUMN \`id\` VARCHAR(255)`);
 		}
+
+		// Clean up orphaned agentId references before adding foreign key constraint
+		await runQuery(
+			`UPDATE ${escape.tableName(table.sessions)} SET "agentId" = NULL WHERE "agentId" IS NOT NULL AND "agentId" NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
+		);
+
+		// Add foreign key constraint for agentId in sessions table
+		await addForeignKey(table.sessions, 'agentId', [table.agents, 'id'], undefined, 'SET NULL');
 	}
 
 	async down({
-		schemaBuilder: { dropColumns },
+		schemaBuilder: { dropColumns, dropForeignKey },
 		runQuery,
-		isMysql,
 		isPostgres,
 		escape,
 	}: MigrationContext) {
-		const escapedTableName = escape.tableName(tableName);
-		const escapedIdColumn = escape.columnName('id');
+		// Drop foreign key constraint
+		await dropForeignKey(table.sessions, 'agentId', [table.agents, 'id']);
 
+		// For PostgreSQL: revert agentId from uuid back to varchar(36)
 		if (isPostgres) {
 			await runQuery(
-				`ALTER TABLE ${escapedTableName} ALTER COLUMN ${escapedIdColumn} TYPE UUID USING ${escapedIdColumn}::UUID`,
+				`ALTER TABLE ${escape.tableName(table.sessions)} ALTER COLUMN "agentId" TYPE varchar(36)`,
 			);
-		} else if (isMysql) {
-			await runQuery(`ALTER TABLE ${escapedTableName} MODIFY COLUMN \`id\` CHAR(36)`);
 		}
 
-		await dropColumns(tableName, ['icon']);
+		// Drop icon column
+		await dropColumns(table.agents, ['icon']);
 	}
 }
