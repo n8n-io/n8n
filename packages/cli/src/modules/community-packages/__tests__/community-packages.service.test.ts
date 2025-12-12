@@ -6,6 +6,7 @@ import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
@@ -175,7 +176,7 @@ describe('CommunityPackagesService', () => {
 			expect(execFile).toHaveBeenCalled();
 		});
 
-		test('should throw especial error when package is not found', async () => {
+		test('should throw special error when package is not found', async () => {
 			const erroringExecMock = ((...args) => {
 				const cb = args[args.length - 1] as ExecFileCallback;
 				const msg = `Something went wrong - ${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR}. Aborting.`;
@@ -649,11 +650,15 @@ describe('CommunityPackagesService', () => {
 			config.reinstallMissing = true;
 			communityPackagesService.installPackage = jest
 				.fn()
-				.mockRejectedValue(new Error('Installation failed'));
+				.mockRejectedValue(
+					new UnexpectedError('Installation failed', { cause: new Error('Upstream Error') }),
+				);
 
 			await communityPackagesService.checkForMissingPackages();
 
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(logger.debug).toHaveBeenCalledWith('Installation failed');
+			expect(logger.debug).toHaveBeenCalledWith('Caused by: Upstream Error');
 			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
 			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
 		});
