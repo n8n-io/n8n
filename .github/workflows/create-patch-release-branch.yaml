@@ -1,0 +1,69 @@
+name: Create Branch For Patch Release
+on:
+  workflow_dispatch:
+    inputs:
+      commit_shas:
+        description: 'Comma-separated commit SHAs'
+        required: true
+      old_version:
+        description: 'Old version to be patched'
+        required: true
+        default: '1.0.0'
+      new_version:
+        description: 'The new patch version'
+        required: true
+        default: '1.0.1'
+      resumeUrl:
+        description: 'n8n workflow resume URL'
+        required: true
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate inputs
+        run: |
+          if ! [[ "${{ inputs.old_version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
+            echo "Invalid old version format: ${{ inputs.old_version }}"
+            exit 1
+          fi
+          if ! [[ "${{ inputs.new_version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
+            echo "Invalid new version format: ${{ inputs.new_version }}"
+            exit 1
+          fi
+      - name: Notify if inputs are invalid
+        if: ${{ failure() }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d '{ "success": false, "message": "The old or new version you provided is invalid, make sure they both follow the SemVer format" }' ${{ inputs.resumeUrl }}
+          exit 1
+      - name: Setup, cherry-pick and push branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git switch "n8n@${{ inputs.old_version }}" --detach
+          BRANCH="patch/${{ inputs.new_version }}"
+          git checkout -b $BRANCH
+          IFS=',' read -ra SHAS <<< "${{ inputs.commit_shas }}"
+          for sha in "${SHAS[@]}"; do
+            sha=$(echo $sha | xargs)
+            if ! git merge-base --is-ancestor $sha HEAD; then
+              echo "Cherry-picking commit $sha"
+              git cherry-pick $sha
+            else
+              echo "Commit $sha is already in the branch, skipping"
+            fi
+          done
+          git push -f origin $BRANCH
+      - name: Notify if cherry-pick is successful
+        if: ${{ success() }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d '{ "success": true }' ${{ inputs.resumeUrl }}
+      - name: Notify if cherry-pick is not successful
+        if: ${{ failure() }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d '{ "success": false, "message": "There was a conflict when trying to create the branch, please do the cherry-pick and resolve the conflicts manually or do not include the PRs that caused the conflict" }' ${{ inputs.resumeUrl }}

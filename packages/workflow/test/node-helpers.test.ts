@@ -5374,8 +5374,8 @@ describe('NodeHelpers', () => {
 
 		it.each([
 			['Create a new user', true],
-			['Test Node', true],
-			['Test Node1', true],
+			['Test Node', false],
+			['Test Node1', false],
 			['Create a new user5', true],
 			['Create a new user in Test Node5', false],
 			['Create a new user 5', false],
@@ -5630,6 +5630,44 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('Create user in Test Node');
 		});
+
+		test.each([
+			['javaScript', 'Code in JavaScript'],
+			['python', 'Code in Python'],
+			['pythonNative', 'Code in Python (Native)'],
+		])(
+			'should return action-based name for Code node with %s language',
+			(language, expectedAction) => {
+				mockNodeTypeDescription.name = 'n8n-nodes-base.code';
+				mockNodeTypeDescription.properties = [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'JavaScript',
+								value: 'javaScript',
+								action: 'Code in JavaScript',
+							},
+							{
+								name: 'Python',
+								value: 'python',
+								action: 'Code in Python',
+							},
+							{
+								name: 'Python (Native)',
+								value: 'pythonNative',
+								action: 'Code in Python (Native)',
+							},
+						],
+						default: 'javaScript',
+					},
+				];
+				const result = makeNodeName({ language }, mockNodeTypeDescription);
+				expect(result).toBe(expectedAction);
+			},
+		);
 	});
 	describe('isTool', () => {
 		it('should return true for a node with AiTool output', () => {

@@ -1,0 +1,141 @@
+{
+	"createdAt": "2021-04-30T10:29:23.378Z",
+	"updatedAt": "2021-04-30T10:29:23.378Z",
+	"id": "193",
+	"name": "ChargeBee:Customer:create:Invoice:list pdfUrl",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "0bd35ca2-b8f6-4357-9315-f2f1d91289ae"
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"properties": {
+					"id": "=Customer{{Date.now()}}",
+					"first_name": "=FirstName{{Date.now()}}"
+				}
+			},
+			"name": "Chargebee",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [510, 270],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "156",
+					"name": "Chargebee API creds"
+				}
+			},
+			"id": "5fe5d283-a430-4963-8fb1-1954889f2682"
+		},
+		{
+			"parameters": {
+				"maxResults": 1
+			},
+			"name": "Chargebee1",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [510, 420],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "156",
+					"name": "Chargebee API creds"
+				}
+			},
+			"id": "7a957a3b-449c-4b38-b9aa-ecc8f67dc431"
+		},
+		{
+			"parameters": {
+				"operation": "pdfUrl",
+				"invoiceId": "={{$node[\"Chargebee1\"].json[\"id\"]}}"
+			},
+			"name": "Chargebee2",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [640, 420],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "156",
+					"name": "Chargebee API creds"
+				}
+			},
+			"id": "484868c1-c294-4998-83cc-7b698d7f77ab"
+		},
+		{
+			"parameters": {
+				"resource": "subscription",
+				"operation": "cancel"
+			},
+			"name": "Chargebee3",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [520, 120],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "156",
+					"name": "Chargebee API creds"
+				}
+			},
+			"disabled": true,
+			"id": "1dd03d89-9883-46d6-923b-bff5c8f40af9"
+		},
+		{
+			"parameters": {
+				"resource": "subscription"
+			},
+			"name": "Chargebee4",
+			"type": "n8n-nodes-base.chargebee",
+			"typeVersion": 1,
+			"position": [670, 120],
+			"credentials": {
+				"chargebeeApi": {
+					"id": "156",
+					"name": "Chargebee API creds"
+				}
+			},
+			"disabled": true,
+			"id": "08be587e-e655-400a-b1d1-e0f637f7c415"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Chargebee",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chargebee1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chargebee1": {
+			"main": [
+				[
+					{
+						"node": "Chargebee2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

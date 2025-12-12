@@ -3,7 +3,7 @@ openapi: 3.0.0
 info:
   title: n8n Public API
   description: n8n Public API
-  termsOfService: https://n8n.io/legal/terms
+  termsOfService: https://n8n.io/legal/#terms
   contact:
     email: hello@n8n.io
   license:
@@ -44,10 +44,14 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
+  /credentials/{id}/transfer:
+    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /executions/{id}/retry:
+    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
@@ -56,14 +60,14 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
+  /workflows/{id}/{versionId}:
+    $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/activate:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /credentials/{id}/transfer:
-    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:

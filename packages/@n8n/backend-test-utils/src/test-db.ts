@@ -1,12 +1,13 @@
 import { GlobalConfig } from '@n8n/config';
 import type { entities } from '@n8n/db';
-import { DbConnection, DbConnectionOptions } from '@n8n/db';
+import { AuthRolesService, DbConnection, DbConnectionOptions } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import { randomString } from 'n8n-workflow';
 
 export const testDbPrefix = 'n8n_test_';
+let isInitialized = false;
 
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
@@ -27,6 +28,8 @@ export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSou
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
+	if (isInitialized) return;
+
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
 	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
@@ -50,6 +53,10 @@ export async function init() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 	await dbConnection.migrate();
+
+	await Container.get(AuthRolesService).init();
+
+	isInitialized = true;
 }
 
 export function isReady() {
@@ -64,17 +71,69 @@ export async function terminate() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.close();
 	dbConnection.connectionState.connected = false;
+	isInitialized = false;
 }
 
-type EntityName = keyof typeof entities | 'InsightsRaw' | 'InsightsByPeriod' | 'InsightsMetadata';
+type EntityName =
+	| keyof typeof entities
+	| 'InsightsRaw'
+	| 'InsightsByPeriod'
+	| 'InsightsMetadata'
+	| 'DataTable'
+	| 'DataTableColumn'
+	| 'ChatHubSession'
+	| 'ChatHubMessage'
+	| 'OAuthClient'
+	| 'AuthorizationCode'
+	| 'AccessToken'
+	| 'RefreshToken'
+	| 'UserConsent'
+	| 'DynamicCredentialEntry'
+	| 'DynamicCredentialResolver';
 
 /**
  * Truncate specific DB tables in a test DB.
  */
 export async function truncate(entities: EntityName[]) {
 	const connection = Container.get(Connection);
+	const dbType = connection.options.type;
 
-	for (const name of entities) {
-		await connection.getRepository(name).delete({});
+	// Disable FK checks for MySQL/MariaDB to handle circular dependencies
+	if (dbType === 'mysql' || dbType === 'mariadb') {
+		await connection.query('SET FOREIGN_KEY_CHECKS=0');
+	}
+
+	try {
+		// Collect junction tables to clean
+		const junctionTablesToClean = new Set<string>();
+
+		// Find all junction tables associated with the entities being truncated
+		for (const name of entities) {
+			try {
+				const metadata = connection.getMetadata(name);
+				for (const relation of metadata.manyToManyRelations) {
+					if (relation.junctionEntityMetadata) {
+						const junctionTableName = relation.junctionEntityMetadata.tablePath;
+						junctionTablesToClean.add(junctionTableName);
+					}
+				}
+			} catch (error) {
+				// Skip
+			}
+		}
+
+		// Clean junction tables first (since they reference the entities)
+		for (const tableName of junctionTablesToClean) {
+			await connection.query(`DELETE FROM ${tableName}`);
+		}
+
+		for (const name of entities) {
+			await connection.getRepository(name).delete({});
+		}
+	} finally {
+		// Re-enable FK checks
+		if (dbType === 'mysql' || dbType === 'mariadb') {
+			await connection.query('SET FOREIGN_KEY_CHECKS=1');
+		}
 	}
 }

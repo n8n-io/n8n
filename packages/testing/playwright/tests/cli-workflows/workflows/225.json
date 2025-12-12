@@ -1,0 +1,498 @@
+{
+	"createdAt": "2021-07-06T12:49:19.325Z",
+	"updatedAt": "2021-07-09T13:11:16.807Z",
+	"id": "225",
+	"name": "Salesmate:Company:*:Deal:*:Activity:*",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "d47537bc-67a1-47ac-9410-957dda70e3f4"
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"name": "=Company{{Date.now()}}",
+				"owner": 1,
+				"additionalFields": {
+					"description": "descrip company"
+				}
+			},
+			"name": "Salesmate",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [450, 150],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "9e381841-e89b-4231-a1ca-b58c2b894dfc"
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "get",
+				"id": "={{$node[\"Salesmate\"].json[\"id\"]}}"
+			},
+			"name": "Salesmate1",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [600, 150],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "da6626ca-4b9e-4cec-bf60-103a042ac6f3"
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "update",
+				"id": "={{$node[\"Salesmate\"].json[\"id\"]}}",
+				"updateFields": {
+					"name": "=Updated{{$node[\"Salesmate\"].json[\"name\"]}}",
+					"description": "=Updated - {{$node[\"Salesmate\"].json[\"description\"]}}"
+				}
+			},
+			"name": "Salesmate2",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [750, 150],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "9aed3a7e-ec9c-4ff0-81b7-feec1f0ecb19"
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {
+					"fields": "id,name,description",
+					"sortBy": ""
+				},
+				"filters": {
+					"filtersUi": {
+						"conditions": {
+							"conditionsUi": [
+								{
+									"condition": "STARTS_WITH",
+									"value": "Updated"
+								}
+							]
+						}
+					}
+				}
+			},
+			"name": "Salesmate3",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [900, 150],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "1473e087-a4e1-42da-8ef9-a3bbd86727ce"
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "delete",
+				"id": "={{$node[\"Salesmate\"].json[\"id\"]}}"
+			},
+			"name": "Salesmate4",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [1050, 150],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "85405bf3-34f5-495b-9f56-3cc5c6825b89"
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"title": "=Deal{{Date.now()}}",
+				"owner": 1,
+				"primaryContact": 2,
+				"pipeline": "Sales",
+				"stage": "New (Untouched)",
+				"currency": "USD",
+				"additionalFields": {
+					"description": "description",
+					"dealValue": 100
+				}
+			},
+			"name": "Salesmate5",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "30c81868-cea1-44bd-bacf-a08b131e4a42"
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "get",
+				"id": "={{$node[\"Salesmate5\"].json[\"id\"]}}"
+			},
+			"name": "Salesmate6",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "4959dbb6-bc71-4b26-87f6-9bb86829dc53"
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "update",
+				"id": "={{$node[\"Salesmate5\"].json[\"id\"]}}",
+				"updateFields": {
+					"title": "=Updated{{$node[\"Salesmate6\"].json[\"title\"]}}",
+					"status": "Lost",
+					"stage": "Contacted"
+				}
+			},
+			"name": "Salesmate7",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "0af25087-9407-4327-bb19-85a7c468ae19"
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {
+					"sortBy": "createdAt",
+					"sortOrder": "desc"
+				}
+			},
+			"name": "Salesmate8",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [900, 300],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "9ec365f7-9638-42dd-9aa6-9342a4dacd46"
+		},
+		{
+			"parameters": {
+				"resource": "deal",
+				"operation": "delete",
+				"id": "={{$node[\"Salesmate5\"].json[\"id\"]}}"
+			},
+			"name": "Salesmate9",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [1050, 300],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "97f624b7-65f4-4192-8e9d-3801ea3ca34c"
+		},
+		{
+			"parameters": {
+				"title": "=Activity{{Date.now()}}",
+				"owner": 1,
+				"type": "meeting",
+				"additionalFields": {
+					"description": "act descrp",
+					"duration": 30
+				}
+			},
+			"name": "Salesmate10",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [450, 450],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "766fead2-c755-41cc-b43d-394a57791d74"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"id": "={{$node[\"Salesmate10\"].json[\"id\"]}}"
+			},
+			"name": "Salesmate11",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [600, 450],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "7df4f89c-f88d-49d4-b22c-9c5caf9bef69"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"id": "={{$node[\"Salesmate10\"].json[\"id\"]}}",
+				"updateFields": {
+					"title": "=Updated{{$node[\"Salesmate11\"].json[\"title\"]}}",
+					"description": "Updated description",
+					"isCompleted": true
+				}
+			},
+			"name": "Salesmate12",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [750, 450],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "f4498a03-3082-4bba-9531-ff896042b330"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"options": {
+					"sortBy": "createdAt",
+					"sortOrder": "desc"
+				}
+			},
+			"name": "Salesmate13",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [900, 450],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "c2f0236f-1e0f-47bd-b53a-daf3f468e3ba"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"id": "={{$node[\"Salesmate10\"].json[\"id\"]}}"
+			},
+			"name": "Salesmate14",
+			"type": "n8n-nodes-base.salesmate",
+			"typeVersion": 1,
+			"position": [1050, 450],
+			"credentials": {
+				"salesmateApi": {
+					"id": "218",
+					"name": "Salesmate API creds"
+				}
+			},
+			"id": "d602aba4-2d19-42cd-9e1c-735f2ffae4c4"
+		}
+	],
+	"connections": {
+		"Salesmate": {
+			"main": [
+				[
+					{
+						"node": "Salesmate1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate1": {
+			"main": [
+				[
+					{
+						"node": "Salesmate2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate2": {
+			"main": [
+				[
+					{
+						"node": "Salesmate3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate3": {
+			"main": [
+				[
+					{
+						"node": "Salesmate4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate5": {
+			"main": [
+				[
+					{
+						"node": "Salesmate6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate6": {
+			"main": [
+				[
+					{
+						"node": "Salesmate7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate7": {
+			"main": [
+				[
+					{
+						"node": "Salesmate8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate8": {
+			"main": [
+				[
+					{
+						"node": "Salesmate9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate10": {
+			"main": [
+				[
+					{
+						"node": "Salesmate11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate11": {
+			"main": [
+				[
+					{
+						"node": "Salesmate12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate12": {
+			"main": [
+				[
+					{
+						"node": "Salesmate13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesmate13": {
+			"main": [
+				[
+					{
+						"node": "Salesmate14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Salesmate",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesmate5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Salesmate10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

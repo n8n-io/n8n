@@ -15,3 +15,5 @@ properties:
   type:
     type: string
     readOnly: true
+  project:
+    $ref: '../../../projects/spec/schemas/project.yml'

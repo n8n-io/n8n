@@ -1,0 +1,67 @@
+{
+	"name": "GraphQL Refersh Token",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "ae67b437-48c0-4c4b-9c8f-005b8911ca5f",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [32, 80]
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"endpoint": "http://test/graphql",
+				"requestFormat": "json",
+				"query": "query { foo }"
+			},
+			"name": "GraphQL",
+			"type": "n8n-nodes-base.graphql",
+			"typeVersion": 1,
+			"position": [256, 80],
+			"id": "6cb4c117-907a-40b9-b3ba-cd3756b1cb7b",
+			"credentials": {
+				"oAuth2Api": {
+					"id": "PpmTbnw41Q2nqqoW",
+					"name": "Dummy (local)"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"GraphQL": [
+			{
+				"json": {
+					"data": {
+						"foo": "bar"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "GraphQL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "659c76f4-ac29-4c2f-bf40-70b476afbc1d",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
+	},
+	"id": "O4IzQ2D7h7cfZtB4",
+	"tags": []
+}

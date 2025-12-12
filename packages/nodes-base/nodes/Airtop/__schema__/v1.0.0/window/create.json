@@ -4,9 +4,6 @@
         "data": {
             "type": "object",
             "properties": {
-                "liveViewUrl": {
-                    "type": "string"
-                },
                 "targetId": {
                     "type": "string"
                 },
@@ -36,5 +33,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

@@ -1,0 +1,350 @@
+{
+	"createdAt": "2021-06-04T11:16:11.926Z",
+	"updatedAt": "2021-07-16T09:34:37.952Z",
+	"id": "215",
+	"name": "EditImage:ALL",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "42877422-da89-4a28-a056-65fae3293498"
+		},
+		{
+			"parameters": {
+				"operation": "blur",
+				"blur": 4,
+				"options": {}
+			},
+			"name": "Edit Image",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [650, 300],
+			"id": "afe688e3-fa5c-4a6f-a998-06ac9feb4713"
+		},
+		{
+			"parameters": {
+				"filePath": "/tmp/n8n-logo.png"
+			},
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"id": "94cee769-2dd7-4066-a489-79d3efc8b699"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"name": "Edit Image1",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [850, 300],
+			"id": "73af2807-4dbb-4653-9421-d43e18d6b3dd"
+		},
+		{
+			"parameters": {
+				"operation": "composite",
+				"dataPropertyNameComposite": "data",
+				"positionX": 100,
+				"positionY": 50,
+				"options": {}
+			},
+			"name": "Edit Image2",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [2400, 280],
+			"id": "9119f721-2eb0-4972-8c7d-d5b32022a340"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"width": 1000,
+				"height": 1000,
+				"options": {}
+			},
+			"name": "Edit Image3",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [1050, 450],
+			"id": "db874150-8b35-4db7-9f04-8fd6a0da0edc"
+		},
+		{
+			"parameters": {
+				"operation": "draw",
+				"options": {}
+			},
+			"name": "Edit Image4",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [1250, 450],
+			"id": "ec763bc5-8acf-4a6c-8377-180f9d67337d"
+		},
+		{
+			"parameters": {
+				"operation": "resize",
+				"options": {}
+			},
+			"name": "Edit Image5",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [1450, 450],
+			"id": "b59007d8-29c5-4a08-a04f-76837cb041ba"
+		},
+		{
+			"parameters": {
+				"operation": "information"
+			},
+			"name": "Edit Image6",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [850, 450],
+			"notes": "CAP_RESULTS_LENGTH=1\nIGNORED_PROPERTIES=User Time",
+			"id": "b5e4bfc7-16e9-4793-a309-190df1e57444"
+		},
+		{
+			"parameters": {
+				"operation": "rotate",
+				"rotate": 45,
+				"options": {}
+			},
+			"name": "Edit Image7",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [1650, 450],
+			"id": "4e3d7eb5-33ae-4867-8130-ef928b61ecee"
+		},
+		{
+			"parameters": {
+				"operation": "shear",
+				"degreesX": 15,
+				"degreesY": 30,
+				"options": {}
+			},
+			"name": "Edit Image8",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [1850, 450],
+			"id": "a45b3d3f-95f0-4bbc-b1df-a5c42f8102c9"
+		},
+		{
+			"parameters": {
+				"operation": "text",
+				"text": "Testing",
+				"options": {}
+			},
+			"name": "Edit Image9",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [2050, 450],
+			"id": "d12a6f88-9b7a-4359-ae24-5f098cb438be"
+		},
+		{
+			"parameters": {
+				"operation": "crop",
+				"options": {}
+			},
+			"name": "Edit Image10",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [2250, 450],
+			"id": "0be43f04-569f-40f2-8f1c-c4cbfbb228d0"
+		},
+		{
+			"parameters": {
+				"operation": "multiStep",
+				"operations": {
+					"operations": [
+						{
+							"operation": "blur",
+							"blur": 3
+						},
+						{
+							"operation": "border",
+							"borderWidth": 3,
+							"borderHeight": 3,
+							"borderColor": "#FF7410"
+						},
+						{
+							"operation": "draw",
+							"color": "#4b4b4b00",
+							"cornerRadius": 50
+						},
+						{
+							"operation": "rotate",
+							"rotate": 180
+						},
+						{
+							"operation": "text",
+							"text": "Reversed"
+						},
+						{
+							"operation": "resize"
+						},
+						{
+							"operation": "shear",
+							"degreesX": 5,
+							"degreesY": 10
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Edit Image11",
+			"type": "n8n-nodes-base.editImage",
+			"typeVersion": 1,
+			"position": [650, 450],
+			"notes": "IGNORED_PROPERTIES=User Time",
+			"id": "620d342b-8f65-492e-9caf-a77b9b037fa5"
+		}
+	],
+	"connections": {
+		"Edit Image": {
+			"main": [
+				[
+					{
+						"node": "Edit Image1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Edit Image",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Image11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image1": {
+			"main": [
+				[
+					{
+						"node": "Edit Image3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image3": {
+			"main": [
+				[
+					{
+						"node": "Edit Image4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image4": {
+			"main": [
+				[
+					{
+						"node": "Edit Image5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image5": {
+			"main": [
+				[
+					{
+						"node": "Edit Image7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image7": {
+			"main": [
+				[
+					{
+						"node": "Edit Image8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image8": {
+			"main": [
+				[
+					{
+						"node": "Edit Image9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image9": {
+			"main": [
+				[
+					{
+						"node": "Edit Image10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image10": {
+			"main": [
+				[
+					{
+						"node": "Edit Image2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image11": {
+			"main": [
+				[
+					{
+						"node": "Edit Image6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

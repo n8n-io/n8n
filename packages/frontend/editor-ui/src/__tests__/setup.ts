@@ -2,11 +2,40 @@ import '@testing-library/jest-dom';
 import 'fake-indexeddb/auto';
 import { configure } from '@testing-library/vue';
 import 'core-js/proposals/set-methods-v2';
+import englishBaseText from '@n8n/i18n/locales/en.json';
+import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
+import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 
 // Avoid tests failing because of difference between local and GitHub actions timezone
 process.env.TZ = 'UTC';
 
 configure({ testIdAttribute: 'data-test-id' });
+
+// Create DOM containers for Element Plus components before each test
+beforeEach(() => {
+	// Create app-grid container for toasts
+	const appGrid = document.createElement('div');
+	appGrid.id = 'app-grid';
+	document.body.appendChild(appGrid);
+
+	// Create app-modals container for modals
+	const appModals = document.createElement('div');
+	appModals.id = APP_MODALS_ELEMENT_ID;
+	document.body.appendChild(appModals);
+});
+
+afterEach(() => {
+	// Clean up only our specific DOM containers to avoid interfering with Vue's unmounting
+	const appGrid = document.getElementById('app-grid');
+	const appModals = document.getElementById(APP_MODALS_ELEMENT_ID);
+
+	if (appGrid) {
+		appGrid.remove();
+	}
+	if (appModals) {
+		appModals.remove();
+	}
+});
 
 window.ResizeObserver =
 	window.ResizeObserver ||
@@ -117,3 +146,53 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 	writable: true,
 	value: vi.fn(),
 });
+
+class SpeechSynthesisUtterance {
+	text = '';
+	lang = '';
+	voice = null;
+	volume = 1;
+	rate = 1;
+	pitch = 1;
+	onstart = null;
+	onend = null;
+	onerror = null;
+	onpause = null;
+	onresume = null;
+	onmark = null;
+	onboundary = null;
+
+	constructor(text?: string) {
+		if (text) {
+			this.text = text;
+		}
+	}
+
+	addEventListener = vi.fn();
+	removeEventListener = vi.fn();
+	dispatchEvent = vi.fn(() => true);
+}
+
+Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+	writable: true,
+	value: SpeechSynthesisUtterance,
+});
+
+Object.defineProperty(window, 'speechSynthesis', {
+	writable: true,
+	value: {
+		cancel: vi.fn(),
+		speak: vi.fn(),
+		pause: vi.fn(),
+		resume: vi.fn(),
+		getVoices: vi.fn(() => []),
+		pending: false,
+		speaking: false,
+		paused: false,
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(() => true),
+	},
+});
+
+loadLanguage('en', englishBaseText as LocaleMessages);

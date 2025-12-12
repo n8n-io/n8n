@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
@@ -25,7 +25,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 

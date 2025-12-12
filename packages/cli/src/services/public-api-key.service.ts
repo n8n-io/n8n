@@ -1,9 +1,8 @@
-import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
+import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
+import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -11,10 +10,10 @@ import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { EventService } from '@/events/event.service';
-
 import { JwtService } from './jwt.service';
 import { LastActiveAtService } from './last-active-at.service';
+
+import { EventService } from '@/events/event.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
@@ -42,12 +41,12 @@ export class PublicApiKeyService {
 	) {
 		const apiKey = this.generateApiKey(user, expiresAt);
 		await this.apiKeyRepository.insert(
-			// @ts-ignore CAT-957
 			this.apiKeyRepository.create({
 				userId: user.id,
 				apiKey,
 				label,
 				scopes,
+				audience: API_KEY_AUDIENCE,
 			}),
 		);
 
@@ -59,7 +58,10 @@ export class PublicApiKeyService {
 	 * @param user - The user for whom to retrieve and redact API keys.
 	 */
 	async getRedactedApiKeysForUser(user: User) {
-		const apiKeys = await this.apiKeyRepository.findBy({ userId: user.id });
+		const apiKeys = await this.apiKeyRepository.findBy({
+			userId: user.id,
+			audience: API_KEY_AUDIENCE,
+		});
 		return apiKeys.map((apiKeyRecord) => ({
 			...apiKeyRecord,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
@@ -71,6 +73,18 @@ export class PublicApiKeyService {
 		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
 	}
 
+	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
+		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
+			const userApiKeys = await em.find(ApiKey, {
+				where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			});
+
+			return await Promise.all(
+				userApiKeys.map(async (apiKey) => await em.delete(ApiKey, { id: apiKey.id })),
+			);
+		});
+	}
+
 	async updateApiKeyForUser(
 		user: User,
 		apiKeyId: string,
@@ -80,12 +94,15 @@ export class PublicApiKeyService {
 	}
 
 	private async getUserForApiKey(apiKey: string) {
-		return await this.userRepository
-			.createQueryBuilder('user')
-			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
-			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select('user')
-			.getOne();
+		return await this.userRepository.findOne({
+			where: {
+				apiKeys: {
+					apiKey,
+					audience: API_KEY_AUDIENCE,
+				},
+			},
+			relations: ['role'],
+		});
 	}
 
 	/**
@@ -117,6 +134,8 @@ export class PublicApiKeyService {
 			const user = await this.getUserForApiKey(providedApiKey);
 
 			if (!user) return false;
+
+			if (user.disabled) return false;
 
 			// Legacy API keys are not JWTs and do not need to be verified.
 			if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
@@ -162,14 +181,14 @@ export class PublicApiKeyService {
 		return decoded?.exp ?? null;
 	};
 
-	apiKeyHasValidScopesForRole(role: GlobalRole, apiKeyScopes: ApiKeyScope[]) {
+	apiKeyHasValidScopesForRole(role: AuthPrincipal, apiKeyScopes: ApiKeyScope[]) {
 		const scopesForRole = getApiKeyScopesForRole(role);
 		return apiKeyScopes.every((scope) => scopesForRole.includes(scope));
 	}
 
 	async apiKeyHasValidScopes(apiKey: string, endpointScope: ApiKeyScope) {
 		const apiKeyData = await this.apiKeyRepository.findOne({
-			where: { apiKey },
+			where: { apiKey, audience: API_KEY_AUDIENCE },
 			select: { scopes: true },
 		});
 		if (!apiKeyData) return false;
@@ -202,7 +221,7 @@ export class PublicApiKeyService {
 		const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
 		const userApiKeys = await manager.find(ApiKey, {
-			where: { userId: user.id },
+			where: { userId: user.id, audience: API_KEY_AUDIENCE },
 		});
 
 		const keysWithOwnerScopes = userApiKeys.filter((apiKey) =>

@@ -1,4 +1,9 @@
+import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
+import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -6,9 +11,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -20,7 +22,7 @@ export class LmChatAwsBedrock implements INodeType {
 		name: 'lmChatAwsBedrock',
 		icon: 'file:bedrock.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Language Model AWS Bedrock',
 		defaults: {
 			name: 'AWS Bedrock Chat Model',
@@ -57,13 +59,44 @@ export class LmChatAwsBedrock implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
+				displayName: 'Model Source',
+				name: 'modelSource',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				options: [
+					{
+						name: 'On-Demand Models',
+						value: 'onDemand',
+						description: 'Standard foundation models with on-demand pricing',
+					},
+					{
+						name: 'Inference Profiles',
+						value: 'inferenceProfile',
+						description:
+							'Cross-region inference profiles (required for models like Claude Sonnet 4 and others)',
+					},
+				],
+				default: 'onDemand',
+				description: 'Choose between on-demand foundation models or inference profiles',
+			},
+			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
+				displayOptions: {
+					hide: {
+						modelSource: ['inferenceProfile'],
+					},
+				},
 				typeOptions: {
+					loadOptionsDependsOn: ['modelSource'],
 					loadOptions: {
 						routing: {
 							request: {
@@ -84,6 +117,62 @@ export class LmChatAwsBedrock implements INodeType {
 											name: '={{$responseItem.modelName}}',
 											description: '={{$responseItem.modelArn}}',
 											value: '={{$responseItem.modelId}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				allowArbitraryValues: true,
+				description:
+					'The inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-use.html">Learn more</a>.',
+				displayOptions: {
+					show: {
+						modelSource: ['inferenceProfile'],
+					},
+				},
+				typeOptions: {
+					loadOptionsDependsOn: ['modelSource'],
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/inference-profiles?maxResults=1000',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'inferenceProfileSummaries',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.inferenceProfileName}}',
+											description:
+												'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
+											value: '={{$responseItem.inferenceProfileId}}',
 										},
 									},
 									{
@@ -135,26 +224,45 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aws');
+		const credentials = await this.getCredentials<{
+			region: string;
+			secretAccessKey: string;
+			accessKeyId: string;
+			sessionToken: string;
+		}>('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
 		};
 
+		// We set-up client manually to pass httpAgent and httpsAgent
+		const proxyAgent = getNodeProxyAgent();
+		const clientConfig: BedrockRuntimeClientConfig = {
+			region: credentials.region,
+			credentials: {
+				secretAccessKey: credentials.secretAccessKey,
+				accessKeyId: credentials.accessKeyId,
+				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+			},
+		};
+
+		if (proxyAgent) {
+			clientConfig.requestHandler = new NodeHttpHandler({
+				httpAgent: proxyAgent,
+				httpsAgent: proxyAgent,
+			});
+		}
+
+		// Pass the pre-configured client to avoid credential resolution proxy issues
+		const client = new BedrockRuntimeClient(clientConfig);
+
 		const model = new ChatBedrockConverse({
-			region: credentials.region as string,
+			client,
 			model: modelName,
+			region: credentials.region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
-			clientConfig: {
-				httpAgent: getProxyAgent(),
-			},
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
-			},
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});

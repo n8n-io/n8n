@@ -1,0 +1,204 @@
+{
+	"createdAt": "2021-03-15T11:07:38.626Z",
+	"updatedAt": "2021-07-15T15:43:31.557Z",
+	"id": "135",
+	"name": "Cortex:Analyzer:execute:Job:report get:Responder:execute",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "746052e5-aa2d-44d8-9868-51eac17d07b2"
+		},
+		{
+			"parameters": {
+				"analyzer": "f4abc1b633b80f45af165970793fd4fd::Abuse_Finder_3_0",
+				"observableType": "ip",
+				"observableValue": "129.178.188.205",
+				"tlp": 1,
+				"additionalFields": {}
+			},
+			"name": "Cortex",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [490, 300],
+			"credentials": {
+				"cortexApi": {
+					"id": "103",
+					"name": "Cortex API creds"
+				}
+			},
+			"id": "a020251f-8fc4-4257-8038-0092bb07209b"
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "report",
+				"jobId": "={{$node[\"Cortex\"].json[\"_id\"]}}"
+			},
+			"name": "Cortex1",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [640, 300],
+			"credentials": {
+				"cortexApi": {
+					"id": "103",
+					"name": "Cortex API creds"
+				}
+			},
+			"id": "c32de960-141e-4fdb-8b0f-dfd08fc3b28a"
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"jobId": "={{$node[\"Cortex\"].json[\"_id\"]}}"
+			},
+			"name": "Cortex2",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [800, 300],
+			"credentials": {
+				"cortexApi": {
+					"id": "103",
+					"name": "Cortex API creds"
+				}
+			},
+			"id": "c2072875-c609-4eb8-88e7-2bba3a8d0a49"
+		},
+		{
+			"parameters": {
+				"resource": "responder",
+				"responder": "fbe415a38eb649eb7df174aa11a32cfe::KnowBe4_1_0",
+				"entityType": "case_artifact",
+				"parameters": {
+					"values": {
+						"dataType": "ip",
+						"data": "129.178.188.205",
+						"message": "test",
+						"startDate": "2021-03-23T23:00:00.000Z",
+						"ioc": true,
+						"status": "Ok"
+					}
+				}
+			},
+			"name": "Cortex3",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [950, 300],
+			"credentials": {
+				"cortexApi": {
+					"id": "103",
+					"name": "Cortex API creds"
+				}
+			},
+			"id": "47ccf815-64bd-469f-b836-6d3749cfc7cb"
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "report",
+				"jobId": "={{$node[\"Cortex3\"].json[\"_id\"]}}"
+			},
+			"name": "Cortex4",
+			"type": "n8n-nodes-base.cortex",
+			"typeVersion": 1,
+			"position": [1250, 300],
+			"credentials": {
+				"cortexApi": {
+					"id": "103",
+					"name": "Cortex API creds"
+				}
+			},
+			"disabled": true,
+			"id": "efec07a1-aa91-49e0-9c2c-3f2c222fa90f"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\nawait sleep(10000);\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 4 seconds",
+			"type": "n8n-nodes-base.function",
+			"position": [1100, 300],
+			"typeVersion": 1,
+			"id": "68f7efca-c385-4642-814f-3123f7e892ee"
+		}
+	],
+	"connections": {
+		"Cortex": {
+			"main": [
+				[
+					{
+						"node": "Cortex1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cortex1": {
+			"main": [
+				[
+					{
+						"node": "Cortex2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cortex2": {
+			"main": [
+				[
+					{
+						"node": "Cortex3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Cortex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cortex3": {
+			"main": [
+				[
+					{
+						"node": "Sleep 4 seconds",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 4 seconds": {
+			"main": [
+				[
+					{
+						"node": "Cortex4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

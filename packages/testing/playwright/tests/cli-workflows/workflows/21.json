@@ -1,0 +1,427 @@
+{
+	"createdAt": "2021-02-16T16:12:15.992Z",
+	"updatedAt": "2021-11-12T12:09:08.000Z",
+	"id": "21",
+	"name": "Hubspot:Deal: create update getall search getRecentlyModified getRecentlyCreated get delete:Ticket: create update get All get delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [180, 300],
+			"id": "50ba36ae-2d60-4030-8b52-19900aa73d75"
+		},
+		{
+			"parameters": {
+				"stage": "appointmentscheduled",
+				"additionalFields": {
+					"dealName": "testDeal"
+				}
+			},
+			"name": "Hubspot",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [370, 230],
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "45e9896b-745e-45ea-b1e9-56a18bb97280"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"name": "Hubspot1",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [650, 230],
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "635d61b8-0527-4800-baa6-1b17664fc2d4"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"dealId": "={{$json[\"dealId\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Hubspot2",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [1250, 230],
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "d935d2bd-67be-4d9a-8acb-627cd9ef3523"
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"limit": 1,
+				"filterGroupsUi": {
+					"filterGroupsValues": []
+				},
+				"additionalFields": {}
+			},
+			"name": "Hubspot3",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [780, 230],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "5d8cead1-67b6-45ad-96c1-99e8120b1073"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"dealId": "={{$json[\"dealId\"]}}",
+				"updateFields": {
+					"dealName": "dealTestUpdated"
+				}
+			},
+			"name": "Hubspot4",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [500, 230],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "52b97d30-6e05-44c6-a4bc-4cdbf14ed2e8"
+		},
+		{
+			"parameters": {
+				"operation": "getRecentlyModified",
+				"limit": 1,
+				"filters": {}
+			},
+			"name": "Hubspot5",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [930, 230],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "d491514d-4b16-440a-ac45-b770499f9727"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"dealId": "={{$json[\"dealId\"]}}"
+			},
+			"name": "Hubspot6",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [1380, 230],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "ef41388b-da7e-4caf-8d28-fb23a8ec3b36"
+		},
+		{
+			"parameters": {
+				"operation": "getRecentlyCreated",
+				"limit": 1,
+				"filters": {}
+			},
+			"name": "Hubspot7",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [1100, 230],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "517e45f8-7554-4fa9-8cdb-77da84b51846"
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"pipelineId": "0",
+				"stageId": "3",
+				"ticketName": "testTicket",
+				"additionalFields": {}
+			},
+			"name": "Hubspot8",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [370, 400],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "d6a94b35-974c-4683-8c46-41fbc28a96ff"
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": "={{$json[\"objectId\"]}}",
+				"updateFields": {}
+			},
+			"name": "Hubspot9",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [530, 400],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "d9f184a9-a4af-4657-963c-a6787997263d"
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "getAll",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Hubspot10",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [680, 400],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "f70f062d-d0ef-421f-9c42-36209102d837"
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": "={{$json[\"objectId\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Hubspot11",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [830, 400],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "489a9719-6fd8-4c48-8fbe-9acd0c1508f9"
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": "={{$json[\"objectId\"]}}"
+			},
+			"name": "Hubspot12",
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [990, 400],
+			"notesInFlow": false,
+			"alwaysOutputData": true,
+			"credentials": {
+				"hubspotApi": {
+					"id": "11",
+					"name": "hubsport api key"
+				}
+			},
+			"id": "fcdd8b16-ab62-4093-aa90-043bf3b22554"
+		}
+	],
+	"connections": {
+		"Hubspot": {
+			"main": [
+				[
+					{
+						"node": "Hubspot4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot1": {
+			"main": [
+				[
+					{
+						"node": "Hubspot3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot2": {
+			"main": [
+				[
+					{
+						"node": "Hubspot6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot3": {
+			"main": [
+				[
+					{
+						"node": "Hubspot5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Hubspot8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Hubspot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot4": {
+			"main": [
+				[
+					{
+						"node": "Hubspot1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot5": {
+			"main": [
+				[
+					{
+						"node": "Hubspot7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot7": {
+			"main": [
+				[
+					{
+						"node": "Hubspot2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot8": {
+			"main": [
+				[
+					{
+						"node": "Hubspot9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot9": {
+			"main": [
+				[
+					{
+						"node": "Hubspot10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot10": {
+			"main": [
+				[
+					{
+						"node": "Hubspot11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hubspot11": {
+			"main": [
+				[
+					{
+						"node": "Hubspot12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

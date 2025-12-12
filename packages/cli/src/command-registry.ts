@@ -1,10 +1,10 @@
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { CliParser, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CommandMetadata, type CommandEntry } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import picocolors from 'picocolors';
-import argvParser from 'yargs-parser';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
+
 import './zod-alias-support';
 
 /**
@@ -15,14 +15,12 @@ import './zod-alias-support';
 export class CommandRegistry {
 	private commandName: string;
 
-	private readonly argv: argvParser.Arguments;
-
 	constructor(
 		private readonly commandMetadata: CommandMetadata,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly logger: Logger,
+		private readonly cliParser: CliParser,
 	) {
-		this.argv = argvParser(process.argv.slice(2));
 		this.commandName = process.argv[2] ?? 'start';
 	}
 
@@ -40,7 +38,9 @@ export class CommandRegistry {
 		// Try to load regular commands
 		try {
 			await import(`./commands/${this.commandName.replaceAll(':', '/')}.js`);
-		} catch {}
+		} catch {
+			// Do nothing
+		}
 
 		// Load modules to ensure all module commands are registered
 		await this.moduleRegistry.loadModules();
@@ -51,13 +51,31 @@ export class CommandRegistry {
 			return process.exit(1);
 		}
 
-		if (this.argv.help || this.argv.h) {
+		if (process.argv.includes('--help') || process.argv.includes('-h')) {
 			this.printCommandUsage(commandEntry);
 			return process.exit(0);
 		}
 
+		let flags: Record<string, unknown>;
+		try {
+			({ flags } = this.cliParser.parse({
+				argv: process.argv,
+				flagsSchema: commandEntry.flagsSchema,
+			}));
+		} catch (error) {
+			if (error instanceof ZodError) {
+				this.logger.error(this.formatZodError(error));
+				this.logger.info('');
+				this.printCommandUsage(commandEntry);
+				return process.exit(1);
+			}
+
+			// Preserve previous behavior for non-Zod errors
+			throw error;
+		}
+
 		const command = Container.get(commandEntry.class);
-		command.flags = this.parseFlags(commandEntry);
+		command.flags = flags;
 
 		let error: Error | undefined = undefined;
 		try {
@@ -69,26 +87,6 @@ export class CommandRegistry {
 		} finally {
 			await command.finally?.(error);
 		}
-	}
-
-	parseFlags(commandEntry: CommandEntry) {
-		if (!commandEntry.flagsSchema) return {};
-		const { _, ...argv } = this.argv;
-		Object.entries(commandEntry.flagsSchema.shape).forEach(([key, flagSchema]) => {
-			let schemaDef = flagSchema._def as z.ZodTypeDef & {
-				typeName: string;
-				innerType?: z.ZodType;
-			};
-			if (schemaDef.typeName === 'ZodOptional' && schemaDef.innerType) {
-				schemaDef = schemaDef.innerType._def as typeof schemaDef;
-			}
-			const alias = schemaDef._alias;
-			if (alias?.length && !(key in argv) && argv[alias]) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				argv[key] = argv[alias];
-			}
-		});
-		return commandEntry.flagsSchema.parse(argv);
 	}
 
 	async listAllCommands() {
@@ -180,5 +178,32 @@ export class CommandRegistry {
 		}
 
 		this.logger.info(output);
+	}
+
+	private formatZodError(error: ZodError): string {
+		const issuesByFlag: Record<string, z.ZodIssue[]> = {};
+
+		for (const issue of error.issues) {
+			const flag = (issue.path[0] as string | undefined) ?? 'flags';
+			if (!issuesByFlag[flag]) issuesByFlag[flag] = [];
+			issuesByFlag[flag].push(issue);
+		}
+
+		let output = '';
+
+		output += picocolors.red(
+			`\nError: Invalid flags provided for command "${this.commandName}".\n\n`,
+		);
+
+		for (const [flag, issues] of Object.entries(issuesByFlag)) {
+			const flagLabel = flag === 'flags' ? '(general)' : `--${flag}`;
+			output += `  ${picocolors.bold(flagLabel)}\n`;
+			for (const issue of issues) {
+				output += `    - ${issue.message}\n`;
+			}
+			output += '\n';
+		}
+
+		return output.trimEnd();
 	}
 }

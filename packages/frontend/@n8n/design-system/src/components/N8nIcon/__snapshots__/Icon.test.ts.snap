@@ -18,12 +18,6 @@ exports[`Icon > should render correctly with a deprecated icon 1`] = `
 </svg>"
 `;
 
-exports[`Icon > should render correctly with all props combined 1`] = `
-"<svg viewBox="0 0 24 24" width="14px" height="14px" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" data-icon="check">
-  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
-</svg>"
-`;
-
 exports[`Icon > should render correctly with default props 1`] = `
 "<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
   <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>

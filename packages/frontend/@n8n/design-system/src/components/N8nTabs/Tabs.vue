@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
+import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
 
 interface TabsProps {
@@ -80,19 +81,20 @@ const scrollRight = () => scroll(50);
 		]"
 	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
-			<N8nIcon icon="chevron-left" size="small" />
+			<N8nIcon :class="$style.positionIcon" icon="chevron-left" size="small" />
 		</div>
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
-			<N8nIcon icon="chevron-right" size="small" />
+			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
 				:key="option.value"
+				:data-test-id="`tab-${option.value.toString()}`"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
 					<template #content>
 						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
 					</template>
@@ -100,35 +102,58 @@ const scrollRight = () => scroll(50);
 						v-if="option.href"
 						target="_blank"
 						:href="option.href"
-						:class="[$style.link, $style.tab]"
+						rel="noopener noreferrer"
+						:class="[$style.link, $style.tab, option.label ? '' : $style.noText]"
 						@click="() => handleTabClick(option.value)"
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external">
-								<N8nIcon icon="external-link" size="small" />
-							</span>
+							<N8nIcon
+								:class="$style.external"
+								:icon="option.icon ?? 'external-link'"
+								size="small"
+							/>
 						</div>
 					</a>
 					<RouterLink
 						v-else-if="option.to"
 						:to="option.to"
-						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+						:class="[
+							$style.tab,
+							{ [$style.activeTab]: modelValue === option.value, [$style.noText]: !option.label },
+						]"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
+						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
 						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
-						:data-test-id="`tab-${option.value}`"
+						:class="{
+							[$style.tab]: true,
+							[$style.activeTab]: modelValue === option.value,
+							[$style.noText]: !option.label,
+							[$style.dangerTab]: option.variant === 'danger',
+						}"
 						@click="() => handleTabClick(option.value)"
 					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
-						<span v-if="option.label" :class="$style.notificationContainer"
-							>{{ option.label }}
-							<div v-if="option.notification" :class="$style.notification"><div></div></div
-						></span>
+						<N8nIcon
+							v-if="option.icon && option.iconPosition !== 'right'"
+							:icon="option.icon"
+							:class="$style.icon"
+							size="small"
+						/>
+						<span v-if="option.label" :class="$style.notificationContainer">
+							{{ option.label }}
+							<div v-if="option.notification" :class="$style.notification" />
+						</span>
+						<N8nIcon
+							v-if="option.icon && option.iconPosition === 'right'"
+							:icon="option.icon"
+							:class="$style.icon"
+							size="small"
+						/>
+						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
 			</div>
@@ -150,8 +175,8 @@ const scrollRight = () => scroll(50);
 }
 
 .tabs {
-	color: var(--color-text-base);
-	font-weight: var(--font-weight-medium);
+	color: var(--color--text);
+	font-weight: var(--font-weight--medium);
 	display: flex;
 	align-items: center;
 	width: 100%;
@@ -166,44 +191,54 @@ const scrollRight = () => scroll(50);
 	/* Hide scrollbar for IE, Edge and Firefox */
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
+
+	.small.modern & {
+		gap: var(--spacing--xs);
+	}
 }
 
 .tab {
-	--active-tab-border-width: 2px;
-	display: block;
-	padding: 0 var(--spacing-s);
-	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
-	font-size: var(--font-size-s);
+	--tabs--tab--border-width--active: 2px;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--sm);
+	padding-bottom: calc(var(--spacing--2xs) + var(--tabs--tab--border-width--active));
+	font-size: var(--font-size--sm);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color-text-base);
+	color: var(--color--text);
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 
 	span + span {
-		margin-left: var(--spacing-4xs);
+		margin-left: var(--spacing--4xs);
 	}
 
 	.modern & {
-		padding-bottom: calc(var(--spacing-xs) + var(--active-tab-border-width));
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
+		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
 	}
 
 	.small & {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size--2xs);
+	}
+
+	.small.modern & {
+		padding-inline: 0;
 	}
 }
 
 .activeTab {
-	color: var(--color-primary);
-	padding-bottom: var(--spacing-2xs);
-	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
+	color: var(--color--primary);
+	padding-bottom: var(--spacing--2xs);
+	border-bottom: var(--color--primary) var(--tabs--tab--border-width--active) solid;
 
 	.modern & {
-		padding-bottom: var(--spacing-xs);
+		padding-bottom: var(--spacing--xs);
 	}
 }
 
@@ -213,27 +248,44 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color-text-base);
+	color: var(--color--text);
 
 	&:hover {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
 .external {
 	display: inline-block;
-	margin-left: var(--spacing-5xs);
+	margin-left: var(--spacing--5xs);
+
+	.noText & {
+		display: block;
+		margin-left: 0;
+	}
+}
+
+.noText .icon {
+	display: block;
+}
+
+.dangerTab {
+	color: var(--color--danger);
+
+	&:hover {
+		color: var(--color--danger);
+	}
 }
 
 .button {
 	position: absolute;
-	background-color: var(--color-tabs-arrow-buttons, var(--color-background-base));
+	background-color: var(--tabs--arrow-buttons--color, var(--color--foreground--tint-2));
 	z-index: 1;
 	height: 24px;
 	width: 10px;
 	display: flex;
 	align-items: center;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight--bold);
 }
 
 .notificationContainer {
@@ -248,10 +300,12 @@ const scrollRight = () => scroll(50);
 	align-items: center;
 	justify-content: center;
 
-	div {
+	&:after {
+		content: '';
+		display: block;
 		height: 0.3em;
 		width: 0.3em;
-		background-color: var(--color-primary);
+		background-color: var(--color--primary);
 		border-radius: 50%;
 	}
 }
@@ -266,5 +320,9 @@ const scrollRight = () => scroll(50);
 	composes: tab;
 	composes: button;
 	right: 0;
+}
+
+.positionIcon {
+	flex-shrink: 0;
 }
 </style>

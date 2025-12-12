@@ -1,5 +1,5 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { SharedCredentials } from '@n8n/db';
 import {
 	Project,
 	SharedWorkflow,
@@ -9,11 +9,18 @@ import {
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	GLOBAL_OWNER_ROLE,
+	PROJECT_OWNER_ROLE,
 } from '@n8n/db';
+import type { SharedCredentials, SettingsRepository } from '@n8n/db';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
 
 import { CacheService } from '../cache/cache.service';
@@ -23,12 +30,20 @@ describe('OwnershipService', () => {
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 	const cacheService = mockInstance(CacheService);
+	const passwordUtility = mockInstance(PasswordUtility);
+	const logger = mockInstance(Logger);
+	const eventService = mock<EventService>();
+	const settingsRepository = mock<SettingsRepository>();
+
 	const ownershipService = new OwnershipService(
 		cacheService,
-		userRepository,
-		mock(),
+		eventService,
+		logger,
+		passwordUtility,
 		projectRelationRepository,
 		sharedWorkflowRepository,
+		userRepository,
+		settingsRepository,
 	);
 
 	beforeEach(() => {
@@ -63,9 +78,11 @@ describe('OwnershipService', () => {
 			// ARRANGE
 			const project = new Project();
 			const owner = new User();
+			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = 'project:personalOwner';
-			(projectRelation.project = project), (projectRelation.user = owner);
+			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.project = project;
+			projectRelation.user = owner;
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
 
@@ -90,9 +107,11 @@ describe('OwnershipService', () => {
 			project.id = uuid();
 			const owner = new User();
 			owner.id = uuid();
+			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = 'project:personalOwner';
-			(projectRelation.project = project), (projectRelation.user = owner);
+			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.project = project;
+			projectRelation.user = owner;
 
 			cacheService.getHashValue.mockResolvedValueOnce(owner);
 			userRepository.create.mockReturnValueOnce(owner);
@@ -112,9 +131,10 @@ describe('OwnershipService', () => {
 		test('should retrieve a project owner', async () => {
 			const mockProject = new Project();
 			const mockOwner = new User();
+			mockOwner.role = GLOBAL_OWNER_ROLE;
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
-				role: 'project:personalOwner',
+				role: PROJECT_OWNER_ROLE_SLUG,
 				project: mockProject,
 				user: mockOwner,
 			});
@@ -218,8 +238,54 @@ describe('OwnershipService', () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: 'global:owner' },
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});
+		});
+	});
+
+	describe('setupOwner()', () => {
+		it('should throw a BadRequestError if the instance owner is already setup', async () => {
+			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
+
+			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
+				new BadRequestError('Instance owner already setup'),
+			);
+
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Request to claim instance ownership failed because instance owner already exists',
+			);
+		});
+
+		it('should setup the instance owner successfully', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			const payload = {
+				email: 'valid@email.com',
+				password: 'NewPassword123',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			};
+
+			//	not quite perfect as we hash the password.
+			const expected = { ...user, ...payload, id: 'newUserId' };
+
+			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.findOneOrFail.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(expected);
+
+			const actual = await ownershipService.setupOwner(payload);
+
+			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
+			expect(eventService.emit).toHaveBeenCalledWith('instance-owner-setup', {
+				userId: 'newUserId',
+			});
+			expect(actual.id).toEqual('newUserId');
 		});
 	});
 });

@@ -62,19 +62,15 @@ class RedisConfig {
 class SettingsConfig {
 	/** How long (in milliseconds) is the lease period for a worker processing a job. */
 	@Env('QUEUE_WORKER_LOCK_DURATION')
-	lockDuration: number = 30_000;
+	lockDuration: number = 60_000;
 
 	/** How often (in milliseconds) a worker must renew the lease. */
 	@Env('QUEUE_WORKER_LOCK_RENEW_TIME')
-	lockRenewTime: number = 15_000;
+	lockRenewTime: number = 10_000;
 
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')
 	stalledInterval: number = 30_000;
-
-	/** Max number of times a stalled job will be re-processed. See Bull's [documentation](https://docs.bullmq.io/guide/workers/stalled-jobs). */
-	@Env('QUEUE_WORKER_MAX_STALLED_COUNT')
-	maxStalledCount: number = 1;
 }
 
 @Config

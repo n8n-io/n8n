@@ -13,6 +13,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'workflow:delete',
 	'workflow:list',
 	'workflow:execute',
+	'workflow:execute-chat',
 	'workflow:move',
 	'credential:create',
 	'credential:read',
@@ -32,6 +33,18 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:list',
 	'folder:move',
 	'sourceControl:push',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -41,6 +54,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'workflow:delete',
 	'workflow:list',
 	'workflow:execute',
+	'workflow:execute-chat',
 	'workflow:share',
 	'workflow:move',
 	'credential:create',
@@ -58,6 +72,13 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'folder:delete',
 	'folder:list',
 	'folder:move',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -67,6 +88,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'workflow:delete',
 	'workflow:list',
 	'workflow:execute',
+	'workflow:execute-chat',
 	'credential:create',
 	'credential:read',
 	'credential:update',
@@ -79,6 +101,18 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'folder:update',
 	'folder:delete',
 	'folder:list',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -88,6 +122,14 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'project:read',
 	'workflow:list',
 	'workflow:read',
+	'workflow:execute-chat',
 	'folder:read',
 	'folder:list',
+	'dataTable:listProject',
+	'dataTable:read',
+	'dataTable:readRow',
+	'projectVariable:list',
+	'projectVariable:read',
 ];
+
+export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['workflow:execute-chat'];

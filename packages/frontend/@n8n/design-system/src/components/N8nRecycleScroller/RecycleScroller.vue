@@ -2,7 +2,7 @@
 import type { ComponentPublicInstance } from 'vue';
 import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
-import type { ItemWithKey } from '@n8n/design-system/types';
+import type { ItemWithKey } from '../../types';
 
 interface RecycleScrollerProps {
 	itemSize: number;

@@ -1,7 +1,10 @@
 import type { BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import type { NodeConfigurationsMap, SimpleWorkflow, WorkflowOperation } from './types';
+import { appendArrayReducer, nodeConfigurationsReducer } from './utils/state-reducers';
+import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -32,6 +35,31 @@ function operationsReducer(
 	return [...(current ?? []), ...update];
 }
 
+// Creates a reducer that trims the message history to keep only the last `maxUserMessages` HumanMessage instances
+export function createTrimMessagesReducer(maxUserMessages: number) {
+	return (current: BaseMessage[]): BaseMessage[] => {
+		// Count HumanMessage instances and remember their indices
+		const humanMessageIndices: number[] = [];
+		current.forEach((msg, index) => {
+			if (msg instanceof HumanMessage) {
+				humanMessageIndices.push(index);
+			}
+		});
+
+		// If we have fewer than or equal to maxUserMessages, return as is
+		if (humanMessageIndices.length <= maxUserMessages) {
+			return current;
+		}
+
+		// Find the index of the first HumanMessage that we want to keep
+		const startHumanMessageIndex =
+			humanMessageIndices[humanMessageIndices.length - maxUserMessages];
+
+		// Slice from that HumanMessage onwards
+		return current.slice(startHumanMessageIndex);
+	};
+}
+
 export const WorkflowState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
 		reducer: messagesStateReducer,
@@ -42,16 +70,49 @@ export const WorkflowState = Annotation.Root({
 	// Now a simple field without custom reducer - all updates go through operations
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x,
-		default: () => ({ nodes: [], connections: {} }),
+		default: () => ({ nodes: [], connections: {}, name: '' }),
 	}),
 	// Operations to apply to the workflow - processed by a separate node
 	workflowOperations: Annotation<WorkflowOperation[] | null>({
 		reducer: operationsReducer,
 		default: () => [],
 	}),
-	// Whether the user prompt is a workflow prompt.
 	// Latest workflow context
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,
+	}),
+	// Results of last workflow validation
+	workflowValidation: Annotation<ProgrammaticEvaluationResult | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+	// Compacted programmatic validations history for telemetry
+	validationHistory: Annotation<TelemetryValidationStatus[]>({
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
+		default: () => [],
+	}),
+	// Technique categories identified from categorize_prompt tool for telemetry
+	techniqueCategories: Annotation<string[]>({
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
+		default: () => [],
+	}),
+
+	// Previous conversation summary (used for compressing long conversations)
+	previousSummary: Annotation<string>({
+		reducer: (x, y) => y ?? x, // Overwrite with the latest summary
+		default: () => 'EMPTY',
+	}),
+
+	// Node configurations collected from workflow examples
+	// Used to provide context when updating node parameters
+	nodeConfigurations: Annotation<NodeConfigurationsMap>({
+		reducer: nodeConfigurationsReducer,
+		default: () => ({}),
+	}),
+
+	// Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: appendArrayReducer,
+		default: () => [],
 	}),
 });

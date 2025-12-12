@@ -11,6 +11,6 @@ export interface Chat {
 	waitingForResponse: Ref<boolean>;
 	loadPreviousSession?: () => Promise<string | undefined>;
 	startNewSession?: () => Promise<void>;
-	sendMessage: (text: string, files: File[]) => Promise<SendMessageResponse | null>;
+	sendMessage: (text: string, files?: File[]) => Promise<SendMessageResponse | null>;
 	ws?: WebSocket | null;
 }

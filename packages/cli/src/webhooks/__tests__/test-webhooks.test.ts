@@ -1,3 +1,4 @@
+import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
@@ -7,6 +8,7 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -147,6 +149,72 @@ describe('TestWebhooks', () => {
 			expect(webhookService.createWebhookIfNotExists.mock.calls[0][1].node).toBe(webhook2.node);
 			expect(needsWebhook).toBe(true);
 		});
+
+		test.each([
+			{ published: true, withSingleWebhookTrigger: true, shouldThrow: true },
+			{ published: true, withSingleWebhookTrigger: false, shouldThrow: false },
+			{ published: false, withSingleWebhookTrigger: true, shouldThrow: false },
+			{ published: false, withSingleWebhookTrigger: false, shouldThrow: false },
+		] satisfies Array<{
+			published: boolean;
+			withSingleWebhookTrigger: boolean;
+			shouldThrow: boolean;
+		}>)(
+			'handles single webhook trigger when workflowIsActive=%s',
+			async ({ published: workflowIsActive, withSingleWebhookTrigger, shouldThrow }) => {
+				const workflow = mock<Workflow>();
+				const regularWebhook = mock<IWebhookData>({
+					node: 'Webhook',
+					httpMethod,
+					path: 'regular-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+				const telegramWebhook = mock<IWebhookData>({
+					node: 'Telegram Trigger',
+					httpMethod,
+					path: 'telegram-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+				const webhookNode = mock<IWorkflowBase['nodes'][number]>({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+				});
+				const telegramNode = mock<IWorkflowBase['nodes'][number]>({
+					name: 'Telegram Trigger',
+					type: 'n8n-nodes-base.telegramTrigger',
+				});
+
+				jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+				jest
+					.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
+					.mockReturnValue([regularWebhook, telegramWebhook]);
+				jest.spyOn(workflow, 'getNode').mockImplementation((name: string) => {
+					if (name === 'Webhook') return webhookNode;
+					if (name === 'Telegram Trigger' && withSingleWebhookTrigger) return telegramNode;
+					return null;
+				});
+
+				if (shouldThrow) {
+					const promise = testWebhooks.needsWebhook({
+						...args,
+						workflowIsActive,
+					});
+
+					await expect(promise).rejects.toThrow(
+						"Because of limitations in Telegram Trigger, n8n can't listen for test executions at the same time as listening for production ones. Unpublish the workflow to execute.",
+					);
+				} else {
+					const needsWebhook = await testWebhooks.needsWebhook({
+						...args,
+						workflowIsActive,
+					});
+
+					expect(needsWebhook).toBe(true);
+				}
+			},
+		);
 	});
 
 	describe('executeWebhook()', () => {
@@ -184,28 +252,89 @@ describe('TestWebhooks', () => {
 
 	describe('deactivateWebhooks()', () => {
 		test('should add additional data to workflow', async () => {
-			registrations.getAllRegistrations.mockResolvedValue([{ workflowEntity, webhook }]);
+			registrations.getAllRegistrations.mockResolvedValue([
+				{ version: 1, workflowEntity, webhook },
+			]);
 
 			const workflow = testWebhooks.toWorkflow(workflowEntity);
 
 			await testWebhooks.deactivateWebhooks(workflow);
 
-			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith(userId);
+			expect(mockedAdditionalData.getBase).toHaveBeenCalledWith({
+				userId,
+				workflowId: workflowEntity.id,
+			});
 		});
 	});
 
 	describe('getWebhookMethods()', () => {
+		beforeEach(() => {
+			registrations.toKey.mockImplementation(
+				(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) => {
+					const { webhookId, httpMethod, path: webhookPath } = webhook;
+					if (!webhookId) return [httpMethod, webhookPath].join('|');
+
+					let path = webhookPath;
+					if (path.startsWith(webhookId)) {
+						const cutFromIndex = path.indexOf('/') + 1;
+
+						path = path.slice(cutFromIndex);
+					}
+					return [httpMethod, webhookId, path.split('/').length].join('|');
+				},
+			);
+		});
+
 		test('should normalize trailing slash', async () => {
 			const METHOD = 'POST';
 			const PATH_WITH_SLASH = 'register/';
 			const PATH_WITHOUT_SLASH = 'register';
-			registrations.getAllKeys.mockResolvedValue([`${METHOD}|${PATH_WITHOUT_SLASH}`]);
+			const webhookData = {
+				httpMethod: METHOD as IHttpRequestMethods,
+				path: PATH_WITHOUT_SLASH,
+			} as IWebhookData;
+
+			registrations.getRegistrationsHash.mockImplementation(async () => {
+				return {
+					[registrations.toKey(webhookData)]: {
+						version: 1,
+						workflowEntity: mock<WorkflowEntity>(),
+						webhook: webhookData,
+					},
+				};
+			});
 
 			const resultWithSlash = await testWebhooks.getWebhookMethods(PATH_WITH_SLASH);
 			const resultWithoutSlash = await testWebhooks.getWebhookMethods(PATH_WITHOUT_SLASH);
 
 			expect(resultWithSlash).toEqual([METHOD]);
 			expect(resultWithoutSlash).toEqual([METHOD]);
+		});
+
+		test('should return methods for webhooks with dynamic paths', async () => {
+			const METHOD = 'POST';
+			const PATH = '12345/register/:id';
+
+			const webhookData = {
+				webhookId: '12345',
+				httpMethod: METHOD as IHttpRequestMethods,
+				// Path for dynamic webhook does not contain webhookId
+				path: 'register/:id',
+			};
+
+			registrations.getRegistrationsHash.mockImplementation(async () => {
+				return {
+					[registrations.toKey(webhookData)]: {
+						version: 1,
+						workflowEntity: mock<WorkflowEntity>(),
+						webhook: webhookData as IWebhookData,
+					},
+				};
+			});
+
+			const result = await testWebhooks.getWebhookMethods(PATH);
+
+			expect(result).toEqual([METHOD]);
 		});
 	});
 });

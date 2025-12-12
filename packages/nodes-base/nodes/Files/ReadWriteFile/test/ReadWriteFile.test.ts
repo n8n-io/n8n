@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import fsPromises from 'fs/promises';
 import type { WorkflowTestData } from 'n8n-workflow';
 
 describe('Test ReadWriteFile Node', () => {
@@ -12,6 +13,9 @@ describe('Test ReadWriteFile Node', () => {
 
 	const writeFileNode = workflowData.nodes.find((n) => n.name === 'Write to Disk')!;
 	writeFileNode.parameters.fileName = `${testHarness.temporaryDir}/image-written.jpg`;
+
+	const realpathSpy = jest.spyOn(fsPromises, 'realpath');
+	realpathSpy.mockImplementation(async (path) => path as string);
 
 	const tests: WorkflowTestData[] = [
 		{

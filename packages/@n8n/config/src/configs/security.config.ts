@@ -3,18 +3,19 @@ import { Config, Env } from '../decorators';
 @Config
 export class SecurityConfig {
 	/**
-	 * Which directories to limit n8n's access to. Separate multiple dirs with semicolon `;`.
+	 * Dirs that the `ReadWriteFile` and `ReadBinaryFiles` nodes are allowed to access. Separate multiple dirs with semicolon `;`.
+	 * Set to an empty string to disable restrictions (insecure, not recommended for production).
 	 *
-	 * @example N8N_RESTRICT_FILE_ACCESS_TO=/home/user/.n8n;/home/user/n8n-data
+	 * @example N8N_RESTRICT_FILE_ACCESS_TO=/home/john/my-n8n-files
 	 */
 	@Env('N8N_RESTRICT_FILE_ACCESS_TO')
-	restrictFileAccessTo: string = '';
+	restrictFileAccessTo: string = '~/.n8n-files';
 
 	/**
-	 * Whether to block access to all files at:
-	 * - the ".n8n" directory,
-	 * - the static cache dir at ~/.cache/n8n/public, and
-	 * - user-defined config files.
+	 * Whether to block nodes from accessing files at dirs internally used by n8n:
+	 * - `~/.n8n`
+	 * - `~/.cache/n8n/public`
+	 * - any dirs specified by `N8N_CONFIG_FILES`, `N8N_CUSTOM_EXTENSIONS`, `N8N_BINARY_DATA_STORAGE_PATH`, `N8N_UM_EMAIL_TEMPLATES_INVITE`, and `UM_EMAIL_TEMPLATES_PWRESET`.
 	 */
 	@Env('N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES')
 	blockFileAccessToN8nFiles: boolean = true;
@@ -38,4 +39,27 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
 	contentSecurityPolicyReportOnly: boolean = false;
+
+	/**
+	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,
+	 * but the name is kept for backwards compatibility.
+	 */
+	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
+	disableWebhookHtmlSandboxing: boolean = false;
+
+	/**
+	 * Whether to disable bare repositories support in the Git node.
+	 */
+	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
+	disableBareRepos: boolean = true;
+
+	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
+	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
+	awsSystemCredentialsAccess: boolean = false;
+
+	/**
+	 * Whether to enable hooks (like pre-commit hooks) for the Git node.
+	 */
+	@Env('N8N_GIT_NODE_ENABLE_HOOKS')
+	enableGitNodeHooks: boolean = false;
 }

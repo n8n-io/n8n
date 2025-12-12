@@ -35,11 +35,22 @@ jobs:
 
           if [[ "$input_version" =~ $version_regex ]]; then
             echo "Version format is valid: $input_version"
-            echo "version=$input_version" >> $GITHUB_OUTPUT
+            echo "version=$input_version" >> "$GITHUB_OUTPUT"
           else
             echo "::error::Invalid version format provided: '$input_version'. Must match regex '$version_regex'."
             exit 1
           fi
+
+      - name: Block RC promotion to stable/beta
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          CHANNEL: ${{ github.event.inputs.release-channel }}
+        run: |
+          if [[ "$INPUT_VERSION" == *"-rc."* ]]; then
+            echo "::error::RC versions cannot be promoted to '$CHANNEL' channel. Version '$INPUT_VERSION' contains '-rc.'"
+            exit 1
+          fi
+          echo "✅ Version '$INPUT_VERSION' is allowed for '$CHANNEL' channel"
 
   release-to-npm:
     name: Release to NPM
@@ -81,12 +92,16 @@ jobs:
         run: |
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:stable" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:latest" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:stable" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:latest" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
       - name: Tag beta/next Docker image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         run: |
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:beta" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:next" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:beta" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:next" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
@@ -105,12 +120,16 @@ jobs:
         run: |
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
       - name: Tag beta/next GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         run: |
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:beta" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
   update-docs:
     name: Update latest and next in the docs

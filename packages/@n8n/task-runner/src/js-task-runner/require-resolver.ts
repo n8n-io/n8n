@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
 import { isBuiltin } from 'node:module';
 
+import { DisallowedModuleError } from './errors/disallowed-module.error';
 import { ExecutionError } from './errors/execution-error';
 
 export type RequireResolverOpts = {
@@ -33,7 +33,7 @@ export function createRequireResolver({
 			: checkIsAllowed(allowedExternalModules, request);
 
 		if (!isAllowed) {
-			const error = new ApplicationError(`Cannot find module '${request}'`);
+			const error = new DisallowedModuleError(request);
 			throw new ExecutionError(error);
 		}
 

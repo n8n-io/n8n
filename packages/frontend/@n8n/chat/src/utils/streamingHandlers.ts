@@ -16,8 +16,8 @@ export function handleStreamingChunk(
 	runIndex?: number,
 ): void {
 	try {
-		// Skip empty chunks to avoid showing empty responses
-		if (!chunk.trim()) {
+		// Only skip empty chunks, but not whitespace only chunks
+		if (chunk === '') {
 			return;
 		}
 

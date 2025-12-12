@@ -8,8 +8,7 @@ export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
-	@Env('N8N_RUNNERS_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * Whether the task runner should run as a child process spawned by n8n (internal mode)
@@ -25,7 +24,7 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_AUTH_TOKEN')
 	authToken: string = '';
 
-	/** IP address task runners broker should listen on */
+	/** Port task runners broker should listen on */
 	@Env('N8N_RUNNERS_BROKER_PORT')
 	port: number = 5679;
 
@@ -59,6 +58,14 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 300; // 5 minutes
 
+	/**
+	 * How long (in seconds) a task request can wait for a runner to become
+	 * available before timing out. This prevents workflows from hanging
+	 * indefinitely when no runners are available. Must be greater than 0.
+	 */
+	@Env('N8N_RUNNERS_TASK_REQUEST_TIMEOUT')
+	taskRequestTimeout: number = 60;
+
 	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
@@ -69,4 +76,18 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_INSECURE_MODE')
 	insecureMode: boolean = false;
+
+	/**
+	 * Whether to enable the Python task runner (beta). This will replace the
+	 * Pyodide option with the native Python option in the Code node. Expects a
+	 * Python task runner to be available, typically in a sidecar container.
+	 *
+	 * Actions required:
+	 * - Any Code node set to the legacy `python` parameter will need to be manually
+	 * updated to use the new `pythonNative` parameter.
+	 * - Any Code node script relying on Pyodide syntax is likely to need to be manually
+	 * adjusted to account for breaking changes:
+	 * https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta
+	 */
+	isNativePythonRunnerEnabled: boolean = true;
 }

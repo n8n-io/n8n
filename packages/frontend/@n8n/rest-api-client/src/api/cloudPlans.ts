@@ -31,9 +31,12 @@ export declare namespace Cloud {
 		email: string;
 		hasEarlyAccess?: boolean;
 		role?: string;
-		selectedApps?: string;
+		selectedApps?: string[];
 		information?: {
 			[key: string]: string | string[];
+		};
+		trialBannerData?: {
+			bannerText: string;
 		};
 	};
 }
@@ -62,4 +65,16 @@ export async function sendConfirmationEmail(context: IRestApiContext): Promise<C
 
 export async function getAdminPanelLoginCode(context: IRestApiContext): Promise<{ code: string }> {
 	return await get(context.baseUrl, '/cloud/proxy/login/code');
+}
+
+export interface DynamicNotification {
+	title?: string;
+	message?: string;
+}
+
+export async function sendUserEvent(
+	context: IRestApiContext,
+	eventData: { eventType: string; metadata?: Record<string, unknown> },
+): Promise<DynamicNotification> {
+	return await post(context.baseUrl, '/cloud/proxy/user/event', eventData);
 }

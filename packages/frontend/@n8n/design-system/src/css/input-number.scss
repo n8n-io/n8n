@@ -32,7 +32,7 @@
 	}
 
 	@include mixins.e((increase, decrease)) {
-		--disabled-color: var(--color-text-light);
+		--input--color--disabled: var(--color--text--tint-1);
 		position: absolute;
 		z-index: 1;
 		top: 1px;
@@ -43,12 +43,12 @@
 		width: var.$input-height;
 		height: auto;
 		background: var.$background-color-base;
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		cursor: pointer;
 		font-size: 13px;
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 
 			&:not(.is-disabled) ~ .el-input .el-input__inner:not(.is-disabled) {
 				border-color: var.$input-focus-border;
@@ -65,14 +65,14 @@
 		right: 1px;
 		border-radius: 0 var.$input-number-control-border-radius var.$input-number-control-border-radius
 			0;
-		border-left: var(--border-base);
+		border-left: var(--border);
 	}
 
 	@include mixins.e(decrease) {
 		left: 1px;
 		border-radius: var.$input-number-control-border-radius 0 0
 			var.$input-number-control-border-radius;
-		border-right: var(--border-base);
+		border-right: var(--border);
 	}
 
 	@include mixins.when(disabled) {
@@ -140,14 +140,14 @@
 	@include mixins.when(without-controls) {
 		.el-input__inner {
 			text-align: left;
-			padding-left: var(--spacing-2xs);
-			padding-right: var(--spacing-2xs);
+			padding-left: var(--spacing--2xs);
+			padding-right: var(--spacing--2xs);
 		}
 	}
 
 	@include mixins.when(controls-right) {
 		.el-input__inner {
-			padding-left: var(--spacing-2xs);
+			padding-left: var(--spacing--2xs);
 			padding-right: #{var.$input-height + 4};
 		}
 
@@ -160,7 +160,7 @@
 		}
 
 		&.el-input-number--mini .el-input__inner {
-			padding-left: var(--spacing-4xs);
+			padding-left: var(--spacing--4xs);
 			padding-right: #{var.$input-mini-height + 4};
 		}
 
@@ -175,7 +175,7 @@
 
 		@include mixins.e(increase) {
 			border-radius: 0 var.$input-number-control-border-radius 0 0;
-			border-bottom: var(--border-base);
+			border-bottom: var(--border);
 		}
 
 		@include mixins.e(decrease) {
@@ -184,7 +184,7 @@
 			top: auto;
 			left: auto;
 			border-right: none;
-			border-left: var(--border-base);
+			border-left: var(--border);
 			border-radius: 0 0 var.$input-number-control-border-radius 0;
 		}
 	}

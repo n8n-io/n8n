@@ -206,6 +206,23 @@ export class EmbeddingsOpenAi implements INodeType {
 							'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
 						type: 'number',
 					},
+					{
+						displayName: 'Encoding Format',
+						name: 'encodingFormat',
+						type: 'options',
+						description: 'The format to return the embeddings in',
+						default: undefined,
+						options: [
+							{
+								name: 'Float',
+								value: 'float',
+							},
+							{
+								name: 'Base64',
+								value: 'base64',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -221,6 +238,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			stripNewLines?: boolean;
 			timeout?: number;
 			dimensions?: number | undefined;
+			encodingFormat?: 'float' | 'base64' | undefined;
 		};
 
 		if (options.timeout === -1) {
@@ -242,7 +260,7 @@ export class EmbeddingsOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-			openAIApiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey as string,
 			...options,
 			configuration,
 		});

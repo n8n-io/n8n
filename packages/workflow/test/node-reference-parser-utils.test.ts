@@ -742,5 +742,47 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+
+		it('should extract "fieldToSplitOut" constant fields in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: 'foo,bar',
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([
+				['foo', '$json.foo'],
+				['bar', '$json.bar'],
+			]);
+		});
+
+		it('should error at extracting "fieldToSplitOut" expression in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: '={{ foo,bar }}',
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			expect(() =>
+				extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']),
+			).toThrow('not supported');
+		});
 	});
 });

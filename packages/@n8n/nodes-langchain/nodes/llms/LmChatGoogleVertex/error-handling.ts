@@ -12,7 +12,7 @@ export function makeErrorFromStatus(statusCode: number, context?: ErrorContext):
 		403: {
 			message: 'Unauthorized for this project',
 			description:
-				'Check your Google Cloud project ID, and that your credential has access to that project',
+				'Check your Google Cloud project ID, that your credential has access to that project and that billing is enabled',
 		},
 		404: {
 			message: context?.modelName
