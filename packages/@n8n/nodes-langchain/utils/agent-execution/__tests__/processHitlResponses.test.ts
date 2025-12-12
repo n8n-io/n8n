@@ -1,16 +1,22 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { EngineResponse, ExecuteNodeResult } from 'n8n-workflow';
+import type { EngineResponse, ExecuteNodeResult, IDataObject, ITaskData } from 'n8n-workflow';
 
 import { processHitlResponses } from '../processHitlResponses';
-import type { RequestResponseMetadata } from '../types';
+import type { HitlMetadata, RequestResponseMetadata } from '../types';
+
+const createMockTaskData = (json: IDataObject): ITaskData => ({
+	executionTime: 0,
+	startTime: Date.now(),
+	executionIndex: 0,
+	source: [],
+	data: {
+		ai_tool: [[{ json }]],
+	},
+});
 
 const createHitlActionResponse = (
 	approved: boolean,
-	hitlMetadata: {
-		gatedToolNodeName: string;
-		toolName: string;
-		originalInput: Record<string, unknown>;
-	},
+	hitlMetadata: HitlMetadata,
 	actionId = 'action-1',
 ): ExecuteNodeResult<RequestResponseMetadata> => ({
 	action: {
@@ -21,11 +27,7 @@ const createHitlActionResponse = (
 		id: actionId,
 		metadata: { hitl: hitlMetadata },
 	},
-	data: {
-		data: {
-			ai_tool: [[{ json: { approved } }]],
-		},
-	},
+	data: createMockTaskData({ approved }),
 });
 
 const createNonHitlActionResponse = (
@@ -39,11 +41,7 @@ const createNonHitlActionResponse = (
 		id: actionId,
 		metadata: {},
 	},
-	data: {
-		data: {
-			ai_tool: [[{ json: { result: 'success' } }]],
-		},
-	},
+	data: createMockTaskData({ result: 'success' }),
 });
 
 describe('processHitlResponses', () => {
@@ -132,11 +130,7 @@ describe('processHitlResponses', () => {
 					id: 'action-1',
 					metadata: { hitl: hitlMetadata },
 				},
-				data: {
-					data: {
-						ai_tool: [[{ json: { data: { approved: true } } }]],
-					},
-				},
+				data: createMockTaskData({ data: { approved: true } }),
 			};
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [actionResponse],
