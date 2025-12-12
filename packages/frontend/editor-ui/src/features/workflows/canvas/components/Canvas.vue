@@ -211,6 +211,17 @@ const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : tr
 const isInPanningMode = ref(false);
 
 function switchToPanningMode() {
+	// Don't switch to panning mode if user is typing in an input field
+	const activeElement = document.activeElement;
+	const isInputElement =
+		activeElement instanceof HTMLInputElement ||
+		activeElement instanceof HTMLTextAreaElement ||
+		activeElement?.getAttribute('contenteditable') === 'true';
+
+	if (isInputElement) {
+		return;
+	}
+
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
 	isInPanningMode.value = true;
