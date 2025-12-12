@@ -28,8 +28,14 @@
         "collection": {
             "type": "object",
             "properties": {
+                "archive_operation_id": {
+                    "type": "null"
+                },
                 "archived": {
                     "type": "boolean"
+                },
+                "archived_directly": {
+                    "type": "null"
                 },
                 "created_at": {
                     "type": "string"
@@ -166,18 +172,6 @@
                     "most_recent": {
                         "type": "boolean"
                     },
-                    "status": {
-                        "type": [
-                            "null",
-                            "string"
-                        ]
-                    },
-                    "text": {
-                        "type": [
-                            "null",
-                            "string"
-                        ]
-                    },
                     "updated_at": {
                         "type": "string"
                     },
@@ -246,5 +240,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }
