@@ -35,6 +35,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const route = useRoute();
 const rootStore = useRootStore();
+
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();

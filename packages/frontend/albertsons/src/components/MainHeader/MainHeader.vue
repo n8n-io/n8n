@@ -1,42 +1,293 @@
-<script setup>
-defineProps({
-	msg: {
-		type: String,
-		required: false,
-	},
+<script setup lang="ts">
+import TabBar from './TabBar.vue';
+import WorkflowDetails from '../WorkflowDetails.vue';
+
+import { useI18n } from '@n8n/i18n';
+import { usePushConnection } from '@/app/composables/usePushConnection';
+import {
+	MAIN_HEADER_TABS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	STICKY_NODE_TYPE,
+	VIEWS,
+} from '@/app/constants';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { RouteLocation, RouteLocationRaw } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import type { FolderShortInfo } from '@/features/core/folders/folders.types';
+import { useToast } from '@/app/composables/useToast';
+
+const router = useRouter();
+const route = useRoute();
+const locale = useI18n();
+const pushConnection = usePushConnection({ router });
+const toast = useToast();
+const ndvStore = useNDVStore();
+const uiStore = useUIStore();
+const sourceControlStore = useSourceControlStore();
+const workflowsStore = useWorkflowsStore();
+const executionsStore = useExecutionsStore();
+const settingsStore = useSettingsStore();
+
+const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
+const workflowToReturnTo = ref('');
+const executionToReturnTo = ref('');
+const dirtyState = ref(false);
+
+// Track the routes that are used for the tabs
+const evaluationRoutes: VIEWS[] = [VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL];
+const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+const executionRoutes: VIEWS[] = [
+	VIEWS.EXECUTION_HOME,
+	VIEWS.WORKFLOW_EXECUTIONS,
+	VIEWS.EXECUTION_PREVIEW,
+];
+const tabBarItems = computed(() => {
+	return [
+		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
+		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+	];
 });
+
+const activeNode = computed(() => ndvStore.activeNode);
+const hideMenuBar = computed(() =>
+	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
+);
+const workflow = computed(() => workflowsStore.workflow);
+const workflowId = computed(() =>
+	String(router.currentRoute.value.params.name || workflowsStore.workflowId),
+);
+const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
+const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+const isEnterprise = computed(
+	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
+);
+
+const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
+	if (!workflow.value.parentFolder) {
+		return undefined;
+	}
+	return {
+		id: workflow.value.parentFolder.id,
+		name: workflow.value.parentFolder.name,
+		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+	};
+});
+
+watch(route, (to, from) => {
+	syncTabsWithRoute(to, from);
+});
+
+onBeforeMount(() => {
+	pushConnection.initialize();
+});
+
+onBeforeUnmount(() => {
+	pushConnection.terminate();
+});
+
+onMounted(async () => {
+	dirtyState.value = uiStore.stateIsDirty;
+	syncTabsWithRoute(route);
+});
+
+function isViewRoute(name: unknown): name is VIEWS {
+	return (
+		typeof name === 'string' &&
+		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+	);
+}
+
+function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
+	const routeTabMapping = [
+		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
+		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
+		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
+	];
+
+	if (to.name && isViewRoute(to.name)) {
+		const matchingTab = routeTabMapping.find(({ routes }) => routes.includes(to.name as VIEWS));
+		if (matchingTab) {
+			activeHeaderTab.value = matchingTab.tab;
+		}
+	}
+
+	if (to.params.name !== 'new' && typeof to.params.name === 'string') {
+		workflowToReturnTo.value = to.params.name;
+	}
+
+	if (
+		from?.name === VIEWS.EXECUTION_PREVIEW &&
+		to.params.name === from.params.name &&
+		typeof from.params.executionId === 'string'
+	) {
+		executionToReturnTo.value = from.params.executionId;
+	}
+}
+
+function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
+	const openInNewTab = event.ctrlKey || event.metaKey;
+
+	switch (tab) {
+		case MAIN_HEADER_TABS.WORKFLOW:
+			void navigateToWorkflowView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.EXECUTIONS:
+			void navigateToExecutionsView(openInNewTab);
+			break;
+
+		default:
+			break;
+	}
+}
+
+async function navigateToWorkflowView(openInNewTab: boolean) {
+	let routeToNavigateTo: RouteLocationRaw;
+	if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(workflowToReturnTo.value)) {
+		routeToNavigateTo = {
+			name: VIEWS.WORKFLOW,
+			params: { name: workflowToReturnTo.value },
+		};
+	} else {
+		routeToNavigateTo = { name: VIEWS.NEW_WORKFLOW };
+	}
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		if (route.name === VIEWS.NEW_WORKFLOW) {
+			uiStore.stateIsDirty = dirtyState.value;
+		}
+		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToExecutionsView(openInNewTab: boolean) {
+	const routeWorkflowId =
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
+	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
+		? {
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: routeWorkflowId, executionId: executionToReturnToValue },
+			}
+		: {
+				name: VIEWS.EXECUTION_HOME,
+				params: { name: routeWorkflowId },
+			};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToEvaluationsView(openInNewTab: boolean) {
+	const routeWorkflowId =
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.EVALUATION_EDIT,
+		params: { name: routeWorkflowId },
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function onWorkflowDeactivated() {
+	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+		try {
+			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			workflowsStore.setWorkflow(updatedWorkflow);
+			toast.showToast({
+				title: locale.baseText('mcp.workflowDeactivated.title'),
+				message: locale.baseText('mcp.workflowDeactivated.message'),
+				type: 'info',
+			});
+		} catch (error) {
+			toast.showError(error, locale.baseText('workflowSettings.showError.fetchSettings.title'));
+		}
+	}
+}
 </script>
 
 <template>
-	<div class="greetings">
-		<h1 class="red">Welcome to Albertsons AI Agent Space</h1>
+	<div :class="$style.container">
+		<div
+			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+		>
+			<div v-show="!hideMenuBar" :class="$style['top-menu']">
+				<WorkflowDetails
+					v-if="workflow?.name"
+					:id="workflow.id"
+					:tags="workflow.tags"
+					:name="workflow.name"
+					:meta="workflow.meta"
+					:scopes="workflow.scopes"
+					:active="workflow.active"
+					:read-only="readOnly"
+					:current-folder="parentFolderForBreadcrumbs"
+					:is-archived="workflow.isArchived"
+					:description="workflow.description"
+					@workflow:deactivated="onWorkflowDeactivated"
+				/>
+			</div>
+			<TabBar
+				v-if="onWorkflowPage"
+				:items="tabBarItems"
+				:model-value="activeHeaderTab"
+				@update:model-value="onTabSelected"
+			/>
+		</div>
 	</div>
 </template>
 
-<style scoped>
-.red {
-	color: #0071ce;
-}
-h1 {
-	font-weight: 500;
-	font-size: 2.6rem;
+<style module lang="scss">
+.container {
+	display: flex;
 	position: relative;
-	top: -1px;
+	width: 100%;
+	align-items: center;
 }
 
-h3 {
-	font-size: 1.2rem;
+.main-header {
+	min-height: var(--navbar--height);
+	background-color: var(--color--background--light-3);
+	width: 100%;
+	box-sizing: border-box;
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
-.greetings h1,
-.greetings h3 {
-	text-align: center;
-}
-
-@media (min-width: 1024px) {
-	.greetings h1,
-	.greetings h3 {
-		text-align: left;
-	}
+.top-menu {
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: var(--navbar--height);
+	padding: 0 var(--spacing--xl);
+	font-size: 0.9em;
+	font-weight: var(--font-weight--regular);
+	overflow-x: auto;
+	overflow-y: hidden;
 }
 </style>
