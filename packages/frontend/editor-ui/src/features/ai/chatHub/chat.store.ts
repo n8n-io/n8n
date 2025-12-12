@@ -72,7 +72,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const agents = ref<ChatModelsResponse | null>(null);
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
-		byId: Record<string, ChatHubSessionDto>;
+		byId: Partial<Record<string, ChatHubSessionDto>>;
 		ids: string[] | null;
 		hasMore: boolean;
 		nextCursor: string | null;

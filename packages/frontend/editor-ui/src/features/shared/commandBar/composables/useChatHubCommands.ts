@@ -78,15 +78,15 @@ export function useChatHubCommands(options: {
 	const filteredSesssions = computed<ChatHubSessionDto[]>(() => {
 		const trimmed = (lastQuery.value || '').trim().toLowerCase();
 
-		// TODO: Pagination, loading
 		const allSesssions = Object.values(chatStore.sessions.byId) ?? [];
 
 		if (!trimmed) {
-			return allSesssions;
+			return allSesssions.filter((session): session is ChatHubSessionDto => !!session);
 		}
 
-		const filtered = allSesssions.filter((session) =>
-			session?.title?.toLowerCase().includes(trimmed),
+		const filtered = allSesssions.filter(
+			(session): session is ChatHubSessionDto =>
+				!!session && (session.title?.toLowerCase().includes(trimmed) ?? false),
 		);
 
 		return filtered;
