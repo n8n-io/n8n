@@ -33,7 +33,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 ];
 
 // Disable fullyParallel when running with single worker (no benefit, used by Currents orchestration)
-const enableParallelism = (parseInt(process.env.PLAYWRIGHT_WORKERS ?? '', 10) || Infinity) > 1;
+const enableParallelism = process.env.PLAYWRIGHT_WORKERS !== '1';
 
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
