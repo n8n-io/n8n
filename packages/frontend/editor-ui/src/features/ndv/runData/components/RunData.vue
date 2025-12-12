@@ -1922,6 +1922,7 @@ defineExpose({ enterEditMode });
 					:total-runs="maxRunIndex"
 					:search="search"
 					:compact="props.compact"
+					:execution="workflowExecution"
 				/>
 			</Suspense>
 
