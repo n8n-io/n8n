@@ -45,8 +45,8 @@ export class ActiveExecutions {
 		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
-	has(executionId: string) {
-		return this.activeExecutions[executionId] !== undefined;
+	has(executionId: string): boolean {
+		return executionId in this.activeExecutions;
 	}
 
 	/**
@@ -174,21 +174,38 @@ export class ActiveExecutions {
 	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string, cancellationError: ExecutionCancelledError): void {
 		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			// There is no execution running with that id
+		if (!execution) {
+			this.logger.warn('Attempted to stop execution that does not exist', {
+				executionId,
+			});
 			return;
 		}
-		this.eventService.emit('execution-cancelled', { executionId });
-		execution.responsePromise?.reject(cancellationError);
-		if (execution.status === 'waiting') {
-			// A waiting execution will not have a valid workflowExecution or postExecutePromise
-			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
-			delete this.activeExecutions[executionId];
-		} else {
-			execution.workflowExecution?.cancel();
-			execution.postExecutePromise.reject(cancellationError);
+
+		// Prevent duplicate cancellations
+		if (execution.status === 'cancelled' || execution.status === 'crashed') {
+			this.logger.debug('Execution already terminated', { executionId, status: execution.status });
+			return;
 		}
-		this.logger.debug('Execution cancelled', { executionId });
+
+		execution.status = 'cancelled';
+		this.eventService.emit('execution-cancelled', { executionId });
+
+		try {
+			execution.responsePromise?.reject(cancellationError);
+			if (execution.status === 'waiting') {
+				// A waiting execution will not have a valid workflowExecution or postExecutePromise
+				// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
+				delete this.activeExecutions[executionId];
+			} else {
+				execution.workflowExecution?.cancel();
+				execution.postExecutePromise.reject(cancellationError);
+			}
+		} catch (cleanupError) {
+			this.logger.error('Error during execution cleanup', {
+				executionId,
+				error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+			});
+		}
 	}
 
 	/** Resolve the post-execution promise in an execution. */
@@ -204,7 +221,7 @@ export class ActiveExecutions {
 			} catch (error) {
 				this.logger.error('Error closing streaming response', {
 					executionId,
-					error: (error as Error).message,
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 		}
@@ -251,7 +268,7 @@ export class ActiveExecutions {
 				retryOf: data.executionData.retryOf ?? undefined,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
-				workflowId: data.executionData.workflowData.id,
+				workflowId: data.executionData.workflowData?.id,
 				status: data.status,
 			});
 		}
