@@ -192,6 +192,16 @@ export default mergeConfig(
 			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
+		server: {
+		  port: 8080,
+		  proxy: {
+		    '/rest': {
+		      target: 'http://localhost:5678',
+		      changeOrigin: true,
+		      rewrite: (path) => path.replace(/^\/rest/, '/rest'),
+		    },
+		  },
+		},
 		plugins,
 		resolve: { alias },
 		base: publicPath,

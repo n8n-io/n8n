@@ -55,6 +55,7 @@ if (import.meta.env.VUE_SCAN) {
 		enable: true,
 	});
 }
+window.__pinia = pinia;
 
 app.mount('#app');
 

@@ -42,8 +42,9 @@
 				</p>
 
 				<!-- Submit -->
-				<button type="submit" class="primary-button">
-					{{ isLogin ? 'Sign in' : 'Create account' }}
+				<button type="submit" class="primary-button" :disabled="loading">
+					<span v-if="loading">Signing in...</span>
+					<span v-else>{{ isLogin ? 'Sign in' : 'Create account' }}</span>
 				</button>
 			</form>
 
@@ -70,13 +71,24 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import albertsonsLogo from '../assets/albertsons-logo.png';
+
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUserSessionStore } from '../stores/userSession.js';
+
+const router = useRouter();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 
 const isLogin = ref(true);
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const error = ref('');
+const loading = ref(false);
+const sessionStore = useUserSessionStore();
 
 const toggleMode = () => {
 	isLogin.value = !isLogin.value;
@@ -85,7 +97,7 @@ const toggleMode = () => {
 	confirmPassword.value = '';
 };
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
 	error.value = '';
 
 	if (!email.value || !password.value) {
@@ -98,7 +110,31 @@ const handleSubmit = () => {
 		return;
 	}
 
-	alert(isLogin.value ? 'Signed in' : 'Account created');
+	// ⭐ FIX: mfaCode MUST BE EMPTY STRING, NOT NULL
+	const payload = {
+		emailOrLdapLoginId: email.value,
+		password: password.value,
+		mfaCode: '',
+		mfaRecoveryCode: '',
+	};
+
+	try {
+		loading.value = true;
+
+		const result = await usersStore.loginWithCreds(payload);
+
+		console.log('LOGIN SUCCESS →', result);
+
+		await sessionStore.loadUser();
+
+		loading.value = false;
+
+		router.push('/dashboard');
+	} catch (err) {
+		console.error('LOGIN ERROR:', err);
+		error.value = 'Invalid email or password';
+		loading.value = false;
+	}
 };
 </script>
 
