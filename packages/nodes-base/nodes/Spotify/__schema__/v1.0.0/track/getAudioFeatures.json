@@ -34,9 +34,6 @@
         "speechiness": {
             "type": "number"
         },
-        "tempo": {
-            "type": "number"
-        },
         "time_signature": {
             "type": "integer"
         },
@@ -53,5 +50,5 @@
             "type": "number"
         }
     },
-    "version": 1
+    "version": 2
 }
