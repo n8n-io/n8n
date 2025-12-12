@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "properties": {
+        "batch_header": {
+            "type": "object",
+            "properties": {
+                "batch_status": {
+                    "type": "string"
+                },
+                "payout_batch_id": {
+                    "type": "string"
+                },
+                "sender_batch_header": {
+                    "type": "object",
+                    "properties": {
+                        "sender_batch_id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "encType": {
+                        "type": "string"
+                    },
+                    "href": {
+                        "type": "string"
+                    },
+                    "method": {
+                        "type": "string"
+                    },
+                    "rel": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}
