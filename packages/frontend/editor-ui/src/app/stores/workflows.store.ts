@@ -1558,7 +1558,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// When activation is false, ensure MCP is disabled
 		if (!sendData.settings) {
-			sendData.settings = {};
+			sendData.settings ??= {};
 		}
 		sendData.settings.availableInMCP = false;
 
