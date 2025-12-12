@@ -67,7 +67,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
 
-	const agents = ref<ChatModelsResponse>();
+	const agents = ref<ChatModelsResponse | null>(null);
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Record<string, ChatHubSessionDto>;

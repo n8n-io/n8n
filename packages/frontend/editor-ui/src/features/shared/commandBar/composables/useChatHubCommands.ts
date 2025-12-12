@@ -7,11 +7,19 @@ import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import type { ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
-import { CHAT_CONVERSATION_VIEW, CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
+import type { ChatModelDto, ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
+import {
+	CHAT_CONVERSATION_VIEW,
+	CHAT_VIEW,
+	providerDisplayNames,
+} from '@/features/ai/chatHub/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	NEW_SESSION: 'new-session',
+	NEW_SESSION_WITH_MODEL: 'new-session-with-model',
 	OPEN_SESSION: 'open-session',
 	DELETE_SESSION: 'delete-session',
 	STOP_MESSAGE_GENERATION: 'stop-message-generation',
@@ -25,6 +33,7 @@ export function useChatHubCommands(options: {
 	const router = useRouter();
 	const route = useRoute();
 	const chatStore = useChatStore();
+	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const message = useMessage();
 
@@ -77,8 +86,38 @@ export function useChatHubCommands(options: {
 		}
 
 		const filtered = allSesssions.filter((session) =>
-			session.title?.toLowerCase().includes(trimmed),
+			session?.title?.toLowerCase().includes(trimmed),
 		);
+
+		return filtered;
+	});
+
+	const filteredModels = computed<ChatModelDto[]>(() => {
+		const trimmed = (lastQuery.value || '').trim().toLowerCase();
+
+		const allModels = Object.values(chatStore.agents).flatMap((available) => available.models);
+
+		if (!trimmed) {
+			return allModels;
+		}
+
+		const filtered = allModels.filter((model) => {
+			if (!model.metadata.available) return false;
+
+			const provider = model.model.provider;
+			if (provider !== 'n8n' && provider !== 'custom-agent') {
+				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
+				if (settings && !settings.enabled) {
+					return false;
+				}
+			}
+
+			return (
+				model.name?.toLowerCase().includes(trimmed) ||
+				model.model.provider?.toLowerCase().includes(trimmed) ||
+				providerDisplayNames[model.model.provider]?.toLowerCase().includes(trimmed)
+			);
+		});
 
 		return filtered;
 	});
@@ -134,6 +173,35 @@ export function useChatHubCommands(options: {
 		return filteredSesssions.value.map((session) => deleteSessionCommand(session, false));
 	});
 
+	const newSessionWithModelCommand = (model: ChatModelDto): CommandBarItem => {
+		const id =
+			model.model.provider === 'n8n'
+				? `${model.model.provider}-${model.model.workflowId}`
+				: model.model.provider === 'custom-agent'
+					? `${model.model.provider}-${model.model.agentId}`
+					: `${model.model.provider}-${model.model.model}`;
+
+		return {
+			id,
+			title: {
+				component: CommandBarItemTitle,
+				props: {
+					title: providerDisplayNames[model.model.provider],
+					suffix: model.name,
+				},
+			},
+			section: i18n.baseText('commandBar.chat.newWithModel'),
+			keywords: [model.name, providerDisplayNames[model.model.provider]],
+			handler: () => {
+				void router.push({ ...getAgentRoute(model.model), force: true });
+			},
+		};
+	};
+
+	const newSessionWithCommands = computed<CommandBarItem[]>(() => {
+		return filteredModels.value.map((model) => newSessionWithModelCommand(model));
+	});
+
 	const chatHubCommands = computed<CommandBarItem[]>(() => {
 		const commands: CommandBarItem[] = [
 			{
@@ -149,6 +217,30 @@ export function useChatHubCommands(options: {
 						icon: 'square-pen',
 					},
 				},
+				keywords: [
+					i18n.baseText('commandBar.chat.new'),
+					i18n.baseText('commandBar.sections.chat'),
+					i18n.baseText('generic.create'),
+					i18n.baseText('generic.start'),
+				],
+			},
+			{
+				id: ITEM_ID.NEW_SESSION_WITH_MODEL,
+				title: i18n.baseText('commandBar.chat.newWithModel'),
+				section: i18n.baseText('commandBar.sections.chat'),
+				children: newSessionWithCommands.value,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'robot',
+					},
+				},
+				keywords: [
+					i18n.baseText('commandBar.chat.new'),
+					i18n.baseText('commandBar.sections.chat'),
+					i18n.baseText('generic.create'),
+					i18n.baseText('generic.start'),
+				],
 			},
 			{
 				id: ITEM_ID.OPEN_SESSION,
