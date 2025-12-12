@@ -108,4 +108,8 @@ export class StubCredentialResolver implements ICredentialResolver {
 	async validateOptions(options: CredentialResolverConfiguration): Promise<void> {
 		await this.parseOptions(options);
 	}
+
+	async validateIdentity(_identity: string, _handle: CredentialResolverHandle): Promise<void> {
+		return;
+	}
 }
