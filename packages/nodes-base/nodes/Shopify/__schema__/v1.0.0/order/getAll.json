@@ -206,13 +206,10 @@
                                 }
                             }
                         }
-                    },
-                    "vendor": {
-                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 6
+    "version": 7
 }
