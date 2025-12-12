@@ -629,7 +629,9 @@ export const convertArraysToPostgresFormat = (
 	return newData;
 };
 
-const conditionSet = new Set(operatorOptions.map((option) => option.value));
+// operations use 'equal' instead of '=' because of the way expressions are handled
+// manually add '=' to allow entering it instead of 'equal'
+const conditionSet = new Set(operatorOptions.map((option) => option.value)).add('=');
 
 export const isWhereClause = (clause: unknown): clause is WhereClause => {
 	if (typeof clause !== 'object' || clause === null) return false;
