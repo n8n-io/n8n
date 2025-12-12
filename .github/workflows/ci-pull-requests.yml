@@ -2,9 +2,6 @@ name: Build, unit test and lint branch
 
 on:
   pull_request:
-    branches:
-      - '**'
-      - '!release/*'
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
