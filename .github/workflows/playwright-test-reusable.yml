@@ -43,8 +43,6 @@ on:
         required: false
       CURRENTS_API_KEY:
         required: false
-      CURRENTS_PROJECT_ID:
-        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_URL:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_USER:
@@ -102,9 +100,8 @@ jobs:
         with:
           or8n: true
           pw-output-dir: packages/testing/playwright/test-results
-        env:
-          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
-          CURRENTS_PROJECT_ID: ${{ secrets.CURRENTS_PROJECT_ID }}
+          api-key: ${{ secrets.CURRENTS_API_KEY }}
+          project-id: I0yzoc
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
