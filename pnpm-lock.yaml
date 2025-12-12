@@ -616,6 +616,9 @@ importers:
       '@codemirror/state':
         specifier: ^6.0.0
         version: 6.4.1
+      '@lezer/common':
+        specifier: ^1.2.0
+        version: 1.2.1
       '@lezer/highlight':
         specifier: ^1.0.0
         version: 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
