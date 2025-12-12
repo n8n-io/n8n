@@ -392,7 +392,11 @@ describe('getInputConnectionData', () => {
 		const supplyData = jest.fn().mockResolvedValue({ response: mockTool });
 		const toolNodeType = mock<INodeType>({ supplyData });
 
-		const secondToolNode = mock<INode>({ name: 'test.secondTool', disabled: false });
+		const secondToolNode = mock<INode>({
+			name: 'test.secondTool',
+			type: 'test.secondTool',
+			disabled: false,
+		});
 		const secondMockTool = mock<Tool>();
 		const secondToolNodeType = mock<INodeType>({
 			supplyData: jest.fn().mockResolvedValue({ response: secondMockTool }),
