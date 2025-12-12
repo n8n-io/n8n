@@ -245,9 +245,10 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
 
-		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
+		await userEvent.type(timeSavedPerExecutionInput, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -267,10 +268,11 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
-		await userEvent.clear(timeSavedPerExecutionInput as Element);
+		await userEvent.clear(timeSavedPerExecutionInput);
 		expect(timeSavedPerExecutionInput).not.toHaveValue();
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -292,7 +294,8 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -319,7 +322,8 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionWrapper = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = timeSavedPerExecutionWrapper.querySelector('input')!;
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
