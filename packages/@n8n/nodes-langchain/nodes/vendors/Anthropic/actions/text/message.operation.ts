@@ -174,6 +174,14 @@ const properties: INodeProperties[] = [
 				description: 'Whether to enable code execution. Not supported by all models.',
 			},
 			{
+				displayName: 'Enable Prompt Caching',
+				name: 'enablePromptCaching',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to enable prompt caching to reduce costs and latency for repeated system prompts. <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching" target="_blank">Learn more</a>.',
+			},
+			{
 				displayName: 'Web Search',
 				name: 'webSearch',
 				type: 'boolean',
@@ -285,6 +293,7 @@ interface MessageOptions {
 	includeMergedResponse?: boolean;
 	codeExecution?: boolean;
 	webSearch?: boolean;
+	enablePromptCaching?: boolean;
 	allowedDomains?: string;
 	blockedDomains?: string;
 	maxUses?: number;
@@ -327,12 +336,32 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
+	// Transform system message for caching if enabled
+	let systemMessage:
+		| string
+		| Array<{ type: string; text: string; cache_control?: { type: string } }>
+		| undefined;
+
+	if (options.enablePromptCaching && options.system) {
+		// Convert string to array format with cache_control marker
+		systemMessage = [
+			{
+				type: 'text',
+				text: options.system,
+				cache_control: { type: 'ephemeral' },
+			},
+		];
+	} else {
+		// Keep as string for backward compatibility
+		systemMessage = options.system;
+	}
+
 	const body = {
 		model,
 		messages,
 		tools,
 		max_tokens: options.maxTokens ?? 1024,
-		system: options.system,
+		system: systemMessage,
 		temperature: options.temperature,
 		top_p: options.topP,
 		top_k: options.topK,
@@ -340,7 +369,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
-		enableAnthropicBetas: { codeExecution: options.codeExecution },
+		enableAnthropicBetas: {
+			codeExecution: options.codeExecution,
+			promptCaching: options.enablePromptCaching,
+		},
 	})) as MessagesResponse;
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
@@ -380,7 +412,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 			body,
-			enableAnthropicBetas: { codeExecution: options.codeExecution },
+			enableAnthropicBetas: {
+				codeExecution: options.codeExecution,
+				promptCaching: options.enablePromptCaching,
+			},
 		})) as MessagesResponse;
 	}
 
