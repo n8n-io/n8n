@@ -563,6 +563,7 @@ export class WorkflowService {
 		}
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
+		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
@@ -938,6 +939,46 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	/**
+	 * Validates that all sub-workflow references in a workflow are published.
+	 * Prevents publishing a parent workflow that references draft-only sub-workflows.
+	 */
+	private async _validateSubWorkflowReferences(workflowId: string, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validateSubWorkflowReferences(
+			nodes,
+			async (subWorkflowId: string) => {
+				// Allow self-reference (workflow calling itself)
+				if (subWorkflowId === workflowId) {
+					return { exists: true, isPublished: true };
+				}
+
+				const subWorkflow = await this.workflowRepository.get(
+					{ id: subWorkflowId },
+					{ relations: [] },
+				);
+
+				if (!subWorkflow) {
+					return { exists: false, isPublished: false };
+				}
+
+				return {
+					exists: true,
+					isPublished: subWorkflow.activeVersionId !== null,
+					name: subWorkflow.name,
+				};
+			},
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed sub-workflow validation', {
+				workflowId,
+				error: validation.error,
+				invalidReferences: validation.invalidReferences,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed');
 		}
 	}
 }
