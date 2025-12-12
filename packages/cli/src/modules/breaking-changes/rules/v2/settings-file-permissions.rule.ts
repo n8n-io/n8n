@@ -1,4 +1,4 @@
-import { InstanceSettingsConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
@@ -10,7 +10,7 @@ import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly instanceSettingsConfig: InstanceSettingsConfig) {}
+	constructor(private readonly globalConfig: GlobalConfig) {}
 
 	id: string = 'settings-file-permissions-v2';
 
@@ -28,9 +28,18 @@ export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule 
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		// If enforceSettingsFilePermissions is explicitly set to 'false', users are not affected
-		// because they've configured the system to not enforce file permissions
-		if (!this.instanceSettingsConfig.enforceSettingsFilePermissions) {
+		// Not relevant for cloud deployments - cloud manages infrastructure and file permissions
+		if (this.globalConfig.deployment.type === 'cloud') {
+			return {
+				isAffected: false,
+				instanceIssues: [],
+				recommendations: [],
+			};
+		}
+
+		// If N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is explicitly set to any value, users are not affected
+		// because they've already handled the configuration and are aware of this setting.
+		if (process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS) {
 			return {
 				isAffected: false,
 				instanceIssues: [],

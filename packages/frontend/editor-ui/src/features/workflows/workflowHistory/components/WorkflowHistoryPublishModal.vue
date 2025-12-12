@@ -71,14 +71,14 @@ const onCancel = () => {
 	closeModal();
 };
 
-const isPublishDisabled = ref(false);
+const publishing = ref(false);
 
 const handlePublish = async () => {
 	if (versionName.value.trim().length === 0) {
 		return;
 	}
 
-	isPublishDisabled.value = true;
+	publishing.value = true;
 	const success = await workflowActivate.publishWorkflow(
 		props.data.workflowId,
 		props.data.versionId,
@@ -88,7 +88,7 @@ const handlePublish = async () => {
 		},
 	);
 
-	isPublishDisabled.value = false;
+	publishing.value = false;
 
 	if (success) {
 		props.data.eventBus.emit('publish', {
@@ -124,13 +124,15 @@ const handlePublish = async () => {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
+						:disabled="publishing"
 						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-history-publish-cancel-button"
 						@click="onCancel"
 					/>
 					<N8nButton
-						:disabled="isPublishDisabled || versionName.trim().length === 0"
+						:loading="publishing"
+						:disabled="versionName.trim().length === 0"
 						:label="i18n.baseText('workflows.publish')"
 						data-test-id="workflow-history-publish-button"
 						@click="handlePublish"

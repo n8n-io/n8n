@@ -81,6 +81,7 @@ describe('useWorkflowSaving', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
+
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
@@ -304,6 +305,7 @@ describe('useWorkflowSaving', () => {
 			expect(next).toHaveBeenCalledWith(resolveMarker);
 		});
 	});
+
 	describe('saveAsNewWorkflow', () => {
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
 			const workflow = getDuplicateTestWorkflow();
@@ -349,6 +351,7 @@ describe('useWorkflowSaving', () => {
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
 		});
 	});
+
 	describe('saveCurrentWorkflow', () => {
 		it('should save the current workflow', async () => {
 			const workflow = createTestWorkflow({
@@ -388,6 +391,48 @@ describe('useWorkflowSaving', () => {
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w1',
 				expect.objectContaining({ id: 'w1' }),
+				false,
+			);
+		});
+
+		it('should send autosaved: true when autosaved parameter is true', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w2',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w2',
+				expect.objectContaining({ id: 'w2', active: true, autosaved: true }),
+				false,
+			);
+		});
+
+		it('should send autosaved: false when autosaved parameter is false', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w3',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w3',
+				expect.objectContaining({ id: 'w3', active: true, autosaved: false }),
 				false,
 			);
 		});

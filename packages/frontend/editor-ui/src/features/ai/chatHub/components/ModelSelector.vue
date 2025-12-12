@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
@@ -37,9 +37,13 @@ import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
+const MAX_AGENT_NAME_CHARS = 30;
+const MAX_AGENT_NAME_CHARS_MENU = 45;
 
 const {
 	selectedAgent,
@@ -76,7 +80,9 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
+const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
+const styles = useCssModule();
 
 const credentialsName = computed(() =>
 	selectedAgent
@@ -94,15 +100,20 @@ const isCredentialsMissing = computed(
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
+	const fullNamesMap: Record<string, string> = {};
 
 	if (includeCustomAgents) {
 		const customAgents = isLoading.value
 			? []
-			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => ({
-					id: stringifyModel(agent.model),
-					title: agent.name,
-					disabled: false,
-				}));
+			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => {
+					const id = stringifyModel(agent.model);
+					fullNamesMap[id] = agent.name;
+					return {
+						id,
+						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
+						disabled: false,
+					};
+				});
 
 		menuItems.push({
 			id: 'custom-agents',
@@ -146,13 +157,13 @@ const menu = computed(() => {
 				id: provider,
 				title: providerDisplayNames[provider],
 				submenu: [
+					configureMenu,
+					{ isDivider: true as const, id: 'divider' },
 					{
 						id: `${provider}::loading`,
 						title: i18n.baseText('generic.loadingEllipsis'),
 						disabled: true,
 					},
-					{ isDivider: true as const, id: 'divider' },
-					configureMenu,
 				],
 			});
 			continue;
@@ -178,6 +189,7 @@ const menu = computed(() => {
 						capabilities: {
 							functionCalling: true,
 						},
+						available: true,
 					},
 				});
 			}
@@ -197,11 +209,16 @@ const menu = computed(() => {
 									(m) => 'model' in agent.model && m.model === agent.model.model,
 								),
 						)
-						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
-							id: stringifyModel(agent.model),
-							title: agent.name,
-							disabled: false,
-						}))
+						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => {
+							const id = stringifyModel(agent.model);
+							fullNamesMap[id] = agent.name;
+							return {
+								id,
+								title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
+								disabled: false,
+							};
+						})
+						.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
 				: error
 					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
 					: [];
@@ -219,8 +236,12 @@ const menu = computed(() => {
 						} as const,
 					]
 				: []),
-			configureMenu,
 		]);
+
+		submenu.unshift(
+			configureMenu,
+			...(submenu.length > 1 ? [{ isDivider: true as const, id: 'divider' }] : []),
+		);
 
 		menuItems.push({
 			id: provider,
@@ -229,18 +250,22 @@ const menu = computed(() => {
 		});
 	}
 
-	return menuItems;
+	return { items: menuItems, fullNames: fullNamesMap };
 });
 
 const selectedLabel = computed(
 	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
 );
 
+const canCreateCredentials = computed(() => {
+	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
+});
+
 function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
 
-	if (existingCredentials.length === 0) {
+	if (existingCredentials.length === 0 && canCreateCredentials.value) {
 		uiStore.openNewCredential(credentialType);
 		return;
 	}
@@ -251,7 +276,6 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 			provider,
 			initialValue: credentials?.[provider] ?? null,
 			onSelect: handleSelectCredentials,
-			onCreateNew: handleCreateNewCredential,
 		},
 	});
 }
@@ -298,22 +322,12 @@ function onSelect(id: string) {
 	emit('change', parsedModel);
 }
 
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-
-	telemetry.track('User opened Credential modal', {
-		credential_type: credentialType,
-		source: 'chat',
-		new_credential: true,
-		workflow_id: null,
-	});
-
-	uiStore.openNewCredential(credentialType);
-}
-
 onClickOutside(
 	computed(() => dropdownRef.value?.$el),
 	() => dropdownRef.value?.close(),
+	{
+		ignore: [`.${styles.component} [role=menuitem]`],
+	},
 );
 
 // Update agents when credentials are updated
@@ -340,7 +354,13 @@ defineExpose({
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" teleport @select="onSelect">
+	<N8nNavigationDropdown
+		ref="dropdownRef"
+		:submenu-class="$style.component"
+		:menu="menu.items"
+		teleport
+		@select="onSelect"
+	>
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
@@ -351,7 +371,7 @@ defineExpose({
 			<N8nAvatar
 				v-else-if="item.id.startsWith('n8n::') || item.id.startsWith('custom-agent::')"
 				:class="$style.avatarIcon"
-				:first-name="item.title"
+				:first-name="menu.fullNames[item.id] || item.title"
 				size="xsmall"
 			/>
 		</template>
@@ -365,10 +385,10 @@ defineExpose({
 			/>
 			<div :class="$style.selected">
 				<div>
-					{{ truncateBeforeLast(selectedLabel, 30) }}
+					{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
 				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ truncateBeforeLast(credentialsName, 30) }}
+					{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
 				</N8nText>
 				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
 					<N8nIcon
@@ -385,6 +405,13 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+.component {
+	& :global(.el-popper) {
+		/* Enforce via text truncation instead */
+		max-width: unset !important;
+	}
+}
+
 .dropdownButton {
 	display: flex;
 	align-items: center;

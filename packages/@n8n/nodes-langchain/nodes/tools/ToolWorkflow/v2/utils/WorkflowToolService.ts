@@ -173,9 +173,13 @@ export class WorkflowToolService {
 
 						return processedResponse;
 					}
-
 					// If manualLogging is false we've been called by the engine and need
 					// the structured response.
+
+					if (metadata && 'setMetadata' in context) {
+						void context.setMetadata(metadata);
+					}
+
 					return responseData;
 				} catch (error) {
 					// Check if error is due to cancellation

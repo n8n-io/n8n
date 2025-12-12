@@ -1,6 +1,8 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 
+import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
+
 // Tags that require test containers environment
 // These tests won't be run against local
 const CONTAINER_ONLY_TAGS = [
@@ -30,27 +32,30 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
+// Disable fullyParallel when running with single worker (no benefit, used by Currents orchestration)
+const enableParallelism = process.env.PLAYWRIGHT_WORKERS !== '1';
+
 export function getProjects(): Project[] {
-	const isLocal = !!process.env.N8N_BASE_URL;
+	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
 
 	if (isLocal) {
 		projects.push(
 			{
 				name: 'ui',
-				testDir: './tests/ui',
+				testDir: './tests/e2e',
 				grepInvert: new RegExp(
 					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
 				),
 				fullyParallel: true,
-				use: { baseURL: process.env.N8N_BASE_URL },
+				use: { baseURL: getFrontendUrl() },
 			},
 			{
 				name: 'ui:isolated',
-				testDir: './tests/ui',
+				testDir: './tests/e2e',
 				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 				workers: 1,
-				use: { baseURL: process.env.N8N_BASE_URL },
+				use: { baseURL: getFrontendUrl() },
 			},
 		);
 	} else {
@@ -59,15 +64,15 @@ export function getProjects(): Project[] {
 			projects.push(
 				{
 					name: `${name}:ui`,
-					testDir: './tests/ui',
+					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
-					fullyParallel: true,
+					fullyParallel: enableParallelism,
 					use: { containerConfig: config },
 				},
 				{
 					name: `${name}:ui:isolated`,
-					testDir: './tests/ui',
+					testDir: './tests/e2e',
 					grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 					workers: 1,
 					use: { containerConfig: config },
