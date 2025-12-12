@@ -919,6 +919,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			versionId,
 			false,
 		);
+		// @todo is there a better way? cannot set all workflow because nodes/connections important seems to break
+		// version id is important to update, because otherwise the next time user saves,
+		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
+		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
+		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with versionId and all after)
 		await truncateBuilderMessages(rootStore.restApiContext, workflowId, versionId);
