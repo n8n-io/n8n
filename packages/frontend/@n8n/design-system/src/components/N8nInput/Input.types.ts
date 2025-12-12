@@ -1,4 +1,4 @@
-export type InputType = 'text' | 'textarea' | 'password' | 'email';
+export type InputType = 'text' | 'textarea' | 'password' | 'number' | 'email';
 export type InputSize = 'xlarge' | 'large' | 'medium' | 'small' | 'mini';
 export type InputAutocomplete =
 	| 'off'
@@ -11,7 +11,7 @@ export type InputAutocomplete =
 	| 'email';
 
 export interface InputProps {
-	modelValue?: string | null;
+	modelValue?: string | number | null;
 	type?: InputType;
 	size?: InputSize;
 	placeholder?: string;

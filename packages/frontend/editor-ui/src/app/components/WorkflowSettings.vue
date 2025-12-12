@@ -1035,9 +1035,8 @@ onBeforeUnmount(() => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.hours"
 								:min="0"
-								@update:model-value="
-									(value: string | number | null) => setTheTimeout('hours', String(value ?? ''))
-								"
+								type="number"
+								@update:model-value="(value: string) => setTheTimeout('hours', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
 							</N8nInput>
@@ -1048,9 +1047,8 @@ onBeforeUnmount(() => {
 								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
-								@update:model-value="
-									(value: string | number | null) => setTheTimeout('minutes', String(value ?? ''))
-								"
+								type="number"
+								@update:model-value="(value: string) => setTheTimeout('minutes', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
 							</N8nInput>
@@ -1061,9 +1059,8 @@ onBeforeUnmount(() => {
 								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
-								@update:model-value="
-									(value: string | number | null) => setTheTimeout('seconds', String(value ?? ''))
-								"
+								type="number"
+								@update:model-value="(value: string) => setTheTimeout('seconds', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
 							</N8nInput>
