@@ -3,6 +3,9 @@ import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 export const READY_TO_RUN_WORKFLOW_V5: WorkflowDataCreate = {
 	name: 'Chat with the news',
 	meta: { templateId: 'ready-to-run-ai-workflow-v5' },
+	settings: {
+		executionOrder: 'v1',
+	},
 	nodes: [
 		{
 			parameters: {
