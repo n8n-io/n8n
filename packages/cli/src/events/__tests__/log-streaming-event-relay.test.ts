@@ -1083,6 +1083,69 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `execution-cancelled` event with manual reason', () => {
+			const event: RelayEventMap['execution-cancelled'] = {
+				executionId: 'exec-cancelled-123',
+				workflowId: 'wf-456',
+				workflowName: 'Cancelled Workflow',
+				reason: 'manual',
+			};
+
+			eventService.emit('execution-cancelled', event);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.cancelled',
+				payload: {
+					executionId: 'exec-cancelled-123',
+					workflowId: 'wf-456',
+					workflowName: 'Cancelled Workflow',
+					reason: 'manual',
+				},
+			});
+		});
+
+		it('should log on `execution-cancelled` event with timeout reason', () => {
+			const event: RelayEventMap['execution-cancelled'] = {
+				executionId: 'exec-timeout-456',
+				workflowId: 'wf-789',
+				workflowName: 'Timed Out Workflow',
+				reason: 'timeout',
+			};
+
+			eventService.emit('execution-cancelled', event);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.cancelled',
+				payload: {
+					executionId: 'exec-timeout-456',
+					workflowId: 'wf-789',
+					workflowName: 'Timed Out Workflow',
+					reason: 'timeout',
+				},
+			});
+		});
+
+		it('should log on `execution-cancelled` event with shutdown reason', () => {
+			const event: RelayEventMap['execution-cancelled'] = {
+				executionId: 'exec-shutdown-789',
+				workflowId: 'wf-101',
+				workflowName: 'Shutdown Workflow',
+				reason: 'shutdown',
+			};
+
+			eventService.emit('execution-cancelled', event);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.cancelled',
+				payload: {
+					executionId: 'exec-shutdown-789',
+					workflowId: 'wf-101',
+					workflowName: 'Shutdown Workflow',
+					reason: 'shutdown',
+				},
+			});
+		});
 	});
 
 	describe('AI events', () => {
