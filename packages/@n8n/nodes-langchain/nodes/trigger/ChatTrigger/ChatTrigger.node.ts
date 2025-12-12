@@ -403,7 +403,7 @@ export class ChatTrigger extends Node {
 				description: 'Whether to make the agent available in n8n Chat',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.4 } }],
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 			},
@@ -512,6 +512,16 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, respondToWebhookResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
 					},
 				],
 			},
