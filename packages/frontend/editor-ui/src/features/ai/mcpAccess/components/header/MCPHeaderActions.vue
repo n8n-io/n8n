@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/McpAccessToggle.vue';
 import McpConnectPopover from '@/features/ai/mcpAccess/components/header/connectPopover/McpConnectPopover.vue';
-import { useI18n } from '@n8n/i18n';
 
 type Props = {
 	toggleDisabled?: boolean;
@@ -17,8 +16,6 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	disableMcpAccess: [];
 }>();
-
-const i18n = useI18n();
 </script>
 
 <template>
