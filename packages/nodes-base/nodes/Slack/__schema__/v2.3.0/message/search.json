@@ -19,13 +19,21 @@
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "bold": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
                                             "text": {
                                                 "type": "string"
                                             },
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "user_id": {
+                                            "url": {
                                                 "type": "string"
                                             }
                                         }
@@ -106,5 +114,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
