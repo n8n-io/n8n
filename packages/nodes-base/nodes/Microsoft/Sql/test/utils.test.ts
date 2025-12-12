@@ -6,6 +6,7 @@ import type { IDataObject } from 'n8n-workflow';
 import {
 	configurePool,
 	deleteOperation,
+	escapeIdentifier,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
 	mssqlChunk,
@@ -87,6 +88,30 @@ describe('MSSQL tests', () => {
 		]);
 	});
 
+	it('should perform insert operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'id, name, age, active]': [
+					{
+						id: 1,
+						name: 'Sam',
+						age: 31,
+						active: false,
+					},
+				],
+			},
+		};
+
+		await insertOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"INSERT INTO [users]] set text='asdf' where id=1;] ([id], [name], [age], [active]]]) VALUES (@r0v0, @r0v1, @r0v2, @r0v3);",
+		);
+		assertParameters([[1, 'Sam', 31, false]]);
+	});
+
 	it('should perform update operation', async () => {
 		const pool = configurePool({});
 		const tables = {
@@ -107,7 +132,7 @@ describe('MSSQL tests', () => {
 
 		expect(querySpy).toHaveBeenCalledTimes(1);
 		expect(querySpy).toHaveBeenCalledWith(
-			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE id = @condition;',
+			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE [id] = @condition;',
 		);
 		assertParameters({
 			v0: 'Greg',
@@ -115,6 +140,54 @@ describe('MSSQL tests', () => {
 			v2: 0,
 			condition: 2,
 		});
+	});
+
+	it('should perform update operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'name, age, active]': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: 'id] -- -',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"UPDATE [users]] set text='asdf' where id=1;] SET [name] = @v0, [age] = @v1, [active]]] = @v2 WHERE [id]] -- -] = @condition;",
+		);
+	});
+
+	it('should perform update operation with enclosed key', async () => {
+		const pool = configurePool({});
+		const tables = {
+			users: {
+				'name, age, active': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: '[id]',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE [id] = @condition;',
+		);
 	});
 
 	it('should perform delete operation', async () => {
@@ -140,6 +213,32 @@ describe('MSSQL tests', () => {
 		expect(querySpy).toHaveBeenCalledTimes(1);
 		expect(querySpy).toHaveBeenCalledWith('DELETE FROM [users] WHERE [id] IN (@v0);');
 		assertParameters({ v0: 2 });
+	});
+
+	it('should perform delete operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'id]': [
+					{
+						json: {
+							id: 2,
+						},
+						pairedItem: {
+							item: 0,
+							input: undefined,
+						},
+					},
+				],
+			},
+		};
+
+		await deleteOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"DELETE FROM [users]] set text='asdf' where id=1;] WHERE [id]]] IN (@v0);",
+		);
 	});
 
 	describe('mssqlChunk', () => {
@@ -239,6 +338,17 @@ describe('MSSQL tests', () => {
 			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
 			await expect(executeSqlQueryAndPrepareResults(pool, 'INVALID SQL', 4)).rejects.toThrow(
 				errorMessage,
+			);
+		});
+	});
+
+	describe('escapeTableName', () => {
+		it('should escape table name correctly', () => {
+			expect(escapeIdentifier('test')).toEqual('[test]');
+			expect(escapeIdentifier('[test]')).toEqual('[test]');
+			expect(escapeIdentifier('test.test')).toEqual('[test].[test]');
+			expect(escapeIdentifier("test] SET mytext='1' where id=2; -- -")).toEqual(
+				"[test]] SET mytext='1' where id=2; -- -]",
 			);
 		});
 	});

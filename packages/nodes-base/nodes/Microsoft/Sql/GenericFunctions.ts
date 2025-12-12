@@ -89,7 +89,7 @@ export async function executeQueryQueue(
 export function formatColumns(columns: string) {
 	return columns
 		.split(',')
-		.map((column) => `[${column.trim()}]`)
+		.map((column) => escapeIdentifier(column.trim()))
 		.join(', ');
 }
 
@@ -114,13 +114,22 @@ export function configurePool(credentials: IDataObject) {
 	return new mssql.ConnectionPool(config);
 }
 
-const escapeTableName = (table: string) => {
-	table = table.trim();
-	if (table.startsWith('[') && table.endsWith(']')) {
-		return table;
-	} else {
-		return `[${table}]`;
-	}
+const ID_GLOBAL_REGEXP = /\]/g;
+export const escapeIdentifier = (identifier: string) => {
+	return identifier
+		.split('.')
+		.map((part) => {
+			part = part.trim();
+
+			// If already wrapped in brackets, return as-is (assume it's correctly escaped)
+			if (part.startsWith('[') && part.endsWith(']')) {
+				return part;
+			}
+
+			// Escape closing brackets by doubling them, then wrap in brackets
+			return '[' + part.replace(ID_GLOBAL_REGEXP, ']]') + ']';
+		})
+		.join('.');
 };
 
 const MSSQL_PARAMETER_LIMIT = 2100;
@@ -163,7 +172,7 @@ export async function insertOperation(tables: ITables, pool: mssql.ConnectionPoo
 					}
 				}
 
-				const query = `INSERT INTO ${escapeTableName(table)} (${formatColumns(
+				const query = `INSERT INTO ${escapeIdentifier(table)} (${formatColumns(
 					columnString,
 				)}) VALUES ${valuesPlaceholder.join(', ')};`;
 
@@ -182,15 +191,16 @@ export async function updateOperation(tables: ITables, pool: mssql.ConnectionPoo
 				const columns = columnString.split(',').map((column) => column.trim());
 
 				const setValues: string[] = [];
-				const condition = `${item.updateKey} = @condition`;
-				request.input('condition', item[item.updateKey as string]);
+				const updateKey = item.updateKey as string;
+				const condition = `${escapeIdentifier(updateKey)} = @condition`;
+				request.input('condition', item[updateKey]);
 
 				for (const [index, col] of columns.entries()) {
-					setValues.push(`[${col}] = @v${index}`);
+					setValues.push(`${escapeIdentifier(col)} = @v${index}`);
 					request.input(`v${index}`, item[col]);
 				}
 
-				const query = `UPDATE ${escapeTableName(table)} SET ${setValues.join(
+				const query = `UPDATE ${escapeIdentifier(table)} SET ${setValues.join(
 					', ',
 				)} WHERE ${condition};`;
 
@@ -219,9 +229,9 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 						request.input(`v${index}`, entry[deleteKey]);
 					}
 
-					const query = `DELETE FROM ${escapeTableName(
+					const query = `DELETE FROM ${escapeIdentifier(
 						table,
-					)} WHERE [${deleteKey}] IN (${valuesPlaceholder.join(', ')});`;
+					)} WHERE ${escapeIdentifier(deleteKey)} IN (${valuesPlaceholder.join(', ')});`;
 
 					return await request.query(query);
 				});
