@@ -11,15 +11,23 @@ import { Cipher } from 'n8n-core';
 import { ICredentialContext, ICredentialDataDecryptedObject, jsonParse } from 'n8n-workflow';
 import z from 'zod';
 
+import type { ITokenIdentifier } from './identifiers/identifier-interface';
 import {
 	OAuth2IntrospectionOptionsSchema,
 	OAuth2TokenIntrospectionIdentifier,
 } from './identifiers/oauth2-introspection-identifier';
+import {
+	OAuth2UserInfoIdentifier,
+	OAuth2UserInfoOptionsSchema,
+} from './identifiers/oauth2-userinfo-identifier';
 import { DynamicCredentialEntryStorage } from './storage/dynamic-credential-entry-storage';
 
-const OAuthCredentialResolverOptionsSchema = z.object({
-	...OAuth2IntrospectionOptionsSchema.shape,
-});
+const OAuthCredentialResolverOptionsSchema = z.discriminatedUnion('validation', [
+	OAuth2IntrospectionOptionsSchema,
+	OAuth2UserInfoOptionsSchema,
+]);
+
+type OAuthCredentialResolverOptions = z.infer<typeof OAuthCredentialResolverOptionsSchema>;
 
 /**
  * OAuth2 token introspection-based credential resolver.
@@ -31,14 +39,15 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 	constructor(
 		private readonly logger: Logger,
 		private readonly oAuth2TokenIntrospectionIdentifier: OAuth2TokenIntrospectionIdentifier,
+		private readonly oAuth2UserInfoIdentifier: OAuth2UserInfoIdentifier,
 		private readonly storage: DynamicCredentialEntryStorage,
 		private readonly cipher: Cipher,
 	) {}
 
 	metadata = {
 		name: 'credential-resolver.oauth2-1.0',
-		description: 'OAuth2 token introspection-based credential resolver',
-		displayName: 'OAuth2 Introspection',
+		description: 'OAuth2 based credential resolver',
+		displayName: 'OAuth2 Resolver',
 		options: [
 			{
 				displayName: 'Metadata URL',
@@ -50,21 +59,54 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 				description: 'OAuth2 server metadata endpoint URL',
 			},
 			{
+				displayName: 'Validation Method',
+				name: 'validation',
+				type: 'options' as const,
+				options: [
+					{
+						name: 'OAuth2 Token Introspection',
+						value: 'oauth2-introspection',
+						description: 'Validate token via OAuth2 Token Introspection Endpoint',
+					},
+					{
+						name: 'OAuth2 UserInfo Endpoint',
+						value: 'oauth2-userinfo',
+						description: 'Validate token via OAuth2 UserInfo Endpoint',
+					},
+				],
+				default: 'oauth2-introspection',
+				description: 'Validation method to use for token validation',
+			},
+			{
 				displayName: 'Client ID',
 				name: 'clientId',
 				type: 'string' as const,
 				default: '',
-				required: true,
 				description: 'OAuth2 client ID for introspection',
+				displayOptions: {
+					hide: {
+						validation: ['oauth2-userinfo'],
+					},
+					show: {
+						validation: ['oauth2-introspection'],
+					},
+				},
 			},
 			{
 				displayName: 'Client Secret',
 				name: 'clientSecret',
 				type: 'string' as const,
 				default: '',
-				required: true,
 				typeOptions: { password: true },
 				description: 'OAuth2 client secret for introspection',
+				displayOptions: {
+					hide: {
+						validation: ['oauth2-userinfo'],
+					},
+					show: {
+						validation: ['oauth2-introspection'],
+					},
+				},
 			},
 			{
 				displayName: 'Subject Claim',
@@ -86,7 +128,7 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		handle: CredentialResolverHandle,
 	): Promise<ICredentialDataDecryptedObject> {
 		const parsedOptions = await this.parseOptions(handle.configuration);
-		const key = await this.oAuth2TokenIntrospectionIdentifier.resolve(context, parsedOptions);
+		const key = await this.resolveIdentifier(context, parsedOptions);
 
 		const data = await this.storage.getCredentialData(
 			credentialId,
@@ -116,7 +158,7 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		handle: CredentialResolverHandle,
 	): Promise<void> {
 		const parsedOptions = await this.parseOptions(handle.configuration);
-		const key = await this.oAuth2TokenIntrospectionIdentifier.resolve(context, parsedOptions);
+		const key = await this.resolveIdentifier(context, parsedOptions);
 
 		const encryptedData = this.cipher.encrypt(data);
 
@@ -136,7 +178,7 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		handle: CredentialResolverHandle,
 	): Promise<void> {
 		const parsedOptions = await this.parseOptions(handle.configuration);
-		const key = await this.oAuth2TokenIntrospectionIdentifier.resolve(context, parsedOptions);
+		const key = await this.resolveIdentifier(context, parsedOptions);
 		await this.storage.deleteCredentialData(credentialId, key, handle.resolverId, parsedOptions);
 	}
 
@@ -154,7 +196,26 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 	}
 
 	async validateOptions(options: CredentialResolverConfiguration): Promise<void> {
+		const [identifier, parsedOptions] = await this.getIdentifier(options);
+		await identifier.validateOptions(parsedOptions);
+	}
+
+	private async getIdentifier(
+		options: CredentialResolverConfiguration,
+	): Promise<[ITokenIdentifier, OAuthCredentialResolverOptions]> {
 		const parsedOptions = await this.parseOptions(options);
-		await this.oAuth2TokenIntrospectionIdentifier.validateOptions(parsedOptions);
+		if (parsedOptions.validation === 'oauth2-introspection') {
+			return [this.oAuth2TokenIntrospectionIdentifier, parsedOptions];
+		} else {
+			return [this.oAuth2UserInfoIdentifier, parsedOptions];
+		}
+	}
+
+	private async resolveIdentifier(
+		context: ICredentialContext,
+		options: CredentialResolverConfiguration,
+	): Promise<string> {
+		const [identifier, parsedOptions] = await this.getIdentifier(options);
+		return await identifier.resolve(context, parsedOptions);
 	}
 }

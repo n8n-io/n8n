@@ -9,6 +9,7 @@ export type CsrfStateRequired = {
 
 export type CreateCsrfStateData = {
 	cid: string;
+	origin: 'static-credential' | 'dynamic-credential';
 	[key: string]: unknown;
 };
 

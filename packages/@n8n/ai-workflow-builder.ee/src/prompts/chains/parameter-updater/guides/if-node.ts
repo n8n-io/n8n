@@ -1,7 +1,9 @@
-export const IF_NODE_GUIDE = `
-### IF Node Updates - Comprehensive Guide
+import type { NodeTypeGuide } from '../types';
 
-The IF node uses a complex filter structure for conditional logic. Understanding the correct operator format is crucial.
+export const IF_NODE_GUIDE: NodeTypeGuide = {
+	patterns: ['n8n-nodes-base.if'],
+	content: `
+### The IF node uses a complex filter structure for conditional logic. Understanding the correct operator format is crucial.
 
 #### IF Node Structure
 \`\`\`json
@@ -151,4 +153,5 @@ The IF node uses a complex filter structure for conditional logic. Understanding
 2. **Expression values**: Both leftValue and rightValue can be expressions using \`={{ ... }}\` syntax
 3. **Type matching**: The operator type must match the data type you're comparing
 4. **Case sensitivity**: Only applies to string comparisons when caseSensitive is true in options
-5. **Type validation**: "loose" allows type coercion, "strict" requires exact type matches`;
+5. **Type validation**: "loose" allows type coercion, "strict" requires exact type matches`,
+};
