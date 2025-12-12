@@ -199,11 +199,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
 		const isOutput = mode === CanvasConnectionMode.Output;
-		const isScopedConnection = type !== NodeConnectionTypes.Main;
+		const isScopedConnection = type !== NodeConnectionTypes.Main && !nodeCreatorView;
+		const view = isScopedConnection ? AI_UNCATEGORIZED_CATEGORY : nodeCreatorView;
 		setNodeCreatorState({
 			source: eventSource,
 			createNodeActive: true,
-			nodeCreatorView: isScopedConnection ? AI_UNCATEGORIZED_CATEGORY : nodeCreatorView,
+			nodeCreatorView: view,
 			connectionType: type,
 		});
 

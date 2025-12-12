@@ -22,7 +22,9 @@ const classes = computed(() => ({
 	[$style.canvasEdgeToolbar]: true,
 }));
 
-const isAddButtonVisible = computed(() => props.type === NodeConnectionTypes.Main);
+const isAddButtonVisible = computed(
+	() => props.type === NodeConnectionTypes.Main || props.type === NodeConnectionTypes.AiTool,
+);
 
 function onAdd() {
 	emit('add');
@@ -43,7 +45,11 @@ function onDelete() {
 			size="small"
 			icon-size="medium"
 			icon="plus"
-			:title="i18n.baseText('node.add')"
+			:title="
+				type === NodeConnectionTypes.AiTool
+					? i18n.baseText('node.add-human-review-step')
+					: i18n.baseText('node.add')
+			"
 			@click="onAdd"
 		/>
 		<N8nIconButton
