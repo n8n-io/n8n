@@ -1,4 +1,8 @@
-import { MANUAL_TRIGGER_NODE_TYPE, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	MemoryMonitor,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import type {
 	ITaskData,
 	ExecutionStatus,
@@ -35,6 +39,7 @@ import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { currentsReporter } from '@currents/playwright';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -179,12 +184,14 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: 
 		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
 		if (waitingNodeTooltip) {
 			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			const currentMemory = MemoryMonitor.getMemoryUsage();
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
 				$execution: {
 					id: activeExecutionId,
 					mode: 'test',
 					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
 					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+					memoryUsage: currentMemory,
 				},
 			};
 			if (workflow) {
