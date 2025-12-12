@@ -1752,6 +1752,8 @@ export function useCanvasOperations() {
 		});
 		workflowsStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
+		workflowState.setWorkflowProperty('createdAt', data.createdAt);
+		workflowState.setWorkflowProperty('updatedAt', data.updatedAt);
 	}
 
 	const initializeUnknownNodes = (nodes: INode[]) => {

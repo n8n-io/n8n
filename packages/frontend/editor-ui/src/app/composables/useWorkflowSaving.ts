@@ -245,6 +245,7 @@ export function useWorkflowSaving({
 				forceSave,
 			);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
 			if (name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
@@ -413,6 +414,8 @@ export function useWorkflowSaving({
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
+			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+
 			uiStore.stateIsDirty = false;
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {

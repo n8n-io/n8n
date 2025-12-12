@@ -166,7 +166,7 @@ function onWorkflowExecuted() {
 		: undefined;
 
 	if (!executionData) {
-		builderStore.sendChatMessage({
+		void builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
 			type: 'execution',
 			executionStatus: 'error',
@@ -176,7 +176,7 @@ function onWorkflowExecuted() {
 	}
 
 	if (executionStatus === 'success') {
-		builderStore.sendChatMessage({
+		void builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
 			type: 'execution',
 			executionStatus,
@@ -198,7 +198,7 @@ function onWorkflowExecuted() {
 
 	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
 
-	builderStore.sendChatMessage({
+	void builderStore.sendChatMessage({
 		text: scopedErrorMessage,
 		type: 'execution',
 		errorMessage: executionError,
