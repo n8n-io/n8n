@@ -347,7 +347,14 @@ export class SourceControlService {
 
 			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 		} catch (error) {
-			this.gitService.resetBranch();
+			this.logger.error('Failed to export or commit changes', { error });
+			try {
+				await this.gitService.resetBranch({ hard: true, target: 'HEAD' });
+			} catch (resetError) {
+				this.logger.error('Failed to reset branch after export/commit error', {
+					error: resetError,
+				});
+			}
 			throw error;
 		}
 
