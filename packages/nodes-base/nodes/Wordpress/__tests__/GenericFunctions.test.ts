@@ -26,6 +26,32 @@ describe('Wordpress > GenericFunctions', () => {
 			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
 		});
 
+		it('should set Cache-Control set to no-cache for non-read requests', async () => {
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+			await wordpressApiRequest.call(mockFunctions, 'POST', '/posts', {}, {});
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressApi',
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						'Cache-Control': 'no-cache',
+					}),
+				}),
+			);
+		});
+
+		it('should not set Cache-Control for GET requests', async () => {
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressApi',
+				expect.objectContaining({
+					headers: expect.not.objectContaining({
+						'Cache-Control': 'no-cache',
+					}),
+				}),
+			);
+		});
+
 		it('should throw NodeApiError on failure', async () => {
 			mockFunctions.helpers.requestWithAuthentication.mockRejectedValue({ message: 'fail' });
 			await expect(
