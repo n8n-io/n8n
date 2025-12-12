@@ -48,7 +48,7 @@ import {
 	PrebuiltAgentTemplates,
 	SampleTemplates,
 } from '@/features/workflows/templates/utils/workflowSamples';
-import { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
