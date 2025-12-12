@@ -1896,6 +1896,15 @@ watch(
 	},
 );
 
+watch(
+	() => uiStore.stateIsDirty,
+	(isDirty) => {
+		if (isDirty) {
+			void workflowSaving.autoSaveWorkflow();
+		}
+	},
+);
+
 onBeforeRouteLeave(async (to, from, next) => {
 	// Close the focus panel when leaving the workflow view
 	if (focusPanelStore.focusPanelActive) {
