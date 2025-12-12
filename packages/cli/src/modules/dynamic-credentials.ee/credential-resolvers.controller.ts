@@ -20,6 +20,7 @@ import {
 	CredentialResolverValidationError,
 } from '@n8n/decorators';
 import { Response } from 'express';
+import { isNodeParameters } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -66,6 +67,10 @@ export class CredentialResolversController {
 		_res: Response,
 		@Body dto: CreateCredentialResolverDto,
 	): Promise<CredentialResolver> {
+		if (!isNodeParameters(dto.config)) {
+			throw new BadRequestError('Invalid config format');
+		}
+
 		try {
 			const createdResolver = await this.service.create({
 				name: dto.name,
@@ -112,6 +117,9 @@ export class CredentialResolversController {
 		@Param('id') id: string,
 		@Body dto: UpdateCredentialResolverDto,
 	): Promise<CredentialResolver> {
+		if (!isNodeParameters(dto.config)) {
+			throw new BadRequestError('Invalid config format');
+		}
 		try {
 			return credentialResolverSchema.parse(
 				await this.service.update(id, {

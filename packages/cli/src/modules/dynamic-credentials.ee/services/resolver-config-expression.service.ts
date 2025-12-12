@@ -85,13 +85,13 @@ export class ResolverConfigExpressionService {
 
 		return workflow.expression.getComplexParameterValue(
 			this.mockNode,
-			config as unknown as INodeParameters,
+			config,
 			'manual',
 			additionalKeys,
 			undefined,
 			undefined,
 			config,
-		) as CredentialResolverConfiguration;
+		) as INodeParameters;
 	}
 
 	/**
@@ -99,11 +99,11 @@ export class ResolverConfigExpressionService {
 	 * Uses actual execution context to resolve expressions to real values.
 	 */
 	resolveForRuntime(
-		config: Record<string, unknown>,
+		config: CredentialResolverConfiguration,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		canUseExternalSecrets: boolean,
-	): Record<string, unknown> {
+	): CredentialResolverConfiguration {
 		const workflow = new Workflow({
 			nodes: [this.mockNode],
 			connections: {},
@@ -117,12 +117,12 @@ export class ResolverConfigExpressionService {
 
 		return workflow.expression.getComplexParameterValue(
 			this.mockNode,
-			config as INodeParameters,
+			config,
 			mode,
 			additionalKeys,
 			undefined,
 			undefined,
 			config,
-		) as Record<string, unknown>;
+		) as INodeParameters;
 	}
 }

@@ -1,21 +1,24 @@
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
+import {
+	type ICredentialContext,
+	type ICredentialDataDecryptedObject,
+	isNodeParameters,
+	type IWorkflowSettings,
+	jsonParse,
+} from 'n8n-workflow';
+
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
 } from '@/credentials/dynamic-credential-storage.interface';
-import {
-	type ICredentialContext,
-	type ICredentialDataDecryptedObject,
-	type IWorkflowSettings,
-	jsonParse,
-} from 'n8n-workflow';
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { Cipher } from 'n8n-core';
-import { CredentialStorageError } from '../errors/credential-storage.error';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { extractSharedFields } from './shared-fields';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { CredentialStorageError } from '../errors/credential-storage.error';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {
@@ -67,6 +70,11 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
+			if (!isNodeParameters(resolverConfig)) {
+				throw new CredentialStorageError(
+					`Invalid resolver config format for resolver "${resolverEntity.name}" (${resolverEntity.id})`,
+				);
+			}
 
 			const credentialType = this.loadNodesAndCredentials.getCredential(
 				credentialStoreMetadata.type,

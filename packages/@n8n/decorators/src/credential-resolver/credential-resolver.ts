@@ -2,13 +2,14 @@ import type { Constructable } from '@n8n/di';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
+	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
 
 /**
  * Configuration object passed to resolver methods. Structure is defined by resolver type's metadata.options.
  */
-export type CredentialResolverConfiguration = Record<string, unknown>;
+export type CredentialResolverConfiguration = INodeParameters;
 
 export type CredentialResolverHandle = {
 	configuration: CredentialResolverConfiguration;
