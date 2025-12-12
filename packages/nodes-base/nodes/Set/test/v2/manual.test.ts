@@ -80,6 +80,7 @@ describe('test Set2, manual Mode', () => {
 		const assignments = {
 			assignments: [
 				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 					name: 'test',
 					value: '{ ok: 1 }',
 					type: 'object',
@@ -99,6 +100,7 @@ describe('test Set2, manual Mode', () => {
 		const assignments = {
 			assignments: [
 				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 					name: 'test',
 					value: '{ ok: 1',
 					type: 'object',
