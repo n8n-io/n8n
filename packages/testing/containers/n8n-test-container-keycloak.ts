@@ -242,8 +242,8 @@ async function waitForKeycloakReady(
 		await wait(retryIntervalMs);
 	}
 
-	console.warn(
-		`WARNING: Keycloak discovery endpoint at ${url} did not return 200 within ${timeoutMs / 1000} seconds.`,
+	throw new Error(
+		`Keycloak discovery endpoint at ${url} did not become ready within ${timeoutMs / 1000} seconds`,
 	);
 }
 

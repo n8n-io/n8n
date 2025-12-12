@@ -247,7 +247,7 @@ function displayConfig(config: N8NConfig) {
 
 	// Determine actual database
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	const usePostgres = config.postgres || config.queueMode;
+	const usePostgres = config.postgres || config.queueMode || config.oidc;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
 	if (config.queueMode) {
