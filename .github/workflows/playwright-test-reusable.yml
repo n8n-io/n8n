@@ -41,8 +41,6 @@ on:
     secrets:
       CURRENTS_RECORD_KEY:
         required: false
-      CURRENTS_API_KEY:
-        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_URL:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_USER:
@@ -72,9 +70,6 @@ jobs:
       matrix:
         shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7, 8]') }}
     name: Test (Machine ${{ matrix.shard }})
-    env:
-      CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
-      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -94,16 +89,6 @@ jobs:
       - name: Install Browsers
         run: pnpm turbo install-browsers:ci
 
-      - name: Playwright Last Failed action
-        id: last-failed-action
-        if: ${{ env.CURRENTS_API_KEY != '' }}
-        uses: currents-dev/playwright-last-failed@v1
-        with:
-          or8n: true
-          pw-output-dir: packages/testing/playwright/test-results
-          api-key: ${{ secrets.CURRENTS_API_KEY }}
-          project-id: I0yzoc
-
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
         run: |
@@ -119,7 +104,7 @@ jobs:
       - name: Run Tests
         run: |
           if echo "${{ inputs.test-command }}" | grep -q "pwc-p"; then
-            ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ steps.last-failed-action.outputs.extra-pw-flags }}
+            ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }}
           else
             ${{ inputs.test-command }} --shard=${{ matrix.shard }}/${{ strategy.job-total }} --workers=${{ env.PLAYWRIGHT_WORKERS }}
           fi
