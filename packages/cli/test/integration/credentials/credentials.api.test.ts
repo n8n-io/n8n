@@ -1530,7 +1530,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
-			id: response.body.id,
+			id: response.body.data.id,
 		});
 		expect(credential.isResolvable).toBe(true);
 	});
