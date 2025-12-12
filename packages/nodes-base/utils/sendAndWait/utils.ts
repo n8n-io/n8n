@@ -472,7 +472,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { approved } } }]],
+		workflowData: [[{ json: { data: { approved, metadata: this.runExecutionData.metadata } } }]],
 	};
 }
 
