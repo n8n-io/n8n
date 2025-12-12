@@ -101,6 +101,12 @@ export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXECUTION_LOGIC_V2_EXPERIMENT = {
+	name: 'execution_logic_v2',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -113,4 +119,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 ];

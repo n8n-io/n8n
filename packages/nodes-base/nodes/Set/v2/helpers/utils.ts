@@ -234,7 +234,9 @@ export function resolveRawData(
 }
 
 function isBinaryData(obj: unknown): obj is IBinaryData {
-	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+	return (
+		typeof obj === 'object' && obj !== null && ('data' in obj || 'id' in obj) && 'mimeType' in obj
+	);
 }
 
 export function prepareReturnItem(

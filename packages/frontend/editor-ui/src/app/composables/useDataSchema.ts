@@ -1,9 +1,16 @@
 import { useI18n } from '@n8n/i18n';
-import type { INodeUi, Optional, Primitives, Schema, SchemaType } from '@/Interface';
+import type {
+	BinaryMetadata,
+	INodeUi,
+	Optional,
+	Primitives,
+	Schema,
+	SchemaType,
+} from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
-import { isObj } from '@/app/utils/typeGuards';
+import { isBinary, isObj } from '@/app/utils/typeGuards';
 import { isPresent, shorten } from '@/app/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 import merge from 'lodash/merge';
@@ -56,14 +63,18 @@ export function useDataSchema() {
 						path,
 					};
 				} else if (isObj(input)) {
+					const type = isBinary(input) ? 'binary' : 'object';
 					schema = {
-						type: 'object',
+						type,
 						value: Object.entries(input).map(([k, v]) => ({
 							key: k,
 							...getSchema(v, generatePath(path, [k]), excludeValues, collapseArrays),
 						})),
 						path,
 					};
+					if (type === 'binary') {
+						schema.binaryData = input as BinaryMetadata;
+					}
 				}
 				break;
 			case 'function':
@@ -277,6 +288,7 @@ export type RenderItem = {
 	preview?: boolean;
 	locked?: boolean;
 	lockedTooltip?: string;
+	binaryData?: BinaryMetadata;
 };
 
 export type RenderHeader = {
@@ -316,6 +328,7 @@ export type RenderEmpty = {
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
 const icons = {
+	binary: DATA_TYPE_ICON_MAP.file,
 	object: DATA_TYPE_ICON_MAP.object,
 	array: DATA_TYPE_ICON_MAP.array,
 	['string']: DATA_TYPE_ICON_MAP.string,
@@ -420,6 +433,7 @@ export const useFlattenSchema = () => {
 					nodeName,
 					type: 'item',
 					preview,
+					binaryData: schema.binaryData ? schema.binaryData : undefined,
 				});
 			}
 

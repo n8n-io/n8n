@@ -3,6 +3,7 @@ import chardet from 'chardet';
 import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import iconv from 'iconv-lite';
+import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
 import type { StringValue as TimeUnitValue } from 'ms';
 import type {
@@ -59,7 +60,9 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
  * Check if object is a binary data
  */
 function isBinaryData(obj: unknown): obj is IBinaryData {
-	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+	return (
+		typeof obj === 'object' && obj !== null && ('data' in obj || 'id' in obj) && 'mimeType' in obj
+	);
 }
 
 /**
@@ -73,6 +76,7 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: 'separate' | 'combined' | undefined = undefined,
 ): IBinaryData {
 	if (isBinaryData(parameterData)) {
 		return parameterData;
@@ -88,32 +92,49 @@ export function assertBinaryData(
 			},
 		);
 	}
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
-	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description: 'Make sure that the previous node outputs a binary file',
-			},
-		);
-	}
 
-	const binaryPropertyData = binaryKeyData[parameterData];
-	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description:
-					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
-			},
-		);
-	}
+	if (binaryMode === 'separate' || binaryMode === undefined) {
+		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
+		if (binaryKeyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: 'Make sure that the previous node outputs a binary file',
+				},
+			);
+		}
 
-	return binaryPropertyData;
+		const binaryPropertyData = binaryKeyData[parameterData];
+		if (binaryPropertyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description:
+						'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+				},
+			);
+		}
+
+		return binaryPropertyData;
+	} else {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const binaryData = get(itemData, parameterData);
+		if (binaryData === undefined || !isBinaryData(binaryData)) {
+			throw new NodeOperationError(
+				node,
+				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: `Check that the path '${parameterData}' is correct, and that it resolves to a binary data object in the input data`,
+				},
+			);
+		}
+		return binaryData;
+	}
 }
 
 /**
@@ -126,13 +147,21 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: 'separate' | 'combined' | undefined = undefined,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
 	if (isBinaryData(parameterData)) {
 		binaryData = parameterData;
-	} else if (typeof parameterData === 'string') {
+	} else if (typeof parameterData === 'string' && binaryMode !== 'combined') {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
+	} else if (typeof parameterData === 'string') {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const data = get(itemData, parameterData);
+		if (data === undefined || !isBinaryData(data)) {
+			throw new UnexpectedError('Provided parameter is not a string or binary data object.');
+		}
+		binaryData = data;
 	} else {
 		throw new UnexpectedError('Provided parameter is not a string or binary data object.');
 	}

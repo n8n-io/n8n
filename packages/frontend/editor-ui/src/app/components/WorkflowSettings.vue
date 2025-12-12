@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
@@ -12,11 +13,14 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
+
+import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
 	N8nButton,
 	N8nIcon,
-	N8nIconButton,
 	N8nInput,
+	N8nLink,
+	N8nIconButton,
 	N8nOption,
 	N8nSelect,
 	N8nTooltip,
@@ -64,6 +68,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const posthogStore = usePostHog();
 const uiStore = useUIStore();
 
 const isLoading = ref(true);
@@ -72,9 +77,24 @@ const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
-const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
-	{ key: 'v0', value: 'v0 (legacy)' },
-	{ key: 'v1', value: 'v1 (recommended)' },
+const executionOrderOptions = ref<Array<{ key: string; value: string; description: string }>>([
+	{
+		key: 'v0',
+		value: 'Run branches in parallel (v0, legacy)',
+		description:
+			'Executes the first node of each branch, then the second node of each branch, and so on',
+	},
+	{
+		key: 'v1',
+		value: 'Run each branch one at a time (v1, legacy)',
+		description: 'Executes each branch in turn, completing one branch before starting another',
+	},
+	{
+		key: 'v2',
+		value: 'Run each branch one at a time with optimized binaries & expressions (v2, recommended)',
+		description:
+			"Uses v1 execution logic with combined binary mode where binaries included in the item's json data and expressions are simplified.",
+	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
@@ -107,6 +127,13 @@ const defaultValues = ref({
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
+});
+
+const executionLogic = computed(() => {
+	if (workflowSettings.value.binaryMode === 'combined') {
+		return 'v2';
+	}
+	return workflowSettings.value.executionOrder || 'v0';
 });
 
 const isMCPEnabled = computed(
@@ -170,6 +197,33 @@ const timeSavedModeOptions = computed(() => [
 		value: 'dynamic' as const,
 	},
 ]);
+
+const filteredExecutionOrderOptions = computed(() => {
+	if (workflowSettings.value.binaryMode === 'combined') {
+		return executionOrderOptions.value;
+	}
+
+	const isV2Enabled = posthogStore.isVariantEnabled(
+		EXECUTION_LOGIC_V2_EXPERIMENT.name,
+		EXECUTION_LOGIC_V2_EXPERIMENT.variant,
+	);
+
+	if (isV2Enabled) {
+		return executionOrderOptions.value;
+	}
+
+	return executionOrderOptions.value
+		.filter((option) => option.key !== 'v2')
+		.map((option) => {
+			if (option.key === 'v1') {
+				return {
+					...option,
+					value: 'Run each branch one at a time (v1, recommended)',
+				};
+			}
+			return option;
+		});
+});
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -536,6 +590,40 @@ const updateTimeSavedPerExecution = (value: string) => {
 			: numValue;
 };
 
+const onExecutionLogicModeChange = (value: string) => {
+	const currentBinaryMode = workflowSettings.value.binaryMode || 'separate';
+
+	if (['v0', 'v1'].includes(value)) {
+		workflowSettings.value.binaryMode = 'separate';
+		workflowSettings.value.executionOrder = value as 'v0' | 'v1';
+	}
+
+	if (value === 'v2') {
+		workflowSettings.value.binaryMode = 'combined';
+		workflowSettings.value.executionOrder = 'v1';
+	}
+
+	if (workflowSettings.value.binaryMode !== currentBinaryMode) {
+		toast.showMessage({
+			title: 'Binary mode changed',
+			message: h('span', [
+				'Please update expressions that reference binary data to match the new binary mode. ',
+				h(
+					N8nLink,
+					{
+						to: 'https://docs.n8n.io/data/binary-data/',
+						size: 'small',
+						newWindow: true,
+					},
+					() => 'Learn more',
+				),
+			]),
+			type: 'warning',
+			duration: 0,
+		});
+	}
+};
+
 onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
@@ -618,6 +706,9 @@ onMounted(async () => {
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
 	}
+	if (workflowSettingsData.binaryMode === undefined) {
+		workflowSettingsData.binaryMode = 'separate';
+	}
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
@@ -674,24 +765,29 @@ onBeforeUnmount(() => {
 			>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
-						{{ i18n.baseText('workflowSettings.executionOrder') }}
+						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
-							v-model="workflowSettings.executionOrder"
+							v-model="executionLogic"
 							placeholder="Select Execution Order"
 							size="medium"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-execution-order"
+							@update:model-value="onExecutionLogicModeChange"
 						>
 							<N8nOption
-								v-for="option in executionOrderOptions"
+								v-for="option in filteredExecutionOrderOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
 							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.value }}</div>
+									<div v-n8n-html="option.description" class="option-description"></div>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</ElCol>
@@ -1376,6 +1472,26 @@ onBeforeUnmount(() => {
 
 	&:hover {
 		text-decoration: underline;
+	}
+}
+
+.list-option {
+	margin: 6px 0;
+	white-space: normal;
+	padding-right: 20px;
+
+	.option-headline {
+		font-weight: var(--font-weight--medium);
+		line-height: var(--line-height--md);
+		overflow-wrap: break-word;
+	}
+
+	.option-description {
+		margin-top: 2px;
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--regular);
+		line-height: var(--line-height--xl);
+		color: $custom-font-very-light;
 	}
 }
 
