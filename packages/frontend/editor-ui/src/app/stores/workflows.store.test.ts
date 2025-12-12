@@ -286,12 +286,12 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('isNewWorkflow', () => {
-		it('should return true for a new workflow', () => {
-			expect(workflowsStore.isNewWorkflow).toBe(true);
+	describe('isWorkflowSaved', () => {
+		it('should return undefined for a new workflow', () => {
+			expect(workflowsStore.isWorkflowSaved[workflowsStore.workflowId]).toBeUndefined();
 		});
 
-		it('should return false for an existing workflow', () => {
+		it('should return true for an existing workflow', () => {
 			useWorkflowState().setWorkflowId('123');
 			// Add the workflow to workflowsById to simulate it being loaded from backend
 			workflowsStore.addWorkflow(
@@ -302,7 +302,7 @@ describe('useWorkflowsStore', () => {
 					versionId: '1',
 				}),
 			);
-			expect(workflowsStore.isNewWorkflow).toBe(false);
+			expect(workflowsStore.isWorkflowSaved['123']).toBe(true);
 		});
 	});
 

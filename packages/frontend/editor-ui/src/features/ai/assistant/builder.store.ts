@@ -728,7 +728,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
-				!workflowsStore.isNewWorkflow &&
+				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {

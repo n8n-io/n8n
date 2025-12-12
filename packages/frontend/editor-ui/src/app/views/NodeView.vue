@@ -281,11 +281,6 @@ const workflowId = computed(() => {
 });
 const routeNodeId = computed(() => route.params.nodeId as string | undefined);
 
-// Check if this is a new workflow by looking for the ?new query param
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
-});
-
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
@@ -412,7 +407,7 @@ async function initializeRoute(force = false) {
 			}
 
 			// If there is no workflow id, treat it as a new workflow
-			if (isNewWorkflowRoute.value || isDemoRoute.value) {
+			if (!workflowsStore.isWorkflowSaved[workflowId.value] || isDemoRoute.value) {
 				if (route.meta?.nodeView === true) {
 					await initializeWorkspaceForNewWorkflow();
 				}
@@ -743,7 +738,8 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	const workflowIsSaved = !uiStore.stateIsDirty && !workflowsStore.isNewWorkflow;
+	const workflowIsSaved =
+		!uiStore.stateIsDirty && workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
 	if (workflowIsSaved || workflowIsArchived) {
@@ -901,7 +897,7 @@ function onClickNodeAdd(source: string, sourceHandle: string) {
 async function loadCredentials() {
 	let options: { workflowId: string } | { projectId: string };
 
-	if (workflowId.value && !isNewWorkflowRoute.value) {
+	if (workflowId.value && workflowsStore.isWorkflowSaved[workflowId.value]) {
 		options = { workflowId: workflowId.value };
 	} else {
 		const queryParam =

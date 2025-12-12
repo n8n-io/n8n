@@ -89,12 +89,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function notifyWorkflowOpened() {
-		if (workflowsStore.isNewWorkflow) return;
+		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
 		pushStore.send({ type: 'workflowOpened', workflowId: workflowsStore.workflowId });
 	}
 
 	function notifyWorkflowClosed() {
-		if (workflowsStore.isNewWorkflow) return;
+		if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) return;
 		pushStore.send({ type: 'workflowClosed', workflowId: workflowsStore.workflowId });
 
 		collaborators.value = collaborators.value.filter(

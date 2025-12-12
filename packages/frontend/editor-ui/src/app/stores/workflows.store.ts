@@ -182,6 +182,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return !existingWorkflow?.id;
 	});
 
+	// A workflow is new if it hasn't been saved to the backend yet
+	const isWorkflowSaved = computed(() => {
+		return Object.keys(workflowsById.value).reduce<Record<string, boolean>>((acc, workflowId) => {
+			acc[workflowId] = true;
+			return acc;
+		}, {});
+	});
+
 	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
 	const workflowTriggerNodes = computed(() =>
@@ -1986,6 +1994,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowTags,
 		allWorkflows,
 		isNewWorkflow,
+		isWorkflowSaved,
 		isWorkflowActive,
 		workflowTriggerNodes,
 		currentWorkflowHasWebhookNode,
