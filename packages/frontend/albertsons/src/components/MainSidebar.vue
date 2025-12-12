@@ -1,19 +1,60 @@
 <script setup>
+import { ref, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import albertsonsLogo from '../assets/albertsons-logo.png';
 
-const menuItems = [
-	{ label: 'Dashboard', key: 'dashboard', active: true },
-	{ label: 'Playground', key: 'playground', active: false },
-	{ label: 'AI Agent Builder', key: 'builder', active: false },
-	{ label: 'Templates', key: 'templates', active: false },
-	{ label: 'How to use', key: 'howto', active: false },
-	{ label: 'FAQs', key: 'faqs', active: false },
-];
+const router = useRouter();
+const route = useRoute();
+
+const menuItems = ref([
+	{ label: 'Dashboard', key: 'dashboard', path: '/dashboard', active: false },
+	{ label: 'Playground', key: 'playground', path: '/workflow/new', active: false },
+	{ label: 'AI Agent Builder', key: 'builder', path: '/workflow/new', active: false },
+	{ label: 'Templates', key: 'templates', path: '/templates', active: false },
+	{ label: 'How to use', key: 'howto', path: '/how-to', active: false },
+	{ label: 'FAQs', key: 'faqs', path: '/faqs', active: false },
+]);
+
+// Special logic for Playground & Builder (both use same URL)
+const activeSpecialMenu = ref(null);
+
+// Handle navigation
+function navigate(item) {
+	activeSpecialMenu.value = item.key; // remember which was clicked
+	router.push(item.path);
+	updateActiveState();
+}
+
+// Update active state when route changes
+function updateActiveState() {
+	menuItems.value.forEach((i) => (i.active = false));
+
+	// If it is workflow/new → only activate the clicked one
+	if (route.path.startsWith('/workflow/new')) {
+		if (activeSpecialMenu.value) {
+			const clicked = menuItems.value.find((i) => i.key === activeSpecialMenu.value);
+			if (clicked) clicked.active = true;
+		}
+		return;
+	}
+
+	// For all other pages → highlight based on path
+	menuItems.value.forEach((i) => {
+		if (route.path.startsWith(i.path)) {
+			i.active = true;
+		}
+	});
+}
+
+watch(
+	() => route.path,
+	() => updateActiveState(),
+	{ immediate: true },
+);
 
 const renderIcon = (key) => {
 	switch (key) {
 		case 'dashboard':
-			// grid
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor" />
@@ -21,22 +62,22 @@ const renderIcon = (key) => {
           <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" />
           <rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" />
         </svg>`;
+
 		case 'playground':
-			// play circle
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6" />
           <path d="M9 7.5L13 10L9 12.5V7.5Z" fill="currentColor" />
         </svg>`;
+
 		case 'builder':
-			// sparkles / star
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <path d="M10 2.5L11.4 6.3L15.5 6.7L12.4 9.3L13.3 13.3L10 11.3L6.7 13.3L7.6 9.3L4.5 6.7L8.6 6.3L10 2.5Z"
                 fill="currentColor" />
         </svg>`;
+
 		case 'templates':
-			// documents
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <rect x="4" y="3" width="9" height="14" rx="1.5"
@@ -45,8 +86,8 @@ const renderIcon = (key) => {
                 stroke="currentColor" stroke-width="1.6"
                 stroke-linecap="round" />
         </svg>`;
+
 		case 'howto':
-			// book
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <path d="M4.5 4C4.5 3.17 5.17 2.5 6 2.5H15v12.5H6c-.83 0-1.5.67-1.5 1.5V4Z"
@@ -54,8 +95,8 @@ const renderIcon = (key) => {
           <path d="M6 5h5" stroke="currentColor" stroke-width="1.6"
                 stroke-linecap="round" />
         </svg>`;
+
 		case 'faqs':
-			// question mark
 			return `
         <svg viewBox="0 0 20 20" fill="none">
           <circle cx="10" cy="10" r="8"
@@ -65,15 +106,12 @@ const renderIcon = (key) => {
                 stroke-linecap="round" />
           <circle cx="10" cy="13.6" r=".8" fill="currentColor" />
         </svg>`;
-		default:
-			return '';
 	}
 };
 </script>
 
 <template>
 	<aside class="sidebar">
-		<!-- Logo / brand -->
 		<div class="sidebar-header">
 			<img :src="albertsonsLogo" alt="Albertsons" class="sidebar-logo" />
 			<div class="sidebar-title">
@@ -82,21 +120,18 @@ const renderIcon = (key) => {
 			</div>
 		</div>
 
-		<!-- Navigation -->
 		<nav class="sidebar-nav">
 			<button
 				v-for="item in menuItems"
-				:key="item.label"
+				:key="item.key"
 				class="sidebar-nav-item"
 				:class="{ 'sidebar-nav-item--active': item.active }"
-				type="button"
+				@click="navigate(item)"
 			>
 				<span class="sidebar-nav-icon" v-html="renderIcon(item.key)" />
 				<span class="sidebar-nav-label">{{ item.label }}</span>
 			</button>
 		</nav>
-
-		<!-- User footer -->
 	</aside>
 </template>
 
@@ -116,7 +151,6 @@ const renderIcon = (key) => {
 		sans-serif;
 }
 
-/* Header */
 .sidebar-header {
 	display: flex;
 	align-items: center;
@@ -142,7 +176,6 @@ const renderIcon = (key) => {
 	color: #6b7280;
 }
 
-/* Nav */
 .sidebar-nav {
 	padding: 10px 8px 0;
 	flex: 1 1 auto;
@@ -171,7 +204,6 @@ const renderIcon = (key) => {
 	color: #ffffff;
 }
 
-/* SVG icon container */
 .sidebar-nav-icon {
 	width: 18px;
 	height: 18px;
@@ -192,51 +224,5 @@ const renderIcon = (key) => {
 
 .sidebar-nav-label {
 	white-space: nowrap;
-}
-
-/* User footer */
-.sidebar-user {
-	padding: 10px 14px 14px;
-	border-top: 1px solid #e5e7eb;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-}
-
-.sidebar-user-avatar {
-	width: 32px;
-	height: 32px;
-	border-radius: 999px;
-	background: #f97373;
-	color: #ffffff;
-	font-size: 13px;
-	font-weight: 600;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.sidebar-user-info {
-	flex: 1 1 auto;
-}
-
-.sidebar-user-name {
-	font-size: 13px;
-	font-weight: 500;
-	color: #111827;
-}
-
-.sidebar-user-email {
-	font-size: 11px;
-	color: #6b7280;
-}
-
-.sidebar-user-menu {
-	border: none;
-	background: transparent;
-	font-size: 18px;
-	line-height: 1;
-	cursor: pointer;
-	color: #9ca3af;
 }
 </style>
