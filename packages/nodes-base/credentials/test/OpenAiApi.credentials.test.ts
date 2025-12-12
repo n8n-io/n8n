@@ -9,7 +9,7 @@ describe('OpenAiApi Credential', () => {
 		expect(openAiApi.name).toBe('openAiApi');
 		expect(openAiApi.displayName).toBe('OpenAi');
 		expect(openAiApi.documentationUrl).toBe('openai');
-		expect(openAiApi.properties).toHaveLength(6);
+		expect(openAiApi.properties).toHaveLength(4); // apiKey, organizationId, url, customHeaders
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');
 	});
@@ -197,6 +197,195 @@ describe('OpenAiApi Credential', () => {
 				'X-Existing-Header': 'existing-value',
 				Authorization: 'Bearer sk-test123456789',
 				'X-Additional-Header': 'additional-value',
+			});
+		});
+
+		it('should add multiple custom headers using customHeaders field (JSON string)', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: '{"X-Client-ID": "client-123", "X-Secret-ID": "secret-456"}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should add multiple custom headers using customHeaders field (object)', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: {
+					'X-Client-ID': 'client-123',
+					'X-Secret-ID': 'secret-456',
+				},
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should handle both legacy header and new customHeaders together', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				header: true,
+				headerName: 'X-Legacy-Header',
+				headerValue: 'legacy-value',
+				customHeaders: '{"X-Client-ID": "client-123", "X-Secret-ID": "secret-456"}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+				'X-Legacy-Header': 'legacy-value',
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should handle legacy fixedCollection format for backward compatibility', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: {
+					headers: [
+						{ name: 'X-Client-ID', value: 'client-123' },
+						{ name: 'X-Secret-ID', value: 'secret-456' },
+					],
+				},
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should handle empty customHeaders JSON', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: '{}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+			});
+		});
+
+		it('should ignore invalid JSON in customHeaders', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: 'invalid json{',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			// Should not throw, just ignore invalid JSON
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+			});
+		});
+
+		it('should handle customHeaders with organization ID', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				organizationId: 'org-123',
+				customHeaders: '{"X-Client-ID": "client-123", "X-Secret-ID": "secret-456"}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': 'org-123',
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should preserve existing headers when using customHeaders', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: '{"X-Client-ID": "client-123"}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {
+					'OpenAI-Beta': 'assistants=v2',
+					'X-Existing-Header': 'existing-value',
+				},
+				url: '/assistants',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				'OpenAI-Beta': 'assistants=v2',
+				'X-Existing-Header': 'existing-value',
+				Authorization: 'Bearer sk-test123456789',
+				'X-Client-ID': 'client-123',
 			});
 		});
 	});
