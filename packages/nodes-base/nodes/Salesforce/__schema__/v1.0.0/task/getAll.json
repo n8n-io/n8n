@@ -14,7 +14,13 @@
         },
         "Id": {
             "type": "string"
+        },
+        "Priority": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }
