@@ -22,10 +22,27 @@
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "bold": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "italic": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
                                             "text": {
                                                 "type": "string"
                                             },
                                             "type": {
+                                                "type": "string"
+                                            },
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
                                                 "type": "string"
                                             }
                                         }
@@ -132,5 +149,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
