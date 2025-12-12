@@ -225,14 +225,19 @@ onBeforeUnmount(() => {
 		</template>
 
 		<!-- No Issues Section -->
-		<template v-else>
+		<template v-else-if="triggerNodes.length > 0">
 			<p :class="$style.noIssuesMessage">
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.noIssues') }}
 			</p>
 		</template>
 
 		<!-- Execution Button -->
-		<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
+		<N8nTooltip
+			v-if="triggerNodes.length > 0"
+			:disabled="!hasValidationIssues"
+			:content="executeButtonTooltip"
+			placement="left"
+		>
 			<CanvasRunWorkflowButton
 				:class="$style.runButton"
 				:disabled="hasValidationIssues || builderStore.hasNoCreditsRemaining"
