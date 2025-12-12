@@ -109,7 +109,9 @@ export class WorkflowsController {
 			);
 
 			// @ts-expect-error: We shouldn't accept this
-			req.body.activeVersionId = undefined;
+			delete req.body.activeVersionId;
+			// @ts-expect-error: We shouldn't accept this
+			delete req.body.activeVersion;
 			req.body.active = false;
 		}
 
@@ -213,12 +215,6 @@ export class WorkflowsController {
 				autosaved,
 				transactionManager,
 			);
-
-			const shouldActivate = req.body.active === true;
-			if (shouldActivate) {
-				workflow.activeVersionId = workflow.versionId;
-				await transactionManager.save(workflow);
-			}
 
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,

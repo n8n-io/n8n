@@ -8,12 +8,12 @@ import {
 	type IWorkflowSettings,
 	jsonParse,
 } from 'n8n-workflow';
-import type { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import type { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import type { Cipher } from 'n8n-core';
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { Cipher } from 'n8n-core';
 import { CredentialStorageError } from '../errors/credential-storage.error';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Logger } from '@n8n/backend-common';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { extractSharedFields } from './shared-fields';
 

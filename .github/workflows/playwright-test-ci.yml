@@ -12,7 +12,7 @@ jobs:
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-build
-      test-command: pnpm --filter=n8n-playwright test:container:multi-main:ui
+      test-command: pnpm --filter=n8n-playwright exec npx pwc-p -- --project=multi-main:ui
       shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
       runner: blacksmith-4vcpu-ubuntu-2204
       workers: '1'
@@ -24,7 +24,7 @@ jobs:
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-build
-      test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
+      test-command: pnpm --filter=n8n-playwright exec npx pwc-p -- --project=multi-main:ui:isolated
       shards: '[1]'
       runner: blacksmith-4vcpu-ubuntu-2204
       workers: '1'
