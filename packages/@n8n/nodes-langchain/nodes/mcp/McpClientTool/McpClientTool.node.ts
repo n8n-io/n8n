@@ -424,12 +424,24 @@ export class McpClientTool implements INodeType {
 				if (toolName === tool.name) {
 					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
+					const schema = tool.inputSchema as {
+						properties?: Record<string, unknown>;
+						additionalProperties?: boolean;
+					};
+					// When additionalProperties is set, pass all arguments through.
+					// Otherwise, filter to only schema-defined properties (empty = no parameters tool)
+					const sanitizedToolArguments = schema.additionalProperties
+						? (toolArguments as IDataObject)
+						: (Object.fromEntries(
+								Object.entries(toolArguments).filter(([key]) => key in (schema.properties ?? {})),
+							) as IDataObject);
+
 					const params: {
 						name: string;
 						arguments: IDataObject;
 					} = {
 						name: tool.name,
-						arguments: toolArguments,
+						arguments: sanitizedToolArguments,
 					};
 					const result = await client.callTool(params, CallToolResultSchema, {
 						timeout: config.timeout,
