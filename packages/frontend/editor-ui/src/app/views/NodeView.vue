@@ -1891,14 +1891,23 @@ watch(
 );
 
 onBeforeRouteLeave(async (to, from, next) => {
-	const toNodeViewTab = getNodeViewTab(to);
+	if (isReadOnlyEnvironment.value) {
+		next();
+		return;
+	}
 
-	if (
+	const toNodeViewTab = getNodeViewTab(to);
+	const isNavigatingBetweenWorkflows =
+		[VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(from.name as VIEWS) &&
+		[VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(to.name as VIEWS) &&
+		from.params.name !== to.params.name;
+
+	const shouldSkipPrompt =
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
 		from.name === VIEWS.TEMPLATE_IMPORT ||
-		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG) ||
-		isReadOnlyEnvironment.value
-	) {
+		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG);
+
+	if (shouldSkipPrompt && !isNavigatingBetweenWorkflows) {
 		next();
 		return;
 	}
@@ -1906,22 +1915,15 @@ onBeforeRouteLeave(async (to, from, next) => {
 	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
-				// Replace the current route with the new workflow route
-				// before navigating to the new route when saving new workflow.
 				const savedWorkflowId = workflowsStore.workflowId;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
 					params: { name: savedWorkflowId },
 				});
-
 				await router.push(to);
-
 				return false;
 			}
-
-			// Make sure workflow id is empty when leaving the editor
 			workflowState.setWorkflowId('');
-
 			return true;
 		},
 	});

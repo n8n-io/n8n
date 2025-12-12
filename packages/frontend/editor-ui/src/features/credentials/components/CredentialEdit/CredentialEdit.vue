@@ -898,7 +898,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowsStore.workflowId || null,
+		workflow_id: workflowsStore.workflowId,
 	});
 
 	return credential;
