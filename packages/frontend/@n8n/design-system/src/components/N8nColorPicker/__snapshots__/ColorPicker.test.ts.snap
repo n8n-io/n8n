@@ -68,6 +68,8 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
       class="inputContainer large input"
       data-v-dab78bb8=""
     >
+      <!-- Prepend slot (outside input container, before) -->
+      <!--v-if-->
       <!-- Prefix slot -->
       <!--v-if-->
       <!-- Input element -->
@@ -82,6 +84,8 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
       <!-- Suffix slot -->
       <!--v-if-->
       <!-- Clear button -->
+      <!--v-if-->
+      <!-- Append slot (outside input container, after) -->
       <!--v-if-->
     </div>
   </span>

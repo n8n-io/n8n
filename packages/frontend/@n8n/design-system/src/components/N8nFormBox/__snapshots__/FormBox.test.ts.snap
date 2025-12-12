@@ -80,6 +80,8 @@ exports[`FormBox > should render the component 1`] = `
                 <div
                   class="inputContainer small"
                 >
+                  <!-- Prepend slot (outside input container, before) -->
+                  <!--v-if-->
                   <!-- Prefix slot -->
                   <!--v-if-->
                   <!-- Input element -->
@@ -94,6 +96,8 @@ exports[`FormBox > should render the component 1`] = `
                   <!-- Suffix slot -->
                   <!--v-if-->
                   <!-- Clear button -->
+                  <!--v-if-->
+                  <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
                 </div>
               </div>
@@ -156,6 +160,8 @@ exports[`FormBox > should render the component 1`] = `
                 <div
                   class="inputContainer medium"
                 >
+                  <!-- Prepend slot (outside input container, before) -->
+                  <!--v-if-->
                   <!-- Prefix slot -->
                   <!--v-if-->
                   <!-- Input element -->
@@ -170,6 +176,8 @@ exports[`FormBox > should render the component 1`] = `
                   <!-- Suffix slot -->
                   <!--v-if-->
                   <!-- Clear button -->
+                  <!--v-if-->
+                  <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
                 </div>
               </div>
@@ -232,6 +240,8 @@ exports[`FormBox > should render the component 1`] = `
                 <div
                   class="inputContainer large ph-no-capture"
                 >
+                  <!-- Prepend slot (outside input container, before) -->
+                  <!--v-if-->
                   <!-- Prefix slot -->
                   <!--v-if-->
                   <!-- Input element -->
@@ -246,6 +256,8 @@ exports[`FormBox > should render the component 1`] = `
                   <!-- Suffix slot -->
                   <!--v-if-->
                   <!-- Clear button -->
+                  <!--v-if-->
+                  <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
                 </div>
               </div>
