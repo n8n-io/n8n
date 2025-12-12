@@ -225,7 +225,7 @@ onBeforeUnmount(() => {
 		</template>
 
 		<!-- No Issues Section -->
-		<template v-else-if="availableTriggerNodes.length > 0">
+		<template v-else-if="triggerNodes.length > 0">
 			<p :class="$style.noIssuesMessage">
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.noIssues') }}
 			</p>
@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
 
 		<!-- Execution Button -->
 		<N8nTooltip
-			v-if="availableTriggerNodes.length > 0"
+			v-if="triggerNodes.length > 0"
 			:disabled="!hasValidationIssues"
 			:content="executeButtonTooltip"
 			placement="left"
