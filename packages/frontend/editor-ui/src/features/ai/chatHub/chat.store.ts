@@ -39,6 +39,8 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
+	type ChatHubLLMProvider,
+	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -52,12 +54,12 @@ import {
 	createSessionFromStreamingState,
 	isLlmProviderModel,
 	isMatchedAgent,
+	createAiMessageFromStreamingState,
+	flattenModel,
 } from './chat.utils';
-import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
-import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -357,6 +359,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessions.value.byId[sessionId] = session;
 	}
 
+	async function fetchConversationTitle(sessionId: ChatSessionId) {
+		const current = sessions.value.byId[sessionId];
+		if (!current || current.title === 'New Chat') {
+			// wait up to 10 * 2 seconds until conversation title is generated
+			await retry(
+				async () => {
+					try {
+						const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
+						return session.session.title !== 'New Chat';
+					} catch (e: unknown) {
+						return false;
+					}
+				},
+				2000,
+				10,
+			);
+		}
+
+		// update the conversation list to reflect the new title and lastMessageAt timestamps
+		await fetchSessions(true);
+	}
+
 	function onBeginMessage() {
 		if (!streaming.value?.messageId) {
 			return;
@@ -435,22 +459,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		const { sessionId } = streaming.value;
-
 		streaming.value = undefined;
 
-		// wait up to 3 seconds until conversation title is generated
-		await retry(
-			async () => {
-				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
-
-				return session.session.title !== 'New Chat';
-			},
-			1000,
-			3,
-		);
-
-		// update the conversation list to reflect the new title
-		await fetchSessions(true);
+		await fetchConversationTitle(sessionId);
 	}
 
 	function getErrorMessageByStatusCode(
@@ -473,7 +484,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
-	function onStreamError(error: Error) {
+	async function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
@@ -487,7 +498,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		toast.showError(cause, i18n.baseText('chatHub.error.sendMessageFailed'));
 
+		const { sessionId } = streaming.value;
 		streaming.value = undefined;
+
+		await fetchConversationTitle(sessionId);
 	}
 
 	async function sendMessage(
@@ -545,9 +559,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		if (!sessions.value.byId[sessionId]) {
 			sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
-			if (!sessions.value.ids) {
-				sessions.value.ids = [];
-			}
+			sessions.value.ids ??= [];
 			sessions.value.ids.unshift(sessionId);
 		}
 
@@ -699,7 +711,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (currentMessage && currentMessage.status === 'running') {
 			updateMessage(sessionId, currentMessage.id, 'cancelled');
 			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
-			streaming.value = undefined;
+			await onStreamDone();
 		}
 	}
 
@@ -847,8 +859,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function getAgent(model: ChatHubConversationModel, fallbackName: string = ''): ChatModelDto {
-		const agent = agents.value?.[model.provider]?.models.find((agent) =>
-			isMatchedAgent(agent, model),
+		const agent = agents.value?.[model.provider]?.models.find((candidate) =>
+			isMatchedAgent(candidate, model),
 		);
 
 		if (agent) {
