@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "historyId": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "internalDate": {
+            "type": "string"
+        },
+        "labelIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "snippet": {
+            "type": "string"
+        },
+        "threadId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
