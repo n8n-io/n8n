@@ -13,6 +13,7 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useToast } from '@/app/composables/useToast';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import shuffle from 'lodash/shuffle';
@@ -33,6 +34,7 @@ const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
 const { goToUpgrade } = usePageRedirectionHelper();
+const toast = useToast();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
@@ -271,15 +273,21 @@ watch(
  * Handle restore confirmation
  */
 async function onRestoreConfirm(versionId: string) {
-	const success = await builderStore.restoreToVersion(versionId);
-
-	if (success) {
+	try {
+		const updatedWorkflow = await builderStore.restoreToVersion(versionId);
+		builderStore.clearExistingWorkflow();
 		// Reload the workflow to reflect the restored state
 		nodeViewEventBus.emit('importWorkflowData', {
-			data: workflowsStore.workflow,
+			data: updatedWorkflow,
 			tidyUp: false,
 			regenerateIds: false,
 			trackEvents: false,
+		});
+	} catch (e: unknown) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('aiAssistant.builder.restoreError.title'),
+			message: e instanceof Error ? e.message : 'Unknown error',
 		});
 	}
 }

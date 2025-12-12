@@ -37,6 +37,7 @@ import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { dedupe } from 'n8n-workflow';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { IWorkflowDb } from '@/Interface';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -460,7 +461,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
-		const retry = createRetryHandler(userMessageId, async () => sendChatMessage(options));
+		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
@@ -681,6 +682,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 	}
 
+	function clearExistingWorkflow() {
+		workflowState.removeAllConnections({ setStateDirty: false });
+		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+	}
+
 	function applyWorkflowUpdate(workflowJson: string) {
 		let workflowData: WorkflowDataUpdate;
 		try {
@@ -697,9 +703,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Capture current state before clearing
 		const { nodePositions, existingNodeIds, pinnedDataByNodeName } = captureCurrentWorkflowState();
 
-		// Clear existing workflow
-		workflowState.removeAllConnections({ setStateDirty: false });
-		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+		clearExistingWorkflow();
 
 		// For the initial generation, we want to apply auto-generated workflow name
 		// but only if the workflow has default name
@@ -871,43 +875,33 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 *
 	 * @param versionId - The workflow version ID to restore to
 	 */
-	async function restoreToVersion(versionId: string): Promise<boolean> {
+	async function restoreToVersion(versionId: string): Promise<IWorkflowDb> {
 		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
-			console.error('Cannot restore: no workflow ID');
-			return false;
+
+		// 1. Restore the workflow using existing workflow history store
+		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(
+			workflowId,
+			versionId,
+			false,
+		);
+
+		// 2. Truncate messages in backend session (removes message with versionId and all after)
+		await truncateBuilderMessages(rootStore.restApiContext, workflowId, versionId);
+
+		// 3. Truncate local chat messages - find user message with matching revertVersion.id
+		// and remove it along with all messages after it
+		const messageIndex = chatMessages.value.findIndex(
+			(msg) =>
+				msg.role === 'user' &&
+				msg.type === 'text' &&
+				'revertVersion' in msg &&
+				(msg as ChatUI.TextMessage).revertVersion?.id === versionId,
+		);
+		if (messageIndex !== -1) {
+			chatMessages.value = chatMessages.value.slice(0, messageIndex);
 		}
 
-		try {
-			// 1. Restore the workflow using existing workflow history store
-			await workflowHistoryStore.restoreWorkflow(workflowId, versionId, false);
-
-			// 2. Truncate messages in backend session (removes message with versionId and all after)
-			try {
-				await truncateBuilderMessages(rootStore.restApiContext, workflowId, versionId);
-			} catch (error) {
-				console.error('Failed to truncate backend messages:', error);
-				// Continue anyway - local state will be updated
-			}
-
-			// 3. Truncate local chat messages - find user message with matching revertVersion.id
-			// and remove it along with all messages after it
-			const messageIndex = chatMessages.value.findIndex(
-				(msg) =>
-					msg.role === 'user' &&
-					msg.type === 'text' &&
-					'revertVersion' in msg &&
-					(msg as ChatUI.TextMessage).revertVersion?.id === versionId,
-			);
-			if (messageIndex !== -1) {
-				chatMessages.value = chatMessages.value.slice(0, messageIndex);
-			}
-
-			return true;
-		} catch (error) {
-			console.error('Failed to restore workflow version:', error);
-			return false;
-		}
+		return updatedWorkflow;
 	}
 
 	// Public API
@@ -948,5 +942,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		resetManualExecutionStats,
 		// Version management
 		restoreToVersion,
+		clearExistingWorkflow,
 	};
 });
