@@ -44,6 +44,7 @@ interface ContainerConfig {
 	taskRunner?: boolean;
 	sourceControl?: boolean;
 	email?: boolean;
+	oidc?: boolean;
 	resourceQuota?: {
 		memory?: number; // in GB
 		cpu?: number; // in cores
