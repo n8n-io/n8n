@@ -1,4 +1,4 @@
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { INode, IPairedItemData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
@@ -100,27 +100,11 @@ describe('Test PostgresV2, wrapData', () => {
 
 describe('Test PostgresV2, prepareErrorItem', () => {
 	it('should return error info item', () => {
-		const items = [
-			{
-				json: {
-					id: 1,
-					name: 'Name 1',
-				},
-			},
-			{
-				json: {
-					id: 2,
-					name: 'Name 2',
-				},
-			},
-		];
-
 		const error = new Error('Test error');
-		const item = prepareErrorItem(items, error, 1);
+		const item = prepareErrorItem(error, 1);
 		expect(item).toBeDefined();
 
-		expect((item.json.item as IDataObject)?.id).toEqual(2);
-		expect(item.json.message).toEqual('Test error');
+		expect((item.pairedItem as IPairedItemData).item).toEqual(1);
 		expect(item.json.error).toBeDefined();
 	});
 });

@@ -110,7 +110,6 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					values: ['public', 'my_table', 'id', '1'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -151,7 +150,6 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					values: ['public', 'my_table'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -189,7 +187,6 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					values: ['public', 'my_table'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -219,7 +216,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select * from $1:name;', values: ['my_table'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -241,7 +237,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select $1;', values: ['$1'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -265,7 +260,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: "select '$1';", values: ['my_table'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -290,7 +284,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select $2;', values: ['my_table', '$1'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -358,7 +351,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 					options: { partial: true },
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -537,7 +529,6 @@ describe('Test PostgresV2, insert operation', () => {
 					values: ['public', 'my_table', { json: '{"test":15}', foo: 'select 5', id: '4' }],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -619,7 +610,6 @@ describe('Test PostgresV2, insert operation', () => {
 					values: ['public', 'my_table', { id: 3, json: { test: 5 }, foo: 'data 3' }],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
@@ -706,7 +696,6 @@ describe('Test PostgresV2, insert operation', () => {
 						values: ['public', 'my_table', value.expected],
 					},
 				],
-				inputItems,
 				nodeOptions,
 			);
 			expect(convertValuesToJsonWithPgpSpy).toHaveBeenCalledWith(pg, columnsInfo, valuePassedIn);
@@ -754,7 +743,6 @@ describe('Test PostgresV2, insert operation', () => {
 					values: ['public', 'my_table', {}],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -798,7 +786,6 @@ describe('Test PostgresV2, select operation', () => {
 					values: ['public', 'my_table'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -860,7 +847,6 @@ describe('Test PostgresV2, select operation', () => {
 					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -938,7 +924,6 @@ describe('Test PostgresV2, update operation', () => {
 					],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -1024,7 +1009,6 @@ describe('Test PostgresV2, update operation', () => {
 					values: ['public', 'my_table', 'id', 3, 'json', { test: 5 }, 'foo', 'data 3'],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
@@ -1098,7 +1082,6 @@ describe('Test PostgresV2, upsert operation', () => {
 					],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -1211,7 +1194,6 @@ describe('Test PostgresV2, upsert operation', () => {
 					],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
@@ -1283,7 +1265,6 @@ describe('When matching on all columns', () => {
 					],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
@@ -1392,7 +1373,6 @@ describe('When matching on all columns', () => {
 					],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
