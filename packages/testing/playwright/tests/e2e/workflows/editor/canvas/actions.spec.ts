@@ -4,6 +4,8 @@ import {
 	CODE_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 	CODE_NODE_DISPLAY_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+	AGENT_NODE_NAME,
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
@@ -189,5 +191,161 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.extendSelectionWithArrows('left');
 
 		await expect(n8n.canvas.selectedNodes()).toHaveCount(2);
+	});
+
+	test.describe('Node insertion positioning', () => {
+		test('should not shift downstream nodes when there is enough space', async ({ n8n }) => {
+			// Create trigger -> code with large gap between them
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+
+			await n8n.canvas.clickZoomToFitButton();
+
+			// Move code node far to the right to create space
+			await n8n.canvas.dragNodeToRelativePosition(CODE_NODE_DISPLAY_NAME, 400, 0);
+
+			// Get code node position before insertion
+			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Insert node between trigger and code
+			await n8n.canvas.addNodeBetweenNodes(
+				MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+				CODE_NODE_DISPLAY_NAME,
+				HTTP_REQUEST_NODE_NAME,
+			);
+
+			// Get code node position after insertion
+			const codePositionAfter = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Code node should not have moved since there was enough space
+			expect(codePositionAfter.x).toBe(codePositionBefore.x);
+			expect(codePositionAfter.y).toBe(codePositionBefore.y);
+		});
+
+		test('should shift downstream nodes when there is not enough space', async ({ n8n }) => {
+			// Create trigger -> code (close together)
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+
+			await n8n.canvas.clickZoomToFitButton();
+
+			// Get code node position before insertion
+			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Insert node between trigger and code
+			await n8n.canvas.addNodeBetweenNodes(
+				MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+				CODE_NODE_DISPLAY_NAME,
+				HTTP_REQUEST_NODE_NAME,
+			);
+
+			// Get code node position after insertion
+			const codePositionAfter = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Code node should have moved to the right
+			expect(codePositionAfter.x).toBeGreaterThan(codePositionBefore.x);
+		});
+
+		test('should shift connected downstream nodes together', async ({ n8n }) => {
+			// Create trigger -> code -> edit fields chain
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+			await n8n.canvas.nodeByName(CODE_NODE_DISPLAY_NAME).click();
+			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
+
+			await n8n.canvas.clickZoomToFitButton();
+
+			// Get positions before insertion
+			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+			const editFieldsPositionBefore = await n8n.canvas.getNodePosition('Edit Fields');
+
+			// Insert node between trigger and code
+			await n8n.canvas.addNodeBetweenNodes(
+				MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+				CODE_NODE_DISPLAY_NAME,
+				HTTP_REQUEST_NODE_NAME,
+			);
+
+			// Get positions after insertion
+			const codePositionAfter = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+			const editFieldsPositionAfter = await n8n.canvas.getNodePosition('Edit Fields');
+
+			// Both downstream nodes should have moved by approximately the same amount
+			const codeDeltaX = codePositionAfter.x - codePositionBefore.x;
+			const editFieldsDeltaX = editFieldsPositionAfter.x - editFieldsPositionBefore.x;
+
+			expect(codeDeltaX).toBeGreaterThan(0);
+			expect(editFieldsDeltaX).toBeGreaterThan(0);
+			// They should move by similar amounts (within tolerance for rounding)
+			expect(Math.abs(codeDeltaX - editFieldsDeltaX)).toBeLessThan(20);
+		});
+
+		test('should shift downstream nodes correctly when inserting configurable nodes like AI Agent', async ({
+			n8n,
+		}) => {
+			// Create trigger -> code (close together)
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+
+			await n8n.canvas.clickZoomToFitButton();
+
+			// Get code node position before insertion
+			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Insert AI Agent (a configurable/wider node) between trigger and code
+			await n8n.canvas.addNodeBetweenNodes(
+				MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+				CODE_NODE_DISPLAY_NAME,
+				AGENT_NODE_NAME,
+			);
+
+			// Get positions after insertion
+			const codePositionAfter = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+			const agentPosition = await n8n.canvas.getNodePosition(AGENT_NODE_NAME);
+
+			// Code node should have moved to the right
+			expect(codePositionAfter.x).toBeGreaterThan(codePositionBefore.x);
+
+			// AI Agent node should be positioned between trigger and code (not overlapping)
+			// AI Agent is 256px wide, so its right edge should be left of code node
+			// Agent position is top-left, so right edge is agentPosition.x + 256
+			const agentRightEdge = agentPosition.x + 256;
+			expect(agentRightEdge).toBeLessThan(codePositionAfter.x);
+		});
+
+		test('should not shift downstream nodes when there is enough space for configurable nodes', async ({
+			n8n,
+		}) => {
+			// Create trigger -> code with large gap between them
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+
+			await n8n.canvas.clickZoomToFitButton();
+
+			// Move code node far to the right to create space for AI Agent (which is 256px wide)
+			await n8n.canvas.dragNodeToRelativePosition(CODE_NODE_DISPLAY_NAME, 500, 0);
+
+			// Get code node position before insertion
+			const codePositionBefore = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Insert AI Agent between trigger and code
+			await n8n.canvas.addNodeBetweenNodes(
+				MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+				CODE_NODE_DISPLAY_NAME,
+				AGENT_NODE_NAME,
+			);
+
+			// Get code node position after insertion
+			const codePositionAfter = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
+
+			// Code node should not have moved since there was enough space
+			expect(codePositionAfter.x).toBe(codePositionBefore.x);
+			expect(codePositionAfter.y).toBe(codePositionBefore.y);
+		});
 	});
 });
