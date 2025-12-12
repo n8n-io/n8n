@@ -3,6 +3,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	INodeCredentialTestResult,
+	IBinaryData,
 } from 'n8n-workflow';
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
@@ -10,7 +11,7 @@ import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 export type EmailSendOptions = {
 	appendAttribution?: boolean;
 	allowUnauthorizedCerts?: boolean;
-	attachments?: string;
+	attachments?: string | IBinaryData | IBinaryData[];
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;
