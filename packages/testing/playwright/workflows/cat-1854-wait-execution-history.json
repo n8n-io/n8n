@@ -1,0 +1,79 @@
+{
+	"name": "CAT-1854 Wait Execution History Test",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "GET",
+				"path": "cat-1854-test",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"id": "webhook-trigger-id",
+			"name": "Webhook",
+			"webhookId": "cat-1854-webhook-id"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "wait-node-id",
+			"name": "Wait",
+			"webhookId": "cat-1854-wait-webhook-id"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "output-field-id",
+							"name": "result",
+							"value": "completed after wait",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"id": "set-node-id",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"active": true,
+	"meta": {
+		"instanceId": "test-instance"
+	}
+}
