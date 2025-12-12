@@ -1605,7 +1605,7 @@ describe('PATCH /credentials/:id', () => {
 
 		// The controller preserves isResolvable when not provided, verified by controller tests
 		// This integration test verifies the full flow works end-to-end
-		expect(credential).toBeDefined();
+		expect(credential.isResolvable).toBe(true);
 	});
 });
 
