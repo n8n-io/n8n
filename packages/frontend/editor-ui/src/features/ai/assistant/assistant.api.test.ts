@@ -51,7 +51,7 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				payload,
+				{ ...payload, payload: { ...payload.payload, versionId: undefined } },
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -79,13 +79,14 @@ describe('API: ai', () => {
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
+				undefined,
 				abortSignal,
 			);
 
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				payload,
+				{ ...payload, payload: { ...payload.payload, versionId: undefined } },
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,

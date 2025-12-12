@@ -1,7 +1,7 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
-import { get } from '../utils';
+import { get, post } from '../utils';
 
 export type WorkflowHistory = {
 	versionId: string;
@@ -57,6 +57,19 @@ export const getWorkflowVersion = async (
 	const { data } = await get(
 		context.baseUrl,
 		`/workflow-history/workflow/${workflowId}/version/${versionId}`,
+	);
+	return data;
+};
+
+export const getWorkflowVersionsByIds = async (
+	context: IRestApiContext,
+	workflowId: string,
+	versionIds: string[],
+): Promise<{ versions: Array<{ versionId: string; createdAt: string }> }> => {
+	const { data } = await post(
+		context.baseUrl,
+		`/workflow-history/workflow/${workflowId}/versions`,
+		{ versionIds },
 	);
 	return data;
 };

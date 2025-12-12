@@ -1,13 +1,13 @@
 import { RunnableConfig } from '@langchain/core/runnables';
-import { MemorySaver } from '@langchain/langgraph';
+import { type Checkpoint, MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { formatMessages } from '@/utils/stream-processor';
-
 import { getBuilderToolsForDisplay } from './tools/builder-tools';
 import { isLangchainMessagesArray, LangchainMessage, Session } from './types/sessions';
+
+import { formatMessages } from '@/utils/stream-processor';
 
 @Service()
 export class SessionManagerService {
@@ -66,14 +66,16 @@ export class SessionManagerService {
 						? rawMessages
 						: [];
 
+					const formattedMessages = formatMessages(
+						messages,
+						getBuilderToolsForDisplay({
+							nodeTypes: this.parsedNodeTypes,
+						}),
+					);
+
 					sessions.push({
 						sessionId: threadId,
-						messages: formatMessages(
-							messages,
-							getBuilderToolsForDisplay({
-								nodeTypes: this.parsedNodeTypes,
-							}),
-						),
+						messages: formattedMessages,
 						lastUpdated: checkpoint.checkpoint.ts,
 					});
 				}
@@ -84,5 +86,86 @@ export class SessionManagerService {
 		}
 
 		return { sessions };
+	}
+
+	/**
+	 * Truncate all messages including and after the message with the specified versionId in metadata.
+	 * Used when restoring to a previous version.
+	 *
+	 * @param workflowId - The workflow ID
+	 * @param userId - The user ID
+	 * @param versionId - The versionId to find in HumanMessage's additional_kwargs. Messages from this
+	 *                    point onward (including the message with this versionId) will be removed.
+	 * @returns True if truncation was successful, false if thread or message not found
+	 */
+	async truncateMessagesAfter(
+		workflowId: string,
+		userId: string | undefined,
+		versionId: string,
+	): Promise<boolean> {
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+		const threadConfig: RunnableConfig = {
+			configurable: {
+				thread_id: threadId,
+			},
+		};
+
+		try {
+			const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
+
+			if (!checkpointTuple?.checkpoint) {
+				this.logger?.debug('No checkpoint found for truncation', { threadId, versionId });
+				return false;
+			}
+
+			const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
+			if (!isLangchainMessagesArray(rawMessages)) {
+				this.logger?.debug('No valid messages found for truncation', { threadId, versionId });
+				return false;
+			}
+
+			// Find the index of the message with the target versionId in additional_kwargs
+			const messageIndex = rawMessages.findIndex(
+				(msg) => msg.additional_kwargs?.versionId === versionId,
+			);
+
+			if (messageIndex === -1) {
+				this.logger?.debug('Message with versionId not found', { threadId, versionId });
+				return false;
+			}
+
+			// Keep messages before the target message (excluding the target message)
+			const truncatedMessages = rawMessages.slice(0, messageIndex);
+
+			// Create updated checkpoint with truncated messages
+			const updatedCheckpoint: Checkpoint = {
+				...checkpointTuple.checkpoint,
+				channel_values: {
+					...checkpointTuple.checkpoint.channel_values,
+					messages: truncatedMessages,
+				},
+			};
+
+			// Put the updated checkpoint back with metadata indicating this is an update
+			const metadata = checkpointTuple.metadata ?? {
+				source: 'update' as const,
+				step: -1,
+				parents: {},
+			};
+
+			await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+
+			this.logger?.debug('Messages truncated successfully', {
+				threadId,
+				versionId,
+				originalCount: rawMessages.length,
+				newCount: truncatedMessages.length,
+			});
+
+			return true;
+		} catch (error) {
+			this.logger?.error('Failed to truncate messages', { threadId, versionId, error });
+			return false;
+		}
 	}
 }
