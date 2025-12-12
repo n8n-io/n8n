@@ -1,4 +1,5 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
+import type { GoogleAuthOptions } from 'google-auth-library';
 import { VertexAIEmbeddings } from '@langchain/google-vertexai';
 import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -64,6 +65,20 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			{
 				name: 'googleApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+			},
+			{
+				name: 'googleApiAdcApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['adc'],
+					},
+				},
 			},
 		],
 		codex: {
@@ -95,12 +110,36 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+						description: 'Use a Google Service Account JSON key',
+					},
+					{
+						name: 'Application Default Credentials (ADC)',
+						value: 'adc',
+						description:
+							'Use Application Default Credentials from gcloud CLI or environment variable',
+					},
+				],
+				default: 'serviceAccount',
+			},
+			{
 				displayName: 'Project ID',
 				name: 'projectId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'Select or enter your Google Cloud project ID',
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
 				modes: [
 					{
 						displayName: 'From List',
@@ -118,6 +157,19 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				],
 			},
 			{
+				displayName: 'Project ID',
+				name: 'projectIdAdc',
+				type: 'string',
+				default: '',
+				description:
+					'Your Google Cloud project ID. If left empty, it will be auto-detected from ADC configuration.',
+				displayOptions: {
+					show: {
+						authentication: ['adc'],
+					},
+				},
+			},
+			{
 				displayName: 'Model Name',
 				name: 'modelName',
 				type: 'string',
@@ -129,25 +181,49 @@ export class EmbeddingsGoogleVertex implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('googleApi');
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
-		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+		const authentication = this.getNodeParameter('authentication', itemIndex, 'serviceAccount') as
+			| 'serviceAccount'
+			| 'adc';
 
-		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
+		let authOptions: GoogleAuthOptions;
+		let region: string;
 
-		const projectId = this.getNodeParameter('projectId', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+		if (authentication === 'adc') {
+			const credentials = await this.getCredentials('googleApiAdcApi');
+			region = credentials.region as string;
+			const projectId =
+				(this.getNodeParameter('projectIdAdc', itemIndex, '') as string) ||
+				(credentials.projectId as string) ||
+				'';
 
-		const embeddings = new VertexAIEmbeddings({
-			authOptions: {
+			// For ADC, we don't pass explicit credentials - GoogleAuth will use ADC automatically
+			authOptions = {};
+			if (projectId) {
+				authOptions.projectId = projectId;
+			}
+		} else {
+			// Use Service Account credentials
+			const credentials = await this.getCredentials('googleApi');
+			const privateKey = formatPrivateKey(credentials.privateKey as string);
+			const email = (credentials.email as string).trim();
+			region = credentials.region as string;
+			const projectId = this.getNodeParameter('projectId', itemIndex, '', {
+				extractValue: true,
+			}) as string;
+
+			authOptions = {
 				projectId,
 				credentials: {
 					client_email: email,
 					private_key: privateKey,
 				},
-			},
+			};
+		}
+
+		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
+
+		const embeddings = new VertexAIEmbeddings({
+			authOptions,
 			location: region,
 			model: modelName,
 		});
