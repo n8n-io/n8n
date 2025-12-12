@@ -7,6 +7,7 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 	type INodeExecutionData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
@@ -133,8 +134,15 @@ export class ToolSerpApi implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
-			const query = inputData[itemIndex];
-			const result = await tool.invoke(query);
+			const item = inputData[itemIndex].json;
+			const queryString = item.input || item.chatInput;
+
+			if (typeof queryString !== 'string' || !queryString) {
+				throw new NodeOperationError(this.getNode(), `No query string found at index ${itemIndex}`);
+			}
+
+			const result = await tool.invoke(queryString);
+
 			returnData.push({
 				json: {
 					response: result,
