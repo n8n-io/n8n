@@ -1,13 +1,13 @@
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { BreakingChangeCategory } from '../../../types';
-import { StartNodeDeprecatedRule } from '../start-node-deprecated.rule';
+import { StartNodeRemovedRule } from '../start-node-removed.rule';
 
-describe('StartNodeDeprecatedRule', () => {
-	let rule: StartNodeDeprecatedRule;
+describe('StartNodeRemovedRule', () => {
+	let rule: StartNodeRemovedRule;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		rule = new StartNodeDeprecatedRule();
+		rule = new StartNodeRemovedRule();
 	});
 
 	describe('getMetadata()', () => {
@@ -16,9 +16,9 @@ describe('StartNodeDeprecatedRule', () => {
 
 			expect(metadata).toMatchObject({
 				version: 'v2',
-				title: 'Start node is deprecated',
+				title: 'Start node removed',
 				description:
-					'The Start node has been deprecated. Replace it with a Manual Trigger for manual executions, or with an Execute Workflow Trigger if used as a sub-workflow.',
+					'The Start node is no longer supported. Replace it with a Manual Trigger for manual executions, or with an Execute Workflow Trigger if used as a sub-workflow.',
 				category: BreakingChangeCategory.workflow,
 				severity: 'medium',
 			});
@@ -75,7 +75,7 @@ describe('StartNodeDeprecatedRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0]).toMatchObject({
-				title: "Start node 'Start' is deprecated",
+				title: "Start node 'Start' is no longer supported",
 				description: 'Delete this disabled Start node from the workflow.',
 				level: 'error',
 			});
@@ -91,7 +91,7 @@ describe('StartNodeDeprecatedRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0]).toMatchObject({
-				title: "Start node 'Start' is deprecated",
+				title: "Start node 'Start' is no longer supported",
 				description:
 					'Replace with Manual Trigger for manual executions, or Execute Workflow Trigger if used as a sub-workflow.',
 				level: 'error',

@@ -15,7 +15,7 @@ import { SqliteLegacyDriverRule } from './sqlite-legacy-driver.rule';
 import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
 import { TaskRunnersRule } from './task-runners.rule';
 import { TunnelOptionRule } from './tunnel-option.rule';
-import { StartNodeDeprecatedRule } from './start-node-deprecated.rule';
+import { StartNodeRemovedRule } from './start-node-removed.rule';
 import { WaitNodeSubworkflowRule } from './wait-node-subworkflow.rule';
 import { WorkflowHooksDeprecatedRule } from './workflow-hooks-deprecated.rule';
 
@@ -28,7 +28,7 @@ const v2Rules = [
 	DisabledNodesRule,
 	WaitNodeSubworkflowRule,
 	GitNodeBareReposRule,
-	StartNodeDeprecatedRule,
+	StartNodeRemovedRule,
 	// Instance-level rules
 	DotenvUpgradeRule,
 	OAuthCallbackAuthRule,

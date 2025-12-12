@@ -11,17 +11,17 @@ import type {
 import { BreakingChangeCategory } from '../../types';
 
 @Service()
-export class StartNodeDeprecatedRule implements IBreakingChangeWorkflowRule {
+export class StartNodeRemovedRule implements IBreakingChangeWorkflowRule {
 	private readonly START_NODE_TYPE = 'n8n-nodes-base.start';
 
-	id: string = 'start-node-deprecated-v2';
+	id: string = 'start-node-removed-v2';
 
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
-			title: 'Start node is deprecated',
+			title: 'Start node removed',
 			description:
-				'The Start node has been deprecated. Replace it with a Manual Trigger for manual executions, or with an Execute Workflow Trigger if used as a sub-workflow.',
+				'The Start node is no longer supported. Replace it with a Manual Trigger for manual executions, or with an Execute Workflow Trigger if used as a sub-workflow.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 		};
@@ -59,7 +59,7 @@ export class StartNodeDeprecatedRule implements IBreakingChangeWorkflowRule {
 		return {
 			isAffected: true,
 			issues: startNodes.map((node) => ({
-				title: `Start node '${node.name}' is deprecated`,
+				title: `Start node '${node.name}' is no longer supported`,
 				description: node.disabled
 					? 'Delete this disabled Start node from the workflow.'
 					: 'Replace with Manual Trigger for manual executions, or Execute Workflow Trigger if used as a sub-workflow.',
