@@ -93,8 +93,22 @@
                 }
             }
         },
-        "Email_Opt_Out": {
-            "type": "boolean"
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Created_Time": {
+            "type": "string"
         },
         "Full_Name": {
             "type": "string"
@@ -107,6 +121,9 @@
         },
         "Locked__s": {
             "type": "boolean"
+        },
+        "Modified_Time": {
+            "type": "string"
         },
         "Owner": {
             "type": "object",
@@ -121,27 +138,7 @@
                     "type": "string"
                 }
             }
-        },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "Unsubscribed_Mode": {
-            "type": "null"
-        },
-        "Unsubscribed_Time": {
-            "type": "null"
         }
     },
-    "version": 8
+    "version": 9
 }
