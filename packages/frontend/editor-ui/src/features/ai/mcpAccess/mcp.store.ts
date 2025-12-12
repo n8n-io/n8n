@@ -24,6 +24,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 
@@ -126,6 +127,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await fetchMcpEligibleWorkflows(rootStore.restApiContext, options);
 	}
 
+	function openConnectPopover(): void {
+		connectPopoverOpen.value = true;
+	}
+
+	function closeConnectPopover(): void {
+		connectPopoverOpen.value = false;
+	}
+
 	return {
 		mcpAccessEnabled,
 		fetchWorkflowsAvailableForMCP,
@@ -139,5 +148,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getAllOAuthClients,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		connectPopoverOpen,
+		openConnectPopover,
+		closeConnectPopover,
 	};
 });
