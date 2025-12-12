@@ -37,4 +37,6 @@ export interface InputEmits {
 export interface InputSlots {
 	prefix?: () => unknown;
 	suffix?: () => unknown;
+	prepend?: () => unknown;
+	append?: () => unknown;
 }

@@ -18,6 +18,7 @@ import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.type
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
 const $style = useCssModule();
+const slots = defineSlots<InputSlots>();
 
 const props = withDefaults(defineProps<InputProps>(), {
 	modelValue: '',
@@ -36,7 +37,6 @@ const props = withDefaults(defineProps<InputProps>(), {
 });
 
 const emit = defineEmits<InputEmits>();
-defineSlots<InputSlots>();
 
 const attrs = useAttrs();
 const inputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -89,6 +89,8 @@ const containerClasses = computed(() => [
 		[$style.disabled]: props.disabled,
 		[$style.readonly]: props.readonly,
 		[$style.focused]: isFocused.value,
+		[$style.hasPrepend]: !!slots.prepend,
+		[$style.hasAppend]: !!slots.append,
 		'ph-no-capture': props.type === 'password',
 	},
 ]);
@@ -281,6 +283,11 @@ defineExpose({ focus, blur, select });
 
 <template>
 	<div :class="containerClasses" v-bind="containerAttrs">
+		<!-- Prepend slot (outside input container, before) -->
+		<span v-if="$slots.prepend" :class="$style.prepend">
+			<slot name="prepend" />
+		</span>
+
 		<!-- Prefix slot -->
 		<span v-if="$slots.prefix" :class="$style.prefix">
 			<slot name="prefix" />
@@ -342,6 +349,11 @@ defineExpose({ focus, blur, select });
 		>
 			<Icon icon="x" size="small" />
 		</button>
+
+		<!-- Append slot (outside input container, after) -->
+		<span v-if="$slots.append" :class="$style.append">
+			<slot name="append" />
+		</span>
 	</div>
 </template>
 
@@ -376,6 +388,16 @@ defineExpose({ focus, blur, select });
 
 .readonly {
 	background-color: var(--color--background--light-3);
+}
+
+.hasPrepend {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.hasAppend {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 /* Size variants */
@@ -464,5 +486,25 @@ defineExpose({ focus, blur, select });
 
 .clearButton:focus {
 	outline: none;
+}
+
+.prepend,
+.append {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+	background-color: var(--color--background--light-3);
+	padding: 0 var(--spacing--xs);
+}
+
+.prepend {
+	border-right: var(--border);
+	margin-left: calc(-1 * var(--spacing--xs));
+}
+
+.append {
+	border-left: var(--border);
+	margin-right: calc(-1 * var(--spacing--xs));
 }
 </style>
