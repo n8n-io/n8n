@@ -9,23 +9,14 @@
                     "due": {
                         "type": "null"
                     },
-                    "dueReminder": {
-                        "type": "integer"
-                    },
                     "id": {
                         "type": "string"
                     },
                     "idChecklist": {
                         "type": "string"
                     },
-                    "idMember": {
-                        "type": "null"
-                    },
                     "name": {
                         "type": "string"
-                    },
-                    "pos": {
-                        "type": "integer"
                     },
                     "state": {
                         "type": "string"
@@ -49,5 +40,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
