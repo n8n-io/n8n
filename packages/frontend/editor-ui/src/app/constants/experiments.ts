@@ -16,12 +16,6 @@ export const COMMAND_BAR_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const NDV_UI_OVERHAUL_EXPERIMENT = {
-	name: '029_ndv_ui_overhaul',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
 	control: 'control',
@@ -89,10 +83,6 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
-export const TIME_SAVED_NODE_EXPERIMENT = {
-	name: '053_time_saved_node',
-};
-
 export const TEMPLATE_SETUP_EXPERIENCE = {
 	name: '055_template_setup_experience',
 	control: 'control',
@@ -114,7 +104,6 @@ export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
-	NDV_UI_OVERHAUL_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
@@ -123,6 +112,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
-	TIME_SAVED_NODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 ];
