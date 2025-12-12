@@ -68,7 +68,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-credential-resolvers',
 				icon: 'key-round',
-				label: 'Credential Resolvers',
+				label: i18n.baseText('credentialResolver.view.title'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.RESOLVERS),
 				route: { to: { name: VIEWS.RESOLVERS } },
