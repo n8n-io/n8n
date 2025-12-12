@@ -32,9 +32,8 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
-// Enable fullyParallel for standard Playwright runs (community PRs, local)
-// Disable for Currents orchestration
-const enableParallelism = !process.env.CURRENTS_RECORD_KEY;
+// Disable fullyParallel when running with single worker (no benefit, used by Currents orchestration)
+const enableParallelism = (parseInt(process.env.PLAYWRIGHT_WORKERS ?? '', 10) || Infinity) > 1;
 
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
