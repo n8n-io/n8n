@@ -143,7 +143,7 @@ describe('NodesListPanel', () => {
 
 			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
 
 			screen.getByText('Action in an app').click();
 			await nextTick();
