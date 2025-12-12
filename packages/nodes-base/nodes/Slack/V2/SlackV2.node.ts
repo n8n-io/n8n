@@ -32,6 +32,7 @@ import {
 	processThreadOptions,
 	slackApiRequestAllItemsWithRateLimit,
 } from './GenericFunctions';
+import { resolveTargetForEmailIfNeeded } from './MessageEmailHelpers';
 import {
 	channelRLC,
 	messageFields,
@@ -374,12 +375,12 @@ export class SlackV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
-			await slackApiRequest.call(
-				this,
-				'POST',
-				'/chat.postMessage',
-				createSendAndWaitMessageBody(this),
-			);
+			const body = createSendAndWaitMessageBody(this);
+
+			const select = this.getNodeParameter('select', 0) as 'user' | 'channel';
+			body.channel = await resolveTargetForEmailIfNeeded(this, 0, select, body.channel);
+
+			await slackApiRequest.call(this, 'POST', '/chat.postMessage', body);
 
 			const waitTill = configureWaitTillDate(this);
 
@@ -823,7 +824,8 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/chat.postMessage
 					if (operation === 'post') {
 						const select = this.getNodeParameter('select', i) as 'user' | 'channel';
-						const target = getTarget(this, i, select);
+						let target = getTarget(this, i, select);
+						target = await resolveTargetForEmailIfNeeded(this, i, select, target);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
 
