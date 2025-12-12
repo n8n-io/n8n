@@ -338,6 +338,100 @@ describe('SourceControlService', () => {
 			});
 			expect(result).toHaveProperty('statusCode', 200);
 		});
+
+		it('should reset branch to origin/branch when push fails after commit', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const mockFile: SourceControlledFile = {
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+
+			(isContainedWithin as jest.Mock).mockReturnValue(true);
+
+			const pushError = new Error(
+				'To github.com:test/n8n.git ! refs/heads/test:refs/heads/test [remote rejected] (push declined due to repository rule violations)',
+			);
+			gitService.push.mockRejectedValueOnce(pushError);
+
+			// ACT & ASSERT
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [mockFile],
+					commitMessage: 'Test commit',
+				}),
+			).rejects.toThrow(pushError);
+
+			// Verify git operations were attempted
+			expect(gitService.stage).toHaveBeenCalled();
+			expect(gitService.commit).toHaveBeenCalled();
+			expect(gitService.push).toHaveBeenCalled();
+
+			// Verify resetBranch was called with origin/branch to sync with remote
+			expect(gitService.resetBranch).toHaveBeenCalledWith({
+				hard: true,
+				target: 'origin/main',
+			});
+		});
+
+		it('should reset branch to HEAD when commit fails', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const mockFile: SourceControlledFile = {
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+
+			(isContainedWithin as jest.Mock).mockReturnValue(true);
+
+			// Mock commit to fail
+			const commitError = new Error('Git commit failed');
+			gitService.commit.mockRejectedValueOnce(commitError);
+
+			// ACT & ASSERT
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [mockFile],
+					commitMessage: 'Test commit',
+				}),
+			).rejects.toThrow(commitError);
+
+			// Verify stage was called but not push
+			expect(gitService.stage).toHaveBeenCalled();
+			expect(gitService.commit).toHaveBeenCalled();
+			expect(gitService.push).not.toHaveBeenCalled();
+
+			// Verify resetBranch was called with HEAD (no commit to undo)
+			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
+		});
 	});
 
 	describe('pullWorkfolder', () => {
