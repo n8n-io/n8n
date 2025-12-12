@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const WorkflowExecutionStatusDtoSchema = z.object({
+export const WorkflowExecutionStatusSchema = z.object({
 	workflowId: z.string(),
 	credentials: z
 		.array(
@@ -15,4 +15,4 @@ export const WorkflowExecutionStatusDtoSchema = z.object({
 	readyToExecute: z.boolean(),
 });
 
-export type WorkflowExecutionStatusDto = z.infer<typeof WorkflowExecutionStatusDtoSchema>;
+export type WorkflowExecutionStatus = z.infer<typeof WorkflowExecutionStatusSchema>;

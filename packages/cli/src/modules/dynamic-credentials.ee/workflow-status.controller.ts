@@ -3,7 +3,8 @@ import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
-import { WorkflowExecutionStatusDto } from '@n8n/api-types';
+import { WorkflowExecutionStatus } from '@n8n/api-types';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 const BEARER_TOKEN_REGEX = /^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(.+)$/;
 
@@ -13,16 +14,22 @@ export class WorkflowStatusController {
 		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
 	) {}
 
+	/**
+	 * GET /workflows/:workflowId/execution-status
+	 *
+	 * Checks if a workflow is ready to execute by validating all resolvable credentials.
+	 * Requires Bearer token authentication in Authorization header.
+	 *
+	 * @returns Workflow execution status with credential details and authorization URLs
+	 * @throws {BadRequestError} When authorization header is missing or malformed
+	 */
 	@Get('/:workflowId/execution-status', { skipAuth: true })
-	async checkWorkflowForExecution(
-		req: Request,
-		_res: Response,
-	): Promise<WorkflowExecutionStatusDto> {
+	async checkWorkflowForExecution(req: Request, _res: Response): Promise<WorkflowExecutionStatus> {
 		const workflowId = req.params['workflowId'];
 		const headerValue = req.headers['authorization']?.toString();
 
 		if (!headerValue) {
-			throw new BadRequestError('Authorization header missing');
+			throw new UnauthenticatedError();
 		}
 
 		const result = BEARER_TOKEN_REGEX.exec(headerValue);
@@ -43,7 +50,7 @@ export class WorkflowStatusController {
 
 		const isReady = status.every((s) => s.status === 'configured');
 
-		const executionStatus: WorkflowExecutionStatusDto = {
+		const executionStatus: WorkflowExecutionStatus = {
 			workflowId,
 			readyToExecute: isReady,
 			credentials: status.map((s) => ({
