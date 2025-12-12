@@ -162,8 +162,13 @@ export namespace ChatRequest {
 		step?: 'n8n_documentation' | 'n8n_forum';
 		codeSnippet?: string;
 		quickReplies?: ChatUI.QuickReply[];
-		/** Version ID for restore functionality - present on user messages that have an associated workflow version */
+		/** Version ID for restore functionality - sent by backend on user messages */
 		revertVersionId?: string;
+		/** Version info enriched by frontend with timestamp from workflow history */
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
 	}
 
 	export interface SummaryMessage {

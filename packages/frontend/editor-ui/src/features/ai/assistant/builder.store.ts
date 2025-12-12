@@ -3,11 +3,7 @@ import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import {
-	isToolMessage,
-	isWorkflowUpdatedMessage,
-	isVersionCardMessage,
-} from '@n8n/design-system/types/assistant';
+import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -305,8 +301,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * and ensures chat is open. Called before initiating API request to minimize
 	 * perceived latency.
 	 */
-	function prepareForStreaming(userMessage: string, messageId: string) {
-		const userMsg = createUserMessage(userMessage, messageId);
+	function prepareForStreaming(
+		userMessage: string,
+		messageId: string,
+		revertVersion?: { id: string; createdAt: string },
+	) {
+		const userMsg = createUserMessage(userMessage, messageId, revertVersion);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
@@ -404,7 +404,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
-		versionId?: string;
+		revertVersion?: { id: string; createdAt: string };
 	}) {
 		if (streaming.value) {
 			return;
@@ -421,7 +421,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			type = 'message',
 			errorNodeType,
 			executionStatus,
-			versionId,
+			revertVersion,
 		} = options;
 
 		// Set initial generation flag if provided
@@ -450,7 +450,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId);
+		prepareForStreaming(text, userMessageId, revertVersion);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const payload = createBuilderPayload(text, userMessageId, {
@@ -490,7 +490,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, userMessageId, retry),
-				versionId,
+				revertVersion?.id,
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
@@ -514,15 +514,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	/**
 	 * Fetches which version IDs still exist in workflow history.
-	 * Returns an empty set if the fetch fails (all versions will be treated as non-existent).
+	 * Returns a Map of versionId -> createdAt for existing versions.
+	 * Returns an empty map if the fetch fails (all versions will be treated as non-existent).
 	 */
 	// @todo move these version utility functions out into util file or composable?
 	async function fetchExistingVersionIds(
 		workflowId: string,
 		versionIds: string[],
-	): Promise<Set<string>> {
+	): Promise<Map<string, string>> {
 		if (versionIds.length === 0) {
-			return new Set();
+			return new Map();
 		}
 
 		try {
@@ -531,27 +532,35 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				workflowId,
 				versionIds,
 			);
-			return new Set(versionsResponse.versions.map((v) => v.versionId));
+			return new Map(versionsResponse.versions.map((v) => [v.versionId, v.createdAt]));
 		} catch {
-			// Continue without filtering - all revertVersionIds will be removed
-			return new Set();
+			// Continue without enriching - all revertVersionIds will be removed
+			return new Map();
 		}
 	}
 
 	/**
-	 * Removes revertVersionId from messages if the version no longer exists.
+	 * Enriches messages with revertVersion object containing both id and createdAt.
+	 * If version doesn't exist in the map, removes revertVersionId from the message.
 	 */
 	// @todo move these version utility functions out into util file or composable?
-	function filterNonExistentVersionIds(
+	function enrichMessagesWithRevertVersion(
 		messages: ChatRequest.MessageResponse[],
-		existingVersionIds: Set<string>,
+		versionMap: Map<string, string>,
 	): ChatRequest.MessageResponse[] {
 		return messages.map((msg) => {
 			if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
-				if (!existingVersionIds.has(msg.revertVersionId)) {
-					const { revertVersionId: _, ...rest } = msg;
-					return rest as ChatRequest.MessageResponse;
+				const createdAt = versionMap.get(msg.revertVersionId);
+				if (createdAt) {
+					// Transform revertVersionId into revertVersion object
+					return {
+						...msg,
+						revertVersion: { id: msg.revertVersionId, createdAt },
+					};
 				}
+				// Version doesn't exist, remove revertVersionId
+				const { revertVersionId: _, ...rest } = msg;
+				return rest as ChatRequest.MessageResponse;
 			}
 			return msg;
 		});
@@ -581,17 +590,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 				// Extract version IDs and check which still exist
 				const versionIds = extractRevertVersionIds(latestSession.messages);
-				const existingVersionIds = await fetchExistingVersionIds(workflowId, versionIds);
+				const versionMap = await fetchExistingVersionIds(workflowId, versionIds);
 
-				// Clear existing messages
-				chatMessages.value = clearMessages();
-
-				// Filter out non-existent version IDs and convert to UI messages
-				const filteredMessages = filterNonExistentVersionIds(
+				// Enrich messages with revertVersion objects and convert to UI messages
+				const enrichedMessages = enrichMessagesWithRevertVersion(
 					latestSession.messages,
-					existingVersionIds,
+					versionMap,
 				);
-				const convertedMessages = filteredMessages
+				const convertedMessages = enrichedMessages
 					.map((msg) => {
 						const id = generateMessageId();
 						return mapAssistantMessageToUI(msg, id);
@@ -859,16 +865,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowHistoryStore = useWorkflowHistoryStore();
 
 	/**
-	 * Computed property to get all version card messages from chat
-	 */
-	const versionCardMessages = computed(
-		// @todo better typing here
-		() => chatMessages.value.filter(isVersionCardMessage) as ChatUI.VersionCardMessage[],
-	);
-
-	/**
 	 * Restores the workflow to a previous version and truncates chat messages.
-	 * Finds the user message with the matching revertVersionId and removes it
+	 * Finds the user message with the matching revertVersion.id and removes it
 	 * along with all messages after it.
 	 *
 	 * @param versionId - The workflow version ID to restore to
@@ -892,14 +890,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				// Continue anyway - local state will be updated
 			}
 
-			// 3. Truncate local chat messages - find user message with matching revertVersionId
+			// 3. Truncate local chat messages - find user message with matching revertVersion.id
 			// and remove it along with all messages after it
 			const messageIndex = chatMessages.value.findIndex(
 				(msg) =>
 					msg.role === 'user' &&
 					msg.type === 'text' &&
-					'revertVersionId' in msg &&
-					msg.revertVersionId === versionId,
+					'revertVersion' in msg &&
+					(msg as ChatUI.TextMessage).revertVersion?.id === versionId,
 			);
 			if (messageIndex !== -1) {
 				chatMessages.value = chatMessages.value.slice(0, messageIndex);
@@ -931,7 +929,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages: computed(() => hasMessages.value),
 		workflowTodos,
-		versionCardMessages,
 
 		// Methods
 		abortStreaming,

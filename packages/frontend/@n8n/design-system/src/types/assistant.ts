@@ -5,6 +5,10 @@ export namespace ChatUI {
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
 	}
 
 	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {
@@ -115,14 +119,6 @@ export namespace ChatUI {
 		data: unknown;
 	}
 
-	export interface VersionCardMessage {
-		id: string;
-		role: 'assistant';
-		type: 'version-card';
-		versionId: string;
-		createdAt: string;
-	}
-
 	type MessagesWithReplies = (
 		| TextMessage
 		| CodeDiffMessage
@@ -145,7 +141,6 @@ export namespace ChatUI {
 		| ToolMessage
 		| ThinkingGroupMessage
 		| CustomMessage
-		| VersionCardMessage
 	) & {
 		id?: string;
 		read?: boolean;
@@ -242,12 +237,6 @@ export function isThinkingGroupMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.ThinkingGroupMessage & { id?: string; read?: boolean } {
 	return msg.type === 'thinking-group';
-}
-
-export function isVersionCardMessage(
-	msg: ChatUI.AssistantMessage,
-): msg is ChatUI.VersionCardMessage & { id: string; read?: boolean } {
-	return msg.type === 'version-card';
 }
 
 // Helper to ensure message has required id and read properties

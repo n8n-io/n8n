@@ -7,6 +7,7 @@ import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';
+import N8nIcon from '../../N8nIcon';
 
 interface Props {
 	message: ChatUI.TextMessage & { quickReplies?: ChatUI.QuickReply[] };
@@ -24,9 +25,21 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
+	restore: [versionId: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
+
+const formattedDate = computed(() => {
+	if (!props.message.revertVersion?.createdAt) return '';
+	const date = new Date(props.message.revertVersion.createdAt);
+	return date.toLocaleString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+	});
+});
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
@@ -99,6 +112,16 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
 			</div>
+			<!-- Restore version link for user messages with revertVersion -->
+			<button
+				v-if="message.role === 'user' && message.revertVersion"
+				:class="$style.restoreLink"
+				type="button"
+				@click="emit('restore', message.revertVersion.id)"
+			>
+				<N8nIcon icon="undo-2" size="xsmall" />
+				{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
+			</button>
 			<!-- Assistant message - simple text without container -->
 			<div
 				v-else
@@ -174,6 +197,24 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	font-weight: 500;
 	cursor: pointer;
 	text-align: left;
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
+.restoreLink {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	background: none;
+	border: none;
+	padding: 0;
+	margin-top: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	cursor: pointer;
+	align-self: flex-end;
 
 	&:hover {
 		text-decoration: underline;

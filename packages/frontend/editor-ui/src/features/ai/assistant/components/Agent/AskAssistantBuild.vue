@@ -92,12 +92,14 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 });
 
 /**
- * Saves the workflow and returns the version ID for message history.
+ * Saves the workflow and returns the version info for message history.
  * For new workflows, creates the workflow first.
  * For existing workflows, only saves if there are unsaved changes.
- * Returns the current version ID after any save operation.
+ * Returns the version ID and timestamp after any save operation.
  */
-async function saveWorkflowAndGetVersionId(): Promise<string | undefined> {
+async function saveWorkflowAndGetRevertVersion(): Promise<
+	{ id: string; createdAt: string } | undefined
+> {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
 	const hasUnsavedChanges = uiStore.stateIsDirty;
 
@@ -106,8 +108,16 @@ async function saveWorkflowAndGetVersionId(): Promise<string | undefined> {
 		await workflowSaver.saveCurrentWorkflow();
 	}
 
-	// Return the current version ID (will be set after save)
-	return workflowsStore.workflowVersionId;
+	const versionId = workflowsStore.workflowVersionId;
+	if (!versionId) return undefined;
+
+	// Use workflow updatedAt as version timestamp
+	// might not be the same as "version.createdAt" but close enough
+	const updatedAt = workflowsStore.workflow.updatedAt;
+	return {
+		id: versionId,
+		createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
+	};
 }
 
 async function onUserMessage(content: string) {
@@ -117,14 +127,14 @@ async function onUserMessage(content: string) {
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
-	// Save workflow before sending message to get versionId for restore functionality
+	// Save workflow before sending message to get revertVersion for restore functionality
 	// @todo test if error happens while saving?
-	const versionId = await saveWorkflowAndGetVersionId();
+	const revertVersion = await saveWorkflowAndGetRevertVersion();
 
 	await builderStore.sendChatMessage({
 		text: content,
 		initialGeneration: isInitialGeneration,
-		versionId,
+		revertVersion,
 	});
 }
 

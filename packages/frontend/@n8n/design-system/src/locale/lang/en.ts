@@ -89,5 +89,5 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
-	'aiAssistant.versionCard.restore': 'Restore to this version',
+	'aiAssistant.textMessage.restoreVersion': 'Restore version',
 } as N8nLocale;
