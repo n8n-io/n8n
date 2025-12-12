@@ -23,12 +23,16 @@ on:
         description: 'The runners Docker image that was built'
         value: ${{ jobs.build.outputs.runners_image }}
 
+env:
+  NODE_VERSION: '22.21.1'
+
 jobs:
   build:
     name: Build and Push
     runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
+      INCLUDE_TEST_CONTROLLER: 'true'
     outputs:
       n8n_image: ghcr.io/${{ github.repository_owner }}/n8n:pr-${{ inputs.pr_number }}
       runners_image: ghcr.io/${{ github.repository_owner }}/runners:pr-${{ inputs.pr_number }}
@@ -51,11 +55,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push n8n Docker image
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
           file: ./docker/images/n8n/Dockerfile
           build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=pr-${{ inputs.pr_number }}
             N8N_RELEASE_TYPE=dev
           platforms: linux/amd64
@@ -63,11 +68,12 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/n8n:pr-${{ inputs.pr_number }}
 
       - name: Build and push runners Docker image
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
           file: ./docker/images/runners/Dockerfile
           build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=pr-${{ inputs.pr_number }}
             N8N_RELEASE_TYPE=dev
           platforms: linux/amd64
