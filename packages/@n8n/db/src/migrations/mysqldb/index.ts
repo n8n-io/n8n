@@ -124,6 +124,7 @@ import { AddCreatorIdToProjectTable1764276827837 } from '../common/1764276827837
 import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
 import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
+import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459448000-AddResolvableFieldsToCredentials';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -253,4 +254,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateDynamicCredentialResolverTable1764682447000,
 	AddDynamicCredentialEntryTable1764689388394,
 	BackfillMissingWorkflowHistoryRecords1765448186933,
+	AddResolvableFieldsToCredentials1765459448000,
 ];
