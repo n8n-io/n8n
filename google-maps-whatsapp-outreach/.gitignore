@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.log
+output/
+whatsapp-session/
+.wwebjs_auth/
+.wwebjs_cache/
+*.csv
+*.json
+!package.json
+!tsconfig.json
