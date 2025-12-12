@@ -17,6 +17,7 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
+	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
 	N8nTooltip,
@@ -1133,13 +1134,12 @@ onBeforeUnmount(() => {
 				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed'">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-input']">
-							<N8nInput
+							<N8nInputNumber
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
+								:min="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>

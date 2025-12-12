@@ -87,8 +87,8 @@ export type IFormBoxConfig = {
 export type CheckboxLabelSizePropType = 'small' | 'medium' | undefined;
 export type CheckboxModelValuePropType = boolean | undefined;
 export type SwitchModelValuePropType = boolean | undefined;
-export type InputModelValuePropType = string | number | undefined;
-export type InputTypePropType = 'number' | 'text' | 'email' | 'password' | 'textarea' | undefined;
+export type InputModelValuePropType = string | null | undefined;
+export type InputTypePropType = 'text' | 'email' | 'password' | 'textarea' | undefined;
 export type InputAutocompletePropType =
 	| 'off'
 	| 'new-password'

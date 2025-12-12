@@ -1,4 +1,4 @@
-export type InputType = 'text' | 'textarea' | 'password' | 'number' | 'email';
+export type InputType = 'text' | 'textarea' | 'password' | 'email';
 export type InputSize = 'xlarge' | 'large' | 'medium' | 'small' | 'mini';
 export type InputAutocomplete =
 	| 'off'
@@ -11,7 +11,7 @@ export type InputAutocomplete =
 	| 'email';
 
 export interface InputProps {
-	modelValue?: string | number | null;
+	modelValue?: string | null;
 	type?: InputType;
 	size?: InputSize;
 	placeholder?: string;
@@ -27,8 +27,8 @@ export interface InputProps {
 }
 
 export interface InputEmits {
-	'update:modelValue': [value: string | number | null];
-	input: [value: string | number | null];
+	'update:modelValue': [value: string];
+	input: [value: string];
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 	keydown: [event: KeyboardEvent];
