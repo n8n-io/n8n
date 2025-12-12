@@ -5864,6 +5864,17 @@ describe('NodeHelpers', () => {
 			expect(isToolType('CustomNode', { includeHitl: true })).toBe(false);
 			expect(isToolType('CustomNode', { includeHitl: false })).toBe(false);
 		});
+
+		it.each([
+			['@n8n/n8n-nodes-base.toolCalculator', true],
+			['@n8n/n8n-nodes-base.toolCode', true],
+			['n8n-nodes-base.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someHitlTool', true],
+		])('should return true when nodeType is %s', (nodeType, expected) => {
+			expect(isToolType(nodeType)).toBe(expected);
+		});
 	});
 
 	describe('isHitlToolType', () => {

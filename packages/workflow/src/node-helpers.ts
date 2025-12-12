@@ -1655,11 +1655,12 @@ export function isToolType(
 	{ includeHitl = true }: { includeHitl?: boolean } = {},
 ) {
 	if (!nodeType) return false;
-	if (nodeType.endsWith('Tool')) {
+	const node = nodeType.split('.').pop();
+	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
 		if (includeHitl) {
 			return true;
 		}
-		return !nodeType.endsWith('HitlTool');
+		return !node.endsWith('HitlTool');
 	}
 	return false;
 }
