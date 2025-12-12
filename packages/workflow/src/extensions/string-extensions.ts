@@ -821,6 +821,7 @@ quote.doc = {
 
 parseJson.doc = {
 	name: 'parseJson',
+	aliases: ['fromJson'],
 	description:
 		"Returns the JavaScript value or object represented by the string, or <code>undefined</code> if the string isn't valid JSON. Single-quoted JSON is not supported.",
 	section: 'cast',
@@ -836,6 +837,7 @@ parseJson.doc = {
 
 base64Encode.doc = {
 	name: 'base64Encode',
+	aliases: ['toBase64'],
 	description: 'Converts plain text to a base64-encoded string',
 	examples: [{ example: '"hello".base64Encode()', evaluated: '"aGVsbG8="' }],
 	section: 'edit',
@@ -846,6 +848,7 @@ base64Encode.doc = {
 
 base64Decode.doc = {
 	name: 'base64Decode',
+	aliases: ['fromBase64'],
 	description: 'Converts a base64-encoded string to plain text',
 	examples: [{ example: '"aGVsbG8=".base64Decode()', evaluated: '"hello"' }],
 	section: 'edit',
