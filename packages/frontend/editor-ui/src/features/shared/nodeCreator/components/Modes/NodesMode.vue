@@ -140,6 +140,9 @@ function onSelected(item: INodeCreateElement) {
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
 			sections: item.properties.sections,
+			items: item.properties.items,
+			hideActions: item.properties.hideActions,
+			actionsFilter: item.properties.actionsFilter,
 		});
 
 		onSubcategorySelected({

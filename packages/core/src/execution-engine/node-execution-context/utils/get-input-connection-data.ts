@@ -29,6 +29,7 @@ import {
 	ApplicationError,
 	UserError,
 	sleepWithAbort,
+	isHitlToolType,
 } from 'n8n-workflow';
 
 import { createNodeAsTool } from './create-node-as-tool';
@@ -36,14 +37,6 @@ import type { ExecuteContext, WebhookContext } from '../../node-execution-contex
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 import { isEngineRequest } from '../../requests-response';
-
-/**
- * Check if a node is an HITL (Human-in-the-Loop) tool.
- * HITL tools have names ending with 'HitlTool'.
- */
-function isHitlTool(node: INode): boolean {
-	return node.type.endsWith('HitlTool');
-}
 
 /**
  * Get the original node type name from an HITL tool node type.
@@ -503,7 +496,7 @@ export async function getInputConnectionData(
 	for (const connectedNode of connectedNodes) {
 		// Check if this is an HITL (Human-in-the-Loop) tool node
 		// HITL tools need special handling to create the middleware tool
-		if (isHitlTool(connectedNode)) {
+		if (isHitlToolType(connectedNode?.type)) {
 			const supplyData = await createHitlToolSupplyData(
 				connectedNode,
 				workflow,

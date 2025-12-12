@@ -72,7 +72,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from '../nodeCreator.utils';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -615,7 +615,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: HUMAN_IN_THE_LOOP_CATEGORY,
 				properties: {
 					title: HITL_SUBCATEGORY,
-					icon: 'user-check',
+					icon: 'badge-check',
 					sections: [
 						{
 							key: 'sendAndWait',
@@ -669,7 +669,7 @@ export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
 		items: hitlToolNodes,
 		nodeIcon: {
 			type: 'icon',
-			name: 'user-check',
+			name: 'badge-check',
 		},
 	};
 }

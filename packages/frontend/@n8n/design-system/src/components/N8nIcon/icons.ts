@@ -44,6 +44,7 @@ import IconLucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line';
 import IconLucideArrowRightToLine from '~icons/lucide/arrow-right-to-line';
 import IconLucideArrowUp from '~icons/lucide/arrow-up';
 import IconLucideAtSign from '~icons/lucide/at-sign';
+import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
@@ -488,6 +489,7 @@ export const updatedIconSet = {
 	'arrow-up': IconLucideArrowUp,
 	'at-sign': IconLucideAtSign,
 	ban: IconLucideBan,
+	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,

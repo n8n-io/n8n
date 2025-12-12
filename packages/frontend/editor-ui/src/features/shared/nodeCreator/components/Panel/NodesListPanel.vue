@@ -19,9 +19,9 @@ import {
 	AIView,
 	AINodesView,
 	HitlToolView,
-	NodeView,
+	type NodeView,
 } from '../../views/viewsData';
-import { useViewStacks, ViewStack } from '../../composables/useViewStacks';
+import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
