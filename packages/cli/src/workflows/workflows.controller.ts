@@ -96,6 +96,20 @@ export class WorkflowsController {
 		// mess with relations of other workflows
 		delete req.body.shared;
 
+		// @ts-expect-error: We shouldn't accept this, this will be set when activating
+		if (req.body.activeVersionId || req.body.active) {
+			this.logger.warn(
+				'Creating a workflow as active is not supported. The workflow will be created as inactive.',
+				{ userId: req.user.id },
+			);
+
+			// @ts-expect-error: We shouldn't accept this
+			delete req.body.activeVersionId;
+			// @ts-expect-error: We shouldn't accept this
+			delete req.body.activeVersion;
+			req.body.active = false;
+		}
+
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, req.body);
@@ -189,12 +203,6 @@ export class WorkflowsController {
 				workflow.id,
 				transactionManager,
 			);
-
-			const shouldActivate = req.body.active === true;
-			if (shouldActivate) {
-				workflow.activeVersionId = workflow.versionId;
-				await transactionManager.save(workflow);
-			}
 
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
