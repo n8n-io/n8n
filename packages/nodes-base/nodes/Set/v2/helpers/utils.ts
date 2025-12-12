@@ -183,8 +183,6 @@ export const validateEntry = (
 					{ description },
 				);
 			}
-		} else if (value instanceof Date) {
-			value = value.toISOString();
 		} else if (typeof value === 'object') {
 			value = JSON.stringify(value);
 		} else {
