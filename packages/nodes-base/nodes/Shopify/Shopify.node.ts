@@ -179,7 +179,7 @@ export class Shopify implements INodeType {
 						const discount = additionalFields.discountCodesUi as IDataObject;
 						const billing = additionalFields.billingAddressUi as IDataObject;
 						const shipping = additionalFields.shippingAddressUi as IDataObject;
-						const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject)
+						const lineItem = (this.getNodeParameter('lineItemsUi', i) as IDataObject)
 							.lineItemValues as IDataObject[];
 						if (lineItem === undefined) {
 							throw new NodeOperationError(
