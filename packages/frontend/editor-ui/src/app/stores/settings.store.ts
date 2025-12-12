@@ -185,6 +185,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 
+		useRootStore().setDefaultLocale(settings.value.defaultLocale);
+
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
 			userManagement.value.showSetupOnFirstLoad =
