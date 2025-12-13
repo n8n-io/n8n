@@ -273,7 +273,7 @@ flowchart TD
 							parameters: {},
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 						},
@@ -294,7 +294,7 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.start
+    %% n8n-nodes-base.manualTrigger
     n1["Start"]
 \`\`\``;
 
@@ -329,7 +329,7 @@ flowchart TD
 							parameters: {},
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 						},

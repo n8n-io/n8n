@@ -28,7 +28,6 @@ export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
 ];
 

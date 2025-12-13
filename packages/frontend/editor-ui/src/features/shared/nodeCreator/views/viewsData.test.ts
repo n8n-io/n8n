@@ -7,7 +7,7 @@ import {
 	PRE_BUILT_AGENTS_EXPERIMENT,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { START_NODE_TYPE } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { AIView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -22,7 +22,7 @@ const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE }
 
 const otherNodes = (
 	[
-		{ name: START_NODE_TYPE },
+		{ name: MANUAL_TRIGGER_NODE_TYPE },
 		{
 			name: 'agentHidden',
 			description: 'example mock agent node',

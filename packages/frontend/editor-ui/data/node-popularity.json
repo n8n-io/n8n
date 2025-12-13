@@ -3992,7 +3992,7 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.start",
+		"id": "n8n-nodes-base.manualTrigger",
 		"popularity": 0
 	},
 	{

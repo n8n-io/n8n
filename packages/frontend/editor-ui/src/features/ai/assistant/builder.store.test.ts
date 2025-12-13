@@ -865,7 +865,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -902,7 +902,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -936,7 +936,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -969,7 +969,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -1003,7 +1003,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -1983,7 +1983,7 @@ describe('AI Builder store', () => {
 				{
 					id: 'node-1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {},
@@ -2000,7 +2000,7 @@ describe('AI Builder store', () => {
 				{
 					id: 'node-1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [0, 0],
 				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
