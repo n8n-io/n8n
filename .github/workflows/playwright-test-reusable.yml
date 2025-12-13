@@ -87,7 +87,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
-          enable-docker-cache: ${{ inputs.test-mode != 'local' }}
+          enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
