@@ -28,8 +28,8 @@ export class ReadBinaryFile implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				placeholder: '/data/example.jpg',
-				description: 'Path of the file to read',
+				placeholder: '/data/example.jpg or ~/myfile.txt',
+				description: 'Path of the file to read. The tilde (~) expands to the default allowed directory (~/.n8n-files) or the first configured allowed path.',
 			},
 			{
 				displayName: 'Property Name',
