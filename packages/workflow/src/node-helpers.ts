@@ -35,6 +35,9 @@ import type {
 	DisplayCondition,
 	NodeConnectionType,
 	ICredentialDataDecryptedObject,
+	FeatureCondition,
+	NodeFeaturesDefinition,
+	NodeFeatures,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -252,6 +255,37 @@ export function isSubNodeType(
 		: false;
 }
 
+/**
+ * Evaluates a feature condition against a node version.
+ * @param featureDef The feature condition definition
+ * @param nodeVersion The node version to evaluate against
+ * @returns true if the feature is enabled, false otherwise
+ */
+function evaluateFeature(featureDef: FeatureCondition, nodeVersion: number): boolean {
+	return checkConditions(featureDef['@version'], [nodeVersion]);
+}
+
+/**
+ * Evaluates all feature definitions for a node type and returns the computed features.
+ * @param featuresDef The feature definitions from the node type description
+ * @param nodeVersion The node version to evaluate against
+ * @returns A record of feature names to their enabled state
+ */
+export function getNodeFeatures(
+	featuresDef: NodeFeaturesDefinition | undefined,
+	nodeVersion: number,
+): NodeFeatures {
+	if (!featuresDef) {
+		return {};
+	}
+
+	const features: NodeFeatures = {};
+	for (const [featureName, condition] of Object.entries(featuresDef)) {
+		features[featureName] = evaluateFeature(condition, nodeVersion);
+	}
+	return features;
+}
+
 const getPropertyValues = (
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
@@ -267,6 +301,15 @@ const getPropertyValues = (
 		value = node?.typeVersion || 0;
 	} else if (propertyName === '@tool') {
 		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
+	} else if (propertyName === '@feature') {
+		if (!nodeTypeDescription?.features || !node?.typeVersion) {
+			return [];
+		}
+
+		const features = getNodeFeatures(nodeTypeDescription.features, node.typeVersion);
+		return Object.entries(features)
+			.filter(([_, enabled]) => enabled)
+			.map(([name]) => name);
 	} else {
 		// Get the value from current level
 		value = get(nodeValues, propertyName);
@@ -295,6 +338,12 @@ const checkConditions = (
 			Object.keys(condition).length === 1
 		) {
 			const [key, targetValue] = Object.entries(condition._cnd)[0];
+
+			// Special case: empty array handling
+			if (actualValues.length === 0) {
+				if (key === 'not') return true; // Value is not present, so 'not' is true
+				return false; // For all other keys, empty array means condition is not met
+			}
 
 			return actualValues.every((propertyValue) => {
 				if (key === 'eq') {
@@ -381,7 +430,7 @@ export function displayParameter(
 				return true;
 			}
 
-			if (values.length === 0 || !checkConditions(show[propertyName]!, values)) {
+			if (!checkConditions(show[propertyName]!, values)) {
 				return false;
 			}
 		}
