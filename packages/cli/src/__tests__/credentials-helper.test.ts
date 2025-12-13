@@ -456,6 +456,9 @@ describe('CredentialsHelper', () => {
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
 				mockAdditionalData.workflowSettings,
+				mockAdditionalData,
+				'manual',
+				false, // canUseExternalSecrets
 			);
 			expect(result).toEqual(resolvedData);
 		});
@@ -475,6 +478,9 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(mockAdditionalData.executionContext);
+			expect(call[4]).toBe(mockAdditionalData);
+			expect(call[5]).toBe('manual');
+			expect(call[6]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should pass workflowSettings from additionalData to resolver', async () => {
@@ -492,6 +498,9 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[3]).toBe(mockAdditionalData.workflowSettings);
+			expect(call[4]).toBe(mockAdditionalData);
+			expect(call[5]).toBe('manual');
+			expect(call[6]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should skip resolution when credentialResolutionProvider is not set', async () => {
@@ -558,6 +567,9 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBeUndefined();
+			expect(call[4]).toBe(additionalDataWithoutContext);
+			expect(call[5]).toBe('manual');
+			expect(call[6]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should handle missing workflowSettings gracefully', async () => {
@@ -580,6 +592,9 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[3]).toBeUndefined();
+			expect(call[4]).toBe(additionalDataWithoutSettings);
+			expect(call[5]).toBe('manual');
+			expect(call[6]).toBe(false); // canUseExternalSecrets
 		});
 	});
 });

@@ -1,19 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CredentialStoreMetadata,
-	IDynamicCredentialStorageProvider,
-} from './dynamic-credential-storage.interface';
+import { Service } from '@n8n/di';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
 import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from './credential-resolution-provider.interface';
-import { Service } from '@n8n/di';
+import type {
+	CredentialStoreMetadata,
+	IDynamicCredentialStorageProvider,
+} from './dynamic-credential-storage.interface';
 
 @Service()
 export class DynamicCredentialsProxy
@@ -37,6 +40,9 @@ export class DynamicCredentialsProxy
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		additionalData?: IWorkflowExecuteAdditionalData,
+		mode?: WorkflowExecuteMode,
+		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (!this.resolvingProvider) {
 			if (credentialsResolveMetadata.isResolvable) {
@@ -52,6 +58,9 @@ export class DynamicCredentialsProxy
 			staticData,
 			executionContext,
 			workflowSettings,
+			additionalData,
+			mode,
+			canUseExternalSecrets,
 		);
 	}
 
