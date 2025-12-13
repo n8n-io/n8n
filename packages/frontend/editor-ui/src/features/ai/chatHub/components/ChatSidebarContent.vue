@@ -7,7 +7,11 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/ai/chatHub/chat.utils';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
-import { CHAT_VIEW, CHAT_AGENTS_VIEW } from '@/features/ai/chatHub/constants';
+import {
+	CHAT_VIEW,
+	CHAT_WORKFLOW_AGENTS_VIEW,
+	CHAT_PERSONAL_AGENTS_VIEW,
+} from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo';
@@ -111,7 +115,7 @@ useIntersectionObserver(
 	loadMoreTrigger,
 	([{ isIntersecting }]) => {
 		if (isIntersecting) {
-			void chatStore.fetchMoreSessions();
+			void chatStore.fetchMoreSessions({ minLoadingTime: 250 });
 		}
 	},
 	{ threshold: 0.1 },
@@ -119,7 +123,7 @@ useIntersectionObserver(
 
 onMounted(() => {
 	if (!chatStore.sessionsReady) {
-		void chatStore.fetchSessions(true);
+		void chatStore.fetchSessions(true, { minLoadingTime: 250 });
 	}
 });
 </script>
@@ -149,7 +153,7 @@ onMounted(() => {
 				@click="sidebar.toggleStatic()"
 			/>
 		</div>
-		<div :class="$style.items">
+		<div :class="$style.links">
 			<ChatSidebarLink
 				:to="{
 					name: CHAT_VIEW,
@@ -161,15 +165,22 @@ onMounted(() => {
 				@click="handleNewChatClick"
 			/>
 			<ChatSidebarLink
-				:to="{ name: CHAT_AGENTS_VIEW }"
-				:label="i18n.baseText('chatHub.sidebar.link.customAgents')"
+				:to="{ name: CHAT_PERSONAL_AGENTS_VIEW }"
+				:label="i18n.baseText('chatHub.sidebar.link.personalAgents')"
+				icon="message-square"
+				:active="route.name === CHAT_PERSONAL_AGENTS_VIEW"
+				@click="sidebar.toggleOpen(false)"
+			/>
+			<ChatSidebarLink
+				:to="{ name: CHAT_WORKFLOW_AGENTS_VIEW }"
+				:label="i18n.baseText('chatHub.sidebar.link.workflowAgents')"
 				icon="robot"
-				:active="route.name === CHAT_AGENTS_VIEW"
+				:active="route.name === CHAT_WORKFLOW_AGENTS_VIEW"
 				@click="sidebar.toggleOpen(false)"
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">
-			<div :class="$style.items">
+			<div :class="$style.historySections">
 				<div v-if="!readyToShowSessions" :class="$style.group">
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>
@@ -239,7 +250,14 @@ onMounted(() => {
 	margin-top: -4px;
 }
 
-.items {
+.links {
+	display: flex;
+	flex-direction: column;
+	padding: 0 var(--spacing--xs) var(--spacing--sm) var(--spacing--xs);
+	gap: 1px;
+}
+
+.historySections {
 	display: flex;
 	flex-direction: column;
 	padding: 0 var(--spacing--xs) var(--spacing--sm) var(--spacing--xs);
