@@ -137,6 +137,7 @@ jobs:
     needs: [install-and-build, docker-build]
     if: |
       always() &&
+      needs.install-and-build.result == 'success' &&
       needs.install-and-build.outputs.non_python_changed == 'true' &&
       (needs.docker-build.result == 'success' || needs.docker-build.result == 'skipped')
     uses: ./.github/workflows/playwright-test-ci.yml
