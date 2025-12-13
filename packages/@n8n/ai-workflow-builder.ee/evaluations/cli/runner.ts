@@ -114,7 +114,7 @@ export async function runCliEvaluation(options: CliEvaluationOptions = {}): Prom
 						updateProgress(progressBar, completed, testCases.length, `Running: ${testCase.name}`);
 
 						// Create a dedicated agent for this test to avoid state conflicts
-						const testAgent = createAgent(parsedNodeTypes, llm, tracer);
+						const testAgent = createAgent({ parsedNodeTypes, llm, tracer });
 						const result = await runSingleTest(testAgent, llm, testCase, parsedNodeTypes, {
 							featureFlags,
 						});

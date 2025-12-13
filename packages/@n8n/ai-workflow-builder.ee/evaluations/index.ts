@@ -1,11 +1,8 @@
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { runCliEvaluation } from './cli/runner.js';
-import {
-	runLocalPairwiseEvaluation,
-	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
+import { runLocalPairwiseEvaluation, runPairwiseLangsmithEvaluation } from './pairwise/runner.js';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
 
 // Re-export for external use if needed
@@ -14,7 +11,7 @@ export { runLangsmithEvaluation } from './langsmith/runner.js';
 export {
 	runLocalPairwiseEvaluation,
 	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
+} from './pairwise/runner.js';
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
 
@@ -39,7 +36,8 @@ function parseCliArgs() {
 		numJudges: getIntFlag('--judges', 3),
 		numGenerations: getIntFlag('--generations', 1, 10),
 		concurrency: getIntFlag('--concurrency', 5),
-		maxExamples: getIntFlag('--max-examples', 0), // 0 means no limit
+		// Use 0 as sentinel for "no limit", convert to undefined for cleaner API
+		maxExamples: getIntFlag('--max-examples', 0) || undefined,
 		verbose: process.argv.includes('--verbose') || process.argv.includes('-v'),
 		experimentName: getFlagValue('--name'),
 		outputDir: getFlagValue('--output-dir'),
@@ -86,9 +84,8 @@ async function main(): Promise<void> {
 				numGenerations: args.numGenerations,
 				verbose: args.verbose,
 				experimentName: args.experimentName,
-				outputDir: args.outputDir,
 				concurrency: args.concurrency,
-				maxExamples: args.maxExamples || undefined,
+				maxExamples: args.maxExamples,
 				featureFlags,
 			});
 		}

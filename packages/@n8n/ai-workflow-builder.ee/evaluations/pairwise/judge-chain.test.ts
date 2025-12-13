@@ -1,11 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
+import { evaluateWorkflowPairwise, type PairwiseEvaluationInput } from './judge-chain';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import * as baseEvaluator from '../chains/evaluators/base';
-import {
-	evaluateWorkflowPairwise,
-	type PairwiseEvaluationInput,
-} from '../chains/pairwise-evaluator';
 
 // Mock the base evaluator module
 jest.mock('../chains/evaluators/base', () => ({
@@ -67,6 +64,7 @@ describe('evaluateWorkflowPairwise', () => {
 				userPrompt: expect.stringContaining('[DO]'),
 				generatedWorkflow: input.workflowJSON,
 			}),
+			undefined, // config parameter (not passed in this test)
 		);
 	});
 
