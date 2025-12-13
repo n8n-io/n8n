@@ -14,13 +14,12 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { parse, stringify } from 'flatted';
+import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
 	ExecutionStatus,
 	INode,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -35,6 +34,8 @@ import {
 	createErrorExecutionData,
 } from 'n8n-workflow';
 
+import type { ExecutionRequest, StopResult } from './execution.types';
+
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
@@ -48,8 +49,6 @@ import { NodeTypes } from '@/node-types';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
-
-import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -166,9 +165,15 @@ export class ExecutionService {
 			}
 
 			// Parse parent execution data
-			const parentData = parse(parentExecution.data) as IRunExecutionData;
-			if (!parentData.resultData) {
-				parentData.resultData = { runData: {} };
+			const parentData = this.executionRepository.handleExecutionRunData(parentExecution.data, {
+				unflattenData: true,
+			});
+
+			if (typeof parentData !== 'object') {
+				this.logger.warn('Parent execution data is not an object', {
+					parentExecutionId: parentExecution.id,
+				});
+				return;
 			}
 			if (!parentData.resultData.runData) {
 				parentData.resultData.runData = {};
@@ -177,7 +182,18 @@ export class ExecutionService {
 			// Merge runData from all sub-executions
 			for (const subExecution of subExecutions) {
 				try {
-					const subData = parse(subExecution.data) as IRunExecutionData;
+					const subData = this.executionRepository.handleExecutionRunData(subExecution.data, {
+						unflattenData: true,
+					});
+
+					if (typeof subData !== 'object') {
+						this.logger.warn('Sub-execution data is not an object', {
+							parentExecutionId: parentExecution.id,
+							subExecutionId: subExecution.id,
+						});
+						continue;
+					}
+
 					if (!subData?.resultData?.runData) {
 						continue;
 					}

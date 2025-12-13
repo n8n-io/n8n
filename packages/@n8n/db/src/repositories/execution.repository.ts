@@ -1210,7 +1210,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return concurrentExecutionsCount;
 	}
 
-	private handleExecutionRunData(
+	handleExecutionRunData(
 		data: string,
 		options: { unflattenData?: boolean } = {},
 	): IRunExecutionData | string | undefined {
