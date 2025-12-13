@@ -116,4 +116,4 @@ Contact our sales team for enterprise compliance features.
 
 ---
 
-**Last Updated**: November 7, 2025
+**Last Updated**: December 13, 2025

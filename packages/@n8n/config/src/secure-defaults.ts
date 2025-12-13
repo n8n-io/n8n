@@ -69,7 +69,7 @@ export const SECURE_DEFAULTS = {
 		refreshTokenExpiration: '7d', // 7 days
 		cookieSecure: true, // HTTPS only
 		cookieHttpOnly: true, // No JavaScript access
-		cookieSameSite: 'strict' as const, // CSRF protection
+		cookieSameSite: 'lax' as const, // Good CSRF protection, compatible with OAuth/payment/email flows
 	},
 
 	/**
@@ -81,7 +81,13 @@ export const SECURE_DEFAULTS = {
 		requireLowercase: true,
 		requireNumbers: true,
 		requireSpecial: true,
-		maxAge: 90, // days
+		/**
+		 * Password expiration (maxAge) is disabled by default.
+		 * Modern security guidance (NIST SP 800-63B) recommends against periodic password changes.
+		 * Set a value (in days) ONLY if required for compliance (e.g., PCI DSS, SOC 2).
+		 * Example: maxAge: 90 // Enforce password change every 90 days
+		 */
+		maxAge: undefined as number | undefined,
 		historyCount: 5, // Remember last 5 passwords
 	},
 

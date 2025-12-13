@@ -239,7 +239,7 @@ When adding new validators:
 
 ## Version History
 
-- **v1.0.0** (November 2025)
+- **v1.0.0** (December 2025)
   - Initial security validators
   - SecurityValidator with CSP, JWT, database, rate limiting validation
   - InputValidator with comprehensive input sanitization

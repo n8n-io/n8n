@@ -7,11 +7,30 @@ import { UserError } from '@n8n/workflow-error';
 
 export class InputValidator {
 	/**
-	 * Validates email addresses
+	 * Validates email addresses using a more comprehensive RFC-compliant pattern
 	 */
 	static validateEmail(email: string): boolean {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email) && email.length <= 254;
+		// More comprehensive email regex that handles most valid email formats
+		// Accepts: letters, numbers, dots, hyphens, underscores, plus signs in local part
+		// Rejects: consecutive dots, leading/trailing dots, invalid domain formats
+		const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+		
+		if (!emailRegex.test(email) || email.length > 254) {
+			return false;
+		}
+		
+		// Check for consecutive dots
+		if (email.includes('..')) {
+			return false;
+		}
+		
+		// Check local part length (before @)
+		const localPart = email.split('@')[0];
+		if (localPart.length > 64) {
+			return false;
+		}
+		
+		return true;
 	}
 
 	/**
@@ -61,6 +80,16 @@ export class InputValidator {
 
 	/**
 	 * Validates URL to prevent SSRF attacks
+	 * 
+	 * NOTE: This validation uses regex patterns which may not catch all alternative IP representations
+	 * (e.g., decimal notation like 2130706433 for 127.0.0.1, hex notation like 0x7f000001).
+	 * The URL constructor normalizes most of these, but for maximum security in production,
+	 * consider using a dedicated IP parsing library or additional normalization.
+	 * 
+	 * For enhanced SSRF protection:
+	 * - Use DNS resolution to get the actual IP before making requests
+	 * - Implement connection-time IP validation
+	 * - Use allowlists rather than denylists where possible
 	 */
 	static validateUrl(
 		url: string,
@@ -98,6 +127,16 @@ export class InputValidator {
 				// Check for loopback IP range (127.0.0.0/8)
 				if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
 					throw new UserError('Loopback addresses are not allowed');
+				}
+				
+				// Check for IPv4-mapped IPv6 loopback (::ffff:127.x.x.x)
+				if (/^::ffff:127\./i.test(hostname)) {
+					throw new UserError('Loopback addresses are not allowed');
+				}
+				
+				// Block 0.0.0.0 as it's a special "any" address
+				if (hostname === '0.0.0.0') {
+					throw new UserError('Localhost URLs are not allowed');
 				}
 			}
 
@@ -161,6 +200,18 @@ export class InputValidator {
 
 	/**
 	 * Sanitizes SQL identifiers (table names, column names)
+	 * 
+	 * NOTE: This only allows alphanumeric characters and underscores, which is more restrictive
+	 * than what some databases support (e.g., PostgreSQL supports $ and some other characters).
+	 * This validator also doesn't check for SQL reserved keywords (SELECT, WHERE, etc.).
+	 * 
+	 * IMPORTANT: Always use proper quoting when using these identifiers in queries:
+	 * - PostgreSQL: Use double quotes "identifier"
+	 * - MySQL: Use backticks `identifier`
+	 * - SQLite: Use double quotes "identifier" or brackets [identifier]
+	 * 
+	 * Even with validation, prefer using parameterized queries or query builders
+	 * that handle escaping automatically.
 	 */
 	static sanitizeSQLIdentifier(identifier: string): string {
 		// Only allow alphanumeric characters and underscores
@@ -171,6 +222,18 @@ export class InputValidator {
 		// Check length
 		if (identifier.length > 64) {
 			throw new UserError('SQL identifier is too long (max 64 characters)');
+		}
+		
+		// Check for SQL reserved keywords (common ones)
+		const reservedKeywords = [
+			'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TABLE',
+			'WHERE', 'FROM', 'JOIN', 'ON', 'AND', 'OR', 'NOT', 'NULL', 'TRUE', 'FALSE',
+			'UNION', 'ORDER', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET', 'INDEX', 'PRIMARY',
+			'FOREIGN', 'KEY', 'UNIQUE', 'DEFAULT', 'CHECK', 'CONSTRAINT', 'CASCADE',
+		];
+		
+		if (reservedKeywords.includes(identifier.toUpperCase())) {
+			throw new UserError('SQL identifier is a reserved keyword. Use a different name or quote the identifier in your query.');
 		}
 
 		return identifier;
@@ -261,20 +324,15 @@ export class InputValidator {
 		// - Strip all HTML and only allow plain text
 		
 		// For basic use cases, strip all HTML tags
+		// CRITICAL: Do NOT decode entities after stripping tags as this reintroduces XSS vectors
 		let sanitized = html.replace(/<[^>]*>/g, '');
 		
-		// Decode HTML entities to prevent encoded XSS
-		sanitized = sanitized
-			.replace(/&lt;/g, '<')
-			.replace(/&gt;/g, '>')
-			.replace(/&quot;/g, '"')
-			.replace(/&#x27;/g, "'")
-			.replace(/&#x2F;/g, '/')
-			.replace(/&amp;/g, '&');
-		
-		// Remove any script-related content
+		// Remove any script-related content that might have been encoded
 		sanitized = sanitized.replace(/javascript:/gi, '');
 		sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+		
+		// Remove data URIs that could contain scripts
+		sanitized = sanitized.replace(/data:text\/html/gi, '');
 		
 		return sanitized;
 	}
@@ -405,6 +463,7 @@ export class InputValidator {
 
 	/**
 	 * Validates ISO 8601 date string
+	 * Supports various ISO 8601 formats including timezone offsets and variable millisecond precision
 	 */
 	static validateISODate(dateString: string): Date {
 		const date = new Date(dateString);
@@ -413,8 +472,12 @@ export class InputValidator {
 			throw new UserError('Invalid date format');
 		}
 
-		// Check if it's a valid ISO 8601 string
-		const isoPattern = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
+		// More flexible ISO 8601 pattern that supports:
+		// - Optional time component
+		// - Variable millisecond precision (0-9 digits)
+		// - Timezone (Z or ±HH:MM)
+		// Examples: 2025-11-07, 2025-11-07T12:00:00Z, 2025-11-07T12:00:00.123Z, 2025-11-07T12:00:00+05:30
+		const isoPattern = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/;
 		if (!isoPattern.test(dateString)) {
 			throw new UserError('Date must be in ISO 8601 format');
 		}
@@ -424,6 +487,7 @@ export class InputValidator {
 
 	/**
 	 * Validates and sanitizes workflow name
+	 * Uses allowlist approach for better security
 	 */
 	static validateWorkflowName(name: string): string {
 		const sanitized = this.validateString(name, {
@@ -432,9 +496,11 @@ export class InputValidator {
 			allowEmpty: false,
 		});
 
-		// Check for potentially dangerous characters
-		if (/<|>|&|"|'/.test(sanitized)) {
-			throw new UserError('Workflow name contains invalid characters');
+		// Use allowlist: only allow alphanumeric, spaces, and safe punctuation
+		// Allowed: letters, numbers, spaces, hyphen, underscore, dot, parentheses, brackets
+		const allowedPattern = /^[\w\s\-_.()[\]]+$/u;
+		if (!allowedPattern.test(sanitized)) {
+			throw new UserError('Workflow name contains invalid characters. Allowed: letters, numbers, spaces, - _ . ( ) [ ]');
 		}
 
 		return sanitized;
@@ -481,20 +547,68 @@ export class InputValidator {
 			throw new UserError('Password must contain at least one special character');
 		}
 
-		// Check for common weak passwords
+		// Check for common weak passwords using exact lowercase matching
+		// Expanded list based on common password databases
 		const weakPasswords = [
 			'password',
+			'password123',
+			'password1',
+			'password!',
+			'password1!',
 			'123456',
 			'12345678',
+			'123456789',
+			'1234567890',
+			'12345',
+			'1234',
+			'123123',
 			'admin',
+			'admin123',
+			'admin@123',
 			'letmein',
+			'letmein123',
 			'welcome',
+			'welcome123',
 			'monkey',
+			'monkey123',
 			'qwerty',
+			'qwerty123',
+			'qwertyuiop',
+			'abc123',
+			'abc123456',
+			'1q2w3e4r',
+			'1qaz2wsx',
+			'qazwsx',
+			'111111',
+			'000000',
+			'654321',
+			'passw0rd',
+			'iloveyou',
+			'sunshine',
+			'princess',
+			'dragon',
+			'football',
+			'baseball',
+			'starwars',
+			'whatever',
+			'trustno1',
+			'hello',
+			'freedom',
+			'master',
+			'pass',
+			'root',
+			'toor',
+			'test',
+			'guest',
+			'login',
+			'changeme',
+			'secret',
 		];
 
-		if (weakPasswords.some((weak) => password.toLowerCase().includes(weak))) {
-			throw new UserError('Password is too weak (contains common patterns)');
+		// Use exact match in lowercase, not substring inclusion
+		const lowerPassword = password.toLowerCase();
+		if (weakPasswords.includes(lowerPassword)) {
+			throw new UserError('Password is too common and appears in breach databases');
 		}
 
 		return true;

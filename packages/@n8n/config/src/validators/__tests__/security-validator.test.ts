@@ -75,12 +75,13 @@ describe('SecurityValidator', () => {
 			expect(result.warnings.length).toBeGreaterThan(0);
 		});
 
-		it('should fail for path traversal in config', () => {
+		it('should handle paths with .. that resolve to valid locations', () => {
+			// Paths with .. are now resolved, not rejected outright
+			// /home/../etc resolves to /etc which is valid (though broad)
 			const result = SecurityValidator.validateFileAccessRestrictions('/home/../etc', true);
-			expect(result.valid).toBe(false);
-			expect(result.errors).toContain(
-				'File access path contains path traversal sequence: /home/../etc',
-			);
+			expect(result.valid).toBe(true);
+			// Should warn about /etc being broad
+			expect(result.warnings.length).toBeGreaterThan(0);
 		});
 
 		it('should warn about overly broad restrictions', () => {

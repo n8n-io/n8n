@@ -35,8 +35,24 @@ export class SecurityValidator {
 				return { valid: false, errors, warnings };
 			}
 			
-			// Prevent prototype pollution
-			if ('__proto__' in policy || 'constructor' in policy || 'prototype' in policy) {
+			// Prevent prototype pollution - check recursively for nested objects
+			const hasPrototypePollution = (obj: any): boolean => {
+				if (obj === null || typeof obj !== 'object') return false;
+				
+				if ('__proto__' in obj || 'constructor' in obj || 'prototype' in obj) {
+					return true;
+				}
+				
+				// Check nested objects recursively
+				for (const value of Object.values(obj)) {
+					if (typeof value === 'object' && value !== null) {
+						if (hasPrototypePollution(value)) return true;
+					}
+				}
+				return false;
+			};
+			
+			if (hasPrototypePollution(policy)) {
 				errors.push('CSP contains forbidden properties');
 				return { valid: false, errors, warnings };
 			}
@@ -104,17 +120,27 @@ export class SecurityValidator {
 		if (restrictTo) {
 			const paths = restrictTo.split(';').filter((p) => p.trim());
 
-			for (const path of paths) {
-				// Check for path traversal attempts in configuration
-				if (path.includes('..')) {
-					errors.push(`File access path contains path traversal sequence: ${path}`);
-				}
-
-				// Warn about overly broad restrictions
-				if (path === '/' || path === '/*') {
-					warnings.push(
-						`File access path '${path}' allows access to entire filesystem. Consider being more restrictive.`,
-					);
+			for (const pathStr of paths) {
+				const trimmedPath = pathStr.trim();
+				
+				// Use path.resolve to check if path is reasonable after normalization
+				try {
+					const path = require('path');
+					const resolvedPath = path.resolve(trimmedPath);
+					
+					// Check if path is absolute after resolution
+					if (!path.isAbsolute(resolvedPath)) {
+						errors.push(`File access path must be absolute: ${trimmedPath}`);
+					}
+					
+					// Warn about overly broad restrictions
+					if (resolvedPath === '/' || resolvedPath === '') {
+						warnings.push(
+							`File access path '${trimmedPath}' allows access to entire filesystem. Consider being more restrictive.`,
+						);
+					}
+				} catch (error) {
+					errors.push(`Invalid file access path: ${trimmedPath}`);
 				}
 			}
 		}

@@ -154,4 +154,4 @@ const cleanHtml = sanitizer.sanitize(userInput);
 
 ---
 
-**Last Updated**: November 7, 2025
+**Last Updated**: December 13, 2025
