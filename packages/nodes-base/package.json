@@ -680,6 +680,7 @@
       "dist/nodes/Netlify/NetlifyTrigger.node.js",
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NocoDB/NocoDB.node.js",
+      "dist/nodes/NocoDB/NocoDBTrigger.node.js",
       "dist/nodes/Brevo/Brevo.node.js",
       "dist/nodes/Brevo/BrevoTrigger.node.js",
       "dist/nodes/StickyNote/StickyNote.node.js",
