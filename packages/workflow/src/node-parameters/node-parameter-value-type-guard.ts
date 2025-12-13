@@ -58,8 +58,7 @@ export function isNodeParameters(value: unknown): value is INodeParameters {
 
 	// Reject built-in class instances (Date, RegExp, etc.)
 	// Only accept plain objects created with {} or Object.create(null)
-	const proto = Object.getPrototypeOf(value);
-	if (proto !== null && proto !== Object.prototype) {
+	if (Object.prototype.toString.call(value) !== '[object Object]') {
 		return false;
 	}
 
