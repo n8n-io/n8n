@@ -208,10 +208,12 @@ export type AwsCredentialsTypeBase = {
 };
 
 export type AwsIamCredentialsType = AwsCredentialsTypeBase & {
+	authenticationType?: 'accessKey' | 'profile';
 	accessKeyId: string;
 	secretAccessKey: string;
 	temporaryCredentials: boolean;
 	sessionToken?: string;
+	awsProfile?: string;
 };
 
 export type AwsAssumeRoleCredentialsType = AwsCredentialsTypeBase & {
