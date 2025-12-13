@@ -334,6 +334,72 @@ describe('WorkflowsTable', () => {
 			expect(emitted('removeMcpAccess')).toBeTruthy();
 			expect(emitted('removeMcpAccess')[0]).toEqual([workflow]);
 		});
+
+		it('should enable "Update Description" action when user has update permissions', async () => {
+			const workflow = createWorkflow({
+				scopes: ['workflow:read', 'workflow:update'],
+			});
+
+			const { getByTestId } = createComponent({
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			const actionToggle = getByTestId('mcp-workflow-action-toggle');
+			const toggleButton = within(actionToggle).getByRole('button');
+			await userEvent.click(toggleButton);
+
+			const menuItems = document.querySelectorAll('[data-test-id="action-updateDescription"]');
+			expect(menuItems.length).toBe(1);
+			expect(menuItems[0]).not.toHaveAttribute('disabled');
+		});
+
+		it('should disable "Update Description" action when user lacks update permissions', async () => {
+			const workflow = createWorkflow({
+				scopes: ['workflow:read'],
+			});
+
+			const { getByTestId } = createComponent({
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			const actionToggle = getByTestId('mcp-workflow-action-toggle');
+			const toggleButton = within(actionToggle).getByRole('button');
+			await userEvent.click(toggleButton);
+
+			const menuItems = document.querySelectorAll('[data-test-id="action-updateDescription"]');
+			expect(menuItems.length).toBe(1);
+			expect(menuItems[0]).toHaveClass('is-disabled');
+		});
+
+		it('should emit updateDescription event when action is clicked', async () => {
+			const workflow = createWorkflow({
+				scopes: ['workflow:read', 'workflow:update'],
+			});
+
+			const { getByTestId, emitted } = createComponent({
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			const actionToggle = getByTestId('mcp-workflow-action-toggle');
+			const toggleButton = within(actionToggle).getByRole('button');
+			await userEvent.click(toggleButton);
+
+			const menuItem = document.querySelector('[data-test-id="action-updateDescription"]');
+			expect(menuItem).not.toBeNull();
+			await userEvent.click(menuItem!);
+
+			expect(emitted('updateDescription')).toBeTruthy();
+			expect(emitted('updateDescription')[0]).toEqual([workflow]);
+		});
 	});
 
 	describe('Workflow links', () => {
