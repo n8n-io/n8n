@@ -4,18 +4,84 @@
  */
 
 import { UserError } from '@n8n/workflow-error';
+import * as path from 'path';
 
 export class InputValidator {
+	// RFC-compliant email regex pattern
+	// Accepts: letters, numbers, dots, hyphens, underscores, plus signs in local part
+	// Rejects: consecutive dots, leading/trailing dots, invalid domain formats
+	private static readonly RFC_COMPLIANT_EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+	// SQL reserved keywords that should not be used as identifiers
+	private static readonly SQL_RESERVED_KEYWORDS = [
+		'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TABLE',
+		'WHERE', 'FROM', 'JOIN', 'ON', 'AND', 'OR', 'NOT', 'NULL', 'TRUE', 'FALSE',
+		'UNION', 'ORDER', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET', 'INDEX', 'PRIMARY',
+		'FOREIGN', 'KEY', 'UNIQUE', 'DEFAULT', 'CHECK', 'CONSTRAINT', 'CASCADE',
+	];
+
+	// Common weak passwords from breach databases (exact matches only)
+	private static readonly WEAK_PASSWORDS = [
+		'password',
+		'password123',
+		'password1',
+		'password!',
+		'password1!',
+		'123456',
+		'12345678',
+		'123456789',
+		'1234567890',
+		'12345',
+		'1234',
+		'123123',
+		'admin',
+		'admin123',
+		'admin@123',
+		'letmein',
+		'letmein123',
+		'welcome',
+		'welcome123',
+		'monkey',
+		'monkey123',
+		'qwerty',
+		'qwerty123',
+		'qwertyuiop',
+		'abc123',
+		'abc123456',
+		'1q2w3e4r',
+		'1qaz2wsx',
+		'qazwsx',
+		'111111',
+		'000000',
+		'654321',
+		'passw0rd',
+		'iloveyou',
+		'sunshine',
+		'princess',
+		'dragon',
+		'football',
+		'baseball',
+		'starwars',
+		'whatever',
+		'trustno1',
+		'hello',
+		'freedom',
+		'master',
+		'pass',
+		'root',
+		'toor',
+		'test',
+		'guest',
+		'login',
+		'changeme',
+		'secret',
+	];
+
 	/**
 	 * Validates email addresses using a more comprehensive RFC-compliant pattern
 	 */
 	static validateEmail(email: string): boolean {
-		// More comprehensive email regex that handles most valid email formats
-		// Accepts: letters, numbers, dots, hyphens, underscores, plus signs in local part
-		// Rejects: consecutive dots, leading/trailing dots, invalid domain formats
-		const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-		
-		if (!emailRegex.test(email) || email.length > 254) {
+		if (!InputValidator.RFC_COMPLIANT_EMAIL_REGEX.test(email) || email.length > 254) {
 			return false;
 		}
 		
@@ -38,9 +104,6 @@ export class InputValidator {
 	 * Uses path.resolve() to handle all encoding variations
 	 */
 	static sanitizeFilePath(filePath: string, allowedBasePaths: string[] = []): string {
-		// Import path module for proper resolution
-		const path = require('path');
-
 		// Decode URI components to catch encoded path traversal attempts
 		let decodedPath = filePath;
 		try {
@@ -225,14 +288,7 @@ export class InputValidator {
 		}
 		
 		// Check for SQL reserved keywords (common ones)
-		const reservedKeywords = [
-			'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TABLE',
-			'WHERE', 'FROM', 'JOIN', 'ON', 'AND', 'OR', 'NOT', 'NULL', 'TRUE', 'FALSE',
-			'UNION', 'ORDER', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET', 'INDEX', 'PRIMARY',
-			'FOREIGN', 'KEY', 'UNIQUE', 'DEFAULT', 'CHECK', 'CONSTRAINT', 'CASCADE',
-		];
-		
-		if (reservedKeywords.includes(identifier.toUpperCase())) {
+		if (InputValidator.SQL_RESERVED_KEYWORDS.includes(identifier.toUpperCase())) {
 			throw new UserError('SQL identifier is a reserved keyword. Use a different name or quote the identifier in your query.');
 		}
 
@@ -548,66 +604,9 @@ export class InputValidator {
 		}
 
 		// Check for common weak passwords using exact lowercase matching
-		// Expanded list based on common password databases
-		const weakPasswords = [
-			'password',
-			'password123',
-			'password1',
-			'password!',
-			'password1!',
-			'123456',
-			'12345678',
-			'123456789',
-			'1234567890',
-			'12345',
-			'1234',
-			'123123',
-			'admin',
-			'admin123',
-			'admin@123',
-			'letmein',
-			'letmein123',
-			'welcome',
-			'welcome123',
-			'monkey',
-			'monkey123',
-			'qwerty',
-			'qwerty123',
-			'qwertyuiop',
-			'abc123',
-			'abc123456',
-			'1q2w3e4r',
-			'1qaz2wsx',
-			'qazwsx',
-			'111111',
-			'000000',
-			'654321',
-			'passw0rd',
-			'iloveyou',
-			'sunshine',
-			'princess',
-			'dragon',
-			'football',
-			'baseball',
-			'starwars',
-			'whatever',
-			'trustno1',
-			'hello',
-			'freedom',
-			'master',
-			'pass',
-			'root',
-			'toor',
-			'test',
-			'guest',
-			'login',
-			'changeme',
-			'secret',
-		];
-
 		// Use exact match in lowercase, not substring inclusion
 		const lowerPassword = password.toLowerCase();
-		if (weakPasswords.includes(lowerPassword)) {
+		if (InputValidator.WEAK_PASSWORDS.includes(lowerPassword)) {
 			throw new UserError('Password is too common and appears in breach databases');
 		}
 

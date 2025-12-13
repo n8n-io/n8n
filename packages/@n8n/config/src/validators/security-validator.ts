@@ -4,6 +4,7 @@
  */
 
 import { UserError } from '@n8n/workflow-error';
+import * as path from 'path';
 
 export interface SecurityValidationResult {
 	valid: boolean;
@@ -125,7 +126,6 @@ export class SecurityValidator {
 				
 				// Use path.resolve to check if path is reasonable after normalization
 				try {
-					const path = require('path');
 					const resolvedPath = path.resolve(trimmedPath);
 					
 					// Check if path is absolute after resolution
