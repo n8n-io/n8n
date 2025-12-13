@@ -12,7 +12,7 @@ import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class StartNodeRemovedRule implements IBreakingChangeWorkflowRule {
-	private readonly START_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
+	private readonly START_NODE_TYPE = 'n8n-nodes-base.start';
 
 	id: string = 'start-node-removed-v2';
 

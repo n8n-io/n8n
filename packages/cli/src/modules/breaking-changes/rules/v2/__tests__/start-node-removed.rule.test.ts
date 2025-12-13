@@ -63,7 +63,7 @@ describe('StartNodeRemovedRule', () => {
 
 		it('should detect disabled start node with delete message', async () => {
 			const disabledStartNode = {
-				...createNode('Start', 'n8n-nodes-base.manualTrigger'),
+				...createNode('Start', 'n8n-nodes-base.start'),
 				disabled: true,
 			};
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
@@ -83,7 +83,7 @@ describe('StartNodeRemovedRule', () => {
 
 		it('should detect enabled start node with replace message', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Start', 'n8n-nodes-base.manualTrigger'),
+				createNode('Start', 'n8n-nodes-base.start'),
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
@@ -102,8 +102,8 @@ describe('StartNodeRemovedRule', () => {
 
 		it('should detect multiple start nodes', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Start 1', 'n8n-nodes-base.manualTrigger'),
-				createNode('Start 2', 'n8n-nodes-base.manualTrigger'),
+				createNode('Start 1', 'n8n-nodes-base.start'),
+				createNode('Start 2', 'n8n-nodes-base.start'),
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
@@ -114,11 +114,11 @@ describe('StartNodeRemovedRule', () => {
 
 		it('should detect both enabled and disabled start nodes with appropriate messages', async () => {
 			const disabledStartNode = {
-				...createNode('Start Disabled', 'n8n-nodes-base.manualTrigger'),
+				...createNode('Start Disabled', 'n8n-nodes-base.start'),
 				disabled: true,
 			};
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Start Enabled', 'n8n-nodes-base.manualTrigger'),
+				createNode('Start Enabled', 'n8n-nodes-base.start'),
 				disabledStartNode,
 			]);
 

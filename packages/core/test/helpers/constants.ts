@@ -32,10 +32,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 		sourcePath: '',
 	},
 	'n8n-nodes-base.manualTrigger': {
-		type: new Start(),
-		sourcePath: '',
-	},
-	'n8n-nodes-base.manualTrigger': {
 		type: new ManualTrigger(),
 		sourcePath: '',
 	},
