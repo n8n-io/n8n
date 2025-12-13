@@ -185,6 +185,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 
+		useRootStore().setDefaultLocale(settings.value.defaultLocale);
+
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
 			userManagement.value.showSetupOnFirstLoad =
@@ -243,7 +245,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
-			// that need the full set of auntenticated settings
+			// that need the full set of authenticated settings
 			return;
 		}
 
