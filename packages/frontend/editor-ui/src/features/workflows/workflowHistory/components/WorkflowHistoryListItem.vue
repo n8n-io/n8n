@@ -11,8 +11,9 @@ import type { IUser } from 'n8n-workflow';
 
 import { N8nActionToggle, N8nTooltip, N8nBadge } from '@n8n/design-system';
 import {
-	getLastPublishedByUser,
+	getLastPublishedVersion,
 	formatTimestamp,
+	generateVersionName,
 } from '@/features/workflows/workflowHistory/utils';
 import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -67,7 +68,10 @@ const authors = computed<{ size: number; label: string }>(() => {
 });
 
 const versionName = computed(() => {
-	return props.item.name;
+	if (props.item.name) {
+		return props.item.name;
+	}
+	return props.isVersionActive ? generateVersionName(props.item.versionId) : '';
 });
 
 const lastPublishInfo = computed(() => {
@@ -75,7 +79,7 @@ const lastPublishInfo = computed(() => {
 		return null;
 	}
 
-	const lastPublishedByUser = getLastPublishedByUser(props.item.workflowPublishHistory);
+	const lastPublishedByUser = getLastPublishedVersion(props.item.workflowPublishHistory);
 	if (!lastPublishedByUser) {
 		return null;
 	}
@@ -154,12 +158,6 @@ onMounted(() => {
 					<template #content>{{ props.item.authors }}</template>
 					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
 				</N8nTooltip>
-				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
-					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
-				</time>
-				<span v-if="publishedByUserName" :class="$style.metaItem">
-					{{ publishedByUserName }}
-				</span>
 			</p>
 			<p v-else @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
@@ -171,14 +169,23 @@ onMounted(() => {
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<N8nBadge
+			<N8nTooltip
 				v-if="isDraftPublishEnabled && props.isVersionActive"
-				size="medium"
-				:class="$style.publishedBadge"
-				:show-border="false"
+				placement="top"
+				:disabled="!publishedAt"
 			>
-				{{ i18n.baseText('workflowHistory.item.active') }}
-			</N8nBadge>
+				<template #content>
+					<div :class="$style.tooltipContent">
+						<span
+							>{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}</span
+						>
+						<span v-if="publishedByUserName">{{ publishedByUserName }}</span>
+					</div>
+				</template>
+				<N8nBadge size="medium" :class="$style.publishedBadge" :show-border="false">
+					{{ i18n.baseText('workflowHistory.item.active') }}
+				</N8nBadge>
+			</N8nTooltip>
 			<N8nBadge v-if="!isDraftPublishEnabled && props.index === 0">
 				{{ i18n.baseText('workflowHistory.item.latest') }}
 			</N8nBadge>
@@ -287,5 +294,13 @@ onMounted(() => {
 		font-size: var(--font-size--2xs);
 		line-height: var(--line-height--sm);
 	}
+}
+
+.tooltipContent {
+	// Set min width to keep the date on the same line
+	min-width: 200px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 </style>

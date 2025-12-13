@@ -1016,8 +1016,7 @@
 								}
 
 								if (json?.redirectURL) {
-									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
-									window.location.replace(url);
+									window.location.replace(json.redirectURL);
 									return;
 								}
 

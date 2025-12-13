@@ -18,7 +18,7 @@ import {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { promptTypeOptions } from '@utils/descriptions';
+import { promptTypeOptionsDeprecated } from '@utils/descriptions';
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
@@ -29,7 +29,7 @@ import { getProxyAgent } from '@utils/httpProxyAgent';
 const properties: INodeProperties[] = [
 	assistantRLC,
 	{
-		...promptTypeOptions,
+		...promptTypeOptionsDeprecated,
 		name: 'prompt',
 	},
 	{

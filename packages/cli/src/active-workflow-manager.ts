@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	STARTING_NODES,
+	TRIGGER_COUNT_EXCLUDED_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
@@ -41,6 +42,7 @@ import {
 	UnexpectedError,
 	ensureError,
 	createRunExecutionData,
+	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
@@ -263,7 +265,10 @@ export class ActiveWorkflowManager {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: workflowData.settings,
+		});
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -550,10 +555,24 @@ export class ActiveWorkflowManager {
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
+		const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
+
+		if (!dbWorkflow) {
+			throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`, {
+				level: 'warning',
+			});
+		}
+
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
+			if (!dbWorkflow?.activeVersionId) {
+				throw new UnexpectedError('Active version ID not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId },
+				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
 			});
 
 			return added;
@@ -565,14 +584,6 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
-
-			if (!dbWorkflow) {
-				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`, {
-					level: 'warning',
-				});
-			}
-
 			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
 				this.logger.debug(
 					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
@@ -604,9 +615,13 @@ export class ActiveWorkflowManager {
 				settings: dbWorkflow.settings,
 			});
 
-			const canBeActivated = this.checkIfWorkflowCanBeActivated(workflow, STARTING_NODES);
+			const validation = validateWorkflowHasTriggerLikeNode(
+				workflow.nodes,
+				this.nodeTypes,
+				STARTING_NODES,
+			);
 
-			if (!canBeActivated) {
+			if (!validation.isValid) {
 				throw new WorkflowActivationError(
 					`Workflow ${formatWorkflow(dbWorkflow)} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
 					{ level: 'warning' },
@@ -615,6 +630,7 @@ export class ActiveWorkflowManager {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
+				workflowSettings: dbWorkflow.settings,
 			});
 
 			if (shouldAddWebhooks) {
@@ -656,8 +672,11 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
-	handleDisplayWorkflowActivation({ workflowId }: PubSubCommandMap['display-workflow-activation']) {
-		this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
+	handleDisplayWorkflowActivation({
+		workflowId,
+		activeVersionId,
+	}: PubSubCommandMap['display-workflow-activation']) {
+		this.push.broadcast({ type: 'workflowActivated', data: { workflowId, activeVersionId } });
 	}
 
 	@OnPubSubEvent('display-workflow-deactivation', { instanceType: 'main' })
@@ -685,17 +704,18 @@ export class ActiveWorkflowManager {
 	})
 	async handleAddWebhooksTriggersAndPollers({
 		workflowId,
+		activeVersionId,
 	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
 			await this.add(workflowId, 'activate', undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
 
-			this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
+			this.push.broadcast({ type: 'workflowActivated', data: { workflowId, activeVersionId } });
 
 			await this.publisher.publishCommand({
 				command: 'display-workflow-activation',
-				payload: { workflowId },
+				payload: { workflowId, activeVersionId },
 			}); // instruct followers to show activation in UI
 		} catch (e) {
 			const error = ensureError(e);
@@ -716,53 +736,13 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * A workflow can only be activated if it has a node which has either triggers
-	 * or webhooks defined.
-	 *
-	 * @param {string[]} [ignoreNodeTypes] Node-types to ignore in the check
-	 */
-	checkIfWorkflowCanBeActivated(workflow: Workflow, ignoreNodeTypes?: string[]): boolean {
-		let node: INode;
-		let nodeType: INodeType | undefined;
-
-		for (const nodeName of Object.keys(workflow.nodes)) {
-			node = workflow.nodes[nodeName];
-
-			if (node.disabled === true) {
-				// Deactivated nodes can not trigger a run so ignore
-				continue;
-			}
-
-			if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
-				continue;
-			}
-
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-			if (nodeType === undefined) {
-				// Type is not known so check is not possible
-				continue;
-			}
-
-			if (
-				nodeType.poll !== undefined ||
-				nodeType.trigger !== undefined ||
-				nodeType.webhook !== undefined
-			) {
-				// Is a trigger node. So workflow can be activated.
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Count all triggers in the workflow, excluding Manual Trigger.
+	 * Count all triggers in the workflow, excluding Manual Trigger and other n8n-internal triggers.
 	 */
 	private countTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const triggerFilter = (nodeType: INodeType) =>
-			!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
+			!!nodeType.trigger &&
+			!nodeType.description.name.includes('manualTrigger') &&
+			!TRIGGER_COUNT_EXCLUDED_NODES.some((x) => x.endsWith(nodeType.description.name));
 
 		// Retrieve unique webhooks as some nodes have multiple webhooks
 		const workflowWebhooks = WebhookHelpers.getWorkflowWebhooks(

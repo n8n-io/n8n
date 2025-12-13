@@ -102,7 +102,7 @@ function onUpdatePlanClick() {
 					:bold="true"
 					>{{ trialBannerText }}</N8nBadge
 				>
-				<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
+				<N8nButton type="success" icon="zap" size="small" @click="onUpdatePlanClick">{{
 					locale.baseText('generic.upgradeNow')
 				}}</N8nButton>
 			</div>

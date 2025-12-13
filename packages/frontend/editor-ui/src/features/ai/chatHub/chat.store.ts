@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { CHAT_STORE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
+import { useI18n } from '@n8n/i18n';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
@@ -38,6 +39,8 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
+	type ChatHubLLMProvider,
+	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -51,18 +54,20 @@ import {
 	createSessionFromStreamingState,
 	isLlmProviderModel,
 	isMatchedAgent,
+	createAiMessageFromStreamingState,
+	flattenModel,
 } from './chat.utils';
-import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
-import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { ResponseError } from '@n8n/rest-api-client';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse>();
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
@@ -354,6 +359,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessions.value.byId[sessionId] = session;
 	}
 
+	async function fetchConversationTitle(sessionId: ChatSessionId) {
+		const current = sessions.value.byId[sessionId];
+		if (!current || current.title === 'New Chat') {
+			// wait up to 10 * 2 seconds until conversation title is generated
+			await retry(
+				async () => {
+					try {
+						const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
+						return session.session.title !== 'New Chat';
+					} catch (e: unknown) {
+						return false;
+					}
+				},
+				2000,
+				10,
+			);
+		}
+
+		// update the conversation list to reflect the new title and lastMessageAt timestamps
+		await fetchSessions(true);
+	}
+
 	function onBeginMessage() {
 		if (!streaming.value?.messageId) {
 			return;
@@ -432,47 +459,49 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		const { sessionId } = streaming.value;
-
 		streaming.value = undefined;
 
-		// wait up to 3 seconds until conversation title is generated
-		await retry(
-			async () => {
-				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
-
-				return session.session.title !== 'New Chat';
-			},
-			1000,
-			3,
-		);
-
-		// update the conversation list to reflect the new title
-		await fetchSessions(true);
+		await fetchConversationTitle(sessionId);
 	}
 
-	function onStreamError(error: Error) {
+	function getErrorMessageByStatusCode(
+		statusCode: number | undefined,
+		message: string | undefined,
+	): string {
+		const errorMessages: Record<number, string> = {
+			[413]: i18n.baseText('chatHub.error.payloadTooLarge'),
+			[400]: message ?? i18n.baseText('chatHub.error.badRequest'),
+			[403]: i18n.baseText('chatHub.error.forbidden'),
+			[500]: message
+				? i18n.baseText('chatHub.error.serverErrorWithReason', {
+						interpolate: { error: message },
+					})
+				: i18n.baseText('chatHub.error.serverError'),
+		};
+
+		return (
+			(statusCode && errorMessages[statusCode]) || message || i18n.baseText('chatHub.error.unknown')
+		);
+	}
+
+	async function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
 
-		toast.showError(error, 'Could not send message');
+		const cause =
+			error instanceof ResponseError
+				? new Error(getErrorMessageByStatusCode(error.httpStatusCode, error.message))
+				: error.message.includes('Failed to fetch')
+					? new Error(i18n.baseText('chatHub.error.noConnection'))
+					: error;
+
+		toast.showError(cause, i18n.baseText('chatHub.error.sendMessageFailed'));
 
 		const { sessionId } = streaming.value;
-
 		streaming.value = undefined;
 
-		const conversation = getConversation(sessionId);
-		if (!conversation) {
-			return;
-		}
-
-		// TODO: Not sure if we want to mark all running messages as errored?
-		for (const messageId of conversation.activeMessageChain) {
-			const message = conversation.messages[messageId];
-			if (message.status === 'running') {
-				updateMessage(sessionId, messageId, 'error');
-			}
-		}
+		await fetchConversationTitle(sessionId);
 	}
 
 	async function sendMessage(
@@ -530,9 +559,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		if (!sessions.value.byId[sessionId]) {
 			sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
-			if (!sessions.value.ids) {
-				sessions.value.ids = [];
-			}
+			sessions.value.ids ??= [];
 			sessions.value.ids.unshift(sessionId);
 		}
 
@@ -684,7 +711,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (currentMessage && currentMessage.status === 'running') {
 			updateMessage(sessionId, currentMessage.id, 'cancelled');
 			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
-			streaming.value = undefined;
+			await onStreamDone();
 		}
 	}
 
@@ -780,6 +807,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
 				inputModalities: [],
+				available: true,
 			},
 		};
 		agents.value?.['custom-agent'].models.push(agent);
@@ -831,8 +859,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function getAgent(model: ChatHubConversationModel, fallbackName: string = ''): ChatModelDto {
-		const agent = agents.value?.[model.provider]?.models.find((agent) =>
-			isMatchedAgent(agent, model),
+		const agent = agents.value?.[model.provider]?.models.find((candidate) =>
+			isMatchedAgent(candidate, model),
 		);
 
 		if (agent) {
@@ -851,6 +879,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				capabilities: {
 					functionCalling: true,
 				},
+				available: true,
 			},
 		};
 	}
