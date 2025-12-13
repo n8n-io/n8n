@@ -56,7 +56,10 @@ export class TranslationAgentV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug(`🚀 Checking connected models..`);
-		const models = await this.getInputConnectionData(NodeConnectionTypes.IntentoNMT, 0);
+		const models = await this.getInputConnectionData(
+			NodeConnectionTypes.IntentoTranslationProvider,
+			0,
+		);
 		// Check connected models and restore order
 		if (Array.isArray(models) && models.length > 0) {
 			this.logger.debug(`🔗 Models connected: ${models.length}`);

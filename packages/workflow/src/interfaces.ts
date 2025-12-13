@@ -2132,6 +2132,7 @@ export const NodeConnectionTypes = {
 	AiTool: 'ai_tool',
 	AiVectorStore: 'ai_vectorStore',
 	IntentoNMT: 'intento_nmt',
+	IntentoTranslationProvider: 'intento_translationProvider',
 	Main: 'main',
 } as const;
 

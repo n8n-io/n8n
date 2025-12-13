@@ -11,8 +11,8 @@ export class TranslationAgent extends VersionedNodeType {
 			group: ['transform'],
 			description: 'Use Intento Translation Agent to translate text via NMT and LLM providers.',
 			icon: {
-				dark: 'file:translate_white.svg',
-				light: 'file:translate_blue.svg',
+				light: 'file:translationAgent.light.svg',
+				dark: 'file:translationAgent.dark.svg',
 			},
 		};
 

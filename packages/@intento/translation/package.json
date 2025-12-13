@@ -25,7 +25,8 @@
 
     ],
     "nodes": [
-      "dist/nodes/TranslationAgent/TranslationAgent.node.js"
+      "dist/nodes/TranslationAgent/TranslationAgent.node.js",
+      "dist/nodes/DryRunProvider/DryRunProvider.node.js"
     ]
   },
   "devDependencies": {
