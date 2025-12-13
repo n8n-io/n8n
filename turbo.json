@@ -6,6 +6,10 @@
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
+		"//#deploy:docker": {
+			"outputs": ["compiled/**", "dist/task-runner-javascript/**"],
+			"env": ["INCLUDE_TEST_CONTROLLER"]
+		},
 		"typecheck": {
 			"dependsOn": ["^typecheck", "^build"]
 		},

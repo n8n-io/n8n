@@ -1,0 +1,60 @@
+# Composite action for building and pushing Docker images with Turbo cache support.
+# Requires checkout to be done first by the calling workflow.
+
+name: 'Build Docker Image'
+description: 'Builds and pushes a Docker image using cached artifacts from Turbo'
+
+inputs:
+  image-name:
+    description: 'Name of the image (e.g., n8n, runners)'
+    required: true
+  dockerfile:
+    description: 'Path to the Dockerfile'
+    required: true
+  image-tag:
+    description: 'Tag for the image'
+    required: true
+  node-version:
+    description: 'Node.js version for build args'
+    required: false
+    default: '22.21.1'
+
+outputs:
+  image:
+    description: 'Full image reference that was built'
+    value: ${{ steps.meta.outputs.image }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Only need to restore deploy:docker cache - build outputs already cached from install-and-build
+    - name: Setup and Restore Turbo Cache
+      uses: ./.github/actions/setup-nodejs
+      with:
+        build-command: pnpm turbo //#deploy:docker
+        enable-docker-cache: 'true'
+
+    - name: Set image metadata
+      id: meta
+      shell: bash
+      run: echo "image=ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}:${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Build and push Docker image
+      uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+      with:
+        context: .
+        file: ${{ inputs.dockerfile }}
+        build-args: |
+          NODE_VERSION=${{ inputs.node-version }}
+          N8N_VERSION=${{ inputs.image-tag }}
+          N8N_RELEASE_TYPE=dev
+        platforms: linux/amd64
+        push: true
+        tags: ${{ steps.meta.outputs.image }}

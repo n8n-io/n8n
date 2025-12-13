@@ -16,6 +16,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
+      INCLUDE_TEST_CONTROLLER: 'true'
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
@@ -39,9 +40,14 @@ jobs:
             non-python:
               - '**'
               - '!packages/@n8n/task-runner-python/**'
+
+      # Build and create Docker deployment artifacts (cached by Turbo)
+      # Note: Must run sequentially because deploy:docker modifies package.json files
       - name: Setup and Build
         if: steps.paths-filter.outputs.non-python == 'true'
         uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo build && pnpm turbo //#deploy:docker
 
       - name: Run format check
         if: steps.paths-filter.outputs.non-python == 'true'
