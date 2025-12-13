@@ -120,9 +120,7 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-  # Build and push Docker images to GHCR for internal PRs
-  # This runs in parallel with unit tests, and E2E tests wait for it
-  docker-build-pr:
+  docker-build:
     name: Build Docker Images
     needs: install-and-build
     if: |
@@ -136,22 +134,17 @@ jobs:
 
   e2e-tests:
     name: E2E Tests
-    needs: [install-and-build, docker-build-pr]
+    needs: [install-and-build, docker-build]
     if: |
       always() &&
       needs.install-and-build.outputs.non_python_changed == 'true' &&
-      (needs.docker-build-pr.result == 'success' || needs.docker-build-pr.result == 'skipped')
+      (needs.docker-build.result == 'success' || needs.docker-build.result == 'skipped')
     uses: ./.github/workflows/playwright-test-ci.yml
-    with:
-      is_fork: ${{ github.event.pull_request.head.repo.fork }}
-      docker_image: ${{ needs.docker-build-pr.outputs.n8n_image || '' }}
-      runners_image: ${{ needs.docker-build-pr.outputs.runners_image || '' }}
     secrets: inherit
 
   # This job is required by GitHub branch protection rules.
   # PRs cannot be merged unless this job passes.
   # If you add/remove jobs that should block merging, update the 'needs' array below.
-  # Note: docker-build-pr is not included - it's an intermediate job that feeds into e2e-tests
   required-checks:
     name: Required Checks
     needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]

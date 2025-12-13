@@ -31,7 +31,7 @@ class BuildContext {
 				case 'pull_request':
 					context.version = `pr-${pr}`;
 					context.release_type = 'dev';
-					context.platforms = ['linux/amd64']; // Only build amd64 for PRs (faster)
+					context.platforms = ['linux/amd64'];
 					break;
 
 				case 'workflow_dispatch':
