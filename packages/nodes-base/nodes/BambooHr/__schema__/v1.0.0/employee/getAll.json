@@ -16,10 +16,10 @@
         "id": {
             "type": "string"
         },
-        "jobTitle": {
+        "lastName": {
             "type": "string"
         },
-        "lastName": {
+        "location": {
             "type": "string"
         },
         "photoUploaded": {
@@ -28,12 +28,12 @@
         "photoUrl": {
             "type": "string"
         },
-        "pronouns": {
-            "type": "null"
-        },
         "supervisor": {
+            "type": "string"
+        },
+        "workEmail": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

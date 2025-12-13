@@ -4,6 +4,9 @@
         "data": {
             "type": "object",
             "properties": {
+                "liveViewUrl": {
+                    "type": "string"
+                },
                 "targetId": {
                     "type": "string"
                 },
@@ -26,12 +29,9 @@
         "sessionId": {
             "type": "string"
         },
-        "warnings": {
-            "type": "null"
-        },
         "windowId": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -9,10 +9,7 @@
         },
         "symbol": {
             "type": "string"
-        },
-        "volume": {
-            "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

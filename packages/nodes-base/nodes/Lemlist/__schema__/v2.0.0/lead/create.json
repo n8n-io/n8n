@@ -13,6 +13,9 @@
         "companyName": {
             "type": "string"
         },
+        "contactId": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
@@ -29,5 +32,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

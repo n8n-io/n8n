@@ -19,6 +19,14 @@
         "approval_set": {
             "type": "string"
         },
+        "assignment_group": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                }
+            }
+        },
         "business_duration": {
             "type": "string"
         },
@@ -63,6 +71,12 @@
         "comments_and_work_notes": {
             "type": "string"
         },
+        "contact_type": {
+            "type": "string"
+        },
+        "contract": {
+            "type": "string"
+        },
         "correlation_display": {
             "type": "string"
         },
@@ -85,9 +99,6 @@
             "type": "string"
         },
         "group_list": {
-            "type": "string"
-        },
-        "hold_reason": {
             "type": "string"
         },
         "impact": {
@@ -133,17 +144,6 @@
         },
         "resolved_at": {
             "type": "string"
-        },
-        "resolved_by": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
         },
         "route_reason": {
             "type": "string"
@@ -226,5 +226,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

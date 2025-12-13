@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "document_annotation": {
+            "type": "null"
+        },
+        "extractedText": {
+            "type": "string"
+        },
+        "model": {
+            "type": "string"
+        },
+        "pageCount": {
+            "type": "integer"
+        },
+        "pages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "dimensions": {
+                        "type": "object",
+                        "properties": {
+                            "dpi": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "footer": {
+                        "type": "null"
+                    },
+                    "header": {
+                        "type": "null"
+                    },
+                    "images": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "image_annotation": {
+                                    "type": "null"
+                                }
+                            }
+                        }
+                    },
+                    "index": {
+                        "type": "integer"
+                    },
+                    "markdown": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "usage_info": {
+            "type": "object",
+            "properties": {
+                "doc_size_bytes": {
+                    "type": "integer"
+                },
+                "pages_processed": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
+}

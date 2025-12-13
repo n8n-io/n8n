@@ -57,20 +57,6 @@
                         }
                     }
                 },
-                "predecessor-version": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                },
                 "replies": {
                     "type": "array",
                     "items": {
@@ -272,5 +258,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

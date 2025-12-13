@@ -19,23 +19,20 @@
                 "dealname": {
                     "type": "string"
                 },
-                "dealstage": {
-                    "type": "string"
-                },
                 "hs_lastmodifieddate": {
                     "type": "string"
                 },
                 "hs_object_id": {
-                    "type": "string"
-                },
-                "pipeline": {
                     "type": "string"
                 }
             }
         },
         "updatedAt": {
             "type": "string"
+        },
+        "url": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

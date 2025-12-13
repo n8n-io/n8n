@@ -30,20 +30,6 @@
                     "name": {
                         "type": "string"
                     },
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "content": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
                     "type": {
                         "type": "string"
                     }
@@ -71,5 +57,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

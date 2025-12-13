@@ -50,11 +50,33 @@
                 "message_id": {
                     "type": "integer"
                 },
+                "reply_markup": {
+                    "type": "object",
+                    "properties": {
+                        "inline_keyboard": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "callback_data": {
+                                            "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "text": {
                     "type": "string"
                 }
             }
         }
     },
-    "version": 5
+    "version": 6
 }

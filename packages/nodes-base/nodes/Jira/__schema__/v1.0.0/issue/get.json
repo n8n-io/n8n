@@ -7,77 +7,214 @@
         "fields": {
             "type": "object",
             "properties": {
-                "attachment": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "author": {
+                "comment": {
+                    "type": "object",
+                    "properties": {
+                        "comments": {
+                            "type": "array",
+                            "items": {
                                 "type": "object",
                                 "properties": {
-                                    "accountId": {
-                                        "type": "string"
-                                    },
-                                    "accountType": {
-                                        "type": "string"
-                                    },
-                                    "active": {
-                                        "type": "boolean"
-                                    },
-                                    "avatarUrls": {
+                                    "author": {
                                         "type": "object",
                                         "properties": {
-                                            "16x16": {
+                                            "accountId": {
                                                 "type": "string"
                                             },
-                                            "24x24": {
+                                            "accountType": {
                                                 "type": "string"
                                             },
-                                            "32x32": {
+                                            "active": {
+                                                "type": "boolean"
+                                            },
+                                            "avatarUrls": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "16x16": {
+                                                        "type": "string"
+                                                    },
+                                                    "24x24": {
+                                                        "type": "string"
+                                                    },
+                                                    "32x32": {
+                                                        "type": "string"
+                                                    },
+                                                    "48x48": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "displayName": {
                                                 "type": "string"
                                             },
-                                            "48x48": {
+                                            "emailAddress": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "timeZone": {
                                                 "type": "string"
                                             }
                                         }
                                     },
-                                    "displayName": {
+                                    "body": {
                                         "type": "string"
                                     },
-                                    "emailAddress": {
+                                    "created": {
                                         "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "jsdPublic": {
+                                        "type": "boolean"
                                     },
                                     "self": {
                                         "type": "string"
                                     },
-                                    "timeZone": {
+                                    "updateAuthor": {
+                                        "type": "object",
+                                        "properties": {
+                                            "accountId": {
+                                                "type": "string"
+                                            },
+                                            "accountType": {
+                                                "type": "string"
+                                            },
+                                            "active": {
+                                                "type": "boolean"
+                                            },
+                                            "avatarUrls": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "16x16": {
+                                                        "type": "string"
+                                                    },
+                                                    "24x24": {
+                                                        "type": "string"
+                                                    },
+                                                    "32x32": {
+                                                        "type": "string"
+                                                    },
+                                                    "48x48": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "displayName": {
+                                                "type": "string"
+                                            },
+                                            "emailAddress": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "timeZone": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "updated": {
                                         "type": "string"
                                     }
                                 }
-                            },
-                            "content": {
-                                "type": "string"
-                            },
-                            "created": {
-                                "type": "string"
-                            },
-                            "filename": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "mimeType": {
-                                "type": "string"
-                            },
-                            "self": {
-                                "type": "string"
-                            },
-                            "size": {
-                                "type": "integer"
-                            },
-                            "thumbnail": {
-                                "type": "string"
+                            }
+                        },
+                        "maxResults": {
+                            "type": "integer"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "startAt": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "reporter": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
+                            "type": "boolean"
+                        },
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "timeZone": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "status": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "statusCategory": {
+                            "type": "object",
+                            "properties": {
+                                "colorName": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "key": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "self": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -97,5 +234,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }

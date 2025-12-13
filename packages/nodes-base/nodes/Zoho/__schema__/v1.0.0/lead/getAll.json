@@ -82,6 +82,9 @@
         "$state": {
             "type": "string"
         },
+        "$zia_owner_assignment": {
+            "type": "string"
+        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -144,21 +147,7 @@
                     "type": "string"
                 }
             }
-        },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 7
+    "version": 8
 }
