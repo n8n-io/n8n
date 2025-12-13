@@ -34,7 +34,7 @@ export async function getFiles(
 			$select: 'id,name,file',
 		};
 		if (filter) {
-			qs.$filter = `name eq '${filter}'`;
+			qs.$filter = `startswith(name, '${filter}')`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
