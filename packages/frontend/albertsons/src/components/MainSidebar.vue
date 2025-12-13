@@ -139,8 +139,8 @@ const renderIcon = (key) => {
 .sidebar {
 	width: 240px;
 	min-height: 100vh;
-	border-right: 1px solid #e5e7eb;
-	background-color: #ffffff;
+	border-right: 1px solid var(--color-border-default, #e5e7eb);
+	background-color: var(--color-background-primary, #ffffff);
 	display: flex;
 	flex-direction: column;
 	font-family:
@@ -156,7 +156,7 @@ const renderIcon = (key) => {
 	align-items: center;
 	gap: 10px;
 	padding: 16px 18px 14px;
-	border-bottom: 1px solid #e5e7eb;
+	border-bottom: 1px solid var(--color-border-default, #e5e7eb);
 }
 
 .sidebar-logo {
@@ -168,12 +168,12 @@ const renderIcon = (key) => {
 .sidebar-title-main {
 	font-size: 13px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color-text-primary, #111827);
 }
 
 .sidebar-title-sub {
 	font-size: 11px;
-	color: #6b7280;
+	color: var(--color-text-secondary, #6b7280);
 }
 
 .sidebar-nav {
@@ -190,18 +190,18 @@ const renderIcon = (key) => {
 	gap: 10px;
 	padding: 8px 12px;
 	border-radius: 999px;
-	color: #374151;
+	color: var(--color-text-default, #374151);
 	font-size: 13px;
 	cursor: pointer;
 }
 
 .sidebar-nav-item:hover {
-	background-color: #f3f4f6;
+	background-color: var(--color-background-hover, #f3f4f6);
 }
 
 .sidebar-nav-item--active {
-	background-color: #0071ce;
-	color: #ffffff;
+	background-color: var(--color-primary);
+	color: var(--color-text-on-primary, #ffffff);
 }
 
 .sidebar-nav-icon {
@@ -210,11 +210,11 @@ const renderIcon = (key) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: #6b7280;
+	color: var(--color-text-muted, #6b7280);
 }
 
 .sidebar-nav-item--active .sidebar-nav-icon {
-	color: #ffffff;
+	color: var(--color-text-on-primary, #ffffff);
 }
 
 .sidebar-nav-icon svg {
