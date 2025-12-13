@@ -54,7 +54,6 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `content` Complete custom dropdown content (replaces item list)
 - `item` Custom item rendering (replaces default N8nDropdownMenuItem) `{ item: DropdownMenuItemProps<T> }`
 - `item-leading` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T>, ui: { class: string } }`
-- `item-label` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T> }`
 - `item-trailing` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T>, ui: { class: string } }`
 - `loading` Custom loading state
 
@@ -89,7 +88,6 @@ A companion component for rendering individual dropdown items with full slot-bas
 **Slots**
 
 - `item-leading` Content before the label (default: icon if provided) `{ item: DropdownMenuItemProps, ui: { class: string } }`
-- `item-label` Custom label content (default: label text) `{ item: DropdownMenuItemProps }`
 - `item-trailing` Content after the label (badges, shortcuts, etc.) `{ item: DropdownMenuItemProps, ui: { class: string } }`
 
 ### Examples
@@ -232,9 +230,6 @@ const items = ref([
       <N8nDropdownMenuItem v-bind="item">
         <template #item-leading="{ ui }">
           <MyCustomIcon :class="ui.class" />
-        </template>
-        <template #item-label>
-          <span class="custom-label">{{ item.label }}</span>
         </template>
         <template #item-trailing="{ ui }">
           <N8nBadge :class="ui.class">Custom</N8nBadge>
