@@ -16,6 +16,7 @@ import {
 } from '@utils/agent-execution';
 
 import { SYSTEM_MESSAGE } from '../../prompt';
+import { checkMaxIterations } from './checkMaxIterations';
 import type { AgentResult, RequestResponseMetadata } from '../types';
 import { buildResponseMetadata } from './buildResponseMetadata';
 import type { ItemContext } from './prepareItemContext';
@@ -41,6 +42,10 @@ export async function runAgent(
 	memory: BaseChatMemory | undefined,
 	response?: EngineResponse<RequestResponseMetadata>,
 ): Promise<RunAgentResult> {
+	// Check max iterations if this is a continuation of a previous execution
+	const maxIterations = ctx.getNodeParameter('options.maxIterations', 0, 10) as number;
+	checkMaxIterations(response, maxIterations, ctx.getNode());
+
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
 	const invokeParams = {
