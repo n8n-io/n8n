@@ -86,7 +86,7 @@ export async function initCredentialsTypes(): Promise<void> {
  */
 export async function initNodeTypes(customNodes?: INodeTypeData) {
 	const defaultNodes: INodeTypeData = {
-		'n8n-nodes-base.start': {
+		'n8n-nodes-base.manualTrigger': {
 			type: new Start(),
 			sourcePath: '',
 		},
