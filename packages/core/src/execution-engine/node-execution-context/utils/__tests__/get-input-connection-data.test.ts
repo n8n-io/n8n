@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import { mock } from 'jest-mock-extended';
 import type {
 	INode,
@@ -16,6 +17,7 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { ExecuteContext } from '../../execute-context';
 import { makeHandleToolInvocation } from '../get-input-connection-data';
@@ -392,7 +394,11 @@ describe('getInputConnectionData', () => {
 		const supplyData = jest.fn().mockResolvedValue({ response: mockTool });
 		const toolNodeType = mock<INodeType>({ supplyData });
 
-		const secondToolNode = mock<INode>({ name: 'test.secondTool', disabled: false });
+		const secondToolNode = mock<INode>({
+			name: 'Second Tool',
+			type: 'test.secondTool',
+			disabled: false,
+		});
 		const secondMockTool = mock<Tool>();
 		const secondToolNodeType = mock<INodeType>({
 			supplyData: jest.fn().mockResolvedValue({ response: secondMockTool }),
@@ -1081,6 +1087,143 @@ describe('makeHandleToolInvocation', () => {
 			expect(sleepWithAbortSpy).toHaveBeenCalledWith(10, undefined);
 
 			sleepWithAbortSpy.mockRestore();
+		});
+	});
+});
+
+describe('HITL Tool handling', () => {
+	const agentNode = mock<INode>({
+		name: 'Test Agent',
+		type: 'test.agent',
+		parameters: {},
+	});
+	const agentNodeType = mock<INodeType>({
+		description: {
+			inputs: [],
+		},
+	});
+	const nodeTypes = mock<INodeTypes>();
+	const workflow = mock<Workflow>({
+		id: 'test-workflow',
+		active: false,
+		nodeTypes,
+	});
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
+	const connectionInputData = [] as INodeExecutionData[];
+	const inputData = {} as ITaskDataConnections;
+	const executeData = {} as IExecuteData;
+
+	const hooks = mock<Required<IWorkflowExecuteAdditionalData['hooks']>>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+
+	let executeContext: ExecuteContext;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+
+		executeContext = new ExecuteContext(
+			workflow,
+			agentNode,
+			additionalData,
+			'internal',
+			runExecutionData,
+			0,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
+		);
+
+		jest.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
+		nodeTypes.getByNameAndVersion
+			.calledWith(agentNode.type, expect.anything())
+			.mockReturnValue(agentNodeType);
+		jest.spyOn(executeContext, 'getConnections').mockReturnValue([]);
+	});
+
+	describe('isHitlTool detection', () => {
+		it('should not treat regular tools as HITL tools', async () => {
+			const regularToolNode = mock<INode>({
+				name: 'Regular Tool',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+			});
+
+			const mockTool = mock<Tool>();
+
+			const regularNodeType = mock<INodeType>({
+				supplyData: jest.fn().mockResolvedValue({ response: mockTool }),
+			});
+
+			agentNodeType.description.inputs = [
+				{
+					type: NodeConnectionTypes.AiTool,
+					required: true,
+				},
+			];
+
+			nodeTypes.getByNameAndVersion
+				.calledWith(regularToolNode.type, expect.anything())
+				.mockReturnValue(regularNodeType);
+			workflow.getParentNodes
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
+				.mockReturnValue([regularToolNode.name]);
+			workflow.getNode.calledWith(regularToolNode.name).mockReturnValue(regularToolNode);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: regularToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				]);
+
+			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(result).toEqual([mockTool]);
+			expect(regularNodeType.supplyData).toHaveBeenCalled();
+		});
+
+		it('should identify HITL tools by type suffix ending in HitlTool', () => {
+			const hitlTypes = [
+				'@n8n/n8n-nodes-langchain.toolWorkflowHitlTool',
+				'test.HitlTool',
+				'myPackage.customHitlTool',
+			];
+
+			const nonHitlTypes = [
+				'n8n-nodes-base.httpRequest',
+				'@n8n/n8n-nodes-langchain.toolWorkflow',
+				'test.regularTool',
+			];
+
+			for (const type of hitlTypes) {
+				expect(type.endsWith('HitlTool')).toBe(true);
+			}
+
+			for (const type of nonHitlTypes) {
+				expect(type.endsWith('HitlTool')).toBe(false);
+			}
+		});
+	});
+
+	describe('HITL tool metadata wrapping', () => {
+		it('should create wrapped tools with correct metadata structure', () => {
+			const originalSourceNodeName = 'Original Tool Node';
+			const hitlNodeName = 'HITL Node';
+
+			const wrappedTool = new DynamicStructuredTool({
+				name: 'my_tool',
+				description: 'Tool description',
+				schema: z.object({ query: z.string() }),
+				func: async () => '',
+				metadata: {
+					sourceNodeName: hitlNodeName,
+					gatedToolNodeName: originalSourceNodeName,
+				},
+			});
+
+			expect(wrappedTool.metadata?.sourceNodeName).toBe(hitlNodeName);
+			expect(wrappedTool.metadata?.gatedToolNodeName).toBe(originalSourceNodeName);
 		});
 	});
 });
