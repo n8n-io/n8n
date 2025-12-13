@@ -1,6 +1,3 @@
-# Reusable workflow to build and push Docker images for PRs
-# Builds n8n and runners images and pushes to GHCR with pr-{number} tag
-
 name: 'Docker: Build PR Images'
 
 on:
