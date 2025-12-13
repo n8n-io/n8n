@@ -1,6 +1,7 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
@@ -313,6 +314,117 @@ describe('WaitingForms', () => {
 			const workflow = waitingForms.exposeGetWorkflow(execution);
 
 			expect(workflow.active).toBe(false);
+		});
+	});
+
+	describe('executeWebhook - default completion page', () => {
+		it('should set CSP header when rendering default completion page', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					},
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+			});
+
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(res.render).toHaveBeenCalledWith('form-trigger-completion', {
+				title: 'Form Submitted',
+				message: 'Your response has been recorded',
+				formTitle: 'Form Submitted',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should include sandbox directive in CSP header for security', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					},
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+			});
+
+			const res = mock<express.Response>();
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
 		});
 	});
 });

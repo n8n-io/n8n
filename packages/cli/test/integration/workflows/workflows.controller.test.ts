@@ -262,9 +262,9 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should create workflow as active when active: true is provided in POST body', async () => {
+	test('should set autosaved: true in workflow history when autosaved parameter is sent', async () => {
 		const payload = {
-			name: 'active workflow',
+			name: 'testing autosave',
 			nodes: [
 				{
 					id: 'uuid-1234',
@@ -278,7 +278,79 @@ describe('POST /workflows', () => {
 			connections: {},
 			staticData: null,
 			settings: {},
+			active: false,
+			activeVersionId: null,
+			autosaved: true,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id },
+		} = response.body as { data: WorkflowEntity };
+
+		expect(id).toBeDefined();
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+	});
+
+	test('should set autosaved: false in workflow history when autosaved is not sent', async () => {
+		const payload = {
+			name: 'testing manual save',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+			activeVersionId: null,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id },
+		} = response.body as { data: WorkflowEntity };
+
+		expect(id).toBeDefined();
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+	});
+
+	test('should create workflow as inactive even when active fields are provided', async () => {
+		const activeWorkflow = await createActiveWorkflow({}, owner);
+		const activeVersion = await workflowHistoryRepository.findOne({
+			where: {
+				versionId: activeWorkflow.activeVersionId!,
+			},
+		});
+
+		const payload = {
+			...activeWorkflow,
+			// Deliberately set active fields
 			active: true,
+			activeVersionId: activeWorkflow.activeVersionId,
+			activeVersion,
 		};
 
 		const response = await authOwnerAgent.post('/workflows').send(payload);
@@ -291,21 +363,19 @@ describe('POST /workflows', () => {
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
-		expect(activeVersionId).toBe(versionId); // Should be set to current version
-		expect(active).toBe(true);
+		// New version should be created
+		expect(versionId).not.toBe(activeWorkflow.versionId);
+		expect(activeVersionId).toBeNull();
+		expect(active).toBe(false);
 
-		// Verify in database
+		// Verify in database that workflow is completely inactive
 		const workflow = await workflowRepository.findOneBy({ id });
-		expect(workflow?.activeVersionId).toBe(versionId);
+		expect(workflow?.activeVersionId).toBeNull();
+		expect(workflow?.active).toBe(false);
 
-		// Verify history was created
-		const historyVersion = await workflowHistoryRepository.findOne({
-			where: {
-				workflowId: id,
-				versionId,
-			},
-		});
-		expect(historyVersion).not.toBeNull();
+		// Verify workflow history was created
+		const historyCount = await workflowHistoryRepository.count({ where: { workflowId: id } });
+		expect(historyCount).toBe(1);
 	});
 
 	test('create workflow in personal project by default', async () => {
