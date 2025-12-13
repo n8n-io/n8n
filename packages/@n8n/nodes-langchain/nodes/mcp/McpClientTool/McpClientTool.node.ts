@@ -26,6 +26,7 @@ import {
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
+import { JSONSchema7 } from 'json-schema';
 
 /**
  * Get node parameters for MCP client configuration
@@ -424,12 +425,22 @@ export class McpClientTool implements INodeType {
 				if (toolName === tool.name) {
 					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
+					const schema: JSONSchema7 = tool.inputSchema;
+					// When additionalProperties is explicitly false, filter to schema-defined properties.
+					// Otherwise (true or omitted), pass all arguments through
+					const sanitizedToolArguments: IDataObject =
+						schema.additionalProperties === false
+							? Object.fromEntries(
+									Object.entries(toolArguments).filter(([key]) => key in (schema.properties ?? {})),
+								)
+							: toolArguments;
+
 					const params: {
 						name: string;
 						arguments: IDataObject;
 					} = {
 						name: tool.name,
-						arguments: toolArguments,
+						arguments: sanitizedToolArguments,
 					};
 					const result = await client.callTool(params, CallToolResultSchema, {
 						timeout: config.timeout,
