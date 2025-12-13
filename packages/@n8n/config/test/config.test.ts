@@ -57,7 +57,7 @@ describe('GlobalConfig', () => {
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
-			sizeCheckCacheDuration: 60000,
+			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
