@@ -157,8 +157,16 @@ export class LoadNodesAndCredentials {
 		if (!loader) {
 			return undefined;
 		}
+
+		const prefix = (str: string, pre: string) => pre + str;
+		const dedupe = (str: string) => str.replace(/\/+/g, '/');
+		const isWinPath = (str: string) => /^([A-Z]:[\/|\\])/.test(str);
+
 		const pathPrefix = `/icons/${packageName}/`;
-		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
+		const urlFilePath = dedupe(url).substring(pathPrefix.length);
+		const filePath = isWinPath(urlFilePath)
+			? urlFilePath
+			: path.resolve(loader.directory, prefix(urlFilePath, '/'));
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
