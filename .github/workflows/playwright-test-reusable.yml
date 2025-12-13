@@ -23,7 +23,7 @@ on:
         default: '[1, 2, 3, 4, 5, 6, 7, 8]'
         type: string
       docker-image:
-        description: 'Docker image to use (for docker-pull mode)'
+        description: 'Docker image to use (for docker-pull mode). The runners image is derived automatically from the n8n image.'
         required: false
         default: 'n8nio/n8n:nightly'
         type: string
@@ -60,6 +60,7 @@ env:
   PLAYWRIGHT_WORKERS: ${{ inputs.workers || '2' }} # Configurable workers, defaults to 2 to reduce resource contention
   # Must match CI's COVERAGE_ENABLED to ensure Turbo cache hits (it's a globalEnv in turbo.json)
   COVERAGE_ENABLED: 'true'
+  N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
 
 jobs:
   test:
@@ -79,10 +80,10 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
 
       - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
-          enable-docker-cache: ${{ inputs.test-mode != 'local' }}
+          enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
@@ -95,12 +96,6 @@ jobs:
         run: |
           # Pre-pull all test container images to avoid network changes during test execution
           npx tsx packages/testing/containers/pull-test-images.ts || true
-        env:
-          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
-
-      - name: Prepare Test Image
-        if: inputs.test-mode == 'docker-pull'
-        run: pnpm --filter=n8n-playwright prepare-test-image ${{ inputs.docker-image }}
 
       - name: Run Tests
         run: |
@@ -108,7 +103,6 @@ jobs:
             --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
-          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}

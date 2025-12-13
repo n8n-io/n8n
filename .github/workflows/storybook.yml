@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Node.js
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 

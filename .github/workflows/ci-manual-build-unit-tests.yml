@@ -55,7 +55,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Setup and Build
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
 
       - name: Run format check
         run: pnpm format:check
