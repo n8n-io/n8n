@@ -3,6 +3,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { router } from './actions/router';
 import * as row from './actions/row/Row.resource';
+import * as table from './actions/table/Table.resource';
 import {
 	getConditionsForColumn,
 	getDataTableColumns,
@@ -47,10 +48,15 @@ export class DataTable implements INodeType {
 						name: 'Row',
 						value: 'row',
 					},
+					{
+						name: 'Table',
+						value: 'table',
+					},
 				],
 				default: 'row',
 			},
 			...row.description,
+			...table.description,
 		],
 	};
 

@@ -6,11 +6,13 @@ import type {
 } from 'n8n-workflow';
 
 import * as row from './row/Row.resource';
+import * as table from './table/Table.resource';
 import { DATA_TABLE_ID_FIELD } from '../common/fields';
 import { getDataTableProxyExecute } from '../common/utils';
 
 type DataTableNodeType = AllEntities<{
 	row: 'insert' | 'get' | 'rowExists' | 'rowNotExists' | 'deleteRows' | 'update' | 'upsert';
+	table: 'create' | 'delete' | 'list' | 'update';
 }>;
 
 const BULK_OPERATIONS = ['insert'] as const;
@@ -40,8 +42,32 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as DataTableNodeType;
 
-	// If the operation supports
-	if (hasBulkExecute(dataTableNodeData.operation) && !hasComplexId(this)) {
+	if (dataTableNodeData.resource === 'table') {
+		// Table operations
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const tableOperation =
+					dataTableNodeData.operation === 'delete'
+						? table.deleteTable
+						: table[dataTableNodeData.operation];
+				responseData = await tableOperation.execute.call(this, i);
+				const executionData = this.helpers.constructExecutionMetaData(responseData, {
+					itemData: { item: i },
+				});
+				operationResult = operationResult.concat(executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					operationResult.push({
+						json: this.getInputData(i)[0].json,
+						error: error as NodeOperationError,
+					});
+				} else {
+					throw error;
+				}
+			}
+		}
+	} else if (hasBulkExecute(dataTableNodeData.operation) && !hasComplexId(this)) {
+		// Row bulk operations
 		try {
 			const proxy = await getDataTableProxyExecute(this);
 
@@ -59,6 +85,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 		}
 	} else {
+		// Row operations
 		for (let i = 0; i < items.length; i++) {
 			try {
 				responseData = await row[dataTableNodeData.operation].execute.call(this, i);
