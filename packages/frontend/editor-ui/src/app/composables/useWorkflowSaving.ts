@@ -17,7 +17,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IDataObject, IWorkflowSettings } from 'n8n-workflow';
+import { isExpression, type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { useToast } from './useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
@@ -298,7 +298,11 @@ export function useWorkflowSaving({
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
 					if (node.webhookId) {
 						const newId = nodeHelpers.assignWebhookId(node);
-						node.parameters.path = newId;
+
+						if (!isExpression(node.parameters.path)) {
+							node.parameters.path = newId;
+						}
+
 						changedNodes[node.name] = node.webhookId;
 					}
 					return node;
