@@ -25,9 +25,11 @@ describe('WorkflowsController', () => {
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
+		controller.logger = logger;
 		jest.clearAllMocks();
 	});
 
