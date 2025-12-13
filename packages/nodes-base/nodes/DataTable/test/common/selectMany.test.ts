@@ -339,6 +339,103 @@ describe('selectMany utils', () => {
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
 			});
+
+			it('should convert Date objects to ISO strings in output (v1.1+)', async () => {
+				// ARRANGE
+				const testDate = new Date('2025-12-11T10:30:59.000Z');
+				const testUpdatedDate = new Date('2025-12-12T11:16:53.385Z');
+				filters = [];
+				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+					switch (field) {
+						case DATA_TABLE_ID_FIELD:
+							return dataTableId;
+						case 'filters.conditions':
+							return filters;
+						case 'matchType':
+							return ANY_CONDITION;
+						case 'returnAll':
+							return true;
+					}
+				});
+				mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ ...node, typeVersion: 1.1 });
+				getManyRowsAndCount.mockReturnValue({
+					data: [
+						{
+							id: 1,
+							completedDate: testDate,
+							createdAt: testDate,
+							updatedAt: testUpdatedDate,
+							status: 'active',
+						},
+					],
+					count: 1,
+				});
+
+				// ACT
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+				// ASSERT
+				// Dates should be converted to ISO strings, not Date objects
+				expect(result).toEqual([
+					{
+						json: {
+							id: 1,
+							completedDate: '2025-12-11T10:30:59.000Z',
+							createdAt: '2025-12-11T10:30:59.000Z',
+							updatedAt: '2025-12-12T11:16:53.385Z',
+							status: 'active',
+						},
+					},
+				]);
+			});
+
+			it('should keep Date objects in output (v1.0 - legacy behavior)', async () => {
+				// ARRANGE
+				const testDate = new Date('2025-12-11T10:30:59.000Z');
+				const testUpdatedDate = new Date('2025-12-12T11:16:53.385Z');
+				filters = [];
+				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+					switch (field) {
+						case DATA_TABLE_ID_FIELD:
+							return dataTableId;
+						case 'filters.conditions':
+							return filters;
+						case 'matchType':
+							return ANY_CONDITION;
+						case 'returnAll':
+							return true;
+					}
+				});
+				mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ ...node, typeVersion: 1 });
+				getManyRowsAndCount.mockReturnValue({
+					data: [
+						{
+							id: 1,
+							completedDate: testDate,
+							createdAt: testDate,
+							updatedAt: testUpdatedDate,
+							status: 'active',
+						},
+					],
+					count: 1,
+				});
+
+				// ACT
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+				// ASSERT
+				expect(result).toEqual([
+					{
+						json: {
+							id: 1,
+							completedDate: testDate,
+							createdAt: testDate,
+							updatedAt: testUpdatedDate,
+							status: 'active',
+						},
+					},
+				]);
+			});
 		});
 	});
 
