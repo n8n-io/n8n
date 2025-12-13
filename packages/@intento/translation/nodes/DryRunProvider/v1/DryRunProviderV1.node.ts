@@ -1,21 +1,14 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypeBaseDescription,
-	INodeProperties,
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeTypeBaseDescription,
+	type INodeProperties,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 const dryRunNodeProperties: INodeProperties[] = [
-	{
-		displayName: 'Provider Name',
-		name: 'providerName',
-		type: 'string',
-		default: 'dryrun',
-		description: 'Name of the DryRun translation provider instance',
-	},
 	{
 		displayName: 'Mode',
 		name: 'mode',
@@ -45,8 +38,8 @@ export class DryRunProviderV1 implements INodeType {
 			...baseDescription,
 			version: 1,
 			defaults: { name: 'DryRun Translation Provider' },
-			inputs: [NodeConnectionTypes.Main],
-			outputs: [NodeConnectionTypes.Main],
+			inputs: [],
+			outputs: [NodeConnectionTypes.IntentoTranslationProvider],
 			properties: dryRunNodeProperties,
 		};
 	}
