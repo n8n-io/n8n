@@ -82,6 +82,55 @@ describe('POST /credentials', () => {
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
+	test('should create JWT Auth credentials with pemKey', async () => {
+		const payload = {
+			name: 'JWT Auth PEM Key',
+			type: 'jwtAuth',
+			data: {
+				keyType: 'pemKey',
+				publicKey: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----\n',
+				privateKey: '',
+				algorithm: 'RS256',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, name, type } = response.body;
+
+		expect(name).toBe(payload.name);
+		expect(type).toBe(payload.type);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.name).toBe(payload.name);
+		expect(credential.type).toBe(payload.type);
+	});
+
+	test('should create JWT Auth credentials with passphrase', async () => {
+		const payload = {
+			name: 'JWT Auth Passphrase',
+			type: 'jwtAuth',
+			data: {
+				keyType: 'passphrase',
+				secret: 'mysecretpassphrase',
+				algorithm: 'HS256',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, name, type } = response.body;
+
+		expect(name).toBe(payload.name);
+		expect(type).toBe(payload.type);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.name).toBe(payload.name);
+		expect(credential.type).toBe(payload.type);
+	});
+
 	test('should fail with invalid inputs', async () => {
 		for (const invalidPayload of INVALID_PAYLOADS) {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
@@ -250,6 +299,37 @@ describe('GET /credentials/schema/:credentialType', () => {
 		expect(properties.username.type).toBe('string');
 		expect(properties.password.type).toBe('string');
 		expect(required).toEqual(expect.arrayContaining(['host', 'port']));
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should retrieve JWT Auth credential schema with conditional properties', async () => {
+		const response = await authOwnerAgent.get('/credentials/schema/jwtAuth');
+
+		const { additionalProperties, type, properties, allOf } = response.body;
+
+		expect(additionalProperties).toBe(false);
+		expect(type).toBe('object');
+		expect(properties.keyType.type).toBe('string');
+		expect(properties.keyType.enum).toEqual(['passphrase', 'pemKey']);
+		expect(properties.algorithm.type).toBe('string');
+		expect(allOf).toBeDefined();
+		expect(allOf.length).toBe(2);
+
+		// Check passphrase condition
+		const passphraseCondition = allOf.find(condition => 
+			condition.if.properties.keyType.const === 'passphrase'
+		);
+		expect(passphraseCondition).toBeDefined();
+		expect(passphraseCondition.then.properties.secret).toBeDefined();
+
+		// Check pemKey condition
+		const pemKeyCondition = allOf.find(condition => 
+			condition.if.properties.keyType.const === 'pemKey'
+		);
+		expect(pemKeyCondition).toBeDefined();
+		expect(pemKeyCondition.then.properties.privateKey).toBeDefined();
+		expect(pemKeyCondition.then.properties.publicKey).toBeDefined();
+
 		expect(response.statusCode).toBe(200);
 	});
 });
