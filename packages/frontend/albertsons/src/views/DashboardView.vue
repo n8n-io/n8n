@@ -2,22 +2,19 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import albertsonsLogo from '../assets/albertsons-logo.png';
+import { useTemplatesStore } from '../stores/templates.store';
 
 const router = useRouter();
+const templatesStore = useTemplatesStore();
 
 const workflows = ref([]);
 const loading = ref(true);
 
-// ----------------------------------------
-// DIRECT CALL TO n8n REST API (WORKS 100%)
-// ----------------------------------------
 async function loadWorkflows() {
 	loading.value = true;
-
 	try {
-		const res = await fetch('http://localhost:8080/rest/workflows');
+		const res = await fetch('/rest/workflows');
 		const data = await res.json();
-
 		workflows.value = data.data || [];
 	} catch (err) {
 		console.error('Error fetching workflows:', err);
@@ -28,6 +25,14 @@ async function loadWorkflows() {
 
 function goToNewWorkflow() {
 	router.push('/workflow/new');
+}
+
+function openWorkflow(id) {
+	router.push(`/workflow/${id}`);
+}
+
+function publishAsTemplate(id) {
+	templatesStore.publishAsTemplate(id);
 }
 
 onMounted(() => {
@@ -88,15 +93,24 @@ onMounted(() => {
 				No workflows found. Create your first workflow!
 			</div>
 
-			<div
-				v-else
-				v-for="wf in workflows"
-				:key="wf.id"
-				class="workflow-card"
-				@click="router.push(`/workflow/${wf.id}`)"
-			>
-				<h3>{{ wf.name || 'Untitled Workflow' }}</h3>
-				<p>Last updated: {{ wf.updatedAt || 'N/A' }} · Created: {{ wf.createdAt || 'N/A' }}</p>
+			<div v-else>
+				<div v-for="wf in workflows" :key="wf.id" class="workflow-card">
+					<div class="workflow-content" @click="openWorkflow(wf.id)">
+						<h3>{{ wf.name || 'Untitled Workflow' }}</h3>
+						<p>
+							Last updated: {{ wf.updatedAt || 'N/A' }} · Created:
+							{{ wf.createdAt || 'N/A' }}
+						</p>
+					</div>
+
+					<button
+						class="publish-btn"
+						:disabled="templatesStore.isTemplate(wf.id)"
+						@click.stop="publishAsTemplate(wf.id)"
+					>
+						{{ templatesStore.isTemplate(wf.id) ? '✓ Published' : 'Publish' }}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -107,7 +121,6 @@ onMounted(() => {
 	padding: 30px 40px;
 }
 
-/* HEADER */
 .header {
 	display: flex;
 	align-items: center;
@@ -127,7 +140,6 @@ onMounted(() => {
 	color: #111827;
 }
 
-/* METRICS */
 .metrics {
 	display: flex;
 	gap: 20px;
@@ -157,11 +169,11 @@ onMounted(() => {
 .green {
 	color: green;
 }
+
 .red {
 	color: red;
 }
 
-/* TABS */
 .tabs {
 	display: flex;
 	gap: 15px;
@@ -180,7 +192,6 @@ onMounted(() => {
 	border-bottom: 3px solid #0055ff;
 }
 
-/* ACTION BUTTONS */
 .actions {
 	display: flex;
 	gap: 15px;
@@ -203,25 +214,64 @@ onMounted(() => {
 	cursor: pointer;
 }
 
-/* WORKFLOW LIST */
 .workflow-list {
 	margin-top: 20px;
 }
 
 .workflow-card {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	padding: 15px;
 	border: 1px solid #ddd;
 	margin-bottom: 12px;
 	border-radius: 6px;
 	background: white;
+}
+
+.workflow-content {
 	cursor: pointer;
+	flex: 1;
 }
 
-.workflow-card:hover {
-	background: #f7faff;
+.workflow-content:hover {
+	opacity: 0.8;
 }
 
-/* Loading + Empty States */
+.workflow-card h3 {
+	margin: 0;
+}
+
+.workflow-card p {
+	margin: 5px 0 0 0;
+	font-size: 12px;
+	color: #666;
+}
+
+.publish-btn {
+	padding: 6px 14px;
+	border: 1px solid #2563eb;
+	background: #eff6ff;
+	color: #2563eb;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	margin-left: 10px;
+}
+
+.publish-btn:disabled {
+	border-color: #ccc;
+	background: #f3f4f6;
+	color: #999;
+	cursor: default;
+}
+
+.publish-btn:hover:not(:disabled) {
+	background: #dbeafe;
+}
+
 .loading-text,
 .empty-state {
 	font-size: 14px;
