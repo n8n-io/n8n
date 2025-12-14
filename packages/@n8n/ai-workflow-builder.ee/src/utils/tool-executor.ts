@@ -188,9 +188,62 @@ export async function executeToolsInParallel(
 	// Collect template IDs from all updates
 	const allTemplateIds = collectArrayFromUpdates<number>(stateUpdates, 'templateIds');
 
-	// Return the combined update
+	/* --------------------------
+	   Ensure assistant message with reasoning_content is resent before tool results
+	   (dedupe-aware)
+	   --------------------------
+	   Reason: Some "thinking-with-tools" models (DeepSeek Reasoner v3.2) require the
+	   assistant message that triggered tool_calls to be re-sent verbatim (including
+	   provider-specific top-level fields like reasoning_content) immediately before
+	   tool result messages so the model can continue its internal chain-of-thought.
+
+	   To avoid duplicating the assistant message in cases where it may already be
+	   present in the collected messages (e.g. reconstructed messages or tooling that
+	   returns the original message), we check for duplicates by object identity
+	   and by message id (if present) before prepending.
+	*/
+	const returnedMessages: BaseMessage[] = [];
+
+	if (allMessages.length > 0) {
+		// Detect whether aiMessage is already included in collected messages.
+		const alreadyIncluded = allMessages.some((m) => {
+			// Identity check
+			if (m === aiMessage) return true;
+			// If both messages have an id, compare them
+			// (BaseMessage may or may not have id; guard accordingly)
+			// @ts-ignore - id may be optional on BaseMessage
+			if (m && (m as any).id && (aiMessage as any).id) {
+				// @ts-ignore
+				return (m as any).id === (aiMessage as any).id;
+			}
+			return false;
+		});
+
+		// Only prepend the original assistant message if it's not already present.
+		if (!alreadyIncluded) {
+			// Preserve the exact AIMessage instance so provider-specific top-level fields
+			// (e.g. reasoning_content, thought_signature) remain intact.
+			returnedMessages.push(aiMessage);
+		}
+
+		// Append tool results / any messages collected from state updates
+		returnedMessages.push(...allMessages);
+
+		// Low-noise debug log for troubleshooting; non-fatal if console is unavailable.
+		try {
+			// eslint-disable-next-line no-console
+			console.debug(
+				'[ToolExecutor] Ensuring assistant AIMessage is present before tool results (dedupe-aware)',
+			);
+		} catch (_) {
+			// ignore logging failures
+		}
+	}
+
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
-		messages: allMessages,
+		// Preserve previous behavior: if there are returned messages, use them; otherwise
+		// keep whatever allMessages contains (possibly an empty array).
+		messages: returnedMessages.length > 0 ? returnedMessages : allMessages,
 	};
 
 	if (allOperations.length > 0) {
