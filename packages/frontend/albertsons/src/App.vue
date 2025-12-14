@@ -238,7 +238,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 .content {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: stretch; /* ✅ FIX */
 	overflow: auto;
 	grid-area: content;
 }
@@ -256,18 +256,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 }
 
 .contentWrapper {
-	display: flex;
-	grid-area: content;
-	position: relative;
-	overflow: auto;
+	display: block; /* ✅ simplest & best */
 	height: 100%;
 	width: 100%;
-	justify-content: center;
-
-	main {
-		width: 100%;
-		height: 100%;
-	}
 }
 
 .header {

@@ -70,6 +70,7 @@ function useTemplate(id: string) {
 	padding: 32px 40px;
 	max-width: 1120px;
 	margin: 0 auto;
+	background: var(--color-background-base);
 }
 
 .header {
@@ -79,13 +80,13 @@ function useTemplate(id: string) {
 .title {
 	font-size: 26px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color-text-primary);
 	margin-bottom: 4px;
 }
 
 .subtitle {
 	font-size: 14px;
-	color: #6b7280;
+	color: var(--color-text-secondary);
 }
 
 .grid {
@@ -100,9 +101,9 @@ function useTemplate(id: string) {
 	justify-content: space-between;
 	padding: 20px 20px 16px;
 	border-radius: 12px;
-	border: 1px solid #e5e7eb;
-	background-color: #ffffff;
-	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+	border: 1px solid var(--color-border-base);
+	background-color: var(--color-background-base);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
 .card-icon {
@@ -114,7 +115,7 @@ function useTemplate(id: string) {
 	width: 36px;
 	height: 36px;
 	border-radius: 10px;
-	background: #e5f0ff;
+	background: var(--color-background-secondary);
 	position: relative;
 }
 
@@ -125,7 +126,7 @@ function useTemplate(id: string) {
 	width: 12px;
 	height: 12px;
 	border-radius: 4px;
-	border: 2px solid #2563eb;
+	border: 2px solid var(--color-primary);
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
@@ -142,19 +143,19 @@ function useTemplate(id: string) {
 .card-title {
 	font-size: 15px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color-text-primary);
 	margin-bottom: 2px;
 }
 
 .card-description {
 	font-size: 13px;
-	color: #6b7280;
+	color: var(--color-text-secondary);
 	margin-bottom: 4px;
 }
 
 .card-meta {
 	font-size: 11px;
-	color: #9ca3af;
+	color: var(--color-text-secondary);
 }
 
 .card-footer {
@@ -166,15 +167,16 @@ function useTemplate(id: string) {
 	padding: 8px 18px;
 	border-radius: 999px;
 	border: none;
-	background-color: #0060dc;
-	color: #ffffff;
+	background-color: var(--color-primary);
+	color: var(--color-background-base);
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
 }
 
 .btn-primary:hover {
-	background-color: #0053bf;
+	background-color: var(--color-primary);
+	filter: brightness(0.95);
 }
 
 @media (max-width: 1100px) {
