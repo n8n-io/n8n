@@ -1,6 +1,7 @@
 import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import { isWindowsFilePath } from '@n8n/utils';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
@@ -16,6 +17,7 @@ import {
 	UnrecognizedNodeTypeError,
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core/src/nodes-loader/constants';
 import type {
 	KnownNodesAndCredentials,
 	INodeTypeBaseDescription,
@@ -152,21 +154,43 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/**
+	 * Resolves the node icon file path when loaded from /icons/${packageName}/${iconPath}.
+	 *
+	 * Using N8N_CUSTOM_EXTENSIONS nodes can be loaded from any directory outside of CWD='$N8N_USER_FOLDER/.n8n/'.
+	 * Custom nodes are loaded by a custom-directory-loader.ts using absolute path, different to the default package-directory-loader.ts.
+	 * The icon loading logic for custom nodes seems a bit broken, because icons are resolved by absolute path encoded in URLs.
+	 * Examples when served from `/icons/${packageName}/${iconPath}`:
+	 * - '/icons/CUSTOM//home/node/.n8n-custom'
+	 * - '/icons/CUSTOM/C:/User/name/.n8n-custom'
+	 *
+	 * resolveIcon() has a special path.resolve() strategy for custom nodes considering:
+	 * - An absolute linux file path is encoded in the URL using '//'.
+	 * - '//' in URLs can be normalized to '/' by proxies, load balancers, etc.
+	 * - A Windows file path starts with drive letters like 'C:' not '/'.
+	 *
+	 * @todo Instead of fixing broken custom node loading strategy here, make custom-directory-loader.ts also use relative path.
+	 * Besides having different icon loading strategies, encoding an absolute path in urls seems a security risk.
+	 */
 	resolveIcon(packageName: string, url: string): string | undefined {
+		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
 		const loader = this.loaders[packageName];
 		if (!loader) {
 			return undefined;
 		}
 
-		const prefix = (str: string, pre: string) => pre + str;
-		const dedupe = (str: string) => str.replace(/\/+/g, '/');
-		const isWinPath = (str: string) => /^([A-Z]:[\/|\\])/.test(str);
+		const resolvePath = (iconPath: string) => {
+			return path.resolve(loader.directory, iconPath);
+		};
+
+		const resolvePathCustom = (path: string) => {
+			if (isWindowsFilePath(path)) return path;
+			return path.startsWith('/') ? path : '/' + path;
+		};
 
 		const pathPrefix = `/icons/${packageName}/`;
-		const urlFilePath = dedupe(url).substring(pathPrefix.length);
-		const filePath = isWinPath(urlFilePath)
-			? urlFilePath
-			: path.resolve(loader.directory, prefix(urlFilePath, '/'));
+		const urlFilePath = url.substring(pathPrefix.length);
+		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
@@ -723,7 +747,7 @@ export class LoadNodesAndCredentials {
 			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
 			const customNodesRoot = path.join(directory, 'node_modules');
 
-			if (loader.packageName === 'CUSTOM') {
+			if (loader.packageName === CUSTOM_NODES_PACKAGE_NAME) {
 				const customNodeEntries = await fsPromises.readdir(customNodesRoot, {
 					withFileTypes: true,
 				});

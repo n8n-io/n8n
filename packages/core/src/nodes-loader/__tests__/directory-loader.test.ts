@@ -26,6 +26,7 @@ jest.mock('fast-glob', () => async (pattern: string) => {
 
 import { NodeTypes } from '@test/helpers';
 
+import { CUSTOM_NODES_PACKAGE_NAME } from '../constants';
 import { CustomDirectoryLoader } from '../custom-directory-loader';
 import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
@@ -84,7 +85,7 @@ describe('DirectoryLoader', () => {
 	describe('CustomDirectoryLoader', () => {
 		it('should load custom nodes and credentials', async () => {
 			const loader = new CustomDirectoryLoader(directory);
-			expect(loader.packageName).toEqual('CUSTOM');
+			expect(loader.packageName).toEqual(CUSTOM_NODES_PACKAGE_NAME);
 
 			await loader.loadAll();
 

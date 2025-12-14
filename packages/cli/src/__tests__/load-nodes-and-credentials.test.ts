@@ -3,6 +3,7 @@ import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
+import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core/src/nodes-loader/constants';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -28,14 +29,20 @@ jest.mock('@/push', () => {
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
-		const packageName = 'package1';
-		const directory = '/home/user/.n8n/nodes';
-		const pathPrefix = `/icons/${packageName}`;
-		const pathPrefixDir = `${pathPrefix}${directory}`;
+		let instanceCustom: LoadNodesAndCredentials;
+		let instanceCustomWin: LoadNodesAndCredentials;
 
-		let winInstance: LoadNodesAndCredentials;
-		const winDirectory = 'C:/Users/name/.n8n/nodes';
-		const winPathPrefixDir = `${pathPrefix}/${winDirectory}`;
+		const packageName = 'package1';
+		const packageNameCustom = CUSTOM_NODES_PACKAGE_NAME;
+
+		const dir = '/home/user/.n8n/nodes';
+		const dirCustom = '/home/user/.n8n-custom-nodes';
+		const dirCustomWin = 'C:/Users/name/.n8n-custom-nodes';
+
+		const pathPrefix = `/icons/${packageName}`;
+		const pathPrefixCustom = `/icons/${packageNameCustom}`;
+		const pathPrefixAbsolute = `${pathPrefixCustom}/${dirCustom}`;
+		const pathPrefixAbsoluteWin = `${pathPrefixCustom}/${dirCustomWin}`;
 
 		beforeEach(() => {
 			const mockInstance = (pkg: string, directory: string) => {
@@ -45,8 +52,9 @@ describe('LoadNodesAndCredentials', () => {
 				});
 				return mi;
 			};
-			instance = mockInstance('package1', directory);
-			winInstance = mockInstance('package2', winDirectory);
+			instance = mockInstance(packageName, dir);
+			instanceCustom = mockInstance(packageNameCustom, dirCustom);
+			instanceCustomWin = mockInstance(packageNameCustom, dirCustomWin);
 		});
 
 		it('should return undefined if the loader for the package is not found', () => {
@@ -55,35 +63,37 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should return undefined if the resolved file path is outside the loader directory', () => {
-			const result = instance.resolveIcon('package1', `${pathPrefix}/some/other/path/icon.png`);
+			const result = instance.resolveIcon('package1', '/some/other/path/icon.png');
 			expect(result).toBeUndefined();
 		});
 
 		it('should return the file path if the file is within the loader directory', () => {
-			const result = instance.resolveIcon('package1', `${pathPrefixDir}/icon.png`);
-			expect(result).toBe(`${directory}/icon.png`);
-		});
-
-		it('should return the file path if the url contains duplicate slash //', () => {
-			const result = instance.resolveIcon('package1', `${pathPrefixDir}//icon.png`);
-			expect(result).toBe(`${directory}/icon.png`);
-		});
-
-		it('should return absolute windows file path starting with C:/', () => {
-			const winIconPath = `${winDirectory}/icon.png`;
-			const result = winInstance.resolveIcon('package2', `${winPathPrefixDir}/icon.png`);
-			expect(result).toBe(winIconPath);
-		});
-
-		it('should return absolute windows file path if the url contains duplicate slash //', () => {
-			const winIconPath = `${winDirectory}/icon.png`;
-			const result = winInstance.resolveIcon('package2', `${winPathPrefixDir}//icon.png`);
-			expect(result).toBe(winIconPath);
+			const result = instance.resolveIcon('package1', `${pathPrefix}/icon.png`);
+			expect(result).toBe(`${dir}/icon.png`);
 		});
 
 		it('should return undefined if the URL is outside the package directory', () => {
 			const result = instance.resolveIcon('package1', `${pathPrefix}/../../../etc/passwd`);
 			expect(result).toBeUndefined();
+		});
+
+		describe('N8N_CUSTOM_EXTENSIONS', () => {
+			it('should return file path if url contains "//" with absolute custom file path', () => {
+				const result = instanceCustom.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixAbsolute}/icon.png`,
+				);
+				expect(result).toBe(`${dirCustom}/icon.png`);
+			});
+
+			it('should return file path if url contains "C:" with absolute custom windows file path', () => {
+				const winIconPath = `${dirCustomWin}/icon.png`;
+				const result = instanceCustomWin.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixAbsoluteWin}/icon.png`,
+				);
+				expect(result).toBe(winIconPath);
+			});
 		});
 	});
 
@@ -857,7 +867,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		const mockLoader = mock<DirectoryLoader>({
-			packageName: 'CUSTOM',
+			packageName: CUSTOM_NODES_PACKAGE_NAME,
 			directory: '/some/custom/path',
 			isLazyLoaded: false,
 			reset: jest.fn(),
