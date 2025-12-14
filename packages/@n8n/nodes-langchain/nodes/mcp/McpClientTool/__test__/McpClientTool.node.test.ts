@@ -428,7 +428,11 @@ describe('McpClientTool', () => {
 					{
 						name: 'get_weather',
 						description: 'Gets the weather',
-						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+						inputSchema: {
+							type: 'object',
+							properties: { location: { type: 'string' } },
+							additionalProperties: false,
+						},
 					},
 				],
 			});

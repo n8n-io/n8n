@@ -27,6 +27,7 @@ import {
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
 import { JSONSchema7 } from 'json-schema';
+import pick from 'lodash/pick';
 
 /**
  * Get node parameters for MCP client configuration
@@ -430,9 +431,7 @@ export class McpClientTool implements INodeType {
 					// Otherwise (true or omitted), pass all arguments through
 					const sanitizedToolArguments: IDataObject =
 						schema.additionalProperties === false
-							? Object.fromEntries(
-									Object.entries(toolArguments).filter(([key]) => key in (schema.properties ?? {})),
-								)
+							? pick(toolArguments, Object.keys(schema.properties ?? {}))
 							: toolArguments;
 
 					const params: {
