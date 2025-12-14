@@ -157,20 +157,20 @@ export class LoadNodesAndCredentials {
 	/**
 	 * Resolves the node icon file path when loaded from /icons/${packageName}/${iconPath}.
 	 *
-	 * Using N8N_CUSTOM_EXTENSIONS nodes can be loaded from any directory outside of CWD='$N8N_USER_FOLDER/.n8n/'.
-	 * Custom nodes are loaded by a custom-directory-loader.ts using absolute path, different to the default package-directory-loader.ts.
-	 * The icon loading logic for custom nodes seems a bit broken, because icons are resolved by absolute path encoded in URLs.
+	 * Using N8N_CUSTOM_EXTENSIONS, nodes can be loaded from any directory outside of CWD='$N8N_USER_FOLDER/.n8n/'.
+	 * Custom nodes are loaded by custom-directory-loader.ts using an absolute path, different from the default package-directory-loader.ts.
+	 * The icon loading logic for custom nodes seems a bit broken, because icons are resolved by absolute paths encoded in URLs.
 	 * Examples when served from `/icons/${packageName}/${iconPath}`:
 	 * - '/icons/CUSTOM//home/node/.n8n-custom'
 	 * - '/icons/CUSTOM/C:/User/name/.n8n-custom'
 	 *
 	 * resolveIcon() has a special path.resolve() strategy for custom nodes considering:
-	 * - An absolute linux file path is encoded in the URL using '//'.
+	 * - An absolute Linux file path is encoded in the URL using '//'.
 	 * - '//' in URLs can be normalized to '/' by proxies, load balancers, etc.
 	 * - A Windows file path starts with drive letters like 'C:' not '/'.
 	 *
-	 * @todo Instead of fixing broken custom node loading strategy here, make custom-directory-loader.ts also use relative path.
-	 * Besides having different icon loading strategies, encoding an absolute path in urls seems a security risk.
+	 * @todo Instead of fixing the broken custom node loading strategy here, make custom-directory-loader.ts also use relative paths.
+	 * Besides having different icon loading strategies, encoding an absolute path in URLs seems a security risk.
 	 */
 	resolveIcon(packageName: string, url: string): string | undefined {
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
