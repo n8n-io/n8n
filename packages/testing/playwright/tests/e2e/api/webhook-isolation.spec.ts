@@ -31,7 +31,7 @@ test.describe('Webhook Origin Isolation', () => {
 		test(`Webhook responses should include the correct response headers for ${webhookPath}`, async ({
 			api,
 		}) => {
-			const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 			expect(webhookResponse.ok()).toBe(true);
 
 			const headers = webhookResponse.headers();

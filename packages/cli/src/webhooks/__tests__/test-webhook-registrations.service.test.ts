@@ -107,14 +107,6 @@ describe('TestWebhookRegistrationsService', () => {
 		});
 	});
 
-	describe('deregisterAll()', () => {
-		test('should deregister all test webhook registrations', async () => {
-			await registrations.deregisterAll();
-
-			expect(cacheService.delete).toHaveBeenCalledWith(cacheKey);
-		});
-	});
-
 	describe('toKey()', () => {
 		test('should convert a test webhook registration to a key', () => {
 			const result = registrations.toKey(registration.webhook);

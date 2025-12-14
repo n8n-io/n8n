@@ -31,20 +31,6 @@ test.describe('NDV', () => {
 		await expect(n8n.ndv.inputPanel.get()).toContainText('No input connected');
 	});
 
-	test('should test webhook node', async ({ n8n }) => {
-		await n8n.canvas.addNode('Webhook', { closeNDV: false });
-
-		await n8n.ndv.execute();
-
-		const webhookUrl = await n8n.ndv.getWebhookUrl();
-		await expect(n8n.ndv.getWebhookTriggerListening()).toBeVisible();
-		const response = await n8n.ndv.makeWebhookRequest(webhookUrl as string);
-		expect(response.status()).toBe(200);
-
-		await expect(n8n.ndv.outputPanel.get()).toBeVisible();
-		await expect(n8n.ndv.outputPanel.getDataContainer()).toBeVisible();
-	});
-
 	test('should change input and go back to canvas', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('NDV-test-select-input.json');
 		await n8n.canvas.clickZoomToFitButton();

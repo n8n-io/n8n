@@ -10,7 +10,8 @@ test.describe('External Webhook Triggering', () => {
 
 		const testPayload = { message: 'Hello from Playwright test' };
 
-		const webhookResponse = await api.request.post(`/webhook/${webhookPath}`, {
+		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+			method: 'POST',
 			data: testPayload,
 		});
 
@@ -28,7 +29,7 @@ test.describe('External Webhook Triggering', () => {
 			'webhook-misconfiguration-test.json',
 		);
 
-		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 
 		expect(webhookResponse.ok()).toBe(false);
 		expect(await webhookResponse.text()).toContain('Unused Respond to Webhook node');
