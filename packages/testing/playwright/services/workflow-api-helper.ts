@@ -41,7 +41,7 @@ export class WorkflowApiHelper {
 	 * @param options - Optional configuration for workflow creation
 	 * @param options.folder - Optional folder ID to place the workflow in
 	 * @param options.name - Optional workflow name. If not provided, generates a unique name using nanoid
-	 * @returns Object containing the name and ID of the created workflow
+	 * @returns Object containing the name, ID, and versionId of the created workflow
 	 */
 	async createInProject(
 		project: string,
@@ -49,7 +49,7 @@ export class WorkflowApiHelper {
 			folder?: string;
 			name?: string;
 		},
-	): Promise<{ name: string; id: string }> {
+	): Promise<{ name: string; id: string; versionId: string }> {
 		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
 
 		const workflow = {
@@ -74,6 +74,7 @@ export class WorkflowApiHelper {
 		return {
 			name: workflowName,
 			id: workflowData.id,
+			versionId: workflowData.versionId,
 		};
 	}
 
@@ -187,6 +188,7 @@ export class WorkflowApiHelper {
 		return result;
 	}
 
+	// TODO: workflowId is being ignored
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);
@@ -249,5 +251,36 @@ export class WorkflowApiHelper {
 		}
 
 		throw new TestError(`Execution did not complete within ${timeoutMs}ms`);
+	}
+
+	/**
+	 * Wait for a workflow execution to reach a specific status
+	 * @param workflowId - The workflow ID to check
+	 * @param expectedStatus - The expected status (e.g., 'waiting', 'success', 'error')
+	 * @param timeoutMs - Maximum time to wait in milliseconds
+	 * @returns The execution once it reaches the expected status
+	 * @throws TestError if execution doesn't reach the expected status within timeout
+	 */
+	async waitForWorkflowStatus(
+		workflowId: string,
+		expectedStatus: string,
+		timeoutMs = 5000,
+	): Promise<ExecutionListResponse> {
+		const startTime = Date.now();
+
+		while (Date.now() - startTime < timeoutMs) {
+			const executions = await this.getExecutions(workflowId);
+			const execution = executions.find((e) => e.workflowId === workflowId);
+
+			if (execution && execution.status === expectedStatus) {
+				return execution;
+			}
+
+			await new Promise((resolve) => setTimeout(resolve, 200));
+		}
+
+		throw new TestError(
+			`Workflow ${workflowId} did not reach status '${expectedStatus}' within ${timeoutMs}ms`,
+		);
 	}
 }

@@ -125,10 +125,14 @@ export async function getWorkflowData(
 			});
 		}
 
-		if (workflowFromDb.activeVersion) {
-			workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
-			workflowFromDb.connections = workflowFromDb.activeVersion.connections;
+		if (!workflowFromDb.activeVersion) {
+			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id },
+			});
 		}
+
+		workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
+		workflowFromDb.connections = workflowFromDb.activeVersion.connections;
 
 		workflowData = workflowFromDb;
 	} else {
@@ -222,8 +226,10 @@ async function startExecution(
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
+		const workflowSettings = workflowData.settings;
 		const additionalDataIntegrated = await getBase({
 			workflowId: workflowData.id,
+			workflowSettings,
 		});
 		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
@@ -246,7 +252,6 @@ async function startExecution(
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		const workflowSettings = workflowData.settings;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
 			// We might have received a max timeout timestamp from the parent workflow
 			// If we did, then we get the minimum time between the two timeouts
@@ -381,12 +386,14 @@ export async function getBase({
 	projectId,
 	currentNodeParameters,
 	executionTimeoutTimestamp,
+	workflowSettings,
 }: {
 	userId?: string;
 	workflowId?: string;
 	projectId?: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
+	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
@@ -411,6 +418,7 @@ export async function getBase({
 		userId,
 		setExecutionStatus,
 		variables,
+		workflowSettings,
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);
 			const executionData = await executionRepository.findSingleExecution(executionId, {

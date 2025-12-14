@@ -20,6 +20,11 @@ describe('TestWebhookRegistrationsService', () => {
 	const webhookKey = 'GET|hello';
 	const cacheKey = 'test-webhooks';
 
+	beforeEach(() => {
+		jest.resetAllMocks();
+		cacheService.exists.mockResolvedValue(true);
+	});
+
 	describe('register()', () => {
 		test('should register a test webhook registration', async () => {
 			await registrations.register(registration);
@@ -31,6 +36,14 @@ describe('TestWebhookRegistrationsService', () => {
 			await registrations.register(registration);
 
 			expect(cacheService.expire).not.toHaveBeenCalled();
+		});
+
+		test('should throw an error if the registration fails', async () => {
+			cacheService.exists.mockResolvedValue(false);
+
+			await expect(registrations.register(registration)).rejects.toThrow(
+				'Test webhook registration failed: workflow is too big. Remove pinned data',
+			);
 		});
 	});
 

@@ -3,7 +3,7 @@
 exports[`InputPanel > should render 1`] = `
 <div>
   <div
-    class="run-data container runData"
+    class="run-data container ndv-v2 runData runDataV2"
     data-test-id="ndv-input-panel"
     data-v-5b5900d0=""
   >
@@ -18,10 +18,10 @@ exports[`InputPanel > should render 1`] = `
       >
         
         <div
-          class="titleSection"
+          class="titleSection titleSectionV2"
         >
           <span
-            class="n8n-text text-light size-medium bold title title"
+            class="n8n-text text-light size-medium bold title titleV2 title titleV2"
           >
             
             Input
@@ -184,7 +184,7 @@ exports[`InputPanel > should render 1`] = `
     <!--v-if-->
     <transition-stub
       appear="false"
-      class="uiBlocker"
+      class="uiBlocker uiBlockerNdvV2"
       css="true"
       data-v-1a77a378=""
       data-v-5b5900d0=""

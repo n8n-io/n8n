@@ -95,6 +95,8 @@ describe('ExecutionRepository', () => {
 					await cb(entityManager);
 					txCallback();
 				});
+				// Mock update to return affected count
+				entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
 				await executionRepository.updateExistingExecution(executionId, execution);
 
