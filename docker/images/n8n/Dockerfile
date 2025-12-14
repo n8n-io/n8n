@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.0
+ARG NODE_VERSION=22.21.1
 ARG N8N_VERSION=snapshot
 
 # ==============================================================================
@@ -7,14 +7,7 @@ ARG N8N_VERSION=snapshot
 FROM n8nio/base:${NODE_VERSION} AS system-deps
 
 # ==============================================================================
-# STAGE 2: Application Artifact Processor
-# ==============================================================================
-FROM alpine:3.22.2 AS app-artifact-processor
-
-COPY ./compiled /app/
-
-# ==============================================================================
-# STAGE 3: Final Runtime Image
+# STAGE 2: Final Runtime Image
 # ==============================================================================
 FROM system-deps AS runtime
 
@@ -27,8 +20,11 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
+COPY ./compiled /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
+
+# This version of npm has the fix for glob
+RUN npm install -g npm@11.6.4
 
 RUN cd /usr/local/lib/node_modules/n8n && \
 		npm rebuild sqlite3 && \
