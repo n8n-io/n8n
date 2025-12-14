@@ -1,12 +1,15 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	ISupplyDataFunctions,
+	IWorkflowExecuteAdditionalData,
 	Result,
 } from 'n8n-workflow';
 import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
@@ -187,8 +190,55 @@ export async function connectMcpClient({
 	}
 }
 
+/**
+ * Helper function to get or fetch OAuth2 Client Credentials token
+ */
+async function getOrFetchToken(
+	ctx: Pick<IExecuteFunctions, 'getCredentials' | 'getNode'>,
+	credentials: {
+		oauthTokenData?: { access_token: string };
+		clientId: string;
+		clientSecret?: string;
+		accessTokenUrl: string;
+		scope?: string;
+	},
+): Promise<string | null> {
+	// Use cached token if available
+	if (credentials.oauthTokenData?.access_token) {
+		return credentials.oauthTokenData.access_token;
+	}
+
+	// Fetch new token
+	const oAuth2Client = new ClientOAuth2({
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret || '',
+		accessTokenUri: credentials.accessTokenUrl,
+		scopes: credentials.scope ? credentials.scope.split(/[, ]+/).filter(Boolean) : [],
+	});
+
+	const { data } = await oAuth2Client.credentials.getToken();
+
+	// Save to database if possible
+	const additionalData = (ctx as { additionalData?: IWorkflowExecuteAdditionalData })
+		.additionalData;
+	if (additionalData) {
+		const node = ctx.getNode();
+		const nodeCredentials = node.credentials?.mcpOAuth2Api;
+		if (nodeCredentials) {
+			credentials.oauthTokenData = data;
+			await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'mcpOAuth2Api',
+				credentials as ICredentialDataDecryptedObject,
+			);
+		}
+	}
+
+	return data.access_token;
+}
+
 export async function getAuthHeaders(
-	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
+	ctx: Pick<IExecuteFunctions, 'getCredentials' | 'getNode'>,
 	authentication: McpAuthenticationOption,
 ): Promise<{ headers?: Record<string, string> }> {
 	switch (authentication) {
@@ -211,13 +261,45 @@ export async function getAuthHeaders(
 			return { headers: { Authorization: `Bearer ${result.token}` } };
 		}
 		case 'mcpOAuth2Api': {
-			const result = await ctx
-				.getCredentials<{ oauthTokenData: { access_token: string } }>('mcpOAuth2Api')
+			const credentials = await ctx
+				.getCredentials<{
+					oauthTokenData?: { access_token: string };
+					grantType?: string;
+					clientId?: string;
+					clientSecret?: string;
+					accessTokenUrl?: string;
+					scope?: string;
+				}>('mcpOAuth2Api')
 				.catch(() => null);
 
-			if (!result) return {};
+			if (!credentials) return {};
 
-			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+			// For client credentials flow, auto-fetch token if not present
+			if (
+				credentials.grantType === 'clientCredentials' &&
+				credentials.clientId &&
+				credentials.accessTokenUrl
+			) {
+				try {
+					const token = await getOrFetchToken(ctx, {
+						oauthTokenData: credentials.oauthTokenData,
+						clientId: credentials.clientId,
+						clientSecret: credentials.clientSecret,
+						accessTokenUrl: credentials.accessTokenUrl,
+						scope: credentials.scope,
+					});
+					if (token) {
+						return { headers: { Authorization: `Bearer ${token}` } };
+					}
+				} catch {
+					// Fall through if token acquisition fails
+				}
+			} else if (credentials.oauthTokenData?.access_token) {
+				// For authorization code flow, use existing token
+				return { headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` } };
+			}
+
+			return {};
 		}
 		case 'multipleHeadersAuth': {
 			const result = await ctx
@@ -262,19 +344,45 @@ export async function tryRefreshOAuth2Token(
 	}
 
 	let access_token: string | null = null;
+
+	// Try standard refresh first (for authorization code flow)
 	try {
 		const result = (await ctx.helpers.refreshOAuth2Token.call(
 			ctx,
 			'mcpOAuth2Api',
 		)) as ClientOAuth2TokenData;
 		access_token = result?.access_token;
-	} catch (error) {
-		return null;
+	} catch {
+		// If refresh fails, try client credentials flow
+		try {
+			const credentials = await ctx.getCredentials<{
+				oauthTokenData?: { access_token: string };
+				grantType?: string;
+				clientId?: string;
+				clientSecret?: string;
+				accessTokenUrl?: string;
+				scope?: string;
+			}>('mcpOAuth2Api');
+
+			if (
+				credentials.grantType === 'clientCredentials' &&
+				credentials.clientId &&
+				credentials.accessTokenUrl
+			) {
+				access_token = await getOrFetchToken(ctx, {
+					oauthTokenData: undefined, // Force fetch new token on 401
+					clientId: credentials.clientId,
+					clientSecret: credentials.clientSecret,
+					accessTokenUrl: credentials.accessTokenUrl,
+					scope: credentials.scope,
+				});
+			}
+		} catch {
+			return null;
+		}
 	}
 
-	if (!access_token) {
-		return null;
-	}
+	if (!access_token) return null;
 
 	if (!headers) {
 		return {
