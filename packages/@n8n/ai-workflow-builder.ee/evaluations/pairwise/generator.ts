@@ -9,6 +9,7 @@ import type { PairwiseDatasetInput, PairwiseTargetOutput } from './types';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
+import type { AgentModelConfig } from '../core/environment';
 import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
@@ -22,10 +23,20 @@ export type { PairwiseDatasetInput, PairwiseTargetOutput };
 export interface CreatePairwiseTargetOptions {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	judgeLlm: BaseChatModel;
 	numJudges: number;
 	numGenerations: number;
 	featureFlags?: BuilderFeatureFlags;
 	experimentName?: string;
+	agentModelConfig?: AgentModelConfig;
+	agentModels?: {
+		supervisor?: BaseChatModel;
+		responder?: BaseChatModel;
+		discovery?: BaseChatModel;
+		builder?: BaseChatModel;
+		configurator?: BaseChatModel;
+		default: BaseChatModel;
+	};
 }
 
 /**
@@ -38,7 +49,17 @@ export interface CreatePairwiseTargetOptions {
  * This avoids 403 errors from nested traceable in evaluator context.
  */
 export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
-	const { parsedNodeTypes, llm, numJudges, numGenerations, featureFlags, experimentName } = options;
+	const {
+		parsedNodeTypes,
+		llm,
+		judgeLlm,
+		numJudges,
+		numGenerations,
+		featureFlags,
+		experimentName,
+		agentModelConfig,
+		agentModels,
+	} = options;
 
 	return traceable(
 		async (inputs: PairwiseDatasetInput): Promise<PairwiseTargetOutput> => {
@@ -50,7 +71,15 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 					const generationIndex = i + 1;
 					// Wrap each generation in traceable for proper visibility
 					const generate = traceable(
-						async () => await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags),
+						async () =>
+							await generateWorkflow(
+								parsedNodeTypes,
+								llm,
+								prompt,
+								featureFlags,
+								agentModelConfig,
+								agentModels,
+							),
 						{
 							name: `generation_${generationIndex}`,
 							run_type: 'chain',
@@ -60,7 +89,7 @@ export function createPairwiseTarget(options: CreatePairwiseTargetOptions) {
 						},
 					);
 					const workflow = await generate();
-					const panelResult = await runJudgePanel(llm, workflow, evalCriteria, numJudges, {
+					const panelResult = await runJudgePanel(judgeLlm, workflow, evalCriteria, numJudges, {
 						generationIndex,
 						experimentName,
 					});
@@ -94,10 +123,19 @@ export async function generateWorkflow(
 	llm: BaseChatModel,
 	prompt: string,
 	featureFlags?: BuilderFeatureFlags,
+	agentModelConfig?: AgentModelConfig,
+	agentModels?: {
+		supervisor?: BaseChatModel;
+		responder?: BaseChatModel;
+		discovery?: BaseChatModel;
+		builder?: BaseChatModel;
+		configurator?: BaseChatModel;
+		default: BaseChatModel;
+	},
 ): Promise<SimpleWorkflow> {
 	const runId = generateRunId();
 
-	const agent = createAgent({ parsedNodeTypes, llm, featureFlags });
+	const agent = createAgent({ parsedNodeTypes, llm, agentModels, featureFlags });
 
 	await consumeGenerator(
 		agent.chat(

@@ -1,5 +1,6 @@
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
+import type { AgentModelConfig, ModelType } from './core/environment.js';
 import { runCliEvaluation } from './cli/runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
 import { runLocalPairwiseEvaluation, runPairwiseLangsmithEvaluation } from './pairwise/runner.js';
@@ -13,7 +14,7 @@ export {
 	runPairwiseLangsmithEvaluation,
 } from './pairwise/runner.js';
 export { runSingleTest } from './core/test-runner.js';
-export { setupTestEnvironment, createAgent } from './core/environment.js';
+export { setupTestEnvironment, createAgent, type AgentModelConfig } from './core/environment.js';
 
 /** Parse an integer flag with default value */
 function getIntFlag(flag: string, defaultValue: number, max?: number): number {
@@ -24,8 +25,92 @@ function getIntFlag(flag: string, defaultValue: number, max?: number): number {
 	return max ? Math.min(parsed, max) : parsed;
 }
 
+/**
+ * Parse model type from CLI arguments or environment variable
+ * Supports: haiku, sonnet, opus
+ * Defaults to 'sonnet' if not specified
+ */
+function parseModelType(): ModelType {
+	const modelArg = getFlagValue('--model') ?? process.env.EVAL_MODEL;
+	if (!modelArg) {
+		return 'sonnet'; // Default
+	}
+
+	const normalized = modelArg.toLowerCase().trim();
+	if (normalized === 'haiku' || normalized === 'sonnet' || normalized === 'opus') {
+		return normalized as ModelType;
+	}
+
+	throw new Error(`Invalid model type: ${modelArg}. Must be one of: haiku, sonnet, opus`);
+}
+
+/**
+ * Parse judge model type from CLI arguments or environment variable
+ * Supports: haiku, sonnet, opus
+ * Defaults to 'sonnet' if not specified (keeps judge fixed to sonnet by default)
+ */
+function parseJudgeModelType(): ModelType {
+	const judgeModelArg = getFlagValue('--judge-model') ?? process.env.EVAL_JUDGE_MODEL;
+	if (!judgeModelArg) {
+		return 'sonnet'; // Default to sonnet for judge
+	}
+
+	const normalized = judgeModelArg.toLowerCase().trim();
+	if (normalized === 'haiku' || normalized === 'sonnet' || normalized === 'opus') {
+		return normalized as ModelType;
+	}
+
+	throw new Error(
+		`Invalid judge model type: ${judgeModelArg}. Must be one of: haiku, sonnet, opus`,
+	);
+}
+
+/**
+ * Parse per-agent model configuration from CLI arguments or environment variables
+ * Supports: haiku, sonnet, opus for each agent
+ * Returns undefined if no per-agent config is provided (backward compatibility)
+ * @param _modelType - The default model type (used as fallback in setupTestEnvironment, not in this function)
+ */
+function parseAgentModelConfig(_modelType: ModelType): AgentModelConfig | undefined {
+	const parseAgentModel = (flag: string, envVar: string): ModelType | undefined => {
+		const value = getFlagValue(flag) ?? process.env[envVar];
+		if (!value) return undefined;
+
+		const normalized = value.toLowerCase().trim();
+		if (normalized === 'haiku' || normalized === 'sonnet' || normalized === 'opus') {
+			return normalized as ModelType;
+		}
+
+		throw new Error(`Invalid agent model type: ${value}. Must be one of: haiku, sonnet, opus`);
+	};
+
+	const supervisor = parseAgentModel('--agent-model-supervisor', 'EVAL_AGENT_MODEL_SUPERVISOR');
+	const responder = parseAgentModel('--agent-model-responder', 'EVAL_AGENT_MODEL_RESPONDER');
+	const discovery = parseAgentModel('--agent-model-discovery', 'EVAL_AGENT_MODEL_DISCOVERY');
+	const builder = parseAgentModel('--agent-model-builder', 'EVAL_AGENT_MODEL_BUILDER');
+	const configurator = parseAgentModel(
+		'--agent-model-configurator',
+		'EVAL_AGENT_MODEL_CONFIGURATOR',
+	);
+
+	// Only return config if at least one agent model is specified
+	if (supervisor || responder || discovery || builder || configurator) {
+		return {
+			supervisor,
+			responder,
+			discovery,
+			builder,
+			configurator,
+			// default field omitted - setupTestEnvironment() will use modelType as fallback
+		};
+	}
+
+	return undefined;
+}
+
 /** Parse all CLI arguments */
 function parseCliArgs() {
+	const modelType = parseModelType();
 	return {
 		testCaseId: process.argv.includes('--test-case')
 			? process.argv[process.argv.indexOf('--test-case') + 1]
@@ -44,6 +129,9 @@ function parseCliArgs() {
 		prompt: getFlagValue('--prompt'),
 		dos: getFlagValue('--dos'),
 		donts: getFlagValue('--donts'),
+		modelType,
+		judgeModelType: parseJudgeModelType(),
+		agentModelConfig: parseAgentModelConfig(modelType),
 	};
 }
 
@@ -74,6 +162,9 @@ async function main(): Promise<void> {
 				verbose: args.verbose,
 				outputDir: args.outputDir,
 				featureFlags,
+				modelType: args.modelType,
+				judgeModelType: args.judgeModelType,
+				agentModelConfig: args.agentModelConfig,
 			});
 		} else {
 			// LangSmith mode
@@ -87,10 +178,13 @@ async function main(): Promise<void> {
 				concurrency: args.concurrency,
 				maxExamples: args.maxExamples,
 				featureFlags,
+				modelType: args.modelType,
+				judgeModelType: args.judgeModelType,
+				agentModelConfig: args.agentModelConfig,
 			});
 		}
 	} else if (useLangsmith) {
-		await runLangsmithEvaluation(args.repetitions, featureFlags);
+		await runLangsmithEvaluation(args.repetitions, featureFlags, args.modelType);
 	} else {
 		const csvTestCases = args.promptsCsvPath
 			? loadTestCasesFromCsv(args.promptsCsvPath)
@@ -100,6 +194,7 @@ async function main(): Promise<void> {
 			testCaseFilter: args.testCaseId,
 			repetitions: args.repetitions,
 			featureFlags,
+			modelType: args.modelType,
 		});
 	}
 }

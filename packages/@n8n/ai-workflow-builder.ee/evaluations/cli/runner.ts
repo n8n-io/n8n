@@ -4,6 +4,7 @@ import pc from 'picocolors';
 import { createProgressBar, updateProgress, displayResults, displayError } from './display.js';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
 import { basicTestCases, generateTestCases } from '../chains/test-case-generator.js';
+import type { ModelType } from '../core/environment.js';
 import {
 	setupTestEnvironment,
 	createAgent,
@@ -27,6 +28,7 @@ type CliEvaluationOptions = {
 	testCases?: TestCase[]; // Optional array of test cases to run (if not provided, uses defaults and generation)
 	repetitions?: number; // Number of times to run each test (e.g. for cache warming analysis)
 	featureFlags?: BuilderFeatureFlags; // Optional feature flags to pass to the agent (e.g. templateExamples, multiAgent)
+	modelType?: ModelType; // Model type to use: 'haiku', 'sonnet', or 'opus'
 };
 
 /**
@@ -34,9 +36,10 @@ type CliEvaluationOptions = {
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
  */
 export async function runCliEvaluation(options: CliEvaluationOptions = {}): Promise<void> {
-	const { repetitions = 1, testCaseFilter, featureFlags } = options;
+	const { repetitions = 1, testCaseFilter, featureFlags, modelType = 'sonnet' } = options;
 
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
+	console.log(pc.blue(`➔ Model: ${modelType}`));
 	if (repetitions > 1) {
 		console.log(pc.yellow(`➔ Each test will be run ${repetitions} times for cache analysis`));
 	}
@@ -51,7 +54,8 @@ export async function runCliEvaluation(options: CliEvaluationOptions = {}): Prom
 	console.log();
 	try {
 		// Setup test environment
-		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
+		// Note: CLI mode doesn't use judges, so judgeModelType defaults to 'sonnet'
+		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment(modelType, 'sonnet');
 
 		// Determine test cases to run
 		const providedTestCases =

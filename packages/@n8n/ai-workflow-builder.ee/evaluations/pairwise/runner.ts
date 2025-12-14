@@ -7,6 +7,7 @@ import { aggregateGenerations, runJudgePanel, type GenerationResult } from './ju
 import { createPairwiseLangsmithEvaluator } from './metrics-builder';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
+import type { AgentModelConfig, ModelType } from '../core/environment';
 import { setupTestEnvironment } from '../core/environment';
 import { createArtifactSaver } from '../utils/artifact-saver';
 import { formatHeader } from '../utils/evaluation-helpers';
@@ -73,12 +74,43 @@ interface LogPairwiseConfigOptions {
 	numJudges: number;
 	repetitions: number;
 	concurrency: number;
+	modelType: ModelType;
+	judgeModelType: ModelType;
+	agentModelConfig?: AgentModelConfig;
 }
 
 /** Log configuration for pairwise evaluation */
 function logPairwiseConfig(log: EvalLogger, options: LogPairwiseConfigOptions): void {
-	const { experimentName, numGenerations, numJudges, repetitions, concurrency } = options;
+	const {
+		experimentName,
+		numGenerations,
+		numJudges,
+		repetitions,
+		concurrency,
+		modelType,
+		judgeModelType,
+		agentModelConfig,
+	} = options;
 	log.info(`➔ Experiment: ${experimentName}`);
+	if (agentModelConfig) {
+		log.info(`➔ Agent Models:`);
+		log.info(
+			`   Supervisor: ${agentModelConfig.supervisor ?? agentModelConfig.default ?? modelType}`,
+		);
+		log.info(
+			`   Responder: ${agentModelConfig.responder ?? agentModelConfig.default ?? modelType}`,
+		);
+		log.info(
+			`   Discovery: ${agentModelConfig.discovery ?? agentModelConfig.default ?? modelType}`,
+		);
+		log.info(`   Builder: ${agentModelConfig.builder ?? agentModelConfig.default ?? modelType}`);
+		log.info(
+			`   Configurator: ${agentModelConfig.configurator ?? agentModelConfig.default ?? modelType}`,
+		);
+	} else {
+		log.info(`➔ Generation Model: ${modelType} (all agents)`);
+	}
+	log.info(`➔ Judge Model: ${judgeModelType}`);
 	log.info(
 		`➔ Config: ${numGenerations} gen(s) × ${numJudges} judges × ${repetitions} reps (concurrency: ${concurrency})${log.isVerbose ? ' (verbose)' : ''}`,
 	);
@@ -188,6 +220,9 @@ export interface PairwiseEvaluationOptions {
 	concurrency?: number;
 	maxExamples?: number;
 	featureFlags?: BuilderFeatureFlags;
+	modelType?: ModelType;
+	judgeModelType?: ModelType;
+	agentModelConfig?: AgentModelConfig;
 }
 
 /**
@@ -207,6 +242,9 @@ export async function runPairwiseLangsmithEvaluation(
 		concurrency = DEFAULTS.CONCURRENCY,
 		maxExamples,
 		featureFlags,
+		modelType = 'sonnet',
+		judgeModelType = 'sonnet',
+		agentModelConfig,
 	} = options;
 	const log = createLogger(verbose);
 
@@ -217,6 +255,9 @@ export async function runPairwiseLangsmithEvaluation(
 		numJudges,
 		repetitions,
 		concurrency,
+		modelType,
+		judgeModelType,
+		agentModelConfig,
 	});
 
 	logFeatureFlags(log, featureFlags);
@@ -234,7 +275,11 @@ export async function runPairwiseLangsmithEvaluation(
 			log.verbose('➔ Enabled LANGSMITH_TRACING=true');
 		}
 
-		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, judgeLlm, agentModels, lsClient } = await setupTestEnvironment(
+			modelType,
+			judgeModelType,
+			agentModelConfig,
+		);
 
 		if (!lsClient) {
 			throw new Error('Langsmith client not initialized');
@@ -267,10 +312,13 @@ export async function runPairwiseLangsmithEvaluation(
 		const target = createPairwiseTarget({
 			parsedNodeTypes,
 			llm,
+			judgeLlm,
 			numJudges,
 			numGenerations,
 			featureFlags,
 			experimentName,
+			agentModelConfig,
+			agentModels,
 		});
 		const evaluator = createPairwiseLangsmithEvaluator();
 
@@ -317,6 +365,9 @@ export interface LocalPairwiseOptions {
 	verbose?: boolean;
 	outputDir?: string;
 	featureFlags?: BuilderFeatureFlags;
+	modelType?: ModelType;
+	judgeModelType?: ModelType;
+	agentModelConfig?: AgentModelConfig;
 }
 
 /**
@@ -332,10 +383,32 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		verbose = false,
 		outputDir,
 		featureFlags,
+		modelType = 'sonnet',
+		judgeModelType = 'sonnet',
+		agentModelConfig,
 	} = options;
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('Local Pairwise Evaluation', 50));
+	if (agentModelConfig) {
+		log.info(`➔ Agent Models:`);
+		log.info(
+			`   Supervisor: ${agentModelConfig.supervisor ?? agentModelConfig.default ?? modelType}`,
+		);
+		log.info(
+			`   Responder: ${agentModelConfig.responder ?? agentModelConfig.default ?? modelType}`,
+		);
+		log.info(
+			`   Discovery: ${agentModelConfig.discovery ?? agentModelConfig.default ?? modelType}`,
+		);
+		log.info(`   Builder: ${agentModelConfig.builder ?? agentModelConfig.default ?? modelType}`);
+		log.info(
+			`   Configurator: ${agentModelConfig.configurator ?? agentModelConfig.default ?? modelType}`,
+		);
+	} else {
+		log.info(`➔ Generation Model: ${modelType} (all agents)`);
+	}
+	log.info(`➔ Judge Model: ${judgeModelType}`);
 	log.info(`➔ Generations: ${numGenerations}, Judges: ${numJudges}`);
 	if (outputDir) {
 		log.info(`➔ Output directory: ${outputDir}`);
@@ -353,7 +426,11 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 	try {
 		validatePairwiseInputs(numJudges, numGenerations);
 
-		const { parsedNodeTypes, llm } = await setupTestEnvironment();
+		const { parsedNodeTypes, llm, judgeLlm, agentModels } = await setupTestEnvironment(
+			modelType,
+			judgeModelType,
+			agentModelConfig,
+		);
 
 		// Create artifact saver if output directory is configured
 		const artifactSaver = createArtifactSaver(outputDir, log);
@@ -370,7 +447,14 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				const genStartTime = Date.now();
 
 				// Generate workflow
-				const workflow = await generateWorkflow(parsedNodeTypes, llm, prompt, featureFlags);
+				const workflow = await generateWorkflow(
+					parsedNodeTypes,
+					llm,
+					prompt,
+					featureFlags,
+					agentModelConfig,
+					agentModels,
+				);
 				const genTime = (Date.now() - genStartTime) / 1000;
 
 				log.verbose(
@@ -378,7 +462,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 				);
 
 				// Run judge panel
-				const panelResult = await runJudgePanel(llm, workflow, criteria, numJudges);
+				const panelResult = await runJudgePanel(judgeLlm, workflow, criteria, numJudges);
 
 				log.verbose(
 					`  Gen ${genIndex + 1}: ${panelResult.majorityPass ? '✓ PASS' : '✗ FAIL'} (${panelResult.primaryPasses}/${numJudges} judges, ${(panelResult.avgDiagnosticScore * 100).toFixed(0)}%)`,

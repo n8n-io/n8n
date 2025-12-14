@@ -94,17 +94,13 @@ Pitfalls:
 
 Purpose: Introduces delays to respect rate limits and avoid overloading servers
 
+### Data Tables (n8n-nodes-base.dataTable)
+
+Purpose: Stores scraped data in a structured, queryable table format within n8n, ideal for organizing, filtering, and searching through collected information without need for setting up credentials.
+
 ### Google Sheets (n8n-nodes-base.googleSheets)
 
-Purpose: Stores scraped data in spreadsheets for easy access and sharing
-
-### Microsoft Excel 365 (n8n-nodes-base.microsoftExcel)
-
-Purpose: Stores scraped data in Excel files for offline analysis
-
-### Airtable (n8n-nodes-base.airtable)
-
-Purpose: Saves structured data to a database with rich data types and relationships
+Purpose: Stores scraped data in spreadsheets for easy access, collaboration, and sharing via Google Drive.
 
 ### AI Agent (@n8n/n8n-nodes-langchain.agent)
 
@@ -132,8 +128,8 @@ Rate Limits: Use batching and Wait nodes to avoid 429 errors. When the service r
 batching to reduce request frequency or use the "Retry on Fail" feature.
 
 Memory Issues: Avoid processing very large datasets in a single run; use batching and increase server resources if
-needed. Use Split In Batches node to process 200 rows at a time, leverage built-in nodes instead of custom code, and
-increase execution timeouts via environment variables.
+needed. Use Split In Batches node to process 200 rows at a time and leverage built-in nodes instead of custom code.
+
 
 Empty or Unexpected Data: Some sites use JavaScript to render content, which may not be accessible via simple HTTP
 requests. Standard HTTP and HTML parsing nodes fail because sites load data asynchronously via JavaScript, leaving the

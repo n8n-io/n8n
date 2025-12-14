@@ -136,6 +136,14 @@ export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llmSimpleTask: BaseChatModel;
 	llmComplexTask: BaseChatModel;
+	agentModels?: {
+		supervisor?: BaseChatModel;
+		responder?: BaseChatModel;
+		discovery?: BaseChatModel;
+		builder?: BaseChatModel;
+		configurator?: BaseChatModel;
+		default: BaseChatModel;
+	};
 	logger?: Logger;
 	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
@@ -176,6 +184,14 @@ export class WorkflowBuilderAgent {
 	private parsedNodeTypes: INodeTypeDescription[];
 	private llmSimpleTask: BaseChatModel;
 	private llmComplexTask: BaseChatModel;
+	private agentModels?: {
+		supervisor?: BaseChatModel;
+		responder?: BaseChatModel;
+		discovery?: BaseChatModel;
+		builder?: BaseChatModel;
+		configurator?: BaseChatModel;
+		default: BaseChatModel;
+	};
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
@@ -187,6 +203,7 @@ export class WorkflowBuilderAgent {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.llmSimpleTask = config.llmSimpleTask;
 		this.llmComplexTask = config.llmComplexTask;
+		this.agentModels = config.agentModels;
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
@@ -216,6 +233,7 @@ export class WorkflowBuilderAgent {
 			parsedNodeTypes: this.parsedNodeTypes,
 			llmSimpleTask: this.llmSimpleTask,
 			llmComplexTask: this.llmComplexTask,
+			agentModels: this.agentModels,
 			logger: this.logger,
 			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,

@@ -9,6 +9,7 @@ import { createLangsmithEvaluator } from './evaluator';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import type { WorkflowState } from '../../src/workflow-state';
 import { EVAL_TYPES, EVAL_USERS, TRACEABLE_NAMES } from '../constants';
+import type { ModelType } from '../core/environment';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
 	generateRunId,
@@ -100,12 +101,15 @@ function createWorkflowGenerator(
  * Runs evaluation using Langsmith
  * @param repetitions - Number of times to run each example (default: 1)
  * @param featureFlags - Optional feature flags to pass to the agent
+ * @param modelType - Model type to use: 'haiku', 'sonnet', or 'opus' (default: 'sonnet')
  */
 export async function runLangsmithEvaluation(
 	repetitions: number = 1,
 	featureFlags?: BuilderFeatureFlags,
+	modelType: ModelType = 'sonnet',
 ): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Langsmith Evaluation', 70));
+	console.log(pc.blue(`➔ Model: ${modelType}`));
 	if (repetitions > 1) {
 		console.log(pc.yellow(`➔ Each example will be run ${repetitions} times`));
 	}
@@ -126,7 +130,8 @@ export async function runLangsmithEvaluation(
 		}
 
 		// Setup test environment
-		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment();
+		// Note: LangSmith mode doesn't use judges, so judgeModelType defaults to 'sonnet'
+		const { parsedNodeTypes, llm, lsClient } = await setupTestEnvironment(modelType, 'sonnet');
 		// Note: Don't use the tracer from setupTestEnvironment() here.
 		// LangSmith's evaluate() manages its own tracing context - passing a separate
 		// tracer would create disconnected runs in a different project.

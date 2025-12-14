@@ -48,6 +48,14 @@ export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llmSimpleTask: BaseChatModel;
 	llmComplexTask: BaseChatModel;
+	agentModels?: {
+		supervisor?: BaseChatModel;
+		responder?: BaseChatModel;
+		discovery?: BaseChatModel;
+		builder?: BaseChatModel;
+		configurator?: BaseChatModel;
+		default: BaseChatModel;
+	};
 	logger?: Logger;
 	instanceUrl?: string;
 	checkpointer?: MemorySaver;
@@ -120,6 +128,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const {
 		parsedNodeTypes,
 		llmComplexTask,
+		agentModels,
 		logger,
 		instanceUrl,
 		checkpointer,
@@ -127,25 +136,32 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		featureFlags,
 	} = config;
 
-	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
-	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
+	// Use per-agent models if provided, otherwise fall back to llmComplexTask
+	const supervisorModel = agentModels?.supervisor ?? agentModels?.default ?? llmComplexTask;
+	const responderModel = agentModels?.responder ?? agentModels?.default ?? llmComplexTask;
+	const discoveryModel = agentModels?.discovery ?? agentModels?.default ?? llmComplexTask;
+	const builderModel = agentModels?.builder ?? agentModels?.default ?? llmComplexTask;
+	const configuratorModel = agentModels?.configurator ?? agentModels?.default ?? llmComplexTask;
+
+	const supervisorAgent = new SupervisorAgent({ llm: supervisorModel });
+	const responderAgent = new ResponderAgent({ llm: responderModel });
 
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
 	const builderSubgraph = new BuilderSubgraph();
 	const configuratorSubgraph = new ConfiguratorSubgraph();
 
-	// Compile subgraphs
+	// Compile subgraphs with per-agent models
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: discoveryModel,
 		logger,
 		featureFlags,
 	});
-	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
+	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: builderModel, logger });
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: configuratorModel,
 		logger,
 		instanceUrl,
 	});

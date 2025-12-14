@@ -310,7 +310,7 @@ const prompt = ParameterUpdatePromptBuilder.buildSystemPrompt({
 
 This section explains what type of information belongs in which file.
 
-### Node-Based Best Practices
+### Technique-Specific Instructions
 
 **Location:** `src/tools/best-practices/`
 
@@ -326,17 +326,14 @@ This section explains what type of information belongs in which file.
 
 **Format:** Each file exports a class implementing `BestPracticesDocument` with a `getDocumentation()` method that returns markdown-formatted best practices.
 
-### Technique-Specific Instructions
+### Node-Based Best Practices
 
-**Location:** Discovery Agent Prompt (`agents/discovery.prompt.ts`)
+**Location:** 
 
-**Purpose:** Clarifies distinctions between similar techniques and provides categorization examples.
+**Purpose:** 
 
 **When to Edit:**
-- Technique definitions
-- When to use one technique vs another
-- Edge cases and distinctions
-- Example categorizations (few-shot examples)
+
 
 ### Connection Rules
 

@@ -130,7 +130,7 @@ Distinguish between two different agent node types:
    - Use for: Multi-agent systems where one agent calls another
 
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
-When discovery results include "AI" and its a text manipulation task, use the AI Agent node. Do not use 
+When discovery results include "AI" and its a text manipulation task, use the AI Agent node. 
 </agent_node_distinction>`;
 
 const RAG_PATTERN = `<rag_workflow_pattern>
