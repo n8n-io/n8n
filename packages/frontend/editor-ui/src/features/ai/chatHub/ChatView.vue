@@ -32,7 +32,7 @@ import {
 	type ChatModelDto,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -62,12 +62,15 @@ const i18n = useI18n();
 
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
+const scrollableRef = useTemplateRef('scrollable');
+
+const scrollableSize = useElementSize(scrollableRef);
+
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
 const isResponding = computed(() => chatStore.isResponding(sessionId.value));
 const isNewSession = computed(() => sessionId.value !== route.params.id);
-const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const currentConversation = computed(() =>
 	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
@@ -317,12 +320,13 @@ watch(
 	[sessionId, isNewSession],
 	async ([id, isNew]) => {
 		didSubmitInCurrentSession.value = false;
+		editingMessageId.value = undefined;
 
 		if (!isNew && !chatStore.getConversation(id)) {
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
-				toast.showError(error, 'Error fetching a conversation');
+				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
@@ -362,7 +366,7 @@ watch(
 watch(
 	defaultAgent,
 	(agent, prevAgent) => {
-		if (defaultModel.value && agent && agent.name !== prevAgent?.name) {
+		if (defaultModel.value && agent?.name && agent.name !== prevAgent?.name) {
 			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
 		}
 
@@ -469,7 +473,7 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 		try {
 			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected model');
+			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
 		defaultModel.value = { ...selection, cachedDisplayName: agentName };
@@ -503,7 +507,7 @@ async function handleUpdateTools(newTools: INode[]) {
 		try {
 			await chatStore.updateToolsInSession(sessionId.value, newTools);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected tools');
+			toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
 		}
 	}
 }
@@ -566,6 +570,7 @@ function onFilesDropped(files: File[]) {
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="isNewSession || !!currentConversation"
+			:is-new-session="isNewSession"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
@@ -604,6 +609,7 @@ function onFilesDropped(files: File[]) {
 								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
+						:container-width="scrollableSize.width.value ?? 0"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"

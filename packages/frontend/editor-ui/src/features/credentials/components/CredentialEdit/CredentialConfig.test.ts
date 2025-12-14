@@ -158,4 +158,112 @@ describe('CredentialConfig', () => {
 		// Verify that addCredentialTranslation was not called
 		expect(addCredentialTranslation).not.toHaveBeenCalled();
 	});
+
+	describe('Dynamic Credentials Section', () => {
+		it('should not display dynamic credentials section when feature flag is disabled', async () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: false,
+								externalSecrets: false,
+							},
+							envFeatureFlags: {
+								N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: false,
+							},
+						},
+					},
+				},
+			});
+
+			renderComponent(
+				{
+					props: {
+						isManaged: false,
+						mode: 'new',
+						credentialPermissions: {
+							...defaultRenderOptions.props!.credentialPermissions,
+							create: true,
+						},
+					},
+					pinia,
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic credentials section when user lacks permissions', async () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: false,
+								externalSecrets: false,
+							},
+							envFeatureFlags: {
+								N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+							},
+						},
+					},
+				},
+			});
+
+			renderComponent(
+				{
+					props: {
+						isManaged: false,
+						mode: 'edit',
+						credentialPermissions: {
+							...defaultRenderOptions.props!.credentialPermissions,
+							create: false,
+							update: false,
+						},
+					},
+					pinia,
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+		});
+
+		it('should display the toggle switch in the dynamic credentials section', async () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: false,
+								externalSecrets: false,
+							},
+							envFeatureFlags: {
+								N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+							},
+						},
+					},
+				},
+			});
+
+			renderComponent(
+				{
+					props: {
+						isManaged: false,
+						mode: 'new',
+						credentialPermissions: {
+							...defaultRenderOptions.props!.credentialPermissions,
+							create: true,
+						},
+					},
+					pinia,
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+		});
+	});
 });
