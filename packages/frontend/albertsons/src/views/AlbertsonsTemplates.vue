@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTemplatesStore } from '../stores/templates.store';
 
@@ -8,14 +8,16 @@ const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const templatesStore = useTemplatesStore();
 
+onMounted(async () => {
+	templatesStore.fetchTemplates();
+});
+
 // ✅ Read from n8n store
 const loading = computed(() => workflowsStore.isLoading);
-const allWorkflows = computed(() => workflowsStore.allWorkflows);
 
 // Filter to published templates
 const templates = computed(() => {
-	const templateIds = templatesStore.getTemplateIds();
-	return allWorkflows.value.filter((wf) => templateIds.includes(wf.id));
+	return templatesStore.getTemplates();
 });
 
 function useTemplate(id: string) {
@@ -48,15 +50,19 @@ function useTemplate(id: string) {
 
 				<div class="card-body">
 					<h2 class="card-title">{{ template.name || 'Untitled workflow' }}</h2>
-					<p class="card-description">No description</p>
+					<p class="card-description">{{ template.description || 'Untitled workflow' }}</p>
 					<p class="card-meta">
-						Last updated
+						Last updated at
 						{{ new Date(template.updatedAt || template.createdAt).toLocaleString() }}
+					</p>
+					<p class="card-meta">
+						Last updated by
+						{{ template.authorName }}
 					</p>
 				</div>
 
 				<div class="card-footer">
-					<button type="button" class="btn-primary" @click="useTemplate(template.id)">
+					<button type="button" class="btn-primary" @click="useTemplate(template.workflowId)">
 						Use Template
 					</button>
 				</div>
