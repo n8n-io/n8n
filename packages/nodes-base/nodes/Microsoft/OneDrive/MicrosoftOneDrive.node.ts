@@ -218,15 +218,18 @@ export class MicrosoftOneDrive implements INodeType {
 							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							let encodedFilename;
 
-							if (nodeVersion == 1 && binaryData.fileName !== undefined) {
-								// pre-fix behavior, filename provided in node parameters is always ignored
-								encodedFilename = encodeURIComponent(binaryData.fileName);
+							if (nodeVersion >= 1.1) {
+								if (fileName !== '') {
+									encodedFilename = encodeURIComponent(fileName);
+								} else if (binaryData.fileName !== undefined) {
+									encodedFilename = encodeURIComponent(binaryData.fileName);
+								}
 							} else {
 								if (fileName !== '') {
 									encodedFilename = encodeURIComponent(fileName);
 								}
 
-								if (fileName == '' && binaryData.fileName !== undefined) {
+								if (binaryData.fileName !== undefined) {
 									encodedFilename = encodeURIComponent(binaryData.fileName);
 								}
 							}
