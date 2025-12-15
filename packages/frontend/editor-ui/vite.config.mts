@@ -10,6 +10,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
+import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
@@ -124,6 +125,13 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
+	...(release
+		? [
+				legacy({
+					modernTargets: browsers,
+				}),
+			]
+		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
