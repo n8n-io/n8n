@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.122.0",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -178,7 +178,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
-    "@azure/identity": "4.3.0",
+    "@azure/identity": "catalog:",
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",

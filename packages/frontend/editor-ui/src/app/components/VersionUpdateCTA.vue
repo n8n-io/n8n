@@ -2,11 +2,9 @@
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { VERSIONS_MODAL_KEY } from '@/app/constants';
+import { N8nMenuItem } from '@n8n/design-system';
 
-import { N8nButton, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	disabled?: boolean;
 	tooltipText?: string;
@@ -19,13 +17,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const i18n = useI18n();
 const versionsStore = useVersionsStore();
-const uiStore = useUIStore();
+
 const pageRedirectionHelper = usePageRedirectionHelper();
 const telemetry = useTelemetry();
-
-const openUpdatesPanel = () => {
-	uiStore.openModal(VERSIONS_MODAL_KEY);
-};
 
 const onUpdateClick = async () => {
 	telemetry.track('User clicked on update button', {
@@ -37,50 +31,18 @@ const onUpdateClick = async () => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<N8nLink
-			size="small"
-			theme="text"
-			data-test-id="version-update-next-versions-link"
-			@click="openUpdatesPanel"
-		>
-			{{
-				i18n.baseText('whatsNew.versionsBehind', {
-					interpolate: {
-						count:
-							versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,
-					},
-				})
-			}}
-		</N8nLink>
-
-		<N8nTooltip :disabled="!props.tooltipText" :content="props.tooltipText">
-			<N8nButton
-				:class="$style.button"
-				:label="i18n.baseText('whatsNew.update')"
-				data-test-id="version-update-cta-button"
-				size="mini"
-				:disabled="props.disabled"
-				@click="onUpdateClick"
-			/>
-		</N8nTooltip>
-	</div>
+	<N8nMenuItem
+		data-test-id="version-update-cta-button"
+		:item="{
+			id: 'version-update-cta',
+			icon: { value: 'status-warning', type: 'icon', color: 'primary' },
+			disabled: props.disabled,
+			label: i18n.baseText('whatsNew.versionsBehind', {
+				interpolate: {
+					count: versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,
+				},
+			}),
+		}"
+		@click="onUpdateClick"
+	/>
 </template>
-
-<style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-radius: var(--radius);
-	border: var(--border);
-	background: var(--color--background--light-1);
-	margin-top: var(--spacing--xs);
-}
-
-.button {
-	width: 100%;
-}
-</style>
