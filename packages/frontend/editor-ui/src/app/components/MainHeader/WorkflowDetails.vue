@@ -2,9 +2,7 @@
 import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
-import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
-import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
-import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
+import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
@@ -42,11 +40,12 @@ import {
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import WorkflowProductionChecklist from '../WorkflowProductionChecklist.vue';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -99,6 +98,7 @@ const workflowHeaderActionsRef = useTemplateRef<
 	| InstanceType<typeof WorkflowHeaderActions>
 	| InstanceType<typeof WorkflowHeaderDraftPublishActions>
 >('workflowHeaderActions');
+const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const tagsEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -436,8 +436,8 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 };
 
 const handleImportWorkflowFromFile = () => {
-	if (workflowHeaderActionsRef.value?.importFileRef) {
-		workflowHeaderActionsRef.value.importFileRef.click();
+	if (actionsMenuRef.value?.importFileRef) {
+		actionsMenuRef.value.importFileRef.click();
 	}
 };
 
@@ -494,64 +494,29 @@ onBeforeUnmount(() => {
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"
 						/>
+						<ActionsDropdownMenu
+							:id="id"
+							ref="actionsMenu"
+							:workflow-permissions="workflowPermissions"
+							:is-new-workflow="isNewWorkflow"
+							:read-only="readOnly"
+							:is-archived="isArchived"
+							:name="name"
+							:tags="tags"
+							:current-folder="currentFolderForBreadcrumbs || undefined"
+							:meta="meta"
+							@workflow:saved="onSaveButtonClick"
+						/>
+						<WorkflowProductionChecklist
+							v-if="!isNewWorkflow"
+							:workflow="workflowsStore.workflow"
+						/>
 					</template>
 				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
-		<span class="tags" data-test-id="workflow-tags-container">
-			<template v-if="settingsStore.areTagsEnabled">
-				<WorkflowTagsDropdown
-					v-if="
-						isTagsEditEnabled &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
-					ref="dropdown"
-					v-model="appliedTagIds"
-					:event-bus="tagsEventBus"
-					:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
-					class="tags-edit"
-					data-test-id="workflow-tags-dropdown"
-					@blur="onTagsBlur"
-					@esc="onTagsEditEsc"
-				/>
-				<div
-					v-else-if="
-						(tags ?? []).length === 0 &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
-				>
-					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-						+ {{ i18n.baseText('workflowDetails.addTag') }}
-					</span>
-				</div>
-				<WorkflowTagsContainer
-					v-else
-					:key="id"
-					:tag-ids="workflowTagIds"
-					:clickable="true"
-					:responsive="true"
-					data-test-id="workflow-tags"
-					@click="onTagsEditEnable"
-				/>
-			</template>
-
-			<span :class="$style['header-controls']">
-				<N8nBadge
-					v-if="isArchived"
-					class="ml-3xs"
-					theme="tertiary"
-					bold
-					data-test-id="workflow-archived-tag"
-				>
-					{{ locale.baseText('workflows.item.archived') }}
-				</N8nBadge>
-			</span>
-		</span>
 
 		<PushConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
 				v-if="IS_DRAFT_PUBLISH_ENABLED"
 				:id="id"
@@ -633,6 +598,7 @@ $--header-spacing: 20px;
 	align-items: center;
 	gap: var(--spacing--md);
 	flex-wrap: nowrap;
+	margin-left: auto;
 }
 
 @include mixins.breakpoint('xs-only') {
@@ -668,7 +634,7 @@ $--header-spacing: 20px;
 .container {
 	position: relative;
 	width: 100%;
-	padding: var(--spacing--xs) var(--spacing--md);
+	padding: var(--spacing--2xs) var(--spacing--2xs);
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;

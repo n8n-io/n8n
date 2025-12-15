@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const locale = useI18n();
 
 const props = defineProps<{
@@ -21,14 +21,8 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 
 <template>
 	<N8nTooltip placement="bottom">
-		<RouterLink :to="workflowHistoryRoute">
-			<N8nIconButton
-				:disabled="isNewWorkflow"
-				data-test-id="workflow-history-button"
-				type="highlight"
-				icon="history"
-				size="medium"
-			/>
+		<RouterLink :to="workflowHistoryRoute" :class="$style.container">
+			<N8nIcon icon="history" color="text-base" :stroke-width="1.25" size="large" />
 		</RouterLink>
 		<template #content>
 			<span v-if="isNewWorkflow">
@@ -38,3 +32,22 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 		</template>
 	</N8nTooltip>
 </template>
+
+<style lang="scss" module>
+.container {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border: var(--border);
+	border-radius: var(--radius);
+	color: var(--color--text--base);
+	transition: background-color 0.2s ease-in-out;
+
+	&:hover {
+		background-color: var(--color--background--light-2);
+		text-decoration: none;
+	}
+}
+</style>

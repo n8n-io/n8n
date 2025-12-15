@@ -1,10 +1,9 @@
 <script lang="ts" setup>
-import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { N8nPublishIndicator } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -36,7 +35,6 @@ defineEmits<{
 	'workflow:saved': [];
 }>();
 
-const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -49,8 +47,6 @@ const autoSaveForPublish = ref(false);
 const isWorkflowSaving = computed(() => {
 	return uiStore.isActionActive.workflowSaving && !autoSaveForPublish.value;
 });
-
-const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
@@ -68,6 +64,28 @@ const onPublishButtonClick = async () => {
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
 		data: {},
 	});
+};
+
+const onPublishAction = async (
+	action: 'publish' | 'quick-publish' | 'save-draft' | 'unpublish',
+) => {
+	switch (action) {
+		case 'publish':
+			await onPublishButtonClick();
+			break;
+		case 'quick-publish':
+			// TODO: Implement quick publish functionality
+			console.log('Quick publish action');
+			break;
+		case 'save-draft':
+			// Save the current workflow
+			await saveCurrentWorkflow({}, true);
+			break;
+		case 'unpublish':
+			// TODO: Implement unpublish functionality
+			console.log('Unpublish action');
+			break;
+	}
 };
 
 const foundTriggers = computed(() =>
@@ -120,9 +138,7 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
 });
 
-defineExpose({
-	importFileRef,
-});
+defineExpose({});
 
 const publishStatus = computed<'published' | 'unpublished' | 'draft' | 'unpublishedDraft'>(() => {
 	if (workflowsStore.workflow.activeVersion) {
@@ -147,29 +163,22 @@ const publishStatus = computed<'published' | 'unpublished' | 'draft' | 'unpublis
 			:class="$style.activeVersionIndicator"
 			data-test-id="workflow-active-version-indicator"
 		>
-			<N8nPublishIndicator :status="publishStatus" @click="onPublishButtonClick" />
+			<N8nPublishIndicator
+				:status="publishStatus"
+				variant="actions"
+				@click="onPublishButtonClick"
+				@action="onPublishAction"
+			/>
 		</div>
-
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
-		<ActionsDropdownMenu
-			:id="id"
-			ref="actionsMenu"
-			:workflow-permissions="workflowPermissions"
-			:is-new-workflow="isNewWorkflow"
-			:read-only="readOnly"
-			:is-archived="isArchived"
-			:name="name"
-			:tags="tags"
-			:current-folder="currentFolder"
-			:meta="meta"
-			@workflow:saved="$emit('workflow:saved')"
-		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
-	display: contents;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .activeVersionIndicator {
@@ -184,16 +193,5 @@ const publishStatus = computed<'published' | 'unpublished' | 'draft' | 'unpublis
 .publishButtonWrapper {
 	position: relative;
 	display: inline-block;
-}
-
-.publishButtonIndicator {
-	position: absolute;
-	top: -2px;
-	right: -2px;
-	width: 7px;
-	height: 7px;
-	background-color: var(--color--primary);
-	border-radius: 50%;
-	box-shadow: 0 0 0 2px var(--color--background--light-3);
 }
 </style>
