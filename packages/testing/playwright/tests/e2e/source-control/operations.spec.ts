@@ -4,6 +4,7 @@ import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
+import { numberExtensions } from 'n8n-workflow/src/extensions/number-extensions';
 
 test.use({
 	addContainerCapability: {
@@ -47,15 +48,26 @@ async function connectToSourceControl({
 test.describe('Source Control Operations @capability:source-control', () => {
 	test.describe.configure({ mode: 'serial' });
 
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.goHome();
+		// Enable features required for project workflows and moving resources
+		await n8n.api.enableFeature('variables');
+		await n8n.api.enableFeature('folders');
+		await n8n.api.setMaxTeamProjectsQuota(-1);
+	});
+
 	test.describe('Push Operations', () => {
 		test('should connect to Git and push a new workflow', async ({ n8n, n8nContainer }) => {
 			await connectToSourceControl({ n8n, n8nContainer });
 
 			// create workflow
-			await n8n.navigate.toWorkflow('new');
-			await n8n.canvas.setWorkflowName('Test Workflow');
-			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.saveWorkflow();
+			const workflow = await n8n.api.workflows.createWorkflow({
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+			await n8n.navigate.toWorkflow(workflow.id);
 
 			// check modal
 			await n8n.sourceControlPushModal.open();
@@ -79,17 +91,67 @@ test.describe('Source Control Operations @capability:source-control', () => {
 		});
 
 		test('should push all resource types together', async ({ n8n }) => {
-			// TODO: Implement test
-			// Action: Create workflow, credential, variable, tag
-			// Action: Create folder and workflow inside folder
-			// Action: Create team project with resources
-			// Action: Open push modal, verify all 6 resource types listed
-			// Action: Enter commit message, push all resources
-			// Assert: Verify all resources pushed successfully
-			// Assert: Verify workflows/, projects/, credential_stubs/ folders exist
-			// Assert: Verify tags.json, variable_stubs.json, folders.json files exist
-			// Assert: Verify workflow inside folder has correct parentFolderId reference
-			// Assert: Verify project resources have correct owner.projectId references
+			// variables and tags
+			await n8n.api.variables.createTestVariable();
+			await n8n.api.tags.create('test-tag');
+
+			// projects and folders
+			const project = await n8n.api.projects.createProject('Test Project');
+			await n8n.navigate.toProject(project.id);
+			const folderA = await n8n.api.projects.createFolder(project.id, 'Folder A');
+			const folderB = await n8n.api.projects.createFolder(project.id, 'Folder B', folderA.id);
+
+			// workflows
+			await n8n.api.workflows.createInProject(project.id, {
+				name: 'Workflow in Folder A',
+				folder: folderA.id,
+			});
+			await n8n.api.workflows.createInProject(project.id, {
+				name: 'Workflow in Folder B',
+				folder: folderB.id,
+			});
+			await n8n.api.workflows.createInProject(project.id, {
+				name: 'Root Workflow',
+			});
+
+			// credentials
+			await n8n.api.credentials.createCredential({
+				name: 'Credential in Project 1',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+				projectId: project.id,
+			});
+
+			// Open push modal
+			await n8n.navigate.toHome();
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+
+			// check notice
+			const notice = n8n.sourceControlPushModal.getNotice();
+			await expect(notice).toBeVisible();
+			expect(await notice.textContent()).toContain('Variables');
+			expect(await notice.textContent()).toContain('Projects');
+			expect(await notice.textContent()).toContain('Folders');
+			expect(await notice.textContent()).toContain('Tags');
+
+			// check workflows
+			await n8n.sourceControlPushModal.selectWorkflowsTab();
+			await expect(n8n.sourceControlPushModal.getFileInModal('Workflow in Folder A')).toBeVisible();
+			await expect(n8n.sourceControlPushModal.getFileInModal('Workflow in Folder B')).toBeVisible();
+			await expect(n8n.sourceControlPushModal.getFileInModal('Root Workflow')).toBeVisible();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+
+			// check credentials
+			await n8n.sourceControlPushModal.selectCredentialsTab();
+			await expect(
+				n8n.sourceControlPushModal.getFileInModal('Credential in Project 1'),
+			).toBeVisible();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+
+			// Push all resources
+			await n8n.sourceControlPushModal.push('Add all resource types');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
 		});
 
 		test('should push modifications and deletions', async ({ n8n }) => {

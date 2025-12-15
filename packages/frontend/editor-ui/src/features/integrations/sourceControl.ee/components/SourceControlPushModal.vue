@@ -947,7 +947,12 @@ onMounted(async () => {
 		</template>
 
 		<template #footer>
-			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
+			<N8nNotice
+				v-if="userNotices.length"
+				:compact="false"
+				class="mt-0"
+				id="source-control-push-modal-notice"
+			>
 				<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">

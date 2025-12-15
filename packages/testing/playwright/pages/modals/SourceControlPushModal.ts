@@ -54,13 +54,18 @@ export class SourceControlPushModal {
 		return this.getModal().getByText(fileName);
 	}
 
-	/**
-	 * Get the checkbox for a specific file by its name
-	 */
 	getFileCheckboxByName(fileName: string): Locator {
 		// Find the checkbox that is associated with the file name
 		return this.getModal()
 			.locator('[data-test-id="source-control-push-modal-file-checkbox"]')
 			.filter({ has: this.page.getByText(fileName, { exact: true }) });
+	}
+
+	async selectAllFilesInModal(): Promise<void> {
+		await this.getModal().getByTestId('source-control-push-modal-toggle-all').click();
+	}
+
+	getNotice(): Locator {
+		return this.page.locator('#source-control-push-modal-notice.notice[role="alert"]');
 	}
 }
