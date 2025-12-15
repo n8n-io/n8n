@@ -22,9 +22,10 @@ import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
-	CHAT_AGENTS_VIEW,
 	CHAT_CONVERSATION_VIEW,
+	CHAT_PERSONAL_AGENTS_VIEW,
 	CHAT_VIEW,
+	CHAT_WORKFLOW_AGENTS_VIEW,
 } from '@/features/ai/chatHub/constants';
 
 export function useCommandBar() {
@@ -203,7 +204,8 @@ export function useCommandBar() {
 				return evaluationViewGroups;
 			case CHAT_VIEW:
 			case CHAT_CONVERSATION_VIEW:
-			case CHAT_AGENTS_VIEW:
+			case CHAT_PERSONAL_AGENTS_VIEW:
+			case CHAT_WORKFLOW_AGENTS_VIEW:
 				return chatHubViewGroups;
 			default:
 				return fallbackViewCommands;
