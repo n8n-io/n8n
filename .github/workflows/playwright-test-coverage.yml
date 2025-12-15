@@ -6,7 +6,6 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 env:
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
   NODE_OPTIONS: --max-old-space-size=16384
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: 4
@@ -31,7 +30,7 @@ jobs:
           INCLUDE_TEST_CONTROLLER: 'true'
 
       - name: Install Browsers
-        run: pnpm turbo install-browsers:ci
+        run: pnpm --filter=n8n-playwright install-browsers
 
       - name: Run Container Coverage Tests
         id: coverage-tests
