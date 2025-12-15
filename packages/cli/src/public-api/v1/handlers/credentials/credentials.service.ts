@@ -216,6 +216,8 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			}
 
 			// Create a unique key for each dependant name and value combination
+			// so that if multiple properties depend on the same property but different values
+			// they get their own if-then-else block
 			const dependencyKey = `${dependantName}:${JSON.stringify(dependantValue)}`;
 
 			if (!resolveProperties.includes(dependencyKey)) {
