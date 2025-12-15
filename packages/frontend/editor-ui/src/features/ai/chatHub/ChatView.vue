@@ -30,6 +30,7 @@ import {
 	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
@@ -135,6 +136,8 @@ const shouldSkipNextScrollTrigger = ref(false);
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
+	const provider = route.query.provider;
+	const model = route.query.model;
 
 	if (!isNewSession.value) {
 		return null;
@@ -146,6 +149,17 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 
 	if (typeof workflowId === 'string') {
 		return chatStore.getAgent({ provider: 'n8n', workflowId });
+	}
+
+	if (typeof provider === 'string' && typeof model === 'string') {
+		const parsedModel = chatHubConversationModelSchema.safeParse({
+			provider,
+			model,
+		});
+
+		if (parsedModel.success) {
+			return chatStore.getAgent(parsedModel.data);
+		}
 	}
 
 	return null;
@@ -381,7 +395,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string, attachments: File[]) {
+async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -394,7 +408,7 @@ function onSubmit(message: string, attachments: File[]) {
 	didSubmitInCurrentSession.value = true;
 	editingMessageId.value = undefined;
 
-	void chatStore.sendMessage(
+	await chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value.model,
