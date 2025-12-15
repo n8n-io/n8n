@@ -101,6 +101,13 @@ onMounted(() => {
 							Updated: {{ wf.updatedAt }} · Created:
 							{{ wf.createdAt }}
 						</p>
+						<button
+							class="publish-btn"
+							:disabled="templatesStore.isTemplate(wf.id)"
+							@click.stop="publishAsTemplate(wf.id)"
+						>
+							{{ templatesStore.isTemplate(wf.id) ? '✓ Published' : 'Publish' }}
+						</button>
 					</div>
 					<span class="status success">Active</span>
 				</div>
@@ -188,6 +195,7 @@ onMounted(() => {
 /* PRIMARY ACTION */
 .primary-actions {
 	margin-bottom: 24px;
+}
 .tabs {
 	display: flex;
 	gap: 16px;
