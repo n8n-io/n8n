@@ -337,23 +337,20 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.autosaved).toBe(false);
 	});
 
-	test('should create workflow as inactive even when active: true is provided in POST body', async () => {
+	test('should create workflow as inactive even when active fields are provided', async () => {
+		const activeWorkflow = await createActiveWorkflow({}, owner);
+		const activeVersion = await workflowHistoryRepository.findOne({
+			where: {
+				versionId: activeWorkflow.activeVersionId!,
+			},
+		});
+
 		const payload = {
-			name: 'active workflow',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
-			connections: {},
-			staticData: null,
-			settings: {},
+			...activeWorkflow,
+			// Deliberately set active fields
 			active: true,
+			activeVersionId: activeWorkflow.activeVersionId,
+			activeVersion,
 		};
 
 		const response = await authOwnerAgent.post('/workflows').send(payload);
@@ -366,12 +363,19 @@ describe('POST /workflows', () => {
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
+		// New version should be created
+		expect(versionId).not.toBe(activeWorkflow.versionId);
 		expect(activeVersionId).toBeNull();
 		expect(active).toBe(false);
 
-		// Verify in database
+		// Verify in database that workflow is completely inactive
 		const workflow = await workflowRepository.findOneBy({ id });
 		expect(workflow?.activeVersionId).toBeNull();
+		expect(workflow?.active).toBe(false);
+
+		// Verify workflow history was created
+		const historyCount = await workflowHistoryRepository.count({ where: { workflowId: id } });
+		expect(historyCount).toBe(1);
 	});
 
 	test('create workflow in personal project by default', async () => {
