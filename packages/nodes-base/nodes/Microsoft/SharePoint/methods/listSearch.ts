@@ -85,9 +85,6 @@ export async function getFolders(
 			// https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/filtering-results?view=odsp-graph-online#filterable-properties
 			$filter: 'folder ne null',
 		};
-		if (filter) {
-			qs.$filter = `name eq '${filter}'`;
-		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
@@ -100,7 +97,7 @@ export async function getFolders(
 	const items: IDriveItem[] = response.value;
 
 	const results: INodeListSearchItems[] = items
-		.filter((x) => x.folder)
+		.filter((x) => x.folder && (!filter || x.name?.toLowerCase()?.includes?.(filter.toLowerCase())))
 		.map((g) => ({
 			name: g.name,
 			value: g.id,
