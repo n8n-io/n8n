@@ -2,23 +2,20 @@ name: Build, unit test and lint branch
 
 on:
   pull_request:
-    branches:
-      - '**'
-      - '!release/*'
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  COVERAGE_ENABLED: 'true' # Set globally for all jobs - ensures Turbo cache consistency
+  COVERAGE_ENABLED: "true" # Set globally for all jobs - ensures Turbo cache consistency
 
 jobs:
   install-and-build:
     name: Install & Build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
-      NODE_OPTIONS: '--max-old-space-size=6144'
+      NODE_OPTIONS: "--max-old-space-size=6144"
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
@@ -61,7 +58,7 @@ jobs:
   bundle-size-check:
     name: Bundle Size Check
     needs: install-and-build
-    if: needs.install-and-build.outputs.frontend_changed == 'true'
+    if: needs.install-and-build.outputs.frontend_changed == 'true' && !startsWith(github.event.pull_request.base.ref, 'release/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -74,7 +71,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '22.x'
+          node-version: "22.x"
           cache: pnpm
 
       - name: Install dependencies
