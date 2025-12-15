@@ -28,8 +28,9 @@ const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
 	'workflow:saved': [];
+	'workflow:publish': [];
 }>();
 
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
@@ -56,10 +57,12 @@ const onPublishButtonClick = async () => {
 		}
 	}
 
-	uiStore.openModalWithData({
-		name: WORKFLOW_PUBLISH_MODAL_KEY,
-		data: {},
-	});
+	emit('workflow:publish');
+
+	// uiStore.openModalWithData({
+	// 	name: WORKFLOW_PUBLISH_MODAL_KEY,
+	// 	data: {},
+	// });
 };
 
 const foundTriggers = computed(() =>
@@ -108,11 +111,15 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
+		<div
+			v-if="!isArchived && workflowPermissions.update && !props.isNewWorkflow"
+			:class="$style.publishButtonWrapper"
+		>
 			<N8nButton
 				type="secondary"
 				data-test-id="workflow-open-publish-modal-button"
 				@click="onPublishButtonClick"
+				:disabled="isWorkflowSaving || readOnly || isArchived"
 			>
 				{{ locale.baseText('workflows.publish') }}
 			</N8nButton>

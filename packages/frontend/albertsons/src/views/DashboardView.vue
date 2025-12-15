@@ -3,9 +3,11 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import albertsonsLogo from '../assets/albertsons-logo.png';
+import { useTemplatesStore } from '../stores/templates.store';
 
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const templatesStore = useTemplatesStore();
 
 /* n8n bindings – DO NOT TOUCH */
 const workflows = computed(() => workflowsStore.allWorkflows);
@@ -17,6 +19,14 @@ async function loadWorkflows() {
 
 function goToNewWorkflow() {
 	router.push('/workflow/new');
+}
+
+function openWorkflow(id) {
+	router.push(`/workflow/${id}`);
+}
+
+function publishAsTemplate(id) {
+	templatesStore.publishAsTemplate(id);
 }
 
 onMounted(() => {
@@ -106,7 +116,6 @@ onMounted(() => {
 	background: var(--color--background);
 }
 
-/* HEADER */
 .header {
 	display: flex;
 	align-items: center;
@@ -179,6 +188,10 @@ onMounted(() => {
 /* PRIMARY ACTION */
 .primary-actions {
 	margin-bottom: 24px;
+.tabs {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 16px;
 }
 
 .primary {
@@ -234,6 +247,17 @@ onMounted(() => {
 	border: 1px solid var(--border-color--light);
 	background: var(--color--background--light-2);
 	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	margin-left: 10px;
+}
+
+.publish-btn:disabled {
+	border-color: #ccc;
+	background: #f3f4f6;
+	color: #999;
+	cursor: default;
 }
 
 .workflow:hover {

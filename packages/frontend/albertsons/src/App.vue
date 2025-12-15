@@ -33,10 +33,11 @@ import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
-
+const nodeTypesStore = useNodeTypesStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
