@@ -86,7 +86,6 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 		actionTimeout: 20000, // TODO: We might need to make this dynamic for container tests if we have low resource containers etc
 		navigationTimeout: 10000,
 		currentsFixturesEnabled: !!process.env.CI,
-		currentsBatchSize: 5,
 	},
 
 	reporter: IS_CI
