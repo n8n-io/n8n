@@ -3776,7 +3776,7 @@
 	"projects.settings.member.added.title": "Member added successfully",
 	"projects.sharing.allUsers": "All users and projects",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
-	"projects.sharing.noMatchingUsers": "No matching users or projects",
+	"projects.sharing.noMatchingUsers": "No matching users",
 	"projects.sharing.select.placeholder": "Select project or user",
 	"projects.sharing.select.placeholder.user": "Share with user(s)",
 	"projects.sharing.select.placeholder.project": "Share with projects or users",
