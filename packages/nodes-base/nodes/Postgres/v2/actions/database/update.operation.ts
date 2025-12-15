@@ -357,7 +357,7 @@ export async function execute(
 			queries.push({ query, values });
 		} catch (e) {
 			if (this.continueOnFail()) {
-				const error = e instanceof Error ? e.message : String(e);
+				const error = e instanceof Error ? e : String(e);
 				errorItemsMap.set(i, { json: { error }, pairedItem: { item: i } });
 				continue;
 			}
