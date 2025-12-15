@@ -75,7 +75,7 @@ function useTemplate(id: string) {
 .templates-page {
 	padding: 32px 40px;
 	max-width: 1120px;
-	margin: 0 auto;
+	margin: 0;
 	background: var(--color-background-base);
 }
 
