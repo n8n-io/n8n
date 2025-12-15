@@ -75,7 +75,7 @@ describe('Microsoft SharePoint Node', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
 			expect(mockRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
 				qs: {
-					$filter: "name eq 'file'",
+					$filter: "startswith(name, 'file')",
 				},
 			});
 			expect(listSearchResult).toEqual({
@@ -166,7 +166,7 @@ describe('Microsoft SharePoint Node', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
 			expect(mockRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
 				qs: {
-					$filter: "name eq 'folder'",
+					$filter: 'folder ne null',
 				},
 			});
 			expect(listSearchResult).toEqual({
