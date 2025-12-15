@@ -95,11 +95,11 @@ export function getRunData(
 /**
  * Loads workflow data for sub-workflow execution.
  *
- * When `allowDraft` is true (manual/chat executions):
+ * When `useDraftVersion` is true (manual/chat executions):
  * - Always uses the draft version (nodes/connections from WorkflowEntity)
  * - This allows iterating on sub-workflows without requiring them to be published
  *
- * When `allowDraft` is false (production executions):
+ * When `useDraftVersion` is false (production executions):
  * - Requires the workflow to have an active (published) version
  * - Uses nodes/connections from the activeVersion in WorkflowHistory
  */
@@ -107,7 +107,7 @@ export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
-	options?: { allowDraft?: boolean },
+	options?: { useDraftVersion?: boolean },
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new UnexpectedError(
@@ -133,15 +133,17 @@ export async function getWorkflowData(
 			});
 		}
 
-		if (options?.allowDraft) {
+		if (options?.useDraftVersion) {
 			// For manual/chat executions: use draft version (nodes/connections from entity)
 			// This allows iterating on sub-workflows without publishing
 			workflowData = workflowFromDb;
 		} else if (workflowFromDb.activeVersion) {
 			// For production executions: use published version
-			workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
-			workflowFromDb.connections = workflowFromDb.activeVersion.connections;
-			workflowData = workflowFromDb;
+			workflowData = {
+				...workflowFromDb,
+				nodes: workflowFromDb.activeVersion.nodes,
+				connections: workflowFromDb.activeVersion.connections,
+			};
 		} else {
 			// No active version and drafts not allowed
 			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
@@ -171,11 +173,11 @@ export async function executeWorkflow(
 ): Promise<ExecuteWorkflowData> {
 	const activeExecutions = Container.get(ActiveExecutions);
 
-	const allowDraft = additionalData.allowDraftSubWorkflows ?? false;
+	const useDraftVersion = additionalData.useDraftSubWorkflows ?? false;
 	const workflowData =
 		options.loadedWorkflowData ??
 		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings, {
-			allowDraft,
+			useDraftVersion,
 		}));
 
 	const runData =
@@ -266,8 +268,8 @@ async function startExecution(
 		}
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
-		// Propagate draft sub-workflow allowance to nested sub-workflows
-		additionalDataIntegrated.allowDraftSubWorkflows = additionalData.allowDraftSubWorkflows;
+		// Propagate draft sub-workflow setting to nested sub-workflows
+		additionalDataIntegrated.useDraftSubWorkflows = additionalData.useDraftSubWorkflows;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {

@@ -127,8 +127,8 @@ export class JobProcessor {
 			workflowSettings: execution.workflowData.settings,
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
-		// Allow draft sub-workflows for manual/chat executions
-		additionalData.allowDraftSubWorkflows = ['manual', 'chat'].includes(execution.mode);
+		// Use draft sub-workflows for manual/chat executions
+		additionalData.useDraftSubWorkflows = ['manual', 'chat'].includes(execution.mode);
 
 		const { pushRef } = job.data;
 

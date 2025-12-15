@@ -493,6 +493,161 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(result.settings).toEqual(parentSettings);
 		});
+
+		it('should use draft version when useDraftVersion is true', async () => {
+			const activeVersionNodes: INode[] = [
+				mock<INode>({
+					id: 'active-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Active Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const activeVersionConnections = { 'Active Node': {} };
+			const draftNodes: INode[] = [
+				mock<INode>({
+					id: 'draft-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Draft Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const draftConnections = { 'Draft Node': {} };
+
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					active: true,
+					activeVersionId: 'version-456',
+					nodes: draftNodes,
+					connections: draftConnections,
+					activeVersion: mock({
+						versionId: 'version-456',
+						workflowId: 'workflow-123',
+						nodes: activeVersionNodes,
+						connections: activeVersionConnections,
+						authors: 'user1',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}),
+				}),
+			);
+
+			const result = await getWorkflowData(
+				{ id: 'workflow-123' },
+				'parent-workflow-id',
+				undefined,
+				{
+					useDraftVersion: true,
+				},
+			);
+
+			// Should use draft nodes/connections, not active version
+			expect(result.nodes).toEqual(draftNodes);
+			expect(result.connections).toEqual(draftConnections);
+		});
+
+		it('should use active version when useDraftVersion is false', async () => {
+			const activeVersionNodes: INode[] = [
+				mock<INode>({
+					id: 'active-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Active Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const activeVersionConnections = { 'Active Node': {} };
+			const draftNodes: INode[] = [
+				mock<INode>({
+					id: 'draft-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Draft Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const draftConnections = { 'Draft Node': {} };
+
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					active: true,
+					activeVersionId: 'version-456',
+					nodes: draftNodes,
+					connections: draftConnections,
+					activeVersion: mock({
+						versionId: 'version-456',
+						workflowId: 'workflow-123',
+						nodes: activeVersionNodes,
+						connections: activeVersionConnections,
+						authors: 'user1',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}),
+				}),
+			);
+
+			const result = await getWorkflowData(
+				{ id: 'workflow-123' },
+				'parent-workflow-id',
+				undefined,
+				{
+					useDraftVersion: false,
+				},
+			);
+
+			// Should use active version nodes/connections
+			expect(result.nodes).toEqual(activeVersionNodes);
+			expect(result.connections).toEqual(activeVersionConnections);
+		});
+
+		it('should allow draft workflow without active version when useDraftVersion is true', async () => {
+			const draftNodes: INode[] = [
+				mock<INode>({
+					id: 'draft-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Draft Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const draftConnections = { 'Draft Node': {} };
+
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					active: false,
+					activeVersionId: null,
+					nodes: draftNodes,
+					connections: draftConnections,
+					activeVersion: null,
+				}),
+			);
+
+			const result = await getWorkflowData(
+				{ id: 'workflow-123' },
+				'parent-workflow-id',
+				undefined,
+				{
+					useDraftVersion: true,
+				},
+			);
+
+			// Should use draft nodes/connections even without active version
+			expect(result.nodes).toEqual(draftNodes);
+			expect(result.connections).toEqual(draftConnections);
+		});
 	});
 
 	describe('getBase', () => {
