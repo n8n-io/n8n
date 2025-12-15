@@ -632,6 +632,7 @@ export class WorkflowBuilderAgent {
 					'message' in errorDetails &&
 					typeof errorDetails.message === 'string'
 				) {
+					// Override original error message from model provider for prompt size issues
 					if (errorDetails.message.toLocaleLowerCase().includes('prompt is too long')) {
 						return PROMPT_IS_TOO_LARGE_ERROR;
 					}
