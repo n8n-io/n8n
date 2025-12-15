@@ -111,6 +111,16 @@ describe('useNodeCommands', () => {
 			value: false,
 		});
 
+		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
+			value: '123',
+			writable: true,
+		});
+
+		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+			value: { '123': true },
+			writable: true,
+		});
+
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
 
 		mockEditableWorkflow.value.nodes = [];
@@ -177,8 +187,9 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: false },
 			});
 
-			Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
-				value: true,
+			Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+				value: {},
+				writable: true,
 			});
 
 			const { commands } = useNodeCommands({

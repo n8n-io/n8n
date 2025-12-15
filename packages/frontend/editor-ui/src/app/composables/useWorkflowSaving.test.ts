@@ -417,6 +417,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { w2: workflow };
+			workflowsStore.isWorkflowSaved = { w2: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
@@ -438,6 +440,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { w3: workflow };
+			workflowsStore.isWorkflowSaved = { w3: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);

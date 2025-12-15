@@ -121,6 +121,7 @@ describe('EvaluationsRootView', () => {
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		workflowsStore.isWorkflowSaved = { workflow123: true };
 
 		renderComponent({ props: { name: newWorkflowId } });
 
