@@ -140,6 +140,7 @@ const handleSubmit = async () => {
 
 <style scoped>
 .auth-page {
+	width: 100%;
 	min-height: 100vh;
 	background: var(--color-background-base);
 	display: flex;
