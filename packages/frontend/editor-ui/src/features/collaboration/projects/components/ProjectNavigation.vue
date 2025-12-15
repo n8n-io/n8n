@@ -92,7 +92,7 @@ const activeTabId = computed(() => {
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
-	label: 'Chat',
+	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
 }));

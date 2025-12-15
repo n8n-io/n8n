@@ -4,7 +4,7 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 function isFeatureFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+	return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
 }
 
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
@@ -17,17 +17,21 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		await import('./credential-resolvers.controller');
 		await import('./context-establishment-hooks');
 		await import('./credential-resolvers');
-		const { DynamicCredentialResolverRegistry, DynamicCredentialService } = await import(
-			'./services'
-		);
+		const {
+			DynamicCredentialResolverRegistry,
+			DynamicCredentialStorageService,
+			DynamicCredentialService,
+		} = await import('./services');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
 
 		// Register the credential resolution provider with CredentialsHelper
-		const { CredentialsHelper } = await import('@/credentials-helper');
-		const credentialsHelper = Container.get(CredentialsHelper);
+		const { DynamicCredentialsProxy } = await import('../../credentials/dynamic-credentials-proxy');
+		const credentialsProxy = Container.get(DynamicCredentialsProxy);
 		const dynamicCredentialService = Container.get(DynamicCredentialService);
-		credentialsHelper.setCredentialResolutionProvider(dynamicCredentialService);
+		const dynamicCredentialStorageService = Container.get(DynamicCredentialStorageService);
+		credentialsProxy.setResolverProvider(dynamicCredentialService);
+		credentialsProxy.setStorageProvider(dynamicCredentialStorageService);
 	}
 
 	async entities() {

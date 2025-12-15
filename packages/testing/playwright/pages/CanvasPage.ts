@@ -965,6 +965,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-handle-plus');
 	}
 
+	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus-wrapper"]`,
+			)
+			.first();
+	}
+
 	stopExecutionWaitingForWebhookButton(): Locator {
 		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
 	}

@@ -6,6 +6,7 @@ export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
 
 export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'tool-node-has-no-parameters',
+	// this validation has been removed for now as it was throwing a lot of false positives
 	'tool-node-static-parameters',
 	'agent-static-prompt',
 	'agent-no-system-prompt',
@@ -75,6 +76,7 @@ export interface ProgrammaticEvaluationInput {
 	userPrompt?: string;
 	referenceWorkflow?: SimpleWorkflow;
 	referenceWorkflows?: SimpleWorkflow[];
+	preset?: 'strict' | 'standard' | 'lenient';
 }
 
 export interface NodeResolvedConnectionTypesInfo {
