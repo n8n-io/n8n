@@ -249,11 +249,15 @@ jobs:
 
             docker buildx imagetools create \
               -t "ghcr.io/${{ github.repository_owner }}/n8n:1" \
-              "ghcr.io/${{ github.repository_owner }}/n8n:${VERSION}"
+              "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
 
             docker buildx imagetools create \
               -t "ghcr.io/${{ github.repository_owner }}/runners:1" \
-              "ghcr.io/${{ github.repository_owner }}/runners:${VERSION}"
+              "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
+
+            docker buildx imagetools create \
+              -t "ghcr.io/${{ github.repository_owner }}/runners:1-distroless" \
+              "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
           fi
 
       - name: Create Docker Hub manifests
@@ -296,6 +300,10 @@ jobs:
             docker buildx imagetools create \
               -t "${DOCKER_BASE}/runners:1" \
               "${DOCKER_BASE}/runners:${VERSION}"
+
+            docker buildx imagetools create \
+              -t "${DOCKER_BASE}/runners:1-distroless" \
+              "${DOCKER_BASE}/runners:${VERSION}-distroless"
           fi
 
   call-success-url:
