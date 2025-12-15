@@ -797,10 +797,8 @@ export class ChatHubModelsService {
 			if (!metadata.available) return [];
 
 			// Deduplication as some providers (mistralCloud) return duplicate models
-			const key = `${provider}-${id}`;
-			if (seen.has(key)) return [];
-
-			seen.add(key);
+			if (seen.has(id)) return [];
+			seen.add(id);
 
 			return [
 				{

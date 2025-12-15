@@ -924,7 +924,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 * models and agents
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
-		agentsReady: computed(() => agents.value !== undefined),
+		agentsReady: computed(() => agents.value !== null),
 		customAgents,
 		getAgent,
 		fetchAgents,

@@ -7,7 +7,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
+import { getAgentRoute, isLlmProvider, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatModelDto, ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
 import {
 	CHAT_CONVERSATION_VIEW,
@@ -38,7 +38,10 @@ export function useChatHubCommands(options: {
 	const message = useMessage();
 
 	const currentSessionId = computed<ChatSessionId | null>(() =>
-		typeof route.params.id === 'string' ? route.params.id : null,
+		(route.name === CHAT_VIEW || route.name === CHAT_CONVERSATION_VIEW) &&
+		typeof route.params.id === 'string'
+			? route.params.id
+			: null,
 	);
 
 	const isResponding = computed(() => {
@@ -105,7 +108,7 @@ export function useChatHubCommands(options: {
 			if (!model.metadata.available) return false;
 
 			const provider = model.model.provider;
-			if (provider !== 'n8n' && provider !== 'custom-agent') {
+			if (isLlmProvider(provider)) {
 				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
 				if (settings && !settings.enabled) {
 					return false;
@@ -174,12 +177,7 @@ export function useChatHubCommands(options: {
 	});
 
 	const newSessionWithModelCommand = (model: ChatModelDto): CommandBarItem => {
-		const id =
-			model.model.provider === 'n8n'
-				? `${model.model.provider}-${model.model.workflowId}`
-				: model.model.provider === 'custom-agent'
-					? `${model.model.provider}-${model.model.agentId}`
-					: `${model.model.provider}-${model.model.model}`;
+		const id = stringifyModel(model.model);
 
 		return {
 			id,

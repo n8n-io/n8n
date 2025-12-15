@@ -155,8 +155,6 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 		const parsedModel = chatHubConversationModelSchema.safeParse({
 			provider,
 			model,
-			agentId,
-			workflowId,
 		});
 
 		if (parsedModel.success) {
