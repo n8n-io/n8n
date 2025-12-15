@@ -23,8 +23,11 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
       - name: Sync with latest RELEASE (not master)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/n8n-io/n8n/releases/latest | jq -r '.tag_name')
+          # Use gh api to avoid rate limits
+          LATEST_RELEASE=$(gh release view --repo n8n-io/n8n --json tagName --jq .tagName)
           echo "Syncing with release: $LATEST_RELEASE"
           
           git remote add upstream https://github.com/n8n-io/n8n.git || true
@@ -77,7 +80,8 @@ jobs:
           
       - name: Create our Release
         run: |
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/n8n-io/n8n/releases/latest | jq -r '.tag_name')
+          # Use gh api to avoid rate limits
+          LATEST_RELEASE=$(gh release view --repo n8n-io/n8n --json tagName --jq .tagName)
           gh release delete "$LATEST_RELEASE" --repo "$GITHUB_REPOSITORY" -y 2>/dev/null || true
           gh release create "$LATEST_RELEASE" \
             --repo "$GITHUB_REPOSITORY" \
