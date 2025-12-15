@@ -30,7 +30,49 @@ jobs:
           git remote add upstream https://github.com/n8n-io/n8n.git || true
           git fetch upstream --tags --force
           
-          git merge "$LATEST_RELEASE" --allow-unrelated-histories -X ours
+          # Try merge with -X ours. If it fails (due to modify/delete conflicts), resolve them manually.
+          if ! git merge "$LATEST_RELEASE" --allow-unrelated-histories -X ours; then
+            echo "Merge conflict detected. Starting manual resolution..."
+
+            # Get list of unmerged files
+            CONFLICTS=$(git diff --name-only --diff-filter=U)
+
+            for file in $CONFLICTS; do
+              echo "Resolving: $file"
+
+              # Logic:
+              # 1. If file is in .github/workflows (and NOT sync.yml), take UPSTREAM version (Theirs).
+              #    This restores deleted workflow files if upstream modified/kept them.
+              # 2. For everything else, take OUR version.
+
+              if [[ "$file" == .github/workflows/* ]] && [[ "$file" != ".github/workflows/sync.yml" ]]; then
+                 echo "  -> Taking UPSTREAM version (Theirs) for workflow file"
+                 git checkout --theirs -- "$file"
+                 git add "$file"
+              else
+                 echo "  -> Taking OUR version (Ours)"
+                 # Check if we deleted the file in our HEAD or if we have it
+                 if git ls-tree -r HEAD --name-only | grep -q "^$file$"; then
+                   # We have the file -> Keep our version
+                   git checkout --ours -- "$file"
+                   git add "$file"
+                 else
+                   # We deleted the file -> Keep it deleted
+                   git rm "$file"
+                 fi
+              fi
+            done
+
+            # Check if conflicts remain
+            if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+              echo "ERROR: Unresolved conflicts remain."
+              git status
+              exit 1
+            fi
+
+            git commit -m "Merge release $LATEST_RELEASE (Automatic Conflict Resolution)"
+          fi
+
           git push origin master
           
       - name: Create our Release
