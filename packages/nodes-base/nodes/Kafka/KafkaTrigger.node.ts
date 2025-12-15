@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 	IRun,
+	IBinaryKeyData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -263,8 +264,8 @@ export class KafkaTrigger implements INodeType {
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
 				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
-					let value: any;
-					let binary: { [key: string]: any } = {};
+					let value = message.value?.toString() as string;
+					const binary: IBinaryKeyData = {};
 
 					// Always perform parsing/decoding flow
 					value = message.value?.toString() as string;
@@ -305,7 +306,7 @@ export class KafkaTrigger implements INodeType {
 					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
-						data = value as IDataObject;
+						data = value as unknown as IDataObject;
 					}
 
 					// Construct execution data with binary if present (only in v1.2+)
