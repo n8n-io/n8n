@@ -1,12 +1,8 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
 export class SettingsSsoPage extends BasePage {
-	constructor(page: Page) {
-		super(page);
-	}
-
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/sso');
 	}

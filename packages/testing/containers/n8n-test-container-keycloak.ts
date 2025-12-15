@@ -174,8 +174,6 @@ export async function setupKeycloak({
 		const certPem = await extractCertificate(container);
 		await waitForKeycloakReady(allocatedHostPort, certPem);
 
-		console.log(`Keycloak discovery URL: ${discoveryUrl}`);
-
 		return {
 			container,
 			discoveryUrl,
