@@ -95,7 +95,7 @@ export class ChatHubSession extends WithTimestamps {
 	 * ID of the custom agent to use (if applicable).
 	 * Only set when provider is 'custom-agent'.
 	 */
-	@Column({ type: 'uuid', nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	agentId: string | null;
 
 	/**
