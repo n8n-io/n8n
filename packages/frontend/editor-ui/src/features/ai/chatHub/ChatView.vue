@@ -395,7 +395,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string, attachments: File[]) {
+async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -408,7 +408,7 @@ function onSubmit(message: string, attachments: File[]) {
 	didSubmitInCurrentSession.value = true;
 	editingMessageId.value = undefined;
 
-	void chatStore.sendMessage(
+	await chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value.model,
