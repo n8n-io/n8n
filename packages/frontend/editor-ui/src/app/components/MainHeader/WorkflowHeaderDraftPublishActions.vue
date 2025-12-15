@@ -10,7 +10,6 @@ import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import SaveButton from '@/app/components/SaveButton.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -34,10 +33,6 @@ const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
 
-defineEmits<{
-	'workflow:saved': [];
-}>();
-
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const locale = useI18n();
 const uiStore = useUIStore();
@@ -45,7 +40,6 @@ const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
 const { saveCurrentWorkflow } = useWorkflowSaving({ router });
-// We're dropping the save button soon with the autosave so this will also be dropped
 const autoSaveForPublish = ref(false);
 
 const isWorkflowSaving = computed(() => {
@@ -78,10 +72,6 @@ const foundTriggers = computed(() =>
 
 const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
-});
-
-const isWorkflowSaved = computed(() => {
-	return !uiStore.stateIsDirty && !props.isNewWorkflow;
 });
 
 const showPublishIndicator = computed(() => {
@@ -159,21 +149,6 @@ defineExpose({
 				data-test-id="workflow-publish-indicator"
 			></span>
 		</div>
-		<SaveButton
-			type="primary"
-			:saved="isWorkflowSaved"
-			:disabled="
-				isWorkflowSaving ||
-				readOnly ||
-				isArchived ||
-				(!isNewWorkflow && !workflowPermissions.update)
-			"
-			:is-saving="isWorkflowSaving"
-			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-			data-test-id="workflow-save-button"
-			@click="$emit('workflow:saved')"
-		/>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsDropdownMenu
 			:id="id"
@@ -186,7 +161,6 @@ defineExpose({
 			:tags="tags"
 			:current-folder="currentFolder"
 			:meta="meta"
-			@workflow:saved="$emit('workflow:saved')"
 		/>
 	</div>
 </template>
