@@ -35,6 +35,10 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-search');
 	}
 
+	getSearchContainer() {
+		return this.root.getByTestId('ndv-search-container');
+	}
+
 	getDataContainer() {
 		return this.root.getByTestId('ndv-data-container');
 	}

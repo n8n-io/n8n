@@ -164,25 +164,27 @@ watch(
 </script>
 
 <template>
-	<N8nInput
-		ref="inputRef"
-		data-test-id="ndv-search"
-		:class="{
-			[$style.ioSearch]: true,
-			[$style.ioSearchOpened]: opened,
-		}"
-		:style="style"
-		:model-value="search"
-		:placeholder="placeholder"
-		size="small"
-		@update:model-value="onSearchUpdate"
-		@focus="onFocus"
-		@blur="onBlur"
-	>
-		<template #prefix>
-			<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
-		</template>
-	</N8nInput>
+	<div data-test-id="ndv-search-container">
+		<N8nInput
+			ref="inputRef"
+			data-test-id="ndv-search"
+			:class="{
+				[$style.ioSearch]: true,
+				[$style.ioSearchOpened]: opened,
+			}"
+			:style="style"
+			:model-value="search"
+			:placeholder="placeholder"
+			size="small"
+			@update:model-value="onSearchUpdate"
+			@focus="onFocus"
+			@blur="onBlur"
+		>
+			<template #prefix>
+				<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
+			</template>
+		</N8nInput>
+	</div>
 </template>
 
 <style lang="scss" module>

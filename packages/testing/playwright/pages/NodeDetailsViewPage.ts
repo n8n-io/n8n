@@ -773,15 +773,13 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async searchOutputData(searchTerm: string) {
-		const searchInput = this.outputPanel.getSearchInput();
-		await searchInput.click();
-		await searchInput.fill(searchTerm);
+		await this.outputPanel.getSearchContainer().click();
+		await this.outputPanel.getSearchInput().fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
-		const searchInput = this.inputPanel.getSearchInput();
-		await searchInput.click();
-		await searchInput.fill(searchTerm);
+		await this.inputPanel.getSearchContainer().click();
+		await this.inputPanel.getSearchInput().fill(searchTerm);
 	}
 
 	/**

@@ -43,13 +43,18 @@ const inputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
 // Check if attr should go to input element
 // - id: needed for <label for="..."> association
+// - title: tooltip/accessibility attribute
 // - data-*, aria-*: semantic/accessibility attributes
 // - on*: event handlers
 const isInputAttr = (key: string) =>
-	key === 'id' || key.startsWith('data-') || key.startsWith('aria-') || key.startsWith('on');
+	key === 'id' ||
+	key === 'title' ||
+	key.startsWith('data-') ||
+	key.startsWith('aria-') ||
+	key.startsWith('on');
 
 // Separate attrs for container vs input element
-// data-*, aria-*, and event handlers (on*) go to the input, rest to container
+// data-*, aria-*, title, id and event handlers (on*) go to the input, rest to container
 const inputAttrs = computed(() => {
 	const result: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(attrs)) {
