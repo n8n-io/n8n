@@ -38,11 +38,10 @@ test.describe('@isolated', () => {
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C1');
 			await n8n.ndv.clickBackToCanvasButton();
 
-			// Share W1 with U3 before saving
+			// Share W1 with U3 (this also saves the workflow)
 			await n8n.canvas.openShareModal();
 			await n8n.workflowSharingModal.addUser(MEMBER_1_EMAIL);
 			await n8n.workflowSharingModal.save();
-			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.navigate.toWorkflow('new');
 			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Workflow W2');
