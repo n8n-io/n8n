@@ -172,10 +172,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	/**
 	 * Gets the feature flags for the current node version.
 	 * Uses declarative features from the node type description.
-	 * @protected
+	 * @private
 	 */
 	@Memoized
-	protected get nodeFeatures(): NodeFeatures {
+	private get nodeFeatures(): NodeFeatures {
 		const description = this.nodeType.description;
 		return NodeHelpers.getNodeFeatures(description.features, this.node.typeVersion);
 	}

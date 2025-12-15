@@ -468,7 +468,7 @@ describe('NodeExecutionContext', () => {
 			node.typeVersion = 2.4;
 			nodeType.description.features = undefined;
 
-			const result = testContext.nodeFeatures;
+			const result = testContext['nodeFeatures'];
 
 			expect(result).toEqual({});
 		});
@@ -481,7 +481,7 @@ describe('NodeExecutionContext', () => {
 				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
 			};
 
-			const result = testContext.nodeFeatures;
+			const result = testContext['nodeFeatures'];
 
 			expect(result).toEqual({
 				useFeatureA: true,
@@ -498,7 +498,7 @@ describe('NodeExecutionContext', () => {
 				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
 			};
 
-			const result = testContext.nodeFeatures;
+			const result = testContext['nodeFeatures'];
 
 			expect(result).toEqual({
 				useFeatureA: false,
@@ -514,7 +514,7 @@ describe('NodeExecutionContext', () => {
 				useFeatureE: { '@version': [{ _cnd: { lt: 2.3 } }] },
 			};
 
-			const result = testContext.nodeFeatures;
+			const result = testContext['nodeFeatures'];
 
 			expect(result).toEqual({
 				useFeatureD: true,
