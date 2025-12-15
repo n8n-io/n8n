@@ -109,6 +109,8 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	isToolType,
+	isHitlToolType,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -825,7 +827,6 @@ export function useCanvasOperations() {
 		}
 
 		workflowsStore.addNode(nodeData);
-
 		if (options.trackHistory) {
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData, Date.now()));
 		}
@@ -891,10 +892,46 @@ export function useCanvasOperations() {
 		if (!lastInteractedWithNode) {
 			return;
 		}
-
+		const isNewHitlToolNode = isHitlToolType(node.type);
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
+		if (
+			isNewHitlToolNode &&
+			isToolType(lastInteractedWithNode.type) &&
+			lastInteractedWithNodeConnection
+		) {
+			const { type: connectionType } = parseCanvasConnectionHandleString(
+				lastInteractedWithNodeHandle,
+			);
+			const nodeId = node.id;
+			const nodeHandle = createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Input,
+				type: connectionType,
+				index: 0,
+			});
+			// create connection from master(e.g. agent) node to hitl node
+			const connectionFromHitl: Connection = {
+				target: lastInteractedWithNodeConnection.target,
+				targetHandle: lastInteractedWithNodeConnection.targetHandle,
+				source: nodeId,
+				sourceHandle: nodeHandle,
+			};
+			createConnection(connectionFromHitl);
+
+			// delete existing connection from agent node to tool node
+			deleteConnection(lastInteractedWithNodeConnection);
+
+			const connection: Connection = {
+				source: lastInteractedWithNodeConnection.source,
+				sourceHandle: lastInteractedWithNodeConnection.sourceHandle,
+				target: nodeId,
+				targetHandle: nodeHandle,
+			};
+			createConnection(connection);
+
+			return;
+		}
 		// If we have a specific endpoint to connect to
 		if (lastInteractedWithNodeHandle) {
 			const { type: connectionType, mode } = parseCanvasConnectionHandleString(
@@ -1162,6 +1199,54 @@ export function useCanvasOperations() {
 				// - clicking the plus button of a node handle
 				// - clicking the plus button of a node edge / connection
 				// - selecting a node, adding a node via the node creator
+
+				// When adding a HITL node from clicking the plus button of a node connection
+				const isNewHitlToolNode = isHitlToolType(node.type);
+				if (
+					isNewHitlToolNode &&
+					isToolType(lastInteractedWithNode.type) &&
+					lastInteractedWithNodeConnection &&
+					connectionType === NodeConnectionTypes.AiTool
+				) {
+					// Get the source node (main node) from the connection
+					const toolUserNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
+					if (toolUserNode) {
+						// Position the HITL node vertically between the source (main) node and target (tool) node
+						// X position: same as the tool node, slightly shifted to the left because of the size difference
+						// Y position: halfway between source and target nodes
+						const sourceY = toolUserNode.position[1];
+						const targetY = lastInteractedWithNode.position[1];
+						const yDiff = (targetY - sourceY) / 2;
+						const middleY = sourceY + yDiff;
+
+						position = [
+							lastInteractedWithNode.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
+							middleY,
+						];
+
+						const isTooClose = Math.abs(middleY - targetY) < PUSH_NODES_OFFSET;
+						if (isTooClose) {
+							// slightly move the tool node vertically
+							const verticalOffset = PUSH_NODES_OFFSET / 2;
+							updateNodePosition(
+								lastInteractedWithNode.id,
+								{
+									x: lastInteractedWithNode.position[0],
+									y:
+										lastInteractedWithNode.position[1] +
+										(yDiff > 0 ? verticalOffset : -verticalOffset),
+								},
+								{ trackHistory: true },
+							);
+						}
+
+						return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
+							offset: pushOffsets,
+							size: nodeSize,
+							viewport: options.viewport,
+						});
+					}
+				}
 
 				const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
 					editableWorkflowObject.value,
