@@ -809,7 +809,7 @@ onMounted(async () => {
 						<button
 							type="button"
 							:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
-							data-test-id="source-control-push-modal-tab"
+							:data-test-id="`source-control-push-modal-tab-${tab.value}`"
 							@click="activeTab = tab.value"
 						>
 							<div>{{ tab.label }}</div>
