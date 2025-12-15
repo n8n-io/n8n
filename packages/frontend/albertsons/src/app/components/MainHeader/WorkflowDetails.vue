@@ -27,7 +27,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderActions from '@/app/components/MainHeader/WorkflowHeaderActions.vue';
-import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import WorkflowHeaderDraftPublishActions from '@src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -47,6 +47,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { albertsonsRestApiRequest } from '@src/utils/albertsonsRestApiRequest';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -73,7 +74,6 @@ const emit = defineEmits<{
 }>();
 
 const $style = useCssModule();
-
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -150,6 +150,44 @@ watch(
 		renameInput.value?.forceCancel();
 	},
 );
+
+/**
+ * New functionality
+ * Custom Publish button
+ */
+async function onPublishButtonClick() {
+	// If the workflow is saving, do not allow another save
+	if (isWorkflowSaving.value) {
+		return;
+	}
+
+	const id = getWorkflowId(props.id, route.params.name);
+
+	const name = props.name;
+	const tags = props.tags as string[];
+
+	const result = await albertsonsRestApiRequest('POST', '/v1/templates/publish', {});
+	if (result) {
+		toast.showMessage({
+			title: `Workflow`,
+			message: 'Published successfully.',
+			type: 'success',
+		});
+	}
+
+	// if (saved) {
+	// 	showCreateWorkflowSuccessToast(id);
+
+	// 	await npsSurveyStore.fetchPromptsData();
+
+	if (route.name === VIEWS.EXECUTION_DEBUG) {
+		await router.replace({
+			name: VIEWS.WORKFLOW,
+			params: { name: props.id },
+		});
+	}
+	// }
+}
 
 async function onSaveButtonClick() {
 	// If the workflow is saving, do not allow another save
@@ -563,6 +601,7 @@ onBeforeUnmount(() => {
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
+				@workflow:publish="onPublishButtonClick"
 				@workflow:saved="onSaveButtonClick"
 			/>
 			<WorkflowHeaderActions
