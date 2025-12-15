@@ -524,7 +524,7 @@ export class WorkflowService {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:update'],
+			['workflow:publish'],
 			{ includeActiveVersion: true },
 		);
 
