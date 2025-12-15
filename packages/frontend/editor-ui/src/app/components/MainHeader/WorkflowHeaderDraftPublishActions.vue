@@ -143,7 +143,7 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
+		<div v-if="!isArchived && workflowPermissions.publish" :class="$style.publishButtonWrapper">
 			<N8nButton
 				:loading="autoSaveForPublish"
 				:disabled="isWorkflowSaving"
