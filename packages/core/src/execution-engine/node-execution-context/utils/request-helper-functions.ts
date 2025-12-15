@@ -61,6 +61,7 @@ import type {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
+// @ts-ignore - qs module missing types
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 

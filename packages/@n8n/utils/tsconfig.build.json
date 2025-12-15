@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "es2023",
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"lib": ["es2023", "dom"],
+		"strict": true,
+		"declaration": true,
+		"emitDeclarationOnly": false,
+		"outDir": "dist",
+		"noEmit": false,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "vite.config.ts", "tsdown.config.ts"]
+}
