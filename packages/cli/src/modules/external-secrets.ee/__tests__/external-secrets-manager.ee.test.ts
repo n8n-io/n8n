@@ -1,8 +1,8 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { captor, mock } from 'jest-mock-extended';
 
-import type { License } from '@/license';
 import {
 	AnotherDummyProvider,
 	DummyProvider,
@@ -33,7 +33,7 @@ describe('External Secrets Manager', () => {
 	};
 
 	const mockProvidersInstance = new MockProviders();
-	const license = mock<License>();
+	const licenseState = mock<LicenseState>();
 	const settingsRepo = mock<SettingsRepository>();
 	const cipher = mockCipher();
 
@@ -45,7 +45,7 @@ describe('External Secrets Manager', () => {
 			dummy: DummyProvider,
 		});
 
-		license.isExternalSecretsEnabled.mockReturnValue(true);
+		licenseState.isExternalSecretsLicensed.mockReturnValue(true);
 		settingsRepo.findByKey
 			.calledWith(EXTERNAL_SECRETS_DB_KEY)
 			.mockImplementation(async () => mock<Settings>({ value: JSON.stringify(settings) }));
@@ -54,7 +54,7 @@ describe('External Secrets Manager', () => {
 			mockLogger(),
 			mock(),
 			settingsRepo,
-			license,
+			licenseState,
 			mockProvidersInstance,
 			cipher,
 			mock(),
@@ -96,7 +96,7 @@ describe('External Secrets Manager', () => {
 		});
 
 		test('should not call provider update functions if the not licensed', async () => {
-			license.isExternalSecretsEnabled.mockReturnValue(false);
+			licenseState.isExternalSecretsLicensed.mockReturnValue(false);
 
 			await manager.init();
 
@@ -181,7 +181,7 @@ describe('External Secrets Manager', () => {
 		});
 
 		test('should return false if external secrets are not licensed', async () => {
-			license.isExternalSecretsEnabled.mockReturnValue(false);
+			licenseState.isExternalSecretsLicensed.mockReturnValue(false);
 
 			await manager.init();
 
@@ -260,6 +260,65 @@ describe('External Secrets Manager', () => {
 			expect(manager.hasProvider('dummy')).toBe(true);
 			expect(manager.hasProvider('another_dummy')).toBe(false);
 			expect(manager.getProviderNames()).toEqual(['dummy']);
+		});
+	});
+
+	describe('reloadProvider', () => {
+		let broadcastSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			// @ts-expect-error private method
+			broadcastSpy = jest.spyOn(manager, 'broadcastReloadExternalSecretsProviders');
+		});
+
+		test('should broadcast reload when provider recovers from error state', async () => {
+			// Initialize with a provider in error state
+			mockProvidersInstance.setProviders({
+				dummy: FailedProvider,
+			});
+
+			await manager.init();
+
+			// Verify provider is in error state
+			expect(manager.getProvider('dummy')!.state).toBe('error');
+
+			// Change mock to return a working provider
+			mockProvidersInstance.setProviders({
+				dummy: DummyProvider,
+			});
+
+			// Reload the provider - should recover from error to connected
+			await manager.reloadProvider('dummy');
+			expect(manager.getProvider('dummy')!.state).toBe('connected');
+			expect(broadcastSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not broadcast reload when provider state does not recover from error', async () => {
+			await manager.init();
+
+			// Provider starts in connected state
+			expect(manager.getProvider('dummy')!.state).toBe('connected');
+
+			// Reload the provider - stays connected
+			await manager.reloadProvider('dummy');
+			expect(manager.getProvider('dummy')!.state).toBe('connected');
+			expect(broadcastSpy).toHaveBeenCalledTimes(0);
+		});
+
+		test('should not broadcast reload when provider transitions from error to error', async () => {
+			// Initialize with a provider in error state
+			mockProvidersInstance.setProviders({
+				dummy: FailedProvider,
+			});
+
+			await manager.init();
+
+			// Verify provider is in error state
+			expect(manager.getProvider('dummy')!.state).toBe('error');
+
+			await manager.reloadProvider('dummy');
+			expect(manager.getProvider('dummy')!.state).toBe('error');
+			expect(broadcastSpy).toHaveBeenCalledTimes(0);
 		});
 	});
 
