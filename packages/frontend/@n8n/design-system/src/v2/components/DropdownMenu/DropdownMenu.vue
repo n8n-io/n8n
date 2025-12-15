@@ -212,6 +212,7 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 
 const handleItemSelect = (value: T) => {
 	emit('select', value);
+	close();
 };
 
 const handleItemSearch = (term: string, itemId: T) => {
