@@ -32,7 +32,7 @@ export function validateAgentParameters(
 	params: AgentParametersInput,
 ): IDataObject {
 	const inputParameters = params?.value ?? {};
-	const requiredParameters = params?.schema
+	const requiredParameters = (params?.schema ?? [])
 		.filter((field) => field.required)
 		.map((field) => field.id);
 	// check for empty values on required fields
