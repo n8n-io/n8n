@@ -19,10 +19,6 @@ const TEMPLATE_ID = '1';
 const TEST_CATEGORY = 'sales';
 const SALES_CATEGORY_ID = 3;
 
-const NOTIFICATIONS = {
-	SAVED: 'Saved',
-};
-
 const CATEGORIES = [
 	{ id: 1, name: 'Engineering' },
 	{ id: 2, name: 'Finance' },
