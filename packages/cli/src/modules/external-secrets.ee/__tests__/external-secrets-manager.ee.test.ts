@@ -210,6 +210,57 @@ describe('External Secrets Manager', () => {
 
 			expect(updateSecretsSpy).toHaveBeenCalledTimes(1);
 		});
+
+		test('should remove all providers when DB returns null', async () => {
+			await manager.init();
+
+			// Verify we have providers initially
+			expect(manager.getProviderNames()).toEqual(['dummy']);
+
+			const disconnectSpy = jest.spyOn(manager.getProvider('dummy')!, 'disconnect');
+
+			// Mock DB to return null (settings were deleted)
+			settingsRepo.findByKey.mockResolvedValueOnce(null);
+
+			await manager.reloadAllProviders();
+
+			// Providers should be disconnected and removed
+			expect(disconnectSpy).toHaveBeenCalledTimes(1);
+			expect(manager.getProviderNames()).toEqual([]);
+			expect(manager.hasProvider('dummy')).toBe(false);
+		});
+
+		test('should remove providers no longer in settings', async () => {
+			// Initialize with multiple providers
+			mockProvidersInstance.setProviders({
+				dummy: DummyProvider,
+				another_dummy: AnotherDummyProvider,
+			});
+
+			await manager.init();
+
+			// Verify both providers exist
+			expect(manager.getProviderNames()).toContain('dummy');
+			expect(manager.getProviderNames()).toContain('another_dummy');
+
+			const disconnectSpy = jest.spyOn(manager.getProvider('another_dummy')!, 'disconnect');
+
+			// Update settings to only include 'dummy'
+			const updatedSettings = {
+				dummy: providerSettings(),
+			};
+			settingsRepo.findByKey.mockResolvedValueOnce(
+				mock<Settings>({ value: JSON.stringify(updatedSettings) }),
+			);
+
+			await manager.reloadAllProviders();
+
+			// 'another_dummy' should be disconnected and removed
+			expect(disconnectSpy).toHaveBeenCalledTimes(1);
+			expect(manager.hasProvider('dummy')).toBe(true);
+			expect(manager.hasProvider('another_dummy')).toBe(false);
+			expect(manager.getProviderNames()).toEqual(['dummy']);
+		});
 	});
 
 	describe('getProviderWithSettings', () => {

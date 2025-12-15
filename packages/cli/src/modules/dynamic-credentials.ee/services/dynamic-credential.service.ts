@@ -9,7 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { extractSharedFields } from './shared-fields';
 import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
@@ -26,6 +29,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	constructor(
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly resolverRepository: DynamicCredentialResolverRepository,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 	) {}
@@ -80,6 +84,12 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		try {
+			const credentialType = this.loadNodesAndCredentials.getCredential(
+				credentialsResolveMetadata.type,
+			);
+
+			const sharedFields = extractSharedFields(credentialType.type);
+
 			// Decrypt and parse resolver configuration
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
@@ -101,6 +111,13 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 				identity: credentialContext.identity,
 			});
+
+			// Remove shared fields from dynamic data to avoid conflicts
+			for (const field of sharedFields) {
+				if (field in dynamicData) {
+					delete dynamicData[field];
+				}
+			}
 
 			// Adds and override static data with dynamically resolved data
 			return { ...staticData, ...dynamicData };
