@@ -19,6 +19,8 @@ import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
+import { SourceControlPullModal } from './modals/SourceControlPullModal';
+import { SourceControlPushModal } from './modals/SourceControlPushModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
@@ -103,6 +105,8 @@ export class n8nPage {
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
+	readonly sourceControlPushModal: SourceControlPushModal;
+	readonly sourceControlPullModal: SourceControlPullModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
 	readonly resourceMoveModal: ResourceMoveModal;
@@ -172,6 +176,8 @@ export class n8nPage {
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
+		this.sourceControlPushModal = new SourceControlPushModal(page);
+		this.sourceControlPullModal = new SourceControlPullModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
 		this.resourceMoveModal = new ResourceMoveModal(page);
