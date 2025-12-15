@@ -7,8 +7,6 @@ on:
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
       - '.github/workflows/ci-evals.yml'
-  schedule:
-    - cron: '0 22 * * 6'
   workflow_dispatch:
     inputs:
       branch:

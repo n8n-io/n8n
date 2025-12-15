@@ -3,8 +3,6 @@ name: Run Playwright Performance Tests
 on:
   workflow_call:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight
   pull_request:
     paths:
       - '.github/workflows/playwright-test-performance.yml'

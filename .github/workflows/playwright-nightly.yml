@@ -1,8 +1,6 @@
 name: Playwright Tests - Nightly
 
 on:
-  schedule:
-    - cron: '0 4 * * *'
   workflow_dispatch:
     inputs:
       image:

@@ -1,8 +1,6 @@
 name: Weekly Coverage Tests
 
 on:
-  schedule:
-    - cron: '0 2 * * 1' # Every Monday at 2 AM
   workflow_dispatch: # Allow manual triggering
 
 env:
