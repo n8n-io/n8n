@@ -1,6 +1,7 @@
 import {
 	type StructuredChunk,
 	type JINA_AI_TOOL_NODE_TYPE,
+	type SERP_API_TOOL_NODE_TYPE,
 	type INode,
 	INodeSchema,
 } from 'n8n-workflow';
@@ -59,7 +60,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	mistralCloud: 'mistralCloudApi',
 };
 
-export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE;
+export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SERP_API_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
