@@ -149,7 +149,7 @@ export class DynamicCredentialResolverService {
 		type: string,
 		config: CredentialResolverConfiguration,
 	): Promise<void> {
-		const resolverImplementation = this.registry.getResolverByName(type);
+		const resolverImplementation = this.registry.getResolverByTypename(type);
 		if (!resolverImplementation) {
 			throw new CredentialResolverValidationError(`Unknown resolver type: ${type}`);
 		}
