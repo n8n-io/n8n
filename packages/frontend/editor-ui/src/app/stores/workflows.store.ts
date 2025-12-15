@@ -1582,6 +1582,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// make sure that the new ones are not active
 		sendData.active = false;
 
+		// When activation is false, ensure MCP is disabled
+		if (!sendData.settings) {
+			sendData.settings ??= {};
+		}
+		sendData.settings.availableInMCP = false;
+
 		const projectStore = useProjectsStore();
 
 		if (!sendData.projectId && projectStore.currentProjectId) {
