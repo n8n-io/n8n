@@ -6,7 +6,7 @@ on:
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
-  # Uses pre-built images from docker-build-pr job (docker-pull mode)
+  # Builds Docker images locally per shard for faster parallel execution
   multi-main-ui:
     name: 'Multi-Main: UI'
     if: ${{ !github.event.pull_request.head.repo.fork }}

@@ -120,26 +120,10 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-  docker-build:
-    name: Build Docker Images
-    needs: install-and-build
-    if: |
-      needs.install-and-build.outputs.non_python_changed == 'true' &&
-      !github.event.pull_request.head.repo.fork
-    uses: ./.github/workflows/docker-build-pr.yml
-    with:
-      pr_number: ${{ github.event.pull_request.number }}
-      ref: refs/pull/${{ github.event.pull_request.number }}/merge
-    secrets: inherit
-
   e2e-tests:
     name: E2E Tests
-    needs: [install-and-build, docker-build]
-    if: |
-      always() &&
-      needs.install-and-build.result == 'success' &&
-      needs.install-and-build.outputs.non_python_changed == 'true' &&
-      (needs.docker-build.result == 'success' || needs.docker-build.result == 'skipped')
+    needs: install-and-build
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
     uses: ./.github/workflows/playwright-test-ci.yml
     secrets: inherit
 
