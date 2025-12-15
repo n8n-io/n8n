@@ -56,7 +56,7 @@ const config = {
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
-	workerIdleMemoryLimit: '1GB',
+	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
