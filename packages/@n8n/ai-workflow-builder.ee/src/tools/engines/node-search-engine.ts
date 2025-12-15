@@ -1,5 +1,4 @@
-// eslint-disable-next-line
-import { sublimeSearch } from '@n8n/utils/src/search/sublimeSearch';
+import { sublimeSearch } from '@n8n/utils';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

@@ -10,7 +10,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -191,6 +191,64 @@ describe('NodeExecutionContext', () => {
 			testContext.getCredentialsProperties('testType');
 			expect(additionalData.credentialsHelper.getCredentialsProperties).toHaveBeenCalledWith(
 				'testType',
+			);
+		});
+	});
+
+	describe('_getCredentials', () => {
+		it('should set executionContext on additionalData before retrieving credentials', async () => {
+			const credentialDetails = { id: 'cred123', name: 'Test Credential' };
+			const testNode = mock<INode>({
+				type: 'n8n-nodes-base.httpRequest',
+			});
+			testNode.credentials = { testCredential: credentialDetails };
+
+			const runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+			};
+			const testRunExecutionData = createRunExecutionData({
+				resultData: { runData: {} },
+				executionData: { runtimeData },
+			});
+
+			let capturedExecutionContext: unknown;
+			const mockCredentialsHelper = {
+				getDecrypted: jest
+					.fn()
+					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
+						// Capture the executionContext value at the moment getDecrypted is called
+						capturedExecutionContext = additionalData.executionContext;
+						return { token: 'test-token' };
+					}),
+				getCredentialsProperties: jest.fn(),
+			};
+
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mockCredentialsHelper,
+			});
+
+			const contextWithCredentials = new TestContext(
+				workflow,
+				testNode,
+				mockAdditionalData,
+				mode,
+				testRunExecutionData,
+			);
+
+			await contextWithCredentials['_getCredentials']('testCredential');
+
+			// Assert that executionContext was already set when getDecrypted was called
+			expect(capturedExecutionContext).toEqual(runtimeData);
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				mockAdditionalData,
+				credentialDetails,
+				'testCredential',
+				mode,
+				undefined,
+				false,
+				undefined,
 			);
 		});
 	});
@@ -381,10 +439,10 @@ describe('NodeExecutionContext', () => {
 					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
 				}),
 				mode,
-				{
+				createRunExecutionData({
 					validateSignature: true,
 					resultData: { runData: {} },
-				},
+				}),
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});

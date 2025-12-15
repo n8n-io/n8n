@@ -3,6 +3,7 @@ import { AiBuilderChatRequestDto } from '../ai-build-request.dto';
 describe('AiBuilderChatRequestDto', () => {
 	const validBasePayload = {
 		payload: {
+			id: '12345',
 			role: 'user' as const,
 			type: 'message' as const,
 			text: 'Build me a workflow',
@@ -305,8 +306,25 @@ describe('AiBuilderChatRequestDto', () => {
 			const invalidRequest = {
 				...validBasePayload,
 				payload: {
+					id: '12345',
 					role: 'user' as const,
 					type: 'message' as const,
+					workflowContext: validBasePayload.payload.workflowContext,
+				},
+			};
+
+			const result = AiBuilderChatRequestDto.safeParse(invalidRequest);
+
+			expect(result.success).toBe(false);
+		});
+
+		it('should fail when id is missing', () => {
+			const invalidRequest = {
+				...validBasePayload,
+				payload: {
+					role: 'user' as const,
+					type: 'message' as const,
+					text: 'text',
 					workflowContext: validBasePayload.payload.workflowContext,
 				},
 			};

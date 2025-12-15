@@ -12,7 +12,13 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import { deepCopy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+	deepCopy,
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 import type {
 	IPinData,
 	IConnection,
@@ -39,6 +45,7 @@ import {
 import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -886,12 +893,22 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('setWorkflowActive()', () => {
-		it('should set workflow as active when it is not already active', () => {
+		it('should set workflow as active when it is not already active', async () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
-			workflowsStore.setWorkflowActive('1');
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -904,7 +921,17 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
-			workflowsStore.setWorkflowActive('1');
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -915,7 +942,18 @@ describe('useWorkflowsStore', () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
-			workflowsStore.setWorkflowActive('2');
+
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('2', mockActiveVersion, true);
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
@@ -1078,7 +1116,7 @@ describe('useWorkflowsStore', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 				id: 'test-execution',
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							n0: [
@@ -1100,7 +1138,7 @@ describe('useWorkflowsStore', () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -1186,6 +1224,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
+					version: 1,
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
@@ -1217,6 +1256,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
+					version: 1,
 					resultData: {
 						lastNodeExecuted: 'Edit Fields',
 						runData: {
@@ -1260,7 +1300,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should replace placeholder task data in waiting nodes correctly', () => {
 			const runWithExistingRunData = deepCopy(executionResponse);
-			runWithExistingRunData.data = {
+			runWithExistingRunData.data = createRunExecutionData({
 				resultData: {
 					runData: {
 						[successEvent.nodeName]: [
@@ -1287,7 +1327,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				},
-			};
+			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
@@ -1299,14 +1339,14 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -1315,7 +1355,7 @@ describe('useWorkflowsStore', () => {
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
 			const runWithExistingRunData = executionResponse;
-			runWithExistingRunData.data = {
+			runWithExistingRunData.data = createRunExecutionData({
 				resultData: {
 					runData: {
 						[successEventWithExecutionIndex.nodeName]: [
@@ -1342,7 +1382,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				},
-			};
+			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
@@ -1354,14 +1394,14 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},
 					},
-				},
+				}),
 			});
 		});
 	});
@@ -1450,6 +1490,7 @@ describe('useWorkflowsStore', () => {
 				.spyOn(apiUtils, 'makeRestApiRequest')
 				.mockImplementation(async () => ({
 					versionId: updatedVersionId,
+					checksum: 'checksum',
 				}));
 
 			await workflowsStore.archiveWorkflow(workflowId);
@@ -1489,6 +1530,7 @@ describe('useWorkflowsStore', () => {
 				.spyOn(apiUtils, 'makeRestApiRequest')
 				.mockImplementation(async () => ({
 					versionId: updatedVersionId,
+					checksum: 'checksum',
 				}));
 
 			await workflowsStore.unarchiveWorkflow(workflowId);
@@ -1526,7 +1568,7 @@ describe('useWorkflowsStore', () => {
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
 					id: 'w1',
-					versionId: 'v2',
+					versionId: 'v1',
 					settings: {
 						executionOrder: 'v1',
 						timezone: 'UTC',
@@ -1552,8 +1594,8 @@ describe('useWorkflowsStore', () => {
 			);
 
 			// Assert returned value and store updates
-			expect(result.versionId).toBe('v2');
-			expect(workflowsStore.workflow.versionId).toBe('v2');
+			expect(result.versionId).toBe('v1');
+			expect(workflowsStore.workflow.versionId).toBe('v1');
 			expect(workflowsStore.workflow.settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'UTC',
@@ -2075,6 +2117,107 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('getWebhookUrl', () => {
+		it('should return undefined when node does not exist', () => {
+			workflowsStore.setNodes([]);
+
+			const result = workflowsStore.getWebhookUrl('non-existent-node', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when node type does not exist', () => {
+			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue(null);
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when node type has no webhooks', () => {
+			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return webhook URL for test type', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [{ name: 'default', httpMethod: 'GET', path: 'webhook' }],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook');
+		});
+
+		it('should return webhook URL for production type', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'production');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook');
+		});
+
+		it('should use the first webhook when node has multiple webhooks', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [
+					{ name: 'default', httpMethod: 'GET', path: 'webhook1' },
+					{ name: 'default', httpMethod: 'POST', path: 'webhook2' },
+				],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook1');
+		});
+	});
+
 	describe('fetchLastSuccessfulExecution', () => {
 		beforeEach(() => {
 			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
@@ -2264,6 +2407,7 @@ function generateMockExecutionEvents() {
 			nodes: [],
 			connections: {},
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			versionId: '1',
 		},
@@ -2272,11 +2416,7 @@ function generateMockExecutionEvents() {
 		startedAt: new Date(),
 		createdAt: new Date(),
 		status: 'new',
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 	};
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',

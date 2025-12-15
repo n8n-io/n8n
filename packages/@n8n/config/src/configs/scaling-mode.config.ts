@@ -71,10 +71,6 @@ class SettingsConfig {
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')
 	stalledInterval: number = 30_000;
-
-	/** Max number of times a stalled job will be re-processed. See Bull's [documentation](https://docs.bullmq.io/guide/workers/stalled-jobs). */
-	@Env('QUEUE_WORKER_MAX_STALLED_COUNT')
-	maxStalledCount: number = 1;
 }
 
 @Config

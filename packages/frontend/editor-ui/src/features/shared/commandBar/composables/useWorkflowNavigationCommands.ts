@@ -285,6 +285,7 @@ export function useWorkflowNavigationCommands(options: {
 
 		return {
 			id: workflow.id,
+			matchAnySearchTerm: !isRoot,
 			title: {
 				component: CommandBarItemTitle,
 				props: {

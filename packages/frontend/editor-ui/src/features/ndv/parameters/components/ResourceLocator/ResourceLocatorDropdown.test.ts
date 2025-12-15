@@ -39,6 +39,71 @@ describe('ResourceLocatorDropdown', () => {
 		vi.useRealTimers();
 	});
 
+	describe('slow loading hint', () => {
+		it('should show slow loading hint when loading and showSlowLoadNotice is true', () => {
+			const slowLoadNotice = 'This is taking longer than expected. Please wait...';
+
+			renderComponent({
+				props: {
+					show: true,
+					loading: true,
+					resources: [],
+					slowLoadNotice,
+					showSlowLoadNotice: true,
+				},
+			});
+
+			expect(screen.getByText(slowLoadNotice)).toBeInTheDocument();
+		});
+
+		it('should not show slow loading hint when loading but showSlowLoadNotice is false', () => {
+			const slowLoadNotice = 'This is taking longer than expected. Please wait...';
+
+			renderComponent({
+				props: {
+					show: true,
+					loading: true,
+					resources: [],
+					slowLoadNotice,
+					showSlowLoadNotice: false,
+				},
+			});
+
+			expect(screen.queryByText(slowLoadNotice)).not.toBeInTheDocument();
+		});
+
+		it('should not show slow loading hint when not loading', () => {
+			const slowLoadNotice = 'This is taking longer than expected. Please wait...';
+
+			renderComponent({
+				props: {
+					show: true,
+					loading: false,
+					resources: mockResources,
+					slowLoadNotice,
+					showSlowLoadNotice: true,
+				},
+			});
+
+			expect(screen.queryByText(slowLoadNotice)).not.toBeInTheDocument();
+		});
+
+		it('should not show slow loading hint when slowLoadNotice is not provided', () => {
+			renderComponent({
+				props: {
+					show: true,
+					loading: true,
+					resources: [],
+					showSlowLoadNotice: true,
+				},
+			});
+
+			// Just verify there's no hint text (we can't test for specific text since none is provided)
+			const hintContainer = document.querySelector('[class*="slowLoadNoticeContainer"]');
+			expect(hintContainer).not.toBeInTheDocument();
+		});
+	});
+
 	describe('cached result display', () => {
 		it('should show cached result when selected item is not in resources list', async () => {
 			vi.useFakeTimers();

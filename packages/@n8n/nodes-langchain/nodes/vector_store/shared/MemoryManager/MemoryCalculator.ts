@@ -1,5 +1,5 @@
 import type { Document } from '@langchain/core/documents';
-import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 
 import type { IMemoryCalculator } from './types';
 
