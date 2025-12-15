@@ -148,6 +148,11 @@ describe('WorkflowDetails', () => {
 
 		// Set up default mocks
 		workflowsStore.saveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+		workflowsStore.workflowsById = {
+			'1': workflow as unknown as IWorkflowDb,
+			'123': workflow as unknown as IWorkflowDb,
+		};
+		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 
