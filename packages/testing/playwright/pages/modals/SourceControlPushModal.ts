@@ -62,7 +62,11 @@ export class SourceControlPushModal {
 	}
 
 	async selectAllFilesInModal(): Promise<void> {
-		await this.getModal().getByTestId('source-control-push-modal-toggle-all').click();
+		const toggleAll = this.getModal().getByTestId('source-control-push-modal-toggle-all');
+		const isChecked = await toggleAll.isChecked();
+		if (!isChecked) {
+			await toggleAll.click();
+		}
 	}
 
 	getNotice(): Locator {
