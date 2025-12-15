@@ -230,10 +230,7 @@ export async function transferFile(
 	return { fileUri: file.uri, mimeType: file.mimeType };
 }
 
-export async function createFileSearchStore(
-	this: IExecuteFunctions,
-	displayName: string,
-): Promise<IDataObject> {
+export async function createFileSearchStore(this: IExecuteFunctions, displayName: string) {
 	return (await apiRequest.call(this, 'POST', '/v1beta/fileSearchStores', {
 		body: { displayName },
 	})) as IDataObject;
@@ -302,7 +299,7 @@ export async function listFileSearchStores(
 	this: IExecuteFunctions,
 	pageSize?: number,
 	pageToken?: string,
-): Promise<IDataObject> {
+) {
 	const qs: IDataObject = {};
 	if (pageSize !== undefined) {
 		qs.pageSize = pageSize;
@@ -318,7 +315,7 @@ export async function deleteFileSearchStore(
 	this: IExecuteFunctions,
 	name: string,
 	force?: boolean,
-): Promise<IDataObject> {
+) {
 	const qs: IDataObject = {};
 	if (force !== undefined) {
 		qs.force = force;
