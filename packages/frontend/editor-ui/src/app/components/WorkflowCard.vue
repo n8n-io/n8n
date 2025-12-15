@@ -412,8 +412,7 @@ async function unpublishWorkflow() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
-			versionName:
-				workflowsStore.workflow.activeVersion?.name || locale.baseText('generic.published'),
+			versionName: props.data.name,
 			eventBus: unpublishEventBus,
 		},
 	});
