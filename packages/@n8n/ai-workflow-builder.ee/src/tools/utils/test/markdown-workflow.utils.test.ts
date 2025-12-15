@@ -12,50 +12,68 @@ describe('markdown-workflow.utils', () => {
 		it('should convert a workflow with AI agent and tools to mermaid diagram', () => {
 			const result = mermaidStringify(aiAssistantWorkflow);
 
+			// The aiAssistantWorkflow has multiple sticky notes that overlay various nodes
+			// Sticky notes without node overlap appear as comments at the start
+			// Sticky notes overlapping a single node appear as comments before that node
+			// Sticky notes overlapping multiple nodes create subgraphs
+			// Nodes are defined inline at their first usage
+
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.googleCalendarTool | {"operation":"getAll","calendar":{"__rl":true,"mode":"id","value":"=<insert email here>"},"options":{"timeMin":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', \`\`, 'string') }}","timeMax":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', \`\`, 'string') }}","fields":"=items(summary, start(dateTime))"}}
+    %% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
+    %% ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ) @[youtube](ROgf5dVqYPQ)
+    %% This node allows your agent access your Google calendar
+    %% n8n-nodes-base.googleCalendarTool:getAll | {"operation":"getAll","calendar":{"__rl":true,"mode":"id","value":"=<insert email here>"},"options":{"timeMin":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', \`\`, 'string') }}","timeMax":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', \`\`, 'string') }}","fields":"=items(summary, start(dateTime))"}}
     n1["Google Calendar"]
+    %% Caylee, your peronal AI Assistant: 1. Get email 2. Check calendar 3. Get and create to-do tasks Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
+    %% @n8n/n8n-nodes-langchain.agent | {"promptType":"define","text":"={{ $json.text }}","options":{"systemMessage":"=You are a helpful personal assistant called Jackie. \\n\\nToday's date is {{ $today.format('yyyy-MM-dd') }}.\\n\\nGuidelines:\\n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\\n- if the user did not specify a date in the request assume they are asking for today\\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away\\n- When creating calendar entry, the attendee email is optional"}}
+    n1 -.ai_tool.-> n14["Jackie, AI Assistant 👩🏻‍🏫"]
+    %% This node helps your agent remember the last few messages to stay on topic.
     %% @n8n/n8n-nodes-langchain.memoryBufferWindow | {"sessionIdType":"customKey","sessionKey":"={{ $('Listen for incoming events').first().json.message.from.id }}"}
     n2["Window Buffer Memory"]
-    %% n8n-nodes-base.gmailTool | {"operation":"getAll","limit":20,"filters":{"labelIds":["INBOX"],"readStatus":"unread","receivedAfter":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', \`\`, 'string') }}","receivedBefore":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', \`\`, 'string') }}"}}
-    n3["Get Email"]
+    n2 -.ai_memory.-> n14
     %% n8n-nodes-base.telegramTrigger | {"updates":["message"],"additionalFields":{}}
     n4["Listen for incoming events"]
-    %% n8n-nodes-base.telegram | {"chatId":"={{ $('Listen for incoming events').first().json.message.from.id }}","text":"={{ $json.output }}","additionalFields":{"appendAttribution":false,"parse_mode":"Markdown"}}
-    n5["Telegram"]
-    %% n8n-nodes-base.if | {"conditions":{"options":{"version":2,"leftValue":"","caseSensitive":true,"typeValidation":"strict"},"combinator":"and","conditions":[{"id":"a0bf9719-4272-46f6-ab3b-eda6f7b44fd8","operator":{"type":"string","operation":"empty","singleValue":true},"leftValue":"={{ $json.message.text }}","rightValue":""}]},"options":{}}
-    n6["If"]
-    %% n8n-nodes-base.set | {"fields":{"values":[{"name":"text","stringValue":"={{ $json?.message?.text || \\"\\" }}"}]},"options":{}}
-    n7["Voice or Text"]
-    %% n8n-nodes-base.telegram | {"resource":"file","fileId":"={{ $('Listen for incoming events').item.json.message.voice.file_id }}","additionalFields":{}}
-    n8["Get Voice File"]
+    %% 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it. 2. Open the \`\`\`OpenRouter\`\`\` node: * **Select Credential → Create New** * Paste into **API Key** and **Save**
     %% @n8n/n8n-nodes-langchain.lmChatOpenRouter | {"options":{}}
     n9["OpenRouter"]
-    %% n8n-nodes-base.googleTasksTool | {"task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","title":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', \`\`, 'string') }}","additionalFields":{}}
-    n10["Create a task in Google Tasks"]
-    %% n8n-nodes-base.googleTasksTool | {"operation":"getAll","task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","additionalFields":{}}
-    n11["Get many tasks in Google Tasks"]
-    %% @n8n/n8n-nodes-langchain.openAi | {"resource":"audio","operation":"transcribe","options":{}}
-    n12["Transcribe a recording"]
-    %% n8n-nodes-base.gmailTool | {"sendTo":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', \`\`, 'string') }}","subject":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', \`\`, 'string') }}","message":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', \`Please format this nicely in html\`, 'string') }}","options":{"appendAttribution":false}}
-    n13["Send Email"]
-    %% @n8n/n8n-nodes-langchain.agent | {"promptType":"define","text":"={{ $json.text }}","options":{"systemMessage":"=You are a helpful personal assistant called Jackie. \\n\\nToday's date is {{ $today.format('yyyy-MM-dd') }}.\\n\\nGuidelines:\\n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\\n- if the user did not specify a date in the request assume they are asking for today\\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away\\n- When creating calendar entry, the attendee email is optional"}}
-    n14["Jackie, AI Assistant 👩🏻‍🏫"]
-    n1 -.ai_tool.-> n14
-    n2 -.ai_memory.-> n14
-    n3 -.ai_tool.-> n14
-    n4 --> n7
-    n7 --> n6
-    n6 --> n8
-    n6 --> n14
-    n8 --> n12
-    n12 --> n14
-    n14 --> n5
     n9 -.ai_languageModel.-> n14
+    %% ## Process Telegram Request
+    subgraph sg_8078f53c_0aed_4f01_bf8f_f0e65a8291c0["## Process Telegram Request"]
+        %% n8n-nodes-base.set | {"fields":{"values":[{"name":"text","stringValue":"={{ $json?.message?.text || \\"\\" }}"}]},"options":{}}
+        n7["Voice or Text"]
+        %% n8n-nodes-base.if | {"conditions":{"options":{"version":2,"leftValue":"","caseSensitive":true,"typeValidation":"strict"},"combinator":"and","conditions":[{"id":"a0bf9719-4272-46f6-ab3b-eda6f7b44fd8","operator":{"type":"string","operation":"empty","singleValue":true},"leftValue":"={{ $json.message.text }}","rightValue":""}]},"options":{}}
+        n7 --> n6{"If"}
+        %% n8n-nodes-base.telegram:file | {"resource":"file","fileId":"={{ $('Listen for incoming events').item.json.message.voice.file_id }}","additionalFields":{}}
+        n6 --> n8["Get Voice File"]
+    end
+    %% This node allows your agent create and get tasks from Google Tasks
+    subgraph sg_48c06490_e261_45f5_ad0c_2b2648203ab0["This node allows your agent create and get tasks from Google Tasks"]
+        %% n8n-nodes-base.googleTasksTool | {"task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","title":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', \`\`, 'string') }}","additionalFields":{}}
+        n10["Create a task in Google Tasks"]
+        %% n8n-nodes-base.googleTasksTool:getAll | {"operation":"getAll","task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","additionalFields":{}}
+        n11["Get many tasks in Google Tasks"]
+    end
+    %% This node allows your agent access your gmail
+    subgraph sg_8bb0d940_eda3_4ecf_8a1d_15b1a6445a83["This node allows your agent access your gmail"]
+        %% n8n-nodes-base.gmailTool:getAll | {"operation":"getAll","limit":20,"filters":{"labelIds":["INBOX"],"readStatus":"unread","receivedAfter":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', \`\`, 'string') }}","receivedBefore":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', \`\`, 'string') }}"}}
+        n3["Get Email"]
+        %% n8n-nodes-base.gmailTool | {"sendTo":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', \`\`, 'string') }}","subject":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', \`\`, 'string') }}","message":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', \`Please format this nicely in html\`, 'string') }}","options":{"appendAttribution":false}}
+        n13["Send Email"]
+    end
+    n4 --> n7
+    n6 --> n14
+    %% Uses OpenAI to convert voice to text. [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
+    %% @n8n/n8n-nodes-langchain.openAi:audio:transcribe | {"resource":"audio","operation":"transcribe","options":{}}
+    n8 --> n12["Transcribe a recording"]
     n10 -.ai_tool.-> n14
     n11 -.ai_tool.-> n14
+    n3 -.ai_tool.-> n14
     n13 -.ai_tool.-> n14
+    n12 --> n14
+    %% Send message back to Telegram
+    %% n8n-nodes-base.telegram | {"chatId":"={{ $('Listen for incoming events').first().json.message.from.id }}","text":"={{ $json.output }}","additionalFields":{"appendAttribution":false,"parse_mode":"Markdown"}}
+    n14 --> n5["Telegram"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -66,48 +84,60 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.googleCalendarTool
+    %% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
+    %% ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ) @[youtube](ROgf5dVqYPQ)
+    %% This node allows your agent access your Google calendar
+    %% n8n-nodes-base.googleCalendarTool:getAll
     n1["Google Calendar"]
+    %% Caylee, your peronal AI Assistant: 1. Get email 2. Check calendar 3. Get and create to-do tasks Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
+    %% @n8n/n8n-nodes-langchain.agent
+    n1 -.ai_tool.-> n14["Jackie, AI Assistant 👩🏻‍🏫"]
+    %% This node helps your agent remember the last few messages to stay on topic.
     %% @n8n/n8n-nodes-langchain.memoryBufferWindow
     n2["Window Buffer Memory"]
-    %% n8n-nodes-base.gmailTool
-    n3["Get Email"]
+    n2 -.ai_memory.-> n14
     %% n8n-nodes-base.telegramTrigger
     n4["Listen for incoming events"]
-    %% n8n-nodes-base.telegram
-    n5["Telegram"]
-    %% n8n-nodes-base.if
-    n6["If"]
-    %% n8n-nodes-base.set
-    n7["Voice or Text"]
-    %% n8n-nodes-base.telegram
-    n8["Get Voice File"]
+    %% 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it. 2. Open the \`\`\`OpenRouter\`\`\` node: * **Select Credential → Create New** * Paste into **API Key** and **Save**
     %% @n8n/n8n-nodes-langchain.lmChatOpenRouter
     n9["OpenRouter"]
-    %% n8n-nodes-base.googleTasksTool
-    n10["Create a task in Google Tasks"]
-    %% n8n-nodes-base.googleTasksTool
-    n11["Get many tasks in Google Tasks"]
-    %% @n8n/n8n-nodes-langchain.openAi
-    n12["Transcribe a recording"]
-    %% n8n-nodes-base.gmailTool
-    n13["Send Email"]
-    %% @n8n/n8n-nodes-langchain.agent
-    n14["Jackie, AI Assistant 👩🏻‍🏫"]
-    n1 -.ai_tool.-> n14
-    n2 -.ai_memory.-> n14
-    n3 -.ai_tool.-> n14
-    n4 --> n7
-    n7 --> n6
-    n6 --> n8
-    n6 --> n14
-    n8 --> n12
-    n12 --> n14
-    n14 --> n5
     n9 -.ai_languageModel.-> n14
+    %% ## Process Telegram Request
+    subgraph sg_8078f53c_0aed_4f01_bf8f_f0e65a8291c0["## Process Telegram Request"]
+        %% n8n-nodes-base.set
+        n7["Voice or Text"]
+        %% n8n-nodes-base.if
+        n7 --> n6{"If"}
+        %% n8n-nodes-base.telegram:file
+        n6 --> n8["Get Voice File"]
+    end
+    %% This node allows your agent create and get tasks from Google Tasks
+    subgraph sg_48c06490_e261_45f5_ad0c_2b2648203ab0["This node allows your agent create and get tasks from Google Tasks"]
+        %% n8n-nodes-base.googleTasksTool
+        n10["Create a task in Google Tasks"]
+        %% n8n-nodes-base.googleTasksTool:getAll
+        n11["Get many tasks in Google Tasks"]
+    end
+    %% This node allows your agent access your gmail
+    subgraph sg_8bb0d940_eda3_4ecf_8a1d_15b1a6445a83["This node allows your agent access your gmail"]
+        %% n8n-nodes-base.gmailTool:getAll
+        n3["Get Email"]
+        %% n8n-nodes-base.gmailTool
+        n13["Send Email"]
+    end
+    n4 --> n7
+    n6 --> n14
+    %% Uses OpenAI to convert voice to text. [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
+    %% @n8n/n8n-nodes-langchain.openAi:audio:transcribe
+    n8 --> n12["Transcribe a recording"]
     n10 -.ai_tool.-> n14
     n11 -.ai_tool.-> n14
+    n3 -.ai_tool.-> n14
     n13 -.ai_tool.-> n14
+    n12 --> n14
+    %% Send message back to Telegram
+    %% n8n-nodes-base.telegram
+    n14 --> n5["Telegram"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -215,19 +245,184 @@ flowchart TD
 			const expected = `\`\`\`mermaid
 flowchart TD
     %% n8n-nodes-base.if
-    n1["If"]
+    n1{"If"}
     %% n8n-nodes-base.set
-    n2["True Branch"]
+    n1 --> n2["True Branch"]
     %% n8n-nodes-base.set
-    n3["False Branch"]
+    n1 --> n3["False Branch"]
     %% n8n-nodes-base.emailSend
-    n4["Send Success Email"]
+    n2 --> n4["Send Success Email"]
     %% n8n-nodes-base.emailSend
-    n5["Send Failure Email"]
-    n1 --> n2
-    n1 --> n3
-    n2 --> n4
-    n3 --> n5
+    n3 --> n5["Send Failure Email"]
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+
+		it('should render conditional nodes (if, switch, filter) with diamond shape', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'Conditional Workflow',
+				workflow: {
+					name: 'Conditional Workflow',
+					nodes: [
+						{
+							parameters: {},
+							id: 'trigger1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: {
+								conditions: {
+									options: { caseSensitive: true },
+									conditions: [{ leftValue: '', rightValue: '' }],
+								},
+							},
+							id: 'if1',
+							name: 'If',
+							type: 'n8n-nodes-base.if',
+							position: [200, 0],
+							typeVersion: 2.3,
+						},
+						{
+							parameters: {
+								rules: { values: [{ conditions: {} }] },
+							},
+							id: 'switch1',
+							name: 'Switch',
+							type: 'n8n-nodes-base.switch',
+							position: [400, -100],
+							typeVersion: 3.4,
+						},
+						{
+							parameters: {
+								conditions: {
+									conditions: [{ leftValue: '', rightValue: '' }],
+								},
+							},
+							id: 'filter1',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							position: [600, -100],
+							typeVersion: 2.3,
+						},
+						{
+							parameters: {},
+							id: 'end1',
+							name: 'End',
+							type: 'n8n-nodes-base.noOp',
+							position: [800, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Start: {
+							main: [[{ node: 'If', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						If: {
+							main: [[{ node: 'Switch', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Switch: {
+							main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Filter: {
+							main: [[{ node: 'End', type: 'main', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% n8n-nodes-base.manualTrigger
+    n1["Start"]
+    %% n8n-nodes-base.if
+    n1 --> n2{"If"}
+    %% n8n-nodes-base.switch
+    n2 --> n3{"Switch"}
+    %% n8n-nodes-base.filter
+    n3 --> n4{"Filter"}
+    %% n8n-nodes-base.noOp
+    n4 --> n5["End"]
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+
+		it('should include resource and operation in node type comment', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'Resource Operation Workflow',
+				workflow: {
+					name: 'Resource Operation Workflow',
+					nodes: [
+						{
+							parameters: {
+								resource: 'file',
+								operation: 'download',
+								fileId: '123',
+							},
+							id: 'node1',
+							name: 'Download File',
+							type: 'n8n-nodes-base.googleDrive',
+							position: [0, 0],
+							typeVersion: 3,
+						},
+						{
+							parameters: {
+								operation: 'getAll',
+								limit: 10,
+							},
+							id: 'node2',
+							name: 'Get Rows',
+							type: 'n8n-nodes-base.googleSheets',
+							position: [200, 0],
+							typeVersion: 4,
+						},
+						{
+							parameters: {
+								resource: 'contact',
+							},
+							id: 'node3',
+							name: 'Get Contact',
+							type: 'n8n-nodes-base.hubspot',
+							position: [400, 0],
+							typeVersion: 2,
+						},
+						{
+							parameters: {
+								url: 'https://example.com',
+							},
+							id: 'node4',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							position: [600, 0],
+							typeVersion: 4,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% n8n-nodes-base.googleDrive:file:download
+    n1["Download File"]
+    %% n8n-nodes-base.googleSheets:getAll
+    n2["Get Rows"]
+    %% n8n-nodes-base.hubspot:contact
+    n3["Get Contact"]
+    %% n8n-nodes-base.httpRequest
+    n4["HTTP Request"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -263,7 +458,7 @@ flowchart TD
 			expect(result).toEqual(expected);
 		});
 
-		it('should exclude sticky notes from mermaid diagram', () => {
+		it('should add non-overlapping sticky notes as comments at start', () => {
 			const workflow: WorkflowMetadata = {
 				name: 'With Sticky',
 				workflow: {
@@ -278,11 +473,11 @@ flowchart TD
 							typeVersion: 1,
 						},
 						{
-							parameters: { content: 'This is a note' },
+							parameters: { content: 'This is a note', width: 100, height: 80 },
 							id: 'sticky1',
 							name: 'Sticky Note',
 							type: 'n8n-nodes-base.stickyNote',
-							position: [100, 100],
+							position: [500, 500],
 							typeVersion: 1,
 						},
 					],
@@ -290,7 +485,181 @@ flowchart TD
 				},
 			};
 
-			const result = mermaidStringify(workflow);
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% This is a note
+    %% n8n-nodes-base.start
+    n1["Start"]
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+
+		it('should add sticky overlapping single node as comment before that node', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'Sticky Over Node',
+				workflow: {
+					name: 'Sticky Over Node',
+					nodes: [
+						{
+							parameters: {},
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [100, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'node2',
+							name: 'End',
+							type: 'n8n-nodes-base.noOp',
+							position: [400, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: { content: 'This triggers the workflow', width: 200, height: 200 },
+							id: 'sticky1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							position: [50, 50],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Start: {
+							main: [[{ node: 'End', type: 'main', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% This triggers the workflow
+    %% n8n-nodes-base.start
+    n1["Start"]
+    %% n8n-nodes-base.noOp
+    n1 --> n2["End"]
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+
+		it('should wrap multiple overlapping nodes in a subgraph', () => {
+			// Based on the user-provided example with If and Switch inside a sticky
+			const workflow: WorkflowMetadata = {
+				name: 'Multi Node Sticky',
+				workflow: {
+					name: 'Multi Node Sticky',
+					nodes: [
+						{
+							parameters: {
+								conditions: { conditions: [] },
+							},
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2.3,
+							position: [208, 0],
+							id: '7a6a98ee-564e-4200-b26b-b5548ccfb571',
+							name: 'If',
+						},
+						{
+							parameters: {
+								rules: { values: [] },
+							},
+							type: 'n8n-nodes-base.switch',
+							typeVersion: 3.4,
+							position: [416, -96],
+							id: '57dd331c-0d3d-427c-96c8-7ffa10224fa1',
+							name: 'Switch',
+						},
+						{
+							parameters: {
+								conditions: { conditions: [] },
+							},
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2.3,
+							position: [624, -96],
+							id: '2f37e366-a7b6-4022-b6fa-2231aae5c308',
+							name: 'Filter',
+						},
+						{
+							parameters: {
+								content: "## I'm a Sticky",
+								height: 416,
+								width: 400,
+							},
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [144, -208],
+							id: '55473414-5980-4e0b-ada4-d5e10ee8f08b',
+							name: 'Sticky Note',
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						If: {
+							main: [[{ node: 'Switch', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Switch: {
+							main: [[{ node: 'Filter', type: 'main', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% ## I'm a Sticky
+    subgraph sg_55473414_5980_4e0b_ada4_d5e10ee8f08b["## I'm a Sticky"]
+        %% n8n-nodes-base.if
+        n1{"If"}
+        %% n8n-nodes-base.switch
+        n1 --> n2{"Switch"}
+    end
+    %% n8n-nodes-base.filter
+    n2 --> n3{"Filter"}
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+
+		it('should skip sticky notes without content', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'Empty Sticky',
+				workflow: {
+					name: 'Empty Sticky',
+					nodes: [
+						{
+							parameters: {},
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { content: '', width: 200, height: 200 },
+							id: 'sticky1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
 
 			const expected = `\`\`\`mermaid
 flowchart TD
