@@ -85,7 +85,7 @@ export async function pollAgentStatus(
 
 	this.logger.info(`[${airtopNode.name}] Polling agent status for invocationId: ${invocationId}`);
 
-	while (!response?.output && !response?.error) {
+	while (true) {
 		const elapsed = Date.now() - startTime;
 		throwOperationErrorIf(elapsed >= timeoutMs, ERROR_MESSAGES.TIMEOUT_REACHED, airtopNode);
 
@@ -98,11 +98,6 @@ export async function pollAgentStatus(
 		// Wait one second before next poll
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 	}
-
-	return {
-		status: 'Unknown',
-		output: {},
-	};
 }
 
 /**
