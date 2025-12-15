@@ -2,8 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
-	IExecutionContext,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import type {
@@ -84,18 +85,15 @@ describe('DynamicCredentialsProxy', () => {
 				undefined,
 				undefined,
 				undefined,
-				undefined,
-				undefined,
 			);
 		});
 
 		it('should pass through all parameters to provider', async () => {
-			const executionContext: IExecutionContext = {
-				version: 1,
-				establishedAt: Date.now(),
-				source: 'manual',
+			const additionalData: Partial<IWorkflowExecuteAdditionalData> = {
+				executionId: 'exec-123',
 			};
-			const workflowSettings: IWorkflowSettings = { executionTimeout: 300 };
+			const mode: WorkflowExecuteMode = 'manual';
+			const canUseExternalSecrets = true;
 
 			mockResolverProvider.resolveIfNeeded.mockResolvedValue(staticData);
 			proxy.setResolverProvider(mockResolverProvider);
@@ -103,18 +101,17 @@ describe('DynamicCredentialsProxy', () => {
 			await proxy.resolveIfNeeded(
 				credentialMetadata,
 				staticData,
-				executionContext,
-				workflowSettings,
+				additionalData as IWorkflowExecuteAdditionalData,
+				mode,
+				canUseExternalSecrets,
 			);
 
 			expect(mockResolverProvider.resolveIfNeeded).toHaveBeenCalledWith(
 				credentialMetadata,
 				staticData,
-				executionContext,
-				workflowSettings,
-				undefined,
-				undefined,
-				undefined,
+				additionalData,
+				mode,
+				canUseExternalSecrets,
 			);
 		});
 	});

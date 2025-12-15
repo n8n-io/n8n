@@ -42,8 +42,6 @@ export class DynamicCredentialsProxy
 	async resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
-		executionContext?: IExecutionContext,
-		workflowSettings?: IWorkflowSettings,
 		additionalData?: IWorkflowExecuteAdditionalData,
 		mode?: WorkflowExecuteMode,
 		canUseExternalSecrets?: boolean,
@@ -60,8 +58,6 @@ export class DynamicCredentialsProxy
 		return await this.resolvingProvider.resolveIfNeeded(
 			credentialsResolveMetadata,
 			staticData,
-			executionContext,
-			workflowSettings,
 			additionalData,
 			mode,
 			canUseExternalSecrets,

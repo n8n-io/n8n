@@ -43,12 +43,12 @@ import {
 } from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 
 const mockNode = {
 	name: '',
@@ -377,8 +377,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					resolvableAllowFallback: credentialsEntity.resolvableAllowFallback,
 				},
 				decryptedDataOriginal,
-				additionalData.executionContext,
-				additionalData.workflowSettings,
 				additionalData,
 				mode,
 				canUseExternalSecrets,

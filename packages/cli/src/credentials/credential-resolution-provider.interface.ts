@@ -1,8 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
-	IExecutionContext,
 	IWorkflowExecuteAdditionalData,
-	IWorkflowSettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -27,9 +25,7 @@ export interface ICredentialResolutionProvider {
 	 *
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
-	 * @param executionContext Optional execution context containing credential context
-	 * @param workflowSettings Optional workflow settings containing resolver ID fallback
-	 * @param additionalData Additional workflow execution data for expression resolution
+	 * @param additionalData Additional workflow execution data for expression resolution and context and settings
 	 * @param mode Workflow execution mode
 	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
 	 * @returns Resolved credential data (either dynamic or static)
@@ -37,8 +33,6 @@ export interface ICredentialResolutionProvider {
 	resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
-		executionContext?: IExecutionContext,
-		workflowSettings?: IWorkflowSettings,
 		additionalData?: IWorkflowExecuteAdditionalData,
 		mode?: WorkflowExecuteMode,
 		canUseExternalSecrets?: boolean,
