@@ -216,7 +216,7 @@ function switchToPanningMode() {
 	const isInputElement =
 		activeElement instanceof HTMLInputElement ||
 		activeElement instanceof HTMLTextAreaElement ||
-		activeElement?.getAttribute('contenteditable') === 'true';
+		(activeElement as HTMLElement)?.isContentEditable === true;
 
 	if (isInputElement) {
 		return;
