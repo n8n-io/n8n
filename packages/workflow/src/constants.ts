@@ -47,7 +47,10 @@ export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
 export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
+
+// Chat hub (search) tools
 export const JINA_AI_TOOL_NODE_TYPE = 'n8n-nodes-base.jinaAiTool';
+export const SERP_API_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolSerpApi';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,

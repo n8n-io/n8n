@@ -71,5 +71,5 @@ export const HtmlEdgeCase = PropTemplate.bind({});
 HtmlEdgeCase.args = {
 	theme: 'warning',
 	content:
-		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
+		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua. <ul><li>Item 1</li><li>Item 2</li></ul>',
 };
