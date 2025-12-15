@@ -2,8 +2,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { stringify } from 'flatted';
+import { parse, stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
+import type { IRunExecutionData } from 'n8n-workflow';
 import {
 	createRunExecutionData,
 	ManualExecutionCancelledError,
@@ -177,6 +178,16 @@ describe('ExecutionService', () => {
 			executionRepository.findIfShared.mockResolvedValue(parentExecution);
 			executionRepository.findSubExecutions.mockResolvedValue([subExecution]);
 
+			// Mock handleExecutionRunData to unflatten the execution data
+			executionRepository.handleExecutionRunData.mockImplementation(
+				(data: string, options?: { unflattenData?: boolean }): IRunExecutionData | string => {
+					if (options?.unflattenData && typeof data === 'string') {
+						return parse(data) as IRunExecutionData;
+					}
+					return data;
+				},
+			);
+
 			/**
 			 * Act
 			 */
@@ -196,8 +207,10 @@ describe('ExecutionService', () => {
 			);
 
 			// Verify the merged data contains both parent and sub-execution runData
-			expect(result!.data).toContain('ExecuteWorkflow');
-			expect(result!.data).toContain('SubWorkflowNode');
+			// Parse the stringified data to properly check the merged content
+			const resultData = typeof result!.data === 'string' ? parse(result!.data) : result!.data;
+			expect(resultData.resultData.runData).toHaveProperty('ExecuteWorkflow');
+			expect(resultData.resultData.runData).toHaveProperty('SubWorkflowNode');
 		});
 
 		it('should not merge sub-executions when execution has no executeWorkflow nodes', async () => {
