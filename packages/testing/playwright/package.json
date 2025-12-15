@@ -17,7 +17,7 @@
     "test:container:queue:ui-only": "playwright test --project='queue:ui'",
     "test:container:queue:isolated": "playwright test --project='queue:ui:isolated'",
     "test:container:multi-main": "playwright test --project='multi-main:*'",
-    "test:container:multi-main:ui": "playwright test --project='multi-main:ui' packages/testing/playwright/tests/e2e/ai/langchain-agents.spec.ts",
+    "test:container:multi-main:ui": "playwright test --project='multi-main:ui'",
     "test:container:multi-main:isolated": "playwright test --project='multi-main:ui:isolated'",
     "test:container:trial": "playwright test --project='trial:*'",
     "test:workflows:setup": "tsx ./tests/cli-workflows/setup-workflow-tests.ts",
