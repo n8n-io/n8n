@@ -1,9 +1,12 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
+
+import { EventService } from '@/events/event.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
 	EXTERNAL_SECRETS_DB_KEY,
@@ -13,10 +16,6 @@ import {
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
-
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 @Service()
 export class ExternalSecretsManager implements IExternalSecretsManager {
@@ -36,7 +35,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		private readonly logger: Logger,
 		private readonly config: ExternalSecretsConfig,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
@@ -211,7 +210,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async updateSecrets() {
-		if (!this.license.isExternalSecretsEnabled()) {
+		if (!this.licenseState.isExternalSecretsLicensed()) {
 			return;
 		}
 		await Promise.allSettled(
@@ -284,6 +283,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async reloadProvider(provider: string, backoff = EXTERNAL_SECRETS_INITIAL_BACKOFF) {
+		const previousState = this.providers[provider]?.state;
+
 		if (provider in this.providers) {
 			try {
 				await this.providers[provider].disconnect();
@@ -295,51 +296,55 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		const newProvider = await this.initProvider(provider, this.cachedSettings[provider], backoff);
 		if (newProvider) {
 			this.providers[provider] = newProvider;
+
+			// Broadcast reload if provider recovered from error state to connected state
+			if (previousState !== 'connected' && newProvider.state === 'connected') {
+				this.logger.debug(`Provider ${provider} recovered from error state, broadcasting reload`);
+				this.broadcastReloadExternalSecretsProviders();
+			}
 		}
 
 		this.logger.debug(`External secrets manager reloaded provider ${provider}`);
 	}
 
-	async setProviderSettings(provider: string, data: IDataObject, userId?: string) {
-		let isNewProvider = false;
+	private async updateProviderSettings(
+		provider: string,
+		updateFn: (settings: ExternalSecretsSettings) => SecretsProviderSettings,
+	) {
 		let settings = await this.getDecryptedSettings();
-		if (!settings) {
-			settings = {};
-		}
-		if (!(provider in settings)) {
-			isNewProvider = true;
-		}
-		settings[provider] = {
-			connected: settings[provider]?.connected ?? false,
-			connectedAt: settings[provider]?.connectedAt ?? new Date(),
-			settings: data,
-		};
+		settings ??= {};
+		settings[provider] = updateFn(settings);
 
 		await this.saveAndSetSettings(settings);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
 		await this.updateSecrets();
 		this.broadcastReloadExternalSecretsProviders();
+	}
+
+	async setProviderSettings(provider: string, data: IDataObject, userId?: string) {
+		let isNewProvider = false;
+
+		await this.updateProviderSettings(provider, (settings) => {
+			if (!(provider in settings)) {
+				isNewProvider = true;
+			}
+			return {
+				connected: settings[provider]?.connected ?? false,
+				connectedAt: settings[provider]?.connectedAt ?? new Date(),
+				settings: data,
+			};
+		});
 
 		void this.trackProviderSave(provider, isNewProvider, userId);
 	}
 
 	async setProviderConnected(provider: string, connected: boolean) {
-		let settings = await this.getDecryptedSettings();
-		if (!settings) {
-			settings = {};
-		}
-		settings[provider] = {
+		await this.updateProviderSettings(provider, (settings) => ({
 			connected,
 			connectedAt: connected ? new Date() : (settings[provider]?.connectedAt ?? null),
 			settings: settings[provider]?.settings ?? {},
-		};
-
-		await this.saveAndSetSettings(settings);
-		this.cachedSettings = settings;
-		await this.reloadProvider(provider);
-		await this.updateSecrets();
-		this.broadcastReloadExternalSecretsProviders();
+		}));
 	}
 
 	private async trackProviderSave(vaultType: string, isNew: boolean, userId?: string) {
@@ -418,7 +423,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async updateProvider(provider: string): Promise<boolean> {
-		if (!this.license.isExternalSecretsEnabled()) {
+		if (!this.licenseState.isExternalSecretsLicensed()) {
 			return false;
 		}
 		if (!this.providers[provider] || this.providers[provider].state !== 'connected') {
