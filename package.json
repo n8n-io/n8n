@@ -60,6 +60,7 @@
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
+    "@babel/preset-env": "^7.26.0",
     "babel-plugin-transform-import-meta": "^2.3.2",
     "bundlemon": "^3.1.0",
     "cross-env": "^7.0.3",
