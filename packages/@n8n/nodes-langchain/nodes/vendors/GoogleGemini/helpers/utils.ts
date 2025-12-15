@@ -7,6 +7,8 @@ import type Stream from 'node:stream';
 import type { FileSearchOperation } from './interfaces';
 import { apiRequest } from '../transport';
 
+const OPERATION_CHECK_INTERVAL = 1000;
+
 interface File {
 	name: string;
 	uri: string;
@@ -84,7 +86,7 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 	})) as { file: File };
 
 	while (uploadResponse.file.state !== 'ACTIVE' && uploadResponse.file.state !== 'FAILED') {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
 		uploadResponse.file = (await apiRequest.call(
 			this,
 			'GET',
@@ -217,7 +219,7 @@ export async function transferFile(
 	let file = uploadResponse.body.file;
 
 	while (file.state !== 'ACTIVE' && file.state !== 'FAILED') {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
 		file = (await apiRequest.call(this, 'GET', `/v1beta/${file.name}`)) as File;
 	}
 
@@ -278,7 +280,7 @@ export async function uploadToFileSearchStore(
 	)) as FileSearchOperation;
 
 	while (!operation.done) {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
 		operation = (await apiRequest.call(
 			this,
 			'GET',
