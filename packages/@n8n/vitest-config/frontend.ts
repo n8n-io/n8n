@@ -7,7 +7,6 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			silent: true,
 			globals: true,
 			environment: 'jsdom',
-			pool: 'threads',
 			setupFiles: ['./src/__tests__/setup.ts'],
 			coverage: {
 				enabled: false,

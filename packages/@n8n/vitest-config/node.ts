@@ -7,7 +7,6 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			silent: true,
 			globals: true,
 			environment: 'node',
-			pool: 'threads',
 			...(process.env.COVERAGE_ENABLED === 'true'
 				? {
 						coverage: {
