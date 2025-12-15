@@ -274,7 +274,7 @@ export class AiController {
 			const success = await this.workflowBuilderService.truncateMessagesAfter(
 				payload.workflowId,
 				req.user,
-				payload.versionId,
+				payload.messageId,
 			);
 			return { success };
 		} catch (e) {

@@ -635,7 +635,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				);
 				const convertedMessages = enrichedMessages
 					.map((msg) => {
-						const id = generateMessageId();
+						// Use messageId from backend if available, otherwise generate new one
+						const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : generateMessageId();
 						return mapAssistantMessageToUI(msg, id);
 					})
 					// Do not include wf updated messages from session
@@ -905,12 +906,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	/**
 	 * Restores the workflow to a previous version and truncates chat messages.
-	 * Finds the user message with the matching revertVersion.id and removes it
+	 * Finds the user message with the matching messageId and removes it
 	 * along with all messages after it.
 	 *
 	 * @param versionId - The workflow version ID to restore to
+	 * @param messageId - The message ID to truncate from
 	 */
-	async function restoreToVersion(versionId: string): Promise<IWorkflowDb> {
+	async function restoreToVersion(versionId: string, messageId: string): Promise<IWorkflowDb> {
 		const workflowId = workflowsStore.workflowId;
 
 		// 1. Restore the workflow using existing workflow history store
@@ -925,20 +927,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
 		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
 
-		// 2. Truncate messages in backend session (removes message with versionId and all after)
-		await truncateBuilderMessages(rootStore.restApiContext, workflowId, versionId);
+		// 2. Truncate messages in backend session (removes message with messageId and all after)
+		await truncateBuilderMessages(rootStore.restApiContext, workflowId, messageId);
 
-		// 3. Truncate local chat messages - find user message with matching revertVersion.id
+		// 3. Truncate local chat messages - find user message with matching messageId
 		// and remove it along with all messages after it
-		const messageIndex = chatMessages.value.findIndex(
-			(msg) =>
-				msg.role === 'user' &&
-				msg.type === 'text' &&
-				'revertVersion' in msg &&
-				(msg as ChatUI.TextMessage).revertVersion?.id === versionId,
-		);
-		if (messageIndex !== -1) {
-			chatMessages.value = chatMessages.value.slice(0, messageIndex);
+		const msgIndex = chatMessages.value.findIndex((msg) => msg.id === messageId);
+		if (msgIndex !== -1) {
+			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
 
 		return updatedWorkflow;

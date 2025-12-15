@@ -136,10 +136,10 @@ export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 export async function truncateBuilderMessages(
 	ctx: IRestApiContext,
 	workflowId: string,
-	versionId: string,
+	messageId: string,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/build/truncate-messages', {
 		workflowId,
-		versionId,
+		messageId,
 	});
 }

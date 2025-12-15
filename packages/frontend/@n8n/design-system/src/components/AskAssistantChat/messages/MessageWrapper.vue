@@ -26,7 +26,7 @@ const emit = defineEmits<{
 	codeUndo: [];
 	feedback: [RatingFeedback];
 	restore: [versionId: string];
-	restoreConfirm: [versionId: string];
+	restoreConfirm: [versionId: string, messageId: string];
 	restoreCancel: [];
 	showVersion: [versionId: string];
 }>();
@@ -52,7 +52,9 @@ const messageComponent = computed<Component | null>(() => {
 			@code-undo="emit('codeUndo')"
 			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
 			@restore="(versionId: string) => emit('restore', versionId)"
-			@restore-confirm="(versionId: string) => emit('restoreConfirm', versionId)"
+			@restore-confirm="
+				(versionId: string, messageId: string) => emit('restoreConfirm', versionId, messageId)
+			"
 			@restore-cancel="emit('restoreCancel')"
 			@show-version="(versionId: string) => emit('showVersion', versionId)"
 		/>

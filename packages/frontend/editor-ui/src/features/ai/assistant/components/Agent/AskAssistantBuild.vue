@@ -236,9 +236,9 @@ watch(
 /**
  * Handle restore confirmation
  */
-async function onRestoreConfirm(versionId: string) {
+async function onRestoreConfirm(versionId: string, messageId: string) {
 	try {
-		const updatedWorkflow = await builderStore.restoreToVersion(versionId);
+		const updatedWorkflow = await builderStore.restoreToVersion(versionId, messageId);
 		builderStore.clearExistingWorkflow();
 		// Reload the workflow to reflect the restored state
 		nodeViewEventBus.emit('importWorkflowData', {

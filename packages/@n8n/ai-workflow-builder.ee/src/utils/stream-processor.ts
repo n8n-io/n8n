@@ -334,6 +334,12 @@ function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 		result.revertVersionId = versionId;
 	}
 
+	// Extract messageId from additional_kwargs
+	const messageId = msg.additional_kwargs?.messageId;
+	if (typeof messageId === 'string') {
+		result.id = messageId;
+	}
+
 	return result;
 }
 

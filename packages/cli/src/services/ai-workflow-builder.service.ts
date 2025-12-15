@@ -119,9 +119,9 @@ export class WorkflowBuilderService {
 	async truncateMessagesAfter(
 		workflowId: string,
 		user: IUser,
-		versionId: string,
+		messageId: string,
 	): Promise<boolean> {
 		const service = await this.getService();
-		return await service.truncateMessagesAfter(workflowId, user, versionId);
+		return await service.truncateMessagesAfter(workflowId, user, messageId);
 	}
 }

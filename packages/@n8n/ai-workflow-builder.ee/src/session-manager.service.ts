@@ -89,19 +89,19 @@ export class SessionManagerService {
 	}
 
 	/**
-	 * Truncate all messages including and after the message with the specified versionId in metadata.
+	 * Truncate all messages including and after the message with the specified messageId in metadata.
 	 * Used when restoring to a previous version.
 	 *
 	 * @param workflowId - The workflow ID
 	 * @param userId - The user ID
-	 * @param versionId - The versionId to find in HumanMessage's additional_kwargs. Messages from this
-	 *                    point onward (including the message with this versionId) will be removed.
+	 * @param messageId - The messageId to find in HumanMessage's additional_kwargs. Messages from this
+	 *                    point onward (including the message with this messageId) will be removed.
 	 * @returns True if truncation was successful, false if thread or message not found
 	 */
 	async truncateMessagesAfter(
 		workflowId: string,
 		userId: string | undefined,
-		versionId: string,
+		messageId: string,
 	): Promise<boolean> {
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
@@ -114,28 +114,28 @@ export class SessionManagerService {
 			const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
 
 			if (!checkpointTuple?.checkpoint) {
-				this.logger?.debug('No checkpoint found for truncation', { threadId, versionId });
+				this.logger?.debug('No checkpoint found for truncation', { threadId, messageId });
 				return false;
 			}
 
 			const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
 			if (!isLangchainMessagesArray(rawMessages)) {
-				this.logger?.debug('No valid messages found for truncation', { threadId, versionId });
+				this.logger?.debug('No valid messages found for truncation', { threadId, messageId });
 				return false;
 			}
 
-			// Find the index of the message with the target versionId in additional_kwargs
-			const messageIndex = rawMessages.findIndex(
-				(msg) => msg.additional_kwargs?.versionId === versionId,
+			// Find the index of the message with the target messageId in additional_kwargs
+			const msgIndex = rawMessages.findIndex(
+				(msg) => msg.additional_kwargs?.messageId === messageId,
 			);
 
-			if (messageIndex === -1) {
-				this.logger?.debug('Message with versionId not found', { threadId, versionId });
+			if (msgIndex === -1) {
+				this.logger?.debug('Message with messageId not found', { threadId, messageId });
 				return false;
 			}
 
 			// Keep messages before the target message (excluding the target message)
-			const truncatedMessages = rawMessages.slice(0, messageIndex);
+			const truncatedMessages = rawMessages.slice(0, msgIndex);
 
 			// Create updated checkpoint with truncated messages
 			const updatedCheckpoint: Checkpoint = {
@@ -157,14 +157,14 @@ export class SessionManagerService {
 
 			this.logger?.debug('Messages truncated successfully', {
 				threadId,
-				versionId,
+				messageId,
 				originalCount: rawMessages.length,
 				newCount: truncatedMessages.length,
 			});
 
 			return true;
 		} catch (error) {
-			this.logger?.error('Failed to truncate messages', { threadId, versionId, error });
+			this.logger?.error('Failed to truncate messages', { threadId, messageId, error });
 			return false;
 		}
 	}

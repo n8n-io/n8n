@@ -50,7 +50,7 @@ const emit = defineEmits<{
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
 	restore: [versionId: string];
-	restoreConfirm: [versionId: string];
+	restoreConfirm: [versionId: string, messageId: string];
 	restoreCancel: [];
 	showVersion: [versionId: string];
 }>();
@@ -437,7 +437,10 @@ defineExpose({
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
 									@restore="(versionId: string) => emit('restore', versionId)"
-									@restore-confirm="(versionId: string) => emit('restoreConfirm', versionId)"
+									@restore-confirm="
+										(versionId: string, messageId: string) =>
+											emit('restoreConfirm', versionId, messageId)
+									"
 									@restore-cancel="emit('restoreCancel')"
 									@show-version="(versionId: string) => emit('showVersion', versionId)"
 								>

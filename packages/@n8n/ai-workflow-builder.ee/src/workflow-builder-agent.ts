@@ -539,7 +539,10 @@ export class WorkflowBuilderAgent {
 	): Promise<AsyncIterable<StreamEvent>> {
 		const humanMessage = new HumanMessage({
 			content: payload.message,
-			additional_kwargs: payload.versionId ? { versionId: payload.versionId } : undefined,
+			additional_kwargs: {
+				...(payload.versionId && { versionId: payload.versionId }),
+				...(payload.id && { messageId: payload.id }),
+			},
 		});
 		const stream = await agent.stream(
 			{

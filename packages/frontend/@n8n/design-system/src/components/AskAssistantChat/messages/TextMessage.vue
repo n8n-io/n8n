@@ -28,7 +28,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
 	restore: [versionId: string];
-	restoreConfirm: [versionId: string];
+	restoreConfirm: [versionId: string, messageId: string];
 	restoreCancel: [];
 	showVersion: [versionId: string];
 }>();
@@ -84,8 +84,8 @@ function handleRestoreClick() {
 }
 
 function handleRestoreConfirm() {
-	if (props.message.revertVersion) {
-		emit('restoreConfirm', props.message.revertVersion.id);
+	if (props.message.revertVersion && props.message.id) {
+		emit('restoreConfirm', props.message.revertVersion.id, props.message.id);
 	}
 	showRestoreConfirm.value = false;
 }

@@ -489,7 +489,6 @@ export const updatedIconSet = {
 	'arrow-right': IconLucideArrowRight,
 	'arrow-right-from-line': IconLucideArrowRightFromLine,
 	'arrow-right-to-line': IconLucideArrowRightToLine,
-	'arrow-up-right': IconLucideArrowUpRight,
 	'arrow-up': IconLucideArrowUp,
 	'arrow-up-right': IconLucideArrowUpRight,
 	'at-sign': IconLucideAtSign,
