@@ -3,13 +3,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import {
-	MODAL_CANCEL,
-	MODAL_CLOSE,
-	MODAL_CONFIRM,
-	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
-	VIEWS,
-} from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -143,18 +137,13 @@ export function useWorkflowSaving({
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
-<<<<<<< HEAD
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
 		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
-			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
-=======
-		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 			return !!(await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
 				redirect,
 			));
->>>>>>> origin/master
 		}
 
 		// Workflow exists already so update it
