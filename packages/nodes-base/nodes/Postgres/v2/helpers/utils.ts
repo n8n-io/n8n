@@ -13,6 +13,8 @@ import type {
 	EnumInfo,
 	PgpClient,
 	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
 	QueryMode,
 	QueryValues,
 	QueryWithValues,
@@ -622,4 +624,34 @@ export const convertArraysToPostgresFormat = (
 	}
 
 	return newData;
+};
+
+export const runQueriesAndHandleErrors = async (
+	runQueries: QueriesRunner,
+	queries: QueryWithValues[],
+	nodeOptions: PostgresNodeOptions,
+	errorItemsMap: Map<number, INodeExecutionData>,
+) => {
+	// if we have any errors and we are not running the queries independently
+	// (i.e. `transaction` or `single` mode), we don't want to execute any
+	// queries that didn't error, since the operation should be atomic
+	if (errorItemsMap.size > 0 && nodeOptions.queryBatching !== 'independently') {
+		return Array.from(errorItemsMap.values());
+	}
+
+	const returnData = await runQueries(queries, nodeOptions);
+
+	const total = returnData.length + errorItemsMap.size;
+	const result = new Array<INodeExecutionData>(total);
+	let returnDataIndex = 0;
+	for (let i = 0; i < total; i++) {
+		const errorItem = errorItemsMap.get(i);
+		if (errorItem) {
+			result[i] = errorItem;
+		} else if (returnDataIndex < returnData.length) {
+			result[i] = returnData[returnDataIndex++];
+		}
+	}
+
+	return result;
 };
