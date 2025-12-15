@@ -1083,6 +1083,30 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each(['manual', 'timeout', 'shutdown'] as const)(
+			'should log on `execution-cancelled` event with %s reason',
+			(reason) => {
+				const event: RelayEventMap['execution-cancelled'] = {
+					executionId: 'exec-cancelled-123',
+					workflowId: 'wf-456',
+					workflowName: 'Cancelled Workflow',
+					reason,
+				};
+
+				eventService.emit('execution-cancelled', event);
+
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.workflow.cancelled',
+					payload: {
+						executionId: 'exec-cancelled-123',
+						workflowId: 'wf-456',
+						workflowName: 'Cancelled Workflow',
+						reason,
+					},
+				});
+			},
+		);
 	});
 
 	describe('AI events', () => {

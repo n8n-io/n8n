@@ -1,3 +1,4 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, isAIMessage, RemoveMessage } from '@langchain/core/messages';
@@ -106,6 +107,9 @@ export function shouldModifyState(
 
 	return 'agent';
 }
+
+const PROMPT_IS_TOO_LARGE_ERROR =
+	'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.';
 
 function getWorkflowContext(state: typeof WorkflowState.State) {
 	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
@@ -276,9 +280,7 @@ export class WorkflowBuilderAgent {
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
 			if (estimatedTokens > MAX_INPUT_TOKENS) {
-				throw new WorkflowStateError(
-					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
-				);
+				throw new WorkflowStateError(PROMPT_IS_TOO_LARGE_ERROR);
 			}
 
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
@@ -473,13 +475,19 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	async *chat(
+		payload: ChatPayload,
+		userId?: string,
+		abortSignal?: AbortSignal,
+		externalCallbacks?: Callbacks,
+	) {
 		this.validateMessageLength(payload.message);
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,
 			userId,
 			abortSignal,
+			externalCallbacks,
 		);
 
 		try {
@@ -503,7 +511,12 @@ export class WorkflowBuilderAgent {
 		}
 	}
 
-	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	private setupAgentAndConfigs(
+		payload: ChatPayload,
+		userId?: string,
+		abortSignal?: AbortSignal,
+		externalCallbacks?: Callbacks,
+	) {
 		const agent = this.createWorkflow(payload.featureFlags);
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
@@ -521,7 +534,9 @@ export class WorkflowBuilderAgent {
 				? MAX_MULTI_AGENT_STREAM_ITERATIONS
 				: MAX_SINGLE_AGENT_STREAM_ITERATIONS,
 			signal: abortSignal,
-			callbacks: this.tracer ? [this.tracer] : undefined,
+			// Use external callbacks if provided (e.g., from LangSmith traceable context),
+			// otherwise fall back to the instance tracer
+			callbacks: externalCallbacks ?? (this.tracer ? [this.tracer] : undefined),
 			metadata: this.runMetadata,
 			// Enable subgraph streaming when using multi-agent architecture
 			subgraphs: payload.featureFlags?.multiAgent ?? false,
@@ -631,6 +646,11 @@ export class WorkflowBuilderAgent {
 					'message' in errorDetails &&
 					typeof errorDetails.message === 'string'
 				) {
+					// Override original error message from model provider for prompt size issues
+					if (errorDetails.message.toLocaleLowerCase().includes('prompt is too long')) {
+						return PROMPT_IS_TOO_LARGE_ERROR;
+					}
+
 					return errorDetails.message;
 				}
 			}
