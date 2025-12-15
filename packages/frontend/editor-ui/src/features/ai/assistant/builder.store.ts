@@ -58,7 +58,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	type?: string;
 	revert_user_message_id?: string;
 	revert_version_id?: string;
-	no_versions_before?: number;
+	no_versions_reverted?: number;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -942,18 +942,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// 3. Truncate local chat messages - find user message with matching messageId
 		// and remove it along with all messages after it
 		const msgIndex = chatMessages.value.findIndex((msg) => msg.id === messageId);
+		const messagesBeingReverted =
+			msgIndex !== -1
+				? chatMessages.value
+						.slice(msgIndex)
+						.filter((msg) => 'revertVersionId' in msg && msg.revertVersionId).length
+				: 0;
 		if (msgIndex !== -1) {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
 
 		// 4. Track telemetry event for version restore
-		const noVersionsBefore = chatMessages.value.filter(
-			(msg) => 'revertVersionId' in msg && msg.revertVersionId,
-		).length;
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
 			revert_user_message_id: messageId,
 			revert_version_id: versionId,
-			no_versions_before: noVersionsBefore,
+			no_versions_reverted: messagesBeingReverted,
 		});
 
 		return updatedWorkflow;
