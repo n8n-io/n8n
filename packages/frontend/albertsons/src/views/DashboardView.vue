@@ -7,7 +7,7 @@ import albertsonsLogo from '../assets/albertsons-logo.png';
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 
-// ✅ CORRECT n8n bindings
+/* n8n bindings – DO NOT TOUCH */
 const workflows = computed(() => workflowsStore.allWorkflows);
 const loading = computed(() => workflowsStore.isLoading);
 
@@ -26,68 +26,74 @@ onMounted(() => {
 
 <template>
 	<div class="dashboard">
-		<!-- HEADER -->
+		<!-- HEADER : Pulse -->
 		<div class="header">
 			<img :src="albertsonsLogo" class="logo" />
-			<h1>Welcome to Albertsons AI Agent Space</h1>
+			<div class="header-text">
+				<h1>Pulse</h1>
+				<p class="subtitle">System Health Dashboard</p>
+			</div>
 		</div>
 
-		<!-- METRICS -->
+		<!-- KPI CARDS -->
 		<div class="metrics">
+			<div class="metric-card highlight">
+				<span class="metric-value">92%</span>
+				<span class="metric-label">System Health</span>
+				<span class="metric-sub success">Good</span>
+			</div>
+
 			<div class="metric-card">
-				<span class="metric-label">Total Executions</span>
 				<span class="metric-value">2</span>
+				<span class="metric-label">Total Workflows</span>
 				<span class="metric-sub">All time</span>
 			</div>
 
-			<div class="metric-card success">
-				<span class="metric-label">Successful</span>
-				<span class="metric-value">2</span>
-				<span class="metric-sub">100% success rate</span>
-			</div>
-
-			<div class="metric-card danger">
-				<span class="metric-label">Failed</span>
-				<span class="metric-value">0</span>
-				<span class="metric-sub">0% failure rate</span>
+			<div class="metric-card">
+				<span class="metric-value success">100%</span>
+				<span class="metric-label">Success Rate</span>
+				<span class="metric-sub">Last 24h</span>
 			</div>
 
 			<div class="metric-card">
-				<span class="metric-label">Avg Duration</span>
-				<span class="metric-value">3.1s</span>
-				<span class="metric-sub">Per execution</span>
+				<span class="metric-value danger">0</span>
+				<span class="metric-label">Failures</span>
+				<span class="metric-sub">Last 24h</span>
 			</div>
 		</div>
 
-		<!-- TABS -->
-		<div class="tabs">
-			<button class="active">My Workflows</button>
-			<button disabled>Credentials</button>
-			<button disabled>Executions</button>
-			<button disabled>Variables</button>
-			<button disabled>Data Tables</button>
+		<!-- PRIMARY ACTION -->
+		<div class="primary-actions">
+			<button class="primary" @click="goToNewWorkflow">+ Create Agent</button>
 		</div>
 
-		<!-- ACTIONS -->
-		<div class="actions">
-			<button class="primary" @click="goToNewWorkflow">+ New Workflow</button>
-			<button class="secondary" @click="loadWorkflows">Refresh</button>
-		</div>
+		<!-- WORKFLOWS SECTION -->
+		<div class="section">
+			<div class="section-header">
+				<h2>My Workflows</h2>
+				<button class="secondary" @click="loadWorkflows">Refresh</button>
+			</div>
 
-		<!-- LIST -->
-		<div class="list">
-			<div v-if="loading" class="state">Loading workflows…</div>
-			<div v-else-if="!workflows.length" class="state">No workflows found</div>
+			<div class="list">
+				<div v-if="loading" class="state">Loading workflows…</div>
+				<div v-else-if="!workflows.length" class="state">No workflows created yet</div>
 
-			<div
-				v-else
-				v-for="wf in workflows"
-				:key="wf.id"
-				class="workflow"
-				@click="router.push(`/workflow/${wf.id}`)"
-			>
-				<h3>{{ wf.name || 'Untitled Workflow' }}</h3>
-				<p>Last updated: {{ wf.updatedAt }} · Created: {{ wf.createdAt }}</p>
+				<div
+					v-else
+					v-for="wf in workflows"
+					:key="wf.id"
+					class="workflow"
+					@click="router.push(`/workflow/${wf.id}`)"
+				>
+					<div class="workflow-info">
+						<h3>{{ wf.name || 'Untitled Workflow' }}</h3>
+						<p>
+							Updated: {{ wf.updatedAt }} · Created:
+							{{ wf.createdAt }}
+						</p>
+					</div>
+					<span class="status success">Active</span>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -96,6 +102,7 @@ onMounted(() => {
 <style scoped>
 .dashboard {
 	padding: 24px;
+	width: 100%;
 	background: var(--color--background);
 }
 
@@ -108,14 +115,19 @@ onMounted(() => {
 }
 
 .logo {
-	width: 40px;
-	height: 40px;
+	width: 36px;
+	height: 36px;
 }
 
-h1 {
-	font-size: 24px;
+.header-text h1 {
+	font-size: 20px;
 	font-weight: 600;
 	color: var(--color--text--shade-1);
+}
+
+.subtitle {
+	font-size: 13px;
+	color: var(--color--text--tint-1);
 }
 
 /* METRICS */
@@ -136,15 +148,19 @@ h1 {
 	gap: 4px;
 }
 
-.metric-label {
-	font-size: 14px;
-	color: var(--color--text--tint-1);
+.metric-card.highlight {
+	border-left: 4px solid var(--color--primary);
 }
 
 .metric-value {
-	font-size: 24px;
+	font-size: 22px;
 	font-weight: 700;
 	color: var(--color--text--shade-1);
+}
+
+.metric-label {
+	font-size: 13px;
+	color: var(--color--text--tint-1);
 }
 
 .metric-sub {
@@ -152,39 +168,16 @@ h1 {
 	color: var(--color--text--tint-1);
 }
 
-.metric-card.success .metric-value {
+.success {
 	color: var(--color--success);
 }
 
-.metric-card.danger .metric-value {
+.danger {
 	color: var(--color--danger);
 }
 
-/* TABS */
-.tabs {
-	display: flex;
-	gap: 16px;
-	margin-bottom: 16px;
-}
-
-.tabs button {
-	background: none;
-	border: none;
-	font-weight: 600;
-	color: var(--color--text--tint-1);
-	padding-bottom: 6px;
-	cursor: pointer;
-}
-
-.tabs .active {
-	color: var(--color--primary);
-	border-bottom: 2px solid var(--color--primary);
-}
-
-/* ACTIONS */
-.actions {
-	display: flex;
-	gap: 12px;
+/* PRIMARY ACTION */
+.primary-actions {
 	margin-bottom: 24px;
 }
 
@@ -192,41 +185,64 @@ h1 {
 	background: var(--button--color--background--primary);
 	color: var(--button--color--text--primary);
 	border-radius: var(--radius);
-	padding: 8px 16px;
+	padding: 10px 18px;
 	border: none;
+	font-weight: 600;
+}
+
+/* SECTION */
+.section {
+	background: var(--color--background--light-3);
+	border: 1px solid var(--border-color--light);
+	border-radius: var(--radius--lg);
+	padding: 16px;
+}
+
+.section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.section-header h2 {
+	font-size: 16px;
+	font-weight: 600;
 }
 
 .secondary {
 	background: var(--button--color--background--secondary);
 	color: var(--button--color--text--secondary);
 	border-radius: var(--radius);
-	padding: 8px 16px;
+	padding: 6px 12px;
 	border: var(--border);
 }
 
-/* LIST */
+/* WORKFLOW LIST */
 .list {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 8px;
 }
 
 .workflow {
-	padding: 16px;
-	border-radius: var(--radius--lg);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px;
+	border-radius: var(--radius);
 	border: 1px solid var(--border-color--light);
-	background: var(--color--background--light-3);
+	background: var(--color--background--light-2);
 	cursor: pointer;
 }
 
 .workflow:hover {
-	background: var(--color--background--light-2);
+	background: var(--color--background--light-1);
 }
 
 .workflow h3 {
-	margin: 0 0 4px;
-	font-size: 16px;
-	color: var(--color--text--shade-1);
+	margin: 0;
+	font-size: 14px;
 }
 
 .workflow p {
@@ -235,10 +251,17 @@ h1 {
 	color: var(--color--text--tint-1);
 }
 
+.status {
+	font-size: 12px;
+	font-weight: 600;
+}
+
+/* STATE */
 .state {
 	font-size: 14px;
 	color: var(--color--text--tint-1);
 	padding: 24px;
+	text-align: center;
 }
 
 /* RESPONSIVE */

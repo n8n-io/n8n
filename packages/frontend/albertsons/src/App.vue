@@ -221,7 +221,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 .app-grid {
 	position: relative;
 	display: grid;
-	height: 100vh;
+	height: 100%;
 	grid-template-areas:
 		'banners banners'
 		'sidebar header'
@@ -256,9 +256,16 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 }
 
 .contentWrapper {
-	display: block; /* ✅ simplest & best */
+	display: flex;
+	position: relative;
+	overflow: auto;
 	height: 100%;
 	width: 100%;
+}
+
+main {
+	width: 100%;
+	height: 100%;
 }
 
 .header {
