@@ -155,6 +155,50 @@ describe('handleFormRedirectionCase', () => {
 		const result = handleFormRedirectionCase(data, workflowStartNode);
 		expect(result).toEqual(data);
 	});
+
+	test('should block javascript: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'javascript:alert(document.domain)' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should block data: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'data:text/html,<script>alert(1)</script>' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should allow https: URLs', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'https://example.com/callback' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toEqual({ redirectURL: 'https://example.com/callback' });
+	});
 });
 
 describe('setupResponseNodePromise', () => {
