@@ -1872,7 +1872,7 @@ describe('AI Builder store', () => {
 					tools_called: expect.any(Array),
 					start_workflow_json: expect.any(String),
 					end_workflow_json: expect.any(String),
-					workflow_modified: true,
+					workflow_modified: false,
 				}),
 			);
 		});
