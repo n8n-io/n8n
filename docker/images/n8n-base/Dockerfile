@@ -42,7 +42,7 @@ FROM node:${NODE_VERSION}-alpine
 
 COPY --from=builder / /
 
-RUN rm -rf /opt/yarn* && apk del apk-tools
+RUN rm -rf /opt/yarn*
 
 WORKDIR /home/node
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
