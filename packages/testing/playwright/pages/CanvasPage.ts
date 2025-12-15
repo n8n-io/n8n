@@ -875,6 +875,10 @@ export class CanvasPage extends BasePage {
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
 
+		if (endpointType === 'ai_tool') {
+			await this.nodeCreator.navigateToSubcategory('Action in an app');
+		}
+
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();
 		} else {
