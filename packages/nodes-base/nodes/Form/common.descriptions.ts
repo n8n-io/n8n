@@ -221,6 +221,10 @@ export const formFields: INodeProperties = {
 							name: 'Default Value',
 							value: 'defaultValue',
 						},
+						{
+							name: 'Required Field',
+							value: 'requiredField',
+						},
 					],
 				},
 				{
@@ -665,6 +669,26 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['html', 'hiddenField'],
+						},
+						show: {
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['requiredField'],
+						},
+					},
+				},
+				{
+					displayName: 'Required Field',
+					name: 'requiredField',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether to require the user to enter a value for this field before submitting the form',
+					displayOptions: {
+						hide: {
+							fieldType: ['html', 'hiddenField'],
+						},
+						show: {
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
