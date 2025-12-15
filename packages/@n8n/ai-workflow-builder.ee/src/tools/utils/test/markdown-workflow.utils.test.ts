@@ -1,10 +1,6 @@
 import type { WorkflowMetadata } from '@/types';
 
-import {
-	mermaidStringify,
-	processWorkflowExamples,
-	stickyNotesStringify,
-} from '../markdown-workflow.utils';
+import { mermaidStringify, processWorkflowExamples } from '../markdown-workflow.utils';
 import { aiAssistantWorkflow } from './workflows/ai-assistant.workflow';
 
 describe('markdown-workflow.utils', () => {
@@ -668,48 +664,6 @@ flowchart TD
 \`\`\``;
 
 			expect(result).toEqual(expected);
-		});
-	});
-
-	describe('stickyNotesStringify', () => {
-		it('should convert workflow sticky notes to bullet list', () => {
-			const result = stickyNotesStringify(aiAssistantWorkflow);
-
-			// Each sticky note should start with "- "
-			const lines = result.split('\n');
-			const bulletLines = lines.filter((line: string) => line.startsWith('- '));
-			expect(bulletLines.length).toBeGreaterThan(0);
-
-			// Should contain key content from sticky notes
-			expect(result).toContain('Process Telegram Request');
-			expect(result).toContain('OpenRouter');
-			expect(result).toContain('Try It Out');
-			expect(result).toContain('Video Tutorial');
-			expect(result).toContain('youtube');
-		});
-
-		it('should return empty string for workflow without sticky notes', () => {
-			const workflow: WorkflowMetadata = {
-				name: 'No Sticky Notes',
-				workflow: {
-					name: 'No Sticky Notes',
-					nodes: [
-						{
-							parameters: {},
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.start',
-							position: [0, 0],
-							typeVersion: 1,
-						},
-					],
-					connections: {},
-				},
-			};
-
-			const result = stickyNotesStringify(workflow);
-
-			expect(result).toEqual('');
 		});
 	});
 

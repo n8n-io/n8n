@@ -41,14 +41,6 @@ const CONDITIONAL_NODE_TYPES = new Set([
 	'n8n-nodes-base.filter',
 ]);
 
-/**
- * Result from buildMermaidLines including collected configurations
- */
-interface BuildMermaidResult {
-	lines: string[];
-	nodeConfigurations: NodeConfigurationsMap;
-}
-
 type WorkflowNode = WorkflowMetadata['workflow']['nodes'][number];
 type WorkflowConnections = WorkflowMetadata['workflow']['connections'];
 
@@ -492,6 +484,7 @@ function buildSubgraphSections(connections: WorkflowConnections, ctx: MermaidBui
 
 		// Build internal connections only (both source and target in subgraph)
 		const visited = new Set<string>();
+
 		function traverseSubgraph(nodeName: string) {
 			if (visited.has(nodeName)) return;
 			visited.add(nodeName);
@@ -627,6 +620,7 @@ function buildConnectionsFromSubgraphs(
 
 	// Continue traversing from nodes reached via subgraph exits
 	const visited = new Set<string>();
+
 	function continueTraversal(nodeName: string) {
 		if (visited.has(nodeName) || ctx.nodesInSubgraphs.has(nodeName)) return;
 		visited.add(nodeName);
@@ -674,12 +668,15 @@ function buildConnectionsFromSubgraphs(
 /**
  * Build a Mermaid flowchart from workflow nodes and connections
  */
-function buildMermaidLines(
+function buildMermaidChart(
 	nodes: WorkflowMetadata['workflow']['nodes'],
 	connections: WorkflowConnections,
 	options: Required<MermaidOptions> = DEFAULT_MERMAID_OPTIONS,
 	existingConfigurations?: NodeConfigurationsMap,
-): BuildMermaidResult {
+): {
+	lines: string[];
+	nodeConfigurations: NodeConfigurationsMap;
+} {
 	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
 	const stickyNotes = nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
 	const nodeConfigurations: NodeConfigurationsMap = existingConfigurations ?? {};
@@ -742,7 +739,7 @@ export function mermaidStringify(workflow: WorkflowMetadata, options?: MermaidOp
 		...DEFAULT_MERMAID_OPTIONS,
 		...options,
 	};
-	const result = buildMermaidLines(wf.nodes, wf.connections, mergedOptions);
+	const result = buildMermaidChart(wf.nodes, wf.connections, mergedOptions);
 	return result.lines.join('\n');
 }
 
@@ -765,7 +762,7 @@ export function processWorkflowExamples(
 
 	const results: MermaidResult[] = workflows.map((workflow) => {
 		const { workflow: wf } = workflow;
-		const result = buildMermaidLines(wf.nodes, wf.connections, mergedOptions, allConfigurations);
+		const result = buildMermaidChart(wf.nodes, wf.connections, mergedOptions, allConfigurations);
 		return {
 			mermaid: result.lines.join('\n'),
 			nodeConfigurations: result.nodeConfigurations,
@@ -773,31 +770,4 @@ export function processWorkflowExamples(
 	});
 
 	return results;
-}
-
-/**
- * Generates sticky notes section from a workflow
- */
-export function stickyNotesStringify(workflow: WorkflowMetadata): string {
-	const { workflow: wf } = workflow;
-	const stickyNotes = wf.nodes.filter((node) => node.type === 'n8n-nodes-base.stickyNote');
-
-	if (stickyNotes.length === 0) {
-		return '';
-	}
-
-	const lines: string[] = [];
-	for (const note of stickyNotes) {
-		const content = note.parameters.content;
-		if (typeof content === 'string' && content) {
-			// Indent continuation lines so they appear as part of the bullet
-			const contentLines = content.trim().split('\n');
-			const indentedContent = contentLines
-				.map((line, idx) => (idx === 0 ? `- ${line}` : `  ${line}`))
-				.join('\n');
-			lines.push(indentedContent);
-		}
-	}
-
-	return lines.join('\n');
 }
