@@ -91,6 +91,14 @@ const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const PrebuiltAgentTemplatesView = async () =>
 	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
+const ResourceCenterView = async () =>
+	await import('@/features/resource-center/views/ResourceCenterView.vue');
+const ResourceCenterViewV2 = async () =>
+	await import('@/features/resource-center/views/ResourceCenterViewV2.vue');
+const ResourceCenterSectionView = async () =>
+	await import('@/features/resource-center/views/ResourceCenterSectionView.vue');
+const ResourceCenterViewV3 = async () =>
+	await import('@/features/resource-center/views/ResourceCenterViewV3.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -256,6 +264,50 @@ export const routes: RouteRecordRaw[] = [
 			} else {
 				next();
 			}
+		},
+	},
+	{
+		path: '/resource-center',
+		name: VIEWS.RESOURCE_CENTER,
+		components: {
+			default: ResourceCenterView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/resource-center-v2',
+		name: VIEWS.RESOURCE_CENTER_V2,
+		components: {
+			default: ResourceCenterViewV2,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/resource-center-v2/:section',
+		name: VIEWS.RESOURCE_CENTER_SECTION,
+		components: {
+			default: ResourceCenterSectionView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/resource-center-v3',
+		name: VIEWS.RESOURCE_CENTER_V3,
+		components: {
+			default: ResourceCenterViewV3,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
 		},
 	},
 	{

@@ -52,7 +52,6 @@ import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/st
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import KeyboardShortcutTooltip from './KeyboardShortcutTooltip.vue';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
@@ -82,7 +81,6 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
-const calloutHelpers = useCalloutHelpers();
 const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
 	useSidebarLayout();
 
@@ -106,14 +104,6 @@ const showWhatsNewNotification = computed(
 		),
 );
 
-const isTemplatesExperimentEnabled = computed(() => {
-	return (
-		personalizedTemplatesV2Store.isFeatureEnabled() ||
-		personalizedTemplatesV3Store.isFeatureEnabled() ||
-		templatesDataQualityStore.isFeatureEnabled()
-	);
-});
-
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -123,53 +113,31 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to in-app pre-built agent templates, available experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
+		// Resource Center V3 - simple single page, no buttons
+		id: 'resource-center-v3',
+		icon: 'graduation-cap',
+		label: i18n.baseText('mainSidebar.resourceCenterV3'),
 		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!isTemplatesExperimentEnabled.value,
-		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
+		available: true,
+		route: { to: { name: VIEWS.RESOURCE_CENTER_V3 } },
 	},
 	{
-		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
+		// Resource Center V2 - with breadcrumbs navigation
+		id: 'resource-center-v2',
+		icon: 'graduation-cap',
+		label: i18n.baseText('mainSidebar.resourceCenterV2'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
+		available: true,
+		route: { to: { name: VIEWS.RESOURCE_CENTER_V2 } },
 	},
 	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
+		// Resource Center V1 - with search and browse all
+		id: 'resource-center',
+		icon: 'graduation-cap',
+		label: i18n.baseText('mainSidebar.resourceCenter'),
 		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
-		route: { to: { name: VIEWS.TEMPLATES } },
-	},
-	{
-		// Link to website templates, available if custom templates are not enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
-		link: {
-			href: templatesStore.websiteTemplateRepositoryURL,
-			target: '_blank',
-		},
+		available: true,
+		route: { to: { name: VIEWS.RESOURCE_CENTER } },
 	},
 	{
 		id: 'insights',
