@@ -9,9 +9,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	WorkflowExecuteMode,
-	toCredentialContext,
-	UnexpectedError,
 } from 'n8n-workflow';
+
+import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
 
 import type {
 	CredentialResolveMetadata,
