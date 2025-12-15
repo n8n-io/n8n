@@ -60,6 +60,7 @@ export class WorkflowDataProxy {
 
 	private returnExecutionData: <T extends INodeExecutionData | INodeExecutionData[]>(
 		data: T,
+		fullItem?: boolean,
 	) => T extends INodeExecutionData[]
 		? IDataObject[] | INodeExecutionData[]
 		: IDataObject | INodeExecutionData;
@@ -95,7 +96,13 @@ export class WorkflowDataProxy {
 		Settings.defaultZone = this.timezone;
 
 		if (workflow.settings?.binaryMode === 'combined') {
-			this.returnExecutionData = ((item: INodeExecutionData | INodeExecutionData[]) => {
+			this.returnExecutionData = ((
+				item: INodeExecutionData | INodeExecutionData[],
+				fullItem: boolean,
+			) => {
+				if (fullItem) {
+					return item;
+				}
 				if (Array.isArray(item)) {
 					return item.map((i) => i.json);
 				}
@@ -1075,9 +1082,12 @@ export class WorkflowDataProxy {
 		};
 
 		const base = {
-			$: (nodeName: string) => {
+			$: (nodeName?: string, resolveFullItem?: boolean) => {
 				if (!nodeName) {
-					throw createExpressionError('When calling $(), please specify a node');
+					nodeName = (that.prevNodeGetter() as { name: string }).name;
+					if (!nodeName) {
+						throw createExpressionError('When calling $(), please specify a node');
+					}
 				}
 
 				const referencedNode = that.workflow.getNode(nodeName);
@@ -1188,7 +1198,7 @@ export class WorkflowDataProxy {
 										);
 
 										if (pinnedData) {
-											return that.returnExecutionData(pinnedData[itemIndex]);
+											return that.returnExecutionData(pinnedData[itemIndex], resolveFullItem);
 										}
 									}
 
@@ -1238,6 +1248,7 @@ export class WorkflowDataProxy {
 
 									return that.returnExecutionData(
 										getPairedItem(nodeName, sourceData, pairedItem, property),
+										resolveFullItem,
 									);
 								};
 
@@ -1261,7 +1272,8 @@ export class WorkflowDataProxy {
 										branchIndex,
 										runIndex,
 									});
-									if (executionData[0]) return that.returnExecutionData(executionData[0]);
+									if (executionData[0])
+										return that.returnExecutionData(executionData[0], resolveFullItem);
 									return undefined;
 								};
 							}
@@ -1281,7 +1293,10 @@ export class WorkflowDataProxy {
 									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
-										return that.returnExecutionData(executionData[executionData.length - 1]);
+										return that.returnExecutionData(
+											executionData[executionData.length - 1],
+											resolveFullItem,
+										);
 									}
 									return undefined;
 								};
@@ -1302,6 +1317,7 @@ export class WorkflowDataProxy {
 											branchIndex,
 											runIndex,
 										}),
+										resolveFullItem,
 									);
 								};
 							}
@@ -1433,25 +1449,29 @@ export class WorkflowDataProxy {
 				);
 			},
 			// this is legacy syntax that is not documented
-			$item: (itemIndex: number, runIndex?: number) => {
-				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
-				const dataProxy = new WorkflowDataProxy(
-					this.workflow,
-					this.runExecutionData,
-					this.runIndex,
-					itemIndex,
-					this.activeNodeName,
-					this.connectionInputData,
-					that.siblingParameters,
-					that.mode,
-					that.additionalKeys,
-					that.executeData,
-					defaultReturnRunIndex,
-					{},
-					that.contextNodeName,
-				);
-				return dataProxy.getDataProxy();
-			},
+			// if workflow is in combined binary mode, will return same as the $json result
+			$item:
+				that.workflow.settings?.binaryMode === 'combined'
+					? {} // Placeholder
+					: (itemIndex: number, runIndex?: number) => {
+							const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
+							const dataProxy = new WorkflowDataProxy(
+								this.workflow,
+								this.runExecutionData,
+								this.runIndex,
+								itemIndex,
+								this.activeNodeName,
+								this.connectionInputData,
+								that.siblingParameters,
+								that.mode,
+								that.additionalKeys,
+								that.executeData,
+								defaultReturnRunIndex,
+								{},
+								that.contextNodeName,
+							);
+							return dataProxy.getDataProxy();
+						},
 			$fromAI: handleFromAi,
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
 			$fromai: handleFromAi,
@@ -1516,7 +1536,13 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
 
-				if (['$data', '$json'].includes(name as string)) {
+				const JSON_ACCESS_KEYS = ['$data', '$json'];
+
+				if (that.workflow.settings?.binaryMode === 'combined') {
+					JSON_ACCESS_KEYS.push('$item');
+				}
+
+				if (JSON_ACCESS_KEYS.includes(name as string)) {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
