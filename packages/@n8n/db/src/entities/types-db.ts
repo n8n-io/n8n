@@ -88,6 +88,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	name: string;
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
