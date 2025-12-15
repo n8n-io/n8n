@@ -170,18 +170,20 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		test('should add multiple tool nodes to Agent node tool input type', async ({ n8n }) => {
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 
+			const toolSubcategory = 'Action in an app';
 			const tools = [
-				AI_TOOL_CALCULATOR_NODE_NAME,
-				AI_TOOL_CODE_NODE_NAME,
-				AI_TOOL_CODE_NODE_NAME,
-				AI_TOOL_WIKIPEDIA_NODE_NAME,
+				{ name: AI_TOOL_CALCULATOR_NODE_NAME, subcategory: toolSubcategory },
+				{ name: AI_TOOL_CODE_NODE_NAME },
+				{ name: AI_TOOL_CODE_NODE_NAME },
+				{ name: AI_TOOL_WIKIPEDIA_NODE_NAME, subcategory: toolSubcategory },
 			];
 
 			for (const tool of tools) {
-				await n8n.canvas.addSupplementalNodeToParent(tool, 'ai_tool', AGENT_NODE_NAME, {
+				await n8n.canvas.addSupplementalNodeToParent(tool.name, 'ai_tool', AGENT_NODE_NAME, {
 					closeNDV: true,
+					subcategory: tool.subcategory,
 				});
-				await expect(n8n.canvas.connectionBetweenNodes(tool, AGENT_NODE_NAME)).toBeAttached();
+				await expect(n8n.canvas.connectionBetweenNodes(tool.name, AGENT_NODE_NAME)).toBeAttached();
 			}
 
 			// Chat Trigger + Agent + Tools
