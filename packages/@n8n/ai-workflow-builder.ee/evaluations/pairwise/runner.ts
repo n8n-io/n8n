@@ -4,7 +4,7 @@ import pc from 'picocolors';
 
 import { createPairwiseTarget, generateWorkflow } from './generator';
 import { aggregateGenerations, runJudgePanel, type GenerationResult } from './judge-panel';
-import { createPairwiseLangsmithEvaluator } from './metrics-builder';
+import { pairwiseLangsmithEvaluator } from './metrics-builder';
 import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../constants';
 import { setupTestEnvironment } from '../core/environment';
@@ -67,16 +67,17 @@ function logFeatureFlags(log: EvalLogger, featureFlags?: BuilderFeatureFlags): v
 	}
 }
 
-interface LogPairwiseConfigOptions {
-	experimentName: string;
-	numGenerations: number;
-	numJudges: number;
-	repetitions: number;
-	concurrency: number;
-}
-
 /** Log configuration for pairwise evaluation */
-function logPairwiseConfig(log: EvalLogger, options: LogPairwiseConfigOptions): void {
+function logPairwiseConfig(
+	log: EvalLogger,
+	options: {
+		experimentName: string;
+		numGenerations: number;
+		numJudges: number;
+		repetitions: number;
+		concurrency: number;
+	},
+): void {
 	const { experimentName, numGenerations, numJudges, repetitions, concurrency } = options;
 	log.info(`➔ Experiment: ${experimentName}`);
 	log.info(
@@ -101,16 +102,17 @@ function validatePairwiseInputs(numJudges: number, numGenerations: number): void
 	}
 }
 
-interface DisplayLocalResultsOptions {
-	generationResults: GenerationResult[];
-	numJudges: number;
-	numGenerations: number;
-	totalTime: number;
-	verbose: boolean;
-}
-
 /** Display results for local pairwise evaluation */
-function displayLocalResults(log: EvalLogger, options: DisplayLocalResultsOptions): void {
+function displayLocalResults(
+	log: EvalLogger,
+	options: {
+		generationResults: GenerationResult[];
+		numJudges: number;
+		numGenerations: number;
+		totalTime: number;
+		verbose: boolean;
+	},
+): void {
 	const { generationResults, numJudges, numGenerations, totalTime, verbose } = options;
 
 	// Defensive check - should never happen due to validation, but prevents runtime errors
@@ -211,13 +213,7 @@ export async function runPairwiseLangsmithEvaluation(
 	const log = createLogger(verbose);
 
 	console.log(formatHeader('AI Workflow Builder Pairwise Evaluation', 70));
-	logPairwiseConfig(log, {
-		experimentName,
-		numGenerations,
-		numJudges,
-		repetitions,
-		concurrency,
-	});
+	logPairwiseConfig(log, { experimentName, numGenerations, numJudges, repetitions, concurrency });
 
 	logFeatureFlags(log, featureFlags);
 
@@ -272,7 +268,7 @@ export async function runPairwiseLangsmithEvaluation(
 			featureFlags,
 			experimentName,
 		});
-		const evaluator = createPairwiseLangsmithEvaluator();
+		const evaluator = pairwiseLangsmithEvaluator;
 
 		const evalStartTime = Date.now();
 
@@ -396,13 +392,7 @@ export async function runLocalPairwiseEvaluation(options: LocalPairwiseOptions):
 		}
 
 		const totalTime = (Date.now() - startTime) / 1000;
-		displayLocalResults(log, {
-			generationResults,
-			numJudges,
-			numGenerations,
-			totalTime,
-			verbose,
-		});
+		displayLocalResults(log, { generationResults, numJudges, numGenerations, totalTime, verbose });
 	} catch (error) {
 		log.error(
 			`✗ Local evaluation failed: ${error instanceof Error ? error.message : String(error)}`,

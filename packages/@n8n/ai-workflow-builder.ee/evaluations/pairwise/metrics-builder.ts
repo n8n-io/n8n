@@ -146,32 +146,31 @@ export function buildMultiGenerationResults(
 }
 
 // ============================================================================
-// Evaluator Factory
+// LangSmith Evaluator
 // ============================================================================
 
 /**
- * Creates a simple LangSmith evaluator that extracts pre-computed metrics.
+ * LangSmith evaluator that extracts pre-computed metrics from target output.
  *
  * All the work (generation + judging) happens in the target function.
  * This evaluator just returns the pre-computed metrics from target output.
  * This avoids 403 errors from nested traceable calls in evaluator context.
  */
-export function createPairwiseLangsmithEvaluator() {
-	// Second parameter is the LangSmith Example but we don't need it
-	return async (rootRun: Run): Promise<LangsmithEvaluationResult[]> => {
-		const outputs = rootRun.outputs;
+export async function pairwiseLangsmithEvaluator(
+	rootRun: Run,
+): Promise<LangsmithEvaluationResult[]> {
+	const outputs = rootRun.outputs;
 
-		if (!isPairwiseTargetOutput(outputs)) {
-			return [
-				{
-					key: METRIC_KEYS.PAIRWISE_PRIMARY,
-					score: 0,
-					comment: 'Invalid output - missing feedback from target',
-				},
-				{ key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC, score: 0 },
-			];
-		}
+	if (!isPairwiseTargetOutput(outputs)) {
+		return [
+			{
+				key: METRIC_KEYS.PAIRWISE_PRIMARY,
+				score: 0,
+				comment: 'Invalid output - missing feedback from target',
+			},
+			{ key: METRIC_KEYS.PAIRWISE_DIAGNOSTIC, score: 0 },
+		];
+	}
 
-		return outputs.feedback;
-	};
+	return outputs.feedback;
 }

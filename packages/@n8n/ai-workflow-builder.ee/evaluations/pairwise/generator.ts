@@ -13,8 +13,6 @@ import { createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
 
-export type { PairwiseDatasetInput, PairwiseTargetOutput };
-
 // ============================================================================
 // Target Factory
 // ============================================================================

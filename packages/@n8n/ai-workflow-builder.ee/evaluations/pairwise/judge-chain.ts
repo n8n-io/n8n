@@ -77,15 +77,6 @@ Analyze the following n8n workflow against the provided checklist of criteria.
 </instructions>
 `;
 
-export function createPairwiseEvaluatorChain(llm: BaseChatModel) {
-	return createEvaluatorChain(
-		llm,
-		pairwiseEvaluationLLMResultSchema,
-		EVALUATOR_SYSTEM_PROMPT,
-		humanTemplate,
-	);
-}
-
 export async function evaluateWorkflowPairwise(
 	llm: BaseChatModel,
 	input: PairwiseEvaluationInput,
@@ -95,8 +86,15 @@ export async function evaluateWorkflowPairwise(
 	const donts = input.evalCriteria?.donts ?? '';
 	const criteriaList = `[DO]\n${dos}\n\n[DONT]\n${donts}`;
 
+	const chain = createEvaluatorChain(
+		llm,
+		pairwiseEvaluationLLMResultSchema,
+		EVALUATOR_SYSTEM_PROMPT,
+		humanTemplate,
+	);
+
 	const result = await invokeEvaluatorChain(
-		createPairwiseEvaluatorChain(llm),
+		chain,
 		{
 			userPrompt: criteriaList,
 			generatedWorkflow: input.workflowJSON,
