@@ -112,14 +112,15 @@ test.describe('Workflows', () => {
 		// Create and publish a workflow
 		await n8n.workflowComposer.createWorkflow(workflowName);
 
-		// Add a simple manual trigger to make workflow publishable
+		// Add a webhook trigger to make workflow publishable
 		await n8n.canvas.clickCanvasPlusButton();
-		await n8n.canvas.nodeCreator.searchFor('manual trigger');
-		await n8n.canvas.nodeCreator.selectItem('Manual Trigger');
+		await n8n.canvas.nodeCreator.searchFor('webhook');
+		await n8n.canvas.nodeCreator.selectItem('Webhook');
 		await n8n.page.keyboard.press('Escape');
 
 		// Save and publish the workflow
 		await n8n.canvas.saveWorkflow();
+
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 
