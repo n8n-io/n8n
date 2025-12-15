@@ -363,6 +363,7 @@ class TaskRunner:
             error = {
                 "message": getattr(e, "message", str(e)),
                 "description": getattr(e, "description", ""),
+                "stack": getattr(e, "stack_trace", ""),
             }
             response = RunnerTaskError(task_id=task_id, error=error)
             await self._send_message(response)
