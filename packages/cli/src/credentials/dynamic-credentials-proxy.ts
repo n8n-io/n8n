@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { Container } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type {
 	CredentialStoreMetadata,
@@ -17,7 +17,6 @@ import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from './credential-resolution-provider.interface';
-import { Service } from '@n8n/di';
 
 @Service()
 export class DynamicCredentialsProxy
