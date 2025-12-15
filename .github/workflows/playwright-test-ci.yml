@@ -2,6 +2,12 @@ name: E2E Tests for CI
 
 on:
   workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch/ref to test'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
@@ -12,6 +18,7 @@ jobs:
     if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
+      branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:ui
       shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
@@ -24,6 +31,7 @@ jobs:
     if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
+      branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
       shards: '[1]'
@@ -38,6 +46,7 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
+      branch: ${{ inputs.branch }}
       test-mode: local
       test-command: pnpm --filter=n8n-playwright test:local
       shards: '[1, 2, 3, 4, 5]'
@@ -49,6 +58,7 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
+      branch: ${{ inputs.branch }}
       test-mode: local
       test-command: pnpm --filter=n8n-playwright test:local:isolated
       shards: '[1]'
