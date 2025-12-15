@@ -346,19 +346,19 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		}
 	}
 
-	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription | null): void {
-		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	function updateNodeParameterIssues(node: INodeUi): void {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-		if (localNodeType === null) {
-			// Could not find localNodeType so can not update issues
+		if (nodeType === null) {
+			// Could not find nodeType so can not update issues
 			return;
 		}
 
 		// All data got updated everywhere so update now the issues
 		const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(
-			localNodeType.properties,
+			nodeType.properties,
 			node,
-			nodeType ?? null,
+			nodeType,
 		);
 
 		let newIssues: INodeIssueObjectProperty | null = null;

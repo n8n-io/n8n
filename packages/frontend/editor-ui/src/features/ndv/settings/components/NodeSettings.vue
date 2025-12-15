@@ -554,7 +554,7 @@ onMounted(async () => {
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
-		nodeHelpers.updateNodeParameterIssues(node.value, nodeType.value);
+		nodeHelpers.updateNodeParameterIssues(node.value);
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
