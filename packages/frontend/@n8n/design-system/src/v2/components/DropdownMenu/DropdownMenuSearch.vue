@@ -7,11 +7,8 @@ defineOptions({ name: 'N8nDropdownMenuSearch' });
 
 withDefaults(
 	defineProps<{
-		/** Current search value */
 		modelValue?: string;
-		/** Placeholder text for the search input */
 		placeholder?: string;
-		/** Whether to show the search icon */
 		showIcon?: boolean;
 	}>(),
 	{
@@ -22,12 +19,12 @@ withDefaults(
 );
 
 const emit = defineEmits<{
-	/** Emitted when search input value changes */
 	'update:modelValue': [value: string];
-	/** Emitted when user presses Escape */
-	escape: [];
-	/** Emitted when user wants to focus the first menu item (Tab or ArrowDown at end) */
-	focusFirstItem: [];
+	'key:escape': [];
+	'key:navigate': [direction: 'up' | 'down'];
+	'key:arrow-right': [];
+	'key:arrow-left': [];
+	'key:enter': [];
 }>();
 
 const $style = useCssModule();
@@ -40,19 +37,29 @@ const handleInput = (event: Event) => {
 
 const handleKeydown = (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
-		emit('escape');
+		emit('key:escape');
 	} else if (event.key === 'Tab' && !event.shiftKey) {
-		// Move focus to the first menu item
 		event.preventDefault();
-		emit('focusFirstItem');
+		emit('key:navigate', 'down');
 	} else if (event.key === 'ArrowDown') {
-		// Move focus to first menu item only if cursor is at the end of input
+		event.preventDefault();
+		emit('key:navigate', 'down');
+	} else if (event.key === 'ArrowUp') {
+		event.preventDefault();
+		emit('key:navigate', 'up');
+	} else if (event.key === 'ArrowRight') {
 		const input = event.target as HTMLInputElement;
-		const isAtEnd = input.selectionStart === input.value.length;
-		if (isAtEnd) {
-			event.preventDefault();
-			emit('focusFirstItem');
+		if (input.selectionStart === input.value.length) {
+			emit('key:arrow-right');
 		}
+	} else if (event.key === 'ArrowLeft') {
+		const input = event.target as HTMLInputElement;
+		if (input.selectionStart === 0) {
+			emit('key:arrow-left');
+		}
+	} else if (event.key === 'Enter') {
+		event.preventDefault();
+		emit('key:enter');
 	}
 };
 

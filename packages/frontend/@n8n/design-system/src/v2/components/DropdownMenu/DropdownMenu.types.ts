@@ -48,6 +48,10 @@ export type DropdownMenuItemProps<T = string> = {
 	searchPlaceholder?: string;
 	/** Whether to show the search icon */
 	showSearchIcon?: boolean;
+	/** Whether this item is currently highlighted via keyboard navigation */
+	highlighted?: boolean;
+	/** Whether this item's sub-menu should be open (controlled by parent for keyboard nav) */
+	subMenuOpen?: boolean;
 };
 
 export interface DropdownMenuProps<T = string> {

@@ -50,15 +50,9 @@ const searchRef = ref<InstanceType<typeof N8nDropdownMenuSearch> | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
 
-watch(
-	() => props.modelValue,
-	(newValue) => {
-		if (newValue !== undefined) {
-			internalOpen.value = newValue;
-		}
-	},
-	{ immediate: true },
-);
+// Track highlighted item and open sub-menu index for keyboard navigation
+const highlightedIndex = ref(-1);
+const openSubMenuIndex = ref(-1);
 
 const openState = computed(() => (isControlled.value ? internalOpen.value : undefined));
 
@@ -104,23 +98,116 @@ const handleSearchUpdate = async (value: string) => {
 	await debouncedEmitSearch(value);
 };
 
-const focusFirstItem = () => {
-	const contentEl = contentRef.value?.$el as HTMLElement | undefined;
-	const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
-	firstItem?.focus();
+// Find the next valid index for navigation, skipping disabled items
+const getNextValidIndex = (current: number, direction: 1 | -1): number => {
+	const items = props.items;
+	let next = current + direction;
+
+	while (next >= 0 && next < items.length && items[next].disabled) {
+		next += direction;
+	}
+
+	if (next >= 0 && next < items.length) {
+		return next;
+	}
+
+	if (direction === -1) {
+		return -1;
+	}
+
+	return current;
+};
+
+// Handle navigation from search input
+const handleNavigate = (direction: 'up' | 'down') => {
+	if (direction === 'down') {
+		if (highlightedIndex.value === -1) {
+			highlightedIndex.value = getNextValidIndex(-1, 1);
+		} else {
+			highlightedIndex.value = getNextValidIndex(highlightedIndex.value, 1);
+		}
+	} else {
+		if (highlightedIndex.value <= 0) {
+			highlightedIndex.value = -1;
+		} else {
+			highlightedIndex.value = getNextValidIndex(highlightedIndex.value, -1);
+		}
+	}
+};
+
+const hasSubMenu = (item: (typeof props.items)[number]) => {
+	return (item.children && item.children.length > 0) || item.loading || item.searchable;
+};
+
+const handleEnter = () => {
+	if (highlightedIndex.value >= 0) {
+		const item = props.items[highlightedIndex.value];
+		if (item && !item.disabled) {
+			if (hasSubMenu(item)) {
+				openSubMenuIndex.value = highlightedIndex.value;
+			} else {
+				emit('select', item.id);
+				close();
+			}
+		}
+	}
+};
+
+const handleArrowRight = () => {
+	if (highlightedIndex.value >= 0) {
+		const item = props.items[highlightedIndex.value];
+		if (item && !item.disabled && hasSubMenu(item)) {
+			openSubMenuIndex.value = highlightedIndex.value;
+		}
+	}
+};
+
+const handleArrowLeft = () => {
+	if (openSubMenuIndex.value >= 0) {
+		openSubMenuIndex.value = -1;
+	}
 };
 
 const handleContentKeydown = (event: KeyboardEvent) => {
+	// Non-searchable menus use reka-ui's built-in roving focus
 	if (!props.searchable) return;
 
-	if (event.key === 'ArrowUp') {
-		const contentEl = contentRef.value?.$el as HTMLElement | undefined;
-		const firstItem = contentEl?.querySelector('[role="menuitem"]') as HTMLElement | null;
-		// If the first menu item is focused, move focus to search input
-		if (firstItem && document.activeElement === firstItem) {
-			event.preventDefault();
-			searchRef.value?.focus();
-		}
+	if (event.key === 'Enter' && highlightedIndex.value >= 0) {
+		event.preventDefault();
+		handleEnter();
+	}
+
+	if (event.key === 'ArrowRight' && highlightedIndex.value >= 0) {
+		event.preventDefault();
+		handleArrowRight();
+	}
+
+	if (event.key === 'ArrowLeft' && openSubMenuIndex.value >= 0) {
+		event.preventDefault();
+		handleArrowLeft();
+	}
+};
+
+const handleSubMenuOpenChange = (index: number, open: boolean) => {
+	if (open) {
+		openSubMenuIndex.value = index;
+	} else if (openSubMenuIndex.value === index) {
+		openSubMenuIndex.value = -1;
+		// Return focus appropriately when sub-menu closes
+		void nextTick(() => {
+			if (props.searchable && searchRef.value) {
+				// For searchable root menus, use virtual focus mode
+				highlightedIndex.value = index;
+				searchRef.value.focus();
+			} else {
+				// For non-searchable menus, focus the item directly
+				// and let reka-ui handle highlighting via [data-highlighted]
+				const contentEl = contentRef.value?.$el as HTMLElement | undefined;
+				const menuItems = contentEl?.querySelectorAll('[role="menuitem"]');
+				const targetItem = menuItems?.[index] as HTMLElement | undefined;
+				targetItem?.focus();
+			}
+		});
 	}
 };
 
@@ -141,6 +228,30 @@ const close = () => {
 	internalOpen.value = false;
 	emit('update:modelValue', false);
 };
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		if (newValue !== undefined) {
+			internalOpen.value = newValue;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => props.items,
+	() => {
+		highlightedIndex.value = -1;
+	},
+);
+
+watch(internalOpen, (isOpen) => {
+	if (!isOpen) {
+		highlightedIndex.value = -1;
+		openSubMenuIndex.value = -1;
+	}
+});
 
 defineExpose({ open, close });
 </script>
@@ -179,8 +290,11 @@ defineExpose({ open, close });
 						:placeholder="searchPlaceholder"
 						:show-icon="showSearchIcon"
 						@update:model-value="handleSearchUpdate"
-						@escape="close"
-						@focus-first-item="focusFirstItem"
+						@key:escape="close"
+						@key:navigate="handleNavigate"
+						@key:arrow-right="handleArrowRight"
+						@key:arrow-left="handleArrowLeft"
+						@key:enter="handleEnter"
 					/>
 
 					<template v-if="loading">
@@ -202,12 +316,15 @@ defineExpose({ open, close });
 						</slot>
 					</template>
 					<template v-else>
-						<template v-for="item in items" :key="item.id">
+						<template v-for="(item, index) in items" :key="item.id">
 							<slot name="item" :item="item">
 								<N8nDropdownMenuItem
 									v-bind="item"
+									:highlighted="highlightedIndex === index"
+									:sub-menu-open="openSubMenuIndex === index"
 									@select="handleItemSelect"
 									@search="handleItemSearch"
+									@update:sub-menu-open="(open: boolean) => handleSubMenuOpenChange(index, open)"
 								>
 									<template v-if="slots['item-leading']" #item-leading="{ ui }">
 										<slot name="item-leading" :item="item" :ui="ui" />
