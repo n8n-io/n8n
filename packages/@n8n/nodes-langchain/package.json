@@ -214,7 +214,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "^5.0.2",
-    "@qdrant/js-client-rest": "^1.15.0",
+    "@qdrant/js-client-rest": "^1.16.2",
     "@supabase/supabase-js": "2.49.9",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",

@@ -86,6 +86,16 @@ describe('DynamicCredentialStorageService', () => {
 			getCredential: jest.fn(),
 		} as unknown as jest.Mocked<LoadNodesAndCredentials>;
 
+		mockLoadNodesAndCredentials.getCredential.mockReturnValue({
+			type: {
+				displayName: 'OAuth2 API',
+				name: 'oAuth2Api',
+				extends: [],
+				properties: [],
+			},
+			sourcePath: '',
+		});
+
 		mockCipher = {
 			decrypt: jest.fn(),
 		} as unknown as jest.Mocked<Cipher>;
@@ -215,6 +225,41 @@ describe('DynamicCredentialStorageService', () => {
 				const metadata = createMockCredentialMetadata();
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver();
+
+				mockLoadNodesAndCredentials.getCredential.mockReturnValue({
+					type: {
+						displayName: 'OAuth2 API',
+						name: 'oAuth2Api',
+						properties: [
+							{
+								default: '',
+								displayName: 'Client ID',
+								name: 'clientId',
+								type: 'string',
+							},
+							{
+								default: '',
+								displayName: 'Client Secret',
+								name: 'clientSecret',
+								type: 'string',
+							},
+							{
+								default: '',
+								displayName: 'Scopes',
+								name: 'scopes',
+								type: 'string',
+							},
+							{
+								default: '',
+								displayName: 'AccessToken',
+								name: 'accessToken',
+								type: 'string',
+								resolvableField: true,
+							},
+						],
+					},
+					sourcePath: '',
+				});
 
 				const dataWithSharedFields: ICredentialDataDecryptedObject = {
 					clientId: 'should-be-removed',
