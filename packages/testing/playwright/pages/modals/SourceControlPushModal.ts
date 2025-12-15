@@ -76,4 +76,26 @@ export class SourceControlPushModal {
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted'): Locator {
 		return this.getFileCheckboxByName(fileName).getByText(status);
 	}
+
+	/**
+	 * Deselect a file checkbox if it's currently checked
+	 */
+	async deselectFile(fileName: string): Promise<void> {
+		const checkbox = this.getFileCheckboxByName(fileName);
+		const isChecked = await checkbox.isChecked();
+		if (isChecked) {
+			await checkbox.click();
+		}
+	}
+
+	/**
+	 * Select a file checkbox if it's currently unchecked
+	 */
+	async selectFile(fileName: string): Promise<void> {
+		const checkbox = this.getFileCheckboxByName(fileName);
+		const isChecked = await checkbox.isChecked();
+		if (!isChecked) {
+			await checkbox.click();
+		}
+	}
 }

@@ -207,14 +207,77 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 
-		test('should allow selective file staging', async ({ n8n }) => {
-			// TODO: Implement test
-			// Action: Create multiple workflows
-			// Action: Open push modal
-			// Action: Deselect some files from the list
-			// Action: Push only selected files
-			// Assert: Verify unselected files remain in pending state
-			// Assert: Verify selected files were pushed to Git
+		test('should push of selected resources', async ({ n8n }) => {
+			// Create multiple workflows
+			const workflowA = await n8n.api.workflows.createWorkflow({
+				name: 'Workflow A',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			await n8n.api.workflows.createWorkflow({
+				name: 'Workflow B',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			await n8n.api.workflows.createWorkflow({
+				name: 'Workflow C',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			// check resources
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).toBeVisible();
+
+			// select
+			await n8n.sourceControlPushModal.selectFile('Workflow A');
+			await n8n.sourceControlPushModal.selectFile('Workflow C');
+
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeChecked();
+			await expect(
+				n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B'),
+			).not.toBeChecked();
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).toBeChecked();
+
+			// push
+			await n8n.sourceControlPushModal.push('Push workflows A and C');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// modify workflow A
+			await n8n.navigate.toWorkflow(workflowA.id);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.saveWorkflow();
+
+			// check resources
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();
+			await expect(
+				n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C'),
+			).not.toBeVisible();
+
+			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeChecked();
+			await expect(
+				n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B'),
+			).not.toBeChecked();
+
+			// push
+			await n8n.sourceControlPushModal.push('Push workflow A');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Verify no more changes
+			await n8n.sourceControlPushModal.open();
+			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 	});
 
