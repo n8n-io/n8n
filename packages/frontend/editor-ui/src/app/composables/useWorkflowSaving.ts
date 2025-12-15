@@ -33,7 +33,12 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 export function useWorkflowSaving({
 	router,
 	workflowState: providedWorkflowState,
-}: { router: ReturnType<typeof useRouter>; workflowState?: WorkflowState }) {
+	onSaved,
+}: {
+	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
+	onSaved?: () => void;
+}) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const message = useMessage();
@@ -420,6 +425,7 @@ export function useWorkflowSaving({
 			const saved = await saveCurrentWorkflow({}, true, false, true);
 			if (saved) {
 				console.log('[AutoSave] ✅ Workflow saved successfully');
+				onSaved?.();
 			}
 		},
 		1500,

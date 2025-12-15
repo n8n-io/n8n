@@ -174,7 +174,12 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowSaving = useWorkflowSaving({ router });
+const workflowSaving = useWorkflowSaving({
+	router,
+	onSaved: () => {
+		canvasEventBus.emit('saved:workflow');
+	},
+});
 const nodeHelpers = useNodeHelpers();
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
