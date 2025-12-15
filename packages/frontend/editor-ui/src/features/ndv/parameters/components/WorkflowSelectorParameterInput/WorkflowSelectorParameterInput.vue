@@ -360,12 +360,7 @@ const onAddResourceClicked = async () => {
 					:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
 					placement="top"
 				>
-					<span
-						:class="[
-							$style.inactiveBadge,
-							!item.isArchived ? $style.inactiveBadgeAlone : $style.inactiveBadgeWithArchived,
-						]"
-					>
+					<span :class="$style.inactiveBadge">
 						<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
 					</span>
 				</N8nTooltip>
@@ -493,11 +488,5 @@ const onAddResourceClicked = async () => {
 	display: inline-flex;
 	align-items: center;
 	color: var(--color--warning);
-}
-
-.inactiveBadgeAlone {
-}
-
-.inactiveBadgeWithArchived {
 }
 </style>
