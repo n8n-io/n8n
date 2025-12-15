@@ -7,7 +7,7 @@ name: 'Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '22.21.0'
+  NODE_VERSION: '22.21.1'
 
 on:
   schedule:
