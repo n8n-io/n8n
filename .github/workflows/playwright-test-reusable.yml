@@ -119,7 +119,7 @@ jobs:
       - name: Run Tests
         run: |
           if echo "${{ inputs.test-command }}" | grep -q "pwc-p"; then
-            COMMAND="${{ inputs.test-command }} ${{ steps.last-failed-action.outputs.extra-pw-flags }}"
+            COMMAND="${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ steps.last-failed-action.outputs.extra-pw-flags }}"
             echo "Running command: $COMMAND"
             $COMMAND
           else
