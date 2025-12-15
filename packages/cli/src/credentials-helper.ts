@@ -539,7 +539,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<void> {
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
-		if (credentialsEntity.isResolvable && credentialsEntity.resolverId) {
+		const resolverId =
+			credentialsEntity.resolverId ?? additionalData.workflowSettings?.credentialResolverId;
+
+		if (credentialsEntity.isResolvable && resolverId) {
 			const cipher = Container.get(Cipher);
 
 			let credentialContext: { version: 1; identity: string } | undefined;
@@ -564,7 +567,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					name: credentialsEntity.name,
 					type: credentialsEntity.type,
 					isResolvable: credentialsEntity.isResolvable,
-					resolverId: credentialsEntity.resolverId,
+					resolverId,
 				},
 				{ oauthTokenData: data.oauthTokenData },
 				credentialContext,
