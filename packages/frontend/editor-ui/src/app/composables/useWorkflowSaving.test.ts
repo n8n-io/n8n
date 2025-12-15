@@ -350,6 +350,56 @@ describe('useWorkflowSaving', () => {
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
 		});
+
+		it('should preserve expression-based webhook paths when resetWebhookUrls is true', async () => {
+			const workflow: WorkflowDataUpdate = {
+				name: 'Expression webhook test',
+				active: false,
+				nodes: [
+					{
+						parameters: {
+							path: '={{ $json.customPath }}',
+							options: {},
+						},
+						id: 'node-with-expression',
+						name: 'Webhook with expression',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [680, 20],
+						webhookId: 'original-webhook-id-1',
+					},
+					{
+						parameters: {
+							path: 'static-path',
+							options: {},
+						},
+						id: 'node-without-expression',
+						name: 'Webhook with static path',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [700, 40],
+						webhookId: 'original-webhook-id-2',
+					},
+				],
+				connections: {},
+			};
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			const expressionPath = workflow.nodes![0].parameters.path;
+			const staticPath = workflow.nodes![1].parameters.path;
+
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				resetWebhookUrls: true,
+				data: workflow,
+			});
+
+			// Expression-based path should be preserved
+			expect(workflow.nodes![0].parameters.path).toBe(expressionPath);
+			// Static path should be replaced with new webhook ID
+			expect(workflow.nodes![1].parameters.path).not.toBe(staticPath);
+			expect(workflow.nodes![1].parameters.path).toBe(workflow.nodes![1].webhookId);
+		});
 	});
 
 	describe('saveCurrentWorkflow', () => {
