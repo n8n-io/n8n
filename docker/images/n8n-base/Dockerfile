@@ -33,8 +33,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/reposito
 # Install full-icu
 RUN npm install -g full-icu@1.5.0
 
-RUN rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
-  apk del apk-tools
+RUN rm -rf /tmp/* /root/.npm /root/.cache/node
 
 # ==============================================================================
 # STAGE 2: Final Base Runtime Image
@@ -42,6 +41,8 @@ RUN rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
 FROM node:${NODE_VERSION}-alpine
 
 COPY --from=builder / /
+
+RUN rm -rf /opt/yarn* && apk del apk-tools
 
 WORKDIR /home/node
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu

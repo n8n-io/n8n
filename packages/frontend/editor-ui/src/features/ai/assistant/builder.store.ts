@@ -214,6 +214,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			tools_called: dedupe(newToolMessages.map((toolMsg) => toolMsg.toolName)),
 			start_workflow_json: startWorkflowJson,
 			end_workflow_json: endWorkflowJson,
+			workflow_modified: endWorkflowJson !== startWorkflowJson,
 		};
 	}
 
@@ -230,7 +231,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { userMessageId } = currentStreamingMessage.value;
 
 		telemetry.track('End of response from builder', {
-			// todo user_id available as trait already?
 			user_message_id: userMessageId,
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,

@@ -93,6 +93,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { hasRole } from '@/app/utils/rbac/checks';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -365,6 +366,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowTriggerNodes.value.some((node) => node.name === name),
 		);
 	});
+
+	const canViewWorkflows = computed(
+		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
+	);
 
 	/**
 	 * Sets the active execution id
@@ -1582,6 +1587,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// make sure that the new ones are not active
 		sendData.active = false;
 
+		// When activation is false, ensure MCP is disabled
+		if (!sendData.settings) {
+			sendData.settings ??= {};
+		}
+		sendData.settings.availableInMCP = false;
+
 		const projectStore = useProjectsStore();
 
 		if (!sendData.projectId && projectStore.currentProjectId) {
@@ -2099,6 +2110,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
 		getWebhookUrl,
+		canViewWorkflows,
 		defaults,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
