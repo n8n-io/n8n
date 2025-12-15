@@ -3062,7 +3062,7 @@
 	"workflowActivator.inactive": "Inactive",
 	"workflowActivator.showError.title": "Workflow could not be {newStateName}",
 	"workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message": "Please resolve outstanding issues before publishing",
-	"workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title": "{count} node has issues, fix before publishing: | {count} nodes have issues, fix before publishing:",
+	"workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title": "{count} node has issues, fix them before publishing. | {count} nodes have issues, fix them before publishing.",
 	"workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message": "Please save it before activating",
 	"workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title": "Problem activating workflow",
 	"workflowActivator.showMessage.displayActivationError.message.catchBlock": "Sorry there was a problem requesting the error",

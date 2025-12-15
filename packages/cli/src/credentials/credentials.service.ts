@@ -921,6 +921,7 @@ export class CredentialsService {
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
 			isManaged: opts.isManaged,
+			isResolvable: opts.isResolvable ?? false,
 		});
 
 		const { shared, ...credential } = await this.save(
