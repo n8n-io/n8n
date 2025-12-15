@@ -6,14 +6,13 @@ on:
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
-  # Uses pre-built images from docker-build-pr job (docker-pull mode)
+  # Builds Docker images locally per shard for faster parallel execution
   multi-main-ui:
     name: 'Multi-Main: UI'
     if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository_owner }}/n8n:pr-${{ github.event.pull_request.number }}
+      test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:ui
       shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
       runner: blacksmith-4vcpu-ubuntu-2204
@@ -25,8 +24,7 @@ jobs:
     if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
-      test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository_owner }}/n8n:pr-${{ github.event.pull_request.number }}
+      test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
       shards: '[1]'
       runner: blacksmith-4vcpu-ubuntu-2204

@@ -35,6 +35,12 @@
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },
+		"install-browsers": {
+			"cache": true,
+			"inputs": ["$TURBO_DEFAULT$", "../../pnpm-lock.yaml"],
+			"outputs": [".playwright-browsers/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
+		},
 		"test:container:standard": {
 			"env": ["E2E_TESTS"],
 			"cache": false

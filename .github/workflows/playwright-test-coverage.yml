@@ -9,6 +9,7 @@ env:
   NODE_OPTIONS: --max-old-space-size=16384
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: 4
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
 
 jobs:
   coverage:
@@ -30,7 +31,7 @@ jobs:
           INCLUDE_TEST_CONTROLLER: 'true'
 
       - name: Install Browsers
-        run: pnpm --filter=n8n-playwright install-browsers
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
 
       - name: Run Container Coverage Tests
         id: coverage-tests
