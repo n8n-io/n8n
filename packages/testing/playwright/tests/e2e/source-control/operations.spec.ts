@@ -1,10 +1,8 @@
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
 
-import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
-import { numberExtensions } from 'n8n-workflow/src/extensions/number-extensions';
 
 test.use({
 	addContainerCapability: {
@@ -154,14 +152,69 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
 		});
 
-		test('should push modifications and deletions', async ({ n8n }) => {
-			// TODO: Implement test
-			// Assumes: Workflow from test #1 exists
-			// Action: Modify workflow from previous test
-			// Action: Delete another resource
-			// Action: Open push modal, verify "modified" and "deleted" statuses
-			// Action: Push changes
-			// Assert: Verify success, verify remote reflects changes
+		test.todo('should push modifications and deletions', async ({ n8n }) => {
+			// Create a workflow to modify
+			const workflow = await n8n.api.workflows.createWorkflow({
+				name: 'Workflow to Modify',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			// Push it to Git first
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await n8n.sourceControlPushModal.push('Add workflow before modification');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Now modify the workflow - add a Code node
+			await n8n.navigate.toWorkflow(workflow.id);
+			await n8n.canvas.addNode('Code');
+			await n8n.canvas.saveWorkflow();
+
+			// Create a credential that we'll delete
+			const credential = await n8n.api.credentials.createCredential({
+				name: 'Credential to Delete',
+				type: 'githubApi',
+				data: { server: 'https://api.github.com', user: 'test', accessToken: 'token123' },
+			});
+
+			// Push the credential first so it exists in Git
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await n8n.sourceControlPushModal.selectCredentialsTab();
+			await expect(n8n.sourceControlPushModal.getFileInModal('Credential to Delete')).toBeVisible();
+			await n8n.sourceControlPushModal.push('Add credential before deletion');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Now delete the credential
+			await n8n.api.credentials.deleteCredential(credential.id);
+
+			// Open push modal and verify statuses
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+
+			// Verify modified workflow appears with "Modified" status
+			await n8n.sourceControlPushModal.selectWorkflowsTab();
+			await expect(n8n.sourceControlPushModal.getFileInModal('Workflow to Modify')).toBeVisible();
+			await expect(
+				n8n.sourceControlPushModal.getStatusBadge('Workflow to Modify', 'Modified'),
+			).toBeVisible();
+
+			// Verify deleted credential appears with "Deleted" status
+			await n8n.sourceControlPushModal.selectCredentialsTab();
+			await expect(n8n.sourceControlPushModal.getFileInModal('Credential to Delete')).toBeVisible();
+			await expect(
+				n8n.sourceControlPushModal.getStatusBadge('Credential to Delete', 'Deleted'),
+			).toBeVisible();
+
+			// Push both changes
+			await n8n.sourceControlPushModal.push('Modify workflow and delete credential');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Verify no more changes to commit
+			await n8n.sourceControlPushModal.open();
+			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 
 		test('should allow selective file staging', async ({ n8n }) => {

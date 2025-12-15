@@ -68,4 +68,8 @@ export class SourceControlPushModal {
 	getNotice(): Locator {
 		return this.page.locator('#source-control-push-modal-notice.notice[role="alert"]');
 	}
+
+	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted'): Locator {
+		return this.getFileCheckboxByName(fileName).getByText(status);
+	}
 }
