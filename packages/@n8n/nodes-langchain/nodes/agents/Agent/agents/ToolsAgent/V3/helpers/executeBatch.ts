@@ -17,6 +17,7 @@ import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
 import { prepareItemContext } from './prepareItemContext';
 import { runAgent } from './runAgent';
+import { checkMaxIterations } from './checkMaxIterations';
 
 type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 /**
@@ -47,8 +48,13 @@ export async function executeBatch(
 	const returnData: INodeExecutionData[] = [];
 	let request: EngineRequest<RequestResponseMetadata> | undefined = undefined;
 
+	// Check max iterations if this is a continuation of a previous execution
+	const maxIterations = ctx.getNodeParameter('options.maxIterations', 0, 10) as number;
+
 	const batchPromises = batch.map(async (_item, batchItemIndex) => {
 		const itemIndex = startIndex + batchItemIndex;
+
+		checkMaxIterations(response, maxIterations, ctx.getNode());
 
 		const itemContext = await prepareItemContext(ctx, itemIndex, response);
 
