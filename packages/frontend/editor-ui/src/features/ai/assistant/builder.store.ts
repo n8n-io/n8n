@@ -50,11 +50,15 @@ export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
 	| 'field_focus_placeholder_in_ndv'
-	| 'no_placeholder_values_left';
+	| 'no_placeholder_values_left'
+	| 'revert_version_from_builder';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
 	type?: string;
+	revert_user_message_id?: string;
+	revert_version_id?: string;
+	no_versions_before?: number;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -941,6 +945,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (msgIndex !== -1) {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
+
+		// 4. Track telemetry event for version restore
+		const noVersionsBefore = chatMessages.value.filter(
+			(msg) => 'revertVersionId' in msg && msg.revertVersionId,
+		).length;
+		trackWorkflowBuilderJourney('revert_version_from_builder', {
+			revert_user_message_id: messageId,
+			revert_version_id: versionId,
+			no_versions_before: noVersionsBefore,
+		});
 
 		return updatedWorkflow;
 	}
