@@ -238,7 +238,7 @@ describe('establishExecutionContext', () => {
 			const context = runExecutionData.executionData!.runtimeData;
 
 			// Verify context has only expected properties
-			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source']);
+			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source', 'triggerNode']);
 			expect(typeof context!.version).toBe('number');
 			expect(typeof context!.establishedAt).toBe('number');
 			expect(context!.source).toBe('manual');
