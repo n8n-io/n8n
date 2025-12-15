@@ -9,17 +9,16 @@ import {
 } from 'n8n-workflow';
 
 import { type SetNodeOptions } from '../../v2/helpers/interfaces';
-import * as utils from '../../v2/helpers/utils';
-import { execute } from '../../v2/raw.mode';
+import { execute } from '../../v2/manual.mode';
 
 const node: INode = {
 	id: '11',
 	name: 'Set Node',
 	type: 'n8n-nodes-base.set',
-	typeVersion: 3,
+	typeVersion: 3.4,
 	position: [42, 42],
 	parameters: {
-		mode: 'raw',
+		mode: 'manual',
 		fields: {
 			values: [],
 		},
@@ -51,7 +50,7 @@ const createMockExecuteFunction = (
 	return fakeExecuteFunction;
 };
 
-describe('test Set2, rawMode/json Mode', () => {
+describe('test Set2, manual Mode', () => {
 	const item = {
 		json: {
 			input1: 'value1',
@@ -63,79 +62,65 @@ describe('test Set2, rawMode/json Mode', () => {
 			input: undefined,
 		},
 	};
-
 	const options: SetNodeOptions = {
 		include: 'none',
+	};
+	const rawData = {
+		num1: 55,
+		str1: '42',
+		arr1: ['foo', 'bar'],
+		obj: {
+			key: 'value',
+		},
 	};
 
 	afterEach(() => jest.resetAllMocks());
 
 	describe('fixed mode', () => {
-		const jsonData = { jsonData: 1 };
-		const fakeExecuteFunction = createMockExecuteFunction({ jsonOutput: jsonData });
-		const rawData = {
-			num1: 55,
-			str1: '42',
-			arr1: ['foo', 'bar'],
-			obj: {
-				key: 'value',
-			},
+		const assignments = {
+			assignments: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'test',
+					value: '{ ok: 1 }',
+					type: 'object',
+				},
+			],
 		};
+		const fakeExecuteFunction = createMockExecuteFunction({ assignments });
 
 		it('should parse json with the jsonOutput in node parameter and compose a return item', async () => {
-			jest.spyOn(utils, 'parseJsonParameter');
-			jest.spyOn(utils, 'composeReturnItem');
-
 			const result = await execute.call(fakeExecuteFunction, item, 0, options, rawData, node);
 
-			expect(result).toEqual({ json: jsonData, pairedItem: { item: 0 } });
-			expect(utils.parseJsonParameter).toHaveBeenCalledWith(jsonData, node, 0);
-			expect(utils.composeReturnItem).toHaveBeenCalledWith(0, item, jsonData, options, 3);
-		});
-	});
-
-	describe('expression mode', () => {
-		const jsonData = { my_field_1: 'value' };
-		const jsonDataString = '{"my_field_1": "value"}';
-		const fakeExecuteFunction = createMockExecuteFunction({ jsonOutput: jsonDataString });
-		const rawData = {
-			num1: 55,
-			str1: '42',
-			arr1: ['foo', 'bar'],
-			obj: {
-				key: 'value',
-			},
-			jsonOutput: jsonDataString,
-		};
-
-		it('should parse json with resolved expression data and compose a return item', async () => {
-			jest.spyOn(utils, 'parseJsonParameter');
-			jest.spyOn(utils, 'composeReturnItem');
-			jest.spyOn(utils, 'resolveRawData');
-
-			const result = await execute.call(fakeExecuteFunction, item, 0, options, rawData, node);
-
-			expect(utils.parseJsonParameter).toHaveBeenCalledWith(jsonDataString, node, 0);
-			expect(utils.composeReturnItem).toHaveBeenCalledWith(0, item, jsonData, options, 3);
-			expect(utils.resolveRawData).toHaveBeenCalledWith(jsonDataString, 0);
-			expect(result).toEqual({ json: jsonData, pairedItem: { item: 0 } });
+			expect(result).toEqual({ json: { test: { ok: 1 } }, pairedItem: { item: 0 } });
 		});
 	});
 
 	describe('error handling', () => {
+		const assignments = {
+			assignments: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'test',
+					value: '{ ok: 1',
+					type: 'object',
+				},
+			],
+		};
+
 		it('should return an error object with pairedItem when continueOnFail is true', async () => {
-			const fakeExecuteFunction = createMockExecuteFunction({ jsonOutput: 'jsonData' }, true);
+			const fakeExecuteFunction = createMockExecuteFunction({ assignments }, true);
 
 			const output = await execute.call(fakeExecuteFunction, item, 0, options, {}, node);
 
 			expect(output).toEqual({
-				json: { error: "The 'JSON Output' in item 0 does not contain a valid JSON object" },
+				json: { error: "'test' expects a object but we got '{ ok: 1' [item 0]" },
 				pairedItem: { item: 0 },
 			});
 		});
 
 		it('should throw an error when continueOnFail is false', async () => {
-			const fakeExecuteFunction = createMockExecuteFunction({ jsonOutput: 'jsonData' }, false);
+			const fakeExecuteFunction = createMockExecuteFunction({ assignments }, false);
 
 			await expect(execute.call(fakeExecuteFunction, item, 0, options, {}, node)).rejects.toThrow(
 				NodeOperationError,
