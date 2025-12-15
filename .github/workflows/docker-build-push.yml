@@ -240,6 +240,22 @@ jobs:
           create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
           create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
 
+      - name: Tag v1 Docker image on GHCR
+        run: |
+          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+
+          if [[ "$VERSION" == 1.* ]]; then
+            echo "Creating GHCR '1' tag for v1 release ${VERSION}"
+
+            docker buildx imagetools create \
+              -t "ghcr.io/${{ github.repository_owner }}/n8n:1" \
+              "ghcr.io/${{ github.repository_owner }}/n8n:${VERSION}"
+
+            docker buildx imagetools create \
+              -t "ghcr.io/${{ github.repository_owner }}/runners:1" \
+              "ghcr.io/${{ github.repository_owner }}/runners:${VERSION}"
+          fi
+
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         run: |
@@ -263,6 +279,24 @@ jobs:
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
           done
+
+      - name: Tag v1 Docker image on Docker Hub
+        if: needs.determine-build-context.outputs.push_to_docker == 'true'
+        run: |
+          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+
+          if [[ "$VERSION" == 1.* ]]; then
+            DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+            echo "Creating Docker Hub '1' tag for v1 release ${VERSION}"
+
+            docker buildx imagetools create \
+              -t "${DOCKER_BASE}/n8n:1" \
+              "${DOCKER_BASE}/n8n:${VERSION}"
+
+            docker buildx imagetools create \
+              -t "${DOCKER_BASE}/runners:1" \
+              "${DOCKER_BASE}/runners:${VERSION}"
+          fi
 
   call-success-url:
     name: Call Success URL
