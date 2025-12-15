@@ -12,6 +12,13 @@ import { DbConnectionOptions } from './db-connection-options';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
 
+/**
+ * Advisory lock key used to prevent concurrent database operations in multi-main setups.
+ * This ensures only one n8n instance runs migrations and initialization at a time.
+ * The number is arbitrary but should be unique to n8n.
+ */
+const ADVISORY_LOCK_KEY = 1850;
+
 type ConnectionState = {
 	connected: boolean;
 	migrated: boolean;
@@ -84,9 +91,34 @@ export class DbConnection {
 
 	async migrate() {
 		const { dataSource, connectionState } = this;
-		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await dataSource.runMigrations({ transaction: 'each' });
-		connectionState.migrated = true;
+
+		await this.withAdvisoryLock(async () => {
+			(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
+			await dataSource.runMigrations({ transaction: 'each' });
+			connectionState.migrated = true;
+		});
+	}
+
+	/**
+	 * Execute an async function with a PostgreSQL advisory lock.
+	 * This ensures only one n8n instance executes the function at a time in multi-main setups.
+	 * For non-PostgreSQL databases, the function is executed without locking.
+	 */
+	async withAdvisoryLock<T>(fn: () => Promise<T>): Promise<T> {
+		const { dataSource, options } = this;
+		const isPostgres = options.type === 'postgres';
+
+		if (isPostgres) {
+			await dataSource.query(`SELECT pg_advisory_lock(${ADVISORY_LOCK_KEY})`);
+		}
+
+		try {
+			return await fn();
+		} finally {
+			if (isPostgres) {
+				await dataSource.query(`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`);
+			}
+		}
 	}
 
 	async close() {

@@ -110,6 +110,141 @@ describe('DbConnection', () => {
 			expect(dataSource.runMigrations).toHaveBeenCalledWith({ transaction: 'each' });
 			expect(dbConnection.connectionState.migrated).toBe(true);
 		});
+
+		it('should acquire and release advisory lock for postgres', async () => {
+			dataSource.runMigrations.mockResolvedValue([]);
+			jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+
+			await dbConnection.migrate();
+
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_lock(1850)');
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+
+			// Verify lock is acquired before migrations and released after
+			const queryCalls = dataSource.query.mock.calls.map((call) => call[0]);
+			const lockIndex = queryCalls.indexOf('SELECT pg_advisory_lock(1850)');
+			const unlockIndex = queryCalls.indexOf('SELECT pg_advisory_unlock(1850)');
+			expect(lockIndex).toBeLessThan(unlockIndex);
+		});
+
+		it('should release advisory lock even if migrations fail', async () => {
+			const migrationError = new Error('Migration failed');
+			dataSource.runMigrations.mockRejectedValue(migrationError);
+			jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+
+			await expect(dbConnection.migrate()).rejects.toThrow('Migration failed');
+
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_lock(1850)');
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+		});
+
+		it('should not use advisory lock for sqlite', async () => {
+			const sqliteOptions: DataSourceOptions = {
+				type: 'sqlite',
+				database: ':memory:',
+				migrations,
+			};
+			connectionOptions.getOptions.mockReturnValue(sqliteOptions);
+
+			// Create a new instance with sqlite options
+			const sqliteDbConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				binaryDataConfig,
+			);
+
+			// Get the dataSource from the new instance and mock it
+			// @ts-expect-error accessing private property for testing
+			const sqliteDataSource = sqliteDbConnection.dataSource as jest.Mocked<DataSource>;
+			sqliteDataSource.runMigrations = jest.fn().mockResolvedValue([]);
+			sqliteDataSource.query = jest.fn();
+			// @ts-expect-error mock options
+			sqliteDataSource.options = { migrations, type: 'sqlite' };
+
+			jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+
+			await sqliteDbConnection.migrate();
+
+			expect(sqliteDataSource.query).not.toHaveBeenCalledWith(
+				expect.stringContaining('pg_advisory_lock'),
+			);
+			expect(sqliteDataSource.query).not.toHaveBeenCalledWith(
+				expect.stringContaining('pg_advisory_unlock'),
+			);
+		});
+	});
+
+	describe('withAdvisoryLock', () => {
+		it('should acquire and release advisory lock for postgres', async () => {
+			const mockFn = jest.fn().mockResolvedValue('result');
+
+			await dbConnection.withAdvisoryLock(mockFn);
+
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_lock(1850)');
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+
+			// Verify lock is acquired before function runs and released after
+			const queryCalls = dataSource.query.mock.calls.map((call) => call[0]);
+			const lockIndex = queryCalls.indexOf('SELECT pg_advisory_lock(1850)');
+			const unlockIndex = queryCalls.indexOf('SELECT pg_advisory_unlock(1850)');
+			expect(lockIndex).toBeLessThan(unlockIndex);
+		});
+
+		it('should return the result from the callback function', async () => {
+			const expectedResult = { data: 'test' };
+			const mockFn = jest.fn().mockResolvedValue(expectedResult);
+
+			const result = await dbConnection.withAdvisoryLock(mockFn);
+
+			expect(result).toEqual(expectedResult);
+		});
+
+		it('should release advisory lock even if callback fails', async () => {
+			const mockError = new Error('Callback failed');
+			const mockFn = jest.fn().mockRejectedValue(mockError);
+
+			await expect(dbConnection.withAdvisoryLock(mockFn)).rejects.toThrow('Callback failed');
+
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_lock(1850)');
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+		});
+
+		it('should not use advisory lock for sqlite', async () => {
+			const sqliteOptions: DataSourceOptions = {
+				type: 'sqlite',
+				database: ':memory:',
+				migrations,
+			};
+			connectionOptions.getOptions.mockReturnValue(sqliteOptions);
+
+			const sqliteDbConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				binaryDataConfig,
+			);
+
+			// @ts-expect-error accessing private property for testing
+			const sqliteDataSource = sqliteDbConnection.dataSource as jest.Mocked<DataSource>;
+			sqliteDataSource.query = jest.fn();
+			// @ts-expect-error mock options
+			sqliteDataSource.options = { migrations, type: 'sqlite' };
+
+			const mockFn = jest.fn().mockResolvedValue('result');
+
+			await sqliteDbConnection.withAdvisoryLock(mockFn);
+
+			expect(mockFn).toHaveBeenCalled();
+			expect(sqliteDataSource.query).not.toHaveBeenCalledWith(
+				expect.stringContaining('pg_advisory_lock'),
+			);
+			expect(sqliteDataSource.query).not.toHaveBeenCalledWith(
+				expect.stringContaining('pg_advisory_unlock'),
+			);
+		});
 	});
 
 	describe('close', () => {
