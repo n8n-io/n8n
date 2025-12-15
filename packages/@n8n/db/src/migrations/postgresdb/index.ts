@@ -126,6 +126,7 @@ import { AddDynamicCredentialEntryTable1764689388394 } from '../common/176468938
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
 import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459448000-AddResolvableFieldsToCredentials';
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
+import { ConvertAgentIdToUuid1765804780000 } from './1765804780000-ConvertAgentIdToUuid';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -257,4 +258,5 @@ export const postgresMigrations: Migration[] = [
 	BackfillMissingWorkflowHistoryRecords1765448186933,
 	AddResolvableFieldsToCredentials1765459448000,
 	AddIconToAgentTable1765788427674,
+	ConvertAgentIdToUuid1765804780000,
 ];
