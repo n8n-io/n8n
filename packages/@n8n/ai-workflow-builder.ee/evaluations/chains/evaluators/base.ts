@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import type { Runnable } from '@langchain/core/runnables';
+import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { OperationalError } from 'n8n-workflow';
 import type { z } from 'zod';
@@ -37,16 +37,20 @@ export function createEvaluatorChain<TResult extends Record<string, unknown>>(
 export async function invokeEvaluatorChain<TResult>(
 	chain: Runnable<EvaluatorChainInput, TResult>,
 	input: EvaluationInput,
+	config?: RunnableConfig,
 ): Promise<TResult> {
 	const referenceSection = input.referenceWorkflow
 		? `<reference_workflow>\n${JSON.stringify(input.referenceWorkflow, null, 2)}\n</reference_workflow>`
 		: '';
 
-	const result = await chain.invoke({
-		userPrompt: input.userPrompt,
-		generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
-		referenceSection,
-	});
+	const result = await chain.invoke(
+		{
+			userPrompt: input.userPrompt,
+			generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
+			referenceSection,
+		},
+		config,
+	);
 
 	return result;
 }
