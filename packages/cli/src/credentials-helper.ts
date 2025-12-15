@@ -9,11 +9,11 @@ import {
 	GLOBAL_OWNER_ROLE,
 	SharedCredentialsRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError, In } from '@n8n/typeorm';
-import { Credentials, getAdditionalKeys } from 'n8n-core';
+import { Cipher, Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
@@ -40,6 +40,7 @@ import {
 	Workflow,
 	UnexpectedError,
 	isExpression,
+	toCredentialContext,
 } from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
@@ -534,7 +535,45 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		if (credentialsEntity.isResolvable && credentialsEntity.resolverId) {
+			const cipher = Container.get(Cipher);
+
+			let credentialContext: { version: 1; identity: string } | undefined;
+
+			if (additionalData.executionContext?.credentials) {
+				const decrypted = cipher.decrypt(additionalData.executionContext.credentials);
+				credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
+			}
+
+			if (!credentialContext) {
+				throw new UnexpectedError('No credential context found', {
+					extra: { nodeCredentials, type },
+				});
+			}
+
+			const credentials = await this.getCredentials(nodeCredentials, type);
+			const staticData = credentials.getData();
+
+			await this.dynamicCredentialsProxy.storeIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId: credentialsEntity.resolverId,
+				},
+				{ oauthTokenData: data.oauthTokenData },
+				credentialContext,
+				staticData,
+				additionalData.workflowSettings,
+			);
+			return;
+		}
+
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });

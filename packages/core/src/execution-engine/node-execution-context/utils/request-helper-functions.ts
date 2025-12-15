@@ -941,6 +941,7 @@ export async function requestOAuth2(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
 		);
 
 		oauthTokenData = data;
@@ -1022,6 +1023,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
@@ -1102,6 +1104,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 
 				this.logger.debug(
@@ -1268,6 +1271,7 @@ export async function refreshOAuth2Token(
 		nodeCredentials,
 		credentialsType,
 		credentials as unknown as ICredentialDataDecryptedObject,
+		additionalData,
 	);
 
 	this.logger.debug(
@@ -1626,7 +1630,7 @@ export const getRequestHelperFunctions = (
 
 				const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
 				if (responseContentType.includes('application/json')) {
-					newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
+					newResponse.body = jsonParse(contentBody as string, { fallbackValue: {} });
 				} else {
 					newResponse.body = contentBody;
 				}
