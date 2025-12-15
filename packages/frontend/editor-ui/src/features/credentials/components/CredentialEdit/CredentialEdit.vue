@@ -69,6 +69,9 @@ import {
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
+import { ElSwitch } from 'element-plus';
+import { N8nLink, N8nTooltip } from '@n8n/design-system';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 type Props = {
 	modalName: string;
@@ -95,6 +98,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -118,6 +122,7 @@ const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
+const isResolvable = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -353,6 +358,12 @@ const homeProject = computed(() => {
 	return currentProject ?? personalProject;
 });
 
+const isDynamicCredentialsEnabled = computed<boolean>(() => {
+	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
+});
+
+const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
+
 onMounted(async () => {
 	requiredCredentials.value =
 		isCredentialModalState(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]) &&
@@ -548,6 +559,10 @@ async function loadCurrentCredential() {
 			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
 				? currentCredentials.isGlobal
 				: false;
+		isResolvable.value =
+			'isResolvable' in currentCredentials && typeof currentCredentials.isResolvable === 'boolean'
+				? currentCredentials.isResolvable
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -717,6 +732,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
 		isGlobal: isSharedGlobally.value,
+		isResolvable: isResolvable.value,
 	};
 
 	if (
@@ -1144,10 +1160,6 @@ function resetCredentialData(): void {
 
 const credNameRef = useTemplateRef('credNameRef');
 const { width } = useElementSize(credNameRef);
-
-const isResolvable = computed<boolean>(() => {
-	return Boolean(credentialData.value.isResolvable);
-});
 </script>
 
 <template>
@@ -1270,6 +1282,59 @@ const isResolvable = computed<boolean>(() => {
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
 					/>
+					<div
+						v-if="
+							isDynamicCredentialsEnabled &&
+							((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+						"
+						:class="$style.dynamicCredentials"
+						data-test-id="dynamic-credentials-section"
+					>
+						<div :class="$style.dynamicCredentialsHeader">
+							<N8nText size="medium" weight="bold">
+								{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
+							</N8nText>
+							<N8nTooltip placement="top">
+								<template #content>
+									<div>
+										{{
+											i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')
+										}}
+									</div>
+								</template>
+								<N8nIcon icon="circle-help" size="small" />
+							</N8nTooltip>
+						</div>
+						<ElSwitch
+							v-model="isResolvable"
+							data-test-id="dynamic-credentials-toggle"
+							@update:model-value="() => (hasUnsavedChanges = true)"
+						/>
+						<div :class="$style.dynamicCredentialsDescription">
+							<N8nText :tag="'div'" size="small" color="text-light">
+								{{
+									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description1')
+								}}
+							</N8nText>
+							<N8nText size="small" color="text-light">
+								{{
+									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description2')
+								}}
+								<N8nLink
+									:to="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.docsUrl')"
+									size="small"
+									theme="text"
+									underline
+								>
+									{{
+										i18n.baseText(
+											'credentialEdit.credentialConfig.dynamicCredentials.documentation',
+										)
+									}}
+								</N8nLink>
+							</N8nText>
+						</div>
+					</div>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
@@ -1277,7 +1342,7 @@ const isResolvable = computed<boolean>(() => {
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
-						:isSharedGlobally="isSharedGlobally"
+						:is-shared-globally="isSharedGlobally"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
@@ -1378,5 +1443,23 @@ const isResolvable = computed<boolean>(() => {
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing--xs);
+}
+
+.dynamicCredentials {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding-top: var(--spacing--lg);
+	border-top: var(--border);
+}
+
+.dynamicCredentialsHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.dynamicCredentialsDescription {
+	margin-top: var(--spacing--2xs);
 }
 </style>
