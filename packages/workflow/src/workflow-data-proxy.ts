@@ -58,6 +58,12 @@ export class WorkflowDataProxy {
 
 	private timezone: string;
 
+	private returnExecutionData: <T extends INodeExecutionData | INodeExecutionData[]>(
+		data: T,
+	) => T extends INodeExecutionData[]
+		? IDataObject[] | INodeExecutionData[]
+		: IDataObject | INodeExecutionData;
+
 	// TODO: Clean that up at some point and move all the options into an options object
 	constructor(
 		private workflow: Workflow,
@@ -87,6 +93,18 @@ export class WorkflowDataProxy {
 
 		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
+
+		if (workflow.settings?.binaryMode === 'combined') {
+			this.returnExecutionData = ((item: INodeExecutionData | INodeExecutionData[]) => {
+				if (Array.isArray(item)) {
+					return item.map((i) => i.json);
+				}
+				return item.json;
+			}) as typeof this.returnExecutionData;
+		} else {
+			this.returnExecutionData = ((item: INodeExecutionData | INodeExecutionData[]) =>
+				item) as typeof this.returnExecutionData;
+		}
 	}
 
 	/**
@@ -1170,7 +1188,7 @@ export class WorkflowDataProxy {
 										);
 
 										if (pinnedData) {
-											return pinnedData[itemIndex];
+											return that.returnExecutionData(pinnedData[itemIndex]);
 										}
 									}
 
@@ -1218,7 +1236,9 @@ export class WorkflowDataProxy {
 										that.executeData.source.main[pairedItem.input || 0] ??
 										that.executeData.source.main[0];
 
-									return getPairedItem(nodeName, sourceData, pairedItem, property);
+									return that.returnExecutionData(
+										getPairedItem(nodeName, sourceData, pairedItem, property),
+									);
 								};
 
 								if (property === PAIRED_ITEM_METHOD.ITEM) {
@@ -1241,7 +1261,7 @@ export class WorkflowDataProxy {
 										branchIndex,
 										runIndex,
 									});
-									if (executionData[0]) return executionData[0];
+									if (executionData[0]) return that.returnExecutionData(executionData[0]);
 									return undefined;
 								};
 							}
@@ -1261,7 +1281,7 @@ export class WorkflowDataProxy {
 									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
-										return executionData[executionData.length - 1];
+										return that.returnExecutionData(executionData[executionData.length - 1]);
 									}
 									return undefined;
 								};
@@ -1275,7 +1295,14 @@ export class WorkflowDataProxy {
 										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
 											?.sourceIndex ??
 										0;
-									return that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
+
+									return that.returnExecutionData(
+										that.getNodeExecutionOrPinnedData({
+											nodeName,
+											branchIndex,
+											runIndex,
+										}),
+									);
 								};
 							}
 							if (property === 'context') {
@@ -1313,7 +1340,7 @@ export class WorkflowDataProxy {
 					}
 
 					if (property === 'item') {
-						return that.connectionInputData[that.itemIndex];
+						return that.returnExecutionData(that.connectionInputData[that.itemIndex]);
 					}
 					if (property === 'first') {
 						return (...args: unknown[]) => {
@@ -1323,7 +1350,7 @@ export class WorkflowDataProxy {
 
 							const result = that.connectionInputData;
 							if (result[0]) {
-								return result[0];
+								return that.returnExecutionData(result[0]);
 							}
 							return undefined;
 						};
@@ -1336,7 +1363,7 @@ export class WorkflowDataProxy {
 
 							const result = that.connectionInputData;
 							if (result.length && result[result.length - 1]) {
-								return result[result.length - 1];
+								return that.returnExecutionData(result[result.length - 1]);
 							}
 							return undefined;
 						};
@@ -1345,7 +1372,7 @@ export class WorkflowDataProxy {
 						return () => {
 							const result = that.connectionInputData;
 							if (result.length) {
-								return result;
+								return that.returnExecutionData(result);
 							}
 							return [];
 						};
@@ -1405,6 +1432,7 @@ export class WorkflowDataProxy {
 					that.contextNodeName,
 				);
 			},
+			// this is legacy syntax that is not documented
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
 				const dataProxy = new WorkflowDataProxy(
@@ -1428,6 +1456,7 @@ export class WorkflowDataProxy {
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
 			$fromai: handleFromAi,
 			$fromAi: handleFromAi,
+			// this is a legacy syntax that is not documented
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
