@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import { computed, useCssModule, useTemplateRef } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
-import {
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-	chatHubLLMProviderSchema,
-	emptyChatModelsResponse,
-} from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatHubConversationModel,
+	ChatModelsResponse,
 } from '@n8n/api-types';
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -37,7 +34,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
-import { useChatStore } from '../chat.store';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 const MAX_AGENT_NAME_CHARS = 30;
@@ -49,12 +45,16 @@ const {
 	credentials,
 	text,
 	warnMissingCredentials = false,
+	agents,
+	isLoading,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
 	warnMissingCredentials?: boolean;
+	agents: ChatModelsResponse;
+	isLoading: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -72,12 +72,10 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 }
 
 const i18n = useI18n();
-const isLoading = ref(false);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
-const chatStore = useChatStore();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
 const styles = useCssModule();
@@ -87,8 +85,6 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
-
-const agents = computed(() => chatStore.agents ?? emptyChatModelsResponse);
 
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
 const isCredentialsMissing = computed(
@@ -104,9 +100,9 @@ const menu = computed(() => {
 	const fullNamesMap: Record<string, string> = {};
 
 	if (includeCustomAgents) {
-		const customAgents = isLoading.value
+		const customAgents = isLoading
 			? []
-			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => {
+			: [...agents['custom-agent'].models, ...agents['n8n'].models].map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {
@@ -123,7 +119,7 @@ const menu = computed(() => {
 			iconSize: 'large',
 			iconMargin: false,
 			submenu: [
-				...(isLoading.value
+				...(isLoading
 					? [
 							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
 							{ isDivider: true as const, id: 'divider' },
@@ -153,7 +149,7 @@ const menu = computed(() => {
 			disabled: false,
 		};
 
-		if (isLoading.value) {
+		if (isLoading) {
 			menuItems.push({
 				id: provider,
 				title: providerDisplayNames[provider],
@@ -170,7 +166,7 @@ const menu = computed(() => {
 			continue;
 		}
 
-		const theAgents = [...agents.value[provider].models];
+		const theAgents = [...agents[provider].models];
 
 		// Add any manually defined models in settings
 		for (const model of settings?.allowedModels ?? []) {
@@ -196,7 +192,7 @@ const menu = computed(() => {
 			}
 		}
 
-		const error = agents.value[provider].error;
+		const error = agents[provider].error;
 		const agentOptions =
 			theAgents.length > 0
 				? theAgents
@@ -329,22 +325,6 @@ onClickOutside(
 	{
 		ignore: [`.${styles.component} [role=menuitem]`],
 	},
-);
-
-// Update agents when credentials are updated
-watch(
-	() => credentials,
-	async (credentials) => {
-		if (credentials) {
-			isLoading.value = true;
-			try {
-				await chatStore.fetchAgents(credentials);
-			} finally {
-				isLoading.value = false;
-			}
-		}
-	},
-	{ immediate: true },
 );
 
 defineExpose({
