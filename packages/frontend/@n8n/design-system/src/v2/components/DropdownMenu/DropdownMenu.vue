@@ -45,8 +45,7 @@ const $style = useCssModule();
 const internalOpen = ref(props.defaultOpen ?? false);
 const isControlled = computed(() => props.modelValue !== undefined);
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-const searchRef = ref<InstanceType<typeof N8nDropdownMenuSearch> | null>(null);
+const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
 

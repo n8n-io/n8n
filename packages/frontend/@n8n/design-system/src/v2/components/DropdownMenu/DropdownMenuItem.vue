@@ -37,8 +37,7 @@ const itemRef = ref<HTMLElement | null>(null);
 const searchTerm = ref('');
 const internalSubMenuOpen = ref(false);
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-const searchRef = ref<InstanceType<typeof N8nDropdownMenuSearch> | null>(null);
+const searchRef = ref<{ focus: () => void } | null>(null);
 
 // Virtual focus for sub-menu keyboard navigation
 const subMenuHighlightedIndex = ref(-1);
