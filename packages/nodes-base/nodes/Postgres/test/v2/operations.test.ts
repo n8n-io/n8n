@@ -17,7 +17,7 @@ import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 
-const runQueries: QueriesRunner = jest.fn();
+const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
 
 const node: INode = {
 	id: '1',
