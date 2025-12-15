@@ -2,6 +2,7 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { currentsReporter } from '@currents/playwright';
 import { defineConfig } from '@playwright/test';
+import type { PlaywrightTestConfig } from '@playwright/test';
 import os from 'os';
 import path from 'path';
 
@@ -39,13 +40,49 @@ const WORKERS = IS_DEV ? 1 : IS_CI ? CI_WORKERS : LOCAL_WORKERS;
 
 const BACKEND_URL = getBackendUrl();
 const FRONTEND_URL = getFrontendUrl();
-const START_COMMAND = IS_DEV ? 'pnpm dev:fe:e2e' : 'pnpm start';
 const WEB_SERVER_URL = FRONTEND_URL ?? BACKEND_URL;
 
 const EXPECT_TIMEOUT = IS_DEV ? 20000 : 10000;
 
+const webServer: PlaywrightTestConfig['webServer'] = [];
+
+if (BACKEND_URL) {
+	webServer.push({
+		command: 'cd .. && pnpm start',
+		url: `${BACKEND_URL}/favicon.ico`,
+		timeout: 30000,
+		reuseExistingServer: IS_DEV ? false : true,
+		env: {
+			DB_SQLITE_POOL_SIZE: '40',
+			E2E_TESTS: 'true',
+			N8N_PORT: getPortFromUrl(BACKEND_URL),
+			N8N_USER_FOLDER: USER_FOLDER,
+			N8N_LOG_LEVEL: 'debug',
+			N8N_METRICS: 'true',
+			N8N_RESTRICT_FILE_ACCESS_TO: '',
+			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+			...getTestEnv(),
+		},
+	});
+}
+
+if (FRONTEND_URL) {
+	webServer.push({
+		command: 'cd .. && pnpm dev:fe:editor',
+		url: `${FRONTEND_URL}/favicon.ico`,
+		timeout: 30000,
+		reuseExistingServer: IS_DEV ? false : true,
+		env: {
+			E2E_TESTS: 'true',
+			N8N_PORT: getPortFromUrl(FRONTEND_URL),
+			...getTestEnv(),
+		},
+	});
+}
+
 export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	globalSetup: './global-setup.ts',
+	globalTeardown: IS_DEV ? './global-teardown.ts' : undefined,
 	forbidOnly: IS_CI,
 	retries: IS_CI ? 2 : 0,
 	workers: WORKERS,
@@ -56,27 +93,10 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	projects: getProjects(),
 
 	// We use this if an n8n url is passed in. If the server is already running, we reuse it.
-	webServer: BACKEND_URL
-		? {
-				command: `cd .. && ${START_COMMAND}`,
-				url: `${WEB_SERVER_URL}/favicon.ico`,
-				timeout: 30000,
-				reuseExistingServer: true,
-				env: {
-					DB_SQLITE_POOL_SIZE: '40',
-					E2E_TESTS: 'true',
-					N8N_PORT: getPortFromUrl(BACKEND_URL),
-					N8N_USER_FOLDER: USER_FOLDER,
-					N8N_LOG_LEVEL: 'debug',
-					N8N_METRICS: 'true',
-					N8N_RESTRICT_FILE_ACCESS_TO: '',
-					N8N_DYNAMIC_BANNERS_ENABLED: 'false',
-					...getTestEnv(),
-				},
-			}
-		: undefined,
+	webServer,
 
 	use: {
+		baseURL: WEB_SERVER_URL,
 		trace: 'on',
 		video: 'on',
 		screenshot: 'on',

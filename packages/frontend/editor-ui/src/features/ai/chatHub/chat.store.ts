@@ -69,7 +69,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
 
-	const agents = ref<ChatModelsResponse>();
+	const agents = ref<ChatModelsResponse | null>(null);
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
@@ -924,7 +924,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 * models and agents
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
-		agentsReady: computed(() => agents.value !== undefined),
+		agentsReady: computed(() => agents.value !== null),
 		customAgents,
 		getAgent,
 		fetchAgents,

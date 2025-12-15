@@ -1,18 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import { computed, useCssModule, useTemplateRef } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
-import {
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-	chatHubLLMProviderSchema,
-	emptyChatModelsResponse,
-} from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
 	ChatHubLLMProvider,
 	ChatModelDto,
-	ChatModelsResponse,
 	ChatHubConversationModel,
+	ChatModelsResponse,
 } from '@n8n/api-types';
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -33,8 +29,6 @@ import {
 	isLlmProviderModel,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -51,12 +45,16 @@ const {
 	credentials,
 	text,
 	warnMissingCredentials = false,
+	agents,
+	isLoading,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
 	warnMissingCredentials?: boolean;
+	agents: ChatModelsResponse;
+	isLoading: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -74,8 +72,6 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 }
 
 const i18n = useI18n();
-const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
-const isLoading = ref(false);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
@@ -89,6 +85,7 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
+
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
 const isCredentialsMissing = computed(
 	() =>
@@ -103,9 +100,9 @@ const menu = computed(() => {
 	const fullNamesMap: Record<string, string> = {};
 
 	if (includeCustomAgents) {
-		const customAgents = isLoading.value
+		const customAgents = isLoading
 			? []
-			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => {
+			: [...agents['custom-agent'].models, ...agents['n8n'].models].map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {
@@ -122,7 +119,7 @@ const menu = computed(() => {
 			iconSize: 'large',
 			iconMargin: false,
 			submenu: [
-				...(isLoading.value
+				...(isLoading
 					? [
 							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
 							{ isDivider: true as const, id: 'divider' },
@@ -152,7 +149,7 @@ const menu = computed(() => {
 			disabled: false,
 		};
 
-		if (isLoading.value) {
+		if (isLoading) {
 			menuItems.push({
 				id: provider,
 				title: providerDisplayNames[provider],
@@ -169,7 +166,7 @@ const menu = computed(() => {
 			continue;
 		}
 
-		const theAgents = [...agents.value[provider].models];
+		const theAgents = [...agents[provider].models];
 
 		// Add any manually defined models in settings
 		for (const model of settings?.allowedModels ?? []) {
@@ -195,7 +192,7 @@ const menu = computed(() => {
 			}
 		}
 
-		const error = agents.value[provider].error;
+		const error = agents[provider].error;
 		const agentOptions =
 			theAgents.length > 0
 				? theAgents
@@ -328,22 +325,6 @@ onClickOutside(
 	{
 		ignore: [`.${styles.component} [role=menuitem]`],
 	},
-);
-
-// Update agents when credentials are updated
-watch(
-	() => credentials,
-	async (credentials) => {
-		if (credentials) {
-			isLoading.value = true;
-			try {
-				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
-			} finally {
-				isLoading.value = false;
-			}
-		}
-	},
-	{ immediate: true },
 );
 
 defineExpose({

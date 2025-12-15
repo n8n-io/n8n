@@ -462,4 +462,121 @@ describe('NodeExecutionContext', () => {
 			);
 		});
 	});
+
+	describe('nodeFeatures', () => {
+		it('should return empty object when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({});
+		});
+
+		it('should return enabled features based on node version', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: true,
+				useFeatureB: false,
+				useFeatureC: true,
+			});
+		});
+
+		it('should return correct features for version 2.1', () => {
+			node.typeVersion = 2.1;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: false,
+				useFeatureB: true,
+				useFeatureC: false,
+			});
+		});
+
+		it('should handle simple version number conditions', () => {
+			node.typeVersion = 2;
+			nodeType.description.features = {
+				useFeatureD: { '@version': [2] },
+				useFeatureE: { '@version': [{ _cnd: { lt: 2.3 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureD: true,
+				useFeatureE: true,
+			});
+		});
+	});
+
+	describe('isNodeFeatureEnabled', () => {
+		it('should return true when feature is enabled', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when feature is disabled', () => {
+			node.typeVersion = 2.3;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when feature does not exist', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('nonExistentFeature');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should handle multiple features correctly', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			expect(testContext.isNodeFeatureEnabled('useFeatureA')).toBe(true);
+			expect(testContext.isNodeFeatureEnabled('useFeatureB')).toBe(false);
+			expect(testContext.isNodeFeatureEnabled('useFeatureC')).toBe(true);
+		});
+	});
 });
