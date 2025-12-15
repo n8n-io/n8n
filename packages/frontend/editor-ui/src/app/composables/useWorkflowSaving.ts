@@ -7,20 +7,17 @@ import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
-	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
-	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
+import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { IDataObject, IWorkflowSettings } from 'n8n-workflow';
 import { useToast } from './useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
@@ -43,7 +40,6 @@ export function useWorkflowSaving({
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
@@ -124,54 +120,6 @@ export function useWorkflowSaving({
 		);
 	}
 
-	function isNodeActivatable(node: INode): boolean {
-		if (node.disabled) {
-			return false;
-		}
-
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-
-		return (
-			nodeType !== null &&
-			nodeType.group.includes('trigger') &&
-			!NON_ACTIVATABLE_TRIGGER_NODE_TYPES.includes(node.type)
-		);
-	}
-
-	async function getWorkflowDeactivationInfo(
-		workflowId: string,
-		request: WorkflowDataUpdate,
-	): Promise<Partial<NotificationOptions> | undefined> {
-		if (IS_DRAFT_PUBLISH_ENABLED) {
-			return undefined;
-		}
-
-		const missingActivatableTriggerNode =
-			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
-
-		if (missingActivatableTriggerNode) {
-			// Automatically deactivate if all activatable triggers are removed
-			return {
-				title: i18n.baseText('workflows.autodeactivated'),
-				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
-				type: 'info',
-			};
-		}
-
-		const conflictData = await checkConflictingWebhooks(workflowId);
-
-		if (conflictData) {
-			// Workflow should not be active if there is live webhook with the same path
-			return {
-				title: 'Conflicting Webhook Path',
-				message: `Workflow set to inactive: Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
-				type: 'error',
-			};
-		}
-
-		return undefined;
-	}
-
 	function getQueryParam(query: LocationQuery, key: string): string | undefined {
 		const value = query[key];
 		if (Array.isArray(value)) return value[0] ?? undefined;
@@ -183,6 +131,7 @@ export function useWorkflowSaving({
 		{ id, name, tags }: { id?: string; name?: string; tags?: string[] } = {},
 		redirect = true,
 		forceSave = false,
+		autosaved = false,
 	): Promise<boolean> {
 		const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
 		if (readOnlyEnv) {
@@ -195,7 +144,10 @@ export function useWorkflowSaving({
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
+			return !!(await saveAsNewWorkflow(
+				{ name, tags, parentFolderId, uiContext, autosaved },
+				redirect,
+			));
 		}
 
 		// Workflow exists already so update it
@@ -224,30 +176,17 @@ export function useWorkflowSaving({
 			// Check if AI Builder made edits since last save
 			workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
 			workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
+			workflowDataRequest.autosaved = autosaved;
 
-			const deactivateReason = await getWorkflowDeactivationInfo(
-				currentWorkflow,
-				workflowDataRequest,
-			);
-
-			if (deactivateReason !== undefined) {
-				workflowDataRequest.active = false;
-
-				if (workflowsStore.isWorkflowActive) {
-					toast.showMessage(deactivateReason);
-
-					workflowsStore.setWorkflowInactive(currentWorkflow);
-				}
-			}
 			const workflowData = await workflowsStore.updateWorkflow(
 				currentWorkflow,
 				workflowDataRequest,
 				forceSave,
 			);
-			workflowsStore.setWorkflowVersionId(workflowData.versionId);
-			if (workflowData.checksum) {
-				workflowsStore.setWorkflowChecksum(workflowData.checksum);
+			if (!workflowData.checksum) {
+				throw new Error('Failed to update workflow');
 			}
+			workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
 
 			if (name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
@@ -327,6 +266,7 @@ export function useWorkflowSaving({
 			parentFolderId,
 			uiContext,
 			data,
+			autosaved,
 		}: {
 			name?: string;
 			tags?: string[];
@@ -336,6 +276,7 @@ export function useWorkflowSaving({
 			parentFolderId?: string;
 			uiContext?: string;
 			data?: WorkflowDataCreate;
+			autosaved?: boolean;
 		} = {},
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
@@ -378,6 +319,10 @@ export function useWorkflowSaving({
 
 			if (uiContext) {
 				workflowDataRequest.uiContext = uiContext;
+			}
+
+			if (autosaved) {
+				workflowDataRequest.autosaved = autosaved;
 			}
 
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);

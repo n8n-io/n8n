@@ -2,12 +2,20 @@
 import { useI18n } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { UserAction } from '@/Interface';
-import { N8nActionToggle, N8nDataTableServer, N8nLoading, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nButton,
+	N8nDataTableServer,
+	N8nLoading,
+	N8nText,
+} from '@n8n/design-system';
 import { ref } from 'vue';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const i18n = useI18n();
+const mcpStore = useMCPStore();
 
 type Props = {
 	clients: OAuthClientResponseDto[];
@@ -90,6 +98,13 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 						>
 							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
 						</N8nText>
+						<N8nButton
+							data-test-id="mcp-oauth-create-client-button"
+							variant="primary"
+							@click="mcpStore.openConnectPopover()"
+						>
+							{{ i18n.baseText('settings.mcp.oauth.table.empty.button') }}
+						</N8nButton>
 					</div>
 				</template>
 				<template #[`item.name`]="{ item }">
