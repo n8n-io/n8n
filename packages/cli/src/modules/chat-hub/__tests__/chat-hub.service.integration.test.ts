@@ -2,8 +2,13 @@ import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
+import type { INodePropertyOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { createAdmin, createMember } from '@test-integration/db/users';
 
+import { PROVIDER_NODE_TYPE_MAP } from '../chat-hub.constants';
+import { ChatHubModelsService } from '../chat-hub.models.service';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
@@ -27,6 +32,8 @@ describe('chatHub', () => {
 	let chatHubService: ChatHubService;
 	let messagesRepository: ChatHubMessageRepository;
 	let sessionsRepository: ChatHubSessionRepository;
+	let nodeParametersService: DynamicNodeParametersService;
+	let chatHubModelsService: ChatHubModelsService;
 
 	let admin: User;
 	let member: User;
@@ -35,6 +42,8 @@ describe('chatHub', () => {
 		chatHubService = Container.get(ChatHubService);
 		messagesRepository = Container.get(ChatHubMessageRepository);
 		sessionsRepository = Container.get(ChatHubSessionRepository);
+		nodeParametersService = Container.get(DynamicNodeParametersService);
+		chatHubModelsService = Container.get(ChatHubModelsService);
 	});
 
 	beforeEach(async () => {
@@ -731,6 +740,116 @@ describe('chatHub', () => {
 
 			expect(messages[msg2r.id].previousMessageId).toBe(msg1.id);
 			expect(messages[msg2r.id].retryOfMessageId).toBe(msg2.id);
+		});
+	});
+
+	describe('fetchBurnCloudModels', () => {
+		const mockCredentials = {
+			burnCloudApi: {
+				id: 'cred-id',
+				name: 'BurnCloud Credential',
+			},
+		};
+
+		const mockAdditionalData = {} as IWorkflowExecuteAdditionalData;
+
+		const mockApiResponse: INodePropertyOptions[] = [
+			{
+				name: 'gpt-3.5-turbo',
+				value: 'gpt-3.5-turbo',
+				description: 'Fast and capable model',
+			},
+			{
+				name: 'gpt-4',
+				value: 'gpt-4',
+				description: 'More capable than gpt-3.5-turbo',
+			},
+		];
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should fetch models from BurnCloud API', async () => {
+			// 使用 jest.spyOn 来模拟方法
+			const spy = jest
+				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
+				.mockResolvedValue(mockApiResponse);
+
+			const result = await chatHubModelsService.fetchBurnCloudModels(
+				mockCredentials,
+				mockAdditionalData,
+			);
+
+			expect(spy).toHaveBeenCalledWith(
+				{
+					routing: {
+						request: {
+							method: 'GET',
+							url: '/v1/models',
+						},
+						output: {
+							postReceive: [
+								{
+									type: 'rootProperty',
+									properties: {
+										property: 'data',
+									},
+								},
+								{
+									type: 'setKeyValue',
+									properties: {
+										name: '={{$responseItem.id}}',
+										value: '={{$responseItem.id}}',
+									},
+								},
+								{
+									type: 'sort',
+									properties: {
+										key: 'name',
+									},
+								},
+							],
+						},
+					},
+				},
+				mockAdditionalData,
+				PROVIDER_NODE_TYPE_MAP.burnCloud,
+				{},
+				mockCredentials,
+			);
+
+			expect(result).toEqual(mockApiResponse);
+
+			// 清理模拟
+			spy.mockRestore();
+		});
+
+		it('should handle API errors gracefully', async () => {
+			const spy = jest
+				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
+				.mockRejectedValue(new Error('API Error'));
+
+			await expect(
+				chatHubModelsService.fetchBurnCloudModels(mockCredentials, mockAdditionalData),
+			).rejects.toThrow('API Error');
+
+			spy.mockRestore();
+		});
+
+		it('should handle empty response', async () => {
+			const spy = jest
+				.spyOn(nodeParametersService, 'getOptionsViaLoadOptions')
+				.mockResolvedValue([]);
+
+			const result = await chatHubModelsService.fetchBurnCloudModels(
+				mockCredentials,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual([]);
+
+			spy.mockRestore();
 		});
 	});
 });
