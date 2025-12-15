@@ -12,20 +12,18 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useMessage } from '@/app/composables/useMessage';
-import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '../constants';
+import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import SaveButton from './SaveButton.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { CredentialResolverType, CredentialResolver } from '@n8n/api-types';
+import type { CredentialResolver } from '@n8n/api-types';
 import {
-	getCredentialResolverTypes,
 	getCredentialResolver,
 	createCredentialResolver,
 	updateCredentialResolver,
-	deleteCredentialResolver,
 } from '@n8n/rest-api-client';
+import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import type {
 	INodeProperties,
 	ICredentialDataDecryptedObject,
@@ -46,20 +44,24 @@ const props = defineProps<{
 const modalBus = createEventBus();
 const i18n = useI18n();
 const toast = useToast();
-const message = useMessage();
 const rootStore = useRootStore();
 
 const activeTab = ref('configuration');
 const isLoading = ref(false);
 const isSaving = ref(false);
-const isDeleting = ref(false);
 const resolverName = ref('');
 const resolverType = ref('');
 const resolverConfig = ref<Record<string, unknown>>({});
-const availableTypes = ref<CredentialResolverType[]>([]);
 const hasUnsavedChanges = ref(false);
 const errorMessage = ref<string>('');
 const mainContentRef = ref<HTMLElement>();
+
+const {
+	resolverTypes: availableTypes,
+	fetchResolverTypes: loadResolverTypes,
+	deleteResolver: deleteResolverFromComposable,
+	isDeleting,
+} = useCredentialResolvers();
 
 const isEditMode = computed(() => !!props.data?.resolverId);
 
@@ -174,14 +176,6 @@ const sidebarItems = computed<IMenuItem[]>(() => [
 	},
 ]);
 
-const loadResolverTypes = async () => {
-	try {
-		availableTypes.value = await getCredentialResolverTypes(rootStore.restApiContext);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('credentialResolverEdit.error.loadTypes'));
-	}
-};
-
 const loadResolver = async () => {
 	if (!props.data?.resolverId) return;
 
@@ -275,45 +269,25 @@ const onTabSelect = (tabId: string) => {
 const deleteResolver = async () => {
 	if (!props.data?.resolverId) return;
 
-	const savedResolverName = resolverName.value;
+	// Create a resolver object for the composable
+	const resolver: CredentialResolver = {
+		id: props.data.resolverId,
+		name: resolverName.value,
+		type: resolverType.value,
+		config: JSON.stringify(resolverConfig.value),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
-			interpolate: { savedResolverName },
-		}),
-		i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialResolverEdit.confirmMessage.deleteResolver.confirmButtonText',
-			),
-		},
-	);
+	const deleted = await deleteResolverFromComposable(resolver);
 
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
-	}
-
-	try {
-		isDeleting.value = true;
-		await deleteCredentialResolver(rootStore.restApiContext, props.data.resolverId);
+	if (deleted) {
 		hasUnsavedChanges.value = false;
-
 		if (props.data?.onDelete) {
 			props.data.onDelete(props.data.resolverId);
 		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('credentialResolverEdit.error.delete'));
-		isDeleting.value = false;
-		return;
+		modalBus.emit('close');
 	}
-
-	isDeleting.value = false;
-	modalBus.emit('close');
-
-	toast.showMessage({
-		title: i18n.baseText('credentialResolverEdit.deleteSuccess.title'),
-		type: 'success',
-	});
 };
 
 onMounted(async () => {

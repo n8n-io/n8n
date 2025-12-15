@@ -39,12 +39,16 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
+	type ChatHubLLMProvider,
+	type ChatProviderSettingsDto,
+	type AgentIconOrEmoji,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
 	ChatMessage,
 	ChatConversation,
 	ChatStreamingState,
+	FetchOptions,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -52,12 +56,12 @@ import {
 	createSessionFromStreamingState,
 	isLlmProviderModel,
 	isMatchedAgent,
+	createAiMessageFromStreamingState,
+	flattenModel,
 } from './chat.utils';
-import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
-import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -67,7 +71,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
 
-	const agents = ref<ChatModelsResponse>();
+	const agents = ref<ChatModelsResponse | null>(null);
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
@@ -287,14 +291,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message.updatedAt = new Date().toISOString();
 	}
 
-	async function fetchAgents(credentialMap: CredentialsMap) {
-		agents.value = await fetchChatModelsApi(rootStore.restApiContext, {
-			credentials: credentialMap,
-		});
+	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
+		[agents.value] = await Promise.all([
+			fetchChatModelsApi(rootStore.restApiContext, {
+				credentials: credentialMap,
+			}),
+			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
+		]);
 		return agents.value;
 	}
 
-	async function fetchSessions(reset: boolean) {
+	async function fetchSessions(reset: boolean, options: FetchOptions = {}) {
 		if (sessionsLoadingMore.value) {
 			return;
 		}
@@ -316,7 +323,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
 				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
-				new Promise((resolve) => setTimeout(resolve, 500)),
+				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
 			if (reset || sessions.value.ids === null) {
@@ -335,9 +342,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	async function fetchMoreSessions() {
+	async function fetchMoreSessions(options: FetchOptions = {}) {
 		if (sessions.value?.hasMore && !sessionsLoadingMore.value) {
-			await fetchSessions(false);
+			await fetchSessions(false, options);
 		}
 	}
 
@@ -355,6 +362,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			activeMessageChain: computeActiveChain(messages, latestMessage?.id ?? null),
 		});
 		sessions.value.byId[sessionId] = session;
+	}
+
+	async function fetchConversationTitle(sessionId: ChatSessionId) {
+		const current = sessions.value.byId[sessionId];
+		if (!current || current.title === 'New Chat') {
+			// wait up to 10 * 2 seconds until conversation title is generated
+			await retry(
+				async () => {
+					try {
+						const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
+						return session.session.title !== 'New Chat';
+					} catch (e: unknown) {
+						return false;
+					}
+				},
+				2000,
+				10,
+			);
+		}
+
+		// update the conversation list to reflect the new title and lastMessageAt timestamps
+		await fetchSessions(true);
 	}
 
 	function onBeginMessage() {
@@ -435,22 +464,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		const { sessionId } = streaming.value;
-
 		streaming.value = undefined;
 
-		// wait up to 3 seconds until conversation title is generated
-		await retry(
-			async () => {
-				const session = await fetchSingleConversationApi(rootStore.restApiContext, sessionId);
-
-				return session.session.title !== 'New Chat';
-			},
-			1000,
-			3,
-		);
-
-		// update the conversation list to reflect the new title
-		await fetchSessions(true);
+		await fetchConversationTitle(sessionId);
 	}
 
 	function getErrorMessageByStatusCode(
@@ -473,7 +489,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
-	function onStreamError(error: Error) {
+	async function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
@@ -487,17 +503,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		toast.showError(cause, i18n.baseText('chatHub.error.sendMessageFailed'));
 
+		const { sessionId } = streaming.value;
 		streaming.value = undefined;
+
+		await fetchConversationTitle(sessionId);
 	}
 
 	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
-		model: ChatHubConversationModel,
+		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
 		tools: INode[],
 		files: File[] = [],
-		agentName: string,
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -519,7 +537,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: isLlmProviderModel(model) ? model.model : null,
+			model: isLlmProviderModel(agent.model) ? agent.model.model : null,
 			workflowId: null,
 			executionId: null,
 			agentId: null,
@@ -537,24 +555,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		streaming.value = {
 			promptId: messageId,
 			sessionId,
-			model,
 			retryOfMessageId: null,
 			tools,
-			agentName,
+			agent,
 		};
 
 		if (!sessions.value.byId[sessionId]) {
 			sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
-			if (!sessions.value.ids) {
-				sessions.value.ids = [];
-			}
+			sessions.value.ids ??= [];
 			sessions.value.ids.unshift(sessionId);
 		}
 
 		sendMessageApi(
 			rootStore.restApiContext,
 			{
-				model,
+				model: agent.model,
 				messageId,
 				sessionId,
 				message,
@@ -562,7 +577,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 				tools,
 				attachments,
-				agentName,
+				agentName: agent.name,
 				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
 			onStreamMessage,
@@ -571,8 +586,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 
 		telemetry.track('User sent chat hub message', {
-			...flattenModel(model),
-			is_custom: model.provider === 'custom-agent',
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 		});
 	}
@@ -581,7 +596,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: ChatSessionId,
 		editId: ChatMessageId,
 		content: string,
-		model: ChatHubConversationModel,
+		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const promptId = uuidv4();
@@ -619,10 +634,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		streaming.value = {
 			promptId,
 			sessionId,
-			model,
+			agent,
 			retryOfMessageId: null,
 			tools: [],
-			agentName: sessions.value.byId[sessionId]?.agentName ?? '',
 		};
 
 		editMessageApi(
@@ -630,7 +644,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			editId,
 			{
-				model,
+				model: agent.model,
 				messageId: promptId,
 				message: content,
 				credentials,
@@ -642,8 +656,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 
 		telemetry.track('User edited chat hub message', {
-			...flattenModel(model),
-			is_custom: model.provider === 'custom-agent',
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: editId,
 		});
@@ -652,7 +666,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function regenerateMessage(
 		sessionId: ChatSessionId,
 		retryId: ChatMessageId,
-		model: ChatHubConversationModel,
+		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
 	) {
 		const conversation = ensureConversation(sessionId);
@@ -665,10 +679,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		streaming.value = {
 			promptId: retryId,
 			sessionId,
-			model,
+			agent,
 			retryOfMessageId: retryId,
 			tools: [],
-			agentName: sessions.value.byId[sessionId]?.agentName ?? '',
 		};
 
 		regenerateMessageApi(
@@ -676,7 +689,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			retryId,
 			{
-				model,
+				model: agent.model,
 				credentials,
 				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			},
@@ -686,8 +699,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 
 		telemetry.track('User regenerated chat hub message', {
-			...flattenModel(model),
-			is_custom: model.provider === 'custom-agent',
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: retryId,
 		});
@@ -699,7 +712,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		if (currentMessage && currentMessage.status === 'running') {
 			updateMessage(sessionId, currentMessage.id, 'cancelled');
 			await stopGenerationApi(rootStore.restApiContext, sessionId, currentMessage.id);
-			streaming.value = undefined;
+			await onStreamDone();
 		}
 	}
 
@@ -738,10 +751,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		model: ChatHubConversationModel,
 		agentName: string,
 	) {
-		await updateConversationApi(rootStore.restApiContext, sessionId, {
+		const result = await updateConversationApi(rootStore.restApiContext, sessionId, {
 			agent: { model, name: agentName },
 		});
-		updateSession(sessionId, { ...model, agentName });
+		updateSession(sessionId, result.session);
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {
@@ -790,6 +803,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			},
 			name: customAgent.name,
 			description: customAgent.description ?? null,
+			icon: customAgent.icon,
 			createdAt: customAgent.createdAt,
 			updatedAt: customAgent.updatedAt,
 			metadata: baseModel?.metadata ?? {
@@ -846,9 +860,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchAgents(credentials);
 	}
 
-	function getAgent(model: ChatHubConversationModel, fallbackName: string = ''): ChatModelDto {
-		const agent = agents.value?.[model.provider]?.models.find((agent) =>
-			isMatchedAgent(agent, model),
+	function getAgent(
+		model: ChatHubConversationModel,
+		fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
+	): ChatModelDto {
+		const agent = agents.value?.[model.provider]?.models.find((candidate) =>
+			isMatchedAgent(candidate, model),
 		);
 
 		if (agent) {
@@ -857,8 +874,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		return {
 			model,
-			name: fallbackName,
+			name: fallback?.name ?? '',
 			description: null,
+			icon: fallback?.icon ?? null,
 			createdAt: null,
 			updatedAt: null,
 			// Assume file attachment and tools are supported
@@ -912,7 +930,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 * models and agents
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
-		agentsReady: computed(() => agents.value !== undefined),
+		agentsReady: computed(() => agents.value !== null),
 		customAgents,
 		getAgent,
 		fetchAgents,
