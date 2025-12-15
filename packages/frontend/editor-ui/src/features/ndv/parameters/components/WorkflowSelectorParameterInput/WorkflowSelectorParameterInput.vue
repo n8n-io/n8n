@@ -452,10 +452,9 @@ const onAddResourceClicked = async () => {
 									@blur="onInputBlur"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: isDropdownVisible,
 											}"
