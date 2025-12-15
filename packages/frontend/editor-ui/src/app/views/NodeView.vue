@@ -176,8 +176,8 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({
 	router,
-	onSaved: () => {
-		canvasEventBus.emit('saved:workflow');
+	onSaved: (isFirstSave) => {
+		canvasEventBus.emit('saved:workflow', { isFirstSave });
 	},
 });
 const nodeHelpers = useNodeHelpers();

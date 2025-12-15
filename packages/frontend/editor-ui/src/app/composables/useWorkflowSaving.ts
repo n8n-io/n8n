@@ -37,7 +37,7 @@ export function useWorkflowSaving({
 }: {
 	router: ReturnType<typeof useRouter>;
 	workflowState?: WorkflowState;
-	onSaved?: () => void;
+	onSaved?: (isFirstSave: boolean) => void;
 }) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
@@ -150,10 +150,14 @@ export function useWorkflowSaving({
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return !!(await saveAsNewWorkflow(
+			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
 				redirect,
-			));
+			);
+			if (workflowId) {
+				onSaved?.(true); // First save of new workflow
+			}
+			return !!workflowId;
 		}
 
 		// Workflow exists already so update it
@@ -211,6 +215,7 @@ export function useWorkflowSaving({
 			// Reset AI Builder edits flag only after successful save
 			builderStore.resetAiBuilderMadeEdits();
 
+			onSaved?.(false); // Update of existing workflow
 			return true;
 		} catch (error) {
 			console.error(error);
@@ -425,7 +430,6 @@ export function useWorkflowSaving({
 			const saved = await saveCurrentWorkflow({}, true, false, true);
 			if (saved) {
 				console.log('[AutoSave] ✅ Workflow saved successfully');
-				onSaved?.();
 			}
 		},
 		1500,

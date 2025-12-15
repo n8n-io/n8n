@@ -20,6 +20,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
@@ -441,6 +442,12 @@ const handleImportWorkflowFromFile = () => {
 	}
 };
 
+const handleWorkflowSaved = (data: { isFirstSave: boolean }) => {
+	if (data.isFirstSave) {
+		showCreateWorkflowSuccessToast();
+	}
+};
+
 onMounted(() => {
 	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
 	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
@@ -448,6 +455,7 @@ onMounted(() => {
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.on('renameWorkflow', onNameToggle);
 	nodeViewEventBus.on('addTag', onTagsEditEnable);
+	canvasEventBus.on('saved:workflow', handleWorkflowSaved);
 });
 
 onBeforeUnmount(() => {
@@ -457,6 +465,7 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.off('renameWorkflow', onNameToggle);
 	nodeViewEventBus.off('addTag', onTagsEditEnable);
+	canvasEventBus.off('saved:workflow', handleWorkflowSaved);
 });
 </script>
 
