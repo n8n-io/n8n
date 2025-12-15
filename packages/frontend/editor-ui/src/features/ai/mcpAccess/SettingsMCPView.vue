@@ -8,12 +8,15 @@ import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
+import {
+	LOADING_INDICATOR_TIMEOUT,
+	MCP_DOCS_PAGE_URL,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
-import { N8nHeading, N8nTabs, N8nTooltip, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText, N8nLink } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
@@ -179,7 +182,27 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 <template>
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
-			<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+			<div :class="$style.headings">
+				<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+				<div
+					v-show="mcpStore.mcpAccessEnabled"
+					:class="$style.description"
+					data-test-id="mcp-settings-description"
+				>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.mcp.description') }}.
+					</N8nText>
+					<N8nLink
+						:href="MCP_DOCS_PAGE_URL"
+						target="_blank"
+						rel="noopener noreferrer"
+						size="small"
+						data-test-id="mcp-docs-link"
+					>
+						{{ i18n.baseText('generic.learnMore') }}
+					</N8nLink>
+				</div>
+			</div>
 			<MCpHeaderActions
 				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
@@ -243,7 +266,25 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 .main-header {
 	display: flex;
 	justify-content: space-between;
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+
+	@media (max-width: 820px) {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing--2xs);
+	}
+}
+
+.headings {
+	display: flex;
+	flex-direction: column;
+	min-height: 60px;
+
+	.description {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing--4xs);
+	}
 }
 
 .tabs-header {

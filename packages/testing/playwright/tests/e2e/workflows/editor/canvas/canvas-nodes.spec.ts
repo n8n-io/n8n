@@ -143,15 +143,16 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 
 		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(nodeCount);
 		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(nodeCount + 1);
-		await expect(n8n.canvas.getCanvasHandlePlusWrapper()).toHaveAttribute(
-			'data-plus-type',
-			'success',
-		);
+		await expect(
+			n8n.canvas.getCanvasHandlePlusWrapperByName('Code in JavaScript2'),
+		).toHaveAttribute('data-plus-type', 'success');
 
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 		await n8n.canvas.clickZoomToFitButton();
 
-		await expect(n8n.canvas.getCanvasHandlePlus()).not.toHaveAttribute('data-plus-type', 'success');
+		await expect(
+			n8n.canvas.getCanvasHandlePlusWrapperByName('Code in JavaScript3'),
+		).not.toHaveAttribute('data-plus-type', 'success');
 
 		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(nodeCount + 1);
 		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(nodeCount + 1);
