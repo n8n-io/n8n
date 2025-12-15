@@ -1,3 +1,19 @@
+## [1.123.6](https://github.com/n8n-io/n8n/compare/n8n@1.123.5...n8n@1.123.6) (2025-12-15)
+
+
+### Bug Fixes
+
+* Backfill missing workflow history records ([#23070](https://github.com/n8n-io/n8n/issues/23070)) ([e924f07](https://github.com/n8n-io/n8n/commit/e924f07e6280f2df34f73ab51119d26c0a516ece))
+* **editor:** Fix project selector scroll ([#22728](https://github.com/n8n-io/n8n/issues/22728)) ([bf19e8d](https://github.com/n8n-io/n8n/commit/bf19e8d9a0e74e60010d87df1ac88537403095f6))
+* Harden form and trigger response handling ([#23061](https://github.com/n8n-io/n8n/issues/23061)) ([84fb27a](https://github.com/n8n-io/n8n/commit/84fb27aa1d08558d0fdc6a898b9df228dd467cc1))
+
+
+### Features
+
+* **core:** Add breaking change rule for start node deprecation ([#23097](https://github.com/n8n-io/n8n/issues/23097)) ([db20ecf](https://github.com/n8n-io/n8n/commit/db20ecfe5199d5b27eaa4235a376032c0f398bce))
+
+
+
 ## [1.123.5](https://github.com/n8n-io/n8n/compare/n8n@1.123.4...n8n@1.123.5) (2025-12-10)
 
 
