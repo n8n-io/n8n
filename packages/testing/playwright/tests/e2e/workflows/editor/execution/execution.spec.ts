@@ -123,8 +123,7 @@ test.describe('Execution', () => {
 		await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode due to webhook registration timing issues
-	test.skip('should test webhook workflow', async ({ n8n }) => {
+	test('should test webhook workflow', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Webhook_wait_set.json');
 
 		await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
