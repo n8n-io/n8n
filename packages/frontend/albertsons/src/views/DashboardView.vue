@@ -1,33 +1,32 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import albertsonsLogo from '../assets/albertsons-logo.png';
+import { useTemplatesStore } from '../stores/templates.store';
 
 const router = useRouter();
+const workflowsStore = useWorkflowsStore();
+const templatesStore = useTemplatesStore();
 
-const workflows = ref([]);
-const loading = ref(true);
+// ✅ CORRECT n8n bindings
+const workflows = computed(() => workflowsStore.allWorkflows);
+const loading = computed(() => workflowsStore.isLoading);
 
-// ----------------------------------------
-// DIRECT CALL TO n8n REST API (WORKS 100%)
-// ----------------------------------------
 async function loadWorkflows() {
-	loading.value = true;
-
-	try {
-		const res = await fetch('http://localhost:8080/rest/workflows');
-		const data = await res.json();
-
-		workflows.value = data.data || [];
-	} catch (err) {
-		console.error('Error fetching workflows:', err);
-	} finally {
-		loading.value = false;
-	}
+	await workflowsStore.fetchWorkflows();
 }
 
 function goToNewWorkflow() {
 	router.push('/workflow/new');
+}
+
+function openWorkflow(id) {
+	router.push(`/workflow/${id}`);
+}
+
+function publishAsTemplate(id) {
+	templatesStore.publishAsTemplate(id);
 }
 
 onMounted(() => {
@@ -36,32 +35,37 @@ onMounted(() => {
 </script>
 
 <template>
-	<div class="dashboard-page">
+	<div class="dashboard">
 		<!-- HEADER -->
 		<div class="header">
-			<img :src="albertsonsLogo" class="logo" alt="Albertsons" />
-			<div class="title-block">
-				<h1>Welcome to Albertsons AI Agent Space</h1>
-			</div>
+			<img :src="albertsonsLogo" class="logo" />
+			<h1>Welcome to Albertsons AI Agent Space</h1>
 		</div>
 
 		<!-- METRICS -->
 		<div class="metrics">
-			<div class="metric-box">
-				<span class="label">Total Executions</span>
-				<span class="value">2</span>
+			<div class="metric-card">
+				<span class="metric-label">Total Executions</span>
+				<span class="metric-value">2</span>
+				<span class="metric-sub">All time</span>
 			</div>
-			<div class="metric-box">
-				<span class="label">Successful</span>
-				<span class="value green">2</span>
+
+			<div class="metric-card success">
+				<span class="metric-label">Successful</span>
+				<span class="metric-value">2</span>
+				<span class="metric-sub">100% success rate</span>
 			</div>
-			<div class="metric-box">
-				<span class="label">Failed</span>
-				<span class="value red">0</span>
+
+			<div class="metric-card danger">
+				<span class="metric-label">Failed</span>
+				<span class="metric-value">0</span>
+				<span class="metric-sub">0% failure rate</span>
 			</div>
-			<div class="metric-box">
-				<span class="label">Avg Duration</span>
-				<span class="value">3.1s</span>
+
+			<div class="metric-card">
+				<span class="metric-label">Avg Duration</span>
+				<span class="metric-value">3.1s</span>
+				<span class="metric-sub">Per execution</span>
 			</div>
 		</div>
 
@@ -74,158 +78,197 @@ onMounted(() => {
 			<button disabled>Data Tables</button>
 		</div>
 
-		<!-- ACTION BUTTONS -->
+		<!-- ACTIONS -->
 		<div class="actions">
-			<button class="new-btn" @click="goToNewWorkflow">+ New Workflow</button>
-			<button class="refresh-btn" @click="loadWorkflows">Refresh</button>
+			<button class="primary" @click="goToNewWorkflow">+ New Workflow</button>
+			<button class="secondary" @click="loadWorkflows">Refresh</button>
 		</div>
 
-		<!-- WORKFLOWS LIST -->
-		<div class="workflow-list">
-			<div v-if="loading" class="loading-text">Loading workflows...</div>
-
-			<div v-else-if="workflows.length === 0" class="empty-state">
-				No workflows found. Create your first workflow!
-			</div>
+		<!-- LIST -->
+		<div class="list">
+			<div v-if="loading" class="state">Loading workflows…</div>
+			<div v-else-if="!workflows.length" class="state">No workflows found</div>
 
 			<div
 				v-else
 				v-for="wf in workflows"
 				:key="wf.id"
-				class="workflow-card"
+				class="workflow"
 				@click="router.push(`/workflow/${wf.id}`)"
 			>
 				<h3>{{ wf.name || 'Untitled Workflow' }}</h3>
-				<p>Last updated: {{ wf.updatedAt || 'N/A' }} · Created: {{ wf.createdAt || 'N/A' }}</p>
+				<p>Last updated: {{ wf.updatedAt }} · Created: {{ wf.createdAt }}</p>
 			</div>
 		</div>
 	</div>
 </template>
 
 <style scoped>
-.dashboard-page {
-	padding: 30px 40px;
+.dashboard {
+	padding: 24px;
+	background: var(--color--background);
 }
 
-/* HEADER */
 .header {
 	display: flex;
 	align-items: center;
-	gap: 14px;
-	margin-bottom: 30px;
+	gap: 12px;
+	margin-bottom: 24px;
 }
 
 .logo {
-	height: 40px;
 	width: 40px;
+	height: 40px;
 }
 
-.title-block h1 {
-	margin: 0;
+h1 {
 	font-size: 24px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color--text--shade-1);
 }
 
-/* METRICS */
 .metrics {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.metric-card {
+	background: var(--color--background--light-3);
+	border: 1px solid var(--border-color--light);
+	border-radius: var(--radius--lg);
+	padding: 16px;
 	display: flex;
-	gap: 20px;
-	margin-bottom: 30px;
+	flex-direction: column;
+	gap: 4px;
 }
 
-.metric-box {
-	width: 200px;
-	background: #fff;
-	padding: 20px;
-	border-radius: 10px;
-	border: 1px solid #ddd;
-}
-
-.label {
-	display: block;
+.metric-label {
 	font-size: 14px;
-	margin-bottom: 5px;
-	color: #555;
+	color: var(--color--text--tint-1);
 }
 
-.value {
+.metric-value {
 	font-size: 24px;
-	font-weight: bold;
+	font-weight: 700;
+	color: var(--color--text--shade-1);
 }
 
-.green {
-	color: green;
-}
-.red {
-	color: red;
+.metric-sub {
+	font-size: 12px;
+	color: var(--color--text--tint-1);
 }
 
-/* TABS */
+.metric-card.success .metric-value {
+	color: var(--color--success);
+}
+
+.metric-card.danger .metric-value {
+	color: var(--color--danger);
+}
+
 .tabs {
 	display: flex;
-	gap: 15px;
-	margin-bottom: 20px;
+	gap: 16px;
+	margin-bottom: 16px;
 }
 
 .tabs button {
 	background: none;
 	border: none;
-	padding: 10px 15px;
-	cursor: pointer;
 	font-weight: 600;
+	color: var(--color--text--tint-1);
+	padding-bottom: 6px;
+	cursor: pointer;
 }
 
 .tabs .active {
-	border-bottom: 3px solid #0055ff;
+	color: var(--color--primary);
+	border-bottom: 2px solid var(--color--primary);
 }
 
-/* ACTION BUTTONS */
+/* ACTIONS */
 .actions {
 	display: flex;
-	gap: 15px;
-	margin-bottom: 20px;
+	gap: 12px;
+	margin-bottom: 24px;
 }
 
-.new-btn {
-	background: #0066ff;
-	color: #fff;
+.primary {
+	background: var(--button--color--background--primary);
+	color: var(--button--color--text--primary);
+	border-radius: var(--radius);
 	padding: 8px 16px;
-	border-radius: 6px;
-	cursor: pointer;
 	border: none;
 }
 
-.refresh-btn {
-	padding: 8px 14px;
-	border-radius: 6px;
-	border: 1px solid #aaa;
+.secondary {
+	background: var(--button--color--background--secondary);
+	color: var(--button--color--text--secondary);
+	border-radius: var(--radius);
+	padding: 8px 16px;
+	border: var(--border);
+}
+
+/* LIST */
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.workflow {
+	padding: 16px;
+	border-radius: var(--radius--lg);
+	border: 1px solid var(--border-color--light);
+	background: var(--color--background--light-3);
 	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	margin-left: 10px;
 }
 
-/* WORKFLOW LIST */
-.workflow-list {
-	margin-top: 20px;
+.publish-btn:disabled {
+	border-color: #ccc;
+	background: #f3f4f6;
+	color: #999;
+	cursor: default;
 }
 
-.workflow-card {
-	padding: 15px;
-	border: 1px solid #ddd;
-	margin-bottom: 12px;
-	border-radius: 6px;
-	background: white;
-	cursor: pointer;
+.workflow:hover {
+	background: var(--color--background--light-2);
 }
 
-.workflow-card:hover {
-	background: #f7faff;
+.workflow h3 {
+	margin: 0 0 4px;
+	font-size: 16px;
+	color: var(--color--text--shade-1);
 }
 
-/* Loading + Empty States */
-.loading-text,
-.empty-state {
+.workflow p {
+	margin: 0;
+	font-size: 12px;
+	color: var(--color--text--tint-1);
+}
+
+.state {
 	font-size: 14px;
-	color: #666;
-	padding: 20px;
+	color: var(--color--text--tint-1);
+	padding: 24px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+	.metrics {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media (max-width: 640px) {
+	.metrics {
+		grid-template-columns: 1fr;
+	}
 }
 </style>

@@ -141,7 +141,7 @@ const handleSubmit = async () => {
 <style scoped>
 .auth-page {
 	min-height: 100vh;
-	background: #ffffff;
+	background: var(--color-background-base);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -163,25 +163,25 @@ const handleSubmit = async () => {
 .auth-brand-text {
 	font-size: 18px;
 	font-weight: 600;
-	color: #3f82ff; /* blue */
+	color: var(--color-primary);
 }
 
 /* card */
 .auth-card {
 	width: 100%;
 	max-width: 380px;
-	background: #ffffff;
+	background: var(--color-background-base);
 	border-radius: 16px;
 	padding: 28px 32px 24px;
-	border: 1px solid #e5e7eb;
-	box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+	border: 1px solid var(--color-border-base);
+	box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
 	text-align: center;
 }
 
 .auth-card-title {
 	font-size: 20px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color-text-primary);
 	margin-bottom: 24px;
 }
 
@@ -201,27 +201,28 @@ const handleSubmit = async () => {
 
 .field-label {
 	font-size: 13px;
-	color: #374151;
+	color: var(--color-text-secondary);
 }
 
 .field-input {
 	padding: 9px 11px;
 	border-radius: 8px;
-	border: 1px solid #d1d5db;
+	border: 1px solid var(--color-border-base);
 	font-size: 14px;
-	background: #e5f0ff; /* light blue like screenshot */
+	background: var(--color-background-secondary);
+	color: var(--color-text-primary);
 }
 
 .field-input:focus {
 	outline: none;
-	border-color: #2563eb;
-	box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
 }
 
 /* error text */
 .error-text {
 	font-size: 13px;
-	color: #b91c1c;
+	color: var(--color-danger);
 	text-align: center;
 }
 
@@ -232,15 +233,15 @@ const handleSubmit = async () => {
 	padding: 9px 0;
 	border-radius: 999px;
 	border: none;
-	background: #3f82ff;
-	color: #ffffff;
+	background: var(--color-primary);
+	color: var(--color-background-base);
 	font-size: 14px;
 	font-weight: 500;
 	cursor: pointer;
 }
 
 .primary-button:hover {
-	background: #3f82ff;
+	filter: brightness(0.95);
 }
 
 /* links / footer */
@@ -249,24 +250,24 @@ const handleSubmit = async () => {
 	background: transparent;
 	border: none;
 	font-size: 13px;
-	color: #59a4ff;
+	color: var(--color-primary);
 	cursor: pointer;
 }
 
 .divider {
 	margin: 18px 0 12px;
-	border-top: 1px solid #e5e7eb;
+	border-top: 1px solid var(--color-border-base);
 }
 
 .toggle-text {
 	font-size: 13px;
-	color: #4b5563;
+	color: var(--color-text-secondary);
 }
 
 .link-inline {
 	background: transparent;
 	border: none;
-	color: #3068e0;
+	color: var(--color-primary);
 	font-weight: 500;
 	margin-left: 4px;
 	cursor: pointer;

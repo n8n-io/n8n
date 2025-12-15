@@ -1,83 +1,78 @@
+<script setup lang="ts">
+import { useRouter } from 'vue-router';
+import { computed } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useTemplatesStore } from '../stores/templates.store';
+
+const router = useRouter();
+const workflowsStore = useWorkflowsStore();
+const templatesStore = useTemplatesStore();
+
+// ✅ Read from n8n store
+const loading = computed(() => workflowsStore.isLoading);
+const allWorkflows = computed(() => workflowsStore.allWorkflows);
+
+// Filter to published templates
+const templates = computed(() => {
+	const templateIds = templatesStore.getTemplateIds();
+	return allWorkflows.value.filter((wf) => templateIds.includes(wf.id));
+});
+
+function useTemplate(id: string) {
+	router.push(`/workflow/${id}`);
+}
+</script>
+
 <template>
 	<div class="templates-page">
-		<!-- Page header -->
 		<header class="header">
 			<h1 class="title">Workflow Templates</h1>
 			<p class="subtitle">Published workflow templates available to everyone.</p>
 		</header>
 
-		<!-- Templates grid -->
-		<section class="grid">
+		<section v-if="loading">
+			<p class="subtitle">Loading...</p>
+		</section>
+
+		<section v-else-if="templates.length === 0">
+			<p class="subtitle">
+				No templates published yet. Click "Publish" on a workflow in My Workflows to add it here.
+			</p>
+		</section>
+
+		<section v-else class="grid">
 			<article v-for="template in templates" :key="template.id" class="card">
 				<div class="card-icon">
 					<span class="icon-square" />
 				</div>
 
 				<div class="card-body">
-					<h2 class="card-title">{{ template.name }}</h2>
-					<p class="card-description">
-						{{ template.description }}
+					<h2 class="card-title">{{ template.name || 'Untitled workflow' }}</h2>
+					<p class="card-description">No description</p>
+					<p class="card-meta">
+						Last updated
+						{{ new Date(template.updatedAt || template.createdAt).toLocaleString() }}
 					</p>
-					<p class="card-meta">Published {{ template.publishedAgo }}</p>
 				</div>
 
 				<div class="card-footer">
-					<button type="button" class="btn-primary">Use Template</button>
+					<button type="button" class="btn-primary" @click="useTemplate(template.id)">
+						Use Template
+					</button>
 				</div>
 			</article>
 		</section>
 	</div>
 </template>
 
-<script setup lang="ts">
-const templates = [
-	{
-		id: 1,
-		name: 'New Workflow12324',
-		description: 'No description',
-		publishedAgo: 'about 1 hour ago',
-	},
-	{
-		id: 2,
-		name: 'New Workflow 13',
-		description: 'No description',
-		publishedAgo: '8 days ago',
-	},
-	{
-		id: 3,
-		name: 'New Workflow12345678',
-		description: 'No description',
-		publishedAgo: '8 days ago',
-	},
-	{
-		id: 4,
-		name: 'Sash',
-		description: 'No description',
-		publishedAgo: '11 days ago',
-	},
-	{
-		id: 5,
-		name: 'Sash',
-		description: 'No description',
-		publishedAgo: '11 days ago',
-	},
-	{
-		id: 6,
-		name: 'My workflow 222',
-		description: 'No description',
-		publishedAgo: '11 days ago',
-	},
-];
-</script>
-
 <style scoped>
 .templates-page {
 	padding: 32px 40px;
 	max-width: 1120px;
 	margin: 0 auto;
+	background: var(--color-background-base);
 }
 
-/* header */
 .header {
 	margin-bottom: 24px;
 }
@@ -85,32 +80,30 @@ const templates = [
 .title {
 	font-size: 26px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color-text-primary);
 	margin-bottom: 4px;
 }
 
 .subtitle {
 	font-size: 14px;
-	color: #6b7280;
+	color: var(--color-text-secondary);
 }
 
-/* grid */
 .grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 20px 24px;
 }
 
-/* card */
 .card {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
 	padding: 20px 20px 16px;
 	border-radius: 12px;
-	border: 1px solid #e5e7eb;
-	background-color: #ffffff;
-	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+	border: 1px solid var(--color-border-base);
+	background-color: var(--color-background-base);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
 .card-icon {
@@ -122,7 +115,7 @@ const templates = [
 	width: 36px;
 	height: 36px;
 	border-radius: 10px;
-	background: #e5f0ff;
+	background: var(--color-background-secondary);
 	position: relative;
 }
 
@@ -133,7 +126,7 @@ const templates = [
 	width: 12px;
 	height: 12px;
 	border-radius: 4px;
-	border: 2px solid #2563eb;
+	border: 2px solid var(--color-primary);
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
@@ -143,7 +136,6 @@ const templates = [
 	transform: translate(-10px, -50%);
 }
 
-/* content */
 .card-body {
 	margin-bottom: 16px;
 }
@@ -151,22 +143,21 @@ const templates = [
 .card-title {
 	font-size: 15px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--color-text-primary);
 	margin-bottom: 2px;
 }
 
 .card-description {
 	font-size: 13px;
-	color: #6b7280;
+	color: var(--color-text-secondary);
 	margin-bottom: 4px;
 }
 
 .card-meta {
 	font-size: 11px;
-	color: #9ca3af;
+	color: var(--color-text-secondary);
 }
 
-/* footer */
 .card-footer {
 	display: flex;
 	justify-content: flex-start;
@@ -176,18 +167,18 @@ const templates = [
 	padding: 8px 18px;
 	border-radius: 999px;
 	border: none;
-	background-color: #0060dc;
-	color: #ffffff;
+	background-color: var(--color-primary);
+	color: var(--color-background-base);
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
 }
 
 .btn-primary:hover {
-	background-color: #0053bf;
+	background-color: var(--color-primary);
+	filter: brightness(0.95);
 }
 
-/* responsive */
 @media (max-width: 1100px) {
 	.grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
