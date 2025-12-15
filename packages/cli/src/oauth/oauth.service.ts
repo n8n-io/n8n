@@ -1,12 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { Credentials } from 'n8n-core';
+import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
@@ -38,22 +37,20 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
-
-type CsrfStateRequired = {
-	/** Random CSRF token, used to verify the signature of the CSRF state */
-	token: string;
-	/** Creation timestamp of the CSRF state. Used for expiration.  */
-	createdAt: number;
-};
-
-type CreateCsrfStateData = {
-	cid: string;
-	[key: string]: unknown;
-};
-
-type CsrfState = CsrfStateRequired & CreateCsrfStateData;
-
-const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
+import type { AxiosRequestConfig } from 'axios';
+import { createHmac } from 'crypto';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
+import {
+	algorithmMap,
+	MAX_CSRF_AGE,
+	OauthVersion,
+	type CreateCsrfStateData,
+	type CsrfState,
+	type OAuth1CredentialData,
+} from './types';
+import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -62,10 +59,7 @@ export function shouldSkipAuthOnOAuthCallback() {
 
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
-export const enum OauthVersion {
-	V1 = 1,
-	V2 = 2,
-}
+export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
 
 @Service()
 export class OauthService {
@@ -77,6 +71,8 @@ export class OauthService {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly cipher: Cipher,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
@@ -84,7 +80,9 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredential(req: OAuthRequest.OAuth2Credential.Auth): Promise<CredentialsEntity> {
+	async getCredential(
+		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
+	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
 
 		if (!credentialId) {
@@ -177,7 +175,9 @@ export class OauthService {
 	}
 
 	/** Get a credential without user check */
-	protected async getCredentialWithoutUser(credentialId: string): Promise<ICredentialsDb | null> {
+	protected async getCredentialWithoutUser(
+		credentialId: string,
+	): Promise<CredentialsEntity | null> {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
@@ -189,17 +189,24 @@ export class OauthService {
 			createdAt: Date.now(),
 			...data,
 		};
-		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
+		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
+		return [csrfSecret, encryptedState];
 	}
 
 	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
 		const errorMessage = 'Invalid state format';
-		const decoded = jsonParse<CsrfState>(Buffer.from(encodedState, 'base64').toString(), {
+		const decryptedState = this.cipher.decrypt(encodedState);
+		const decoded = jsonParse<CsrfState>(decryptedState, {
 			errorMessage,
 		});
 
 		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
+		}
+
+		// user validation not required for dynamic credentials
+		if (decoded.origin === 'dynamic-credential') {
+			return decoded;
 		}
 
 		if (decoded.userId !== req.user?.id) {
@@ -224,7 +231,7 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
+	): Promise<[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState]> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -248,7 +255,7 @@ export class OauthService {
 			throw new UnexpectedError('The OAuth callback state is invalid!');
 		}
 
-		return [credential, decryptedDataOriginal, oauthCredentials];
+		return [credential, decryptedDataOriginal, oauthCredentials, state];
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
@@ -281,9 +288,11 @@ export class OauthService {
 
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
-		oauthCredentials: OAuth2CredentialData,
 		csrfData: CreateCsrfStateData,
 	): Promise<string> {
+		const oauthCredentials: OAuth2CredentialData =
+			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
@@ -397,6 +406,84 @@ export class OauthService {
 		return returnUri.toString();
 	}
 
+	async generateAOauth1AuthUri(
+		credential: CredentialsEntity,
+		csrfData: CreateCsrfStateData,
+	): Promise<string> {
+		const oauthCredentials: OAuth1CredentialData =
+			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+
+		const [csrfSecret, state] = this.createCsrfState(csrfData);
+
+		const signatureMethod = oauthCredentials.signatureMethod;
+
+		const oAuthOptions: clientOAuth1.Options = {
+			consumer: {
+				key: oauthCredentials.consumerKey,
+				secret: oauthCredentials.consumerSecret,
+			},
+			signature_method: signatureMethod,
+
+			hash_function(base, key) {
+				const algorithm = algorithmMap[signatureMethod] ?? 'sha1';
+				return createHmac(algorithm, key).update(base).digest('base64');
+			},
+		};
+
+		const oauthRequestData = {
+			oauth_callback: `${this.getBaseUrl(OauthVersion.V1)}/callback?state=${state}`,
+		};
+
+		await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
+
+		const oauth = new clientOAuth1(oAuthOptions);
+
+		const options: RequestOptions = {
+			method: 'POST',
+			url: oauthCredentials.requestTokenUrl,
+			data: oauthRequestData,
+		};
+
+		const data = oauth.toHeader(oauth.authorize(options));
+
+		const axiosConfig: AxiosRequestConfig = {
+			method: options.method,
+			url: options.url,
+			headers: {
+				...data,
+			},
+		};
+
+		const { data: response } = await axios.request(axiosConfig);
+
+		// Response comes as x-www-form-urlencoded string so convert it to JSON
+		if (typeof response !== 'string') {
+			throw new BadRequestError(
+				'Expected string response from OAuth1 request token endpoint, but received invalid response type',
+			);
+		}
+
+		const paramsParser = new URLSearchParams(response);
+		const responseJson = Object.fromEntries(paramsParser.entries());
+
+		if (!responseJson.oauth_token) {
+			throw new BadRequestError(
+				'OAuth1 request token response is missing required oauth_token parameter',
+			);
+		}
+
+		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+
+		await this.encryptAndSaveData(credential, { csrfSecret }, []);
+
+		this.logger.debug('OAuth1 authorization url created for credential', {
+			csrfData,
+			credentialId: credential.id,
+		});
+
+		return returnUri;
+	}
+
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
@@ -480,5 +567,32 @@ export class OauthService {
 			grant_types: ['client_credentials'],
 			token_endpoint_auth_method: tokenEndpointAuthMethod,
 		};
+	}
+
+	async saveDynamicCredential(
+		credential: CredentialsEntity,
+		oauthTokenData: ICredentialDataDecryptedObject,
+		authHeader: string,
+		credentialResolverId: string,
+	) {
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(oauthTokenData, ['csrfSecret']);
+
+		const credentialStoreMetadata: CredentialStoreMetadata = {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			isResolvable: credential.isResolvable,
+			resolverId: credentialResolverId,
+		};
+
+		await this.dynamicCredentialsProxy.storeIfNeeded(
+			credentialStoreMetadata,
+			oauthTokenData,
+			//  todo parse this
+			{ version: 1, identity: authHeader },
+			credentials.getData(),
+			{ credentialResolverId },
+		);
 	}
 }

@@ -19,6 +19,7 @@ const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
+	validation: z.literal('oauth2-introspection'),
 	clientId: z.string(),
 	clientSecret: z.string(),
 });
@@ -246,7 +247,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		});
 
 		if (response.status !== 200) {
-			this.logger.debug('Token introspection failed', {
+			this.logger.error('Token introspection failed', {
 				status: response.status,
 				data: response.data,
 			});
