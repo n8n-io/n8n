@@ -41,11 +41,9 @@ test.describe('Node Creator Special Nodes', () => {
 		await n8n.canvas.clickNodePlusEndpoint(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 
 		await n8n.canvas.nodeCreator.selectItem('Human review');
-		await n8n.page.waitForTimeout(2000);
 		await n8n.canvas.nodeCreator.selectItem('Slack');
-		await n8n.page.waitForTimeout(2000);
+		await n8n.page.getByTestId('ndv').waitFor({ state: 'visible', timeout: 1000 });
 		await n8n.ndv.setupHelper.setParameter('operation', 'Send and Wait for Response');
-		await n8n.page.waitForTimeout(2000);
 		await n8n.ndv.close();
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 	});
