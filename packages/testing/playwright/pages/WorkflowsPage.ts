@@ -95,6 +95,11 @@ export class WorkflowsPage extends BasePage {
 		await this.getArchiveMenuItem().click();
 	}
 
+	async unpublishWorkflow(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.page.getByRole('menuitem', { name: 'Unpublish' }).click();
+	}
+
 	getFiltersButton() {
 		return this.page.getByTestId('resources-list-filters-trigger');
 	}
