@@ -66,6 +66,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 			},
 			{
+				id: 'settings-credential-resolvers',
+				icon: 'key-round',
+				label: i18n.baseText('credentialResolver.view.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.RESOLVERS),
+				route: { to: { name: VIEWS.RESOLVERS } },
+			},
+			{
 				id: 'settings-source-control',
 				icon: 'git-branch',
 				label: i18n.baseText('settings.sourceControl.title'),
