@@ -1,4 +1,4 @@
-import type { ChatHubLLMProvider } from '@n8n/api-types';
+import type { ChatHubProvider } from '@n8n/api-types';
 
 // Route and view identifiers
 export const CHAT_VIEW = 'chat';
@@ -9,7 +9,7 @@ export const CHAT_SETTINGS_VIEW = 'chat-settings';
 
 export const CHAT_STORE = 'chatStore';
 
-export const providerDisplayNames: Record<ChatHubLLMProvider, string> = {
+export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',
 	anthropic: 'Anthropic',
 	google: 'Google',
@@ -24,6 +24,8 @@ export const providerDisplayNames: Record<ChatHubLLMProvider, string> = {
 	deepSeek: 'DeepSeek',
 	cohere: 'Cohere',
 	mistralCloud: 'Mistral Cloud',
+	n8n: 'n8n',
+	'custom-agent': 'Custom Agent',
 };
 
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
