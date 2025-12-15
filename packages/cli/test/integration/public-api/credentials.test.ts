@@ -88,6 +88,75 @@ describe('POST /credentials', () => {
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
 	});
+
+	test('should create credential with isResolvable set to true', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: true,
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(true);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should create credential with isResolvable set to false', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: false,
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(false);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should default isResolvable to false when not provided', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			// isResolvable not provided
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(false);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(false);
+	});
 });
 
 describe('DELETE /credentials/:id', () => {
