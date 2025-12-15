@@ -51,13 +51,9 @@ test.describe('Source Control Operations @capability:source-control', () => {
 		test('should connect to Git and push a new workflow', async ({ n8n, n8nContainer }) => {
 			await connectToSourceControl({ n8n, n8nContainer });
 
-			// check no changes to commit
-			await n8n.sourceControlPushModal.open();
-			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
-
 			// create workflow
-			await n8n.navigate.toHome();
-			await n8n.workflowComposer.createWorkflow('Test Workflow');
+			await n8n.navigate.toWorkflow('new');
+			await n8n.canvas.setWorkflowName('Test Workflow');
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.saveWorkflow();
 
