@@ -22,15 +22,21 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs-blacksmith
-        with:
-          build-command: pnpm turbo build:playwright
+        env:
+          INCLUDE_TEST_CONTROLLER: 'true'
 
-      - name: Build with Coverage
-        run: pnpm --filter n8n-editor-ui build:coverage
+      - name: Build Docker Image with Coverage
+        run: pnpm build:docker:coverage
+        env:
+          INCLUDE_TEST_CONTROLLER: 'true'
 
-      - name: Run Coverage Tests
+      - name: Install Browsers
+        run: pnpm turbo install-browsers:ci
+
+      - name: Run Container Coverage Tests
+        id: coverage-tests
         run: |
-          pnpm --filter n8n-playwright test:local \
+          pnpm --filter n8n-playwright test:container:standard \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           BUILD_WITH_COVERAGE: 'true'
@@ -40,11 +46,23 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Generate Coverage Report
+        if: always() && steps.coverage-tests.outcome != 'skipped'
         run: pnpm --filter n8n-playwright coverage:report
 
-      - name: Upload Coverage Report
+      - name: Upload Coverage Report Artifact
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-report
           path: packages/testing/playwright/coverage/
           retention-days: 14
+
+      - name: Upload E2E Coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/testing/playwright/coverage/lcov.info
+          flags: frontend-e2e
+          name: playwright-e2e
+          fail_ci_if_error: false

@@ -51,6 +51,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
+			'execution-cancelled': (event) => this.executionCancelled(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -462,6 +463,23 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.started-during-bootup',
 			payload: { executionId },
+		});
+	}
+
+	private executionCancelled({
+		executionId,
+		workflowId,
+		workflowName,
+		reason,
+	}: RelayEventMap['execution-cancelled']) {
+		void this.eventBus.sendWorkflowEvent({
+			eventName: 'n8n.workflow.cancelled',
+			payload: {
+				executionId,
+				workflowId,
+				workflowName,
+				reason,
+			},
 		});
 	}
 
