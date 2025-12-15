@@ -28,6 +28,7 @@
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
     "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
     "eval:categorize": "tsx scripts/categorize-prompts.ts",
+    "workflow:mermaid": "tsx scripts/workflow-to-mermaid.ts",
     "eval:pairwise": "USE_PAIRWISE_EVAL=true tsx evaluations",
     "python:check": "cd evaluations/programmatic/python && just check",
     "python:test": "cd evaluations/programmatic/python && just test",
