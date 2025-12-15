@@ -41,6 +41,8 @@ on:
     secrets:
       CURRENTS_RECORD_KEY:
         required: false
+      CURRENTS_API_KEY:
+        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_URL:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_USER:
@@ -53,7 +55,7 @@ on:
         required: false
 
 env:
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+  PLAYWRIGHT_BROWSERS_PATH: ms-playwright-cache
   NODE_OPTIONS: --max-old-space-size=3072
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
@@ -69,7 +71,12 @@ jobs:
       fail-fast: false
       matrix:
         shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7, 8]') }}
-    name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
+    name: Test (Machine ${{ matrix.shard }})
+    env:
+      CURRENTS_PROJECT_ID: I0yzoc
+      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+      CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -87,8 +94,15 @@ jobs:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
       - name: Install Browsers
-        if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
+
+      - name: Playwright Last Failed action
+        id: last-failed-action
+        if: ${{ env.CURRENTS_API_KEY != '' }}
+        uses: currents-dev/playwright-last-failed@v1
+        with:
+          or8n: true
+          pw-output-dir: packages/testing/playwright/test-results
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
@@ -104,12 +118,16 @@ jobs:
 
       - name: Run Tests
         run: |
-          ${{ inputs.test-command }} \
-            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
-            --workers=${{ env.PLAYWRIGHT_WORKERS }}
+          if echo "${{ inputs.test-command }}" | grep -q "pwc-p"; then
+            COMMAND="${{ inputs.test-command }} ${{ steps.last-failed-action.outputs.extra-pw-flags }}"
+            echo "Running command: $COMMAND"
+            $COMMAND
+          else
+            ${{ inputs.test-command }} --shard=${{ matrix.shard }}/${{ strategy.job-total }} --workers=${{ env.PLAYWRIGHT_WORKERS }}
+          fi
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          PLAYWRIGHT_WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
