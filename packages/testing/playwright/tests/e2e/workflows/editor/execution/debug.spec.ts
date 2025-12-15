@@ -29,7 +29,7 @@ test.describe('Debug mode', () => {
 		await n8n.canvas.addNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', url);
 		await n8n.ndv.close();
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 	}
 
@@ -55,7 +55,7 @@ test.describe('Debug mode', () => {
 		await n8n.canvas.openNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', URLS.SUCCESS);
 		await n8n.ndv.close();
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL);
 		expect(n8n.page.url()).not.toContain('/debug');

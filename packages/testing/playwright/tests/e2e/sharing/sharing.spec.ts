@@ -42,7 +42,7 @@ test.describe('@isolated', () => {
 			await n8n.canvas.openShareModal();
 			await n8n.workflowSharingModal.addUser(MEMBER_1_EMAIL);
 			await n8n.workflowSharingModal.save();
-			await n8n.canvas.saveWorkflow();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.navigate.toWorkflow('new');
 			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Workflow W2');
@@ -81,7 +81,6 @@ test.describe('@isolated', () => {
 			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
-			await n8n.canvas.saveWorkflow();
 
 			await n8n.canvas.openNode('Append a block');
 
@@ -107,7 +106,6 @@ test.describe('@isolated', () => {
 			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
-			await n8n.canvas.saveWorkflow();
 
 			await n8n.canvas.openNode('Append a block');
 

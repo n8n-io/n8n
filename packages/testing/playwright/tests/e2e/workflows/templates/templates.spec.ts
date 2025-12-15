@@ -231,10 +231,9 @@ test.describe('Workflow templates', () => {
 		test('should save template id with the workflow', async ({ n8n }) => {
 			await n8n.templatesComposer.importFirstTemplate();
 
-			const saveRequest = await n8n.workflowComposer.saveWorkflowAndWaitForRequest();
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText(NOTIFICATIONS.SAVED);
+			const saveResponse = await n8n.canvas.waitForSaveWorkflowCompleted();
 
-			const requestBody = saveRequest.postDataJSON();
+			const requestBody = saveResponse.request().postDataJSON();
 			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
 		});
 

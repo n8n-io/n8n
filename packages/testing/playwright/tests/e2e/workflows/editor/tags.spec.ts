@@ -31,8 +31,6 @@ test.describe('Workflow tags - Tag creation', () => {
 		// Pills should be rendered individually, not collapsed as "+3"
 		const tagsContainer = n8n.page.getByTestId('workflow-tags-container');
 		await expect(tagsContainer).not.toHaveText(/\+\d+/);
-
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 	});
 
 	test('should create tags via modal without attaching them', async ({ n8n }) => {
@@ -120,7 +118,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
 	});
 
@@ -147,7 +144,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
 	});
 
@@ -169,7 +165,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvas.clickWorkflowTagsArea();
 

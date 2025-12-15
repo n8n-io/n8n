@@ -55,7 +55,7 @@ test.describe('Routing', () => {
 		const ndvUrl = n8n.page.url();
 
 		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.ndv.getContainer()).toBeHidden();
 
@@ -73,7 +73,7 @@ test.describe('Routing', () => {
 		const ndvUrl = n8n.page.url();
 
 		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.ndv.getContainer()).toBeHidden();
 
