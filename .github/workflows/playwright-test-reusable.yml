@@ -62,6 +62,7 @@ env:
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
   N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+  N8N_SKIP_LICENSES: 'true'
 
 jobs:
   test:
