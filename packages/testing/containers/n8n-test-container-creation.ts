@@ -649,7 +649,7 @@ async function createN8NInstances({
 
 	// Create worker instances in parallel - workers don't run migrations
 	log(`Starting ${workerCount} worker instance(s) in parallel...`);
-	const workerPromises = Array.from({ length: workerCount }, (_, i) => {
+	const workerPromises = Array.from({ length: workerCount }, async (_, i) => {
 		const instanceNumber = i + 1;
 		const name = `${uniqueProjectName}-n8n-worker-${instanceNumber}`;
 		return createN8NContainer({
