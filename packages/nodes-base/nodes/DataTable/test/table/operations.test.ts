@@ -1,11 +1,10 @@
+import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 	INode,
-	CreateDataTableColumnOptions,
 } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
 
 import * as createOperation from '../../actions/table/create.operation';
 import * as deleteOperation from '../../actions/table/delete.operation';
