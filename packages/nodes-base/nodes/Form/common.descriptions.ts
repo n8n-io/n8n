@@ -57,6 +57,24 @@ export const formFields: INodeProperties = {
 			name: 'values',
 			values: [
 				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					required: true,
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
+						},
+					},
+				},
+				{
 					displayName: 'Label',
 					name: 'fieldLabel',
 					type: 'string',
@@ -177,6 +195,35 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Attributes',
+					name: 'additionalAttributes',
+					type: 'multiOptions',
+					default: [],
+					description: 'Choose which optional attributes to configure for this field',
+					displayOptions: {
+						hide: {
+							fieldType: ['html', 'hiddenField'],
+						},
+						show: {
+							'@feature': ['useAdditionalAttributes'],
+						},
+					},
+					options: [
+						{
+							name: 'Custom Field Name',
+							value: 'fieldName',
+						},
+						{
+							name: 'Placeholder',
+							value: 'placeholder',
+						},
+						{
+							name: 'Default Value',
+							value: 'defaultValue',
+						},
+					],
+				},
+				{
 					displayName: 'Placeholder',
 					name: 'placeholder',
 					description: 'Sample text to display inside the field',
@@ -185,6 +232,25 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
+						},
+						show: {
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['placeholder'],
+						},
+					},
+				},
+				{
+					displayName: 'Placeholder',
+					name: 'placeholder',
+					description: 'Sample text to display inside the field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
+						},
+						show: {
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
@@ -200,7 +266,8 @@ export const formFields: INodeProperties = {
 							fieldType: ['html'],
 						},
 						show: {
-							'@version': [{ _cnd: { gte: 2.4 } }],
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['fieldName'],
 						},
 					},
 				},
@@ -213,6 +280,21 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['text', 'number', 'email', 'textarea'],
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['defaultValue'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description: 'Default value that will be pre-filled in the form field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['text', 'number', 'email', 'textarea'],
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
@@ -229,6 +311,25 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['defaultValue'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
+					type: 'dateTime',
+					typeOptions: {
+						dateOnly: true,
+					},
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
@@ -242,6 +343,22 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown', 'radio'],
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['defaultValue'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value that will be pre-selected. Must match one of the option labels.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['dropdown', 'radio'],
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
@@ -255,6 +372,22 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['checkbox'],
+							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['defaultValue'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},

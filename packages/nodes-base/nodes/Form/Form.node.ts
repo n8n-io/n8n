@@ -269,10 +269,13 @@ export class Form extends Node {
 		group: ['input'],
 		// since trigger and node are sharing descriptions and logic we need to sync the versions
 		// and keep them aligned in both nodes
-		version: [1, 2.3, 2.4],
+		version: [1, 2.3, 2.4, 2.5],
 		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',
+		},
+		features: {
+			useAdditionalAttributes: { '@version': [{ _cnd: { gte: 2.5 } }] },
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
