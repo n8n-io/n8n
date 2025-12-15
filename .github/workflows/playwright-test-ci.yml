@@ -21,7 +21,7 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:ui
-      shards: '[1, 2, 3, 4, 5]'
+      shards: '[1, 2, 3, 4, 5, 6]'
       runner: blacksmith-4vcpu-ubuntu-2204
       workers: '2'
     secrets: inherit
