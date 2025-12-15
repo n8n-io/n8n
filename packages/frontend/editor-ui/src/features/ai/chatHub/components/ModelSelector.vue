@@ -131,6 +131,9 @@ const menu = computed(() => {
 						iconSize: 'large',
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,
+						description: agent.description
+							? truncateBeforeLast(agent.description, 200, 0)
+							: undefined,
 					};
 				}),
 			);
@@ -147,6 +150,9 @@ const menu = computed(() => {
 						iconSize: 'large',
 						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 						disabled: false,
+						description: agent.description
+							? truncateBeforeLast(agent.description, 200, 0)
+							: undefined,
 					};
 				});
 
