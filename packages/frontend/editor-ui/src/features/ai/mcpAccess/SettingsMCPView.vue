@@ -207,11 +207,7 @@ onMounted(async () => {
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<div :class="$style.headings">
 				<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-				<div
-					v-show="mcpStore.mcpAccessEnabled"
-					:class="$style.description"
-					data-test-id="mcp-settings-description"
-				>
+				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.mcp.description') }}.
 					</N8nText>
@@ -313,12 +309,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	min-height: 60px;
-
-	.description {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--4xs);
-	}
 }
 
 .tabs-header {
