@@ -34,7 +34,7 @@ export async function getFiles(
 			$select: 'id,name,file',
 		};
 		if (filter) {
-			qs.$filter = `startswith(name, '${filter}')`;
+			qs.$filter = `startswith(name, '${filter.replaceAll("'", "''")}')`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -134,7 +134,7 @@ export async function getItems(
 			$select: 'id,fields',
 		};
 		if (filter) {
-			qs.$filter = `fields/Title eq '${filter}'`;
+			qs.$filter = `fields/Title eq '${filter.replaceAll("'", "''")}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -182,7 +182,7 @@ export async function getLists(
 			$select: 'id,displayName',
 		};
 		if (filter) {
-			qs.$filter = `displayName eq '${filter}'`;
+			qs.$filter = `displayName eq '${filter.replaceAll("'", "''")}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,

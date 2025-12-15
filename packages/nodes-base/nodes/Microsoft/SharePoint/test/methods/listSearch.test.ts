@@ -88,6 +88,26 @@ describe('Microsoft SharePoint Node', () => {
 			});
 		});
 
+		it('properly escapes filter parameter', async () => {
+			const mockResponse = {
+				'@odata.nextLink':
+					'https://mydomain.sharepoint.com/_api/v2.0/sites(%27mydomain.sharepoint.com,site1%27)/items?%24skiptoken=aWQ9MjFFQkEzOUMtMkU3My00NzgwLUFBQzEtMTVDNzlDMTk4QjlB',
+				value: [],
+			};
+			mockRequestWithAuthentication.mockReturnValue(mockResponse);
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('folder');
+
+			await node.methods.listSearch.getFiles.call(loadOptionsFunctions, "fi'le'");
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
+				qs: {
+					$filter: "startswith(name, 'fi''le''')",
+				},
+			});
+		});
+
 		it('should list search files with pagination', async () => {
 			const mockResponse = {
 				value: [
@@ -278,6 +298,26 @@ describe('Microsoft SharePoint Node', () => {
 			});
 		});
 
+		it('properly escapes filter parameter', async () => {
+			const mockResponse = {
+				'@odata.nextLink':
+					'https://mydomain.sharepoint.com/_api/v2.0/sites(%27mydomain.sharepoint.com,site1%27)/listItems?%24skiptoken=aWQ9MjFFQkEzOUMtMkU3My00NzgwLUFBQzEtMTVDNzlDMTk4QjlB',
+				value: [],
+			};
+			mockRequestWithAuthentication.mockReturnValue(mockResponse);
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
+
+			await node.methods.listSearch.getItems.call(loadOptionsFunctions, "Ti'le'");
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
+				qs: {
+					$filter: "fields/Title eq 'Ti''le'''",
+				},
+			});
+		});
+
 		it('should list search items with pagination', async () => {
 			const mockResponse = {
 				value: [
@@ -359,6 +399,25 @@ describe('Microsoft SharePoint Node', () => {
 				],
 				paginationToken:
 					'https://mydomain.sharepoint.com/_api/v2.0/sites(%27mydomain.sharepoint.com,site1%27)/lists?%24skiptoken=aWQ9MjFFQkEzOUMtMkU3My00NzgwLUFBQzEtMTVDNzlDMTk4QjlB',
+			});
+		});
+
+		it('properly escapes filter parameter', async () => {
+			const mockResponse = {
+				'@odata.nextLink':
+					'https://mydomain.sharepoint.com/_api/v2.0/sites(%27mydomain.sharepoint.com,site1%27)/lists?%24skiptoken=aWQ9MjFFQkEzOUMtMkU3My00NzgwLUFBQzEtMTVDNzlDMTk4QjlB',
+				value: [],
+			};
+			mockRequestWithAuthentication.mockReturnValue(mockResponse);
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+
+			await node.methods.listSearch.getLists.call(loadOptionsFunctions, "' or '1'='1");
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
+				qs: {
+					$filter: "displayName eq ''' or ''1''=''1'",
+				},
 			});
 		});
 
