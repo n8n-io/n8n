@@ -47,6 +47,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { albertsonsRestApiRequest } from '@src/utils/albertsonsRestApiRequest';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
@@ -76,6 +77,7 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
@@ -166,7 +168,10 @@ async function onPublishButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
-	const result = await albertsonsRestApiRequest('POST', '/v1/templates/publish', {});
+	const result = await albertsonsRestApiRequest('POST', `/v1/templates/publish/${id}`, {
+		authorId: usersStore.currentUser.id,
+		authorName: usersStore.currentUser.firstName + ' ' + usersStore.currentUser.lastName,
+	});
 	if (result) {
 		toast.showMessage({
 			title: `Workflow`,
