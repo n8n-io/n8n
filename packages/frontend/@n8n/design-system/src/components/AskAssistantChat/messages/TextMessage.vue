@@ -21,6 +21,7 @@ interface Props {
 	streaming?: boolean;
 	isLastMessage?: boolean;
 	color?: string;
+	pruneTimeHours?: number;
 }
 
 const props = defineProps<Props>();
@@ -155,6 +156,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				>
 					<RestoreVersionConfirm
 						:version-id="message.revertVersion.id"
+						:prune-time-hours="pruneTimeHours"
 						@confirm="handleRestoreConfirm"
 						@cancel="handleRestoreCancel"
 						@show-version="handleShowVersion"

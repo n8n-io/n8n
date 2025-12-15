@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import { useI18n } from '../../../composables/useI18n';
 import N8nButton from '../../N8nButton';
 import N8nIcon from '../../N8nIcon';
 
 interface Props {
 	versionId: string;
+	pruneTimeHours?: number;
 }
 
 const props = defineProps<Props>();
@@ -16,6 +19,41 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+/**
+ * Format prune time for display using i18n keys
+ * -1 or undefined = no limit (use different i18n key)
+ * divisible by 24 = use day/days key
+ * otherwise = use hour/hours key
+ */
+const formattedPruneTime = computed(() => {
+	const hours = props.pruneTimeHours;
+	if (hours === undefined || hours === -1) {
+		return null;
+	}
+	if (hours > 24) {
+		const days = Math.floor(hours / 24);
+		const key =
+			days === 1
+				? 'aiAssistant.versionCard.restoreModal.day'
+				: 'aiAssistant.versionCard.restoreModal.days';
+		return t(key, { count: String(days) });
+	}
+	const key =
+		hours === 1
+			? 'aiAssistant.versionCard.restoreModal.hour'
+			: 'aiAssistant.versionCard.restoreModal.hours';
+	return t(key, { count: String(hours) });
+});
+
+const description = computed(() => {
+	if (formattedPruneTime.value === null) {
+		return t('aiAssistant.versionCard.restoreModal.descriptionNoLimit');
+	}
+	return t('aiAssistant.versionCard.restoreModal.description', {
+		pruneTime: formattedPruneTime.value,
+	});
+});
 
 function handleShowVersion() {
 	emit('showVersion', props.versionId);
@@ -33,7 +71,7 @@ function handleConfirm() {
 				{{ t('aiAssistant.versionCard.restoreModal.title') }}
 			</h3>
 			<p :class="$style.description">
-				{{ t('aiAssistant.versionCard.restoreModal.description') }}
+				{{ description }}
 			</p>
 		</div>
 		<div :class="$style.actions">

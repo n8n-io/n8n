@@ -17,6 +17,7 @@ export interface Props {
 	isLastMessage?: boolean;
 	color?: string;
 	workflowId?: string;
+	pruneTimeHours?: number;
 }
 
 const props = defineProps<Props>();
@@ -48,6 +49,7 @@ const messageComponent = computed<Component | null>(() => {
 			:is-last-message="isLastMessage"
 			:color="color"
 			:workflow-id="workflowId"
+			:prune-time-hours="pruneTimeHours"
 			@code-replace="emit('codeReplace')"
 			@code-undo="emit('codeUndo')"
 			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"

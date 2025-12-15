@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
+const workflowHistoryStore = useWorkflowHistoryStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const router = useRouter();
@@ -299,6 +301,7 @@ defineExpose({
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowsStore.workflowId"
+			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"

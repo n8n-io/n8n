@@ -915,6 +915,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function restoreToVersion(versionId: string, messageId: string): Promise<IWorkflowDb> {
 		const workflowId = workflowsStore.workflowId;
 
+		// Save current workflow if there are unsaved changes before restoring
+		if (uiStore.stateIsDirty) {
+			await workflowSaver.saveCurrentWorkflow();
+		}
+
 		// 1. Restore the workflow using existing workflow history store
 		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(
 			workflowId,
