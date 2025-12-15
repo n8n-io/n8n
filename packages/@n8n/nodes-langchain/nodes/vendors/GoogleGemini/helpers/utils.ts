@@ -277,7 +277,7 @@ export async function uploadToFileSearchStore(
 	)) as FileSearchOperation;
 
 	while (!operation.done) {
-		await new Promise((resolve) => setTimeout(resolve, 3000));
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 		operation = (await apiRequest.call(
 			this,
 			'GET',
