@@ -1,0 +1,98 @@
+name: Jest Memory Investigation
+
+on:
+  push:
+    branches:
+      - 'jest-memory-issue'
+  workflow_dispatch:
+    inputs:
+      memory_limit:
+        description: 'Jest workerIdleMemoryLimit (e.g., 1MB, 512MB, 1GB, or "none" to remove)'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - '1MB'
+          - '256MB'
+          - '512MB'
+          - '1GB'
+          - '2GB'
+          - 'none'
+      node_version:
+        description: 'Node.js version'
+        required: true
+        default: '22.x'
+        type: choice
+        options:
+          - '20.x'
+          - '22.x'
+          - '24.x'
+      test_package:
+        description: 'Package to test'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'nodes-base'
+          - 'cli'
+          - 'core'
+
+jobs:
+  unit-tests:
+    name: Unit Tests (${{ inputs.memory_limit || '1GB' }} / Node ${{ inputs.node_version || '22.x' }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs-github
+        with:
+          node-version: ${{ inputs.node_version || '22.x' }}
+
+      - name: Configure Jest memory limit
+        run: |
+          MEMORY_LIMIT="${{ inputs.memory_limit || '1GB' }}"
+
+          if [ "$MEMORY_LIMIT" = "none" ]; then
+            echo "Removing workerIdleMemoryLimit from jest.config.js"
+            sed -i "/workerIdleMemoryLimit/d" jest.config.js
+          else
+            echo "Setting workerIdleMemoryLimit to $MEMORY_LIMIT"
+            if grep -q "workerIdleMemoryLimit" jest.config.js; then
+              sed -i "s/workerIdleMemoryLimit: '[^']*'/workerIdleMemoryLimit: '$MEMORY_LIMIT'/" jest.config.js
+            else
+              sed -i "/coverageReporters:/a\\	workerIdleMemoryLimit: '$MEMORY_LIMIT'," jest.config.js
+            fi
+          fi
+
+          echo "=== jest.config.js (relevant section) ==="
+          grep -A2 -B2 "workerIdleMemoryLimit\|coverageReporters" jest.config.js || tail -20 jest.config.js
+
+      - name: Clear Jest cache
+        run: pnpm jest --clearCache
+
+      - name: Run unit tests (all)
+        if: ${{ inputs.test_package == 'all' || inputs.test_package == '' }}
+        run: pnpm test:ci:backend:unit --no-cache
+        env:
+          CI: true
+
+      - name: Run unit tests (nodes-base)
+        if: ${{ inputs.test_package == 'nodes-base' }}
+        run: pnpm --filter=n8n-nodes-base test --no-cache
+        env:
+          CI: true
+
+      - name: Run unit tests (cli)
+        if: ${{ inputs.test_package == 'cli' }}
+        run: pnpm --filter=n8n test:unit --no-cache
+        env:
+          CI: true
+
+      - name: Run unit tests (core)
+        if: ${{ inputs.test_package == 'core' }}
+        run: pnpm --filter=n8n-core test:unit --no-cache
+        env:
+          CI: true
