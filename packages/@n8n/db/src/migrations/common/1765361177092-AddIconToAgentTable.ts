@@ -3,6 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const table = {
 	agents: 'chat_hub_agents',
 	sessions: 'chat_hub_sessions',
+	messages: 'chat_hub_messages',
 } as const;
 
 export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
@@ -20,15 +21,22 @@ export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
 			await runQuery(
 				`ALTER TABLE ${escape.tableName(table.sessions)} ALTER COLUMN "agentId" TYPE uuid USING "agentId"::uuid`,
 			);
+			await runQuery(
+				`ALTER TABLE ${escape.tableName(table.messages)} ALTER COLUMN "agentId" TYPE uuid USING "agentId"::uuid`,
+			);
 		}
 
 		// Clean up orphaned agentId references before adding foreign key constraint
 		await runQuery(
 			`UPDATE ${escape.tableName(table.sessions)} SET "agentId" = NULL WHERE "agentId" IS NOT NULL AND "agentId" NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
 		);
+		await runQuery(
+			`UPDATE ${escape.tableName(table.messages)} SET "agentId" = NULL WHERE "agentId" IS NOT NULL AND "agentId" NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
+		);
 
 		// Add foreign key constraint for agentId in sessions table
 		await addForeignKey(table.sessions, 'agentId', [table.agents, 'id'], undefined, 'SET NULL');
+		await addForeignKey(table.messages, 'agentId', [table.agents, 'id'], undefined, 'SET NULL');
 	}
 
 	async down({
@@ -37,13 +45,17 @@ export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
 		isPostgres,
 		escape,
 	}: MigrationContext) {
-		// Drop foreign key constraint
+		// Drop foreign key constraints
 		await dropForeignKey(table.sessions, 'agentId', [table.agents, 'id']);
+		await dropForeignKey(table.messages, 'agentId', [table.agents, 'id']);
 
 		// For PostgreSQL: revert agentId from uuid back to varchar(36)
 		if (isPostgres) {
 			await runQuery(
 				`ALTER TABLE ${escape.tableName(table.sessions)} ALTER COLUMN "agentId" TYPE varchar(36)`,
+			);
+			await runQuery(
+				`ALTER TABLE ${escape.tableName(table.messages)} ALTER COLUMN "agentId" TYPE varchar(36)`,
 			);
 		}
 
