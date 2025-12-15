@@ -12,7 +12,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeHelpers, UnexpectedError, Workflow } from 'n8n-workflow';
+import { isNodeParameters, NodeHelpers, UnexpectedError, Workflow } from 'n8n-workflow';
 
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -67,6 +67,7 @@ export class ResolverConfigExpressionService {
 	 * Uses mock/empty values to validate expression syntax during resolver creation/update.
 	 * @throws Error if expression syntax is invalid
 	 */
+
 	async resolveForValidation(
 		config: CredentialResolverConfiguration,
 		canUseExternalSecrets = false,
@@ -82,6 +83,11 @@ export class ResolverConfigExpressionService {
 		const additionalKeys = getAdditionalKeys(additionalData, 'manual', null, {
 			secretsEnabled: canUseExternalSecrets,
 		});
+
+		// If config is not INodeParameters, return as is
+		if (!isNodeParameters(config)) {
+			return config;
+		}
 
 		return workflow.expression.getComplexParameterValue(
 			this.mockNode,
@@ -114,6 +120,11 @@ export class ResolverConfigExpressionService {
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseExternalSecrets,
 		});
+
+		// If config is not INodeParameters, return as is
+		if (!isNodeParameters(config)) {
+			return config;
+		}
 
 		return workflow.expression.getComplexParameterValue(
 			this.mockNode,

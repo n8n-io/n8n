@@ -847,7 +847,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfigWithExpression));
@@ -894,7 +894,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfigWithVars));
@@ -959,7 +959,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfig));
@@ -1020,7 +1020,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfig));
@@ -1067,7 +1067,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfigWithExpressions));
@@ -1108,7 +1108,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfigWithExpression));
@@ -1146,7 +1146,7 @@ describe('DynamicCredentialService', () => {
 
 				const mockResolver = createMockResolver();
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByName.mockReturnValue(mockResolver);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
 				mockCipher.decrypt
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfigWithExpression));

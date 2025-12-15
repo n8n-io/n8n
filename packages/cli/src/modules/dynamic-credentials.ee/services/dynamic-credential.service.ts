@@ -5,11 +5,10 @@ import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
-	INodeParameters,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { isNodeParameters, jsonParse, toCredentialContext } from 'n8n-workflow';
+import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
@@ -100,14 +99,9 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Decrypt and parse resolver configuration
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const parsedConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
-			if (!isNodeParameters(parsedConfig)) {
-				throw new CredentialResolutionError(
-					`Invalid resolver config format for resolver "${resolverEntity.name}" (${resolverEntity.id})`,
-				);
-			}
 
 			// Type assertion after validation to preserve INodeParameters type
-			let resolverConfig: INodeParameters = parsedConfig;
+			let resolverConfig: Record<string, unknown> = parsedConfig;
 
 			// Resolve expressions in resolver configuration if context is available
 			if (additionalData && mode) {

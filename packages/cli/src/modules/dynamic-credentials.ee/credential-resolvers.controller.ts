@@ -20,14 +20,13 @@ import {
 	CredentialResolverValidationError,
 } from '@n8n/decorators';
 import { Response } from 'express';
-import { isNodeParameters } from 'n8n-workflow';
+
+import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
+import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
-import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
 @RestController('/credential-resolvers')
 export class CredentialResolversController {
@@ -67,10 +66,6 @@ export class CredentialResolversController {
 		_res: Response,
 		@Body dto: CreateCredentialResolverDto,
 	): Promise<CredentialResolver> {
-		if (dto.config && !isNodeParameters(dto.config)) {
-			throw new BadRequestError('Invalid config format');
-		}
-
 		try {
 			const createdResolver = await this.service.create({
 				name: dto.name,
@@ -117,9 +112,6 @@ export class CredentialResolversController {
 		@Param('id') id: string,
 		@Body dto: UpdateCredentialResolverDto,
 	): Promise<CredentialResolver> {
-		if (dto.config && !isNodeParameters(dto.config)) {
-			throw new BadRequestError('Invalid config format');
-		}
 		try {
 			return credentialResolverSchema.parse(
 				await this.service.update(id, {
