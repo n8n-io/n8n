@@ -5,7 +5,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, assertParamIsBoolean, assertParamIsString } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	assertParamIsBoolean,
+	assertParamIsString,
+} from 'n8n-workflow';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL } from 'url';
@@ -282,14 +287,23 @@ export class Git implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+				const resolvedRepositoryPath = await this.helpers.resolvePath(repositoryPath);
+				const isFilePathBlocked = this.helpers.isFilePathBlocked(resolvedRepositoryPath);
+				if (isFilePathBlocked) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Access to the repository path is not allowed',
+					);
+				}
+
 				const options = this.getNodeParameter('options', itemIndex, {});
 
 				if (operation === 'clone') {
 					// Create repository folder if it does not exist
 					try {
-						await access(repositoryPath);
+						await access(resolvedRepositoryPath);
 					} catch (error) {
-						await mkdir(repositoryPath);
+						await mkdir(resolvedRepositoryPath);
 					}
 				}
 
@@ -302,8 +316,13 @@ export class Git implements INodeType {
 					gitConfig.push('safe.bareRepository=explicit');
 				}
 
+				const enableHooks = securityConfig.enableGitNodeHooks;
+				if (!enableHooks) {
+					gitConfig.push('core.hooksPath=/dev/null');
+				}
+
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir: repositoryPath,
+					baseDir: resolvedRepositoryPath,
 					config: gitConfig,
 				};
 

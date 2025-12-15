@@ -7,6 +7,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
+import { createRunExecutionData } from 'n8n-workflow';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -39,7 +40,7 @@ describe('useWorkflowState', () => {
 				status: 'running',
 				startedAt: new Date('2023-01-01T09:00:00Z'),
 				stoppedAt: undefined,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							node1: [
@@ -53,7 +54,7 @@ describe('useWorkflowState', () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 		});
 

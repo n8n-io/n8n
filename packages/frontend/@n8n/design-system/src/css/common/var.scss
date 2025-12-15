@@ -612,9 +612,9 @@ $button-default-background-color: $color-white; // ! Actually used by checkbox
 /// color||Color|0
 // $button-disabled-font-color: var(--button-disabled-color, var(--color--text--shade-1));
 /// color||Color|0
-// $button-disabled-background-color: var(--button--color--background--disabled, var(--color--gray--light));
+// $button-disabled-background-color: var(--button--color--background--disabled, var(--color--neutral--light));
 /// color||Color|0
-// $button-disabled-border-color: var(--button--border-color--disabled, var(--color--gray--light));
+// $button-disabled-border-color: var(--button--border-color--disabled, var(--color--neutral--light));
 
 /// color||Color|0
 $button-primary-border-color: $button-border-color; // var(--color--primary);

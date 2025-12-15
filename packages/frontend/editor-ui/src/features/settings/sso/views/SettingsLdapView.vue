@@ -51,6 +51,7 @@ type LDAPConfigForm = {
 	synchronizationInterval: string;
 	pageSize: string;
 	searchTimeout: string;
+	enforceEmailUniqueness: boolean;
 };
 
 type CellClassStyleMethodParams<T> = {
@@ -167,6 +168,7 @@ const onSubmit = async () => {
 		synchronizationInterval: +formValues.synchronizationInterval,
 		searchPageSize: +formValues.pageSize,
 		searchTimeout: +formValues.searchTimeout,
+		enforceEmailUniqueness: formValues.enforceEmailUniqueness,
 	};
 
 	let saveForm = true;
@@ -547,6 +549,17 @@ const getLdapConfig = async () => {
 					infoText: i18n.baseText('settings.ldap.form.searchTimeout.infoText'),
 				},
 				shouldDisplay: whenSyncAndLoginEnabled,
+			},
+			{
+				name: 'enforceEmailUniqueness',
+				initialValue: adConfig.value.enforceEmailUniqueness,
+				properties: {
+					type: 'toggle',
+					label: i18n.baseText('settings.ldap.form.enforceEmailUniqueness.label'),
+					tooltipText: i18n.baseText('settings.ldap.form.enforceEmailUniqueness.tooltip'),
+					required: false,
+				},
+				shouldDisplay: whenLoginEnabled,
 			},
 		];
 	} catch (error) {

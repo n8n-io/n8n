@@ -36,6 +36,7 @@ export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const OPEN_AI_CHAT_MODEL_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
 export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
 	'@n8n/n8n-nodes-langchain.openAi.assistant.message';
@@ -100,8 +101,10 @@ export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadA
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const TIME_SAVED_NODE_TYPE = 'n8n-nodes-base.timeSaved';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
+
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
@@ -113,9 +116,7 @@ export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 ];
 
 export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
-	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 ];
 
@@ -139,12 +140,6 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
-];
-
-export const SINGLE_WEBHOOK_TRIGGERS = [
-	TELEGRAM_TRIGGER_NODE_TYPE,
-	SLACK_TRIGGER_NODE_TYPE,
-	FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE,
 ];
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];

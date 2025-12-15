@@ -1,0 +1,386 @@
+{
+	"nodes": [
+		{
+			"id": "65570392-5ef2-4d08-aa8a-fee2f600999a",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "days",
+							"daysInterval": 1,
+							"triggerAtHour": 2,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "dcb6bc5b-e690-48ff-89db-11d0672356a4",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "apiUrl",
+							"value": "<__PLACEHOLDER_VALUE__External API endpoint URL__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "apiDelayMs",
+							"value": 1000,
+							"type": "number"
+						},
+						{
+							"id": "id-3",
+							"name": "batchSize",
+							"value": 50,
+							"type": "number"
+						},
+						{
+							"id": "id-4",
+							"name": "spreadsheetId",
+							"value": "<__PLACEHOLDER_VALUE__Google Sheets spreadsheet ID__>",
+							"type": "string"
+						},
+						{
+							"id": "id-5",
+							"name": "sheetName",
+							"value": "<__PLACEHOLDER_VALUE__Sheet name (e.g., Sheet1)__>",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"include": "all",
+				"options": {}
+			}
+		},
+		{
+			"id": "3d82b005-eea9-4d61-9220-ba18c210635b",
+			"name": "Read All Customer Records",
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "sheet",
+				"operation": "read",
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Workflow Configuration').first().json.spreadsheetId }}"
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $('Workflow Configuration').first().json.sheetName }}"
+				},
+				"filtersUI": {},
+				"options": {
+					"returnFirstMatch": false
+				}
+			}
+		},
+		{
+			"id": "580ba365-122b-4e97-912e-e11c76730bf9",
+			"name": "Process in Batches",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [250, 300],
+			"parameters": {
+				"batchSize": "={{ $('Workflow Configuration').first().json.batchSize }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "f3fd10ab-9c55-4eab-9745-12de79137e9e",
+			"name": "Rate Limit Delay",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [250, 300],
+			"parameters": {
+				"resume": "timeInterval",
+				"amount": "={{ $('Workflow Configuration').first().json.apiDelayMs / 1000 }}",
+				"unit": "seconds"
+			},
+			"webhookId": "4e7bb92f-53b1-4015-a71e-31698a5eaadf"
+		},
+		{
+			"id": "17b9b202-fce6-47d5-b629-2b9c710a51b0",
+			"name": "Call External API",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.3,
+			"position": [250, 300],
+			"parameters": {
+				"method": "GET",
+				"url": "={{ $('Workflow Configuration').first().json.apiUrl }}?customerId={{ $json.customerId }}",
+				"authentication": "none",
+				"options": {
+					"allowUnauthorizedCerts": true
+				}
+			}
+		},
+		{
+			"id": "480c22dc-d51e-4c3e-bd51-739c52b1b524",
+			"name": "Check API Success",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [250, 300],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose"
+					},
+					"conditions": [
+						{
+							"id": "id-1",
+							"leftValue": "={{ $json.statusCode }}",
+							"rightValue": "200",
+							"operator": {
+								"type": "number",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"looseTypeValidation": true
+			}
+		},
+		{
+			"id": "0179ba41-8d02-464c-a3a9-1e8e4d8e040f",
+			"name": "Transform API Response",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "enrichedData",
+							"value": "={{ $json.body }}",
+							"type": "object"
+						},
+						{
+							"id": "id-2",
+							"name": "lastUpdated",
+							"value": "={{ $now.toISO() }}",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "status",
+							"value": "enriched",
+							"type": "string"
+						}
+					]
+				},
+				"include": "all",
+				"options": {}
+			}
+		},
+		{
+			"id": "189164a6-a58e-4152-9e98-de2a7de43b83",
+			"name": "Update Row with Enriched Data",
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "sheet",
+				"operation": "update",
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Workflow Configuration').first().json.spreadsheetId }}"
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "name",
+					"value": "={{ $('Workflow Configuration').first().json.sheetName }}"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"row_number": "={{ $json.row_number }}"
+					},
+					"matchingColumns": ["row_number"],
+					"schema": []
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "ca1d6e76-587b-4dc9-a0b3-90a26dd9542f",
+			"name": "Log Error",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "errorMessage",
+							"value": "={{ $json.error || 'API call failed' }}",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "errorTimestamp",
+							"value": "={{ $now.toISO() }}",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "status",
+							"value": "error",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Read All Customer Records",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read All Customer Records": {
+			"main": [
+				[
+					{
+						"node": "Process in Batches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Process in Batches": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Rate Limit Delay",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Rate Limit Delay": {
+			"main": [
+				[
+					{
+						"node": "Call External API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Call External API": {
+			"main": [
+				[
+					{
+						"node": "Check API Success",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check API Success": {
+			"main": [
+				[
+					{
+						"node": "Transform API Response",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Log Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Transform API Response": {
+			"main": [
+				[
+					{
+						"node": "Update Row with Enriched Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Row with Enriched Data": {
+			"main": [
+				[
+					{
+						"node": "Process in Batches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Log Error": {
+			"main": [
+				[
+					{
+						"node": "Process in Batches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Google Sheets Customer Data Enrichment with API Integration"
+}

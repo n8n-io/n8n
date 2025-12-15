@@ -9,7 +9,6 @@ interface Props {
 	limit?: number;
 	clickable?: boolean;
 	responsive?: boolean;
-	hoverable?: boolean;
 }
 
 defineProps<Props>();
@@ -34,7 +33,6 @@ function onClick(tagId: string) {
 		:limit="limit"
 		:clickable="clickable"
 		:responsive="responsive"
-		:hoverable="hoverable"
 		@click="onClick"
 	/>
 </template>

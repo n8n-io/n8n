@@ -6,6 +6,7 @@ import {
 	DATA_TABLE_VIEW,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
 const i18n = useI18n();
 
@@ -36,6 +37,14 @@ export const DataTableModule: FrontendModuleDescription = {
 			},
 			meta: {
 				middleware: ['authenticated', 'custom'],
+			},
+			beforeEnter: (_to, _from, next) => {
+				const insightsStore = useInsightsStore();
+				if (insightsStore.isSummaryEnabled) {
+					// refresh the weekly summary when entering the datatables route
+					void insightsStore.weeklySummary.execute();
+				}
+				next();
 			},
 		},
 		{

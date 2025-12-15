@@ -286,6 +286,12 @@ const nodeSchema = asyncComputed(async () => {
 
 async function getSchemaPreview(node: INodeUi | null) {
 	if (!node) return createResultError(new Error());
+
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (nodeType?.group.includes('trigger')) {
+		return createResultError(new Error('Trigger nodes do not have schema previews'));
+	}
+
 	const {
 		type,
 		typeVersion,
@@ -557,6 +563,7 @@ const onDragEnd = (el: HTMLElement) => {
 											size="small"
 											type="secondary"
 											hide-icon
+											execution-mode="exclusive"
 										/>
 									</template>
 								</I18nT>
