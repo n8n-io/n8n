@@ -54,6 +54,7 @@
 	"generic.clear": "Clear",
 	"generic.confirm": "Confirm",
 	"generic.create": "Create",
+	"generic.start": "Start",
 	"generic.create.workflow": "Create workflow",
 	"generic.deleteWorkflowError": "Problem deleting workflow",
 	"generic.archiveWorkflowError": "Problem archiving workflow",
@@ -4187,6 +4188,7 @@
 	"commandBar.sections.executions": "Executions",
 	"commandBar.sections.evaluation": "Evaluation",
 	"commandBar.sections.demo": "Demo",
+	"commandBar.sections.chat": "Chat",
 	"commandBar.sections.general": "Navigation",
 	"commandBar.templates.import": "Import template",
 	"commandBar.templates.importWithPrefix": "Import template {templateName}",
@@ -4245,5 +4247,13 @@
 	"commandBar.projects.create": "Create project",
 	"commandBar.projects.open": "Open project",
 	"commandBar.projects.searchPlaceholder": "Search by project name...",
-	"commandBar.projects.unnamed": "(unnamed project)"
+	"commandBar.projects.unnamed": "(unnamed project)",
+	"commandBar.chat.new": "New chat",
+	"commandBar.chat.newWithModel": "New chat with...",
+	"commandBar.chat.open": "Open chat",
+	"commandBar.chat.delete": "Delete chat",
+	"commandBar.chat.deleteCurrent": "Delete current chat",
+	"commandBar.chat.deleteSession": "Delete \"{title}\"",
+	"commandBar.chat.open.searchPlaceholder": "Search by f title...",
+	"commandBar.chat.stop": "Stop message generation"
 }

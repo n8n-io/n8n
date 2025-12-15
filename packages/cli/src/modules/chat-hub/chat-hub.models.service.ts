@@ -816,13 +816,17 @@ export class ChatHubModelsService {
 		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
 	): ChatModelDto[] {
+		const seen = new Set<string>();
+
 		return rawModels.flatMap((model) => {
 			const id = String(model.value);
 			const metadata = getModelMetadata(provider, id);
 
-			if (!metadata.available) {
-				return [];
-			}
+			if (!metadata.available) return [];
+
+			// Deduplication as some providers (mistralCloud) return duplicate models
+			if (seen.has(id)) return [];
+			seen.add(id);
 
 			return [
 				{

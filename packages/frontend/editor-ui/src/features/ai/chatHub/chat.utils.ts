@@ -111,6 +111,10 @@ export function getAgentRoute(model: ChatHubConversationModel) {
 
 	return {
 		name: CHAT_VIEW,
+		query: {
+			provider: model.provider,
+			model: model.model,
+		},
 	};
 }
 
