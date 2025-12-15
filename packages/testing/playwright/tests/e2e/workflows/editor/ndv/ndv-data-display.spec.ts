@@ -90,12 +90,13 @@ test.describe('NDV Data Display', () => {
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.openNode('Set');
 
-			await expect(n8n.ndv.outputPanel.get().getByText('20 items')).toBeVisible();
-			await expect(n8n.ndv.outputPanel.get().locator('[class*="_pagination"]')).toBeVisible();
+			// 26 items with page size 25 = 2 pages, so pagination is visible
+			await expect(n8n.ndv.outputPanel.get().getByText('26 items')).toBeVisible();
+			await expect(n8n.ndv.getOutputPagination()).toBeVisible();
 
 			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
-			await expect(n8n.ndv.outputPanel.get().locator('[class*="_pagination"]')).toBeHidden();
+			await expect(n8n.ndv.getOutputPagination()).toBeHidden();
 		});
 	});
 

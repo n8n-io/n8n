@@ -3253,7 +3253,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('initializeWorkspace', () => {
-		it('should initialize the workspace', () => {
+		it('should initialize the workspace', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const workflow = createTestWorkflow({
 				nodes: [createTestNode()],
@@ -3261,13 +3261,13 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflowsStore.setNodes).toHaveBeenCalled();
 			expect(workflowsStore.setConnections).toHaveBeenCalled();
 		});
 
-		it('should initialize node data from node type description', () => {
+		it('should initialize node data from node type description', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const type = SET_NODE_TYPE;
 			const version = 1;
@@ -3292,7 +3292,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflow.nodes[0].parameters).toEqual({ value: true });
 		});
