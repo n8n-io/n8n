@@ -7,6 +7,33 @@ import pc from 'picocolors';
 
 import { mermaidStringify, type MermaidOptions } from '@/tools/utils/markdown-workflow.utils';
 import type { WorkflowMetadata } from '@/types';
+import type { SimpleWorkflow } from '@/types/workflow';
+
+/**
+ * Type guard to check if value is a direct workflow format (nodes and connections at root)
+ */
+function isDirectWorkflowFormat(value: unknown): value is SimpleWorkflow & { name?: string } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'nodes' in value &&
+		'connections' in value &&
+		Array.isArray((value as Record<string, unknown>).nodes)
+	);
+}
+
+/**
+ * Type guard to check if value is a WorkflowMetadata format (nested workflow object)
+ */
+function isWorkflowMetadataFormat(
+	value: unknown,
+): value is { workflow: SimpleWorkflow; name?: string } {
+	if (typeof value !== 'object' || value === null || !('workflow' in value)) {
+		return false;
+	}
+	const workflow = (value as Record<string, unknown>).workflow;
+	return isDirectWorkflowFormat(workflow);
+}
 
 interface CliOptions {
 	inputFile: string;
@@ -100,28 +127,31 @@ function parseArgs(args: string[]): ParseResult {
 
 function loadWorkflow(filePath: string): WorkflowMetadata {
 	const content = readFileSync(filePath, 'utf-8');
-	const json: WorkflowMetadata = jsonParse(content);
+	const json: unknown = jsonParse(content);
 
 	// Handle both formats:
 	// 1. Direct workflow format: { nodes: [...], connections: {...}, name?: string }
 	// 2. WorkflowMetadata format: { workflow: { nodes: [...], connections: {...} }, name?: string }
-	if ('nodes' in json && 'connections' in json) {
+	if (isDirectWorkflowFormat(json)) {
+		const name = json.name ?? basename(filePath, '.json');
 		return {
-			name: json.name ?? basename(filePath, '.json'),
+			name,
 			workflow: {
-				name: json.name ?? basename(filePath, '.json'),
-				nodes: json.nodes as WorkflowMetadata['workflow']['nodes'],
-				connections: json.connections as WorkflowMetadata['workflow']['connections'],
+				name,
+				nodes: json.nodes,
+				connections: json.connections,
 			},
 		};
-	} else if ('workflow' in json && typeof json.workflow === 'object' && json.workflow !== null) {
-		const workflow = json.workflow as Record<string, unknown>;
+	}
+
+	if (isWorkflowMetadataFormat(json)) {
+		const workflowName = json.workflow.name ?? basename(filePath, '.json');
 		return {
-			name: json.name ?? (workflow.name as string) ?? basename(filePath, '.json'),
+			name: json.name ?? workflowName,
 			workflow: {
-				name: (workflow.name as string) ?? basename(filePath, '.json'),
-				nodes: workflow.nodes as WorkflowMetadata['workflow']['nodes'],
-				connections: workflow.connections as WorkflowMetadata['workflow']['connections'],
+				name: workflowName,
+				nodes: json.workflow.nodes,
+				connections: json.workflow.connections,
 			},
 		};
 	}
