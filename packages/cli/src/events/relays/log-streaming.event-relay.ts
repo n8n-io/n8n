@@ -24,6 +24,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
+			'workflow-activated': (event) => this.workflowActivated(event),
+			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
@@ -109,6 +111,36 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.unarchived',
 			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.activated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowDeactivated({
+		user,
+		workflowId,
+		workflow,
+	}: RelayEventMap['workflow-deactivated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.deactivated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
 		});
 	}
 
