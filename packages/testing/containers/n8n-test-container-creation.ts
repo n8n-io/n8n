@@ -652,7 +652,7 @@ async function createN8NInstances({
 	const workerPromises = Array.from({ length: workerCount }, async (_, i) => {
 		const instanceNumber = i + 1;
 		const name = `${uniqueProjectName}-n8n-worker-${instanceNumber}`;
-		return createN8NContainer({
+		return await createN8NContainer({
 			name,
 			uniqueProjectName,
 			environment,
