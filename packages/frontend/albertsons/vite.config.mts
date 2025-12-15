@@ -14,6 +14,7 @@ import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
+import tailwindcss from '@tailwindcss/vite';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -81,6 +82,7 @@ const { RELEASE: release } = process.env;
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
 	vueDevTools(),
+	tailwindcss(),
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,
