@@ -129,9 +129,13 @@ async function getFileStreamFromUrlOrBinary(
 
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
 	if (!binaryPropertyName) {
-		throw new NodeOperationError(this.getNode(), 'Binary property name is required', {
-			description: 'Error uploading file',
-		});
+		throw new NodeOperationError(
+			this.getNode(),
+			'Binary property name or download URL is required',
+			{
+				description: 'Error uploading file',
+			},
+		);
 	}
 
 	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
