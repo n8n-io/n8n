@@ -444,9 +444,13 @@ describe('GoogleGemini -> utils', () => {
 			await expect(
 				transferFile.call(mockExecuteFunctions, 0, undefined, 'application/octet-stream'),
 			).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Binary property name is required', {
-					description: 'Error uploading file',
-				}),
+				new NodeOperationError(
+					mockExecuteFunctions.getNode(),
+					'Binary property name or download URL is required',
+					{
+						description: 'Error uploading file',
+					},
+				),
 			);
 		});
 
@@ -880,9 +884,13 @@ describe('GoogleGemini -> utils', () => {
 			await expect(
 				uploadToFileSearchStore.call(mockExecuteFunctions, 0, fileSearchStoreName, displayName),
 			).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Binary property name is required', {
-					description: 'Error uploading file',
-				}),
+				new NodeOperationError(
+					mockExecuteFunctions.getNode(),
+					'Binary property name or download URL is required',
+					{
+						description: 'Error uploading file',
+					},
+				),
 			);
 		});
 
