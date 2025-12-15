@@ -18,6 +18,8 @@ import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
+	MAX_MULTI_AGENT_STREAM_ITERATIONS,
+	MAX_SINGLE_AGENT_STREAM_ITERATIONS,
 } from '@/constants';
 import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
@@ -515,7 +517,9 @@ export class WorkflowBuilderAgent {
 		const streamConfig = {
 			...threadConfig,
 			streamMode: ['updates', 'custom'] as const,
-			recursionLimit: 50,
+			recursionLimit: payload.featureFlags?.multiAgent
+				? MAX_MULTI_AGENT_STREAM_ITERATIONS
+				: MAX_SINGLE_AGENT_STREAM_ITERATIONS,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
 			metadata: this.runMetadata,

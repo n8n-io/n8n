@@ -115,6 +115,7 @@ export class CredentialResolversController {
 		try {
 			return credentialResolverSchema.parse(
 				await this.service.update(id, {
+					type: dto.type,
 					name: dto.name,
 					config: dto.config,
 				}),

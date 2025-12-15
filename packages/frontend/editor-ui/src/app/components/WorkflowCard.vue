@@ -769,6 +769,7 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--2xs);
 }
 
 .publishIndicatorColor {

@@ -1892,6 +1892,11 @@ watch(
 );
 
 onBeforeRouteLeave(async (to, from, next) => {
+	// Close the focus panel when leaving the workflow view
+	if (focusPanelStore.focusPanelActive) {
+		focusPanelStore.closeFocusPanel();
+	}
+
 	if (isReadOnlyEnvironment.value) {
 		next();
 		return;
@@ -1998,6 +2003,7 @@ onActivated(() => {
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	toast.clearAllStickyNotifications();
 });
 
 onBeforeUnmount(() => {

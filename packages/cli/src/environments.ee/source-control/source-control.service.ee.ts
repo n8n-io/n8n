@@ -287,70 +287,96 @@ export class SourceControlService {
 			}
 		}
 
-		const filesToBePushed = new Set<string>();
-		const filesToBeDeleted = new Set<string>();
+		try {
+			const filesToBePushed = new Set<string>();
+			const filesToBeDeleted = new Set<string>();
 
-		/*
+			/*
 			Exclude tags, variables and folders JSON file from being deleted as
 			we keep track of them in a single file unlike workflows and credentials
 		*/
-		filesToPush
-			.filter((f) => ['workflow', 'credential', 'project'].includes(f.type))
-			.forEach((e) => {
-				if (e.status !== 'deleted') {
-					filesToBePushed.add(e.file);
-				} else {
-					filesToBeDeleted.add(e.file);
-				}
-			});
+			filesToPush
+				.filter((f) => ['workflow', 'credential', 'project'].includes(f.type))
+				.forEach((e) => {
+					if (e.status !== 'deleted') {
+						filesToBePushed.add(e.file);
+					} else {
+						filesToBeDeleted.add(e.file);
+					}
+				});
 
-		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+			this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
-		const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
-		await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
+			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
+			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
 
-		const credentialsToBeExported = getNonDeletedResources(filesToPush, 'credential');
-		const credentialExportResult =
-			await this.sourceControlExportService.exportCredentialsToWorkFolder(credentialsToBeExported);
-		if (credentialExportResult.missingIds && credentialExportResult.missingIds.length > 0) {
-			credentialExportResult.missingIds.forEach((id) => {
-				filesToBePushed.delete(this.sourceControlExportService.getCredentialsPath(id));
-				statusResult = statusResult.filter(
-					(e) => e.file !== this.sourceControlExportService.getCredentialsPath(id),
+			const credentialsToBeExported = getNonDeletedResources(filesToPush, 'credential');
+			const credentialExportResult =
+				await this.sourceControlExportService.exportCredentialsToWorkFolder(
+					credentialsToBeExported,
 				);
+			if (credentialExportResult.missingIds && credentialExportResult.missingIds.length > 0) {
+				credentialExportResult.missingIds.forEach((id) => {
+					filesToBePushed.delete(this.sourceControlExportService.getCredentialsPath(id));
+					statusResult = statusResult.filter(
+						(e) => e.file !== this.sourceControlExportService.getCredentialsPath(id),
+					);
+				});
+			}
+
+			const projectsToBeExported = getNonDeletedResources(filesToPush, 'project');
+			await this.sourceControlExportService.exportTeamProjectsToWorkFolder(projectsToBeExported);
+
+			// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
+			filesToBePushed.add(getTagsPath(this.gitFolder));
+			await this.sourceControlExportService.exportTagsToWorkFolder(context);
+
+			const folderChanges = filterByType(filesToPush, 'folders')[0];
+			if (folderChanges) {
+				filesToBePushed.add(folderChanges.file);
+				await this.sourceControlExportService.exportFoldersToWorkFolder(context);
+			}
+
+			const variablesChanges = filterByType(filesToPush, 'variables')[0];
+			if (variablesChanges) {
+				filesToBePushed.add(variablesChanges.file);
+				await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
+			}
+
+			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
+
+			await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
+		} catch (error) {
+			this.logger.error('Failed to export or commit changes', { error });
+			try {
+				await this.gitService.resetBranch({ hard: true, target: 'HEAD' });
+			} catch (resetError) {
+				this.logger.error('Failed to reset branch after export/commit error', {
+					error: resetError,
+				});
+			}
+			throw error;
+		}
+
+		const branchName = this.sourceControlPreferencesService.getBranchName();
+		let pushResult: PushResult | undefined;
+		try {
+			pushResult = await this.gitService.push({
+				branch: branchName,
+				force: options.force ?? false,
 			});
+
+			// Only mark files as pushed after successful push
+			statusResult.forEach((result) => (result.pushed = true));
+		} catch (error) {
+			this.logger.error('Failed to push changes', { error });
+			try {
+				await this.gitService.resetBranch({ hard: true, target: `origin/${branchName}` });
+			} catch (resetError) {
+				this.logger.error('Failed to reset branch after push error', { error: resetError });
+			}
+			throw error;
 		}
-
-		const projectsToBeExported = getNonDeletedResources(filesToPush, 'project');
-		await this.sourceControlExportService.exportTeamProjectsToWorkFolder(projectsToBeExported);
-
-		// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
-		filesToBePushed.add(getTagsPath(this.gitFolder));
-		await this.sourceControlExportService.exportTagsToWorkFolder(context);
-
-		const folderChanges = filterByType(filesToPush, 'folders')[0];
-		if (folderChanges) {
-			filesToBePushed.add(folderChanges.file);
-			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
-		}
-
-		const variablesChanges = filterByType(filesToPush, 'variables')[0];
-		if (variablesChanges) {
-			filesToBePushed.add(variablesChanges.file);
-			await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
-		}
-
-		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
-
-		// Set all results as pushed
-		statusResult.forEach((result) => (result.pushed = true));
-
-		await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
-
-		const pushResult = await this.gitService.push({
-			branch: this.sourceControlPreferencesService.getBranchName(),
-			force: options.force ?? false,
-		});
 
 		// #region Tracking Information
 		this.eventService.emit(

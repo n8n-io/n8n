@@ -97,6 +97,9 @@ const save = async (): Promise<void> => {
 				id,
 				homeProject,
 				sharedWithProjects,
+				activeVersionId,
+				activeVersion,
+				active,
 				...workflow
 			} = await workflowsStore.fetchWorkflow(props.data.id);
 			workflowToUpdate = workflow;
