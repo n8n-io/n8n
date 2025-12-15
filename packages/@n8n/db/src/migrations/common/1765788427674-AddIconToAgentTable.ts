@@ -6,7 +6,7 @@ const table = {
 	messages: 'chat_hub_messages',
 } as const;
 
-export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
+export class AddIconToAgentTable1765788427674 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column, addForeignKey },
 		runQuery,
