@@ -19,6 +19,7 @@ type WorkflowImportResult = {
 	createdWorkflow: IWorkflowBase;
 	webhookPath?: string;
 	webhookId?: string;
+	webhookMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
 };
 
 export class WorkflowApiHelper {
@@ -35,14 +36,7 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
-	/**
-	 * Creates a workflow in a project with optional folder placement (Uses Internal API not public API)
-	 * @param project - Required project ID where the workflow will be created
-	 * @param options - Optional configuration for workflow creation
-	 * @param options.folder - Optional folder ID to place the workflow in
-	 * @param options.name - Optional workflow name. If not provided, generates a unique name using nanoid
-	 * @returns Object containing the name, ID, and versionId of the created workflow
-	 */
+	/** Creates a workflow in a project with optional folder placement. */
 	async createInProject(
 		project: string,
 		options?: {
@@ -96,10 +90,7 @@ export class WorkflowApiHelper {
 		}
 	}
 
-	/**
-	 * Make workflow unique by updating name, IDs, and webhook paths if present.
-	 * This ensures no conflicts when importing workflows for testing.
-	 */
+	/** Makes workflow unique by updating name, IDs, and webhook paths. */
 	private makeWorkflowUnique(
 		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number },
@@ -121,6 +112,7 @@ export class WorkflowApiHelper {
 		// Check if workflow has webhook nodes and process them
 		let webhookId: string | undefined;
 		let webhookPath: string | undefined;
+		let webhookMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | undefined;
 
 		if (workflow.nodes) {
 			for (const node of workflow.nodes) {
@@ -129,25 +121,24 @@ export class WorkflowApiHelper {
 					webhookPath = `${webhookPrefix}-${webhookId}`;
 					node.webhookId = webhookId;
 					node.parameters.path = webhookPath;
+					// Extract HTTP method from webhook node, default to GET
+					webhookMethod = (node.parameters.httpMethod as typeof webhookMethod) ?? 'GET';
 				}
 			}
 		}
 
-		return { webhookId, webhookPath, workflow };
+		return { webhookId, webhookPath, webhookMethod, workflow };
 	}
 
-	/**
-	 * Create a workflow from an in-memory definition, making it unique for testing.
-	 * Returns detailed information about what was created.
-	 */
+	/** Creates a workflow from definition, making it unique for testing. */
 	async createWorkflowFromDefinition(
 		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const { makeUnique = true, ...rest } = options ?? {};
-		const { webhookPath, webhookId } = makeUnique
+		const { webhookPath, webhookId, webhookMethod } = makeUnique
 			? this.makeWorkflowUnique(workflow, rest)
-			: { webhookPath: undefined, webhookId: undefined };
+			: { webhookPath: undefined, webhookId: undefined, webhookMethod: undefined };
 		const createdWorkflow = await this.createWorkflow(workflow);
 		const workflowId: string = String(createdWorkflow.id);
 
@@ -156,14 +147,11 @@ export class WorkflowApiHelper {
 			createdWorkflow,
 			webhookPath,
 			webhookId,
+			webhookMethod,
 		};
 	}
 
-	/**
-	 * Import a workflow from file and make it unique for testing.
-	 * The workflow will be created with its original active state from the JSON file.
-	 * Returns detailed information about what was imported, including webhook info if present.
-	 */
+	/** Imports a workflow from file, making it unique for testing. */
 	async importWorkflowFromFile(
 		fileName: string,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
@@ -179,7 +167,6 @@ export class WorkflowApiHelper {
 		workflowDefinition: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		// Store original active state
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
 		if (workflowDefinition.active) {
@@ -188,7 +175,6 @@ export class WorkflowApiHelper {
 		return result;
 	}
 
-	// TODO: workflowId is being ignored
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
 		if (workflowId) params.set('workflowId', workflowId);
@@ -229,7 +215,9 @@ export class WorkflowApiHelper {
 
 			if (executions.length > initialCount) {
 				for (const execution of executions.slice(0, executions.length - initialCount)) {
-					if (execution.status === 'success' || execution.status === 'error') {
+					const isCompleted = execution.status === 'success' || execution.status === 'error';
+					const isCorrectWorkflow = execution.workflowId === workflowId;
+					if (isCompleted && isCorrectWorkflow) {
 						return execution;
 					}
 				}
@@ -237,7 +225,8 @@ export class WorkflowApiHelper {
 
 			for (const execution of executions) {
 				const isCompleted = execution.status === 'success' || execution.status === 'error';
-				if (isCompleted && execution.mode === 'webhook') {
+				const isCorrectWorkflow = execution.workflowId === workflowId;
+				if (isCompleted && isCorrectWorkflow && execution.mode === 'webhook') {
 					const executionTime = new Date(
 						execution.startedAt ?? execution.createdAt ?? Date.now(),
 					).getTime();
@@ -253,14 +242,7 @@ export class WorkflowApiHelper {
 		throw new TestError(`Execution did not complete within ${timeoutMs}ms`);
 	}
 
-	/**
-	 * Wait for a workflow execution to reach a specific status
-	 * @param workflowId - The workflow ID to check
-	 * @param expectedStatus - The expected status (e.g., 'waiting', 'success', 'error')
-	 * @param timeoutMs - Maximum time to wait in milliseconds
-	 * @returns The execution once it reaches the expected status
-	 * @throws TestError if execution doesn't reach the expected status within timeout
-	 */
+	/** Waits for a workflow execution to reach a specific status. */
 	async waitForWorkflowStatus(
 		workflowId: string,
 		expectedStatus: string,

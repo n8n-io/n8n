@@ -3,13 +3,17 @@ import Modal from '@/app/components/Modal.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type {
-	AgentIconOrEmoji,
-	ChatHubBaseLLMModel,
-	ChatHubConversationModel,
-	ChatHubProvider,
-	ChatModelDto,
+import {
+	emptyChatModelsResponse,
+	type ChatModelsResponse,
+	type ChatHubBaseLLMModel,
+	type AgentIconOrEmoji,
+	type ChatHubConversationModel,
+	type ChatHubProvider,
+	type ChatModelDto,
 } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -59,6 +63,8 @@ const isSaving = ref(false);
 const isDeleting = ref(false);
 const isOpened = ref(false);
 const tools = ref<INode[]>([]);
+const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
+const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 
@@ -149,6 +155,22 @@ watch(
 		}
 	},
 	{ immediate: true, flush: 'post' },
+);
+
+// Update agents when credentials are updated
+watch(
+	agentMergedCredentials,
+	async (credentials) => {
+		if (credentials) {
+			isLoadingAgents.value = true;
+			try {
+				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			} finally {
+				isLoadingAgents.value = false;
+			}
+		}
+	},
+	{ immediate: true },
 );
 
 function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
@@ -341,6 +363,8 @@ function onSelectTools() {
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
 							:disabled="isLoadingAgent"
+							:agents="agents"
+							:is-loading="isLoadingAgents"
 							warn-missing-credentials
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
