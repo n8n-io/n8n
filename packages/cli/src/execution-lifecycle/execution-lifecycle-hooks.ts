@@ -561,7 +561,9 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
 
-	if (pushRef) {
+	// If parent and sub-execution belong to the same workflow,
+	// we can push data from sub-execution to the UI
+	if (pushRef && parentExecution?.workflowId === workflowData.id) {
 		hookFunctionsPush(hooks, {
 			pushRef,
 			retryOf: undefined,
