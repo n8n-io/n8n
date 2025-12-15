@@ -11,7 +11,6 @@ import type {
 	ChatHubProvider,
 	ChatHubLLMProvider,
 	ChatModelDto,
-	ChatModelsResponse,
 	ChatHubConversationModel,
 } from '@n8n/api-types';
 import {
@@ -33,13 +32,12 @@ import {
 	isLlmProviderModel,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
+import { useChatStore } from '../chat.store';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 const MAX_AGENT_NAME_CHARS = 30;
@@ -74,12 +72,12 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 }
 
 const i18n = useI18n();
-const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoading = ref(false);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
+const chatStore = useChatStore();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
 const styles = useCssModule();
@@ -89,6 +87,9 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
+
+const agents = computed(() => chatStore.agents ?? emptyChatModelsResponse);
+
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
 const isCredentialsMissing = computed(
 	() =>
@@ -337,7 +338,7 @@ watch(
 		if (credentials) {
 			isLoading.value = true;
 			try {
-				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+				await chatStore.fetchAgents(credentials);
 			} finally {
 				isLoading.value = false;
 			}
