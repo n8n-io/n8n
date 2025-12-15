@@ -1019,6 +1019,26 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
+			it('should not send node-level push events when parent and sub-execution belong to different workflows', async () => {
+				// Parent workflow ID is different from workflowData.id
+				// So push hooks should not be set up
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteBefore' }),
+					pushRef,
+				);
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					pushRef,
+				);
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+				);
+			});
+
 			it('should duplicate binary data to parent execution', async () => {
 				const binaryDataId = `filesystem:workflows/${workflowId}/executions/${executionId}/binary_data/123`;
 				const duplicatedBinaryDataId = `filesystem:workflows/${parentWorkflowId}/executions/${parentExecutionId}/binary_data/456`;
@@ -1083,6 +1103,98 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 				expect(binaryDataService.duplicateBinaryData).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when parentExecution belongs to same workflow', () => {
+			const parentExecutionId = 'parent-execution-id';
+			const parentExecution = {
+				workflowId, // Same workflow ID
+				executionId: parentExecutionId,
+			};
+
+			beforeEach(() => {
+				lifecycleHooks = getLifecycleHooksForSubExecutions(
+					'integrated',
+					executionId,
+					workflowData,
+					undefined,
+					parentExecution,
+					pushRef,
+				);
+			});
+
+			it('should setup push hooks when parent and sub-execution belong to same workflow', () => {
+				const { handlers } = lifecycleHooks;
+				// Push hooks should be set up (2 handlers per node event)
+				expect(handlers.nodeExecuteBefore).toHaveLength(2);
+				expect(handlers.nodeExecuteAfter).toHaveLength(2);
+			});
+
+			it('should send node-level push events when parent and sub-execution belong to same workflow', async () => {
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: {
+						main: [
+							[
+								{
+									json: { key: 'value' },
+								},
+							],
+						],
+					},
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				// Should send node-level push events
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteBefore',
+						data: expect.objectContaining({ executionId, nodeName }),
+					}),
+					pushRef,
+				);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteAfter',
+						data: expect.objectContaining({ executionId, nodeName }),
+					}),
+					pushRef,
+				);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'nodeExecuteAfterData',
+						data: expect.objectContaining({ executionId, nodeName }),
+					}),
+					pushRef,
+					true, // asBinary
+				);
+			});
+
+			it('should still skip workflow-level push events even for same workflow', async () => {
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				// Should not send workflow-level push events (because parentExecutionId exists)
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'executionStarted' }),
+					pushRef,
+				);
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'executionFinished' }),
+					pushRef,
+				);
 			});
 		});
 	});
