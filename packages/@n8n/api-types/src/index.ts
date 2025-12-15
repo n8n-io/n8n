@@ -134,6 +134,11 @@ export type {
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
 
+export {
+	WorkflowExecutionStatusSchema,
+	type WorkflowExecutionStatus,
+} from './schemas/workflow-execution-status.schema';
+
 export type { UsageState } from './schemas/usage.schema';
 
 export type {
