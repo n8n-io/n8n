@@ -174,9 +174,13 @@ export function nodeTypesToCreateElements(
 	createElements: INodeCreateElement[],
 	sortAlphabetically = true,
 ) {
+	const map = createElements.reduce((acc: Record<string, INodeCreateElement>, element) => {
+		acc[element.key] = element;
+		return acc;
+	}, {});
 	const foundElements: INodeCreateElement[] = [];
 	for (const nodeType of nodeTypes) {
-		const createElement = createElements.find((element) => element.key === nodeType);
+		const createElement = map[nodeType];
 		if (createElement) {
 			foundElements.push(createElement);
 		}
