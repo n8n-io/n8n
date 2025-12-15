@@ -356,24 +356,27 @@ watch(
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
-					<div :class="$style.urlLink">
-						<N8nIcon
-							v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-							icon="external-link"
-							:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
-							@click="openUrl($event, result.url)"
-						/>
+					<div :class="$style.resourceActions">
+						<span v-if="result.isArchived" :class="$style.badgesContainer">
+							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+								{{ i18n.baseText('workflows.item.archived') }}
+							</N8nBadge>
+						</span>
+						<slot
+							name="item-badge"
+							:item="result"
+							:is-hovered="showHoverUrl && hoverIndex === i + 1"
+						></slot>
+						<div :class="$style.urlLink">
+							<N8nIcon
+								v-if="showHoverUrl && result.url && hoverIndex === i + 1"
+								icon="external-link"
+								size="small"
+								:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
+								@click="openUrl($event, result.url)"
+							/>
+						</div>
 					</div>
-					<span v-if="result.isArchived" :class="$style.badgesContainer">
-						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
-							{{ i18n.baseText('workflows.item.archived') }}
-						</N8nBadge>
-					</span>
-					<slot
-						name="item-badge"
-						:item="result"
-						:is-hovered="showHoverUrl && hoverIndex === i + 1"
-					></slot>
 				</div>
 			</div>
 			<div v-if="props.loading && !props.errorView">
@@ -493,12 +496,18 @@ watch(
 	align-items: center;
 }
 
+.resourceActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	margin-left: auto;
+}
+
 .urlLink {
 	display: flex;
 	align-items: center;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
-	margin-left: auto;
 
 	&:hover {
 		color: var(--color--primary);
@@ -508,7 +517,6 @@ watch(
 .badgesContainer {
 	display: inline-flex;
 	align-items: center;
-	margin-left: auto;
 }
 
 .resourceNameContainer {

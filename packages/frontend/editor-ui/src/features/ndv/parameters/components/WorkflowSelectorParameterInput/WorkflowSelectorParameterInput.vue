@@ -496,10 +496,8 @@ const onAddResourceClicked = async () => {
 }
 
 .inactiveBadgeAlone {
-	margin-left: auto;
 }
 
 .inactiveBadgeWithArchived {
-	margin-left: var(--spacing--3xs);
 }
 </style>
