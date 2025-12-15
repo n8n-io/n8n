@@ -35,8 +35,20 @@ export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
 		);
 
 		// Add foreign key constraint for agentId in sessions table
-		await addForeignKey(table.sessions, 'agentId', [table.agents, 'id'], undefined, 'SET NULL');
-		await addForeignKey(table.messages, 'agentId', [table.agents, 'id'], undefined, 'SET NULL');
+		await addForeignKey(
+			table.sessions,
+			'agentId',
+			[table.agents, 'id'],
+			'FK_chat_hub_sessions_agentId',
+			'SET NULL',
+		);
+		await addForeignKey(
+			table.messages,
+			'agentId',
+			[table.agents, 'id'],
+			'FK_chat_hub_messages_agentId',
+			'SET NULL',
+		);
 	}
 
 	async down({
@@ -46,8 +58,18 @@ export class AddIconToAgentTable1765361177092 implements ReversibleMigration {
 		escape,
 	}: MigrationContext) {
 		// Drop foreign key constraints
-		await dropForeignKey(table.sessions, 'agentId', [table.agents, 'id']);
-		await dropForeignKey(table.messages, 'agentId', [table.agents, 'id']);
+		await dropForeignKey(
+			table.sessions,
+			'agentId',
+			[table.agents, 'id'],
+			'FK_chat_hub_sessions_agentId',
+		);
+		await dropForeignKey(
+			table.messages,
+			'agentId',
+			[table.agents, 'id'],
+			'FK_chat_hub_messages_agentId',
+		);
 
 		// For PostgreSQL: revert agentId from uuid back to varchar(36)
 		if (isPostgres) {
