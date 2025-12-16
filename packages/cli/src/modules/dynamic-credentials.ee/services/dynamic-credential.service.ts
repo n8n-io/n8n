@@ -70,7 +70,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		// Get resolver instance from registry
-		const resolver = this.resolverRegistry.getResolverByName(resolverEntity.type);
+		const resolver = this.resolverRegistry.getResolverByTypename(resolverEntity.type);
 
 		if (!resolver) {
 			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
