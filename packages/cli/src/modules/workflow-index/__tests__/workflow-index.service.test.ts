@@ -155,7 +155,7 @@ describe('WorkflowIndexService', () => {
 			const workflow = createWorkflow([
 				createNode({
 					id: 'node-1',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 				}),
 			]);
 
@@ -372,7 +372,7 @@ describe('WorkflowIndexService', () => {
 	describe('buildIndex()', () => {
 		it('should retrieve unindexed workflows and update their dependencies', async () => {
 			const workflow1 = createWorkflowEntity([
-				createNode({ id: 'node-1', type: 'n8n-nodes-base.start' }),
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
 			]);
 			const workflow2 = createWorkflowEntity([
 				createNode({ id: 'node-2', type: 'n8n-nodes-base.webhook', parameters: { path: 'test' } }),
@@ -420,7 +420,7 @@ describe('WorkflowIndexService', () => {
 			// Create 5 workflows to test multiple batches
 			const workflows = Array.from({ length: 5 }, (_, i) => {
 				const workflow = createWorkflowEntity([
-					createNode({ id: `node-${i}`, type: 'n8n-nodes-base.start' }),
+					createNode({ id: `node-${i}`, type: 'n8n-nodes-base.manualTrigger' }),
 				]);
 				workflow.id = `workflow-${i}`;
 				return workflow;
