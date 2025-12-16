@@ -18,6 +18,7 @@ import { URL } from 'url';
 import {
 	addConfigFields,
 	addFields,
+	ALLOWED_CONFIG_KEYS,
 	cloneFields,
 	commitFields,
 	logFields,
@@ -357,6 +358,13 @@ export class Git implements INodeType {
 					const key = this.getNodeParameter('key', itemIndex, '') as string;
 					const value = this.getNodeParameter('value', itemIndex, '') as string;
 					let append = false;
+
+					if (!ALLOWED_CONFIG_KEYS.includes(key)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The provided git config key '${key}' is not allowed`,
+						);
+					}
 
 					if (options.mode === 'append') {
 						append = true;

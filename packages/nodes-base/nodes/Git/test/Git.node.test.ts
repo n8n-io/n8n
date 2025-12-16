@@ -4,6 +4,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
 
 import { Git } from '../Git.node';
+import { ALLOWED_CONFIG_KEYS } from '../descriptions';
 
 // Mock simple-git
 const mockGit = {
@@ -372,6 +373,44 @@ describe('Git Node', () => {
 
 			expect(mockGit.add).toHaveBeenCalledWith(['file.txt']);
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
+		});
+
+		ALLOWED_CONFIG_KEYS.forEach((key) => {
+			it(`should handle addConfig with key '${key}' operation`, async () => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('addConfig')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce(key)
+					.mockReturnValueOnce('test value');
+
+				await gitNode.execute.call(mockExecuteFunctions);
+
+				expect(mockGit.addConfig).toHaveBeenCalledWith(key, 'test value', false);
+			});
+		});
+
+		[
+			'core.sshCommand',
+			'core.hooksPath',
+			'credential.helper',
+			'remote.origin.uploadpack',
+			'remote.origin.receivepack',
+			'url.xxx.insteadOf',
+			'user.name,core.sshCommand',
+		].forEach((key) => {
+			it(`should reject addConfig with key '${key}'`, async () => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('addConfig')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce(key)
+					.mockReturnValueOnce('test value');
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					`The provided git config key '${key}' is not allowed`,
+				);
+			});
 		});
 
 		it('should handle addConfig operation', async () => {
