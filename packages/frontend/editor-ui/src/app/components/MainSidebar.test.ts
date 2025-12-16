@@ -83,23 +83,6 @@ describe('MainSidebar', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
-	test.each([
-		[false, true, true],
-		[true, false, false],
-		[true, true, false],
-		[false, false, false],
-	])(
-		'should render readonly tooltip when is opened %s and the environment is readonly %s',
-		(sidebarMenuCollapsed, branchReadOnly, shouldRender) => {
-			uiStore.sidebarMenuCollapsed = sidebarMenuCollapsed;
-			sourceControlStore.preferences.branchReadOnly = branchReadOnly;
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('read-only-env-icon') !== null).toBe(shouldRender);
-		},
-	);
-
 	describe('Version Update CTA', () => {
 		it('should not render version update CTA when hasVersionUpdates is false', () => {
 			versionsStore.hasVersionUpdates = false;

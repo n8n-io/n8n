@@ -69,9 +69,8 @@ const {
 			[$style.collapsed]: isCollapsed,
 		}"
 	>
-		<RouterLink :to="{ name: VIEWS.HOMEPAGE }" :class="$style.logo">
+		<RouterLink v-if="!isCollapsed" :to="{ name: VIEWS.HOMEPAGE }" :class="$style.logo">
 			<N8nLogo
-				v-if="!isCollapsed"
 				size="small"
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
