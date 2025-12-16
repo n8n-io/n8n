@@ -1,10 +1,6 @@
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
-
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
-import type { n8nPage } from '../../../pages/n8nPage';
-import { initSourceControlPreferences } from '../../../utils/source-control-helper';
+import { initSourceControl } from '../../../utils/source-control-helper';
 
 const REPO_URL = 'ssh://git@gitea/giteaadmin/n8n-test-repo.git';
 
@@ -14,28 +10,13 @@ test.use({
 	},
 });
 
-async function connectToSourceControl({
-	n8n,
-	n8nContainer,
-}: { n8n: n8nPage; n8nContainer: N8NStack }): Promise<void> {
-	const preferences = await n8n.api.sourceControl.getPreferences();
-	const sshKey = preferences.publicKey;
-
-	const sourceControlContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
-	expect(sourceControlContainer).toBeDefined();
-	await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
-
-	await n8n.api.sourceControl.connect({
-		repositoryUrl: REPO_URL,
-	});
-}
-
 test.describe('Source Control Operations @capability:source-control', () => {
 	test.describe.configure({ mode: 'serial' });
 
-	test.beforeEach(async ({ n8n }) => {
+	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		await initSourceControlPreferences(n8n);
+		await initSourceControl({ n8n, n8nContainer });
+		await n8n.api.sourceControl.connect({ repositoryUrl: REPO_URL });
 
 		await n8n.goHome();
 		// Enable features required for project workflows and moving resources
@@ -45,9 +26,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 	});
 
 	test.describe('Push Operations', () => {
-		test('should connect to Git and push a new workflow', async ({ n8n, n8nContainer }) => {
-			await connectToSourceControl({ n8n, n8nContainer });
-
+		test('should connect to Git and push a new workflow', async ({ n8n }) => {
 			// create workflow
 			const workflow = await n8n.api.workflows.createWorkflow({
 				name: 'Test Workflow',

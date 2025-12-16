@@ -1,8 +1,6 @@
-import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
-
 import { expect, test } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
-import { initSourceControlPreferences } from '../../../../utils/source-control-helper';
+import { initSourceControl } from '../../../../utils/source-control-helper';
 
 test.use({
 	addContainerCapability: {
@@ -22,26 +20,12 @@ async function saveSettings(n8n: n8nPage) {
 test.describe('Source Control Settings @capability:source-control', () => {
 	test.describe.configure({ mode: 'serial' });
 
-	test.beforeEach(async ({ n8n }) => {
+	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		await initSourceControlPreferences(n8n);
+		await initSourceControl({ n8n, n8nContainer });
 	});
 
-	test('should connect to Git repository using SSH', async ({ n8n, n8nContainer }) => {
-		const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-		const preferences = await preferencesResponse.json();
-		const sshKey = preferences.data.publicKey;
-
-		expect(sshKey).toBeTruthy();
-		expect(sshKey).toContain('ssh-');
-
-		// Get the source control container
-		const sourceControlContainer = n8nContainer.containers.find((c) =>
-			c.getName().includes('gitea'),
-		);
-		expect(sourceControlContainer).toBeDefined();
-		await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
-
+	test('should connect to Git repository using SSH', async ({ n8n }) => {
 		await n8n.navigate.toEnvironments();
 
 		await n8n.settingsEnvironment.fillRepoUrl('ssh://git@gitea/giteaadmin/n8n-test-repo.git');
