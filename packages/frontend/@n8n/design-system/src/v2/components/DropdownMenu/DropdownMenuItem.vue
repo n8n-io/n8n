@@ -17,7 +17,7 @@ import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMen
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 import { useMenuKeyboardNavigation } from './useMenuKeyboardNavigation';
 
-const SUBMENU_FOCUS_DELAY = 50;
+const SUBMENU_FOCUS_DELAY = 150;
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -95,6 +95,10 @@ const handleSubMenuOpenChange = (open: boolean) => {
 const closeSubMenu = () => {
 	internalSubMenuOpen.value = false;
 	emit('update:subMenuOpen', false);
+	if (props.searchable) {
+		searchTerm.value = '';
+		emit('search', '', props.id);
+	}
 };
 
 const leadingProps = computed(() => ({
