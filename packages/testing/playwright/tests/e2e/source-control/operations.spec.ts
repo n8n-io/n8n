@@ -406,22 +406,4 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await expect(n8n.workflows.cards.getWorkflow('New Workflow')).toBeHidden();
 		});
 	});
-
-	test.describe('Access Control', () => {
-		test('should respect sourceControl:push permission', async () => {
-			// TODO: Implement test
-			// Setup: Sign in as user without sourceControl:push permission
-			// Assert: Verify push button is disabled
-			// Setup: Sign in as user with permission
-			// Assert: Verify push button is enabled
-		});
-
-		test('should respect sourceControl:pull permission', async () => {
-			// TODO: Implement test
-			// Setup: Sign in as user without sourceControl:pull permission
-			// Assert: Verify pull button is disabled
-			// Setup: Sign in as user with permission
-			// Assert: Verify pull button is enabled
-		});
-	});
 });
