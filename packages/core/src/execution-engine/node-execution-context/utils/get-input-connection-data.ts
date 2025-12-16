@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { Toolkit } from '@langchain/classic/agents';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import type {
 	AINodeConnectionType,
@@ -31,6 +30,7 @@ import {
 	sleepWithAbort,
 } from 'n8n-workflow';
 
+import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
 import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
@@ -50,12 +50,6 @@ function ensureArray<T>(value: T | T[] | undefined): T[] {
  */
 function isHitlTool(node: INode): boolean {
 	return node.type.endsWith('HitlTool');
-}
-
-class GatedToolkit extends Toolkit {
-	constructor(public tools: DynamicStructuredTool[]) {
-		super();
-	}
 }
 
 /**
@@ -101,13 +95,20 @@ async function createHitlToolSupplyData(
 		parentNode,
 	);
 
-	const connectedTools = (await context.getInputConnectionData(
+	const connectedToolsOrToolkits = (await context.getInputConnectionData(
 		NodeConnectionTypes.AiTool,
 		itemIndex,
-	)) as DynamicStructuredTool[] | DynamicStructuredTool | undefined;
+	)) as SupplyDataToolResponse[] | SupplyDataToolResponse | undefined;
+
+	const connectedTools = ensureArray(connectedToolsOrToolkits).flatMap((toolOrToolkit) => {
+		if (toolOrToolkit instanceof StructuredToolkit) {
+			return toolOrToolkit.tools;
+		}
+		return toolOrToolkit;
+	});
 
 	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
-	const gatedTools = ensureArray(connectedTools).map((tool) => {
+	const gatedTools = connectedTools.map((tool) => {
 		return new DynamicStructuredTool({
 			name: tool.name,
 			description: tool.description,
@@ -120,7 +121,7 @@ async function createHitlToolSupplyData(
 		});
 	});
 
-	const toolkit = new GatedToolkit(gatedTools);
+	const toolkit = new StructuredToolkit(gatedTools);
 	return { response: toolkit };
 }
 
@@ -451,12 +452,10 @@ export async function getInputConnectionData(
 					response.metadata.sourceNodeName = connectedNode.name;
 				}
 
-				if (response instanceof Toolkit) {
+				if (response instanceof StructuredToolkit) {
 					for (const tool of response.tools) {
-						if (tool instanceof DynamicStructuredTool) {
-							tool.metadata ??= {};
-							tool.metadata.sourceNodeName = connectedNode.name;
-						}
+						tool.metadata ??= {};
+						tool.metadata.sourceNodeName = connectedNode.name;
 					}
 				}
 

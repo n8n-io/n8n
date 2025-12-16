@@ -2,9 +2,9 @@ import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { Tool } from '@langchain/core/tools';
-import { Toolkit } from '@langchain/classic/agents';
+import type { StructuredTool, Tool } from '@langchain/core/tools';
 import type { BaseChatMemory } from '@langchain/classic/memory';
+import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
@@ -209,7 +209,7 @@ export const getConnectedTools = async (
 	const toolkitConnections = (await ctx.getInputConnectionData(
 		NodeConnectionTypes.AiTool,
 		0,
-	)) as Array<Toolkit | Tool>;
+	)) as SupplyDataToolResponse[];
 
 	// Get parent nodes to map toolkits to their source nodes
 	const parentNodes =
@@ -221,8 +221,8 @@ export const getConnectedTools = async (
 			: [];
 
 	const connectedTools = (toolkitConnections ?? []).flatMap((toolOrToolkit, index) => {
-		if (toolOrToolkit instanceof Toolkit) {
-			const tools = toolOrToolkit.getTools() as Tool[];
+		if (toolOrToolkit instanceof StructuredToolkit) {
+			const tools = toolOrToolkit.tools;
 			// Add metadata to each tool from the toolkit
 			return tools.map((tool) => {
 				const sourceNode = parentNodes[index] ?? tool.name;
@@ -246,7 +246,7 @@ export const getConnectedTools = async (
 
 	const seenNames = new Set<string>();
 
-	const finalTools: Tool[] = [];
+	const finalTools: StructuredTool[] = [];
 
 	for (const tool of connectedTools) {
 		const { name } = tool;
