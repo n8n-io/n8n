@@ -15,7 +15,7 @@ import { isAlign, isSide } from './DropdownMenu.typeguards';
 import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
-import { useMenuKeyboardNavigation } from './useMenuKeyboardNavigation';
+import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 
 defineOptions({ inheritAttrs: false });
 
