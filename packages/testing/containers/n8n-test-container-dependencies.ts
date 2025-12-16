@@ -359,8 +359,6 @@ export async function setupProxyServer({
 
 const TASK_RUNNER_IMAGE = TEST_CONTAINER_IMAGES.taskRunner;
 
-const TASK_RUNNER_HEALTH_CHECK_PORT = 5681;
-
 export async function setupTaskRunner({
 	projectName,
 	network,
@@ -376,26 +374,15 @@ export async function setupTaskRunner({
 		return await new GenericContainer(TASK_RUNNER_IMAGE)
 			.withNetwork(network)
 			.withNetworkAliases(`${projectName}-task-runner`)
-			.withExposedPorts(5680, TASK_RUNNER_HEALTH_CHECK_PORT)
+			.withExposedPorts(5680)
 			.withEnvironment({
 				N8N_RUNNERS_AUTH_TOKEN: 'test',
 				N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
 				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 				N8N_RUNNERS_MAX_CONCURRENCY: '5',
 				N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15',
-				// Enable health check server for proper container readiness detection
-				N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED: 'true',
-				N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST: '0.0.0.0',
-				N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT: String(TASK_RUNNER_HEALTH_CHECK_PORT),
 			})
-			.withWaitStrategy(
-				Wait.forAll([
-					Wait.forListeningPorts(),
-					Wait.forHttp('/', TASK_RUNNER_HEALTH_CHECK_PORT)
-						.forStatusCode(200)
-						.withStartupTimeout(30000),
-				]),
-			)
+			.withWaitStrategy(Wait.forListeningPorts())
 			.withLabels({
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': 'task-runner',
