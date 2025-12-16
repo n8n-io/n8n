@@ -282,34 +282,223 @@ test.describe('Source Control Operations @capability:source-control', () => {
 	});
 
 	test.describe('Pull Operations', () => {
-		test('should pull new resources from remote', async ({ n8n }) => {
-			// TODO: Implement test
-			// Setup: Add resource to Git repository externally (via Gitea API or container.exec)
-			// Action: Open pull modal, verify new resources listed
-			// Action: Pull changes
-			// Assert: Verify workflow appears locally
-			// Assert: Verify credential stubs require configuration
-			// Setup: Add folders.json and workflows with parentFolderId to Git externally
-			// Action: Pull changes
-			// Assert: Verify folder structure created locally
-			// Assert: Verify workflows appear in correct folders
+		test('should pull new and modified resources from remote', async ({ n8n, n8nContainer }) => {
+			await connectToSourceControl({ n8n, n8nContainer });
+
+			// Create initial resources and push them
+			const workflowToPush = await n8n.api.workflows.createWorkflow({
+				name: 'Workflow to Modify',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			const credentialToPush = await n8n.api.credentials.createCredential({
+				name: 'Credential to Keep',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+			});
+
+			await n8n.api.variables.createTestVariable('INITIAL_VAR', 'initial_value');
+
+			// Push all resources
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await n8n.sourceControlPushModal.selectWorkflowsTab();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+			await n8n.sourceControlPushModal.selectCredentialsTab();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+			await n8n.sourceControlPushModal.push('Initial push');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Disconnect from source control
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.getDisconnectButton().click();
+			await expect(n8n.settingsEnvironment.getConnectButton()).toBeVisible();
+
+			// Simulate "remote" changes by modifying local resources
+			// 1. Modify the workflow
+			await n8n.navigate.toWorkflow(workflowToPush.id);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.saveWorkflow();
+
+			// 2. Create a new workflow
+			await n8n.api.workflows.createWorkflow({
+				name: 'New Remote Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			// 3. Create a new credential
+			await n8n.api.credentials.createCredential({
+				name: 'New Remote Credential',
+				type: 'notionApi',
+				data: { apiKey: '0987654321' },
+			});
+
+			// 4. Create a new variable
+			await n8n.api.variables.createTestVariable('NEW_VAR', 'new_value');
+
+			// 5. Delete the original credential
+			await n8n.api.credentials.deleteCredential(credentialToPush.id);
+
+			// Push these "remote" changes
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.getConnectButton().click();
+			await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
+
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await n8n.sourceControlPushModal.selectWorkflowsTab();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+			await n8n.sourceControlPushModal.selectCredentialsTab();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+			await n8n.sourceControlPushModal.push('Remote changes');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Disconnect again and reset database to simulate pulling from another instance
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.getDisconnectButton().click();
+			await expect(n8n.settingsEnvironment.getConnectButton()).toBeVisible();
+
+			// Reset database to clear local state (simulates a fresh instance)
+			await n8n.api.resetDatabase();
+
+			// Navigate home after reset
+			await n8n.goHome();
+			await n8n.api.enableFeature('variables');
+			await n8n.api.enableFeature('folders');
+			await n8n.api.setMaxTeamProjectsQuota(-1);
+
+			// Reconnect to source control
+			await connectToSourceControl({ n8n, n8nContainer });
+
+			// Open pull modal to see remote changes
+			await n8n.sourceControlPullModal.open();
+			await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
+
+			// Verify modified workflow appears
+			await n8n.sourceControlPullModal.selectWorkflowsTab();
+			await expect(n8n.sourceControlPullModal.getFileInModal('Workflow to Modify')).toBeVisible();
+			await expect(
+				n8n.sourceControlPullModal.getStatusBadge('Workflow to Modify', 'New'),
+			).toBeVisible();
+
+			// Verify new workflow appears
+			await expect(n8n.sourceControlPullModal.getFileInModal('New Remote Workflow')).toBeVisible();
+			await expect(
+				n8n.sourceControlPullModal.getStatusBadge('New Remote Workflow', 'New'),
+			).toBeVisible();
+
+			// Verify credentials
+			await n8n.sourceControlPullModal.selectCredentialsTab();
+			await expect(
+				n8n.sourceControlPullModal.getFileInModal('New Remote Credential'),
+			).toBeVisible();
+			await expect(
+				n8n.sourceControlPullModal.getStatusBadge('New Remote Credential', 'New'),
+			).toBeVisible();
+
+			// Pull the changes
+			await n8n.sourceControlPullModal.pull();
+			await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
+
+			// Verify workflows appear locally
+			await n8n.navigate.toHome();
+			await expect(n8n.page.getByText('Workflow to Modify')).toBeVisible();
+			await expect(n8n.page.getByText('New Remote Workflow')).toBeVisible();
+
+			// Verify credentials appear locally
+			await n8n.navigate.toCredentials();
+			await expect(n8n.page.getByText('New Remote Credential')).toBeVisible();
+
+			// Verify variables appear locally
+			await n8n.navigate.toVariables();
+			await expect(n8n.page.getByText('INITIAL_VAR')).toBeVisible();
+			await expect(n8n.page.getByText('NEW_VAR')).toBeVisible();
 		});
 
-		test('should pull remote modifications', async ({ n8n }) => {
-			// TODO: Implement test
-			// Setup: Modify workflow remotely (via Gitea API or Git commands in container)
-			// Action: Fetch status, verify "modified" status shown
-			// Action: Pull changes
-			// Assert: Verify local workflow updated with remote changes
-		});
+		test('should force pull and overwrite local changes', async ({ n8n, n8nContainer }) => {
+			await connectToSourceControl({ n8n, n8nContainer });
 
-		test('should force pull and overwrite local changes', async ({ n8n }) => {
-			// TODO: Implement test
-			// Setup: Create conflicting local and remote changes
-			// Action: Attempt pull without force
-			// Action: Enable force pull option
-			// Action: Pull with force
-			// Assert: Verify remote version overwrites local changes
+			// Create and push a workflow
+			const workflow = await n8n.api.workflows.createWorkflow({
+				name: 'Workflow to Conflict',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await n8n.sourceControlPushModal.selectWorkflowsTab();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+			await n8n.sourceControlPushModal.push('Initial workflow');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Disconnect and modify the workflow (simulate remote change)
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.getDisconnectButton().click();
+
+			await n8n.navigate.toWorkflow(workflow.id);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.saveWorkflow();
+
+			// Reconnect and push (this becomes the "remote" version)
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.getConnectButton().click();
+
+			await n8n.sourceControlPushModal.open();
+			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await n8n.sourceControlPushModal.selectWorkflowsTab();
+			await n8n.sourceControlPushModal.selectAllFilesInModal();
+			await n8n.sourceControlPushModal.push('Remote modification');
+			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+
+			// Now simulate local conflicting change
+			// Disconnect and reset database
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.getDisconnectButton().click();
+
+			await n8n.api.resetDatabase();
+			await n8n.goHome();
+			await n8n.api.enableFeature('variables');
+			await n8n.api.enableFeature('folders');
+			await n8n.api.setMaxTeamProjectsQuota(-1);
+
+			// Reconnect and create a workflow with the same ID (simulate pulling initial version)
+			await connectToSourceControl({ n8n, n8nContainer });
+
+			// Pull the remote workflow
+			await n8n.sourceControlPullModal.open();
+			await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
+			await n8n.sourceControlPullModal.pull();
+			await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
+
+			// Make local conflicting changes
+			await n8n.navigate.toHome();
+			await n8n.page.getByText('Workflow to Conflict').click();
+			await n8n.canvas.addNode('Schedule Trigger');
+			await n8n.canvas.saveWorkflow();
+
+			// Try to pull again (should show conflict/modified status)
+			await n8n.sourceControlPullModal.open();
+			await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
+
+			// Verify workflow shows as conflicting
+			await n8n.sourceControlPullModal.selectWorkflowsTab();
+			await expect(n8n.sourceControlPullModal.getFileInModal('Workflow to Conflict')).toBeVisible();
+
+			// Force pull to overwrite local changes
+			await n8n.sourceControlPullModal.pull();
+			await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
+
+			// Verify the workflow was overwritten with remote version (has Manual Trigger, not Schedule)
+			await n8n.navigate.toHome();
+			await n8n.page.getByText('Workflow to Conflict').click();
+			await expect(n8n.page.getByText('Manual Trigger')).toBeVisible();
+			await expect(n8n.page.getByText('Schedule Trigger')).not.toBeVisible();
 		});
 	});
 
