@@ -11,11 +11,11 @@ import { computed, ref, watch, useCssModule, nextTick, toRef } from 'vue';
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
+import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
-import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 
 defineOptions({ inheritAttrs: false });
 
