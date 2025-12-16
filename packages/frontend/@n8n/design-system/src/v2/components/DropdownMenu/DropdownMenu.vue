@@ -6,7 +6,7 @@ import {
 	DropdownMenuPortal,
 	DropdownMenuContent,
 } from 'reka-ui';
-import { computed, ref, watch, useCssModule, nextTick } from 'vue';
+import { computed, ref, watch, useCssModule, nextTick, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
@@ -15,6 +15,7 @@ import { isAlign, isSide } from './DropdownMenu.typeguards';
 import type { DropdownMenuProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
+import { useMenuKeyboardNavigation } from './useMenuKeyboardNavigation';
 
 defineOptions({ inheritAttrs: false });
 
@@ -49,9 +50,32 @@ const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
 
-// Track highlighted item and open sub-menu index for keyboard navigation
-const highlightedIndex = ref(-1);
+// Track open sub-menu index
 const openSubMenuIndex = ref(-1);
+
+const hasSubMenu = (item: (typeof props.items)[number]): boolean => {
+	return (item.children && item.children.length > 0) || !!item.loading || !!item.searchable;
+};
+
+// Keyboard navigation
+const navigation = useMenuKeyboardNavigation({
+	items: toRef(() => props.items),
+	hasSubMenu,
+	onSelect: (_index, item) => {
+		emit('select', item.id);
+		close();
+	},
+	onOpenSubMenu: (index) => {
+		openSubMenuIndex.value = index;
+	},
+	onCloseSubMenu: () => {
+		if (openSubMenuIndex.value >= 0) {
+			openSubMenuIndex.value = -1;
+		}
+	},
+});
+
+const { highlightedIndex } = navigation;
 
 const openState = computed(() => (isControlled.value ? internalOpen.value : undefined));
 
@@ -77,7 +101,7 @@ const handleOpenChange = (open: boolean) => {
 	emit('update:modelValue', open);
 
 	if (!open) {
-		highlightedIndex.value = -1;
+		navigation.reset();
 		openSubMenuIndex.value = -1;
 	}
 
@@ -102,94 +126,11 @@ const handleSearchUpdate = async (value: string) => {
 	await debouncedEmitSearch(value);
 };
 
-// Find the next valid index for navigation, skipping disabled items
-const getNextValidIndex = (current: number, direction: 1 | -1): number => {
-	const items = props.items;
-	let next = current + direction;
-
-	while (next >= 0 && next < items.length && items[next].disabled) {
-		next += direction;
-	}
-
-	if (next >= 0 && next < items.length) {
-		return next;
-	}
-
-	if (direction === -1) {
-		return -1;
-	}
-
-	return current;
-};
-
-// Handle navigation from search input
-const handleNavigate = (direction: 'up' | 'down') => {
-	if (direction === 'down') {
-		if (highlightedIndex.value === -1) {
-			highlightedIndex.value = getNextValidIndex(-1, 1);
-		} else {
-			highlightedIndex.value = getNextValidIndex(highlightedIndex.value, 1);
-		}
-	} else {
-		if (highlightedIndex.value <= 0) {
-			highlightedIndex.value = -1;
-		} else {
-			highlightedIndex.value = getNextValidIndex(highlightedIndex.value, -1);
-		}
-	}
-};
-
-const hasSubMenu = (item: (typeof props.items)[number]) => {
-	return (item.children && item.children.length > 0) || item.loading || item.searchable;
-};
-
-const handleEnter = () => {
-	if (highlightedIndex.value >= 0) {
-		const item = props.items[highlightedIndex.value];
-		if (item && !item.disabled) {
-			if (hasSubMenu(item)) {
-				openSubMenuIndex.value = highlightedIndex.value;
-			} else {
-				emit('select', item.id);
-				close();
-			}
-		}
-	}
-};
-
-const handleArrowRight = () => {
-	if (highlightedIndex.value >= 0) {
-		const item = props.items[highlightedIndex.value];
-		if (item && !item.disabled && hasSubMenu(item)) {
-			openSubMenuIndex.value = highlightedIndex.value;
-		}
-	}
-};
-
-const handleArrowLeft = () => {
-	if (openSubMenuIndex.value >= 0) {
-		openSubMenuIndex.value = -1;
-	}
-};
-
 const handleContentKeydown = (event: KeyboardEvent) => {
 	// Non-searchable menus use reka-ui's built-in roving focus
 	if (!props.searchable) return;
 
-	if (event.key === 'Enter' && highlightedIndex.value >= 0) {
-		event.preventDefault();
-		handleEnter();
-	}
-
-	if (event.key === 'ArrowRight' && highlightedIndex.value >= 0) {
-		event.preventDefault();
-		handleArrowRight();
-	}
-
-	if (event.key === 'ArrowLeft' && openSubMenuIndex.value >= 0) {
-		event.preventDefault();
-		handleArrowLeft();
-	}
+	navigation.handleKeydown(event);
 };
 
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
@@ -232,7 +173,7 @@ const open = () => {
 const close = () => {
 	internalOpen.value = false;
 	emit('update:modelValue', false);
-	highlightedIndex.value = -1;
+	navigation.reset();
 	openSubMenuIndex.value = -1;
 };
 
@@ -242,7 +183,7 @@ watch(
 		if (newValue !== undefined) {
 			internalOpen.value = newValue;
 			if (!newValue) {
-				highlightedIndex.value = -1;
+				navigation.reset();
 				openSubMenuIndex.value = -1;
 			}
 		}
@@ -253,7 +194,7 @@ watch(
 watch(
 	() => props.items,
 	() => {
-		highlightedIndex.value = -1;
+		navigation.reset();
 	},
 );
 
@@ -295,10 +236,10 @@ defineExpose({ open, close });
 						:show-icon="showSearchIcon"
 						@update:model-value="handleSearchUpdate"
 						@key:escape="close"
-						@key:navigate="handleNavigate"
-						@key:arrow-right="handleArrowRight"
-						@key:arrow-left="handleArrowLeft"
-						@key:enter="handleEnter"
+						@key:navigate="navigation.navigate"
+						@key:arrow-right="navigation.handleArrowRight"
+						@key:arrow-left="navigation.handleArrowLeft"
+						@key:enter="navigation.handleEnter"
 					/>
 
 					<template v-if="loading">

@@ -7,7 +7,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule, watch, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
@@ -15,6 +15,7 @@ import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
+import { useMenuKeyboardNavigation } from './useMenuKeyboardNavigation';
 
 const SUBMENU_FOCUS_DELAY = 50;
 
@@ -38,8 +39,24 @@ const internalSubMenuOpen = ref(false);
 
 const searchRef = ref<{ focus: () => void } | null>(null);
 
-// Virtual focus for sub-menu keyboard navigation
-const subMenuHighlightedIndex = ref(-1);
+const childHasSubMenu = (child: NonNullable<typeof props.children>[number]): boolean => {
+	return (child.children && child.children.length > 0) || !!child.loading || !!child.searchable;
+};
+
+// Keyboard navigation for sub-menu
+const subMenuNavigation = useMenuKeyboardNavigation({
+	items: toRef(() => props.children ?? []),
+	hasSubMenu: childHasSubMenu,
+	onSelect: (_index, child) => {
+		emit('select', child.id);
+		closeSubMenu();
+	},
+	onCloseSubMenu: () => {
+		closeSubMenu();
+	},
+});
+
+const { highlightedIndex: subMenuHighlightedIndex } = subMenuNavigation;
 
 const handleSearchUpdate = (value: string) => {
 	searchTerm.value = value;
@@ -50,77 +67,10 @@ const handleChildSearch = (term: string, itemId: T) => {
 	emit('search', term, itemId);
 };
 
-// Find the next valid (non-disabled) child index in the given direction
-const getNextValidChildIndex = (current: number, direction: 1 | -1): number => {
-	const children = props.children ?? [];
-	let next = current + direction;
-
-	while (next >= 0 && next < children.length && children[next].disabled) {
-		next += direction;
-	}
-
-	if (next >= 0 && next < children.length) {
-		return next;
-	}
-
-	if (direction === -1) {
-		return -1;
-	}
-
-	return current;
-};
-
-// Handle navigation from sub-menu search input
-const handleSubMenuNavigate = (direction: 'up' | 'down') => {
-	const children = props.children ?? [];
-	if (children.length === 0) return;
-
-	if (direction === 'down') {
-		if (subMenuHighlightedIndex.value === -1) {
-			subMenuHighlightedIndex.value = getNextValidChildIndex(-1, 1);
-		} else {
-			subMenuHighlightedIndex.value = getNextValidChildIndex(subMenuHighlightedIndex.value, 1);
-		}
-	} else if (direction === 'up') {
-		if (subMenuHighlightedIndex.value <= 0) {
-			subMenuHighlightedIndex.value = -1;
-		} else {
-			subMenuHighlightedIndex.value = getNextValidChildIndex(subMenuHighlightedIndex.value, -1);
-		}
-	}
-};
-
-const childHasSubMenu = (child: NonNullable<typeof props.children>[number]) => {
-	return (child.children && child.children.length > 0) || child.loading || child.searchable;
-};
-
-const handleSubMenuEnter = () => {
-	const children = props.children ?? [];
-	if (subMenuHighlightedIndex.value >= 0) {
-		const child = children[subMenuHighlightedIndex.value];
-		if (child && !child.disabled && !childHasSubMenu(child)) {
-			emit('select', child.id);
-			closeSubMenu();
-		}
-	}
-};
-
-const handleSubMenuArrowLeft = () => {
-	closeSubMenu();
-};
-
 const handleSubContentKeydown = (event: KeyboardEvent) => {
 	if (!props.searchable) return;
 
-	if (event.key === 'Enter' && subMenuHighlightedIndex.value >= 0) {
-		event.preventDefault();
-		handleSubMenuEnter();
-	}
-
-	if (event.key === 'ArrowLeft') {
-		event.preventDefault();
-		handleSubMenuArrowLeft();
-	}
+	subMenuNavigation.handleKeydown(event);
 };
 
 const hasChildren = computed(() => props.children && props.children.length > 0);
@@ -129,7 +79,7 @@ const hasSubMenu = computed(() => hasChildren.value || props.loading || props.se
 const handleSubMenuOpenChange = (open: boolean) => {
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
-	subMenuHighlightedIndex.value = -1; // Reset highlight when menu opens/closes
+	subMenuNavigation.reset();
 	if (props.searchable) {
 		if (open) {
 			setTimeout(() => {
@@ -169,7 +119,7 @@ const handleItemSelect = () => {
 watch(
 	() => props.children,
 	() => {
-		subMenuHighlightedIndex.value = -1;
+		subMenuNavigation.reset();
 	},
 );
 
@@ -245,9 +195,9 @@ watch(
 						:show-icon="showSearchIcon !== false"
 						@update:model-value="handleSearchUpdate"
 						@key:escape="closeSubMenu"
-						@key:navigate="handleSubMenuNavigate"
-						@key:arrow-left="handleSubMenuArrowLeft"
-						@key:enter="handleSubMenuEnter"
+						@key:navigate="subMenuNavigation.navigate"
+						@key:arrow-left="subMenuNavigation.handleArrowLeft"
+						@key:enter="subMenuNavigation.handleEnter"
 					/>
 
 					<div v-if="loading" :class="$style['loading-container']">
