@@ -41,6 +41,9 @@ const CONDITIONAL_NODE_TYPES = new Set([
 	'n8n-nodes-base.filter',
 ]);
 
+/** Node type for AI agents that should be wrapped in subgraphs */
+const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+
 type WorkflowNode = WorkflowMetadata['workflow']['nodes'][number];
 type WorkflowConnections = WorkflowMetadata['workflow']['connections'];
 
@@ -68,667 +71,810 @@ interface StickyBounds {
  * Result of categorizing sticky notes by their overlap with regular nodes
  */
 interface StickyOverlapResult {
-	/** Stickies that don't overlap any nodes */
 	noOverlap: StickyBounds[];
-	/** Map of node name to the sticky that overlaps only that node */
 	singleNodeOverlap: Map<string, StickyBounds>;
-	/** Stickies that overlap multiple nodes, with their overlapping node names */
 	multiNodeOverlap: Array<{ sticky: StickyBounds; nodeNames: string[] }>;
 }
 
 /**
- * Check if a node's position falls within sticky bounds
+ * Represents an agent node with its AI-connected nodes for subgraph grouping
  */
-function isNodeWithinStickyBounds(nodeX: number, nodeY: number, sticky: StickyBounds): boolean {
-	// Node center point should be within sticky bounds
-	const nodeCenterX = nodeX + DEFAULT_NODE_WIDTH / 2;
-	const nodeCenterY = nodeY + DEFAULT_NODE_HEIGHT / 2;
-
-	return (
-		nodeCenterX >= sticky.x &&
-		nodeCenterX <= sticky.x + sticky.width &&
-		nodeCenterY >= sticky.y &&
-		nodeCenterY <= sticky.y + sticky.height
-	);
+interface AgentSubgraph {
+	agentNode: WorkflowNode;
+	aiConnectedNodeNames: string[];
+	nestedStickySubgraphs: Array<{ sticky: StickyBounds; nodeNames: string[] }>;
 }
 
 /**
- * Extract sticky bounds from a sticky note node
+ * Builder class for generating Mermaid flowchart diagrams from n8n workflows
  */
-function extractStickyBounds(node: WorkflowNode): StickyBounds {
-	const width =
-		typeof node.parameters.width === 'number' ? node.parameters.width : DEFAULT_STICKY_WIDTH;
-	const height =
-		typeof node.parameters.height === 'number' ? node.parameters.height : DEFAULT_STICKY_HEIGHT;
-	const content = typeof node.parameters.content === 'string' ? node.parameters.content.trim() : '';
+class MermaidBuilder {
+	private readonly nodes: WorkflowNode[];
+	private readonly connections: WorkflowConnections;
+	private readonly options: Required<MermaidOptions>;
+	private readonly nodeConfigurations: NodeConfigurationsMap;
 
-	return {
-		node,
-		x: node.position[0],
-		y: node.position[1],
-		width,
-		height,
-		content,
-	};
-}
+	private readonly nodeIdMap: Map<string, string>;
+	private readonly nodeByName: Map<string, WorkflowNode>;
+	private readonly stickyOverlaps: StickyOverlapResult;
+	private readonly agentSubgraphs: AgentSubgraph[];
+	private readonly nodesInSubgraphs: Set<string>;
 
-/**
- * Find which regular nodes overlap with each sticky note
- */
-function categorizeStickyOverlaps(
-	stickyNotes: WorkflowNode[],
-	regularNodes: WorkflowNode[],
-): StickyOverlapResult {
-	const result: StickyOverlapResult = {
-		noOverlap: [],
-		singleNodeOverlap: new Map(),
-		multiNodeOverlap: [],
-	};
+	private readonly definedNodes = new Set<string>();
+	private readonly lines: string[] = [];
+	private subgraphCounter = 0;
 
-	for (const sticky of stickyNotes) {
-		const bounds = extractStickyBounds(sticky);
-		if (!bounds.content) continue; // Skip stickies without content
+	constructor(
+		nodes: WorkflowNode[],
+		connections: WorkflowConnections,
+		options: Required<MermaidOptions>,
+		existingConfigurations?: NodeConfigurationsMap,
+	) {
+		const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
+		const stickyNotes = nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
 
-		const overlappingNodes = regularNodes.filter((node) =>
-			isNodeWithinStickyBounds(node.position[0], node.position[1], bounds),
+		this.nodes = regularNodes;
+		this.connections = connections;
+		this.options = options;
+		this.nodeConfigurations = existingConfigurations ?? {};
+
+		this.nodeIdMap = this.createNodeIdMap();
+		this.nodeByName = new Map(regularNodes.map((n) => [n.name, n]));
+		this.stickyOverlaps = this.categorizeStickyOverlaps(stickyNotes);
+
+		const nodesInStickySubgraphs = new Set<string>();
+		for (const { nodeNames } of this.stickyOverlaps.multiNodeOverlap) {
+			for (const name of nodeNames) {
+				nodesInStickySubgraphs.add(name);
+			}
+		}
+
+		this.agentSubgraphs = this.findAgentSubgraphs(nodesInStickySubgraphs);
+
+		this.nodesInSubgraphs = new Set<string>(nodesInStickySubgraphs);
+		for (const { agentNode, aiConnectedNodeNames } of this.agentSubgraphs) {
+			this.nodesInSubgraphs.add(agentNode.name);
+			for (const name of aiConnectedNodeNames) {
+				this.nodesInSubgraphs.add(name);
+			}
+		}
+	}
+
+	/**
+	 * Build the complete mermaid diagram
+	 */
+	build(): { lines: string[]; nodeConfigurations: NodeConfigurationsMap } {
+		// Add comments for stickies that don't overlap any nodes
+		for (const sticky of this.stickyOverlaps.noOverlap) {
+			this.lines.push(this.formatStickyComment(sticky.content));
+		}
+
+		// Build main flow
+		this.buildMainFlow();
+
+		// Build subgraph sections
+		this.buildStickySubgraphs();
+		this.buildAgentSubgraphs();
+
+		// Build cross-subgraph connections
+		this.buildConnectionsToSubgraphs();
+		this.buildConnectionsFromSubgraphs();
+		this.buildInterSubgraphConnections();
+
+		return {
+			lines: ['```mermaid', 'flowchart TD', ...this.lines, '```'],
+			nodeConfigurations: this.nodeConfigurations,
+		};
+	}
+
+	// Initialization helpers
+
+	private createNodeIdMap(): Map<string, string> {
+		const map = new Map<string, string>();
+		this.nodes.forEach((node, idx) => {
+			map.set(node.name, `n${idx + 1}`);
+		});
+		return map;
+	}
+
+	private categorizeStickyOverlaps(stickyNotes: WorkflowNode[]): StickyOverlapResult {
+		const result: StickyOverlapResult = {
+			noOverlap: [],
+			singleNodeOverlap: new Map(),
+			multiNodeOverlap: [],
+		};
+
+		for (const sticky of stickyNotes) {
+			const bounds = this.extractStickyBounds(sticky);
+			if (!bounds.content) continue;
+
+			const overlappingNodes = this.nodes.filter((node) =>
+				this.isNodeWithinStickyBounds(node.position[0], node.position[1], bounds),
+			);
+
+			if (overlappingNodes.length === 0) {
+				result.noOverlap.push(bounds);
+			} else if (overlappingNodes.length === 1) {
+				result.singleNodeOverlap.set(overlappingNodes[0].name, bounds);
+			} else {
+				result.multiNodeOverlap.push({
+					sticky: bounds,
+					nodeNames: overlappingNodes.map((n) => n.name),
+				});
+			}
+		}
+
+		return result;
+	}
+
+	private extractStickyBounds(node: WorkflowNode): StickyBounds {
+		return {
+			node,
+			x: node.position[0],
+			y: node.position[1],
+			width:
+				typeof node.parameters.width === 'number' ? node.parameters.width : DEFAULT_STICKY_WIDTH,
+			height:
+				typeof node.parameters.height === 'number' ? node.parameters.height : DEFAULT_STICKY_HEIGHT,
+			content: typeof node.parameters.content === 'string' ? node.parameters.content.trim() : '',
+		};
+	}
+
+	private isNodeWithinStickyBounds(nodeX: number, nodeY: number, sticky: StickyBounds): boolean {
+		const nodeCenterX = nodeX + DEFAULT_NODE_WIDTH / 2;
+		const nodeCenterY = nodeY + DEFAULT_NODE_HEIGHT / 2;
+		return (
+			nodeCenterX >= sticky.x &&
+			nodeCenterX <= sticky.x + sticky.width &&
+			nodeCenterY >= sticky.y &&
+			nodeCenterY <= sticky.y + sticky.height
+		);
+	}
+
+	private findAgentSubgraphs(nodesInStickySubgraphs: Set<string>): AgentSubgraph[] {
+		const agentSubgraphs: AgentSubgraph[] = [];
+		const agentNodes = this.nodes.filter(
+			(n) => n.type === AGENT_NODE_TYPE && !nodesInStickySubgraphs.has(n.name),
 		);
 
-		if (overlappingNodes.length === 0) {
-			result.noOverlap.push(bounds);
-		} else if (overlappingNodes.length === 1) {
-			result.singleNodeOverlap.set(overlappingNodes[0].name, bounds);
-		} else {
-			result.multiNodeOverlap.push({
-				sticky: bounds,
-				nodeNames: overlappingNodes.map((n) => n.name),
-			});
-		}
-	}
+		const reverseConnections = this.buildReverseConnectionMap();
 
-	return result;
-}
+		for (const agentNode of agentNodes) {
+			const incomingConns = reverseConnections.get(agentNode.name) ?? [];
 
-/**
- * Format sticky content as a mermaid comment
- */
-function formatStickyComment(content: string, indent: string = '    '): string {
-	// Replace newlines and clean up content for single-line comment
-	const cleanContent = content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-	return `${indent}%% ${cleanContent}`;
-}
+			const aiConnectedNodeNames = incomingConns
+				.filter(
+					({ connType, sourceName }) =>
+						connType !== 'main' && !nodesInStickySubgraphs.has(sourceName),
+				)
+				.map(({ sourceName }) => sourceName);
 
-/**
- * Create a mapping of node names to short IDs (n1, n2, n3...)
- */
-function createNodeIdMap(nodes: WorkflowNode[]): Map<string, string> {
-	const nodeIdMap = new Map<string, string>();
-	nodes.forEach((node, idx) => {
-		nodeIdMap.set(node.name, `n${idx + 1}`);
-	});
-	return nodeIdMap;
-}
+			const nestedStickySubgraphs = this.findNestedStickySubgraphs(incomingConns);
 
-/**
- * Find all nodes that have incoming main connections
- */
-function findNodesWithIncomingConnections(connections: WorkflowConnections): Set<string> {
-	const nodesWithIncoming = new Set<string>();
-	Object.values(connections)
-		.filter((conn) => conn.main)
-		.forEach((sourceConnections) => {
-			for (const connArray of sourceConnections.main) {
-				if (!connArray) {
-					continue;
-				}
-				for (const conn of connArray) {
-					nodesWithIncoming.add(conn.node);
-				}
-			}
-		});
-	return nodesWithIncoming;
-}
-
-/**
- * Get all target node info from connections (all connection types)
- */
-function getConnectionTargets(
-	nodeConns: WorkflowConnections[string],
-): Array<{ nodeName: string; connType: string }> {
-	const targets: Array<{ nodeName: string; connType: string }> = [];
-	for (const [connType, connList] of Object.entries(nodeConns)) {
-		for (const connArray of connList) {
-			if (!connArray) continue;
-			for (const conn of connArray) {
-				targets.push({ nodeName: conn.node, connType });
+			if (aiConnectedNodeNames.length > 0 || nestedStickySubgraphs.length > 0) {
+				agentSubgraphs.push({ agentNode, aiConnectedNodeNames, nestedStickySubgraphs });
 			}
 		}
-	}
-	return targets;
-}
 
-/**
- * Get all target node names from main connections only (for traversal)
- */
-function getMainConnectionTargets(nodeConns: WorkflowConnections[string]): string[] {
-	if (!nodeConns.main) return [];
-	return nodeConns.main
-		.filter((connArray): connArray is NonNullable<typeof connArray> => connArray !== null)
-		.flatMap((connArray) => connArray.map((conn) => conn.node));
-}
-
-/**
- * Collect node configuration if it meets size requirements
- * Uses utility function from node-configuration.utils.ts
- */
-function maybeCollectNodeConfiguration(
-	node: WorkflowNode,
-	nodeConfigurations: NodeConfigurationsMap,
-): void {
-	const config = collectSingleNodeConfiguration(node);
-	if (config) {
-		addNodeConfigurationToMap(node.type, config, nodeConfigurations);
-	}
-}
-
-/**
- * Build the node definition string (just the node part, e.g., n1["Name"] or n1{"Name"})
- */
-function buildNodeDefinition(
-	node: WorkflowNode,
-	id: string,
-	options: Required<MermaidOptions>,
-): string {
-	const isConditional = CONDITIONAL_NODE_TYPES.has(node.type);
-	if (options.includeNodeName) {
-		const escapedName = node.name.replace(/"/g, "'");
-		// Use {} for conditional nodes (diamond shape), [] for regular nodes
-		return isConditional ? `${id}{"${escapedName}"}` : `${id}["${escapedName}"]`;
-	}
-	return id;
-}
-
-/**
- * Build comment lines for a node (type and parameters)
- */
-function buildNodeCommentLines(
-	node: WorkflowNode,
-	options: Required<MermaidOptions>,
-	nodeConfigurations: NodeConfigurationsMap,
-	indent: string = '    ',
-): string[] {
-	const lines: string[] = [];
-	const hasParams = Object.keys(node.parameters).length > 0;
-
-	if (options.collectNodeConfigurations) {
-		maybeCollectNodeConfiguration(node, nodeConfigurations);
+		return agentSubgraphs;
 	}
 
-	if (options.includeNodeType || options.includeNodeParameters) {
-		let typePart = '';
-		if (options.includeNodeType) {
-			// Build type string with optional resource/operation
-			const parts = [node.type];
-			const resource = node.parameters.resource;
-			const operation = node.parameters.operation;
-			if (typeof resource === 'string' && resource) {
-				parts.push(resource);
-			}
-			if (typeof operation === 'string' && operation) {
-				parts.push(operation);
-			}
-			typePart = parts.join(':');
-		}
-		const paramsPart =
-			options.includeNodeParameters && hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
+	private findNestedStickySubgraphs(
+		incomingConns: Array<{ sourceName: string; connType: string }>,
+	): Array<{ sticky: StickyBounds; nodeNames: string[] }> {
+		const nested: Array<{ sticky: StickyBounds; nodeNames: string[] }> = [];
 
-		if (typePart || paramsPart) {
-			lines.push(`${indent}%% ${typePart}${paramsPart}`);
-		}
-	}
-
-	return lines;
-}
-
-/**
- * Build lines for a single node definition (type comment and node declaration)
- * Used for standalone node definitions (start nodes, disconnected nodes)
- */
-function buildSingleNodeLines(
-	node: WorkflowNode,
-	id: string,
-	options: Required<MermaidOptions>,
-	nodeConfigurations: NodeConfigurationsMap,
-	indent: string = '    ',
-): string[] {
-	const lines = buildNodeCommentLines(node, options, nodeConfigurations, indent);
-	lines.push(`${indent}${buildNodeDefinition(node, id, options)}`);
-	return lines;
-}
-
-/**
- * Context for building mermaid output with inline node definitions
- */
-interface MermaidBuildContext {
-	nodes: WorkflowNode[];
-	nodeIdMap: Map<string, string>;
-	nodeByName: Map<string, WorkflowNode>;
-	options: Required<MermaidOptions>;
-	nodeConfigurations: NodeConfigurationsMap;
-	stickyOverlaps: StickyOverlapResult;
-	nodesInSubgraphs: Set<string>;
-	definedNodes: Set<string>;
-	lines: string[];
-}
-
-/**
- * Add node definition lines (comments + definition) for a node if not already defined
- * Returns the node definition string for use in connections (with name only if first time)
- */
-function defineNodeIfNeeded(
-	nodeName: string,
-	ctx: MermaidBuildContext,
-	indent: string = '    ',
-): string {
-	const node = ctx.nodeByName.get(nodeName);
-	const id = ctx.nodeIdMap.get(nodeName);
-	if (!node || !id) return id ?? '';
-
-	if (!ctx.definedNodes.has(nodeName)) {
-		ctx.definedNodes.add(nodeName);
-
-		// Check if this node has a single-node sticky overlap
-		const stickyForNode = ctx.stickyOverlaps.singleNodeOverlap.get(nodeName);
-		if (stickyForNode) {
-			ctx.lines.push(formatStickyComment(stickyForNode.content, indent));
-		}
-
-		// Add type/params comment
-		ctx.lines.push(...buildNodeCommentLines(node, ctx.options, ctx.nodeConfigurations, indent));
-
-		// Return full node definition (with name)
-		return buildNodeDefinition(node, id, ctx.options);
-	}
-
-	// Node already defined, just return the ID
-	return id;
-}
-
-/**
- * Build connection line with inline target node definition
- */
-function buildConnectionWithInlineTarget(
-	sourceNodeName: string,
-	targetNodeName: string,
-	connType: string,
-	ctx: MermaidBuildContext,
-	indent: string = '    ',
-): void {
-	const sourceId = ctx.nodeIdMap.get(sourceNodeName);
-	const targetId = ctx.nodeIdMap.get(targetNodeName);
-	if (!sourceId || !targetId) return;
-
-	// Get target node definition (with name if first time)
-	const targetDef = defineNodeIfNeeded(targetNodeName, ctx, indent);
-
-	// Build connection line
-	const arrow = connType === 'main' ? '-->' : `-.${connType}.->`;
-	ctx.lines.push(`${indent}${sourceId} ${arrow} ${targetDef}`);
-}
-
-/**
- * Build mermaid lines by traversing the workflow graph
- * Nodes are defined inline at first usage
- */
-function buildInlineMermaidLines(
-	_nodes: WorkflowNode[],
-	connections: WorkflowConnections,
-	startNodes: WorkflowNode[],
-	ctx: MermaidBuildContext,
-	indent: string = '    ',
-): void {
-	const visited = new Set<string>();
-
-	function traverse(nodeName: string) {
-		if (visited.has(nodeName)) return;
-		visited.add(nodeName);
-
-		const nodeConns = connections[nodeName];
-
-		// Get all connection targets
-		const targets = nodeConns ? getConnectionTargets(nodeConns) : [];
-
-		// Output connections with inline target definitions
-		for (const { nodeName: targetName, connType } of targets) {
-			// Skip connections to/from subgraphs (handled separately)
-			if (ctx.nodesInSubgraphs.has(targetName) || ctx.nodesInSubgraphs.has(nodeName)) continue;
-			buildConnectionWithInlineTarget(nodeName, targetName, connType, ctx, indent);
-		}
-
-		// Continue traversal through main connections (skip subgraph nodes)
-		if (nodeConns) {
-			getMainConnectionTargets(nodeConns)
-				.filter((target) => !ctx.nodesInSubgraphs.has(target))
-				.forEach((target) => traverse(target));
-		}
-	}
-
-	// Process each start node
-	for (const startNode of startNodes) {
-		// Skip start nodes in subgraphs
-		if (ctx.nodesInSubgraphs.has(startNode.name)) continue;
-
-		// Define the start node standalone (it has no incoming connection)
-		const id = ctx.nodeIdMap.get(startNode.name);
-		if (id && !ctx.definedNodes.has(startNode.name)) {
-			// Check if this node has a single-node sticky overlap
-			const stickyForNode = ctx.stickyOverlaps.singleNodeOverlap.get(startNode.name);
-			if (stickyForNode) {
-				ctx.lines.push(formatStickyComment(stickyForNode.content, indent));
-			}
-			ctx.lines.push(
-				...buildSingleNodeLines(startNode, id, ctx.options, ctx.nodeConfigurations, indent),
+		for (const stickySubgraph of this.stickyOverlaps.multiNodeOverlap) {
+			const allNodesConnectToAgent = stickySubgraph.nodeNames.every((nodeName) =>
+				incomingConns.some(
+					({ sourceName, connType }) => sourceName === nodeName && connType !== 'main',
+				),
 			);
-			ctx.definedNodes.add(startNode.name);
+			if (allNodesConnectToAgent) {
+				nested.push(stickySubgraph);
+			}
 		}
 
-		traverse(startNode.name);
+		return nested;
 	}
-}
 
-/**
- * Build subgraph sections for multi-node sticky overlaps
- * Only includes internal connections within the subgraph
- */
-function buildSubgraphSections(connections: WorkflowConnections, ctx: MermaidBuildContext): void {
-	for (const { sticky, nodeNames } of ctx.stickyOverlaps.multiNodeOverlap) {
-		// Create a safe subgraph ID from sticky content
-		const subgraphId = `sg_${sticky.node.id?.replace(/-/g, '_') ?? nodeNames.join('_')}`;
+	private buildReverseConnectionMap(): Map<
+		string,
+		Array<{ sourceName: string; connType: string }>
+	> {
+		const reverseConnections = new Map<string, Array<{ sourceName: string; connType: string }>>();
+
+		for (const [sourceName, sourceConns] of Object.entries(this.connections)) {
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(sourceConns)) {
+				if (!reverseConnections.has(targetName)) {
+					reverseConnections.set(targetName, []);
+				}
+				reverseConnections.get(targetName)!.push({ sourceName, connType });
+			}
+		}
+
+		return reverseConnections;
+	}
+
+	// Connection helpers
+
+	private getConnectionTargets(
+		nodeConns: WorkflowConnections[string],
+	): Array<{ nodeName: string; connType: string }> {
+		const targets: Array<{ nodeName: string; connType: string }> = [];
+		for (const [connType, connList] of Object.entries(nodeConns)) {
+			for (const connArray of connList) {
+				if (!connArray) continue;
+				for (const conn of connArray) {
+					targets.push({ nodeName: conn.node, connType });
+				}
+			}
+		}
+		return targets;
+	}
+
+	private getMainConnectionTargets(nodeConns: WorkflowConnections[string]): string[] {
+		if (!nodeConns.main) return [];
+		return nodeConns.main
+			.filter((connArray): connArray is NonNullable<typeof connArray> => connArray !== null)
+			.flatMap((connArray) => connArray.map((conn) => conn.node));
+	}
+
+	private findStartNodes(): WorkflowNode[] {
+		const nodesWithIncoming = new Set<string>();
+		Object.values(this.connections)
+			.filter((conn) => conn.main)
+			.forEach((sourceConnections) => {
+				for (const connArray of sourceConnections.main) {
+					if (!connArray) continue;
+					for (const conn of connArray) {
+						nodesWithIncoming.add(conn.node);
+					}
+				}
+			});
+		return this.nodes.filter((n) => !nodesWithIncoming.has(n.name));
+	}
+
+	// Node definition helpers
+
+	private formatStickyComment(content: string): string {
+		return `%% ${content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()}`;
+	}
+
+	private getNextSubgraphId(): string {
+		this.subgraphCounter++;
+		return `sg${this.subgraphCounter}`;
+	}
+
+	private buildNodeDefinition(node: WorkflowNode, id: string): string {
+		const isConditional = CONDITIONAL_NODE_TYPES.has(node.type);
+		if (this.options.includeNodeName) {
+			const escapedName = node.name.replace(/"/g, "'");
+			return isConditional ? `${id}{"${escapedName}"}` : `${id}["${escapedName}"]`;
+		}
+		return id;
+	}
+
+	private buildNodeCommentLines(node: WorkflowNode): string[] {
+		const lines: string[] = [];
+
+		if (this.options.collectNodeConfigurations) {
+			const config = collectSingleNodeConfiguration(node);
+			if (config) {
+				addNodeConfigurationToMap(node.type, config, this.nodeConfigurations);
+			}
+		}
+
+		if (this.options.includeNodeType || this.options.includeNodeParameters) {
+			const typePart = this.options.includeNodeType ? this.buildNodeTypePart(node) : '';
+			const paramsPart =
+				this.options.includeNodeParameters && Object.keys(node.parameters).length > 0
+					? ` | ${JSON.stringify(node.parameters)}`
+					: '';
+
+			if (typePart || paramsPart) {
+				lines.push(`%% ${typePart}${paramsPart}`);
+			}
+		}
+
+		return lines;
+	}
+
+	private buildNodeTypePart(node: WorkflowNode): string {
+		const parts = [node.type];
+		if (typeof node.parameters.resource === 'string' && node.parameters.resource) {
+			parts.push(node.parameters.resource);
+		}
+		if (typeof node.parameters.operation === 'string' && node.parameters.operation) {
+			parts.push(node.parameters.operation);
+		}
+		return parts.join(':');
+	}
+
+	private buildSingleNodeLines(node: WorkflowNode, id: string): string[] {
+		const lines = this.buildNodeCommentLines(node);
+		lines.push(this.buildNodeDefinition(node, id));
+		return lines;
+	}
+
+	private defineNodeIfNeeded(nodeName: string): string {
+		const node = this.nodeByName.get(nodeName);
+		const id = this.nodeIdMap.get(nodeName);
+		if (!node || !id) return id ?? '';
+
+		if (!this.definedNodes.has(nodeName)) {
+			this.definedNodes.add(nodeName);
+
+			const stickyForNode = this.stickyOverlaps.singleNodeOverlap.get(nodeName);
+			if (stickyForNode) {
+				this.lines.push(this.formatStickyComment(stickyForNode.content));
+			}
+
+			this.lines.push(...this.buildNodeCommentLines(node));
+			return this.buildNodeDefinition(node, id);
+		}
+
+		return id;
+	}
+
+	/**
+	 * Defines target node if not already defined, and adds connection from source.
+	 * Returns true if target was newly defined with a 'main' connection type.
+	 */
+	private defineTargetAndConnect(sourceId: string, targetName: string, connType: string): boolean {
+		const targetId = this.nodeIdMap.get(targetName);
+		if (!targetId) return false;
+
+		if (!this.definedNodes.has(targetName)) {
+			const targetNode = this.nodeByName.get(targetName);
+			if (targetNode) {
+				const stickyForNode = this.stickyOverlaps.singleNodeOverlap.get(targetName);
+				if (stickyForNode) {
+					this.lines.push(this.formatStickyComment(stickyForNode.content));
+				}
+				this.lines.push(...this.buildNodeCommentLines(targetNode));
+				this.addConnection(sourceId, this.buildNodeDefinition(targetNode, targetId), connType);
+				this.definedNodes.add(targetName);
+				return connType === 'main';
+			}
+		} else {
+			this.addConnection(sourceId, targetId, connType);
+		}
+		return false;
+	}
+
+	private addConnection(sourceId: string, targetDef: string, connType: string): void {
+		const arrow = connType === 'main' ? '-->' : `-.${connType}.->`;
+		this.lines.push(`${sourceId} ${arrow} ${targetDef}`);
+	}
+
+	// Main flow building
+
+	private buildMainFlow(): void {
+		const visited = new Set<string>();
+		const startNodes = this.findStartNodes();
+
+		const traverse = (nodeName: string) => {
+			if (visited.has(nodeName)) return;
+			visited.add(nodeName);
+
+			const nodeConns = this.connections[nodeName];
+			const targets = nodeConns ? this.getConnectionTargets(nodeConns) : [];
+
+			for (const { nodeName: targetName, connType } of targets) {
+				if (this.nodesInSubgraphs.has(targetName) || this.nodesInSubgraphs.has(nodeName)) continue;
+
+				const sourceId = this.nodeIdMap.get(nodeName);
+				const targetDef = this.defineNodeIfNeeded(targetName);
+				if (sourceId) {
+					this.addConnection(sourceId, targetDef, connType);
+				}
+			}
+
+			if (nodeConns) {
+				this.getMainConnectionTargets(nodeConns)
+					.filter((target) => !this.nodesInSubgraphs.has(target))
+					.forEach((target) => traverse(target));
+			}
+		};
+
+		for (const startNode of startNodes) {
+			if (this.nodesInSubgraphs.has(startNode.name)) continue;
+
+			const id = this.nodeIdMap.get(startNode.name);
+			if (id && !this.definedNodes.has(startNode.name)) {
+				const stickyForNode = this.stickyOverlaps.singleNodeOverlap.get(startNode.name);
+				if (stickyForNode) {
+					this.lines.push(this.formatStickyComment(stickyForNode.content));
+				}
+				this.lines.push(...this.buildSingleNodeLines(startNode, id));
+				this.definedNodes.add(startNode.name);
+			}
+
+			traverse(startNode.name);
+		}
+	}
+
+	// Sticky subgraph building
+
+	private buildStickySubgraphs(): void {
+		const nestedStickyIds = this.getNestedStickyIds();
+
+		for (const { sticky, nodeNames } of this.stickyOverlaps.multiNodeOverlap) {
+			if (nestedStickyIds.has(sticky.node.id ?? '')) continue;
+
+			this.buildSingleStickySubgraph(sticky, nodeNames);
+		}
+	}
+
+	private getNestedStickyIds(): Set<string> {
+		const ids = new Set<string>();
+		for (const { nestedStickySubgraphs } of this.agentSubgraphs) {
+			for (const { sticky } of nestedStickySubgraphs) {
+				ids.add(sticky.node.id ?? '');
+			}
+		}
+		return ids;
+	}
+
+	private buildSingleStickySubgraph(sticky: StickyBounds, nodeNames: string[]): void {
+		const subgraphId = this.getNextSubgraphId();
 		const subgraphLabel = sticky.content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
-		ctx.lines.push(formatStickyComment(sticky.content));
-		ctx.lines.push(`    subgraph ${subgraphId}["${subgraphLabel.replace(/"/g, "'")}"]`);
+		this.lines.push(this.formatStickyComment(sticky.content));
+		this.lines.push(`subgraph ${subgraphId}["${subgraphLabel.replace(/"/g, "'")}"]`);
 
 		const subgraphNodeSet = new Set(nodeNames);
+		const subgraphDefinedNodes = new Set<string>();
 
-		// Find start nodes within this subgraph (nodes without incoming connections from within the subgraph)
+		// Find and define start nodes
+		const startNodes = this.findSubgraphStartNodes(nodeNames, subgraphNodeSet);
+		for (const startNode of startNodes) {
+			const id = this.nodeIdMap.get(startNode.name);
+			if (id && !subgraphDefinedNodes.has(startNode.name)) {
+				this.lines.push(...this.buildSingleNodeLines(startNode, id));
+				subgraphDefinedNodes.add(startNode.name);
+			}
+		}
+
+		// Build internal connections
+		this.buildSubgraphInternalConnections(startNodes, subgraphNodeSet, subgraphDefinedNodes);
+
+		// Mark all as defined
+		for (const name of nodeNames) {
+			this.definedNodes.add(name);
+		}
+
+		this.lines.push('end');
+	}
+
+	private findSubgraphStartNodes(
+		nodeNames: string[],
+		subgraphNodeSet: Set<string>,
+	): WorkflowNode[] {
 		const nodesWithInternalIncoming = new Set<string>();
+
 		for (const nodeName of nodeNames) {
-			const nodeConns = connections[nodeName];
+			const nodeConns = this.connections[nodeName];
 			if (!nodeConns) continue;
-			const targets = getConnectionTargets(nodeConns);
-			for (const { nodeName: targetName } of targets) {
+
+			for (const { nodeName: targetName } of this.getConnectionTargets(nodeConns)) {
 				if (subgraphNodeSet.has(targetName)) {
 					nodesWithInternalIncoming.add(targetName);
 				}
 			}
 		}
 
-		const subgraphStartNodes = nodeNames
+		return nodeNames
 			.filter((name) => !nodesWithInternalIncoming.has(name))
-			.map((name) => ctx.nodeByName.get(name))
+			.map((name) => this.nodeByName.get(name))
 			.filter((node): node is WorkflowNode => node !== undefined);
+	}
 
-		// Track nodes defined within this subgraph
-		const subgraphDefinedNodes = new Set<string>();
-
-		// Define start nodes in subgraph
-		for (const startNode of subgraphStartNodes) {
-			const id = ctx.nodeIdMap.get(startNode.name);
-			if (id && !subgraphDefinedNodes.has(startNode.name)) {
-				ctx.lines.push(
-					...buildSingleNodeLines(startNode, id, ctx.options, ctx.nodeConfigurations, '        '),
-				);
-				subgraphDefinedNodes.add(startNode.name);
-			}
-		}
-
-		// Build internal connections only (both source and target in subgraph)
+	private buildSubgraphInternalConnections(
+		startNodes: WorkflowNode[],
+		subgraphNodeSet: Set<string>,
+		subgraphDefinedNodes: Set<string>,
+	): void {
 		const visited = new Set<string>();
 
-		function traverseSubgraph(nodeName: string) {
+		const traverse = (nodeName: string) => {
 			if (visited.has(nodeName)) return;
 			visited.add(nodeName);
 
-			const nodeConns = connections[nodeName];
+			const nodeConns = this.connections[nodeName];
 			if (!nodeConns) return;
 
-			const sourceId = ctx.nodeIdMap.get(nodeName);
+			const sourceId = this.nodeIdMap.get(nodeName);
 			if (!sourceId) return;
 
-			const targets = getConnectionTargets(nodeConns);
-			for (const { nodeName: targetName, connType } of targets) {
-				// Only include connections where target is also in subgraph
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(nodeConns)) {
 				if (!subgraphNodeSet.has(targetName)) continue;
 
-				const targetId = ctx.nodeIdMap.get(targetName);
-				if (!targetId) continue;
-
-				const targetNode = ctx.nodeByName.get(targetName);
-				if (!targetNode) continue;
+				const targetId = this.nodeIdMap.get(targetName);
+				const targetNode = this.nodeByName.get(targetName);
+				if (!targetId || !targetNode) continue;
 
 				const arrow = connType === 'main' ? '-->' : `-.${connType}.->`;
 
 				if (!subgraphDefinedNodes.has(targetName)) {
-					// Define target inline
-					ctx.lines.push(
-						...buildNodeCommentLines(targetNode, ctx.options, ctx.nodeConfigurations, '        '),
-					);
-					ctx.lines.push(
-						`        ${sourceId} ${arrow} ${buildNodeDefinition(targetNode, targetId, ctx.options)}`,
-					);
+					this.lines.push(...this.buildNodeCommentLines(targetNode));
+					this.lines.push(`${sourceId} ${arrow} ${this.buildNodeDefinition(targetNode, targetId)}`);
 					subgraphDefinedNodes.add(targetName);
 				} else {
-					ctx.lines.push(`        ${sourceId} ${arrow} ${targetId}`);
+					this.lines.push(`${sourceId} ${arrow} ${targetId}`);
 				}
 			}
 
-			// Continue traversal
-			getMainConnectionTargets(nodeConns)
+			this.getMainConnectionTargets(nodeConns)
 				.filter((t) => subgraphNodeSet.has(t))
-				.forEach((t) => traverseSubgraph(t));
-		}
+				.forEach((t) => traverse(t));
+		};
 
-		subgraphStartNodes.forEach((n) => traverseSubgraph(n.name));
-
-		// Mark all subgraph nodes as defined in main context
-		for (const name of nodeNames) {
-			ctx.definedNodes.add(name);
-		}
-
-		ctx.lines.push('    end');
+		startNodes.forEach((n) => traverse(n.name));
 	}
-}
 
-/**
- * Build connections from outside nodes to subgraph nodes
- */
-function buildConnectionsToSubgraphs(
-	connections: WorkflowConnections,
-	ctx: MermaidBuildContext,
-): void {
-	for (const nodeName of ctx.definedNodes) {
-		if (ctx.nodesInSubgraphs.has(nodeName)) continue;
+	// Agent subgraph building
 
-		const nodeConns = connections[nodeName];
-		if (!nodeConns) continue;
+	private buildAgentSubgraphs(): void {
+		for (const agentSubgraph of this.agentSubgraphs) {
+			this.buildSingleAgentSubgraph(agentSubgraph);
+		}
+	}
 
-		const targets = getConnectionTargets(nodeConns);
-		for (const { nodeName: targetName, connType } of targets) {
-			if (ctx.nodesInSubgraphs.has(targetName)) {
-				// Connection from outside to subgraph node
-				const sourceId = ctx.nodeIdMap.get(nodeName);
-				const targetId = ctx.nodeIdMap.get(targetName);
-				if (sourceId && targetId) {
-					const arrow = connType === 'main' ? '-->' : `-.${connType}.->`;
-					ctx.lines.push(`    ${sourceId} ${arrow} ${targetId}`);
+	private buildSingleAgentSubgraph(agentSubgraph: AgentSubgraph): void {
+		const { agentNode, aiConnectedNodeNames, nestedStickySubgraphs } = agentSubgraph;
+		const agentId = this.nodeIdMap.get(agentNode.name);
+		if (!agentId) return;
+
+		const subgraphId = this.getNextSubgraphId();
+		this.lines.push(`subgraph ${subgraphId}["${agentNode.name.replace(/"/g, "'")}"]`);
+
+		// Define direct AI-connected nodes
+		for (const nodeName of aiConnectedNodeNames) {
+			this.defineAgentConnectedNode(nodeName);
+		}
+
+		// Build nested sticky subgraphs
+		for (const { sticky, nodeNames } of nestedStickySubgraphs) {
+			this.buildNestedStickySubgraph(sticky, nodeNames);
+		}
+
+		// Define agent node and its connections
+		this.buildAgentNodeConnections(agentNode, agentId, aiConnectedNodeNames, nestedStickySubgraphs);
+
+		// Mark all as defined
+		this.markAgentSubgraphNodesDefined(agentNode, aiConnectedNodeNames, nestedStickySubgraphs);
+
+		this.lines.push('end');
+	}
+
+	private defineAgentConnectedNode(nodeName: string): void {
+		const node = this.nodeByName.get(nodeName);
+		const id = this.nodeIdMap.get(nodeName);
+		if (!node || !id) return;
+
+		const stickyForNode = this.stickyOverlaps.singleNodeOverlap.get(nodeName);
+		if (stickyForNode) {
+			this.lines.push(this.formatStickyComment(stickyForNode.content));
+		}
+
+		this.lines.push(...this.buildSingleNodeLines(node, id));
+	}
+
+	private buildNestedStickySubgraph(sticky: StickyBounds, nodeNames: string[]): void {
+		const nestedSubgraphId = this.getNextSubgraphId();
+		const label = sticky.content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+		this.lines.push(this.formatStickyComment(sticky.content));
+		this.lines.push(`subgraph ${nestedSubgraphId}["${label.replace(/"/g, "'")}"]`);
+
+		for (const nodeName of nodeNames) {
+			const node = this.nodeByName.get(nodeName);
+			const id = this.nodeIdMap.get(nodeName);
+			if (node && id) {
+				this.lines.push(...this.buildSingleNodeLines(node, id));
+			}
+		}
+
+		this.lines.push('end');
+	}
+
+	private buildAgentNodeConnections(
+		agentNode: WorkflowNode,
+		agentId: string,
+		aiConnectedNodeNames: string[],
+		nestedStickySubgraphs: Array<{ sticky: StickyBounds; nodeNames: string[] }>,
+	): void {
+		const stickyForAgent = this.stickyOverlaps.singleNodeOverlap.get(agentNode.name);
+		if (stickyForAgent) {
+			this.lines.push(this.formatStickyComment(stickyForAgent.content));
+		}
+		this.lines.push(...this.buildNodeCommentLines(agentNode));
+
+		const allAiNodeNames = [
+			...aiConnectedNodeNames,
+			...nestedStickySubgraphs.flatMap(({ nodeNames }) => nodeNames),
+		];
+
+		let agentDefined = false;
+		for (const nodeName of allAiNodeNames) {
+			const sourceId = this.nodeIdMap.get(nodeName);
+			const nodeConns = this.connections[nodeName];
+			if (!sourceId || !nodeConns) continue;
+
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(nodeConns)) {
+				if (targetName !== agentNode.name || connType === 'main') continue;
+
+				const arrow = `-.${connType}.->`;
+				if (!agentDefined) {
+					this.lines.push(`${sourceId} ${arrow} ${this.buildNodeDefinition(agentNode, agentId)}`);
+					agentDefined = true;
+				} else {
+					this.lines.push(`${sourceId} ${arrow} ${agentId}`);
 				}
 			}
 		}
+
+		if (!agentDefined) {
+			this.lines.push(this.buildNodeDefinition(agentNode, agentId));
+		}
 	}
-}
 
-/**
- * Build connections from subgraph nodes to outside nodes, and continue traversal
- */
-function buildConnectionsFromSubgraphs(
-	connections: WorkflowConnections,
-	ctx: MermaidBuildContext,
-): void {
-	// Queue of nodes to process (starting from subgraph exit points)
-	const nodesToProcess: string[] = [];
+	private markAgentSubgraphNodesDefined(
+		agentNode: WorkflowNode,
+		aiConnectedNodeNames: string[],
+		nestedStickySubgraphs: Array<{ sticky: StickyBounds; nodeNames: string[] }>,
+	): void {
+		for (const name of aiConnectedNodeNames) {
+			this.definedNodes.add(name);
+		}
+		for (const { nodeNames } of nestedStickySubgraphs) {
+			for (const name of nodeNames) {
+				this.definedNodes.add(name);
+			}
+		}
+		this.definedNodes.add(agentNode.name);
+	}
 
-	// First, output direct connections from subgraph nodes
-	for (const nodeName of ctx.nodesInSubgraphs) {
-		const nodeConns = connections[nodeName];
-		if (!nodeConns) continue;
+	// Cross-subgraph connections
 
-		const targets = getConnectionTargets(nodeConns);
-		for (const { nodeName: targetName, connType } of targets) {
-			if (!ctx.nodesInSubgraphs.has(targetName)) {
-				// Connection from subgraph to outside node
-				const sourceId = ctx.nodeIdMap.get(nodeName);
-				const targetId = ctx.nodeIdMap.get(targetName);
-				if (sourceId && targetId) {
-					const arrow = connType === 'main' ? '-->' : `-.${connType}.->`;
-					// Define target if needed
-					if (!ctx.definedNodes.has(targetName)) {
-						const targetNode = ctx.nodeByName.get(targetName);
-						if (targetNode) {
-							const stickyForNode = ctx.stickyOverlaps.singleNodeOverlap.get(targetName);
-							if (stickyForNode) {
-								ctx.lines.push(formatStickyComment(stickyForNode.content));
-							}
-							ctx.lines.push(
-								...buildNodeCommentLines(targetNode, ctx.options, ctx.nodeConfigurations),
-							);
-							ctx.lines.push(
-								`    ${sourceId} ${arrow} ${buildNodeDefinition(targetNode, targetId, ctx.options)}`,
-							);
-							ctx.definedNodes.add(targetName);
-							// Add to process queue so we continue from this node
-							if (connType === 'main') {
-								nodesToProcess.push(targetName);
-							}
-						}
-					} else {
-						ctx.lines.push(`    ${sourceId} ${arrow} ${targetId}`);
+	private buildConnectionsToSubgraphs(): void {
+		for (const nodeName of this.definedNodes) {
+			if (this.nodesInSubgraphs.has(nodeName)) continue;
+
+			const nodeConns = this.connections[nodeName];
+			if (!nodeConns) continue;
+
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(nodeConns)) {
+				if (this.nodesInSubgraphs.has(targetName)) {
+					const sourceId = this.nodeIdMap.get(nodeName);
+					const targetId = this.nodeIdMap.get(targetName);
+					if (sourceId && targetId) {
+						this.addConnection(sourceId, targetId, connType);
 					}
 				}
 			}
 		}
 	}
 
-	// Continue traversing from nodes reached via subgraph exits
-	const visited = new Set<string>();
+	private buildConnectionsFromSubgraphs(): void {
+		const nodesToProcess: string[] = [];
 
-	function continueTraversal(nodeName: string) {
-		if (visited.has(nodeName) || ctx.nodesInSubgraphs.has(nodeName)) return;
-		visited.add(nodeName);
+		for (const nodeName of this.nodesInSubgraphs) {
+			const nodeConns = this.connections[nodeName];
+			if (!nodeConns) continue;
 
-		const nodeConns = connections[nodeName];
-		if (!nodeConns) return;
+			const sourceId = this.nodeIdMap.get(nodeName);
+			if (!sourceId) continue;
 
-		const targets = getConnectionTargets(nodeConns);
-		for (const { nodeName: targetName, connType } of targets) {
-			if (ctx.nodesInSubgraphs.has(targetName)) continue;
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(nodeConns)) {
+				if (this.nodesInSubgraphs.has(targetName)) continue;
 
-			const sourceId = ctx.nodeIdMap.get(nodeName);
-			const targetId = ctx.nodeIdMap.get(targetName);
-			if (!sourceId || !targetId) continue;
-
-			const arrow = connType === 'main' ? '-->' : `-.${connType}.->`;
-
-			if (!ctx.definedNodes.has(targetName)) {
-				const targetNode = ctx.nodeByName.get(targetName);
-				if (targetNode) {
-					const stickyForNode = ctx.stickyOverlaps.singleNodeOverlap.get(targetName);
-					if (stickyForNode) {
-						ctx.lines.push(formatStickyComment(stickyForNode.content));
-					}
-					ctx.lines.push(...buildNodeCommentLines(targetNode, ctx.options, ctx.nodeConfigurations));
-					ctx.lines.push(
-						`    ${sourceId} ${arrow} ${buildNodeDefinition(targetNode, targetId, ctx.options)}`,
-					);
-					ctx.definedNodes.add(targetName);
+				const wasNewMainConnection = this.defineTargetAndConnect(sourceId, targetName, connType);
+				if (wasNewMainConnection) {
+					nodesToProcess.push(targetName);
 				}
-			} else {
-				ctx.lines.push(`    ${sourceId} ${arrow} ${targetId}`);
 			}
 		}
 
-		// Continue through main connections
-		getMainConnectionTargets(nodeConns)
-			.filter((t) => !ctx.nodesInSubgraphs.has(t))
-			.forEach((t) => continueTraversal(t));
+		this.continueTraversalFromNodes(nodesToProcess);
 	}
 
-	nodesToProcess.forEach((n) => continueTraversal(n));
-}
+	private continueTraversalFromNodes(nodesToProcess: string[]): void {
+		const visited = new Set<string>();
 
-/**
- * Build a Mermaid flowchart from workflow nodes and connections
- */
-function buildMermaidChart(
-	nodes: WorkflowMetadata['workflow']['nodes'],
-	connections: WorkflowConnections,
-	options: Required<MermaidOptions> = DEFAULT_MERMAID_OPTIONS,
-	existingConfigurations?: NodeConfigurationsMap,
-): {
-	lines: string[];
-	nodeConfigurations: NodeConfigurationsMap;
-} {
-	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
-	const stickyNotes = nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
-	const nodeConfigurations: NodeConfigurationsMap = existingConfigurations ?? {};
+		const traverse = (nodeName: string) => {
+			if (visited.has(nodeName) || this.nodesInSubgraphs.has(nodeName)) return;
+			visited.add(nodeName);
 
-	const nodeIdMap = createNodeIdMap(regularNodes);
-	const nodeByName = new Map(regularNodes.map((n) => [n.name, n]));
-	const nodesWithIncoming = findNodesWithIncomingConnections(connections);
-	const startNodes = regularNodes.filter((n) => !nodesWithIncoming.has(n.name));
+			const nodeConns = this.connections[nodeName];
+			if (!nodeConns) return;
 
-	// Categorize sticky notes by their overlap with regular nodes
-	const stickyOverlaps = categorizeStickyOverlaps(stickyNotes, regularNodes);
+			const sourceId = this.nodeIdMap.get(nodeName);
+			if (!sourceId) return;
 
-	// Track which nodes are in multi-node subgraphs
-	const nodesInSubgraphs = new Set<string>();
-	for (const { nodeNames } of stickyOverlaps.multiNodeOverlap) {
-		for (const name of nodeNames) {
-			nodesInSubgraphs.add(name);
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(nodeConns)) {
+				if (this.nodesInSubgraphs.has(targetName)) {
+					const targetId = this.nodeIdMap.get(targetName);
+					if (targetId) {
+						this.addConnection(sourceId, targetId, connType);
+					}
+					continue;
+				}
+
+				this.defineTargetAndConnect(sourceId, targetName, connType);
+			}
+
+			this.getMainConnectionTargets(nodeConns)
+				.filter((t) => !this.nodesInSubgraphs.has(t))
+				.forEach((t) => traverse(t));
+		};
+
+		nodesToProcess.forEach((n) => traverse(n));
+	}
+
+	private buildInterSubgraphConnections(): void {
+		const nestedStickyIds = this.getNestedStickyIds();
+		const outputConnections = new Set<string>();
+
+		for (const nodeName of this.nodesInSubgraphs) {
+			const nodeConns = this.connections[nodeName];
+			if (!nodeConns) continue;
+
+			for (const { nodeName: targetName, connType } of this.getConnectionTargets(nodeConns)) {
+				if (!this.nodesInSubgraphs.has(targetName)) continue;
+
+				// Skip connections involving nested stickies (handled internally)
+				if (this.isInNestedSticky(nodeName, nestedStickyIds)) continue;
+				if (this.isInNestedSticky(targetName, nestedStickyIds)) continue;
+
+				const sourceSubgraphType = this.getSubgraphType(nodeName, nestedStickyIds);
+				const targetSubgraphType = this.getSubgraphType(targetName, nestedStickyIds);
+
+				if (sourceSubgraphType === targetSubgraphType) continue;
+
+				const sourceId = this.nodeIdMap.get(nodeName);
+				const targetId = this.nodeIdMap.get(targetName);
+				if (!sourceId || !targetId) continue;
+
+				const connKey = `${sourceId}-${connType}-${targetId}`;
+				if (outputConnections.has(connKey)) continue;
+				outputConnections.add(connKey);
+
+				this.addConnection(sourceId, targetId, connType);
+			}
 		}
 	}
 
-	// Build context for mermaid generation
-	const ctx: MermaidBuildContext = {
-		nodes: regularNodes,
-		nodeIdMap,
-		nodeByName,
-		options,
-		nodeConfigurations,
-		stickyOverlaps,
-		nodesInSubgraphs,
-		definedNodes: new Set(),
-		lines: [],
-	};
-
-	// Add comments for stickies that don't overlap any nodes
-	for (const sticky of stickyOverlaps.noOverlap) {
-		ctx.lines.push(formatStickyComment(sticky.content));
+	private isInNestedSticky(nodeName: string, nestedStickyIds: Set<string>): boolean {
+		return this.stickyOverlaps.multiNodeOverlap.some(
+			({ sticky, nodeNames }) =>
+				nodeNames.includes(nodeName) && nestedStickyIds.has(sticky.node.id ?? ''),
+		);
 	}
 
-	// Build main flow with inline node definitions
-	buildInlineMermaidLines(regularNodes, connections, startNodes, ctx);
+	private getSubgraphType(
+		nodeName: string,
+		nestedStickyIds: Set<string>,
+	): 'sticky' | 'agent' | 'none' {
+		const inStandaloneSticky = this.stickyOverlaps.multiNodeOverlap.some(
+			({ sticky, nodeNames }) =>
+				nodeNames.includes(nodeName) && !nestedStickyIds.has(sticky.node.id ?? ''),
+		);
+		if (inStandaloneSticky) return 'sticky';
 
-	// Build subgraph sections
-	buildSubgraphSections(connections, ctx);
+		const inAgentSubgraph = this.agentSubgraphs.some(
+			({ agentNode, aiConnectedNodeNames }) =>
+				agentNode.name === nodeName || aiConnectedNodeNames.includes(nodeName),
+		);
+		if (inAgentSubgraph) return 'agent';
 
-	// Build connections to/from subgraphs
-	buildConnectionsToSubgraphs(connections, ctx);
-	buildConnectionsFromSubgraphs(connections, ctx);
-
-	const lines = ['```mermaid', 'flowchart TD', ...ctx.lines, '```'];
-
-	return { lines, nodeConfigurations };
+		return 'none';
+	}
 }
+
+// Public API
 
 /**
  * Generates a Mermaid flowchart diagram from a workflow
@@ -739,13 +885,13 @@ export function mermaidStringify(workflow: WorkflowMetadata, options?: MermaidOp
 		...DEFAULT_MERMAID_OPTIONS,
 		...options,
 	};
-	const result = buildMermaidChart(wf.nodes, wf.connections, mergedOptions);
+	const builder = new MermaidBuilder(wf.nodes, wf.connections, mergedOptions);
+	const result = builder.build();
 	return result.lines.join('\n');
 }
 
 /**
  * Process multiple workflows and generate mermaid diagrams while collecting node configurations
- * This is more efficient than calling mermaidStringify and extractNodeConfigurations separately
  */
 export function processWorkflowExamples(
 	workflows: WorkflowMetadata[],
@@ -757,17 +903,15 @@ export function processWorkflowExamples(
 		collectNodeConfigurations: true,
 	};
 
-	// Accumulate configurations across all workflows
 	const allConfigurations: NodeConfigurationsMap = {};
 
-	const results: MermaidResult[] = workflows.map((workflow) => {
+	return workflows.map((workflow) => {
 		const { workflow: wf } = workflow;
-		const result = buildMermaidChart(wf.nodes, wf.connections, mergedOptions, allConfigurations);
+		const builder = new MermaidBuilder(wf.nodes, wf.connections, mergedOptions, allConfigurations);
+		const result = builder.build();
 		return {
 			mermaid: result.lines.join('\n'),
 			nodeConfigurations: result.nodeConfigurations,
 		};
 	});
-
-	return results;
 }

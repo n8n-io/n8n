@@ -7,69 +7,64 @@ describe('markdown-workflow.utils', () => {
 	describe('mermaidStringify', () => {
 		it('should convert a workflow with AI agent and tools to mermaid diagram', () => {
 			const result = mermaidStringify(aiAssistantWorkflow);
-
-			// The aiAssistantWorkflow has multiple sticky notes that overlay various nodes
-			// Sticky notes without node overlap appear as comments at the start
-			// Sticky notes overlapping a single node appear as comments before that node
-			// Sticky notes overlapping multiple nodes create subgraphs
-			// Nodes are defined inline at their first usage
-
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
-    %% ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ) @[youtube](ROgf5dVqYPQ)
-    %% This node allows your agent access your Google calendar
-    %% n8n-nodes-base.googleCalendarTool:getAll | {"operation":"getAll","calendar":{"__rl":true,"mode":"id","value":"=<insert email here>"},"options":{"timeMin":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', \`\`, 'string') }}","timeMax":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', \`\`, 'string') }}","fields":"=items(summary, start(dateTime))"}}
-    n1["Google Calendar"]
-    %% Caylee, your peronal AI Assistant: 1. Get email 2. Check calendar 3. Get and create to-do tasks Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
-    %% @n8n/n8n-nodes-langchain.agent | {"promptType":"define","text":"={{ $json.text }}","options":{"systemMessage":"=You are a helpful personal assistant called Jackie. \\n\\nToday's date is {{ $today.format('yyyy-MM-dd') }}.\\n\\nGuidelines:\\n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\\n- if the user did not specify a date in the request assume they are asking for today\\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away\\n- When creating calendar entry, the attendee email is optional"}}
-    n1 -.ai_tool.-> n14["Jackie, AI Assistant 👩🏻‍🏫"]
-    %% This node helps your agent remember the last few messages to stay on topic.
-    %% @n8n/n8n-nodes-langchain.memoryBufferWindow | {"sessionIdType":"customKey","sessionKey":"={{ $('Listen for incoming events').first().json.message.from.id }}"}
-    n2["Window Buffer Memory"]
-    n2 -.ai_memory.-> n14
-    %% n8n-nodes-base.telegramTrigger | {"updates":["message"],"additionalFields":{}}
-    n4["Listen for incoming events"]
-    %% 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it. 2. Open the \`\`\`OpenRouter\`\`\` node: * **Select Credential → Create New** * Paste into **API Key** and **Save**
-    %% @n8n/n8n-nodes-langchain.lmChatOpenRouter | {"options":{}}
-    n9["OpenRouter"]
-    n9 -.ai_languageModel.-> n14
-    %% ## Process Telegram Request
-    subgraph sg_8078f53c_0aed_4f01_bf8f_f0e65a8291c0["## Process Telegram Request"]
-        %% n8n-nodes-base.set | {"fields":{"values":[{"name":"text","stringValue":"={{ $json?.message?.text || \\"\\" }}"}]},"options":{}}
-        n7["Voice or Text"]
-        %% n8n-nodes-base.if | {"conditions":{"options":{"version":2,"leftValue":"","caseSensitive":true,"typeValidation":"strict"},"combinator":"and","conditions":[{"id":"a0bf9719-4272-46f6-ab3b-eda6f7b44fd8","operator":{"type":"string","operation":"empty","singleValue":true},"leftValue":"={{ $json.message.text }}","rightValue":""}]},"options":{}}
-        n7 --> n6{"If"}
-        %% n8n-nodes-base.telegram:file | {"resource":"file","fileId":"={{ $('Listen for incoming events').item.json.message.voice.file_id }}","additionalFields":{}}
-        n6 --> n8["Get Voice File"]
-    end
-    %% This node allows your agent create and get tasks from Google Tasks
-    subgraph sg_48c06490_e261_45f5_ad0c_2b2648203ab0["This node allows your agent create and get tasks from Google Tasks"]
-        %% n8n-nodes-base.googleTasksTool | {"task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","title":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', \`\`, 'string') }}","additionalFields":{}}
-        n10["Create a task in Google Tasks"]
-        %% n8n-nodes-base.googleTasksTool:getAll | {"operation":"getAll","task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","additionalFields":{}}
-        n11["Get many tasks in Google Tasks"]
-    end
-    %% This node allows your agent access your gmail
-    subgraph sg_8bb0d940_eda3_4ecf_8a1d_15b1a6445a83["This node allows your agent access your gmail"]
-        %% n8n-nodes-base.gmailTool:getAll | {"operation":"getAll","limit":20,"filters":{"labelIds":["INBOX"],"readStatus":"unread","receivedAfter":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', \`\`, 'string') }}","receivedBefore":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', \`\`, 'string') }}"}}
-        n3["Get Email"]
-        %% n8n-nodes-base.gmailTool | {"sendTo":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', \`\`, 'string') }}","subject":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', \`\`, 'string') }}","message":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', \`Please format this nicely in html\`, 'string') }}","options":{"appendAttribution":false}}
-        n13["Send Email"]
-    end
-    n4 --> n7
-    n6 --> n14
-    %% Uses OpenAI to convert voice to text. [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
-    %% @n8n/n8n-nodes-langchain.openAi:audio:transcribe | {"resource":"audio","operation":"transcribe","options":{}}
-    n8 --> n12["Transcribe a recording"]
-    n10 -.ai_tool.-> n14
-    n11 -.ai_tool.-> n14
-    n3 -.ai_tool.-> n14
-    n13 -.ai_tool.-> n14
-    n12 --> n14
-    %% Send message back to Telegram
-    %% n8n-nodes-base.telegram | {"chatId":"={{ $('Listen for incoming events').first().json.message.from.id }}","text":"={{ $json.output }}","additionalFields":{"appendAttribution":false,"parse_mode":"Markdown"}}
-    n14 --> n5["Telegram"]
+%% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
+%% ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ) @[youtube](ROgf5dVqYPQ)
+%% n8n-nodes-base.telegramTrigger | {"updates":["message"],"additionalFields":{}}
+n4["Listen for incoming events"]
+%% ## Process Telegram Request
+subgraph sg1["## Process Telegram Request"]
+%% n8n-nodes-base.set | {"fields":{"values":[{"name":"text","stringValue":"={{ $json?.message?.text || \\"\\" }}"}]},"options":{}}
+n7["Voice or Text"]
+%% n8n-nodes-base.if | {"conditions":{"options":{"version":2,"leftValue":"","caseSensitive":true,"typeValidation":"strict"},"combinator":"and","conditions":[{"id":"a0bf9719-4272-46f6-ab3b-eda6f7b44fd8","operator":{"type":"string","operation":"empty","singleValue":true},"leftValue":"={{ $json.message.text }}","rightValue":""}]},"options":{}}
+n7 --> n6{"If"}
+%% n8n-nodes-base.telegram:file | {"resource":"file","fileId":"={{ $('Listen for incoming events').item.json.message.voice.file_id }}","additionalFields":{}}
+n6 --> n8["Get Voice File"]
+end
+subgraph sg2["Jackie, AI Assistant 👩🏻‍🏫"]
+%% This node allows your agent access your Google calendar
+%% n8n-nodes-base.googleCalendarTool:getAll | {"operation":"getAll","calendar":{"__rl":true,"mode":"id","value":"=<insert email here>"},"options":{"timeMin":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', \`\`, 'string') }}","timeMax":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', \`\`, 'string') }}","fields":"=items(summary, start(dateTime))"}}
+n1["Google Calendar"]
+%% This node helps your agent remember the last few messages to stay on topic.
+%% @n8n/n8n-nodes-langchain.memoryBufferWindow | {"sessionIdType":"customKey","sessionKey":"={{ $('Listen for incoming events').first().json.message.from.id }}"}
+n2["Window Buffer Memory"]
+%% 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it. 2. Open the \`\`\`OpenRouter\`\`\` node: * **Select Credential → Create New** * Paste into **API Key** and **Save**
+%% @n8n/n8n-nodes-langchain.lmChatOpenRouter | {"options":{}}
+n9["OpenRouter"]
+%% This node allows your agent create and get tasks from Google Tasks
+subgraph sg3["This node allows your agent create and get tasks from Google Tasks"]
+%% n8n-nodes-base.googleTasksTool | {"task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","title":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', \`\`, 'string') }}","additionalFields":{}}
+n10["Create a task in Google Tasks"]
+%% n8n-nodes-base.googleTasksTool:getAll | {"operation":"getAll","task":"MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow","additionalFields":{}}
+n11["Get many tasks in Google Tasks"]
+end
+%% This node allows your agent access your gmail
+subgraph sg4["This node allows your agent access your gmail"]
+%% n8n-nodes-base.gmailTool:getAll | {"operation":"getAll","limit":20,"filters":{"labelIds":["INBOX"],"readStatus":"unread","receivedAfter":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', \`\`, 'string') }}","receivedBefore":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', \`\`, 'string') }}"}}
+n3["Get Email"]
+%% n8n-nodes-base.gmailTool | {"sendTo":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', \`\`, 'string') }}","subject":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', \`\`, 'string') }}","message":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', \`Please format this nicely in html\`, 'string') }}","options":{"appendAttribution":false}}
+n13["Send Email"]
+end
+%% Caylee, your peronal AI Assistant: 1. Get email 2. Check calendar 3. Get and create to-do tasks Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
+%% @n8n/n8n-nodes-langchain.agent | {"promptType":"define","text":"={{ $json.text }}","options":{"systemMessage":"=You are a helpful personal assistant called Jackie. \\n\\nToday's date is {{ $today.format('yyyy-MM-dd') }}.\\n\\nGuidelines:\\n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\\n- if the user did not specify a date in the request assume they are asking for today\\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away\\n- When creating calendar entry, the attendee email is optional"}}
+n1 -.ai_tool.-> n14["Jackie, AI Assistant 👩🏻‍🏫"]
+n2 -.ai_memory.-> n14
+n9 -.ai_languageModel.-> n14
+n10 -.ai_tool.-> n14
+n11 -.ai_tool.-> n14
+n3 -.ai_tool.-> n14
+n13 -.ai_tool.-> n14
+end
+n4 --> n7
+%% Uses OpenAI to convert voice to text. [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
+%% @n8n/n8n-nodes-langchain.openAi:audio:transcribe | {"resource":"audio","operation":"transcribe","options":{}}
+n8 --> n12["Transcribe a recording"]
+%% Send message back to Telegram
+%% n8n-nodes-base.telegram | {"chatId":"={{ $('Listen for incoming events').first().json.message.from.id }}","text":"={{ $json.output }}","additionalFields":{"appendAttribution":false,"parse_mode":"Markdown"}}
+n14 --> n5["Telegram"]
+n12 --> n14
+n6 --> n14
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -80,60 +75,62 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
-    %% ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ) @[youtube](ROgf5dVqYPQ)
-    %% This node allows your agent access your Google calendar
-    %% n8n-nodes-base.googleCalendarTool:getAll
-    n1["Google Calendar"]
-    %% Caylee, your peronal AI Assistant: 1. Get email 2. Check calendar 3. Get and create to-do tasks Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
-    %% @n8n/n8n-nodes-langchain.agent
-    n1 -.ai_tool.-> n14["Jackie, AI Assistant 👩🏻‍🏫"]
-    %% This node helps your agent remember the last few messages to stay on topic.
-    %% @n8n/n8n-nodes-langchain.memoryBufferWindow
-    n2["Window Buffer Memory"]
-    n2 -.ai_memory.-> n14
-    %% n8n-nodes-base.telegramTrigger
-    n4["Listen for incoming events"]
-    %% 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it. 2. Open the \`\`\`OpenRouter\`\`\` node: * **Select Credential → Create New** * Paste into **API Key** and **Save**
-    %% @n8n/n8n-nodes-langchain.lmChatOpenRouter
-    n9["OpenRouter"]
-    n9 -.ai_languageModel.-> n14
-    %% ## Process Telegram Request
-    subgraph sg_8078f53c_0aed_4f01_bf8f_f0e65a8291c0["## Process Telegram Request"]
-        %% n8n-nodes-base.set
-        n7["Voice or Text"]
-        %% n8n-nodes-base.if
-        n7 --> n6{"If"}
-        %% n8n-nodes-base.telegram:file
-        n6 --> n8["Get Voice File"]
-    end
-    %% This node allows your agent create and get tasks from Google Tasks
-    subgraph sg_48c06490_e261_45f5_ad0c_2b2648203ab0["This node allows your agent create and get tasks from Google Tasks"]
-        %% n8n-nodes-base.googleTasksTool
-        n10["Create a task in Google Tasks"]
-        %% n8n-nodes-base.googleTasksTool:getAll
-        n11["Get many tasks in Google Tasks"]
-    end
-    %% This node allows your agent access your gmail
-    subgraph sg_8bb0d940_eda3_4ecf_8a1d_15b1a6445a83["This node allows your agent access your gmail"]
-        %% n8n-nodes-base.gmailTool:getAll
-        n3["Get Email"]
-        %% n8n-nodes-base.gmailTool
-        n13["Send Email"]
-    end
-    n4 --> n7
-    n6 --> n14
-    %% Uses OpenAI to convert voice to text. [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
-    %% @n8n/n8n-nodes-langchain.openAi:audio:transcribe
-    n8 --> n12["Transcribe a recording"]
-    n10 -.ai_tool.-> n14
-    n11 -.ai_tool.-> n14
-    n3 -.ai_tool.-> n14
-    n13 -.ai_tool.-> n14
-    n12 --> n14
-    %% Send message back to Telegram
-    %% n8n-nodes-base.telegram
-    n14 --> n5["Telegram"]
+%% # Try It Out! Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life. **To get started:** 1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.) 2. **Activate the workflow** and message your Telegram bot: • "What emails do I have today?" • "Show me my calendar for tomorrow" • "Craete new to-do item" • 🎤 Send voice messages for hands-free interaction ## Questions or Need Help? For setup assistance, customization, or workflow support, join my Skool community! ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014) Happy learning! -- Derek Cheung
+%% ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ) @[youtube](ROgf5dVqYPQ)
+%% n8n-nodes-base.telegramTrigger
+n4["Listen for incoming events"]
+%% ## Process Telegram Request
+subgraph sg1["## Process Telegram Request"]
+%% n8n-nodes-base.set
+n7["Voice or Text"]
+%% n8n-nodes-base.if
+n7 --> n6{"If"}
+%% n8n-nodes-base.telegram:file
+n6 --> n8["Get Voice File"]
+end
+subgraph sg2["Jackie, AI Assistant 👩🏻‍🏫"]
+%% This node allows your agent access your Google calendar
+%% n8n-nodes-base.googleCalendarTool:getAll
+n1["Google Calendar"]
+%% This node helps your agent remember the last few messages to stay on topic.
+%% @n8n/n8n-nodes-langchain.memoryBufferWindow
+n2["Window Buffer Memory"]
+%% 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it. 2. Open the \`\`\`OpenRouter\`\`\` node: * **Select Credential → Create New** * Paste into **API Key** and **Save**
+%% @n8n/n8n-nodes-langchain.lmChatOpenRouter
+n9["OpenRouter"]
+%% This node allows your agent create and get tasks from Google Tasks
+subgraph sg3["This node allows your agent create and get tasks from Google Tasks"]
+%% n8n-nodes-base.googleTasksTool
+n10["Create a task in Google Tasks"]
+%% n8n-nodes-base.googleTasksTool:getAll
+n11["Get many tasks in Google Tasks"]
+end
+%% This node allows your agent access your gmail
+subgraph sg4["This node allows your agent access your gmail"]
+%% n8n-nodes-base.gmailTool:getAll
+n3["Get Email"]
+%% n8n-nodes-base.gmailTool
+n13["Send Email"]
+end
+%% Caylee, your peronal AI Assistant: 1. Get email 2. Check calendar 3. Get and create to-do tasks Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
+%% @n8n/n8n-nodes-langchain.agent
+n1 -.ai_tool.-> n14["Jackie, AI Assistant 👩🏻‍🏫"]
+n2 -.ai_memory.-> n14
+n9 -.ai_languageModel.-> n14
+n10 -.ai_tool.-> n14
+n11 -.ai_tool.-> n14
+n3 -.ai_tool.-> n14
+n13 -.ai_tool.-> n14
+end
+n4 --> n7
+%% Uses OpenAI to convert voice to text. [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
+%% @n8n/n8n-nodes-langchain.openAi:audio:transcribe
+n8 --> n12["Transcribe a recording"]
+%% Send message back to Telegram
+%% n8n-nodes-base.telegram
+n14 --> n5["Telegram"]
+n12 --> n14
+n6 --> n14
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -162,8 +159,8 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.telegramTrigger | {"updates":["message"]}
-    n1["Trigger"]
+%% n8n-nodes-base.telegramTrigger | {"updates":["message"]}
+n1["Trigger"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -240,16 +237,16 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.if
-    n1{"If"}
-    %% n8n-nodes-base.set
-    n1 --> n2["True Branch"]
-    %% n8n-nodes-base.set
-    n1 --> n3["False Branch"]
-    %% n8n-nodes-base.emailSend
-    n2 --> n4["Send Success Email"]
-    %% n8n-nodes-base.emailSend
-    n3 --> n5["Send Failure Email"]
+%% n8n-nodes-base.if
+n1{"If"}
+%% n8n-nodes-base.set
+n1 --> n2["True Branch"]
+%% n8n-nodes-base.set
+n1 --> n3["False Branch"]
+%% n8n-nodes-base.emailSend
+n2 --> n4["Send Success Email"]
+%% n8n-nodes-base.emailSend
+n3 --> n5["Send Failure Email"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -338,16 +335,16 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.manualTrigger
-    n1["Start"]
-    %% n8n-nodes-base.if
-    n1 --> n2{"If"}
-    %% n8n-nodes-base.switch
-    n2 --> n3{"Switch"}
-    %% n8n-nodes-base.filter
-    n3 --> n4{"Filter"}
-    %% n8n-nodes-base.noOp
-    n4 --> n5["End"]
+%% n8n-nodes-base.manualTrigger
+n1["Start"]
+%% n8n-nodes-base.if
+n1 --> n2{"If"}
+%% n8n-nodes-base.switch
+n2 --> n3{"Switch"}
+%% n8n-nodes-base.filter
+n3 --> n4{"Filter"}
+%% n8n-nodes-base.noOp
+n4 --> n5["End"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -411,14 +408,14 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.googleDrive:file:download
-    n1["Download File"]
-    %% n8n-nodes-base.googleSheets:getAll
-    n2["Get Rows"]
-    %% n8n-nodes-base.hubspot:contact
-    n3["Get Contact"]
-    %% n8n-nodes-base.httpRequest
-    n4["HTTP Request"]
+%% n8n-nodes-base.googleDrive:file:download
+n1["Download File"]
+%% n8n-nodes-base.googleSheets:getAll
+n2["Get Rows"]
+%% n8n-nodes-base.hubspot:contact
+n3["Get Contact"]
+%% n8n-nodes-base.httpRequest
+n4["HTTP Request"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -447,8 +444,8 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.noOp
-    n1["Empty Node"]
+%% n8n-nodes-base.noOp
+n1["Empty Node"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -485,9 +482,9 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% This is a note
-    %% n8n-nodes-base.start
-    n1["Start"]
+%% This is a note
+%% n8n-nodes-base.start
+n1["Start"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -537,11 +534,11 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% This triggers the workflow
-    %% n8n-nodes-base.start
-    n1["Start"]
-    %% n8n-nodes-base.noOp
-    n1 --> n2["End"]
+%% This triggers the workflow
+%% n8n-nodes-base.start
+n1["Start"]
+%% n8n-nodes-base.noOp
+n1 --> n2["End"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -614,15 +611,15 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% ## I'm a Sticky
-    subgraph sg_55473414_5980_4e0b_ada4_d5e10ee8f08b["## I'm a Sticky"]
-        %% n8n-nodes-base.if
-        n1{"If"}
-        %% n8n-nodes-base.switch
-        n1 --> n2{"Switch"}
-    end
-    %% n8n-nodes-base.filter
-    n2 --> n3{"Filter"}
+%% ## I'm a Sticky
+subgraph sg1["## I'm a Sticky"]
+%% n8n-nodes-base.if
+n1{"If"}
+%% n8n-nodes-base.switch
+n1 --> n2{"Switch"}
+end
+%% n8n-nodes-base.filter
+n2 --> n3{"Filter"}
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -659,8 +656,8 @@ flowchart TD
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-    %% n8n-nodes-base.start
-    n1["Start"]
+%% n8n-nodes-base.start
+n1["Start"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
