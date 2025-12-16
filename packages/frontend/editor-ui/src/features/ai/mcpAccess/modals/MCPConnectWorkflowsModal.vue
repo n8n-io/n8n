@@ -59,6 +59,12 @@ function onSelectReady() {
 	selectRef.value?.focusOnInput();
 }
 
+function onConfirm() {
+	if (!isSaving.value) {
+		void save(() => modalBus.emit('close'));
+	}
+}
+
 onMounted(() => {
 	modalBus.on('closed', onModalClosed);
 });
@@ -89,6 +95,7 @@ onBeforeUnmount(() => {
 					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
 					:disabled="isSaving"
 					@ready="onSelectReady"
+					@confirm="onConfirm"
 				/>
 			</div>
 		</template>
