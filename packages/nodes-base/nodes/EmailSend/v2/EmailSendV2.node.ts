@@ -19,7 +19,7 @@ import {
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
-	icon: 'fa:envelope',
+	icon: 'file:emailsend.svg',
 	group: ['output'],
 	version: [2, 2.1],
 	description: 'Sends an email using SMTP protocol',

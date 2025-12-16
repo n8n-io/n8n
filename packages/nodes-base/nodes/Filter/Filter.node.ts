@@ -9,8 +9,7 @@ export class Filter extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Filter',
 			name: 'filter',
-			icon: 'fa:filter',
-			iconColor: 'light-blue',
+			icon: 'file:filter.svg',
 			group: ['transform'],
 			description: 'Remove items matching a condition',
 			defaultVersion: 2.3,

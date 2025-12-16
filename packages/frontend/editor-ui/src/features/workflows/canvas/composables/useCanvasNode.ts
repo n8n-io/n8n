@@ -38,6 +38,7 @@ export function useCanvasNode() {
 
 	const subtitle = computed(() => data.value.subtitle);
 	const name = computed(() => data.value.name);
+	const type = computed(() => data.value.type);
 	const inputs = computed(() => data.value.inputs);
 	const outputs = computed(() => data.value.outputs);
 	const connections = computed(() => data.value.connections);
@@ -81,6 +82,7 @@ export function useCanvasNode() {
 		node,
 		id,
 		name,
+		type,
 		label,
 		subtitle,
 		inputs,

@@ -30,6 +30,7 @@ const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
+	type,
 	label,
 	subtitle,
 	inputs,
@@ -79,7 +80,26 @@ const classes = computed(() => {
 	};
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+// Node types with new 24x24px icons that should be displayed at 48x48px
+const largeIconNodeTypes = new Set([
+	'n8n-nodes-base.code',
+	'n8n-nodes-base.set',
+	'n8n-nodes-base.filter',
+	'n8n-nodes-base.formTrigger',
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.emailSend',
+	'n8n-nodes-base.merge',
+	'n8n-nodes-base.wait',
+	'@n8n/n8n-nodes-langchain.agent',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
+	'@n8n/n8n-nodes-langchain.textClassifier',
+]);
+
+const iconSize = computed(() => {
+	if (renderOptions.value.configuration) return 30;
+	if (largeIconNodeTypes.has(type.value)) return 48;
+	return 40;
+});
 
 const nodeSize = computed(() =>
 	calculateNodeSize(

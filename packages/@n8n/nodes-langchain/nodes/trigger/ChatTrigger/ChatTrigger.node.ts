@@ -216,8 +216,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
-		icon: 'fa:comments',
-		iconColor: 'black',
+		icon: 'file:chattrigger.svg',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		defaultVersion: 1.4,
