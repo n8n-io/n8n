@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
@@ -56,6 +57,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
 
 	const router = useRouter();
 
@@ -64,7 +66,9 @@ export function useWorkflowCommands(): CommandGroup {
 	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
 
-	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const isReadOnly = computed(
+		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+	);
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
@@ -376,6 +380,10 @@ export function useWorkflowCommands(): CommandGroup {
 	});
 
 	const importCommands = computed<CommandBarItem[]>(() => {
+		if (!hasPermission('update') || isArchived.value) {
+			return [];
+		}
+
 		return [
 			{
 				id: ITEM_ID.IMPORT_WORKFLOW_FROM_URL,

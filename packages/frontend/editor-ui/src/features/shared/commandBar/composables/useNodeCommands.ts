@@ -10,6 +10,7 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
@@ -33,9 +34,12 @@ export function useNodeCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
+	const collaborationStore = useCollaborationStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
-	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const isReadOnly = computed(
+		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+	);
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
