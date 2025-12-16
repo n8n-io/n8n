@@ -24,6 +24,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
+			'workflow-activated': (event) => this.workflowActivated(event),
+			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
@@ -51,6 +53,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
+			'execution-cancelled': (event) => this.executionCancelled(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -108,6 +111,36 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.unarchived',
 			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.activated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowDeactivated({
+		user,
+		workflowId,
+		workflow,
+	}: RelayEventMap['workflow-deactivated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.deactivated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
 		});
 	}
 
@@ -462,6 +495,23 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.started-during-bootup',
 			payload: { executionId },
+		});
+	}
+
+	private executionCancelled({
+		executionId,
+		workflowId,
+		workflowName,
+		reason,
+	}: RelayEventMap['execution-cancelled']) {
+		void this.eventBus.sendWorkflowEvent({
+			eventName: 'n8n.workflow.cancelled',
+			payload: {
+				executionId,
+				workflowId,
+				workflowName,
+				reason,
+			},
 		});
 	}
 

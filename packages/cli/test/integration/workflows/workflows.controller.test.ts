@@ -337,23 +337,20 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.autosaved).toBe(false);
 	});
 
-	test('should create workflow as inactive even when active: true is provided in POST body', async () => {
+	test('should create workflow as inactive even when active fields are provided', async () => {
+		const activeWorkflow = await createActiveWorkflow({}, owner);
+		const activeVersion = await workflowHistoryRepository.findOne({
+			where: {
+				versionId: activeWorkflow.activeVersionId!,
+			},
+		});
+
 		const payload = {
-			name: 'active workflow',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
-			connections: {},
-			staticData: null,
-			settings: {},
+			...activeWorkflow,
+			// Deliberately set active fields
 			active: true,
+			activeVersionId: activeWorkflow.activeVersionId,
+			activeVersion,
 		};
 
 		const response = await authOwnerAgent.post('/workflows').send(payload);
@@ -366,12 +363,19 @@ describe('POST /workflows', () => {
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
+		// New version should be created
+		expect(versionId).not.toBe(activeWorkflow.versionId);
 		expect(activeVersionId).toBeNull();
 		expect(active).toBe(false);
 
-		// Verify in database
+		// Verify in database that workflow is completely inactive
 		const workflow = await workflowRepository.findOneBy({ id });
 		expect(workflow?.activeVersionId).toBeNull();
+		expect(workflow?.active).toBe(false);
+
+		// Verify workflow history was created
+		const historyCount = await workflowHistoryRepository.count({ where: { workflowId: id } });
+		expect(historyCount).toBe(1);
 	});
 
 	test('create workflow in personal project by default', async () => {
@@ -1273,7 +1277,7 @@ describe('GET /workflows', () => {
 			expect(emptyResponse.body.data).toHaveLength(0);
 		});
 
-		test('should filter workflows by triggerNodeType', async () => {
+		test('should filter workflows by triggerNodeTypes', async () => {
 			const executeWorkflowTriggerWorkflow = await createWorkflow(
 				{
 					name: 'Subworkflow',
@@ -1310,7 +1314,7 @@ describe('GET /workflows', () => {
 				owner,
 			);
 
-			await createWorkflow(
+			const scheduleTriggerWorkflow = await createWorkflow(
 				{
 					name: 'Normal Workflow',
 					nodes: [
@@ -1327,30 +1331,46 @@ describe('GET /workflows', () => {
 				owner,
 			);
 
-			// Filter by Execute Workflow Trigger
+			// Filter by Execute Workflow Trigger (single type in array)
 			const executeWorkflowResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "triggerNodeType": "n8n-nodes-base.executeWorkflowTrigger" }')
+				.query('filter={ "triggerNodeTypes": ["n8n-nodes-base.executeWorkflowTrigger"] }')
 				.expect(200);
 
 			expect(executeWorkflowResponse.body.data).toHaveLength(1);
 			expect(executeWorkflowResponse.body.data[0].id).toBe(executeWorkflowTriggerWorkflow.id);
 			expect(executeWorkflowResponse.body.data[0].name).toBe('Subworkflow');
 
-			// Filter by Error Trigger
+			// Filter by Error Trigger (single type in array)
 			const errorTriggerResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "triggerNodeType": "n8n-nodes-base.errorTrigger" }')
+				.query('filter={ "triggerNodeTypes": ["n8n-nodes-base.errorTrigger"] }')
 				.expect(200);
 
 			expect(errorTriggerResponse.body.data).toHaveLength(1);
 			expect(errorTriggerResponse.body.data[0].id).toBe(errorTriggerWorkflow.id);
 			expect(errorTriggerResponse.body.data[0].name).toBe('Error Handler');
 
+			// Filter by multiple trigger types
+			const multiTriggerResponse = await authOwnerAgent
+				.get('/workflows')
+				.query(
+					'filter={ "triggerNodeTypes": ["n8n-nodes-base.executeWorkflowTrigger", "n8n-nodes-base.scheduleTrigger"] }',
+				)
+				.expect(200);
+
+			expect(multiTriggerResponse.body.data).toHaveLength(2);
+			const returnedIds = multiTriggerResponse.body.data.map(
+				(w: { id: string }) => w.id,
+			) as string[];
+			expect(returnedIds).toContain(executeWorkflowTriggerWorkflow.id);
+			expect(returnedIds).toContain(scheduleTriggerWorkflow.id);
+			expect(returnedIds).not.toContain(errorTriggerWorkflow.id);
+
 			// Filter by non-existent trigger type
 			const emptyResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "triggerNodeType": "n8n-nodes-base.nonExistentTrigger" }')
+				.query('filter={ "triggerNodeTypes": ["n8n-nodes-base.nonExistentTrigger"] }')
 				.expect(200);
 
 			expect(emptyResponse.body.data).toHaveLength(0);
