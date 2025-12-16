@@ -177,6 +177,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		return this.runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 	}
 
+	/** Returns true if the node is being executed as an AI Agent tool */
+	isToolExecution(): boolean {
+		return this.connectionType === NodeConnectionTypes.AiTool;
+	}
+
 	/** @deprecated create a context object with inputData for every runIndex */
 	addInputData(
 		connectionType: AINodeConnectionType,
