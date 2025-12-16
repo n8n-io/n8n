@@ -10,7 +10,7 @@ export class Agent extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'AI Agent',
 			name: 'agent',
-			icon: 'file:agent.svg',
+			icon: 'node-agent',
 			group: ['transform'],
 			description: 'Generates an action plan and executes it. Can use external tools.',
 			codex: {

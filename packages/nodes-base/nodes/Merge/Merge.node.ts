@@ -10,7 +10,7 @@ export class Merge extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Merge',
 			name: 'merge',
-			icon: 'file:merge.svg',
+			icon: 'node-merge',
 			group: ['transform'],
 			subtitle: '={{$parameter["mode"]}}',
 			description: 'Merges data of multiple streams once data from both is available',

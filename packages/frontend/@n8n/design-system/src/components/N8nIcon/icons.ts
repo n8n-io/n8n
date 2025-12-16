@@ -7,15 +7,26 @@ import FilledSquare from './custom/filled-square.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
+import NodeAgent from './custom/node-agent.svg';
+import NodeChatTrigger from './custom/node-chat-trigger.svg';
+import NodeCode from './custom/node-code.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
+import NodeEmailSend from './custom/node-email-send.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
+import NodeFilter from './custom/node-filter.svg';
+import NodeForm from './custom/node-form.svg';
+import NodeHttpRequest from './custom/node-http-request.svg';
+import NodeMerge from './custom/node-merge.svg';
 import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/node-play.svg';
 import NodePower from './custom/node-power.svg';
+import NodeSet from './custom/node-set.svg';
 import NodeSuccess from './custom/node-success.svg';
+import NodeTextClassifier from './custom/node-text-classifier.svg';
 import NodeTrash from './custom/node-trash.svg';
 import NodeValidationError from './custom/node-validation-error.svg';
+import NodeWait from './custom/node-wait.svg';
 import PopOut from './custom/pop-out.svg';
 import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
@@ -476,6 +487,17 @@ export const updatedIconSet = {
 	'node-power': NodePower,
 	'node-success': NodeSuccess,
 	'node-trash': NodeTrash,
+	'node-agent': NodeAgent,
+	'node-chat-trigger': NodeChatTrigger,
+	'node-code': NodeCode,
+	'node-email-send': NodeEmailSend,
+	'node-filter': NodeFilter,
+	'node-form': NodeForm,
+	'node-http-request': NodeHttpRequest,
+	'node-merge': NodeMerge,
+	'node-set': NodeSet,
+	'node-text-classifier': NodeTextClassifier,
+	'node-wait': NodeWait,
 	mcp: Mcp,
 	lovable: Lovable,
 	resolver: Resolver,

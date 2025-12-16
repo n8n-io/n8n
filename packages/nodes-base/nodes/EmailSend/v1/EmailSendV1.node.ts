@@ -13,7 +13,7 @@ import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
-	icon: 'file:emailsend.svg',
+	icon: 'node-email-send',
 	group: ['output'],
 	version: 1,
 	description: 'Sends an Email',

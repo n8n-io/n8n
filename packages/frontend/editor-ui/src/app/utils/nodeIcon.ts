@@ -169,6 +169,11 @@ export function getNodeIconSource(
 		const icon = getNodeIcon(fullNodeType, node);
 		if (!icon) return undefined;
 
+		// Handle icons without a prefix (e.g., 'node-agent') as named icons
+		if (!icon.includes(':')) {
+			return createNamedIconSource(icon, fullNodeType);
+		}
+
 		const [type, iconName] = icon.split(':');
 
 		if (type === 'file') {

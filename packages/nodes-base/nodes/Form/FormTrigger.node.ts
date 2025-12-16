@@ -9,7 +9,7 @@ export class FormTrigger extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'n8n Form Trigger',
 			name: 'formTrigger',
-			icon: 'file:form.svg',
+			icon: 'node-form',
 			group: ['trigger'],
 			description: 'Generate webforms in n8n and pass their responses to the workflow',
 			defaultVersion: 2.4,

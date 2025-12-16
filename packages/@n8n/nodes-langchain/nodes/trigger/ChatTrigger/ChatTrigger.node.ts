@@ -216,7 +216,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
-		icon: 'file:chattrigger.svg',
+		icon: 'node-chat-trigger',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		defaultVersion: 1.4,

@@ -39,7 +39,7 @@ export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HTTP Request Tool',
 		name: 'toolHttpRequest',
-		icon: { light: 'file:httprequest.svg', dark: 'file:httprequest.dark.svg' },
+		icon: 'node-http-request',
 		group: ['output'],
 		version: [1, 1.1],
 		description: 'Makes an HTTP request and returns the response data',

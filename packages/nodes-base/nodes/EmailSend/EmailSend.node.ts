@@ -9,7 +9,7 @@ export class EmailSend extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Send Email',
 			name: 'emailSend',
-			icon: 'file:emailsend.svg',
+			icon: 'node-email-send',
 			group: ['output'],
 			defaultVersion: 2.1,
 			description: 'Sends an email using SMTP protocol',
