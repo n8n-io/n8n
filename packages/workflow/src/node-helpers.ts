@@ -757,14 +757,13 @@ export function getNodeParameters(
 			}
 
 			if (returnDefaults) {
-				const nodeValuesCopy = deepCopy(nodeValues);
 				// Set also when it has the default value
 				if (['boolean', 'number', 'options'].includes(nodeProperties.type)) {
 					// Boolean, numbers and options are special as false and 0 are valid values
 					// and should not be replaced with default value
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] !== undefined
-							? nodeValuesCopy[nodeProperties.name]
+							? deepCopy(nodeValues[nodeProperties.name])
 							: nodeProperties.default;
 				} else if (
 					nodeProperties.type === 'resourceLocator' &&
@@ -772,11 +771,11 @@ export function getNodeParameters(
 				) {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] !== undefined
-							? nodeValuesCopy[nodeProperties.name]
+							? deepCopy(nodeValues[nodeProperties.name])
 							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
-						nodeValuesCopy[nodeProperties.name] ?? nodeProperties.default;
+						deepCopy(nodeValues[nodeProperties.name]) ?? nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else if (
