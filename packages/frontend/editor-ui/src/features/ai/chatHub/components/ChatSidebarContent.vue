@@ -18,6 +18,7 @@ import SkeletonMenuItem from './SkeletonMenuItem.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 
 defineProps<{ isMobileDevice: boolean; isCollapsed: boolean }>();
 
@@ -149,12 +150,19 @@ onMounted(() => {
 				[$style.collapsed]: isCollapsed,
 			}"
 		>
-			<N8nMenuItem
-				:item="newChat"
-				:compact="isCollapsed"
-				:active="route.name === CHAT_VIEW"
-				@click="handleNewChatClick"
-			/>
+			<KeyboardShortcutTooltip
+				placement="right"
+				:label="i18n.baseText('chatHub.sidebar.link.newChat')"
+				:show-after="500"
+				:shortcut="{ keys: ['o'], metaKey: true, shiftKey: true }"
+			>
+				<N8nMenuItem
+					:item="newChat"
+					:compact="isCollapsed"
+					:active="route.name === CHAT_VIEW"
+					@click="handleNewChatClick"
+				/>
+			</KeyboardShortcutTooltip>
 			<N8nMenuItem
 				:item="personalAgents"
 				:compact="isCollapsed"
