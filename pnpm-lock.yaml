@@ -1468,6 +1468,19 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  packages/@n8n/syslog-client:
+    dependencies:
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
+
   packages/@n8n/task-runner:
     dependencies:
       '@n8n/config':
@@ -1608,6 +1621,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@n8n/syslog-client':
+        specifier: workspace:*
+        version: link:../@n8n/syslog-client
       '@n8n/task-runner':
         specifier: workspace:*
         version: link:../@n8n/task-runner

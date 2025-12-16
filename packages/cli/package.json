@@ -107,6 +107,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/syslog-client": "workspace:*",
     "@n8n/task-runner": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n/utils": "workspace:*",
