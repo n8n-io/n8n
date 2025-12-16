@@ -282,7 +282,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	private shouldInjectContextEstablishmentHooks() {
-		return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+		return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
 	}
 
 	private injectContextEstablishmentHooks() {

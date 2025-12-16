@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Build n8n Docker image locally
+ * Build n8n and runners Docker images locally
  *
  * This script simulates the CI build process for local testing.
- * Default output: 'n8nio/n8n:local'
+ * Default output: 'n8nio/n8n:local' and 'n8nio/runners:local'
  * Override with IMAGE_BASE_NAME and IMAGE_TAG environment variables.
  */
 
@@ -120,14 +120,28 @@ const isInScriptsDir = path.basename(__dirname) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const config = {
-	dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
-	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
-	imageTag: process.env.IMAGE_TAG || 'local',
+	n8n: {
+		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
+		imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
+		imageTag: process.env.IMAGE_TAG || 'local',
+		get fullImageName() {
+			return `${this.imageBaseName}:${this.imageTag}`;
+		},
+	},
+	runners: {
+		dockerfilePath: path.join(rootDir, 'docker/images/runners/Dockerfile'),
+		imageBaseName: process.env.RUNNERS_IMAGE_BASE_NAME || 'n8nio/runners',
+		get imageTag() {
+			// Runners use the same tag as n8n for consistency
+			return config.n8n.imageTag;
+		},
+		get fullImageName() {
+			return `${this.imageBaseName}:${this.imageTag}`;
+		},
+	},
 	buildContext: rootDir,
 	compiledAppDir: path.join(rootDir, 'compiled'),
-	get fullImageName() {
-		return `${this.imageBaseName}:${this.imageTag}`;
-	},
+	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
 };
 
 // #region ===== Main Build Process =====
@@ -135,31 +149,58 @@ const config = {
 const platform = getDockerPlatform();
 
 async function main() {
-	echo(chalk.blue.bold('===== Docker Build for n8n ====='));
-	echo(`INFO: Image: ${config.fullImageName}`);
+	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
+	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
+	echo(`INFO: Runners Image: ${config.runners.fullImageName}`);
 	echo(`INFO: Platform: ${platform}`);
 	echo(chalk.gray('-'.repeat(47)));
 
 	await checkPrerequisites();
 
-	// Build Docker image
-	const buildTime = await buildDockerImage();
+	// Build n8n Docker image
+	const n8nBuildTime = await buildDockerImage({
+		name: 'n8n',
+		dockerfilePath: config.n8n.dockerfilePath,
+		fullImageName: config.n8n.fullImageName,
+	});
+
+	// Build runners Docker image
+	const runnersBuildTime = await buildDockerImage({
+		name: 'runners',
+		dockerfilePath: config.runners.dockerfilePath,
+		fullImageName: config.runners.fullImageName,
+	});
 
 	// Get image details
-	const imageSize = await getImageSize(config.fullImageName);
+	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
+	const runnersImageSize = await getImageSize(config.runners.fullImageName);
 
 	// Display summary
-	displaySummary({
-		imageName: config.fullImageName,
-		platform,
-		size: imageSize,
-		buildTime,
-	});
+	displaySummary([
+		{
+			imageName: config.n8n.fullImageName,
+			platform,
+			size: n8nImageSize,
+			buildTime: n8nBuildTime,
+		},
+		{
+			imageName: config.runners.fullImageName,
+			platform,
+			size: runnersImageSize,
+			buildTime: runnersBuildTime,
+		},
+	]);
 }
 
 async function checkPrerequisites() {
 	if (!(await fs.pathExists(config.compiledAppDir))) {
 		echo(chalk.red(`Error: Compiled app directory not found at ${config.compiledAppDir}`));
+		echo(chalk.yellow('Please run build-n8n.mjs first!'));
+		process.exit(1);
+	}
+
+	if (!(await fs.pathExists(config.compiledTaskRunnerDir))) {
+		echo(chalk.red(`Error: Task runner directory not found at ${config.compiledTaskRunnerDir}`));
 		echo(chalk.yellow('Please run build-n8n.mjs first!'));
 		process.exit(1);
 	}
@@ -171,18 +212,18 @@ async function checkPrerequisites() {
 	}
 }
 
-async function buildDockerImage() {
+async function buildDockerImage({ name, dockerfilePath, fullImageName }) {
 	const startTime = Date.now();
 	const containerEngine = await getContainerEngine();
-	echo(chalk.yellow(`INFO: Building Docker image using ${containerEngine}...`));
+	echo(chalk.yellow(`INFO: Building ${name} Docker image using ${containerEngine}...`));
 
 	try {
 		if (containerEngine === 'podman') {
 			const { stdout } = await $`podman build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
-				-t ${config.fullImageName} \
-				-f ${config.dockerfilePath} \
+				-t ${fullImageName} \
+				-f ${dockerfilePath} \
 				${config.buildContext}`;
 			echo(stdout);
 		} else {
@@ -190,8 +231,8 @@ async function buildDockerImage() {
 			const { stdout } = await $`docker build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
-				-t ${config.fullImageName} \
-				-f ${config.dockerfilePath} \
+				-t ${fullImageName} \
+				-f ${dockerfilePath} \
 				--load \
 				${config.buildContext}`;
 			echo(stdout);
@@ -199,20 +240,23 @@ async function buildDockerImage() {
 
 		return formatDuration(Date.now() - startTime);
 	} catch (error) {
-		echo(chalk.red(`ERROR: Docker build failed: ${error.stderr || error.message}`));
+		echo(chalk.red(`ERROR: ${name} Docker build failed: ${error.stderr || error.message}`));
 		process.exit(1);
 	}
 }
 
-function displaySummary({ imageName, platform, size, buildTime }) {
+function displaySummary(images) {
 	echo('');
 	echo(chalk.green.bold('═'.repeat(54)));
 	echo(chalk.green.bold('           DOCKER BUILD COMPLETE'));
 	echo(chalk.green.bold('═'.repeat(54)));
-	echo(chalk.green(`✅ Image built: ${imageName}`));
-	echo(`   Platform: ${platform}`);
-	echo(`   Size: ${size}`);
-	echo(`   Build time: ${buildTime}`);
+	for (const { imageName, platform, size, buildTime } of images) {
+		echo(chalk.green(`✅ Image built: ${imageName}`));
+		echo(`   Platform: ${platform}`);
+		echo(`   Size: ${size}`);
+		echo(`   Build time: ${buildTime}`);
+		echo('');
+	}
 	echo(chalk.green.bold('═'.repeat(54)));
 }
 
