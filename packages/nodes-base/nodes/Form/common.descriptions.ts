@@ -195,67 +195,21 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Attributes (Existing Selector)',
-					name: 'additionalAttributes',
-					type: 'multiOptions',
-					default: [],
-					placeholder: 'Add Attribute',
-					description: 'Choose which optional attributes to configure for this field',
-					options: [
-						{
-							name: 'Custom Field Name',
-							value: 'fieldName',
-						},
-						{
-							name: 'Placeholder',
-							value: 'placeholder',
-						},
-						{
-							name: 'Default Value',
-							value: 'defaultValue',
-						},
-						{
-							name: 'Required Field',
-							value: 'requiredField',
-						},
-					],
-				},
-				{
-					displayName: 'Attributes',
-					name: 'additionalAttributes',
-					type: 'multiOptions',
-					typeOptions: {
-						hideSelectedTags: true,
-					},
-					default: [],
-					placeholder: 'Add Attribute',
-					description: 'Choose which optional attributes to configure for this field',
+					displayName: 'Custom Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['html', 'hiddenField'],
+							fieldType: ['html'],
 						},
 						show: {
 							'@feature': ['useAdditionalAttributes'],
+							additionalAttributes: ['fieldName'],
 						},
 					},
-					options: [
-						{
-							name: 'Custom Field Name',
-							value: 'fieldName',
-						},
-						{
-							name: 'Placeholder',
-							value: 'placeholder',
-						},
-						{
-							name: 'Default Value',
-							value: 'defaultValue',
-						},
-						{
-							name: 'Required Field',
-							value: 'requiredField',
-						},
-					],
 				},
 				{
 					displayName: 'Placeholder',
@@ -285,23 +239,6 @@ export const formFields: INodeProperties = {
 						},
 						show: {
 							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
-						},
-					},
-				},
-				{
-					displayName: 'Custom Field Name',
-					name: 'fieldName',
-					description:
-						'The name of the field, used in input attributes and referenced by the workflow',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						hide: {
-							fieldType: ['html'],
-						},
-						show: {
-							'@feature': ['useAdditionalAttributes'],
-							additionalAttributes: ['fieldName'],
 						},
 					},
 				},
@@ -721,6 +658,43 @@ export const formFields: INodeProperties = {
 							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
+				},
+				{
+					displayName: 'Attributes',
+					name: 'additionalAttributes',
+					type: 'multiOptions',
+					typeOptions: {
+						hideSelectedTags: true,
+					},
+					default: [],
+					placeholder: 'Add Attribute',
+					description: 'Choose which optional attributes to configure for this field',
+					displayOptions: {
+						hide: {
+							fieldType: ['html', 'hiddenField'],
+						},
+						show: {
+							'@feature': ['useAdditionalAttributes'],
+						},
+					},
+					options: [
+						{
+							name: 'Custom Field Name',
+							value: 'fieldName',
+						},
+						{
+							name: 'Placeholder',
+							value: 'placeholder',
+						},
+						{
+							name: 'Default Value',
+							value: 'defaultValue',
+						},
+						{
+							name: 'Required Field',
+							value: 'requiredField',
+						},
+					],
 				},
 			],
 		},
