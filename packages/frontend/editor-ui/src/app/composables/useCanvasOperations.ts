@@ -1791,7 +1791,12 @@ export function useCanvasOperations() {
 
 	async function addImportedNodesToWorkflow(
 		data: WorkflowDataUpdate,
-		{ trackBulk = true, trackHistory = false, viewport = DEFAULT_VIEWPORT_BOUNDARIES } = {},
+		{
+			trackBulk = true,
+			trackHistory = false,
+			viewport = DEFAULT_VIEWPORT_BOUNDARIES,
+			setStateDirty = true,
+		} = {},
 	): Promise<WorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
 		// be needed that they have to be renamed. Also could it be possible
@@ -1958,7 +1963,7 @@ export function useCanvasOperations() {
 			historyStore.stopRecordingUndo();
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.stateIsDirty = setStateDirty;
 
 		return {
 			nodes: Object.values(tempWorkflow.nodes),
@@ -1976,6 +1981,7 @@ export function useCanvasOperations() {
 			viewport,
 			regenerateIds = true,
 			trackEvents = true,
+			setStateDirty = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
@@ -1983,6 +1989,7 @@ export function useCanvasOperations() {
 			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
 			trackEvents?: boolean;
+			setStateDirty?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
@@ -2095,6 +2102,7 @@ export function useCanvasOperations() {
 				trackBulk,
 				trackHistory,
 				viewport,
+				setStateDirty,
 			});
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
@@ -2102,7 +2110,7 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty });
 			}
 
 			return workflowData;

@@ -248,6 +248,7 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 			tidyUp: false,
 			regenerateIds: false,
 			trackEvents: false,
+			setStateDirty: false,
 		});
 	} catch (e: unknown) {
 		toast.showMessage({
