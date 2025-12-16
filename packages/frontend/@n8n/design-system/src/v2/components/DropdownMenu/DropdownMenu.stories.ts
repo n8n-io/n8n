@@ -5,6 +5,7 @@ import { ref, computed } from 'vue';
 import N8nBadge from '@n8n/design-system/components/N8nBadge/Badge.vue';
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
+import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
@@ -195,6 +196,7 @@ export const WithBadgesAndShortcuts: Story = {
 		},
 		template: `
 		<div style="padding: 40px;">
+			<p>Example of using custom trailing slots to render badges and keyboard shortcuts for each item.</p>
 			<DropdownMenu :items="args.items" @select="handleSelect">
 				<template #item-trailing="{ item, ui }">
 					<N8nKeyboardShortcut
@@ -228,6 +230,58 @@ export const WithBadgesAndShortcuts: Story = {
 			{ id: 'save', label: 'Save', icon: { type: 'icon', value: 'save' } },
 			{ id: 'share', label: 'Share', icon: { type: 'icon', value: 'share-alt' } },
 			{ id: 'pro', label: 'Pro Feature', icon: { type: 'icon', value: 'star' }, disabled: true },
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const WithCustomLeadingSlot: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu, N8nCheckbox },
+		setup() {
+			const checkedItems = ref<Set<string>>(new Set(['notifications']));
+
+			const toggleItem = (id: string) => {
+				if (checkedItems.value.has(id)) {
+					checkedItems.value.delete(id);
+				} else {
+					checkedItems.value.add(id);
+				}
+				// Trigger reactivity
+				checkedItems.value = new Set(checkedItems.value);
+			};
+
+			const isChecked = (id: string) => checkedItems.value.has(id);
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+				toggleItem(action);
+			};
+
+			return { args, handleSelect, isChecked };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<p>Example of using a custom leading slot to render checkboxes for each item.</p>
+			<DropdownMenu :items="args.items" @select="handleSelect">
+				<template #item-leading="{ item, ui }">
+					<N8nCheckbox
+						:model-value="isChecked(item.id)"
+						:class="ui.class"
+						@click.stop
+						@change="handleSelect(item.id)"
+					/>
+				</template>
+			</DropdownMenu>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'notifications', label: 'Enable notifications' },
+			{ id: 'sounds', label: 'Play sounds' },
+			{ id: 'desktop', label: 'Desktop alerts' },
+			{ id: 'email', label: 'Email digests', divided: true },
 		] as Array<DropdownMenuItemProps<string>>,
 	},
 };
@@ -274,7 +328,7 @@ export const Placements: Story = {
 			return { args, placements };
 		},
 		template: `
-		<div style="padding: 100px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+		<div style="padding: 200px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
 			<DropdownMenu
 				v-for="placement in placements"
 				:key="placement"
@@ -316,6 +370,7 @@ export const ControlledState: Story = {
 		},
 		template: `
 		<div style="padding: 40px;">
+			<p style="margin-bottom: 16px; user-select: none;">Dropdown is {{ isOpen ? 'open' : 'closed' }}</p>
 			<div style="margin-bottom: 16px;">
 				<N8nButton @click="toggle">
 					{{ isOpen ? 'Close' : 'Open' }} Dropdown
@@ -326,7 +381,6 @@ export const ControlledState: Story = {
 				:items="args.items"
 				@select="handleSelect"
 			/>
-			<p style="margin-top: 16px;">Dropdown is {{ isOpen ? 'open' : 'closed' }}</p>
 		</div>
 		`,
 	}),
