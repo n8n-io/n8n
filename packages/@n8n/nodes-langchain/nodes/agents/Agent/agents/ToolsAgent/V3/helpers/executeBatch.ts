@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
-import { NodeOperationError } from 'n8n-workflow';
+import { assertParamIsNumber, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
@@ -18,6 +18,7 @@ import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
 import { prepareItemContext } from './prepareItemContext';
 import { runAgent } from './runAgent';
+import { checkMaxIterations } from './checkMaxIterations';
 
 type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 /**
@@ -64,10 +65,15 @@ export async function executeBatch(
 	// Use the processed response (with HITL denials properly formatted)
 	const processedResponse = hitlResult.processedResponse;
 
+	// Check max iterations if this is a continuation of a previous execution
+	const maxIterations = ctx.getNodeParameter('options.maxIterations', 0, 10);
+	assertParamIsNumber('options.maxIterations', maxIterations, ctx.getNode());
+
 	const batchPromises = batch.map(async (_item, batchItemIndex) => {
 		const itemIndex = startIndex + batchItemIndex;
 
-		// Use processedResponse which has HITL denials properly formatted
+		checkMaxIterations(response, maxIterations, ctx.getNode());
+
 		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
 
 		const { tools, prompt, options, outputParser } = itemContext;

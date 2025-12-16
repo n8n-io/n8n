@@ -9,6 +9,7 @@ export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'success',
 ];
 export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
+export const CHAT_TRIGGER_NODE_MIN_VERSION = 1.2;
 
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {

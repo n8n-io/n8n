@@ -7,7 +7,7 @@ import {
 	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { In, WorkflowRepository, type User } from '@n8n/db';
+import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -158,9 +158,9 @@ export class ChatHubModelsService {
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
 			case 'n8n':
-				return await this.fetchAgentWorkflowsAsModels(user);
+				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
-				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
+				return { models: await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id) };
 		}
 	}
 
@@ -712,7 +712,7 @@ export class ChatHubModelsService {
 		);
 	}
 
-	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
+	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelDto[]> {
 		// Workflows are scanned by their latest version for chat trigger nodes.
 		// This means that we might miss some active workflow versions that had chat triggers but
 		// the latest version does not, but this trade-off is done for performance.
@@ -728,59 +728,87 @@ export class ChatHubModelsService {
 			// The workflow has to be active
 			.filter((workflow) => !!workflow.activeVersionId);
 
-		const workflows = await this.workflowRepository.find({
-			select: { id: true, name: true },
-			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
-			relations: { activeVersion: true },
-		});
-
-		const models: ChatModelDto[] = [];
-
-		for (const { id, name, activeVersion } of workflows) {
-			if (!activeVersion) {
-				continue;
-			}
-
-			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-			if (!chatTrigger) {
-				continue;
-			}
-
-			const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-			if (!chatTriggerParams?.availableInChat) {
-				continue;
-			}
-
-			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
-				chatTriggerParams.options,
-			);
-
-			const agentName =
-				chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
-					? chatTriggerParams.agentName
-					: name;
-
-			models.push({
-				name: agentName,
-				description: chatTriggerParams.agentDescription ?? null,
-				model: {
-					provider: 'n8n',
-					workflowId: id,
-				},
-				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
-				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-				metadata: {
-					inputModalities,
-					capabilities: {
-						functionCalling: false,
-					},
-					available: true,
-				},
-			});
+		if (activeWorkflows.length === 0) {
+			return [];
 		}
 
+		const workflows = await this.workflowRepository.find({
+			select: {
+				id: true,
+				name: true,
+				shared: {
+					role: true,
+					project: {
+						id: true,
+						icon: { type: true, value: true },
+					},
+				},
+			},
+			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
+			relations: {
+				activeVersion: true,
+				shared: {
+					project: true,
+				},
+			},
+		});
+
+		return workflows.flatMap((workflow) => {
+			const model = this.extractModelFromWorkflow(workflow);
+
+			return model ? [model] : [];
+		});
+	}
+
+	extractModelFromWorkflow({
+		name,
+		activeVersion,
+		id,
+		shared,
+	}: WorkflowEntity): ChatModelDto | null {
+		if (!activeVersion) {
+			return null;
+		}
+
+		const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		if (!chatTrigger) {
+			return null;
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams?.availableInChat) {
+			return null;
+		}
+
+		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+			chatTriggerParams.options,
+		);
+
+		const agentName =
+			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+				? chatTriggerParams.agentName
+				: name;
+
+		// Find the owner's project (home project)
+		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+
 		return {
-			models,
+			name: agentName,
+			description: chatTriggerParams.agentDescription ?? null,
+			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			model: {
+				provider: 'n8n',
+				workflowId: id,
+			},
+			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
+			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
+			metadata: {
+				inputModalities,
+				capabilities: {
+					functionCalling: false,
+				},
+				available: true,
+			},
 		};
 	}
 
@@ -788,19 +816,24 @@ export class ChatHubModelsService {
 		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
 	): ChatModelDto[] {
+		const seen = new Set<string>();
+
 		return rawModels.flatMap((model) => {
 			const id = String(model.value);
 			const metadata = getModelMetadata(provider, id);
 
-			if (!metadata.available) {
-				return [];
-			}
+			if (!metadata.available) return [];
+
+			// Deduplication as some providers (mistralCloud) return duplicate models
+			if (seen.has(id)) return [];
+			seen.add(id);
 
 			return [
 				{
 					id,
 					name: model.name,
 					description: model.description ?? null,
+					icon: null,
 					model: {
 						provider,
 						model: id,
