@@ -115,9 +115,6 @@ function handleSubmitForm() {
 	if (trimmed) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
-		message.value = '';
-		committedSpokenMessage.value = '';
-		attachments.value = [];
 	}
 }
 
@@ -130,9 +127,6 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 		e.preventDefault();
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
-		message.value = '';
-		committedSpokenMessage.value = '';
-		attachments.value = [];
 	}
 }
 
@@ -188,6 +182,11 @@ function onSelectTools() {
 
 defineExpose({
 	focus: () => inputRef.value?.focus(),
+	reset: () => {
+		message.value = '';
+		committedSpokenMessage.value = '';
+		attachments.value = [];
+	},
 	setText: (text: string) => {
 		message.value = text;
 	},

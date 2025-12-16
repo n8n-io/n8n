@@ -428,7 +428,7 @@ async function onSubmit(message: string, attachments: File[]) {
 		attachments,
 	);
 
-	inputRef.value?.setText('');
+	inputRef.value?.reset();
 
 	if (isNewSession.value) {
 		// TODO: this should not happen when submit fails
@@ -448,7 +448,7 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(message: ChatHubMessageDto) {
 	if (
 		isResponding.value ||
 		!['human', 'ai'].includes(message.type) ||
@@ -460,7 +460,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 
 	const messageToEdit = message.revisionOfMessageId ?? message.id;
 
-	chatStore.editMessage(
+	await chatStore.editMessage(
 		sessionId.value,
 		messageToEdit,
 		message.content,
@@ -470,7 +470,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatHubMessageDto) {
+async function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (
 		isResponding.value ||
 		message.type !== 'ai' ||
@@ -482,7 +482,9 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	const messageToRetry = message.id;
 
-	chatStore.regenerateMessage(
+	editingMessageId.value = undefined;
+
+	await chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
 		selectedModel.value,

@@ -10,6 +10,7 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
+	type EnrichedStructuredChunk,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -20,8 +21,8 @@ import type {
 	ChatConversation,
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
-import { v4 as uuidv4 } from 'uuid';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
@@ -267,6 +268,30 @@ export function createAiMessageFromStreamingState(
 	};
 }
 
+export function createHumanMessageFromStreamingState(streaming: ChatStreamingState): ChatMessage {
+	return {
+		id: streaming.promptId,
+		sessionId: streaming.sessionId,
+		type: 'human',
+		name: 'User',
+		content: streaming.promptText,
+		provider: null,
+		model: null,
+		workflowId: null,
+		executionId: null,
+		agentId: null,
+		status: 'success',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		previousMessageId: streaming.promptPreviousMessageId,
+		retryOfMessageId: null,
+		revisionOfMessageId: null,
+		responses: [],
+		alternatives: [],
+		attachments: streaming.attachments,
+	};
+}
+
 export function buildUiMessages(
 	sessionId: string,
 	conversation: ChatConversation,
@@ -308,18 +333,6 @@ export function buildUiMessages(
 		}
 
 		messagesToShow.push(message);
-	}
-
-	if (
-		!foundRunning &&
-		streaming?.sessionId === sessionId &&
-		!streaming.messageId &&
-		streaming.retryOfMessageId === null &&
-		streaming.promptId === messagesToShow[messagesToShow.length - 1]?.id
-	) {
-		// While waiting for streaming to start on sending new message/editing, append a fake message
-		// in running state as an immediate feedback
-		messagesToShow.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
 	}
 
 	return messagesToShow;
@@ -383,3 +396,54 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 	type: 'icon',
 	value: 'bot' satisfies IconName,
 };
+
+type StreamApi<T> = (
+	ctx: IRestApiContext,
+	payload: T,
+	onChunk: (data: EnrichedStructuredChunk) => void,
+	onDone: () => void,
+	onError: (e: unknown) => void,
+) => void;
+
+export function promisifyStreamingEndpoint<T>(
+	streamingApi: StreamApi<T>,
+): (...args: Parameters<StreamApi<T>>) => Promise<void> {
+	return async (ctx, payload, onChunk, onDone, onError) => {
+		let settled = false;
+		let resolvePromise: () => void;
+		let rejectPromise: (reason?: unknown) => void;
+
+		const promise = new Promise<void>((resolve, reject) => {
+			resolvePromise = resolve;
+			rejectPromise = reject;
+		});
+
+		streamingApi(
+			ctx,
+			payload,
+			(chunk) => {
+				if (!settled) {
+					settled = true;
+					resolvePromise();
+				}
+				onChunk(chunk);
+			},
+			() => {
+				if (!settled) {
+					settled = true;
+					resolvePromise();
+				}
+				onDone();
+			},
+			(error: unknown) => {
+				if (!settled) {
+					settled = true;
+					rejectPromise(error);
+				}
+				onError(error);
+			},
+		);
+
+		return await promise;
+	};
+}
