@@ -1279,6 +1279,7 @@
 	"readOnlyEnv.cantAdd.project": "You can't add new projects to a protected n8n instance",
 	"readOnlyEnv.cantAdd.any": "You can't create new workflows or credentials on a protected n8n instance",
 	"readOnlyEnv.cantEditOrRun": "This workflow can't be edited or run manually because it's on a protected instance",
+	"readOnlyEnv.writeAccessLocked": "{user} is currently editing this workflow",
 	"logs.overview.header.title": "Logs",
 	"logs.overview.header.actions.clearExecution": "Clear execution",
 	"logs.overview.header.actions.clearExecution.tooltip": "Clear execution data",

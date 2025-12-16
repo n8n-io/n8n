@@ -47,6 +47,7 @@ export function useWorkflowSaving({
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
+
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 

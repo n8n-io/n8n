@@ -138,7 +138,9 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
 
@@ -206,8 +208,12 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const collaborationStore = useCollaborationStore();
 
 const workflowState = useWorkflowState();
+
+// Initialize activity detection for collaboration
+useActivityDetection();
 provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
@@ -306,6 +312,7 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
+		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
 		builderStore.streaming
@@ -1869,11 +1876,27 @@ watch(
 	},
 );
 
+// Acquire write access when user makes first edit, and trigger auto-save
 watch(
 	() => uiStore.stateIsDirty,
 	(isDirty) => {
 		if (isDirty) {
-			void workflowSaving.autoSaveWorkflow();
+			if (collaborationStore.isCurrentUserWriter) {
+				collaborationStore.recordActivity();
+			}
+
+			// Try to request write access if no one is writing
+			if (!collaborationStore.isCurrentUserWriter && !collaborationStore.isAnyoneWriting) {
+				console.log(
+					'[NodeView] Auto-requesting write access because state is dirty and no one is writing',
+				);
+				collaborationStore.requestWriteAccess();
+			}
+
+			// Trigger auto-save (debounced) for writers only
+			if (!collaborationStore.shouldBeReadOnly) {
+				void workflowSaving.autoSaveWorkflow();
+			}
 		}
 	},
 );
@@ -1939,6 +1962,24 @@ onMounted(() => {
 
 	documentTitle.reset();
 	resetWorkspace();
+
+	// Register callback for collaboration store to refresh canvas when workflow updates arrive
+	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
+		const activeNodeName = ndvStore.activeNode?.name;
+
+		// Refresh the canvas with updated workflow
+		await initializeWorkspace(workflow);
+
+		// Reopen NDV if it was open (with a small delay to ensure workflow is fully initialized)
+		if (activeNodeName) {
+			setTimeout(() => {
+				const updatedNode = workflowsStore.getNodeByName(activeNodeName);
+				if (updatedNode) {
+					ndvStore.setActiveNodeName(activeNodeName, 'other');
+				}
+			}, 100);
+		}
+	});
 
 	void initializeData().then(() => {
 		void initializeRoute()
@@ -2124,6 +2165,21 @@ onBeforeUnmount(() => {
 				:class="$style.readOnlyEnvironmentNotification"
 			>
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
+			</N8nCallout>
+
+			<N8nCallout
+				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
+				theme="info"
+				icon="user"
+				:class="$style.readOnlyEnvironmentNotification"
+			>
+				{{
+					i18n.baseText('readOnlyEnv.writeAccessLocked', {
+						interpolate: {
+							user: `${collaborationStore.currentWriter.user.firstName} ${collaborationStore.currentWriter.user.lastName}`,
+						},
+					})
+				}}
 			</N8nCallout>
 
 			<N8nCanvasThinkingPill

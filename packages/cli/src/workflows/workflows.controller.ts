@@ -37,6 +37,7 @@ import axios from 'axios';
 import express from 'express';
 import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { CollaborationService } from '../collaboration/collaboration.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -92,6 +93,7 @@ export class WorkflowsController {
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/')
@@ -479,7 +481,20 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
 		return { ...updatedWorkflow, scopes, checksum };
+	}
+
+	@Get('/:workflowId/collaboration/write-lock')
+	@ProjectScope('workflow:read')
+	async getWriteLock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const writeLockUserId = await this.collaborationService.getWriteLock(req.user.id, workflowId);
+		return { userId: writeLockUserId };
 	}
 
 	@Delete('/:workflowId')
