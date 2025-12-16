@@ -36,10 +36,13 @@ describe('DynamicCredentialsController', () => {
 	describe('authorizeCredential', () => {
 		const mockResolverEntity: DynamicCredentialResolver = {
 			id: 'resolver-123',
+			name: 'Test Resolver',
 			type: 'oauth2-introspection-identifier',
 			config: 'encrypted-config',
 			createdAt: new Date(),
 			updatedAt: new Date(),
+			generateId: jest.fn(),
+			setUpdateDate: jest.fn(),
 		};
 
 		const mockResolver = {
@@ -73,11 +76,11 @@ describe('DynamicCredentialsController', () => {
 				id: '1',
 				type: 'googleOAuth2Api',
 			});
-			const req = {
+			const req = mock<Request>({
 				params: { id: '1' },
-				query: {} as any,
+				query: {},
 				headers: { authorization: 'Bearer token123' },
-			} as Request;
+			});
 			const res = mock<Response>();
 
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
