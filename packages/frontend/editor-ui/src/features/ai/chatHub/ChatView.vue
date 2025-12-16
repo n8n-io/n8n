@@ -30,6 +30,7 @@ import {
 	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
@@ -135,6 +136,8 @@ const shouldSkipNextScrollTrigger = ref(false);
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
+	const provider = route.query.provider;
+	const model = route.query.model;
 
 	if (!isNewSession.value) {
 		return null;
@@ -148,6 +151,17 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 		return chatStore.getAgent({ provider: 'n8n', workflowId });
 	}
 
+	if (typeof provider === 'string' && typeof model === 'string') {
+		const parsedModel = chatHubConversationModelSchema.safeParse({
+			provider,
+			model,
+		});
+
+		if (parsedModel.success) {
+			return chatStore.getAgent(parsedModel.data);
+		}
+	}
+
 	return null;
 });
 
@@ -159,10 +173,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 			return null;
 		}
 
-		return chatStore.getAgent(
-			model,
-			(currentConversation.value?.agentName || currentConversation.value?.model) ?? undefined,
-		);
+		return chatStore.getAgent(model, {
+			name: currentConversation.value?.agentName || currentConversation.value?.model,
+			icon: currentConversation.value?.agentIcon,
+		});
 	}
 
 	if (modelFromQuery.value) {
@@ -170,14 +184,17 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.model, chatStore.streaming.agentName);
+		return chatStore.streaming.agent;
 	}
 
 	if (!defaultModel.value) {
 		return null;
 	}
 
-	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
+	return chatStore.getAgent(defaultModel.value, {
+		name: defaultModel.value.cachedDisplayName,
+		icon: defaultModel.value.cachedIcon,
+	});
 });
 
 const customAgentId = computed(() =>
@@ -371,6 +388,14 @@ watch(
 		}
 
 		if (
+			defaultModel.value &&
+			agent?.icon &&
+			(agent.icon.type !== prevAgent?.icon?.type || agent.icon.value !== prevAgent.icon.value)
+		) {
+			defaultModel.value = { ...defaultModel.value, cachedIcon: agent.icon };
+		}
+
+		if (
 			agent &&
 			!agent.metadata.capabilities.functionCalling &&
 			(defaultTools.value ?? []).length > 0
@@ -381,7 +406,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string, attachments: File[]) {
+async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -394,14 +419,13 @@ function onSubmit(message: string, attachments: File[]) {
 	didSubmitInCurrentSession.value = true;
 	editingMessageId.value = undefined;
 
-	void chatStore.sendMessage(
+	await chatStore.sendMessage(
 		sessionId.value,
 		message,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
 		attachments,
-		selectedModel.value.name,
 	);
 
 	inputRef.value?.setText('');
@@ -440,7 +464,7 @@ function handleEditMessage(message: ChatHubMessageDto) {
 		sessionId.value,
 		messageToEdit,
 		message.content,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 	);
 	editingMessageId.value = undefined;
@@ -461,22 +485,29 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 	);
 }
 
-async function handleSelectModel(selection: ChatHubConversationModel, displayName?: string) {
-	const agentName = displayName ?? chatStore.getAgent(selection)?.name ?? '';
+async function handleSelectModel(
+	selection: ChatHubConversationModel,
+	selectedAgent?: ChatModelDto,
+) {
+	const agent = selectedAgent ?? chatStore.getAgent(selection);
 
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
+			await chatStore.updateSessionModel(sessionId.value, selection, agent.name);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
-		defaultModel.value = { ...selection, cachedDisplayName: agentName };
+		defaultModel.value = {
+			...selection,
+			cachedDisplayName: agent.name,
+			cachedIcon: agent.icon ?? undefined,
+		};
 
 		// Remove query params (if exists) and focus input
 		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
@@ -484,7 +515,7 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 }
 
 async function handleSelectAgent(selection: ChatModelDto) {
-	await handleSelectModel(selection.model, selection.name);
+	await handleSelectModel(selection.model, selection);
 }
 
 function handleSwitchAlternative(messageId: string) {
@@ -601,6 +632,7 @@ function onFilesDropped(files: File[]) {
 						:is-editing="editingMessageId === message.id"
 						:is-streaming="message.status === 'running'"
 						:cached-agent-display-name="selectedModel?.name ?? null"
+						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
 							didSubmitInCurrentSession &&
 							message.type === 'ai' &&
