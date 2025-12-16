@@ -801,7 +801,7 @@ describe('GET /workflows/:workflowId/exists', () => {
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
 
-		expect(response.body).toEqual({ exists: true });
+		expect(response.body).toEqual({ data: { exists: true } });
 	});
 
 	test('should return false when workflow does not exist', async () => {
@@ -809,7 +809,7 @@ describe('GET /workflows/:workflowId/exists', () => {
 
 		const response = await authOwnerAgent.get(`/workflows/${nonExistentId}/exists`).expect(200);
 
-		expect(response.body).toEqual({ exists: false });
+		expect(response.body).toEqual({ data: { exists: false } });
 	});
 
 	test('should return false when workflow exists but user does not have access', async () => {
@@ -817,7 +817,7 @@ describe('GET /workflows/:workflowId/exists', () => {
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
 
-		expect(response.body).toEqual({ exists: false });
+		expect(response.body).toEqual({ data: { exists: false } });
 	});
 
 	test('should return true when workflow is shared with user', async () => {
@@ -831,7 +831,7 @@ describe('GET /workflows/:workflowId/exists', () => {
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
 
-		expect(response.body).toEqual({ exists: true });
+		expect(response.body).toEqual({ data: { exists: true } });
 	});
 });
 
