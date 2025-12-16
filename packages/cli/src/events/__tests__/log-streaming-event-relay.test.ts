@@ -237,6 +237,85 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-saved` event with settings changes', () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: '789',
+					email: 'alex@n8n.io',
+					firstName: 'Alex',
+					lastName: 'Johnson',
+					role: { slug: 'editor' },
+				},
+				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
+				publicApi: false,
+				settingsChanged: {
+					saveDataErrorExecution: {
+						from: 'none',
+						to: 'all',
+					},
+					saveManualExecutions: {
+						from: false,
+						to: true,
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.updated',
+				payload: {
+					userId: '789',
+					_email: 'alex@n8n.io',
+					_firstName: 'Alex',
+					_lastName: 'Johnson',
+					globalRole: 'editor',
+					workflowId: 'wf101',
+					workflowName: 'Updated Workflow',
+					settingsChanged: {
+						saveDataErrorExecution: {
+							from: 'none',
+							to: 'all',
+						},
+						saveManualExecutions: {
+							from: false,
+							to: true,
+						},
+					},
+				},
+			});
+		});
+
+		it('should not include settingsChanged when no settings changed', () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: '789',
+					email: 'alex@n8n.io',
+					firstName: 'Alex',
+					lastName: 'Johnson',
+					role: { slug: 'editor' },
+				},
+				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
+				publicApi: false,
+				// settingsChanged is not included when no settings changed
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.updated',
+				payload: {
+					userId: '789',
+					_email: 'alex@n8n.io',
+					_firstName: 'Alex',
+					_lastName: 'Johnson',
+					globalRole: 'editor',
+					workflowId: 'wf101',
+					workflowName: 'Updated Workflow',
+				},
+			});
+		});
+
 		it('should log on `workflow-pre-execute` event', () => {
 			const workflow = mock<IWorkflowBase>({
 				id: 'wf202',
