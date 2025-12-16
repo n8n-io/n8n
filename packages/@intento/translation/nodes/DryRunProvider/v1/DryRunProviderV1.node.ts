@@ -1,34 +1,14 @@
 import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 	type INodeTypeBaseDescription,
-	type INodeProperties,
+	type ISupplyDataFunctions,
+	type SupplyData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-const dryRunNodeProperties: INodeProperties[] = [
-	{
-		displayName: 'Mode',
-		name: 'mode',
-		type: 'options',
-		default: 'passthrough',
-		options: [
-			{
-				name: 'Passthrough',
-				value: 'passthrough',
-				description: 'Returns input as-is without modifications',
-			},
-			{
-				name: 'Echo',
-				value: 'echo',
-				description: 'Echoes the input with provider name prefix',
-			},
-		],
-		description: 'Operational mode of the DryRun provider',
-	},
-];
+import { DryRunTranslationSupplier } from '../../../suppliers/DryRunTranslationSupplier';
+import { TranslationFeatures } from '../../../types/TranslationFeatures';
 
 export class DryRunProviderV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -37,16 +17,20 @@ export class DryRunProviderV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
-			defaults: { name: 'DryRun Translation Provider' },
+			defaults: { name: 'DryRun' },
 			inputs: [],
-			outputs: [NodeConnectionTypes.IntentoTranslationProvider],
-			properties: dryRunNodeProperties,
+			outputs: [NodeConnectionTypes.TranslationSupplier],
+			properties: [
+				...TranslationFeatures.MOCKED_TRANSLATION,
+				...TranslationFeatures.DELAY,
+				...TranslationFeatures.RETRY,
+			],
 		};
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// Return empty execution data
-		return [];
+	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
+		return {
+			response: new DryRunTranslationSupplier(NodeConnectionTypes.TranslationSupplier, this),
+		};
 	}
 }

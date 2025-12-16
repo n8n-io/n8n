@@ -2131,7 +2131,7 @@ export const NodeConnectionTypes = {
 	AiTextSplitter: 'ai_textSplitter',
 	AiTool: 'ai_tool',
 	AiVectorStore: 'ai_vectorStore',
-	IntentoTranslationProvider: 'intento_translationProvider',
+	TranslationSupplier: 'intento_translationSupplier',
 	Main: 'main',
 } as const;
 

@@ -1,11 +1,15 @@
 import {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypeBaseDescription,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeTypeBaseDescription,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
+
+import type { TranslationRequest } from '../../../types/TranslationRequest';
+import type { TranslationSupplier } from '../../../types/TranslationSupplier';
 
 export class TranslationAgentV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -20,7 +24,7 @@ export class TranslationAgentV1 implements INodeType {
 					const inputs = [{ type: 'main' }];
 					for (let i = 0; i < numberModels; i++) {
 						inputs.push({
-							type: 'intento_nmt',
+							type: 'intento_translationSupplier',
 							maxConnections: 1,
 							displayName: 'M' + i,
 							required: i === 0,
@@ -50,40 +54,65 @@ export class TranslationAgentV1 implements INodeType {
 					description:
 						'Number of translation provider slots to connect (1-9). First is required, others optional for failover.',
 				},
+				{
+					displayName: 'Text to Translate',
+					name: 'text',
+					type: 'string',
+					default: '',
+					description: 'The text you want to translate',
+					placeholder: 'Enter text to translate',
+				},
+				{
+					displayName: 'From Language',
+					name: 'from',
+					type: 'string',
+					default: 'en',
+					description: 'ISO 639-1 language code of the source language (e.g., en, es, fr)',
+					placeholder: 'en',
+				},
+				{
+					displayName: 'To Language',
+					name: 'to',
+					type: 'string',
+					default: 'es',
+					description: 'ISO 639-1 language code of the target language (e.g., en, es, fr)',
+					placeholder: 'es',
+				},
 			],
 		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.debug(`🚀 Checking connected models..`);
-		const models = await this.getInputConnectionData(
-			NodeConnectionTypes.IntentoTranslationProvider,
+		this.logger.debug(`🚀 Checking translation providers connected to ${this.getNode().name}..`);
+		const connections = await this.getInputConnectionData(
+			NodeConnectionTypes.TranslationSupplier,
 			0,
 		);
-		// Check connected models and restore order
-		if (Array.isArray(models) && models.length > 0) {
-			this.logger.debug(`🔗 Models connected: ${models.length}`);
-			const reversedModels = [...models].reverse();
 
-			// Try executing each model in left to right order
-			for (let i = 0; i < reversedModels.length; i++) {
-				const model = reversedModels[i];
-				this.logger.debug(`🔗 Execuring model "${i}". Info: "${JSON.stringify(model)}"`);
-				try {
-					const startTime = Date.now();
-					const response = await model.invoke([
-						{ role: 'system', content: this.getNodeParameter('systemMessage', 0) as string },
-						{ role: 'user', content: this.getNodeParameter('userMessage', 0) as string },
-					]);
-					this.logger.debug(`✅ Model "${i}" execution completed in "${Date.now() - startTime}ms"`);
-					return [[{ json: response }]];
-				} catch (error) {
-					this.logger.warn(`⚠️ Model "${i}" execution failed because of "${error.toString()}"`);
-				}
+		if (!Array.isArray(connections) || connections.length <= 0) {
+			const nodeName = this.getNode().name;
+			const message = `❌ At least one translation provider must be connected to ${nodeName}.`;
+			throw new NodeOperationError(this.getNode(), message);
+		}
+
+		const request = {
+			text: this.getNodeParameter('text', 0),
+			from: this.getNodeParameter('from', 0),
+			to: this.getNodeParameter('to', 0),
+		} as TranslationRequest;
+		const suppliers = [...(connections as TranslationSupplier[])].reverse();
+
+		for (let i = 0; i < suppliers.length; i++) {
+			try {
+				return [[{ json: await suppliers[i].translate(request) }]];
+			} catch (error) {
+				this.logger.warn(`Provider ${i + 1} failed:`, error);
 			}
 		}
-		throw new Error(
-			'❌ No models were able to process the request. Please check your models configuration and try again.',
+
+		throw new NodeOperationError(
+			this.getNode(),
+			`All ${suppliers.length} translation providers failed to process the request.`,
 		);
 	}
 }

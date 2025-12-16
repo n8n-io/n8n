@@ -10,6 +10,7 @@
 		"credentials/**/*.json",
 		"nodes/**/*.ts",
 		"nodes/**/*.json",
+		"suppliers/**/*.ts",
 		"types/**/*.ts",
 		"utils/**/*.ts"
 	],
