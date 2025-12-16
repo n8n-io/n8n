@@ -31,8 +31,9 @@ const $style = useCssModule();
 const inputRef = ref<HTMLInputElement | null>(null);
 
 const handleInput = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	emit('update:modelValue', target.value);
+	if (event.target instanceof HTMLInputElement) {
+		emit('update:modelValue', event.target.value);
+	}
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -48,13 +49,14 @@ const handleKeydown = (event: KeyboardEvent) => {
 		event.preventDefault();
 		emit('key:navigate', 'up');
 	} else if (event.key === 'ArrowRight') {
-		const input = event.target as HTMLInputElement;
-		if (input.selectionStart === input.value.length) {
+		if (
+			event.target instanceof HTMLInputElement &&
+			event.target.selectionStart === event.target.value.length
+		) {
 			emit('key:arrow-right');
 		}
 	} else if (event.key === 'ArrowLeft') {
-		const input = event.target as HTMLInputElement;
-		if (input.selectionStart === 0) {
+		if (event.target instanceof HTMLInputElement && event.target.selectionStart === 0) {
 			emit('key:arrow-left');
 		}
 	} else if (event.key === 'Enter') {
