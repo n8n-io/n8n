@@ -64,7 +64,64 @@ Evaluate ONLY the functional aspects - whether the workflow achieves the intende
 - Check if operations are in the correct logical sequence
 - Verify it handles all scenarios mentioned in the user prompt
 - Ensure data transformations are implemented as requested
-- Remember: functional correctness is about meeting requirements, not perfection`;
+- Remember: functional correctness is about meeting requirements, not perfection
+
+## n8n RAG Pipeline Pattern (CRITICAL - Do Not Misunderstand)
+
+**Document Loader is a CAPABILITY-ONLY sub-node. It NEVER receives main data flow.**
+
+The Document Loader node:
+- Has NO main input - it cannot and should not receive data via main connections
+- ONLY connects via ai_document TO a Vector Store (Document Loader → Vector Store)
+- Reads data from the workflow context (binary files, JSON) based on its dataType configuration
+- Is a capability provider that tells Vector Store HOW to process documents
+
+**CORRECT RAG Pipeline:**
+\`\`\`
+Data Source (Extract From File, HTTP Request, etc.)
+       │
+       │ [main]
+       ▼
+Vector Store (insert mode) ◄──[ai_document]── Document Loader ◄──[ai_textSplitter]── Text Splitter
+       ▲
+       └──[ai_embedding]── Embeddings
+\`\`\`
+
+**THE FOLLOWING ARE ALL CORRECT - NEVER FLAG AS VIOLATIONS:**
+- Document Loader has NO main connections - THIS IS CORRECT BY DESIGN
+- Document Loader connects TO Vector Store via ai_document - THIS IS THE ONLY WAY TO USE IT
+- Extract From File connects directly to Vector Store via main - THIS IS CORRECT
+- Document Loader appears "isolated" from the main data path - THIS IS CORRECT
+
+**INVALID VIOLATION EXAMPLES - DO NOT OUTPUT THESE:**
+- ❌ "Document ingestion pipeline is broken because data bypasses Document Loader" - WRONG ANALYSIS
+- ❌ "Extract From File connects directly to Vector Store, bypassing Document Loader" - This IS the correct pattern
+- ❌ "Document Loader is disconnected from main data flow" - CORRECT behavior, not an error
+- ❌ "Document Loader needs to receive the extracted data" - WRONG, it reads from workflow context
+- ❌ "Document Loader is completely disconnected from the main data flow" - WRONG, it connects via ai_document
+- ❌ "Vector Store is missing required Document Loader connection via ai_document port" when Document Loader IS connected via ai_document - CHECK THE CONNECTIONS CAREFULLY
+- ❌ Any violation claiming Document Loader should receive main data - ALWAYS WRONG
+
+The main connection triggers the Vector Store insert operation. The Document Loader provides document processing capability via ai_document. These work together but the Document Loader does NOT sit in the main data path.
+
+## Model Type Corrections (DO NOT FLAG AS ERRORS)
+
+When a user requests a specific model for a task, the workflow builder may correctly substitute an appropriate model type:
+
+**Chat models vs Embedding models:**
+- Chat models (gpt-4o, gpt-4o-mini, claude-3, etc.) are for conversation/text generation
+- Embedding models (text-embedding-3-small, text-embedding-3-large, etc.) are for vectorization
+
+**If user requests "gpt-4o-mini for embeddings":**
+- Using text-embedding-3-small or another embedding model is CORRECT
+- gpt-4o-mini cannot generate embeddings - it's a chat model
+- The workflow builder correctly substitutes an appropriate embedding model
+- DO NOT flag this as "misunderstanding the requirement" - it's correct behavior
+
+**DO NOT flag as errors:**
+- "User requested gpt-4o-mini but workflow uses text-embedding-3-small" - CORRECT, chat models can't do embeddings
+- Substituting embedding models for chat models in embedding contexts
+- Using the appropriate model TYPE even if user specified wrong model category`;
 
 const humanTemplate = `Evaluate the functional correctness of this workflow:
 

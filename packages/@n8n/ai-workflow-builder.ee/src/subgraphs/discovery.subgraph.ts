@@ -143,7 +143,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const baseTools = [
 			createGetBestPracticesTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
-			createNodeDetailsTool(config.parsedNodeTypes),
+			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
 
 		// Conditionally add workflow examples tool if feature flag is enabled

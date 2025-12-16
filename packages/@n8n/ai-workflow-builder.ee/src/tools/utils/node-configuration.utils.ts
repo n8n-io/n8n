@@ -78,6 +78,7 @@ export function formatNodeConfigurationExamples(
 	nodeType: string,
 	configurations: NodeConfigurationEntry[],
 	nodeVersion?: number,
+	maxExamples: number = 1,
 	maxChars: number = MAX_NODE_EXAMPLE_CHARS,
 ): string {
 	// Filter by version if specified
@@ -89,8 +90,9 @@ export function formatNodeConfigurationExamples(
 		return `<node_configuration_examples node_type="${nodeType}">No examples found</node_configuration_examples>`;
 	}
 
-	// Accumulate examples within token limit
-	const { parts } = filtered.reduce<{ parts: string[]; chars: number }>(
+	// Limit to maxExamples and accumulate within token limit
+	const limited = filtered.slice(0, maxExamples);
+	const { parts } = limited.reduce<{ parts: string[]; chars: number }>(
 		(acc, config) => {
 			const exampleStr = JSON.stringify(config.parameters, null, 2);
 			if (acc.chars + exampleStr.length <= maxChars) {

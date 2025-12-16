@@ -188,6 +188,9 @@ async function getWorkflowsForNodeType(
 	};
 }
 
+/** Maximum number of examples to return to avoid context overload */
+const MAX_EXAMPLES = 1;
+
 /**
  * Generate mermaid connection examples for a specific node type
  */
@@ -195,7 +198,7 @@ function formatConnectionExamples(nodeType: string, workflows: WorkflowMetadata[
 	const examples: string[] = [];
 	const shortNodeType = nodeType.split('.').pop() ?? nodeType;
 
-	for (const workflow of workflows.slice(0, 5)) {
+	for (const workflow of workflows.slice(0, MAX_EXAMPLES)) {
 		const mermaid = mermaidStringify(workflow, { includeNodeParameters: false });
 		examples.push(`<example workflow="${workflow.name}">\n${mermaid}\n</example>`);
 	}

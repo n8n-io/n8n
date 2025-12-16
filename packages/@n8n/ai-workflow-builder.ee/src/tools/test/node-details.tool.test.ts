@@ -25,6 +25,15 @@ jest.mock('@langchain/langgraph', () => ({
 	})),
 }));
 
+// Mock the templates module to prevent actual API calls
+jest.mock('../web/templates', () => ({
+	fetchWorkflowsFromTemplates: jest.fn().mockResolvedValue({
+		workflows: [],
+		totalFound: 0,
+		templateIds: [],
+	}),
+}));
+
 describe('NodeDetailsTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
 	let nodeDetailsTool: ReturnType<typeof createNodeDetailsTool>['tool'];

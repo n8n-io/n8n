@@ -52,13 +52,67 @@ Your task is to verify that every connection follows n8n's sourcing rules, suppo
 ## Patterns to Validate
 
 ### Retrieval-Augmented Generation (RAG)
-- Data source or metadata prep (HTTP Request, Set, etc.) → Vector Store **via main** when mode is insert/upsert
-- Token Splitter → Document Loader [ai_textSplitter]
-- Document Loader → Vector Store [ai_document]
-- Embeddings → Vector Store [ai_embedding]
+
+**CRITICAL: Document Loader is a CAPABILITY-ONLY sub-node. It NEVER receives main data flow.**
+
+The Document Loader node in n8n:
+- Has NO main input - it cannot and should not receive data via main connections
+- ONLY connects via ai_document TO a Vector Store (Document Loader is the SOURCE, Vector Store is the TARGET)
+- Reads data from the workflow context (binary files, JSON) based on its configuration
+- Is a capability provider, not a data processor in the main flow
+
+**CORRECT RAG Pipeline Pattern:**
+\`\`\`
+Data Source (Extract From File, HTTP Request, etc.)
+       │
+       │ [main]
+       ▼
+Vector Store (insert mode) ◄──[ai_document]── Document Loader ◄──[ai_textSplitter]── Text Splitter
+       ▲
+       │
+       └──[ai_embedding]── Embeddings
+\`\`\`
+
+**How it works:**
+1. Data source connects to Vector Store via **main** - this triggers the insert operation
+2. Document Loader connects TO Vector Store via **ai_document** - provides document processing capability
+3. Text Splitter connects TO Document Loader via **ai_textSplitter** - provides chunking capability
+4. Embeddings connects TO Vector Store via **ai_embedding** - provides vectorization capability
+
+**THE FOLLOWING ARE ALL CORRECT - NEVER FLAG AS VIOLATIONS:**
+- Document Loader has NO main connections (no main input, no main output) - THIS IS CORRECT BY DESIGN
+- Document Loader connects TO Vector Store via ai_document - THIS IS THE ONLY WAY TO USE DOCUMENT LOADER
+- Extract From File/PDF/CSV connects directly to Vector Store via main - THIS IS CORRECT
+- Data flows: Extract → Vector Store (main) while Document Loader → Vector Store (ai_document) - BOTH ARE NEEDED, BOTH ARE CORRECT
+- Document Loader appears "disconnected" from the main workflow path - THIS IS CORRECT, IT ONLY USES ai_document
+
+**INVALID VIOLATION EXAMPLES - DO NOT OUTPUT THESE:**
+- ❌ "Document Loader is disconnected from main data flow" - WRONG ANALYSIS, this is correct behavior
+- ❌ "Document Loader is completely disconnected" - WRONG, it connects via ai_document to Vector Store
+- ❌ "Extract From File bypasses Document Loader" - WRONG ANALYSIS, main data SHOULD go directly to Vector Store
+- ❌ "Document Loader should receive the extracted data" - WRONG, Document Loader reads from workflow context
+- ❌ "The Document Loader should receive the extracted data via main connection before providing ai_document capability" - COMPLETELY WRONG
+- ❌ Any violation about Document Loader needing main connections - ALWAYS WRONG
+
+**Text Splitter → Document Loader connection - THIS IS CORRECT, NEVER FLAG IT:**
+
+The connection "Text Splitter" → "Document Loader" with type "ai_textSplitter" is ALWAYS CORRECT.
+- Text Splitter is the SOURCE (provides chunking capability)
+- Document Loader is the TARGET (receives chunking capability)
+- This follows the standard ai_* pattern: sub-node PROVIDES capability TO parent node
+
+DO NOT output confusing analysis like:
+- "Text Splitter → Document Loader is reversed" - NO, this is the correct direction
+- "The semantic meaning is wrong" - NO, Text Splitter providing to Document Loader is semantically correct
+- "Retracting this as not a violation" - Don't flag it in the first place
+
+**Correct ai_textSplitter direction (memorize this):**
+- ✅ Text Splitter → Document Loader [ai_textSplitter] - ALWAYS CORRECT
+- ❌ Document Loader → Text Splitter - NEVER VALID
+
 - Vector Store (tool mode) → AI Agent [ai_tool]
-- **Do NOT expect Document Loader, Token Splitter, or Embeddings to have main inputs.** Their ai_* links are the correct pattern
-- Only flag the Vector Store if it genuinely lacks a main input when in insert/upsert mode
+- **Document Loader, Token Splitter, and Embeddings are capability-only nodes with NO main inputs. This is correct.**
+- Only flag Vector Store if it lacks BOTH a main input AND no data-providing nodes connected when in insert/upsert mode
 
 ### Agent Ecosystem
 - Language Model (e.g. Anthropic Chat) → AI Agent [ai_languageModel]
