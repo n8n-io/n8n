@@ -159,13 +159,11 @@ onMounted(() => {
 				:item="personalAgents"
 				:compact="isCollapsed"
 				:active="route.name === CHAT_PERSONAL_AGENTS_VIEW"
-				@click="sidebar.toggleOpen(false)"
 			/>
 			<N8nMenuItem
 				:item="workflowAgents"
 				:compact="isCollapsed"
 				:active="route.name === CHAT_WORKFLOW_AGENTS_VIEW"
-				@click="sidebar.toggleOpen(false)"
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">
@@ -209,7 +207,7 @@ onMounted(() => {
 						"
 						:item="{
 							id: 'load-more-sessions',
-							label: $t('chatHub.sidebar.loadMoreSessions'),
+							label: i18n.baseText('chatHub.sidebar.loadMoreSessions'),
 							icon: 'circle-ellipsis',
 						}"
 						:compact="isCollapsed"
@@ -287,7 +285,7 @@ onMounted(() => {
 .group {
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
+	gap: 2px;
 }
 
 .groupHeader {

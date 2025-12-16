@@ -8,6 +8,7 @@ const {
 	active = false,
 	to,
 	label,
+	title,
 	menuItems = [],
 	icon,
 	compact,
@@ -15,6 +16,7 @@ const {
 	active?: boolean;
 	to: RouteLocationRaw;
 	label: string;
+	title: string;
 	menuItems?: Array<ActionDropdownItem<T>>;
 	icon?: IconName;
 	compact?: boolean;
@@ -38,13 +40,16 @@ defineSlots<{
 			<RouterLink
 				:to="to"
 				:class="[$style.menuItemLink, { [$style.compact]: compact }]"
-				:title="label"
+				:title="title"
 				@click="emit('click', $event)"
 			>
 				<slot name="icon">
 					<N8nIcon v-if="icon" size="large" :icon="icon" />
 				</slot>
-				<N8nText v-if="!compact" :class="$style.label">{{ label }}</N8nText>
+				<div v-if="!compact" :class="$style.textContainer">
+					<N8nText :class="$style.label" size="small" color="text-light">{{ label }}</N8nText>
+					<N8nText :class="$style.title" size="medium" color="text-dark">{{ title }}</N8nText>
+				</div>
 			</RouterLink>
 			<N8nActionDropdown
 				v-if="!compact && menuItems.length > 0"
@@ -103,12 +108,27 @@ defineSlots<{
 	}
 }
 
+.textContainer {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
 .label {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
-	line-height: var(--font-size--lg);
+	line-height: var(--line-height--xl);
+	min-width: 0;
+}
+
+.title {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	flex: 1;
+	line-height: 20px;
 	min-width: 0;
 }
 

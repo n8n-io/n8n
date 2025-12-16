@@ -83,7 +83,9 @@ const iconColor = computed(() => {
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
-				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
+				<N8nText v-if="!compact" :class="$style.menuItemText" color="text-dark">
+					{{ item.label }}
+				</N8nText>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
 		</N8nTooltip>

@@ -106,14 +106,15 @@ watch(
 		:active="active"
 		:compact="compact"
 		:menu-items="dropdownItems"
-		:label="session.title"
+		:label="session.agentName"
+		:title="session.title"
 		@action-select="handleActionSelect"
 	>
 		<template v-if="isRenaming" #default>
 			<N8nInput
 				ref="input"
 				v-model="editedLabel"
-				size="small"
+				size="large"
 				@blur="handleBlur"
 				@keydown="handleKeyDown"
 			/>
