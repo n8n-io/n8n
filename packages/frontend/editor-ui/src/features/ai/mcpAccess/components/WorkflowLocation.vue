@@ -12,7 +12,7 @@ type ParentFolder = {
 	parentFolderId: string | null;
 };
 
-// If worklow name is not provided, only project and folder (if any) will be shown.
+// If workflow name is not provided, only project and folder (if any) will be shown.
 const props = withDefaults(
 	defineProps<{
 		workflowId: string;
