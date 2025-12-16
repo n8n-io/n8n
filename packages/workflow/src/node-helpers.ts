@@ -757,13 +757,14 @@ export function getNodeParameters(
 			}
 
 			if (returnDefaults) {
+				const nodeValuesCopy = deepCopy(nodeValues);
 				// Set also when it has the default value
 				if (['boolean', 'number', 'options'].includes(nodeProperties.type)) {
 					// Boolean, numbers and options are special as false and 0 are valid values
 					// and should not be replaced with default value
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] !== undefined
-							? nodeValues[nodeProperties.name]
+							? nodeValuesCopy[nodeProperties.name]
 							: nodeProperties.default;
 				} else if (
 					nodeProperties.type === 'resourceLocator' &&
@@ -771,11 +772,11 @@ export function getNodeParameters(
 				) {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] !== undefined
-							? nodeValues[nodeProperties.name]
+							? nodeValuesCopy[nodeProperties.name]
 							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
-						nodeValues[nodeProperties.name] ?? nodeProperties.default;
+						nodeValuesCopy[nodeProperties.name] ?? nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else if (
@@ -786,7 +787,7 @@ export function getNodeParameters(
 				(nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')
 			) {
 				// Set only if it is different to the default value
-				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
+				nodeParameters[nodeProperties.name] = deepCopy(nodeValues[nodeProperties.name]);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				continue;
 			}
@@ -810,7 +811,7 @@ export function getNodeParameters(
 
 				// Return directly the values like they are
 				if (nodeValues[nodeProperties.name] !== undefined) {
-					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
+					nodeParameters[nodeProperties.name] = deepCopy(nodeValues[nodeProperties.name]);
 				} else if (returnDefaults) {
 					// Does not have values defined but defaults should be returned
 					if (Array.isArray(nodeProperties.default)) {
@@ -856,7 +857,7 @@ export function getNodeParameters(
 			let tempNodePropertiesArray: INodeProperties[];
 			let nodePropertyOptions: INodePropertyCollection | undefined;
 
-			let propertyValues = nodeValues[nodeProperties.name];
+			let propertyValues = deepCopy(nodeValues[nodeProperties.name]);
 			if (returnDefaults) {
 				if (propertyValues === undefined) {
 					propertyValues = deepCopy(nodeProperties.default);
@@ -872,7 +873,7 @@ export function getNodeParameters(
 				// For fixedCollections, which only allow one value, it is important to still return
 				// the empty object which indicates that a value got added, even if it does not have
 				// anything set. If that is not done, the value would get lost.
-				return nodeValues;
+				return deepCopy(nodeValues);
 			}
 
 			// Iterate over all collections
