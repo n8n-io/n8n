@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -769,7 +769,6 @@
       "dist/nodes/SseTrigger/SseTrigger.node.js",
       "dist/nodes/Ssh/Ssh.node.js",
       "dist/nodes/Stackby/Stackby.node.js",
-      "dist/nodes/Start/Start.node.js",
       "dist/nodes/StopAndError/StopAndError.node.js",
       "dist/nodes/Storyblok/Storyblok.node.js",
       "dist/nodes/Strapi/Strapi.node.js",

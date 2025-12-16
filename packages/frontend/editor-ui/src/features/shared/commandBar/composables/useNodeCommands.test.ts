@@ -239,7 +239,7 @@ describe('useNodeCommands', () => {
 
 		it('should populate open node children with workflow nodes', () => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 				{
 					id: 'node-2',
 					name: 'HTTP Request',
@@ -314,7 +314,7 @@ describe('useNodeCommands', () => {
 	describe('root open node items', () => {
 		beforeEach(() => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 			];
 		});
 

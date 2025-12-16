@@ -173,7 +173,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -222,7 +222,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -255,7 +255,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -302,7 +302,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -341,7 +341,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -1352,7 +1352,7 @@ describe('GET /workflows', () => {
 			expect(emptyResponse.body.data).toHaveLength(0);
 		});
 
-		test('should filter workflows by triggerNodeType', async () => {
+		test('should filter workflows by triggerNodeTypes', async () => {
 			const executeWorkflowTriggerWorkflow = await createWorkflow(
 				{
 					name: 'Subworkflow',
@@ -1389,7 +1389,7 @@ describe('GET /workflows', () => {
 				owner,
 			);
 
-			await createWorkflow(
+			const scheduleTriggerWorkflow = await createWorkflow(
 				{
 					name: 'Normal Workflow',
 					nodes: [
@@ -1406,30 +1406,46 @@ describe('GET /workflows', () => {
 				owner,
 			);
 
-			// Filter by Execute Workflow Trigger
+			// Filter by Execute Workflow Trigger (single type in array)
 			const executeWorkflowResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "triggerNodeType": "n8n-nodes-base.executeWorkflowTrigger" }')
+				.query('filter={ "triggerNodeTypes": ["n8n-nodes-base.executeWorkflowTrigger"] }')
 				.expect(200);
 
 			expect(executeWorkflowResponse.body.data).toHaveLength(1);
 			expect(executeWorkflowResponse.body.data[0].id).toBe(executeWorkflowTriggerWorkflow.id);
 			expect(executeWorkflowResponse.body.data[0].name).toBe('Subworkflow');
 
-			// Filter by Error Trigger
+			// Filter by Error Trigger (single type in array)
 			const errorTriggerResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "triggerNodeType": "n8n-nodes-base.errorTrigger" }')
+				.query('filter={ "triggerNodeTypes": ["n8n-nodes-base.errorTrigger"] }')
 				.expect(200);
 
 			expect(errorTriggerResponse.body.data).toHaveLength(1);
 			expect(errorTriggerResponse.body.data[0].id).toBe(errorTriggerWorkflow.id);
 			expect(errorTriggerResponse.body.data[0].name).toBe('Error Handler');
 
+			// Filter by multiple trigger types
+			const multiTriggerResponse = await authOwnerAgent
+				.get('/workflows')
+				.query(
+					'filter={ "triggerNodeTypes": ["n8n-nodes-base.executeWorkflowTrigger", "n8n-nodes-base.scheduleTrigger"] }',
+				)
+				.expect(200);
+
+			expect(multiTriggerResponse.body.data).toHaveLength(2);
+			const returnedIds = multiTriggerResponse.body.data.map(
+				(w: { id: string }) => w.id,
+			) as string[];
+			expect(returnedIds).toContain(executeWorkflowTriggerWorkflow.id);
+			expect(returnedIds).toContain(scheduleTriggerWorkflow.id);
+			expect(returnedIds).not.toContain(errorTriggerWorkflow.id);
+
 			// Filter by non-existent trigger type
 			const emptyResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "triggerNodeType": "n8n-nodes-base.nonExistentTrigger" }')
+				.query('filter={ "triggerNodeTypes": ["n8n-nodes-base.nonExistentTrigger"] }')
 				.expect(200);
 
 			expect(emptyResponse.body.data).toHaveLength(0);
@@ -1443,7 +1459,7 @@ describe('GET /workflows', () => {
 						{
 							id: uuid(),
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							parameters: {},
 							typeVersion: 1,
 							position: [0, 0],
@@ -2721,7 +2737,7 @@ describe('PATCH /workflows/:workflowId', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},

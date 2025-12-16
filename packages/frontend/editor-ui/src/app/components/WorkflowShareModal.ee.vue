@@ -277,6 +277,7 @@ watch(
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
 							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
 						/>
