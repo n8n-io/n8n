@@ -85,9 +85,7 @@ describe('DynamicCredentialsController', () => {
 
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 
-			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
-				'Missing resolverId query parameter',
-			);
+			await expect(controller.authorizeCredential(req, res)).rejects.toThrow('Resolver not found');
 		});
 
 		it('should throw BadRequestError when credential type is not OAuth2 or OAuth1', async () => {
