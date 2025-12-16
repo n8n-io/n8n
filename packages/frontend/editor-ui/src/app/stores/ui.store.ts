@@ -84,7 +84,7 @@ import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
