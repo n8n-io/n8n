@@ -84,7 +84,7 @@ export const description: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description:
-					'When ON, returns existing table if one exists with the same name without throwing an error',
+					'Whether to return existing table if one exists with the same name without throwing an error',
 			},
 		],
 	},
