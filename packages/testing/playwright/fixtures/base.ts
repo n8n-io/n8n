@@ -44,6 +44,8 @@ interface ContainerConfig {
 	taskRunner?: boolean;
 	sourceControl?: boolean;
 	email?: boolean;
+	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
+	oidc?: boolean;
 	resourceQuota?: {
 		memory?: number; // in GB
 		cpu?: number; // in cores
