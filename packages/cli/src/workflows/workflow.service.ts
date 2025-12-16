@@ -526,7 +526,7 @@ export class WorkflowService {
 			workflowId: workflow.id,
 		});
 
-		return this.webhookService.findWebhookConflicts(workflow, additionalData);
+		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
 	}
 
 	private async _detectWebhookConflicts(workflowEntity: WorkflowEntity) {
