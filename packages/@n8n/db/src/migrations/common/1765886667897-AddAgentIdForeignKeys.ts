@@ -6,7 +6,7 @@ const table = {
 	messages: 'chat_hub_messages',
 } as const;
 
-export class AddAgentIdForeignKeys1765801023649 implements ReversibleMigration {
+export class AddAgentIdForeignKeys1765886667897 implements ReversibleMigration {
 	transaction = false as const;
 
 	async up({ schemaBuilder: { addForeignKey }, runQuery, escape }: MigrationContext) {
