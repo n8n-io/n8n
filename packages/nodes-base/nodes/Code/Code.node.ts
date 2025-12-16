@@ -41,6 +41,7 @@ export class Code implements INodeType {
 		displayName: 'Code',
 		name: 'code',
 		icon: 'node-code',
+		iconColor: 'orange',
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,

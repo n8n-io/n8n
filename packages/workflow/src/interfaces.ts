@@ -2008,7 +2008,8 @@ export type ThemeIconColor =
 	| 'dark-green'
 	| 'azure'
 	| 'purple'
-	| 'crimson';
+	| 'crimson'
+	| 'email-green';
 export type Themed<T> = T | { light: T; dark: T };
 export type IconRef = `fa:${string}` | `node:${string}.${string}` | `node-${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;

@@ -10,6 +10,7 @@ export class Set extends VersionedNodeType {
 			displayName: 'Set',
 			name: 'set',
 			icon: 'node-set',
+			iconColor: 'black',
 			group: ['input'],
 			description: 'Add or edit fields on an input item and optionally remove other fields',
 			defaultVersion: 3.4,

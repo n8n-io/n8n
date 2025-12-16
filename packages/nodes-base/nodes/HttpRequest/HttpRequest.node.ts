@@ -11,6 +11,7 @@ export class HttpRequest extends VersionedNodeType {
 			displayName: 'HTTP Request',
 			name: 'httpRequest',
 			icon: 'node-http-request',
+			iconColor: 'blue',
 			group: ['output'],
 			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
 			description: 'Makes an HTTP request and returns the response data',

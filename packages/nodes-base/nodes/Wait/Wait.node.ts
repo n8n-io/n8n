@@ -261,6 +261,7 @@ export class Wait extends Webhook {
 		displayName: 'Wait',
 		name: 'wait',
 		icon: 'node-wait',
+		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],
 		description: 'Wait before continue with execution',

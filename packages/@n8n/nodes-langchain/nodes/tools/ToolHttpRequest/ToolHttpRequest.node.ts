@@ -40,6 +40,7 @@ export class ToolHttpRequest implements INodeType {
 		displayName: 'HTTP Request Tool',
 		name: 'toolHttpRequest',
 		icon: 'node-http-request',
+		iconColor: 'blue',
 		group: ['output'],
 		version: [1, 1.1],
 		description: 'Makes an HTTP request and returns the response data',

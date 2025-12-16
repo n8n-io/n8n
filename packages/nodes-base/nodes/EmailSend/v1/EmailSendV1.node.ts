@@ -14,6 +14,7 @@ const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
 	icon: 'node-email-send',
+	iconColor: 'email-green',
 	group: ['output'],
 	version: 1,
 	description: 'Sends an Email',

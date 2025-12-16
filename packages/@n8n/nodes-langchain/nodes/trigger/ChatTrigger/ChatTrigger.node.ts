@@ -217,6 +217,7 @@ export class ChatTrigger extends Node {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
 		icon: 'node-chat-trigger',
+		iconColor: 'black',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		defaultVersion: 1.4,

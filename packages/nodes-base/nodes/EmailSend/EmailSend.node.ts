@@ -10,6 +10,7 @@ export class EmailSend extends VersionedNodeType {
 			displayName: 'Send Email',
 			name: 'emailSend',
 			icon: 'node-email-send',
+			iconColor: 'email-green',
 			group: ['output'],
 			defaultVersion: 2.1,
 			description: 'Sends an email using SMTP protocol',

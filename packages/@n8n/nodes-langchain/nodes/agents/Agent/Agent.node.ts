@@ -11,6 +11,7 @@ export class Agent extends VersionedNodeType {
 			displayName: 'AI Agent',
 			name: 'agent',
 			icon: 'node-agent',
+			iconColor: 'black',
 			group: ['transform'],
 			description: 'Generates an action plan and executes it. Can use external tools.',
 			codex: {

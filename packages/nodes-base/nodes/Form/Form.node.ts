@@ -266,6 +266,7 @@ export class Form extends Node {
 		displayName: 'n8n Form',
 		name: 'form',
 		icon: 'node-form',
+		iconColor: 'light-green',
 		group: ['input'],
 		// since trigger and node are sharing descriptions and logic we need to sync the versions
 		// and keep them aligned in both nodes
