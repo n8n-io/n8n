@@ -230,7 +230,6 @@ async function handlePublish() {
 		:name="WORKFLOW_PUBLISH_MODAL_KEY"
 		:center="true"
 		:show-close="true"
-		:close-on-click-modal="false"
 		:event-bus="modalBus"
 	>
 		<template #header>

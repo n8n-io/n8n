@@ -31,7 +31,7 @@ class BuildContext {
 				case 'pull_request':
 					context.version = `pr-${pr}`;
 					context.release_type = 'dev';
-					context.platforms = ['linux/amd64'];
+					context.push_to_ghcr = false;
 					break;
 
 				case 'workflow_dispatch':

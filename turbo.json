@@ -35,13 +35,21 @@
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },
-		"install-browsers": {
+		"build:playwright": {
+			"dependsOn": ["install-browsers:ci", "build"]
+		},
+		"install-browsers:ci": {
 			"cache": true,
-			"inputs": ["$TURBO_DEFAULT$", "../../pnpm-lock.yaml"],
-			"outputs": [".playwright-browsers/**"],
+			"inputs": ["package.json"],
+			"outputs": ["ms-playwright-cache/**"],
 			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},
+		"install-browsers:local": {
+			"cache": false,
+			"inputs": ["package.json"]
+		},
 		"test:container:standard": {
+			"dependsOn": ["install-browsers:local"],
 			"env": ["E2E_TESTS"],
 			"cache": false
 		}

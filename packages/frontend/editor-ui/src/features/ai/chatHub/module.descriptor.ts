@@ -2,8 +2,7 @@ import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.t
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
-	CHAT_WORKFLOW_AGENTS_VIEW,
-	CHAT_PERSONAL_AGENTS_VIEW,
+	CHAT_AGENTS_VIEW,
 	TOOLS_SELECTOR_MODAL_KEY,
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -16,10 +15,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
-const ChatWorkflowAgentsView = async () =>
-	await import('@/features/ai/chatHub/ChatWorkflowAgentsView.vue');
-const ChatPersonalAgentsView = async () =>
-	await import('@/features/ai/chatHub/ChatPersonalAgentsView.vue');
+const ChatAgentsView = async () => await import('@/features/ai/chatHub/ChatAgentsView.vue');
 const SettingsChatHubView = async () =>
 	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
@@ -124,26 +120,10 @@ export const ChatModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			name: CHAT_WORKFLOW_AGENTS_VIEW,
-			path: '/home/chat/workflow-agents',
+			name: CHAT_AGENTS_VIEW,
+			path: '/home/chat/agents',
 			components: {
-				default: ChatWorkflowAgentsView,
-				sidebar: ChatSidebar,
-			},
-			meta: {
-				middleware: ['authenticated'],
-				getProperties() {
-					return {
-						feature: 'chat-hub',
-					};
-				},
-			},
-		},
-		{
-			name: CHAT_PERSONAL_AGENTS_VIEW,
-			path: '/home/chat/personal-agents',
-			components: {
-				default: ChatPersonalAgentsView,
+				default: ChatAgentsView,
 				sidebar: ChatSidebar,
 			},
 			meta: {

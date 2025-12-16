@@ -93,7 +93,6 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { hasRole } from '@/app/utils/rbac/checks';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -368,10 +367,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	});
 
-	const canViewWorkflows = computed(
-		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
-	);
-
 	/**
 	 * Sets the active execution id
 	 *
@@ -645,7 +640,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			isArchived?: boolean;
 			parentFolderId?: string;
 			availableInMCP?: boolean;
-			triggerNodeTypes?: string[];
+			triggerNodeType?: string;
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
@@ -688,7 +683,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		tags,
 		select,
 		isArchived,
-		triggerNodeTypes,
+		triggerNodeType,
 	}: {
 		projectId?: string;
 		query?: string;
@@ -696,7 +691,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		tags?: string[];
 		select?: string[];
 		isArchived?: boolean;
-		triggerNodeTypes?: string[];
+		triggerNodeType?: string;
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
@@ -704,7 +699,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeTypes,
 			tags,
 			isArchived,
-			triggerNodeTypes,
+			triggerNodeType,
 		};
 
 		// Check if filter has meaningful values (not just undefined, null, or empty arrays/strings)
@@ -2111,7 +2106,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
 		getWebhookUrl,
-		canViewWorkflows,
 		defaults,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context

@@ -83,7 +83,6 @@ type EntityName =
 	| 'DataTableColumn'
 	| 'ChatHubSession'
 	| 'ChatHubMessage'
-	| 'ChatHubAgent'
 	| 'OAuthClient'
 	| 'AuthorizationCode'
 	| 'AccessToken'

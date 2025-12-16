@@ -2,6 +2,7 @@ import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { i18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+
 import type {
 	Completion,
 	CompletionContext,
@@ -10,14 +11,8 @@ import type {
 } from '@codemirror/autocomplete';
 import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
-import type { Alias, DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
-import {
-	Expression,
-	ExpressionExtensions,
-	NativeMethods,
-	validateFieldType,
-	type AliasCompletion,
-} from 'n8n-workflow';
+import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
+import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
@@ -79,7 +74,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	const syntaxTree = javascriptLanguage.parser.parse(word.text);
 	const [base, tail] = splitBaseTail(syntaxTree, word.text);
 
-	let options: AliasCompletion[] = [];
+	let options: Completion[] = [];
 
 	const isCredential = isCredentialsModalOpen();
 
@@ -121,7 +116,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	}
 
 	if (tail !== '') {
-		options = filterOptions(options, tail);
+		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
 
 	let from = word.to - tail.length;
@@ -147,54 +142,10 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-/**
- * Returns a sorted array of completions by the input string.
- * Each completion is returned with its order.
- * 0 if no match
- * 1 if prefix alias match
- * 2 if exact alias match
- * 3 if prefix label match
- */
-export function sortCompletionsByInput(options: AliasCompletion[], input: string) {
-	return options
-		.map((o) => {
-			let order = 0;
-			let alias: Alias | undefined = undefined;
-			if (prefixMatch(o.label, input)) {
-				order = 3;
-			} else {
-				const exactAliasMatch = o.alias?.find((a) => a.mode === 'exact' && a.label === input);
-				const prefixAliasMatch = o.alias?.find(
-					(a) => a.mode !== 'exact' && prefixMatch(a.label, input),
-				);
-				if (exactAliasMatch) {
-					alias = exactAliasMatch;
-					order = 2;
-				} else if (prefixAliasMatch) {
-					alias = prefixAliasMatch;
-					order = 1;
-				}
-			}
-			return {
-				option: o,
-				order,
-				alias,
-			};
-		})
-		.sort((a, b) => b.order - a.order);
-}
-
-function filterOptions(options: AliasCompletion[], tail: string): AliasCompletion[] {
-	const matches = sortCompletionsByInput(options, tail)
-		.filter((m) => m.order > 0)
-		.map((m) => m.option);
-	return matches;
-}
-
 function explicitDataTypeOptions(
 	expression: string,
 	targetNodeParameterContext?: TargetNodeParameterContext,
-): AliasCompletion[] {
+): Completion[] {
 	return attempt(
 		() => {
 			const resolved = resolveAutocompleteExpression(
@@ -212,7 +163,7 @@ function explicitDataTypeOptions(
 	);
 }
 
-function datatypeOptions(input: AutocompleteInput): AliasCompletion[] {
+function datatypeOptions(input: AutocompleteInput): Completion[] {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -260,7 +211,7 @@ export const natives = ({
 }: {
 	typeName: ExtensionTypeName;
 	transformLabel?: (label: string) => string;
-}): AliasCompletion[] => {
+}): Completion[] => {
 	const nativeDocs = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!nativeDocs) return [];
@@ -373,9 +324,9 @@ const createCompletionOption = ({
 	isFunction?: boolean;
 	transformLabel?: (label: string) => string;
 	type?: 'strikethrough';
-}): AliasCompletion => {
+}): Completion => {
 	const label = isFunction ? name + '()' : name;
-	const option: AliasCompletion = {
+	const option: Completion = {
 		label,
 		section: doc?.section,
 		apply: applyCompletion({
@@ -383,7 +334,6 @@ const createCompletionOption = ({
 			defaultArgs: getDefaultArgs(doc),
 			transformLabel,
 		}),
-		alias: doc?.aliases?.map((alias) => ({ label: alias, mode: doc.aliasMode })),
 		type,
 	};
 	option.info = createInfoBoxRenderer(doc, isFunction);

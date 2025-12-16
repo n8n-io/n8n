@@ -19,7 +19,6 @@ import {
 import type { INode } from 'n8n-workflow';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
-import type { ChatHubAgent } from './chat-hub-agent.entity';
 
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestamps {
@@ -95,15 +94,8 @@ export class ChatHubSession extends WithTimestamps {
 	 * ID of the custom agent to use (if applicable).
 	 * Only set when provider is 'custom-agent'.
 	 */
-	@Column({ type: 'uuid', nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	agentId: string | null;
-
-	/**
-	 * Custom n8n agent workflow to use (if applicable)
-	 */
-	@ManyToOne('ChatHubAgent', { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({ name: 'agentId' })
-	agent?: Relation<ChatHubAgent> | null;
 
 	/**
 	 * Cached display name of the agent/model.

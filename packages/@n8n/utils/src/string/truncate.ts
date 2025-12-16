@@ -7,11 +7,7 @@ export const truncate = (text: string, length = 30): string =>
  * - Remove chars just before the last word, as long as the last word is under 15 chars
  * - Otherwise preserve the last 5 chars of the name and remove chars before that
  */
-export function truncateBeforeLast(
-	text: string,
-	maxLength: number,
-	lastCharsLength: number = 5,
-): string {
+export function truncateBeforeLast(text: string, maxLength: number): string {
 	const chars: string[] = [];
 
 	const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -42,13 +38,7 @@ export function truncateBeforeLast(
 		}
 	}
 
-	if (lastCharsLength < 1) {
-		return chars.slice(0, maxLength).join('') + ellipsis;
-	}
-
 	return (
-		chars.slice(0, maxLength - lastCharsLength - ellipsisLength).join('') +
-		ellipsis +
-		chars.slice(-lastCharsLength).join('')
+		chars.slice(0, maxLength - 5 - ellipsisLength).join('') + ellipsis + chars.slice(-5).join('')
 	);
 }

@@ -404,7 +404,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	const workflowsData = (await workflowsStore.searchWorkflows({
 		query: searchTerm,
 		isArchived: false,
-		triggerNodeTypes: ['n8n-nodes-base.errorTrigger'],
+		triggerNodeType: 'n8n-nodes-base.errorTrigger',
 	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {

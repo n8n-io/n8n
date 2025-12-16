@@ -12,7 +12,6 @@ import type {
 	INodeProperties,
 	INodeTypes,
 	INodeCredentialsDetails,
-	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 
@@ -341,7 +340,6 @@ describe('CredentialsHelper', () => {
 				nodeCredentials,
 				'oAuth2Api',
 				newOauthTokenData,
-				{} as IWorkflowExecuteAdditionalData,
 			);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith(

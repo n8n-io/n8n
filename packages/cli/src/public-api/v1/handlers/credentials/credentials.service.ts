@@ -215,12 +215,11 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				dependantValue = displayOptionsValues[0];
 			}
 
-			// Create a unique key for each dependant name and value combination
-			// so that if multiple properties depend on the same property but different values
-			// they get their own if-then-else block
-			const dependencyKey = `${dependantName}:${JSON.stringify(dependantValue)}`;
+			if (propertyRequiredDependencies[dependantName] === undefined) {
+				propertyRequiredDependencies[dependantName] = {};
+			}
 
-			if (!resolveProperties.includes(dependencyKey)) {
+			if (!resolveProperties.includes(dependantName)) {
 				let conditionalValue;
 				if (typeof dependantValue === 'object' && dependantValue._cnd) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -286,7 +285,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						enum: [dependantValue],
 					};
 				}
-				propertyRequiredDependencies[dependencyKey] = {
+				propertyRequiredDependencies[dependantName] = {
 					if: {
 						properties: {
 							[dependantName]: conditionalValue,
@@ -299,13 +298,14 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						allOf: [],
 					},
 				};
-				resolveProperties.push(dependencyKey);
 			}
 
-			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
+			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependantName].else?.allOf.push({
 				not: { required: [property.name] },
 			});
+
+			resolveProperties.push(dependantName);
 			// remove global required
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}

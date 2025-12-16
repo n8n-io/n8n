@@ -1,11 +1,8 @@
-import type {
-	ChatHubUpdateAgentRequest,
-	ChatHubCreateAgentRequest,
-	ChatModelDto,
-} from '@n8n/api-types';
+import { ChatModelsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { INode } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubAgent } from './chat-hub-agent.entity';
@@ -23,24 +20,21 @@ export class ChatHubAgentService {
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 	) {}
 
-	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
+	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelsResponse['custom-agent']> {
 		const agents = await this.getAgentsByUserId(userId);
 
-		return agents.map((agent) => this.convertAgentEntityToModel(agent));
-	}
-
-	convertAgentEntityToModel(agent: ChatHubAgent): ChatModelDto {
 		return {
-			name: agent.name,
-			description: agent.description ?? null,
-			icon: agent.icon,
-			model: {
-				provider: 'custom-agent',
-				agentId: agent.id,
-			},
-			createdAt: agent.createdAt.toISOString(),
-			updatedAt: agent.updatedAt.toISOString(),
-			metadata: getModelMetadata(agent.provider, agent.model),
+			models: agents.map((agent) => ({
+				name: agent.name,
+				description: agent.description ?? null,
+				model: {
+					provider: 'custom-agent',
+					agentId: agent.id,
+				},
+				createdAt: agent.createdAt.toISOString(),
+				updatedAt: agent.updatedAt.toISOString(),
+				metadata: getModelMetadata(agent.provider, agent.model),
+			})),
 		};
 	}
 
@@ -56,7 +50,18 @@ export class ChatHubAgentService {
 		return agent;
 	}
 
-	async createAgent(user: User, data: ChatHubCreateAgentRequest): Promise<ChatHubAgent> {
+	async createAgent(
+		user: User,
+		data: {
+			name: string;
+			description?: string;
+			systemPrompt: string;
+			credentialId: string;
+			provider: ChatHubAgent['provider'];
+			model: string;
+			tools: INode[];
+		},
+	): Promise<ChatHubAgent> {
 		// Ensure user has access to credentials if provided
 		await this.chatHubCredentialsService.ensureCredentialById(user, data.credentialId);
 
@@ -66,7 +71,6 @@ export class ChatHubAgentService {
 			id,
 			name: data.name,
 			description: data.description ?? null,
-			icon: data.icon,
 			systemPrompt: data.systemPrompt,
 			ownerId: user.id,
 			credentialId: data.credentialId,
@@ -82,7 +86,15 @@ export class ChatHubAgentService {
 	async updateAgent(
 		id: string,
 		user: User,
-		updates: ChatHubUpdateAgentRequest,
+		updates: {
+			name?: string;
+			description?: string;
+			systemPrompt?: string;
+			credentialId?: string;
+			provider?: string;
+			model?: string;
+			tools?: INode[];
+		},
 	): Promise<ChatHubAgent> {
 		// First check if the agent exists and belongs to the user
 		const existingAgent = await this.chatAgentRepository.getOneById(id, user.id);
@@ -98,7 +110,6 @@ export class ChatHubAgentService {
 		const updateData: Partial<ChatHubAgent> = {};
 		if (updates.name !== undefined) updateData.name = updates.name;
 		if (updates.description !== undefined) updateData.description = updates.description ?? null;
-		if (updates.icon !== undefined) updateData.icon = updates.icon;
 		if (updates.systemPrompt !== undefined) updateData.systemPrompt = updates.systemPrompt;
 		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
 		if (updates.provider !== undefined)

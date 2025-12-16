@@ -126,7 +126,7 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	const rootDataTableItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2 || !dataTableStore.canViewDataTables) {
+		if (lastQuery.value.length <= 2) {
 			return [];
 		}
 		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, true));
@@ -161,33 +161,25 @@ export function useDataTableNavigationCommands(options: {
 
 		return [
 			...(hasCreatePermission ? [newDataTableCommand] : []),
-			...(dataTableStore.canViewDataTables
-				? [
-						{
-							id: ITEM_ID.OPEN_DATA_TABLE,
-							title: i18n.baseText('commandBar.dataTables.open'),
-							section: i18n.baseText('commandBar.sections.dataTables'),
-							placeholder: i18n.baseText('commandBar.dataTables.searchPlaceholder'),
-							icon: {
-								component: N8nIcon,
-								props: {
-									icon: 'table',
-									color: 'text-light',
-								},
-							},
-							children: openDataTableCommands.value,
-						},
-					]
-				: []),
+			{
+				id: ITEM_ID.OPEN_DATA_TABLE,
+				title: i18n.baseText('commandBar.dataTables.open'),
+				section: i18n.baseText('commandBar.sections.dataTables'),
+				placeholder: i18n.baseText('commandBar.dataTables.searchPlaceholder'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'table',
+						color: 'text-light',
+					},
+				},
+				children: openDataTableCommands.value,
+			},
 			...rootDataTableItems.value,
 		];
 	});
 
 	function onCommandBarChange(query: string) {
-		if (!dataTableStore.canViewDataTables) {
-			return;
-		}
-
 		const trimmed = query.trim();
 		const isInDataTableParent = activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE;
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;

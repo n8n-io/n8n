@@ -46,8 +46,6 @@ export {
 	type ChatHubAgentDto,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
-	type AgentIconOrEmoji,
-	agentIconOrEmojiSchema,
 	type EnrichedStructuredChunk,
 	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
