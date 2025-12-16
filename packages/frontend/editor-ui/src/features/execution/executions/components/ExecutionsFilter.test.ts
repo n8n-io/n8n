@@ -151,6 +151,7 @@ describe('ExecutionsFilter', () => {
 		let filterChangedEvent = emitted().filterChanged;
 
 		// Initial state: no active filters
+		expect(queryByTestId('execution-filter-form')).not.toBeInTheDocument();
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
 

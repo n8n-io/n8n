@@ -107,9 +107,8 @@ describe('McpConnectPopover', () => {
 
 			await waitFor(() => {
 				expect(queryByTestId('mcp-connect-popover-content')).not.toBeInTheDocument();
+				expect(mcpStore.resetCurrentUserMCPKey).toHaveBeenCalled();
 			});
-
-			expect(mcpStore.resetCurrentUserMCPKey).toHaveBeenCalled();
 		});
 	});
 
