@@ -108,6 +108,9 @@ export function shouldModifyState(
 	return 'agent';
 }
 
+const PROMPT_IS_TOO_LARGE_ERROR =
+	'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.';
+
 function getWorkflowContext(state: typeof WorkflowState.State) {
 	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 	const executionData = state.workflowContext?.executionData ?? {};
@@ -277,9 +280,7 @@ export class WorkflowBuilderAgent {
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
 			if (estimatedTokens > MAX_INPUT_TOKENS) {
-				throw new WorkflowStateError(
-					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
-				);
+				throw new WorkflowStateError(PROMPT_IS_TOO_LARGE_ERROR);
 			}
 
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
@@ -645,6 +646,11 @@ export class WorkflowBuilderAgent {
 					'message' in errorDetails &&
 					typeof errorDetails.message === 'string'
 				) {
+					// Override original error message from model provider for prompt size issues
+					if (errorDetails.message.toLocaleLowerCase().includes('prompt is too long')) {
+						return PROMPT_IS_TOO_LARGE_ERROR;
+					}
+
 					return errorDetails.message;
 				}
 			}
