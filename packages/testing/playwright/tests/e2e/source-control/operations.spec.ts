@@ -5,6 +5,8 @@ import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 
+const REPO_URL = 'ssh://git@gitea/giteaadmin/n8n-test-repo.git';
+
 test.use({
 	addContainerCapability: {
 		sourceControl: true,
@@ -36,7 +38,7 @@ async function connectToSourceControl({
 	await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
 
 	await n8n.api.sourceControl.connect({
-		repositoryUrl: 'ssh://git@gitea/giteaadmin/n8n-test-repo.git',
+		repositoryUrl: REPO_URL,
 	});
 }
 
@@ -278,8 +280,63 @@ test.describe('Source Control Operations @capability:source-control', () => {
 	});
 
 	test.describe('Pull Operations', () => {
-		test('should pull new and modified resources from remote', async () => {
-			// TODO: Implement test
+		test('should pull new and modified resources from remote', async ({ n8n, n8nContainer }) => {
+			await connectToSourceControl({ n8n, n8nContainer });
+
+			// create project
+			const project = await n8n.api.projects.createProject('Test Project');
+			const folder = await n8n.api.projects.createFolder(project.id, 'Test Folder');
+			// create folder
+			const workflow = await n8n.api.workflows.createInProject(project.id, {
+				name: 'Test Workflow',
+				folder: folder.id,
+			});
+			const credential = await n8n.api.credentials.createCredential({
+				name: 'Test Credential',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+				projectId: project.id,
+			});
+			const variable = await n8n.api.variables.createVariable({
+				key: 'PULL_TEST_VARIABLE',
+				value: 'test-value',
+				projectId: project.id,
+			});
+
+			const tag = await n8n.api.tags.create('pull-test-tag');
+
+			// push all resources
+			await n8n.api.sourceControl.pushWorkFolder({
+				commitMessage: 'Initial push',
+			});
+
+			// disconnect
+			await n8n.api.sourceControl.disconnect();
+
+			// delete created resources
+			await n8n.api.projects.deleteProject(project.id); // This also deletes all related resources
+			await n8n.api.tags.delete(tag.id);
+
+			// connect again
+			await n8n.api.sourceControl.connect({
+				repositoryUrl: REPO_URL,
+			});
+
+			// pull all resources
+			await n8n.navigate.toHome();
+			await n8n.sourceControlPullModal.open();
+			await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
+
+			await n8n.navigate.toProjectSettings(project.id);
+			await expect(n8n.projectSettings.getTitle()).toHaveText(project.name);
+
+			await n8n.navigate.toFolder(folder.id, project.id);
+			await expect(n8n.workflows.cards.getWorkflow(workflow.name)).toBeVisible();
+
+			await n8n.navigate.toWorkflow(workflow.id);
+			// check that the variable is pulled
+			// check that the credential is pulled
+			// check that the tag is pulled
 		});
 	});
 

@@ -13,9 +13,14 @@ export class SourceControlApiHelper {
 		return result.data;
 	}
 
-	async disconnect() {
-		const response = await this.api.request.get('/rest/source-control/disconnect');
+	async disconnect({ keepKeyPair = true }: { keepKeyPair?: boolean } = {}) {
+		const response = await this.api.request.post('/rest/source-control/disconnect', {
+			data: {
+				keepKeyPair,
+			},
+		});
 		if (!response.ok()) {
+			console.log(await response.text());
 			throw new TestError(`Failed to disconnect from source control: ${await response.text()}`);
 		}
 		const result = await response.json();
@@ -34,6 +39,33 @@ export class SourceControlApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to connect to source control: ${await response.text()}`);
+		}
+		const result = await response.json();
+		return result.data;
+	}
+
+	/**
+	 * This will push all the changes
+	 * OPTIMIZE: add a fileNames to select what specific changes to push
+	 * @returns
+	 */
+	async pushWorkFolder({
+		commitMessage,
+		force = false,
+	}: {
+		commitMessage: string;
+		force?: boolean;
+	}) {
+		const response = await this.api.request.post('/rest/source-control/push-workfolder', {
+			data: {
+				commitMessage,
+				force,
+				fileNames: [],
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to push work folder: ${await response.text()}`);
 		}
 		const result = await response.json();
 		return result.data;
