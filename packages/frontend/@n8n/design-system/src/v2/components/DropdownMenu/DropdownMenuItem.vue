@@ -33,7 +33,6 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const itemRef = ref<HTMLElement | null>(null);
 const searchTerm = ref('');
 const internalSubMenuOpen = ref(false);
 
@@ -165,16 +164,6 @@ const handleItemSelect = () => {
 		emit('select', props.id);
 	}
 };
-
-// Scroll item into view when highlighted via keyboard navigation
-watch(
-	() => props.highlighted,
-	(isHighlighted) => {
-		if (isHighlighted && itemRef.value) {
-			itemRef.value.scrollIntoView({ block: 'nearest' });
-		}
-	},
-);
 
 // Reset sub-menu highlighted index when children change
 watch(
