@@ -209,6 +209,7 @@ export type DiffRule<
 export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	workflows: W[],
 	rules: Array<DiffRule<W>>,
+	skipRules: Array<DiffRule<W>> = [],
 ): Array<GroupedWorkflowHistory<W>> {
 	if (workflows.length === 0) return [];
 	if (workflows.length === 1) {

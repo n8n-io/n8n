@@ -13,6 +13,7 @@ import {
 	type DiffableNode,
 	type DiffRule,
 } from '../src/workflow-diff';
+import { compareConnections } from '../src/connections-diff';
 
 describe('NodeDiffStatus', () => {
 	it('should have correct enum values', () => {
@@ -444,6 +445,7 @@ describe('groupWorkflows', () => {
 				return {
 					id,
 					nodes,
+					connections: {},
 				} as IWorkflowBase;
 			};
 
@@ -507,7 +509,10 @@ describe('groupWorkflows', () => {
 						groupedWorkflows: [],
 						workflowChangeSet: new WorkflowChangeSet(),
 					},
-					compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
+					new WorkflowChangeSet(
+						compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
+						compareConnections(baseWorkflow.connections, nextWorkflow.connections),
+					),
 				);
 
 				expect(result).toEqual(expected);
