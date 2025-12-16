@@ -32,7 +32,11 @@ export class TlsSyslogServer {
 
 	async stop(): Promise<void> {
 		return await new Promise((resolve) => {
-			this.server?.close(() => resolve());
+			if (this.server) {
+				this.server?.close(() => resolve());
+			} else {
+				resolve();
+			}
 		});
 	}
 

@@ -6,7 +6,7 @@ import * as path from 'path';
 import type TestAgent from 'supertest/lib/agent';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { TlsSyslogServer } from './tls-server';
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -43,12 +43,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	// await eventBus?.close();
+	await eventBus?.close();
 	await tlsServer.stop();
 });
 
 describe('TLS Syslog E2E', () => {
 	const destinationId = 'e2e-tls-test';
+	const subscribedEvent = 'n8n.workflow.failed';
 
 	beforeEach(() => {
 		tlsServer.clearMessages();
@@ -61,7 +62,7 @@ describe('TLS Syslog E2E', () => {
 	test('should send message over real TLS connection', async () => {
 		const certificate = fs.readFileSync(path.join(__dirname, 'support', 'certificate.pem'), 'utf8');
 
-		const result = await authOwnerAgent.post('/eventbus/destination').send({
+		await authOwnerAgent.post('/eventbus/destination').send({
 			__type: '$$MessageEventBusDestinationSyslog',
 			id: destinationId,
 			protocol: 'tls',
@@ -69,16 +70,12 @@ describe('TLS Syslog E2E', () => {
 			port: serverPort,
 			label: 'E2E TLS Syslog',
 			enabled: true,
-			subscribedEvents: ['n8n.workflow.failed'],
+			subscribedEvents: [subscribedEvent],
 			tlsCa: certificate,
 		});
 
-		const { EventMessageGeneric } = await import(
-			'@/eventbus/event-message-classes/event-message-generic'
-		);
-
 		const testMessage = new EventMessageGeneric({
-			eventName: 'n8n.workflow.failed',
+			eventName: subscribedEvent,
 			id: 'test-message-1',
 		});
 
@@ -110,17 +107,12 @@ describe('TLS Syslog E2E', () => {
 			port: serverPort,
 			label: 'Invalid TLS',
 			enabled: true,
-			subscribedEvents: ['n8n.workflow.failed'],
+			subscribedEvents: [subscribedEvent],
 			tlsCa: incorrectCertificate,
 		});
 
-		// Message should fail to send
-		const { EventMessageGeneric } = await import(
-			'@/eventbus/event-message-classes/event-message-generic'
-		);
-
 		const testMessage = new EventMessageGeneric({
-			eventName: 'n8n.workflow.failed',
+			eventName: subscribedEvent,
 			id: 'test-invalid',
 		});
 
