@@ -56,6 +56,7 @@ const defaultWorkflowProps = {
 		read: true,
 		update: true,
 		delete: true,
+		publish: true,
 	},
 };
 
@@ -185,6 +186,33 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+		});
+	});
+
+	describe('Publish button visibility', () => {
+		it('should be hidden when user lacks workflow:publish permission', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+
+		it('should be hidden when workflow is archived', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					isArchived: true,
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
 		});
 	});
 
