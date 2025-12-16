@@ -116,7 +116,7 @@ const renderIcon = (key) => {
 			<img :src="albertsonsLogo" alt="Albertsons" class="sidebar-logo" />
 			<div class="sidebar-title">
 				<div class="sidebar-title-main">Albertsons</div>
-				<div class="sidebar-title-sub">AI Agent Space</div>
+				<div class="sidebar-title-sub">AI Agentspace</div>
 			</div>
 		</div>
 

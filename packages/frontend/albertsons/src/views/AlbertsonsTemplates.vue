@@ -50,7 +50,7 @@ function useTemplate(id: string) {
 
 				<div class="card-body">
 					<h2 class="card-title">{{ template.name || 'Untitled workflow' }}</h2>
-					<p class="card-description">{{ template.description || 'Untitled workflow' }}</p>
+					<p class="card-description">{{ template.description || 'No decription' }}</p>
 					<p class="card-meta">
 						Last updated at
 						{{ new Date(template.updatedAt || template.createdAt).toLocaleString() }}
