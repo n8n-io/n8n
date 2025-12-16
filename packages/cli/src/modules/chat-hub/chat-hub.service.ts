@@ -14,6 +14,7 @@ import {
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
 	type ChatHubUpdateConversationRequest,
+	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -74,6 +75,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ChatHubModelsService } from './chat-hub.models.service';
 
 @Service()
 export class ChatHubService {
@@ -91,6 +93,7 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatHubModelsService: ChatHubModelsService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly instanceSettings: InstanceSettings,
@@ -1306,21 +1309,7 @@ export class ChatHubService {
 		const nextCursor = hasMore ? data[data.length - 1].id : null;
 
 		return {
-			data: data.map((session) => ({
-				id: session.id,
-				title: session.title,
-				ownerId: session.ownerId,
-				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
-				credentialId: session.credentialId,
-				provider: session.provider,
-				model: session.model,
-				workflowId: session.workflowId,
-				agentId: session.agentId,
-				agentName: session.agentName ?? '',
-				createdAt: session.createdAt.toISOString(),
-				updatedAt: session.updatedAt.toISOString(),
-				tools: session.tools,
-			})),
+			data: data.map((session) => this.convertSessionEntityToDto(session)),
 			nextCursor,
 			hasMore,
 		};
@@ -1338,21 +1327,7 @@ export class ChatHubService {
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
 		return {
-			session: {
-				id: session.id,
-				title: session.title,
-				ownerId: session.ownerId,
-				lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
-				credentialId: session.credentialId,
-				provider: session.provider,
-				model: session.model,
-				workflowId: session.workflowId,
-				agentId: session.agentId,
-				agentName: session.agentName ?? '',
-				createdAt: session.createdAt.toISOString(),
-				updatedAt: session.updatedAt.toISOString(),
-				tools: session.tools,
-			},
+			session: this.convertSessionEntityToDto(session),
 			conversation: {
 				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
 			},
@@ -1520,5 +1495,30 @@ export class ChatHubService {
 				);
 			}
 		}
+	}
+
+	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
+		const agent = session.workflow
+			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow)
+			: session.agent
+				? this.chatHubAgentService.convertAgentEntityToModel(session.agent)
+				: undefined;
+
+		return {
+			id: session.id,
+			title: session.title,
+			ownerId: session.ownerId,
+			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+			credentialId: session.credentialId,
+			provider: session.provider,
+			model: session.model,
+			workflowId: session.workflowId,
+			agentId: session.agentId,
+			agentName: agent?.name ?? session.agentName ?? session.model ?? '',
+			agentIcon: agent?.icon ?? null,
+			createdAt: session.createdAt.toISOString(),
+			updatedAt: session.updatedAt.toISOString(),
+			tools: session.tools,
+		};
 	}
 }

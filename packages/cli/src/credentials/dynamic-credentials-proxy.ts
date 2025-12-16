@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import { Container, Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
@@ -6,14 +8,15 @@ import type {
 import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
 import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from './credential-resolution-provider.interface';
-import { Service } from '@n8n/di';
 
 @Service()
 export class DynamicCredentialsProxy
@@ -74,6 +77,47 @@ export class DynamicCredentialsProxy
 		return await this.storageProvider.storeIfNeeded(
 			credentialStoreMetadata,
 			dynamicData,
+			credentialContext,
+			staticData,
+			workflowSettings,
+		);
+	}
+
+	/**
+	 * Stores OAuth token data for dynamic credentials, handling execution context decryption
+	 */
+	async storeOAuthTokenDataIfNeeded(
+		credentialStoreMetadata: CredentialStoreMetadata,
+		oauthTokenData: IDataObject,
+		executionContext: IExecutionContext | undefined,
+		staticData: ICredentialDataDecryptedObject,
+		workflowSettings?: IWorkflowSettings,
+	): Promise<void> {
+		if (!credentialStoreMetadata.isResolvable || !credentialStoreMetadata.resolverId) {
+			return;
+		}
+
+		const cipher = Container.get(Cipher);
+
+		let credentialContext: { version: 1; identity: string } | undefined;
+
+		if (executionContext?.credentials) {
+			const decrypted = cipher.decrypt(executionContext.credentials);
+			credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
+		}
+
+		if (!credentialContext) {
+			throw new UnexpectedError('No credential context found', {
+				extra: {
+					credentialId: credentialStoreMetadata.id,
+					credentialName: credentialStoreMetadata.name,
+				},
+			});
+		}
+
+		await this.storeIfNeeded(
+			credentialStoreMetadata,
+			{ oauthTokenData } as ICredentialDataDecryptedObject,
 			credentialContext,
 			staticData,
 			workflowSettings,

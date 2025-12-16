@@ -41,6 +41,7 @@ export const ALL_ICON_PICKER_ICONS: IconName[] = [
 	'git-branch',
 	'cog',
 	'message-circle',
+	'message-square',
 	'messages-square',
 	'clipboard-list',
 	'clock',

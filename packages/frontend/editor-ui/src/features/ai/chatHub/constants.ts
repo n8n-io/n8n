@@ -3,7 +3,8 @@ import type { ChatHubProvider } from '@n8n/api-types';
 // Route and view identifiers
 export const CHAT_VIEW = 'chat';
 export const CHAT_CONVERSATION_VIEW = 'chat-conversation';
-export const CHAT_AGENTS_VIEW = 'chat-agents';
+export const CHAT_WORKFLOW_AGENTS_VIEW = 'chat-workflow-agents';
+export const CHAT_PERSONAL_AGENTS_VIEW = 'chat-personal-agents';
 export const CHAT_SETTINGS_VIEW = 'chat-settings';
 
 export const CHAT_STORE = 'chatStore';

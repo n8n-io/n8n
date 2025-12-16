@@ -15,7 +15,7 @@ export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request
 
 	let Select;
 
-	if (req.baseUrl.endsWith('workflows')) {
+	if (req.baseUrl.endsWith('workflows') || req.path.endsWith('workflows')) {
 		Select = WorkflowSelect;
 	} else if (req.baseUrl.endsWith('credentials')) {
 		Select = CredentialsSelect;

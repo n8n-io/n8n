@@ -29,7 +29,7 @@ test-results.json
 *.0x
 packages/testing/playwright/playwright-report
 packages/testing/playwright/test-results
-packages/testing/playwright/ms-playwright-cache
+packages/testing/playwright/.playwright-browsers
 test-results/
 compiled_app_output
 trivy_report*

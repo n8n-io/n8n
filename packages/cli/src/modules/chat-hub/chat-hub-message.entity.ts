@@ -81,7 +81,7 @@ export class ChatHubMessage extends WithTimestamps {
 	 * ID of the custom agent that produced this message (if applicable).
 	 * Only set when provider is 'custom-agent'.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	agentId: string | null;
 
 	/**

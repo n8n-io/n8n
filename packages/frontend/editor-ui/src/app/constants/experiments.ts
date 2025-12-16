@@ -70,11 +70,11 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 	variant2: 'variant-2-twoboxes',
 };
 
-export const READY_TO_RUN_V2_PART2_EXPERIMENT = {
-	name: '045_ready-to-run-worfklow_v2-2',
+export const READY_TO_RUN_V2_P3_EXPERIMENT = {
+	name: '059_ready-to-run-worfklow_v2-3',
 	control: 'control',
-	variant3: 'variant-3',
-	variant4: 'variant-4',
+	variant5: 'variant-5',
+	variant6: 'variant-6',
 };
 
 export const PERSONALIZED_TEMPLATES_V3 = {
@@ -108,7 +108,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
-	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	READY_TO_RUN_V2_P3_EXPERIMENT.name,
 	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,

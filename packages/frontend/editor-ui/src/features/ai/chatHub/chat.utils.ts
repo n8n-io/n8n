@@ -9,6 +9,7 @@ import {
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
+	type AgentIconOrEmoji,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -20,6 +21,7 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import { v4 as uuidv4 } from 'uuid';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
@@ -176,11 +178,6 @@ export function filterAndSortAgents(
 		filtered = filtered.filter((model) => model.name.toLowerCase().includes(query));
 	}
 
-	// Apply provider filter
-	if (filter.provider !== '') {
-		filtered = filtered.filter((model) => model.model.provider === filter.provider);
-	}
-
 	// Apply sorting
 	filtered = [...filtered].sort((a, b) => {
 		const dateAStr = a[filter.sortBy];
@@ -259,8 +256,8 @@ export function createAiMessageFromStreamingState(
 		responses: [],
 		alternatives: [],
 		attachments: [],
-		...(streaming?.model
-			? flattenModel(streaming.model)
+		...(streaming?.agent
+			? flattenModel(streaming.agent.model)
 			: {
 					provider: null,
 					model: null,
@@ -345,11 +342,12 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		ownerId: '',
 		lastMessageAt: new Date().toISOString(),
 		credentialId: null,
-		agentName: streaming.agentName,
+		agentName: streaming.agent.name,
+		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		tools: streaming.tools,
-		...flattenModel(streaming.model),
+		...flattenModel(streaming.agent.model),
 	};
 }
 
@@ -375,3 +373,13 @@ export function createMimeTypes(modalities: ChatHubInputModality[]): string {
 
 	return mimeTypes.join(',');
 }
+
+export const personalAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'message-square' satisfies IconName,
+};
+
+export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'bot' satisfies IconName,
+};
