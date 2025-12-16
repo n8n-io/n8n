@@ -2423,6 +2423,7 @@
 	"settings.mcp.connectPopover.tab.accessToken": "Access token",
 	"settings.mcp.connectPopover.serverUrl": "Server URL",
 	"settings.mcp.connectPopover.jsonConfig": "Configuration JSON",
+	"settings.mcp.connectPopover.triggerLabel": "Connection details",
 	"settings.chatHub": "Chat",
 	"settings.chatHub.providers.fetching.error": "Error fetching chat provider settings",
 	"settings.chatHub.providers.updated.success": "Chat provider settings updated",
