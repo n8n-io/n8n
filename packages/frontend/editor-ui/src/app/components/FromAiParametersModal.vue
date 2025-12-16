@@ -7,9 +7,9 @@ import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRe
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INode, FromAIArgument, IDataObject } from 'n8n-workflow';
-import { traverseNodeParameters, NodeConnectionTypes } from 'n8n-workflow';
+import { traverseNodeParameters, NodeConnectionTypes, isHitlToolType } from 'n8n-workflow';
 import type { FormFieldValueUpdate, IFormInput } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -52,7 +52,7 @@ const parentNode = computed(() => {
 });
 
 const parameters = ref<IFormInput[]>([]);
-const selectedTool = ref<string>('');
+const selectedToolMap = reactive<Record<string, string | undefined>>({});
 const error = ref<Error | undefined>(undefined);
 
 const nodeRunData = computed(() => {
@@ -88,7 +88,11 @@ const mapTypes: {
 	},
 };
 
-const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFormInput[]> => {
+const getToolNameOptionName = (node: INode) => {
+	return `n8nToolName_${node.name}`;
+};
+
+const getMCPTools = async (newNode: INode): Promise<IFormInput[]> => {
 	const result: IFormInput[] = [];
 
 	const tools = await nodeTypesStore.getNodeParameterOptions({
@@ -111,7 +115,7 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 	}));
 
 	result.push({
-		name: 'toolName',
+		name: getToolNameOptionName(newNode),
 		initialValue: '',
 		properties: {
 			label: 'Tool name',
@@ -122,6 +126,7 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 	});
 
 	// Only show parameters for selected tool
+	const newSelectedTool = selectedToolMap[newNode.name];
 	if (newSelectedTool) {
 		const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
 		const schema = selectedToolData?.inputSchema as JSONSchema7;
@@ -148,6 +153,137 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 	return result;
 };
 
+const getHitlToolParameters = async (newNode: INode): Promise<IFormInput[]> => {
+	const result: IFormInput[] = [];
+	const connectedToolNodeNames = workflowsStore.workflowObject.getParentNodes(
+		newNode.name,
+		'ALL_NON_MAIN',
+		1,
+	);
+	const connectedTools = connectedToolNodeNames.map(
+		(nodeName) => workflowsStore.getNodeByName(nodeName)!,
+	);
+	console.log('connectedTools', connectedTools);
+
+	// Add HITL node parameters
+	const regularParameters = (await getRegularToolParameters(newNode)).filter(
+		(parameter) => parameter.name !== 'query.toolName',
+	);
+	result.push(...regularParameters);
+
+	// Load available tools
+	const toolOptions = connectedTools.map((tool) => ({
+		label: tool.name,
+		value: tool.name,
+		disabled: false,
+	}));
+
+	result.push({
+		name: getToolNameOptionName(newNode),
+		initialValue: '',
+		properties: {
+			label: 'Tool name',
+			type: 'select',
+			options: toolOptions,
+			required: true,
+		},
+	});
+
+	const newSelectedTool = selectedToolMap[newNode.name];
+	if (newSelectedTool) {
+		const selectedTool = connectedTools.find((tool) => tool.name === newSelectedTool);
+		const selectedToolParameters = await getToolParameters(selectedTool);
+		result.push(
+			...selectedToolParameters.parameters.map((param) => ({
+				...param,
+				name: `query.${param.name}`,
+			})),
+		);
+	}
+	return result;
+};
+
+const getRegularToolParameters = async (node: INode) => {
+	const result: IFormInput[] = [];
+	const params = node.parameters;
+	const collectedArgs: FromAIArgument[] = [];
+	traverseNodeParameters(params, collectedArgs);
+	const inputOverrides =
+		nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
+
+	collectedArgs.forEach((value: FromAIArgument) => {
+		const type = value.type ?? 'string';
+		const inputQuery = inputOverrides?.query as IDataObject;
+		const initialValue = inputQuery?.[value.key]
+			? inputQuery[value.key]
+			: (agentRequestStore.getQueryValue(workflowsStore.workflowId, node.id, value.key) ??
+				mapTypes[type]?.defaultValue);
+
+		result.push({
+			name: 'query.' + value.key,
+			initialValue: initialValue as string | number | boolean | null | undefined,
+			properties: {
+				label: value.key,
+				type: mapTypes[value.type ?? 'string'].inputType,
+				required: true,
+			},
+		});
+	});
+
+	const hasImplicitInput = checkImplicitInput(node);
+	if (result.length === 0 || hasImplicitInput) {
+		const key = hasImplicitInput ? 'input' : 'query';
+		const inputQuery = inputOverrides?.[key];
+		const queryValue =
+			inputQuery ?? agentRequestStore.getQueryValue(workflowsStore.workflowId, node.id, key) ?? '';
+
+		result.unshift({
+			name: hasImplicitInput ? 'query.input' : 'query',
+			initialValue: (queryValue as string) ?? '',
+			properties: {
+				label: 'Query',
+				type: 'text',
+				required: true,
+			},
+		});
+	}
+	return result;
+};
+
+const getToolParameters = async (
+	newNode: INode | null | undefined,
+): Promise<{
+	parameters: IFormInput[];
+	error?: Error;
+}> => {
+	const result: IFormInput[] = [];
+	if (!newNode) {
+		return { parameters: result };
+	}
+	if (isHitlToolType(newNode.type)) {
+		const hitlToolParameters = await getHitlToolParameters(newNode);
+		return { parameters: hitlToolParameters };
+	}
+
+	// Handle MCPClientTool nodes differently
+	if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
+		try {
+			const mcpResult = await getMCPTools(newNode);
+
+			return { parameters: mcpResult };
+		} catch (e: unknown) {
+			return {
+				parameters: result,
+				error: e instanceof Error ? e : new Error('Unknown error occurred'),
+			};
+		}
+	}
+
+	// Handle regular tool nodes
+	const regularToolParameters = await getRegularToolParameters(newNode);
+	return { parameters: regularToolParameters };
+};
+
 function checkImplicitInput(node: INode) {
 	// Check if this is a Vector Store node with 'retrieve-as-tool' operation
 	// These nodes always have an implicit 'query' parameter for the query
@@ -160,75 +296,16 @@ function checkImplicitInput(node: INode) {
 }
 
 watch(
-	[node, selectedTool],
-	async ([newNode, newSelectedTool]) => {
+	[node, selectedToolMap],
+	async ([newNode]) => {
 		error.value = undefined;
-
-		if (!newNode) {
-			parameters.value = [];
+		console.log('newNode', newNode);
+		const result = await getToolParameters(newNode);
+		if (result.error) {
+			error.value = result.error;
 			return;
 		}
-
-		const result: IFormInput[] = [];
-
-		// Handle MCPClientTool nodes differently
-		if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
-			try {
-				const mcpResult = await getMCPTools(newNode, newSelectedTool);
-				parameters.value = mcpResult;
-
-				return;
-			} catch (e: unknown) {
-				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
-			}
-		}
-
-		// Handle regular tool nodes
-		const params = newNode.parameters;
-		const collectedArgs: FromAIArgument[] = [];
-		traverseNodeParameters(params, collectedArgs);
-		const inputOverrides =
-			nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
-
-		collectedArgs.forEach((value: FromAIArgument) => {
-			const type = value.type ?? 'string';
-			const inputQuery = inputOverrides?.query as IDataObject;
-			const initialValue = inputQuery?.[value.key]
-				? inputQuery[value.key]
-				: (agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, value.key) ??
-					mapTypes[type]?.defaultValue);
-
-			result.push({
-				name: 'query.' + value.key,
-				initialValue: initialValue as string | number | boolean | null | undefined,
-				properties: {
-					label: value.key,
-					type: mapTypes[value.type ?? 'string'].inputType,
-					required: true,
-				},
-			});
-		});
-
-		const hasImplicitInput = checkImplicitInput(newNode);
-		if (result.length === 0 || hasImplicitInput) {
-			const key = hasImplicitInput ? 'input' : 'query';
-			const inputQuery = inputOverrides?.[key];
-			const queryValue =
-				inputQuery ??
-				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, key) ??
-				'';
-
-			result.unshift({
-				name: hasImplicitInput ? 'query.input' : 'query',
-				initialValue: (queryValue as string) ?? '',
-				properties: {
-					label: 'Query',
-					type: 'text',
-					required: true,
-				},
-			});
-		}
-		parameters.value = result;
+		parameters.value = result.parameters;
 	},
 	{ immediate: true },
 );
@@ -242,11 +319,12 @@ const onExecute = async () => {
 	const inputValues = inputs.value?.getValues() ?? {};
 
 	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
-
+	console.log('node', node.value);
+	const toolName = inputValues[getToolNameOptionName(node.value)] as string;
 	// Structure the input values as IAgentRequest
 	const agentRequest: IAgentRequest = {
 		query: {},
-		toolName: inputValues.toolName as string,
+		toolName: toolName.replaceAll(' ', '_'),
 	};
 
 	// Move all query.* fields to query object
@@ -270,6 +348,9 @@ const onExecute = async () => {
 
 	telemetry.track('User clicked execute node button in modal', telemetryPayload);
 
+	console.log('inputValues', inputValues);
+	console.log('agentRequest', agentRequest);
+
 	await runWorkflow({
 		destinationNode: { nodeName: node.value.name, mode: 'inclusive' },
 	});
@@ -279,9 +360,11 @@ const onExecute = async () => {
 
 // Add handler for tool selection change
 const onUpdate = (change: FormFieldValueUpdate) => {
-	if (change.name !== 'toolName') return;
+	const match = change.name.match(/^n8nToolName_(.+)$/);
+	if (!match?.[1]) return;
 	if (typeof change.value === 'string') {
-		selectedTool.value = change.value;
+		const nodeName = match[1];
+		selectedToolMap[nodeName] = change.value;
 	}
 };
 </script>
