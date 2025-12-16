@@ -101,7 +101,7 @@ export class MessageEventBusDestinationSyslog
 				},
 				async (error) => {
 					if (error?.message) {
-						this.logger.debug(error.message);
+						this.logger.error(error.message);
 					} else {
 						// eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						confirmCallback(msg, { id: this.id, name: this.label });
@@ -110,7 +110,7 @@ export class MessageEventBusDestinationSyslog
 				},
 			);
 		} catch (error) {
-			if (error.message) this.logger.debug(error.message as string);
+			if (error.message) this.logger.error(error.message as string);
 			throw error;
 		}
 		if (msg.eventName === eventMessageGenericDestinationTestEvent) {
