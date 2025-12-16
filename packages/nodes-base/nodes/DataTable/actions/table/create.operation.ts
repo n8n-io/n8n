@@ -79,12 +79,12 @@ export const description: INodeProperties[] = [
 		displayOptions,
 		options: [
 			{
-				displayName: 'Create If Not Exists',
+				displayName: 'Reuse Existing Tables',
 				name: 'createIfNotExists',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description:
-					'Whether to return the existing table if one with the same name already exists, instead of throwing an error',
+					'When ON, returns existing table if one exists with the same name without throwing an error',
 			},
 		],
 	},
