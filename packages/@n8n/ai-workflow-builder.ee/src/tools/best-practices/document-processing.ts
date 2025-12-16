@@ -61,6 +61,11 @@ For high-volume processing:
 - Process files sequentially or in small batches
 - Drop unnecessary binary data after extraction to free memory
 
+### File Metadata
+Documents uploaded via a form trigger will have various bits of metadata available - filename, mimetype and size.
+These are accessible using an expression like {{ $json.documents[0].mimetype }} to access each of the documents details.
+Multiple files can be uploaded to a form which is the reason for the documents array.
+
 ## Text Extraction Strategy
 
 Choose extraction method based on document type and content:
