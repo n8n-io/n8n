@@ -87,6 +87,7 @@ export class WorkflowService {
 		includeScopes?: boolean,
 		includeFolders?: boolean,
 		onlySharedWithMe?: boolean,
+		requiredScopes: Scope[] = ['workflow:read'],
 	) {
 		let count;
 		let workflows;
@@ -108,7 +109,7 @@ export class WorkflowService {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
 		} else {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: ['workflow:read'],
+				scopes: requiredScopes,
 			});
 		}
 
@@ -234,6 +235,7 @@ export class WorkflowService {
 			publishIfActive?: boolean;
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
+			autosaved?: boolean;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -244,6 +246,7 @@ export class WorkflowService {
 			publicApi = false,
 			publishIfActive = false,
 			aiBuilderAssisted = false,
+			autosaved = false,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -358,7 +361,12 @@ export class WorkflowService {
 
 		// Save the workflow to history first, so we can retrieve the complete version object for the update
 		if (saveNewVersion) {
-			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
+			await this.workflowHistoryService.saveVersion(
+				user,
+				workflowUpdateData,
+				workflowId,
+				autosaved,
+			);
 		}
 
 		const publishCurrent = workflow.activeVersionId && publishIfActive;

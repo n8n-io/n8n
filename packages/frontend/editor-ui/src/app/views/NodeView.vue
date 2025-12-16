@@ -841,6 +841,11 @@ async function onOpenRenameNodeModal(id: string) {
 		let shouldSaveAfterRename = false;
 
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Stop propagation for space key to prevent VueFlow from intercepting it
+			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
 			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
 				e.preventDefault();
 				shouldSaveAfterRename = true;
@@ -1897,6 +1902,11 @@ watch(
 );
 
 onBeforeRouteLeave(async (to, from, next) => {
+	// Close the focus panel when leaving the workflow view
+	if (focusPanelStore.focusPanelActive) {
+		focusPanelStore.closeFocusPanel();
+	}
+
 	const toNodeViewTab = getNodeViewTab(to);
 
 	if (
@@ -2001,6 +2011,7 @@ onActivated(() => {
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	toast.clearAllStickyNotifications();
 });
 
 onBeforeUnmount(() => {

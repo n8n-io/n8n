@@ -123,7 +123,10 @@ import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/176416
 import { AddCreatorIdToProjectTable1764276827837 } from '../common/1764276827837-AddCreatorIdToProjectTable';
 import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
 import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
-import { AddWorkflowVersionIdToExecutionData1765370186461 } from '../common/1765370186461-AddVersionIdToExecutionData';
+import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
+import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459448000-AddResolvableFieldsToCredentials';
+import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
+import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -252,5 +255,8 @@ export const mysqlMigrations: Migration[] = [
 	AddCreatorIdToProjectTable1764276827837,
 	CreateDynamicCredentialResolverTable1764682447000,
 	AddDynamicCredentialEntryTable1764689388394,
-	AddWorkflowVersionIdToExecutionData1765370186461,
+	BackfillMissingWorkflowHistoryRecords1765448186933,
+	AddResolvableFieldsToCredentials1765459448000,
+	AddIconToAgentTable1765788427674,
+	AddWorkflowVersionIdToExecutionData1765892199653,
 ];
