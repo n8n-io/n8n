@@ -10,6 +10,7 @@ export const addConfigFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['addConfig'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 		options: ALLOWED_CONFIG_KEYS.map((key) => ({
@@ -17,6 +18,21 @@ export const addConfigFields: INodeProperties[] = [
 			value: key,
 		})),
 		default: '',
+		description: 'Name of the key to set',
+		required: true,
+	},
+	{
+		displayName: 'Key',
+		name: 'key',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['addConfig'],
+				'@version': [{ _cnd: { lt: 1.1 } }],
+			},
+		},
+		default: '',
+		placeholder: 'user.email',
 		description: 'Name of the key to set',
 		required: true,
 	},
