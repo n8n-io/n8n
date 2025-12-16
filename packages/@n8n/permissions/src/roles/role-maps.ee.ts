@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+import type {
+	CredentialSharingRole,
+	GlobalRole,
+	ProjectRole,
+	Scope,
+	WorkflowSharingRole,
+} from '../types.ee';
 import {
 	CREDENTIALS_SHARING_OWNER_SCOPES,
 	CREDENTIALS_SHARING_USER_SCOPES,
@@ -13,18 +21,12 @@ import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
+	PROJECT_CHAT_USER_SCOPES,
 } from './scopes/project-scopes.ee';
 import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 } from './scopes/workflow-sharing-scopes.ee';
-import type {
-	CredentialSharingRole,
-	GlobalRole,
-	ProjectRole,
-	Scope,
-	WorkflowSharingRole,
-} from '../types.ee';
 
 export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,
@@ -38,6 +40,7 @@ export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
 	'project:personalOwner': PERSONAL_PROJECT_OWNER_SCOPES,
 	'project:editor': PROJECT_EDITOR_SCOPES,
 	'project:viewer': PROJECT_VIEWER_SCOPES,
+	'project:chatUser': PROJECT_CHAT_USER_SCOPES,
 };
 
 export const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {

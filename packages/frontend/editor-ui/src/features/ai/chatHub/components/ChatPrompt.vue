@@ -60,10 +60,9 @@ const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
 
-const acceptedMimeTypes = computed(() => {
-	const modalities = selectedModel?.metadata.inputModalities;
-	return modalities ? createMimeTypes(modalities) : undefined;
-});
+const acceptedMimeTypes = computed(() =>
+	createMimeTypes(selectedModel?.metadata.inputModalities ?? []),
+);
 
 const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
@@ -124,6 +123,8 @@ function handleSubmitForm() {
 
 function handleKeydownTextarea(e: KeyboardEvent) {
 	const trimmed = message.value.trim();
+
+	speechInput.stop();
 
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();

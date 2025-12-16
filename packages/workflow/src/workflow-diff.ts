@@ -1,6 +1,7 @@
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
-import type { INode, IWorkflowBase } from '.';
+
+import type { IConnections, INode, IWorkflowBase } from '.';
 
 export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
@@ -259,4 +260,75 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	} while (prevDiffsLength !== diffs.length);
 
 	return diffs;
+}
+
+/**
+ * Checks if workflows have non-positional differences (changes to nodes or connections,
+ * excluding position changes).
+ * Returns true if there are meaningful changes, false if only positions changed.
+ */
+export function hasNonPositionalChanges(
+	oldNodes: INode[],
+	newNodes: INode[],
+	oldConnections: IConnections,
+	newConnections: IConnections,
+): boolean {
+	// Check for node changes (compareNodes already excludes position)
+	const nodesDiff = compareWorkflowsNodes(oldNodes, newNodes);
+	for (const diff of nodesDiff.values()) {
+		if (diff.status !== NodeDiffStatus.Eq) {
+			return true;
+		}
+	}
+
+	// Check for connection changes (connections don't have position data)
+	if (!isEqual(oldConnections, newConnections)) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Checks if any credential IDs changed between old and new workflow nodes.
+ * Compares node by node - returns true if for any node:
+ * - A credential was added (new credential type not in old node)
+ * - A credential was removed (old credential type not in new node)
+ * - A credential was changed (same credential type but different credential ID)
+ */
+export function hasCredentialChanges(oldNodes: INode[], newNodes: INode[]): boolean {
+	const newNodesMap = new Map(newNodes.map((node) => [node.id, node]));
+
+	for (const oldNode of oldNodes) {
+		const newNode = newNodesMap.get(oldNode.id);
+
+		// Skip nodes that were deleted - deletion is not a credential change
+		if (!newNode) continue;
+
+		const oldCreds = oldNode.credentials ?? {};
+		const newCreds = newNode.credentials ?? {};
+
+		const oldCredTypes = Object.keys(oldCreds);
+		const newCredTypes = Object.keys(newCreds);
+
+		// Check for removed credentials (in old but not in new)
+		for (const credType of oldCredTypes) {
+			if (!(credType in newCreds)) {
+				return true; // Credential removed
+			}
+			// Check for changed credentials (same type but different ID)
+			if (oldCreds[credType]?.id !== newCreds[credType]?.id) {
+				return true; // Credential changed
+			}
+		}
+
+		// Check for added credentials (in new but not in old)
+		for (const credType of newCredTypes) {
+			if (!(credType in oldCreds)) {
+				return true; // Credential added
+			}
+		}
+	}
+
+	return false;
 }
