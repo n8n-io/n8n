@@ -89,7 +89,7 @@ test.describe('Routing', () => {
 	});
 
 	test('should load existing workflow when navigating with ?new=true', async ({ n8n }) => {
-		n8n.start.fromBlankCanvas();
+		await n8n.start.fromBlankCanvas();
 
 		// Create and save a workflow with a node
 		const workflowName = 'Test Existing Workflow';
