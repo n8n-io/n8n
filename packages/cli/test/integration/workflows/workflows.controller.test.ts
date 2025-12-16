@@ -379,8 +379,9 @@ describe('POST /workflows', () => {
 			},
 		});
 
+		const { id: existingWorkflowId, ...workflowWithoutId } = activeWorkflow;
 		const payload = {
-			...activeWorkflow,
+			...workflowWithoutId,
 			// Deliberately set active fields
 			active: true,
 			activeVersionId: activeWorkflow.activeVersionId,
