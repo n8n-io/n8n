@@ -180,7 +180,6 @@ const onConnectClick = () => {
 					<div :class="$style['location-cell']" data-test-id="mcp-workflow-location-cell">
 						<WorkflowLocation
 							:workflow-id="item.id"
-							:workflow-name="item.name"
 							:home-project="item.homeProject"
 							:parent-folder="item.parentFolder"
 							:as-links="true"
