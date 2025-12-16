@@ -24,11 +24,10 @@ test.describe('Source Control Settings @capability:source-control', () => {
 
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.api.enableFeature('sourceControl');
+		await initSourceControlPreferences(n8n);
 	});
 
 	test('should connect to Git repository using SSH', async ({ n8n, n8nContainer }) => {
-		await initSourceControlPreferences(n8n);
-
 		const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
 		const preferences = await preferencesResponse.json();
 		const sshKey = preferences.data.publicKey;
