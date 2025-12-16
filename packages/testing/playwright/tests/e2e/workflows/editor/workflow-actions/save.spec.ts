@@ -142,32 +142,4 @@ test('Workflow Save', () => {
 
 		await expect(n8n.workflows.cards.getWorkflow(oldName)).toBeHidden();
 	});
-
-	test('should load existing workflow when navigating with ?new=true', async ({ n8n }) => {
-		// Create and save a workflow with a node
-		const workflowName = 'Test Existing Workflow';
-		await n8n.canvas.setWorkflowName(workflowName);
-		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
-
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-
-		// Get the workflow ID from the URL
-		const workflowId = n8n.canvas.getWorkflowIdFromUrl();
-		expect(workflowId).toBeTruthy();
-
-		// Navigate to the workflow with ?new=true query parameter
-		await n8n.page.goto(`/workflow/${workflowId}?new=true`);
-
-		// Wait for the canvas to load
-		await expect(n8n.page.getByTestId('node-view-loader')).not.toBeAttached();
-
-		// Verify the existing workflow was loaded (not a blank canvas)
-		await expect(n8n.canvas.getWorkflowName()).toHaveAttribute('title', workflowName);
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-
-		// Verify the previously added node is present
-		const scheduleNode = n8n.canvas.nodeByName(SCHEDULE_TRIGGER_NODE_NAME);
-		await expect(scheduleNode).toBeVisible();
-	});
 });

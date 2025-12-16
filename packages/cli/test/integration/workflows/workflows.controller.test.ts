@@ -795,6 +795,46 @@ describe('GET /workflows/:workflowId', () => {
 	});
 });
 
+describe('GET /workflows/:workflowId/exists', () => {
+	test('should return true when workflow exists and user has access', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
+
+		expect(response.body).toEqual({ exists: true });
+	});
+
+	test('should return false when workflow does not exist', async () => {
+		const nonExistentId = uuid();
+
+		const response = await authOwnerAgent.get(`/workflows/${nonExistentId}/exists`).expect(200);
+
+		expect(response.body).toEqual({ exists: false });
+	});
+
+	test('should return false when workflow exists but user does not have access', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
+
+		expect(response.body).toEqual({ exists: false });
+	});
+
+	test('should return true when workflow is shared with user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member.id,
+		);
+
+		await shareWorkflowWithProjects(workflow, [{ project: memberPersonalProject }]);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
+
+		expect(response.body).toEqual({ exists: true });
+	});
+});
+
 describe('GET /workflows', () => {
 	test('should return zero workflows if none exist', async () => {
 		const response = await authOwnerAgent.get('/workflows').expect(200);

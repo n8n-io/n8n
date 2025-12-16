@@ -746,6 +746,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return await workflowsApi.getWorkflowsWithNodesIncluded(rootStore.restApiContext, nodeTypes);
 	}
 
+	async function checkWorkflowExists(id: string): Promise<boolean> {
+		const result = await workflowsApi.workflowExists(rootStore.restApiContext, id);
+		return result.exists;
+	}
+
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
 		workflowChecksum.value = '';
@@ -2051,6 +2056,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchWorkflowsPage,
 		fetchWorkflow,
 		fetchWorkflowsWithNodesIncluded,
+		checkWorkflowExists,
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		setUsedCredentials,
