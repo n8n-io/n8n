@@ -684,7 +684,7 @@ describe('LogStreamingEventRelay', () => {
 					{
 						id: 'node1',
 						name: 'Start Node',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 200],
 					},
@@ -733,7 +733,7 @@ describe('LogStreamingEventRelay', () => {
 					{
 						id: 'node1',
 						name: 'Start Node',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 200],
 					},

@@ -16,7 +16,7 @@ export async function createWorkflowHistoryItem(
 				name: 'Start',
 				parameters: {},
 				position: [-20, 260],
-				type: 'n8n-nodes-base.start',
+				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 			},
 		],
