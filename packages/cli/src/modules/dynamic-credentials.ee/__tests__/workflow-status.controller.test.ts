@@ -5,10 +5,12 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowStatusController } from '../workflow-status.controller';
 import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import type { UrlService } from '@/services/url.service';
 
 describe('WorkflowStatusController', () => {
 	let controller: WorkflowStatusController;
 	let mockService: jest.Mocked<CredentialResolverWorkflowService>;
+	let mockUrlService: jest.Mocked<UrlService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -17,7 +19,11 @@ describe('WorkflowStatusController', () => {
 			getWorkflowStatus: jest.fn(),
 		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
 
-		controller = new WorkflowStatusController(mockService);
+		mockUrlService = {
+			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
+		} as unknown as jest.Mocked<UrlService>;
+
+		controller = new WorkflowStatusController(mockService, mockUrlService);
 	});
 
 	describe('checkWorkflowForExecution', () => {
@@ -165,7 +171,7 @@ describe('WorkflowStatusController', () => {
 			const result = await controller.checkWorkflowForExecution(req, res);
 
 			expect(result.credentials?.[0].authorizationUrl).toBe(
-				'/credentials/cred-1/authorize?resolverId=resolver-1',
+				'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver-1',
 			);
 		});
 
@@ -188,8 +194,32 @@ describe('WorkflowStatusController', () => {
 			const result = await controller.checkWorkflowForExecution(req, res);
 
 			expect(result.credentials?.[0].authorizationUrl).toBe(
-				'/credentials/cred-1/authorize?resolverId=resolver%2Fwith%2Fspecial%20chars',
+				'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver%2Fwith%2Fspecial%20chars',
 			);
+		});
+
+		it('should return absolute URLs with base path from UrlService', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-1' },
+				headers: { authorization: 'Bearer token-123' },
+			});
+			const res = mock<Response>();
+
+			mockService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					resolverId: 'resolver-1',
+					status: 'configured',
+					credentialType: 'oauth2Api',
+				},
+			]);
+
+			const result = await controller.checkWorkflowForExecution(req, res);
+
+			// Verify that the URL is absolute and starts with the base URL
+			expect(result.credentials?.[0].authorizationUrl).toMatch(/^https:\/\//);
+			expect(result.credentials?.[0].authorizationUrl).toContain('https://n8n.example.com');
+			expect(mockUrlService.getInstanceBaseUrl).toHaveBeenCalled();
 		});
 
 		it('should map service response to DTO correctly', async () => {
@@ -218,7 +248,8 @@ describe('WorkflowStatusController', () => {
 						credentialId: 'cred-1',
 						credentialStatus: 'missing',
 						credentialType: 'oauth2Api',
-						authorizationUrl: '/credentials/cred-1/authorize?resolverId=resolver-1',
+						authorizationUrl:
+							'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver-1',
 					},
 				],
 			});
