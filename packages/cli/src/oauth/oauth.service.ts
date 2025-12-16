@@ -209,7 +209,7 @@ export class OauthService {
 			return decoded;
 		}
 
-		if (decoded.userId !== req.user?.id) {
+		if (skipAuthOnOAuthCallback !== true && decoded.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
 
