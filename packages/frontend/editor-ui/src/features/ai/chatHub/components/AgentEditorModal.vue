@@ -10,11 +10,20 @@ import {
 	emptyChatModelsResponse,
 	type ChatModelsResponse,
 	type ChatHubBaseLLMModel,
+	type AgentIconOrEmoji,
 	type ChatHubConversationModel,
 	type ChatHubProvider,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputLabel,
+	N8nSpinner,
+} from '@n8n/design-system';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -22,7 +31,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
@@ -57,13 +66,16 @@ const tools = ref<INode[]>([]);
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
+const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
 	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
 );
 const selectedAgent = computed(
-	() => selectedModel.value && chatStore.getAgent(selectedModel.value, selectedModel.value.model),
+	() =>
+		selectedModel.value &&
+		chatStore.getAgent(selectedModel.value, { name: selectedModel.value.model }),
 );
 
 const isEditMode = computed(() => !!props.data.agentId);
@@ -119,6 +131,7 @@ watch(
 	(agent) => {
 		if (!agent) return;
 
+		icon.value = agent.icon ?? personalAgentDefaultIcon;
 		name.value = agent.name;
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
@@ -187,6 +200,7 @@ async function onSave() {
 			...selectedModel.value,
 			credentialId: credentialIdForSelectedModelProvider.value,
 			tools: tools.value,
+			icon: icon.value,
 		};
 
 		if (isEditMode.value && props.data.agentId) {
@@ -288,15 +302,21 @@ function onSelectTools() {
 					:label="i18n.baseText('chatHub.agent.editor.name.label')"
 					:required="true"
 				>
-					<N8nInput
-						ref="nameInput"
-						id="agent-name"
-						v-model="name"
-						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
-						:maxlength="128"
-						:class="$style.input"
-						:disabled="isLoadingAgent"
-					/>
+					<div :class="$style.agentName">
+						<N8nIconPicker
+							v-model="icon as IconOrEmoji"
+							:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
+						/>
+						<N8nInput
+							ref="nameInput"
+							id="agent-name"
+							v-model="name"
+							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
+							:maxlength="128"
+							:class="$style.agentNameInput"
+							:disabled="isLoadingAgent"
+						/>
+					</div>
 				</N8nInputLabel>
 
 				<N8nInputLabel
@@ -412,6 +432,16 @@ function onSelectTools() {
 
 .input {
 	width: 100%;
+}
+
+.agentName {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.agentNameInput {
+	flex: 1;
 }
 
 .row {

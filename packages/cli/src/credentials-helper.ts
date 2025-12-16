@@ -534,7 +534,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		const resolverId =
+			credentialsEntity.resolverId ?? additionalData.workflowSettings?.credentialResolverId;
+
+		if (credentialsEntity.isResolvable && resolverId) {
+			const credentials = await this.getCredentials(nodeCredentials, type);
+			const staticData = credentials.getData();
+
+			await this.dynamicCredentialsProxy.storeOAuthTokenDataIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId,
+				},
+				data.oauthTokenData as IDataObject,
+				additionalData.executionContext,
+				staticData,
+				additionalData.workflowSettings,
+			);
+			return;
+		}
+
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });
