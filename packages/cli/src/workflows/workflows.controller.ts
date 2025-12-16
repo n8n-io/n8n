@@ -426,6 +426,18 @@ export class WorkflowsController {
 		return { ...workflow, scopes, checksum };
 	}
 
+	@Get('/:workflowId/exists')
+	@ProjectScope('workflow:read')
+	async exists(req: WorkflowRequest.Get) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:read',
+		]);
+
+		return { exists: !!workflow };
+	}
+
 	@Patch('/:workflowId')
 	@ProjectScope('workflow:update')
 	async update(req: WorkflowRequest.Update) {
