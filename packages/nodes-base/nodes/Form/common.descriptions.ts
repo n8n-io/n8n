@@ -8,6 +8,53 @@ export const placeholder: string = `
 
 `.trimStart();
 
+const DEFAULT_VALUE_TEXT_BASE = {
+	displayName: 'Default Value',
+	name: 'defaultValue',
+	description: 'Default value that will be pre-filled in the form field',
+	type: 'string',
+	default: '',
+} as const;
+
+const TEXT_FIELD_TYPES = ['text', 'number', 'email', 'textarea'] as const;
+
+const DEFAULT_VALUE_DATE_BASE = {
+	displayName: 'Default Value',
+	name: 'defaultValue',
+	description: 'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
+	type: 'dateTime',
+	typeOptions: {
+		dateOnly: true,
+	},
+	default: '',
+} as const;
+
+const DEFAULT_VALUE_SELECT_BASE = {
+	displayName: 'Default Value',
+	name: 'defaultValue',
+	description: 'Default value that will be pre-selected. Must match one of the option labels.',
+	type: 'string',
+	default: '',
+} as const;
+
+const DEFAULT_VALUE_CHECKBOX_BASE = {
+	displayName: 'Default Value',
+	name: 'defaultValue',
+	description:
+		'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
+	type: 'string',
+	default: '',
+} as const;
+
+const REQUIRED_FIELD_BASE = {
+	displayName: 'Required Field',
+	name: 'requiredField',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether to require the user to enter a value for this field before submitting the form',
+} as const;
+
 export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
 	name: 'path',
@@ -223,43 +270,28 @@ export const formFields: INodeProperties = {
 						},
 					},
 				},
+
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description: 'Default value that will be pre-filled in the form field',
-					type: 'string',
-					default: '',
+					...DEFAULT_VALUE_TEXT_BASE,
 					displayOptions: {
 						show: {
-							fieldType: ['text', 'number', 'email', 'textarea'],
+							fieldType: [...TEXT_FIELD_TYPES],
 							'@feature': ['useAdditionalAttributes'],
 							additionalAttributes: ['defaultValue'],
 						},
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description: 'Default value that will be pre-filled in the form field',
-					type: 'string',
-					default: '',
+					...DEFAULT_VALUE_TEXT_BASE,
 					displayOptions: {
 						show: {
-							fieldType: ['text', 'number', 'email', 'textarea'],
+							fieldType: [...TEXT_FIELD_TYPES],
 							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description:
-						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
-					type: 'dateTime',
-					typeOptions: {
-						dateOnly: true,
-					},
-					default: '',
+					...DEFAULT_VALUE_DATE_BASE,
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
@@ -269,15 +301,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description:
-						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
-					type: 'dateTime',
-					typeOptions: {
-						dateOnly: true,
-					},
-					default: '',
+					...DEFAULT_VALUE_DATE_BASE,
 					displayOptions: {
 						show: {
 							fieldType: ['date'],
@@ -286,12 +310,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description:
-						'Default value that will be pre-selected. Must match one of the option labels.',
-					type: 'string',
-					default: '',
+					...DEFAULT_VALUE_SELECT_BASE,
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown', 'radio'],
@@ -301,12 +320,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description:
-						'Default value that will be pre-selected. Must match one of the option labels.',
-					type: 'string',
-					default: '',
+					...DEFAULT_VALUE_SELECT_BASE,
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown', 'radio'],
@@ -315,12 +329,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description:
-						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
-					type: 'string',
-					default: '',
+					...DEFAULT_VALUE_CHECKBOX_BASE,
 					displayOptions: {
 						show: {
 							fieldType: ['checkbox'],
@@ -330,12 +339,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Default Value',
-					name: 'defaultValue',
-					description:
-						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
-					type: 'string',
-					default: '',
+					...DEFAULT_VALUE_CHECKBOX_BASE,
 					displayOptions: {
 						show: {
 							fieldType: ['checkbox'],
@@ -608,12 +612,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Required Field',
-					name: 'requiredField',
-					type: 'boolean',
-					default: false,
-					description:
-						'Whether to require the user to enter a value for this field before submitting the form',
+					...REQUIRED_FIELD_BASE,
 					displayOptions: {
 						hide: {
 							fieldType: ['html', 'hiddenField'],
@@ -625,12 +624,7 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Required Field',
-					name: 'requiredField',
-					type: 'boolean',
-					default: false,
-					description:
-						'Whether to require the user to enter a value for this field before submitting the form',
+					...REQUIRED_FIELD_BASE,
 					displayOptions: {
 						hide: {
 							fieldType: ['html', 'hiddenField'],
