@@ -143,6 +143,10 @@ onBeforeUnmount(() => {
 
 	.notice {
 		margin: 0;
+
+		a {
+			font-weight: normal;
+		}
 	}
 }
 
