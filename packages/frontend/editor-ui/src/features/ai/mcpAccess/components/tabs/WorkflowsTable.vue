@@ -15,7 +15,11 @@ import {
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
-import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
+import {
+	ELIGIBLE_WORKFLOWS_DOCS_SECTION,
+	MCP_DOCS_PAGE_URL,
+	MCP_TOOLTIP_DELAY,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
 import { getResourcePermissions } from '@n8n/permissions';
 
@@ -128,12 +132,28 @@ const onConnectClick = () => {
 						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.title') }}
 						</N8nText>
+						<N8nText
+							data-test-id="mcp-workflow-table-empty-state-description"
+							size="small"
+							color="text-base"
+						>
+							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
+						</N8nText>
 						<N8nButton
 							data-test-id="mcp-workflow-table-empty-state-button"
 							type="primary"
 							:label="i18n.baseText('settings.mcp.workflows.table.empty.button.label')"
 							@click="onConnectClick"
 						/>
+						<N8nLink
+							data-test-id="mcp-workflow-table-empty-state-docs-link"
+							:new-window="true"
+							:to="`${MCP_DOCS_PAGE_URL}#${ELIGIBLE_WORKFLOWS_DOCS_SECTION}`"
+							:theme="'text'"
+							size="small"
+						>
+							{{ i18n.baseText('settings.mcp.workflows.table.empty.docs') }}
+						</N8nLink>
 					</div>
 				</template>
 				<template #[`item.workflow`]="{ item }">
