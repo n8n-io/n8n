@@ -2,7 +2,6 @@
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import type {
 	ChatHubConversationModel,
 	ChatHubLLMProvider,
@@ -13,7 +12,6 @@ import type {
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useChatStore } from '../chat.store';
 
 const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
@@ -31,7 +29,6 @@ const emit = defineEmits<{
 	openWorkflow: [workflowId: string];
 }>();
 
-const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
 const i18n = useI18n();
 const chatStore = useChatStore();
@@ -53,10 +50,6 @@ function onOpenWorkflow() {
 
 function onModelChange(selection: ChatHubConversationModel) {
 	emit('selectModel', selection);
-}
-
-function onNewChat() {
-	void router.push({ name: CHAT_VIEW, force: true });
 }
 
 // Update agents when credentials are updated

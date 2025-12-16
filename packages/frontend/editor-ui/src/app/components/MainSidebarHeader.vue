@@ -21,7 +21,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 
 defineProps<{
-	hideCreate: boolean;
+	hideCreate?: boolean;
 	isCollapsed: boolean;
 }>();
 
