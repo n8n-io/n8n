@@ -41,6 +41,13 @@ export interface ErrorMessage {
 
 export type StreamChunk = AssistantMessage | ErrorMessage;
 
+export type MessagingState =
+	| 'idle'
+	| 'waitingFirstChunk'
+	| 'receiving'
+	| 'missingCredentials'
+	| 'missingAgent';
+
 export interface ChatMessage extends ChatHubMessageDto {
 	responses: ChatMessageId[];
 	alternatives: ChatMessageId[];

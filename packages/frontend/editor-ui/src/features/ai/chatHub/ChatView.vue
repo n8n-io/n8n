@@ -47,6 +47,7 @@ import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
+	type MessagingState,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
@@ -248,20 +249,20 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
-const issue = computed<null | 'missingCredentials' | 'missingAgent'>(() => {
-	if (!chatStore.agentsReady) {
-		return null;
+const messagingState = computed<MessagingState>(() => {
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
 	}
 
-	if (!selectedModel.value) {
+	if (chatStore.agentsReady && !selectedModel.value) {
 		return 'missingAgent';
 	}
 
-	if (isMissingSelectedCredential.value) {
+	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
 		return 'missingCredentials';
 	}
 
-	return null;
+	return 'idle';
 });
 
 const editingMessageId = ref<string>();
@@ -667,11 +668,9 @@ function onFilesDropped(files: File[]) {
 						:class="$style.prompt"
 						:selected-model="selectedModel"
 						:selected-tools="selectedTools"
-						:is-responding="isResponding"
+						:messaging-state="messagingState"
 						:is-tools-selectable="canSelectTools"
-						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
-						:issue="issue"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
