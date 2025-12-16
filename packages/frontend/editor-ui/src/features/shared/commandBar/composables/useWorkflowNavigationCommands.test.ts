@@ -136,6 +136,9 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 
 		mockWorkflowsStore = useWorkflowsStore();
+		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
+			value: true,
+		});
 		Object.defineProperty(mockWorkflowsStore, 'searchWorkflows', {
 			value: vi
 				.fn()
@@ -197,6 +200,24 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
 		expect(idsReadOnly).not.toContain('create-workflow');
+	});
+
+	it('should not include any commands when user is chat user', () => {
+		vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
+			workflow: {
+				create: false,
+			},
+		} as unknown as permissionsModule.PermissionsRecord);
+		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
+			value: false,
+		});
+
+		const { commands } = useWorkflowNavigationCommands({
+			lastQuery: ref(''),
+			activeNodeId: ref(null),
+			currentProjectName: ref('My Project'),
+		});
+		expect(commands.value.length).toBe(0);
 	});
 
 	it('initialize() loads tags', async () => {
