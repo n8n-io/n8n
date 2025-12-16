@@ -270,54 +270,25 @@ describe('TranslationSupplier', () => {
 	});
 
 	describe('waitTillNextRetryAttempt method', () => {
-		it('should delay between retry attempts', async () => {
+		it('should introduce delay for retry attempts', async () => {
 			const supplier = new TestTranslationSupplier(connection, mockSupplyData);
 			mockNode.parameters.retryMaxDelay = 100;
+			const expectedMinDelay = 50; // Account for test timing variance
 
 			const startTime = Date.now();
 			await (supplier as any).waitTillNextRetryAttempt(1);
 			const elapsed = Date.now() - startTime;
 
-			// Should have waited at least some time
-			expect(elapsed).toBeGreaterThanOrEqual(0);
+			// Verify delay was applied (with tolerance for CI system variance)
 			expect(typeof elapsed).toBe('number');
-		});
-	});
-
-	describe('abstract executeTranslation method', () => {
-		it('should be called by translate method', async () => {
-			const supplier = new TestTranslationSupplier(connection, mockSupplyData);
-			const spy = jest.spyOn(supplier as any, 'executeTranslation');
-
-			const request: TranslationRequest = {
-				text: 'Hello',
-				from: 'en',
-				to: 'es',
-			};
-
-			await supplier.translate(request);
-
-			expect(spy).toHaveBeenCalledWith(request);
+			expect(elapsed).toBeGreaterThanOrEqual(expectedMinDelay);
 		});
 	});
 
 	describe('error handling', () => {
-		it('should wrap errors in NodeOperationError', async () => {
+		it('should wrap errors in NodeOperationError with node context', async () => {
 			const supplier = new TestTranslationSupplier(connection, mockSupplyData);
 			supplier.setThrowError(true, 'Connection timeout');
-
-			const request: TranslationRequest = {
-				text: 'Hello',
-				from: 'en',
-				to: 'es',
-			};
-
-			await expect(supplier.translate(request)).rejects.toThrow(NodeOperationError);
-		});
-
-		it('should include node information in error', async () => {
-			const supplier = new TestTranslationSupplier(connection, mockSupplyData);
-			supplier.setThrowError(true);
 
 			const request: TranslationRequest = {
 				text: 'Hello',

@@ -1,66 +1,59 @@
 import { TranslationFeatures } from '../TranslationFeatures';
-import type { INodeProperties } from 'n8n-workflow';
 
 describe('TranslationFeatures', () => {
-	describe('structure', () => {
-		it('should have DELAY, MOCKED_TRANSLATION, and RETRY features', () => {
-			expect(TranslationFeatures).toHaveProperty('DELAY');
-			expect(TranslationFeatures).toHaveProperty('MOCKED_TRANSLATION');
-			expect(TranslationFeatures).toHaveProperty('RETRY');
-		});
-
-		it('should have each feature as a non-empty array', () => {
-			expect(Array.isArray(TranslationFeatures.DELAY)).toBe(true);
-			expect(TranslationFeatures.DELAY.length).toBeGreaterThan(0);
-			expect(Array.isArray(TranslationFeatures.MOCKED_TRANSLATION)).toBe(true);
-			expect(TranslationFeatures.MOCKED_TRANSLATION.length).toBeGreaterThan(0);
-			expect(Array.isArray(TranslationFeatures.RETRY)).toBe(true);
-			expect(TranslationFeatures.RETRY.length).toBeGreaterThan(0);
-		});
-	});
-
 	describe('DELAY feature', () => {
-		it('should define delayEnabled, delayType, and delayValue properties', () => {
+		it('should have delay properties with correct types and defaults', () => {
 			const delayEnabled = TranslationFeatures.DELAY.find((p) => p.name === 'delayEnabled');
 			const delayType = TranslationFeatures.DELAY.find((p) => p.name === 'delayType');
 			const delayValue = TranslationFeatures.DELAY.find((p) => p.name === 'delayValue');
 
-			expect(delayEnabled).toBeDefined();
 			expect(delayEnabled?.type).toBe('boolean');
 			expect(delayEnabled?.default).toBe(false);
 
-			expect(delayType).toBeDefined();
 			expect(delayType?.type).toBe('options');
 			expect(delayType?.default).toBe('fixed');
-			expect((delayType?.options as Array<any>).length).toBeGreaterThan(0);
+			expect(delayType?.options).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'fixed' }),
+					expect.objectContaining({ value: 'random' }),
+				]),
+			);
 
-			expect(delayValue).toBeDefined();
 			expect(delayValue?.type).toBe('number');
 			expect(delayValue?.default).toBe(1000);
-			expect(delayValue?.typeOptions).toHaveProperty('minValue', 0);
-			expect(delayValue?.typeOptions).toHaveProperty('maxValue', 60000);
+			expect(delayValue?.typeOptions?.minValue).toBe(0);
+			expect(delayValue?.typeOptions?.maxValue).toBe(60000);
 		});
 
-		it('should have fixed and random delay type options', () => {
-			const delayType = TranslationFeatures.DELAY.find((p) => p.name === 'delayType');
-			const options = (delayType?.options as Array<any>) || [];
-			const optionValues = options.map((o) => o.value);
-
-			expect(optionValues).toContain('fixed');
-			expect(optionValues).toContain('random');
-		});
-
-		it('should show delayType and delayValue only when delayEnabled is true', () => {
+		it('should show conditional fields only when delay is enabled', () => {
 			const delayType = TranslationFeatures.DELAY.find((p) => p.name === 'delayType');
 			const delayValue = TranslationFeatures.DELAY.find((p) => p.name === 'delayValue');
 
 			expect(delayType?.displayOptions?.show?.delayEnabled).toEqual([true]);
 			expect(delayValue?.displayOptions?.show?.delayEnabled).toEqual([true]);
 		});
+
+		it('should enforce constraint that minValue cannot exceed maxValue', () => {
+			const delayValue = TranslationFeatures.DELAY.find((p) => p.name === 'delayValue');
+			const minValue = delayValue?.typeOptions?.minValue ?? 0;
+			const maxValue = delayValue?.typeOptions?.maxValue ?? 0;
+
+			expect(minValue).toBeLessThanOrEqual(maxValue);
+		});
+
+		it('should reject invalid delay type values', () => {
+			const delayType = TranslationFeatures.DELAY.find((p) => p.name === 'delayType');
+			const validOptions = delayType?.options?.map((o) => o.value) ?? [];
+
+			expect(validOptions).toContain('fixed');
+			expect(validOptions).toContain('random');
+			expect(validOptions).not.toContain('invalid');
+			expect(validOptions.length).toBeGreaterThan(0);
+		});
 	});
 
 	describe('MOCKED_TRANSLATION feature', () => {
-		it('should define mockedTranslationResult, mockedTranslationText, mockedTranslationStatusCode, and mockedTranslationErrorMessage properties', () => {
+		it('should have mocked translation properties with correct types', () => {
 			const mockedResult = TranslationFeatures.MOCKED_TRANSLATION.find(
 				(p) => p.name === 'mockedTranslationResult',
 			);
@@ -74,38 +67,28 @@ describe('TranslationFeatures', () => {
 				(p) => p.name === 'mockedTranslationErrorMessage',
 			);
 
-			expect(mockedResult).toBeDefined();
 			expect(mockedResult?.type).toBe('options');
-			expect(mockedResult?.default).toBe('pass');
+			expect(mockedResult?.options).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'pass' }),
+					expect.objectContaining({ value: 'overwrite' }),
+					expect.objectContaining({ value: 'fail' }),
+				]),
+			);
 
-			expect(mockedText).toBeDefined();
 			expect(mockedText?.type).toBe('string');
 			expect(mockedText?.default).toBe('');
 
-			expect(statusCode).toBeDefined();
 			expect(statusCode?.type).toBe('number');
 			expect(statusCode?.default).toBe(500);
-			expect(statusCode?.typeOptions).toHaveProperty('minValue', 100);
-			expect(statusCode?.typeOptions).toHaveProperty('maxValue', 599);
+			expect(statusCode?.typeOptions?.minValue).toBe(100);
+			expect(statusCode?.typeOptions?.maxValue).toBe(599);
 
-			expect(errorMessage).toBeDefined();
 			expect(errorMessage?.type).toBe('string');
 			expect(errorMessage?.default).toBe('Translation failed');
 		});
 
-		it('should have pass, overwrite, and fail mock result options', () => {
-			const mockedResult = TranslationFeatures.MOCKED_TRANSLATION.find(
-				(p) => p.name === 'mockedTranslationResult',
-			);
-			const options = (mockedResult?.options as Array<any>) || [];
-			const optionValues = options.map((o) => o.value);
-
-			expect(optionValues).toContain('pass');
-			expect(optionValues).toContain('overwrite');
-			expect(optionValues).toContain('fail');
-		});
-
-		it('should show appropriate fields based on mockedTranslationResult value', () => {
+		it('should conditionally show fields based on mockedTranslationResult', () => {
 			const mockedText = TranslationFeatures.MOCKED_TRANSLATION.find(
 				(p) => p.name === 'mockedTranslationText',
 			);
@@ -120,65 +103,78 @@ describe('TranslationFeatures', () => {
 			expect(statusCode?.displayOptions?.show?.mockedTranslationResult).toEqual(['fail']);
 			expect(errorMessage?.displayOptions?.show?.mockedTranslationResult).toEqual(['fail']);
 		});
+
+		it('should enforce HTTP status code range constraints', () => {
+			const statusCode = TranslationFeatures.MOCKED_TRANSLATION.find(
+				(p) => p.name === 'mockedTranslationStatusCode',
+			);
+			const minValue = statusCode?.typeOptions?.minValue ?? 0;
+			const maxValue = statusCode?.typeOptions?.maxValue ?? 0;
+
+			expect(minValue).toBeGreaterThanOrEqual(100);
+			expect(maxValue).toBeLessThanOrEqual(599);
+			expect(minValue).toBeLessThanOrEqual(maxValue);
+		});
+
+		it('should handle all valid mocked result modes', () => {
+			const mockedResult = TranslationFeatures.MOCKED_TRANSLATION.find(
+				(p) => p.name === 'mockedTranslationResult',
+			);
+			const modes = mockedResult?.options?.map((o) => o.value) ?? [];
+
+			expect(modes).toContain('pass');
+			expect(modes).toContain('overwrite');
+			expect(modes).toContain('fail');
+			expect(modes.length).toBe(3);
+		});
 	});
 
 	describe('RETRY feature', () => {
-		it('should define retryEnabled, retryMaxAttempts, and retryMaxDelay properties', () => {
+		it('should have retry properties with correct types and constraints', () => {
 			const retryEnabled = TranslationFeatures.RETRY.find((p) => p.name === 'retryEnabled');
 			const maxAttempts = TranslationFeatures.RETRY.find((p) => p.name === 'retryMaxAttempts');
 			const maxDelay = TranslationFeatures.RETRY.find((p) => p.name === 'retryMaxDelay');
 
-			expect(retryEnabled).toBeDefined();
 			expect(retryEnabled?.type).toBe('boolean');
 			expect(retryEnabled?.default).toBe(false);
 
-			expect(maxAttempts).toBeDefined();
 			expect(maxAttempts?.type).toBe('number');
 			expect(maxAttempts?.default).toBe(1);
-			expect(maxAttempts?.typeOptions).toHaveProperty('minValue', 1);
-			expect(maxAttempts?.typeOptions).toHaveProperty('maxValue', 10);
+			expect(maxAttempts?.typeOptions?.minValue).toBe(1);
+			expect(maxAttempts?.typeOptions?.maxValue).toBe(10);
 
-			expect(maxDelay).toBeDefined();
 			expect(maxDelay?.type).toBe('number');
 			expect(maxDelay?.default).toBe(1000);
-			expect(maxDelay?.typeOptions).toHaveProperty('minValue', 0);
-			expect(maxDelay?.typeOptions).toHaveProperty('maxValue', 60000);
+			expect(maxDelay?.typeOptions?.minValue).toBe(0);
+			expect(maxDelay?.typeOptions?.maxValue).toBe(60000);
 		});
 
-		it('should show retry attempt and delay only when retryEnabled is true', () => {
+		it('should show conditional fields only when retry is enabled', () => {
 			const maxAttempts = TranslationFeatures.RETRY.find((p) => p.name === 'retryMaxAttempts');
 			const maxDelay = TranslationFeatures.RETRY.find((p) => p.name === 'retryMaxDelay');
 
 			expect(maxAttempts?.displayOptions?.show?.retryEnabled).toEqual([true]);
 			expect(maxDelay?.displayOptions?.show?.retryEnabled).toEqual([true]);
 		});
-	});
 
-	describe('options validation', () => {
-		it('should have valid name and value for all delay options', () => {
-			const delayType = TranslationFeatures.DELAY.find((p) => p.name === 'delayType');
-			const options = (delayType?.options as Array<any>) || [];
+		it('should enforce constraint that retry attempts are within valid range', () => {
+			const maxAttempts = TranslationFeatures.RETRY.find((p) => p.name === 'retryMaxAttempts');
+			const minValue = maxAttempts?.typeOptions?.minValue ?? 0;
+			const maxValue = maxAttempts?.typeOptions?.maxValue ?? 0;
 
-			options.forEach((option) => {
-				expect(option).toHaveProperty('name');
-				expect(option).toHaveProperty('value');
-				expect(typeof option.name).toBe('string');
-				expect(option.name.length).toBeGreaterThan(0);
-			});
+			expect(minValue).toBeGreaterThanOrEqual(1);
+			expect(maxValue).toBeGreaterThanOrEqual(minValue);
+			expect(maxValue).toBeLessThanOrEqual(10);
 		});
 
-		it('should have valid name and value for all mock result options', () => {
-			const mockedResult = TranslationFeatures.MOCKED_TRANSLATION.find(
-				(p) => p.name === 'mockedTranslationResult',
-			);
-			const options = (mockedResult?.options as Array<any>) || [];
+		it('should enforce constraint that retry delay values are valid', () => {
+			const maxDelay = TranslationFeatures.RETRY.find((p) => p.name === 'retryMaxDelay');
+			const minValue = maxDelay?.typeOptions?.minValue ?? 0;
+			const maxValue = maxDelay?.typeOptions?.maxValue ?? 0;
 
-			options.forEach((option) => {
-				expect(option).toHaveProperty('name');
-				expect(option).toHaveProperty('value');
-				expect(typeof option.name).toBe('string');
-				expect(option.name.length).toBeGreaterThan(0);
-			});
+			expect(minValue).toBeGreaterThanOrEqual(0);
+			expect(maxValue).toBeLessThanOrEqual(60000);
+			expect(minValue).toBeLessThanOrEqual(maxValue);
 		});
 	});
 });

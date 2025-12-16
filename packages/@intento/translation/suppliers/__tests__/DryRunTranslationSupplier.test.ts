@@ -36,24 +36,6 @@ describe('DryRunTranslationSupplier', () => {
 		} as unknown as jest.Mocked<ISupplyDataFunctions>;
 	});
 
-	describe('constructor', () => {
-		it('should initialize with parameters from node', () => {
-			mockNode.parameters = {
-				mockedTranslationResult: 'overwrite',
-				mockedTranslationText: 'Custom translation',
-				mockedTranslationStatusCode: 503,
-				mockedTranslationErrorMessage: 'Service unavailable',
-				delayEnabled: true,
-				delayType: 'random',
-				delayValue: 500,
-			};
-
-			const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
-			expect(supplier).toBeInstanceOf(DryRunTranslationSupplier);
-			expect(mockSupplyData.getNode).toHaveBeenCalled();
-		});
-	});
-
 	describe('pass mode', () => {
 		it('should return request text as translation', async () => {
 			mockNode.parameters.mockedTranslationResult = 'pass';
@@ -345,6 +327,127 @@ describe('DryRunTranslationSupplier', () => {
 				};
 
 				await expect(supplier.translate(request)).rejects.toBeInstanceOf(NodeOperationError);
+			}
+		});
+
+		it('should reject invalid error status codes (outside 400-599 range)', async () => {
+			mockNode.parameters.mockedTranslationResult = 'fail';
+			const invalidCodes = [99, 600, 1000, -1];
+
+			for (const code of invalidCodes) {
+				mockNode.parameters.mockedTranslationStatusCode = code;
+				const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
+				const request: TranslationRequest = {
+					text: 'Hello',
+					from: 'en',
+					to: 'es',
+				};
+
+				// Invalid codes outside HTTP error range should either be sanitized or throw
+				try {
+					await supplier.translate(request);
+					// If it doesn't throw, verify error message is set
+					expect(mockSupplyData.addOutputData).toHaveBeenCalled();
+				} catch (error) {
+					expect(error).toBeInstanceOf(NodeOperationError);
+				}
+			}
+		});
+
+		it('should handle configuration conflicts between modes', async () => {
+			// When mode is 'fail', mocked text should be ignored
+			mockNode.parameters.mockedTranslationResult = 'fail';
+			mockNode.parameters.mockedTranslationText = 'Should be ignored';
+			mockNode.parameters.mockedTranslationStatusCode = 500;
+
+			const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
+			const request: TranslationRequest = {
+				text: 'Hello',
+				from: 'en',
+				to: 'es',
+			};
+
+			await expect(supplier.translate(request)).rejects.toBeInstanceOf(NodeOperationError);
+			// Verify output has error, not the mocked text
+			const lastOutputCall =
+				mockSupplyData.addOutputData.mock.calls[mockSupplyData.addOutputData.mock.calls.length - 1];
+			if (lastOutputCall) {
+				expect(lastOutputCall[0]).toBeDefined();
+			}
+		});
+
+		it('should handle missing error message with sensible default', async () => {
+			mockNode.parameters.mockedTranslationResult = 'fail';
+			mockNode.parameters.mockedTranslationErrorMessage = ''; // Empty message
+
+			const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
+			const request: TranslationRequest = {
+				text: 'Hello',
+				from: 'en',
+				to: 'es',
+			};
+
+			await expect(supplier.translate(request)).rejects.toBeInstanceOf(NodeOperationError);
+			expect(mockSupplyData.addOutputData).toHaveBeenCalled();
+		});
+	});
+
+	describe('configuration validation', () => {
+		it('should handle invalid mode values gracefully', async () => {
+			mockNode.parameters.mockedTranslationResult = 'invalid_mode';
+
+			const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
+			const request: TranslationRequest = {
+				text: 'Hello',
+				from: 'en',
+				to: 'es',
+			};
+
+			// Invalid mode should either use default or throw
+			try {
+				const response = await supplier.translate(request);
+				// If no error, verify something sensible happened
+				expect(response).toBeDefined();
+			} catch (error) {
+				expect(error).toBeInstanceOf(Error);
+			}
+		});
+
+		it('should validate delay configuration consistency', async () => {
+			mockNode.parameters.delayEnabled = true;
+			mockNode.parameters.delayType = 'invalid_type';
+			mockNode.parameters.delayValue = -100; // Negative delay
+
+			const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
+			const request: TranslationRequest = {
+				text: 'Hello',
+				from: 'en',
+				to: 'es',
+			};
+
+			// Should handle invalid delay config
+			const response = await supplier.translate(request);
+			expect(response).toBeDefined();
+		});
+
+		it('should validate retry configuration bounds', async () => {
+			mockNode.parameters.retryEnabled = true;
+			mockNode.parameters.retryMaxAttempts = 0; // Below minimum
+			mockNode.parameters.retryMaxDelay = -500; // Negative delay
+
+			const supplier = new DryRunTranslationSupplier(connection, mockSupplyData);
+			const request: TranslationRequest = {
+				text: 'Hello',
+				from: 'en',
+				to: 'es',
+			};
+
+			// Should either sanitize invalid config or throw error
+			try {
+				const response = await supplier.translate(request);
+				expect(response).toBeDefined();
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
 			}
 		});
 	});

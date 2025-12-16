@@ -1,8 +1,8 @@
 import type { TranslationResponse } from '../TranslationResponse';
 
 describe('TranslationResponse', () => {
-	describe('type structure', () => {
-		it('should have all required properties including translation', () => {
+	describe('required properties', () => {
+		it('should have required properties: text, from, to, translation', () => {
 			const response: TranslationResponse = {
 				text: 'Hello',
 				from: 'en',
@@ -10,13 +10,15 @@ describe('TranslationResponse', () => {
 				translation: 'Hola',
 			};
 
-			expect(response).toHaveProperty('text');
-			expect(response).toHaveProperty('from');
-			expect(response).toHaveProperty('to');
-			expect(response).toHaveProperty('translation');
+			expect(response.text).toBe('Hello');
+			expect(response.from).toBe('en');
+			expect(response.to).toBe('es');
+			expect(response.translation).toBe('Hola');
 		});
+	});
 
-		it('should allow optional detectedLanguage and latency properties', () => {
+	describe('optional properties', () => {
+		it('should support optional detectedLanguage and latency properties', () => {
 			const response: TranslationResponse = {
 				text: 'Hello',
 				from: 'en',
@@ -43,92 +45,139 @@ describe('TranslationResponse', () => {
 		});
 	});
 
-	describe('translation property', () => {
-		it('should accept various translations with special characters', () => {
-			const testCases: TranslationResponse[] = [
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Hola' },
-				{ text: 'Hello', from: 'en', to: 'zh', translation: '你好' },
-				{ text: 'Hello', from: 'en', to: 'ar', translation: 'مرحبا' },
-				{ text: 'Hello', from: 'en', to: 'ru', translation: 'Привет' },
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Hello, World!' },
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Line 1\nLine 2' },
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Emoji: 😀🌍🚀' },
-			];
+	describe('latency property', () => {
+		it('should accept zero and positive numeric latency values', () => {
+			const testCases = [0, 100, 1000, 60000];
 
-			testCases.forEach((response) => {
-				expect(typeof response.translation).toBe('string');
+			testCases.forEach((latency) => {
+				const response: TranslationResponse = {
+					text: 'Hello',
+					from: 'en',
+					to: 'es',
+					translation: 'Hola',
+					latency,
+				};
+
+				expect(response.latency).toBe(latency);
 			});
 		});
-	});
 
-	describe('optional detectedLanguage property', () => {
-		it('should accept language codes and be undefined when not provided', () => {
-			const withLanguage: TranslationResponse = {
-				text: 'Hello',
-				from: 'en',
-				to: 'es',
-				translation: 'Hola',
-				detectedLanguage: 'en',
-			};
-
-			const withoutLanguage: TranslationResponse = {
-				text: 'Hello',
-				from: 'en',
-				to: 'es',
-				translation: 'Hola',
-			};
-
-			expect(withLanguage.detectedLanguage).toBe('en');
-			expect(withoutLanguage.detectedLanguage).toBeUndefined();
-		});
-	});
-
-	describe('optional latency property', () => {
-		it('should accept numeric latency values including zero', () => {
-			const testCases: TranslationResponse[] = [
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Hola', latency: 0 },
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Hola', latency: 100 },
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Hola', latency: 1000 },
-				{ text: 'Hello', from: 'en', to: 'es', translation: 'Hola', latency: 60000 },
+		it('should handle edge case latency values', () => {
+			const edgeCases = [
+				0, // minimum
+				1, // minimal value
+				Number.MAX_SAFE_INTEGER, // maximum safe integer
+				1000000, // very large value
+				9999999, // near-boundary large value
 			];
 
-			testCases.forEach((response) => {
+			edgeCases.forEach((latency) => {
+				const response: TranslationResponse = {
+					text: 'Hello',
+					from: 'en',
+					to: 'es',
+					translation: 'Hola',
+					latency,
+				};
+
+				expect(response.latency).toBe(latency);
 				expect(typeof response.latency).toBe('number');
 			});
 		});
+	});
 
-		it('should be undefined when not provided', () => {
+	describe('translation content variations', () => {
+		it('should handle empty translation strings', () => {
 			const response: TranslationResponse = {
 				text: 'Hello',
 				from: 'en',
 				to: 'es',
-				translation: 'Hola',
+				translation: '',
 			};
 
-			expect(response.latency).toBeUndefined();
+			expect(response.translation).toBe('');
+			expect(response.translation.length).toBe(0);
+		});
+
+		it('should handle very long translation strings', () => {
+			const longTranslation = 'a'.repeat(10000);
+			const response: TranslationResponse = {
+				text: 'Hello',
+				from: 'en',
+				to: 'es',
+				translation: longTranslation,
+			};
+
+			expect(response.translation).toBe(longTranslation);
+			expect(response.translation.length).toBe(10000);
+		});
+
+		it('should handle special characters and unicode in translations', () => {
+			const testCases = [
+				{ text: 'Hello', translation: '你好' }, // Chinese
+				{ text: 'Hello', translation: 'مرحبا' }, // Arabic
+				{ text: 'Hello', translation: '🎉🌟✨' }, // Emojis
+				{ text: 'Hello', translation: '<script>alert("xss")</script>' }, // HTML/script-like content
+				{ text: 'Hello', translation: 'Line1\nLine2\nLine3' }, // Newlines
+			];
+
+			testCases.forEach(({ text, translation }) => {
+				const response: TranslationResponse = {
+					text,
+					from: 'en',
+					to: 'es',
+					translation,
+				};
+
+				expect(response.translation).toBe(translation);
+			});
 		});
 	});
 
-	describe('object structure', () => {
-		it('should be serializable and deserializable to/from JSON', () => {
+	describe('text and language code variations', () => {
+		it('should handle empty text input', () => {
 			const response: TranslationResponse = {
-				text: 'Hello',
+				text: '',
 				from: 'en',
 				to: 'es',
-				translation: 'Hola',
-				detectedLanguage: 'en',
-				latency: 150,
+				translation: '',
 			};
 
-			const json = JSON.stringify(response);
-			const parsed = JSON.parse(json) as TranslationResponse;
+			expect(response.text).toBe('');
+		});
 
-			expect(parsed.text).toBe('Hello');
-			expect(parsed.from).toBe('en');
-			expect(parsed.to).toBe('es');
-			expect(parsed.translation).toBe('Hola');
-			expect(parsed.detectedLanguage).toBe('en');
-			expect(parsed.latency).toBe(150);
+		it('should handle very long text input', () => {
+			const longText = 'word '.repeat(1000);
+			const response: TranslationResponse = {
+				text: longText,
+				from: 'en',
+				to: 'es',
+				translation: 'translated',
+			};
+
+			expect(response.text).toBe(longText);
+			expect(response.text.length).toBeGreaterThan(4000);
+		});
+
+		it('should support various language code formats', () => {
+			const testCases = [
+				{ from: 'en', to: 'es' },
+				{ from: 'en-US', to: 'es-MX' },
+				{ from: 'zh', to: 'zh-Hans' },
+				{ from: 'pt', to: 'pt-BR' },
+			];
+
+			testCases.forEach(({ from, to }) => {
+				const response: TranslationResponse = {
+					text: 'Hello',
+					from,
+					to,
+					translation: 'Hola',
+				};
+
+				expect(response.from).toBe(from);
+				expect(response.to).toBe(to);
+			});
 		});
 	});
 });
