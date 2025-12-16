@@ -43,6 +43,7 @@ const CONDITIONAL_NODE_TYPES = new Set([
 
 /** Node type for AI agents that should be wrapped in subgraphs */
 const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 
 type WorkflowNode = WorkflowMetadata['workflow']['nodes'][number];
 type WorkflowConnections = WorkflowMetadata['workflow']['connections'];
@@ -110,8 +111,8 @@ class MermaidBuilder {
 		options: Required<MermaidOptions>,
 		existingConfigurations?: NodeConfigurationsMap,
 	) {
-		const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
-		const stickyNotes = nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
+		const regularNodes = nodes.filter((n) => n.type !== STICKY_NOTE_TYPE);
+		const stickyNotes = nodes.filter((n) => n.type === STICKY_NOTE_TYPE);
 
 		this.nodes = regularNodes;
 		this.connections = connections;
