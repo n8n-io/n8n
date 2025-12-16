@@ -946,7 +946,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			msgIndex !== -1
 				? chatMessages.value
 						.slice(msgIndex)
-						.filter((msg) => 'revertVersionId' in msg && msg.revertVersionId).length
+						.filter((msg) => 'revertVersion' in msg && msg.revertVersion).length
 				: 0;
 		if (msgIndex !== -1) {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);

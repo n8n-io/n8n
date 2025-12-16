@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core';
+import { onClickOutside, useElementBounding } from '@vueuse/core';
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
@@ -68,6 +68,21 @@ onClickOutside(restoreConfirmRef, () => {
 	if (showRestoreConfirm.value) {
 		showRestoreConfirm.value = false;
 	}
+});
+
+// Calculate modal position based on button location
+const modalStyle = computed(() => {
+	// Get restore button bounding rect for positioning the teleported modal
+	const restoreButtonBounding = useElementBounding(restoreButtonRef);
+	if (!showRestoreConfirm.value) return {};
+
+	// Position modal below the button, aligned to the right
+	return {
+		position: 'fixed' as const,
+		top: `${restoreButtonBounding.bottom.value + 8}px`,
+		right: `${window.innerWidth - restoreButtonBounding.right.value - restoreButtonBounding.width.value / 4}px`,
+		zIndex: 9999,
+	};
 });
 
 function checkOverflow() {
@@ -149,19 +164,22 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					</button>
 					<div :class="$style.restoreLine"></div>
 				</div>
-				<div
-					v-if="showRestoreConfirm && message.revertVersion"
-					ref="restoreConfirmRef"
-					:class="$style.restoreConfirm"
-				>
-					<RestoreVersionConfirm
-						:version-id="message.revertVersion.id"
-						:prune-time-hours="pruneTimeHours"
-						@confirm="handleRestoreConfirm"
-						@cancel="handleRestoreCancel"
-						@show-version="handleShowVersion"
-					/>
-				</div>
+				<!-- Teleport modal to body to escape the messages container stacking context -->
+				<Teleport to="body">
+					<div
+						v-if="showRestoreConfirm && message.revertVersion"
+						ref="restoreConfirmRef"
+						:style="modalStyle"
+					>
+						<RestoreVersionConfirm
+							:version-id="message.revertVersion.id"
+							:prune-time-hours="pruneTimeHours"
+							@confirm="handleRestoreConfirm"
+							@cancel="handleRestoreCancel"
+							@show-version="handleShowVersion"
+						/>
+					</div>
+				</Teleport>
 			</div>
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
@@ -275,14 +293,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	align-items: center;
 	width: 100%;
 	padding: 0 var(--spacing--md);
-}
-
-.restoreConfirm {
-	position: absolute;
-	top: 100%;
-	right: var(--spacing--md);
-	z-index: 10;
-	margin-top: var(--spacing--2xs);
 }
 
 .restoreLine {
