@@ -7,8 +7,6 @@ const table = {
 } as const;
 
 export class AddAgentIdForeignKeys1765886667897 implements ReversibleMigration {
-	transaction = false as const;
-
 	async up({ schemaBuilder: { addForeignKey }, runQuery, escape }: MigrationContext) {
 		// Clean up orphaned agentId references before adding foreign key constraint
 		await runQuery(
