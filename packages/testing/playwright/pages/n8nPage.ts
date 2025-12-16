@@ -16,6 +16,7 @@ import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
 import { InteractionsPage } from './InteractionsPage';
+import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
@@ -69,6 +70,7 @@ export class n8nPage {
 	readonly demo: DemoPage;
 	readonly iframe: IframePage;
 	readonly interactions: InteractionsPage;
+	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
@@ -137,6 +139,7 @@ export class n8nPage {
 		this.demo = new DemoPage(page);
 		this.iframe = new IframePage(page);
 		this.interactions = new InteractionsPage(page);
+		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);

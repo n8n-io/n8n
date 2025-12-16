@@ -2,7 +2,7 @@ import type { n8nPage } from '../pages/n8nPage';
 
 /**
  * Composer for OIDC-related operations in E2E tests.
- * Handles configuring OIDC settings and interacting with Keycloak login.
+ * Handles configuring OIDC settings.
  */
 export class OidcComposer {
 	constructor(private readonly n8n: n8nPage) {}
@@ -26,21 +26,5 @@ export class OidcComposer {
 			enableLogin: true,
 		});
 		await settingsSso.saveOidcConfig();
-	}
-
-	/**
-	 * Fill the Keycloak login form with test credentials.
-	 * Should be called after the page has been redirected to Keycloak.
-	 */
-	async fillKeycloakLoginForm(email: string, password: string): Promise<void> {
-		const { page } = this.n8n;
-
-		const usernameField = page.locator('#username');
-		const passwordField = page.locator('#password');
-
-		await usernameField.waitFor({ state: 'visible', timeout: 10000 });
-		await usernameField.fill(email);
-		await passwordField.fill(password);
-		await page.locator('#kc-login').click();
 	}
 }

@@ -28,5 +28,5 @@ export const TEST_CONTAINER_IMAGES = {
 	mailpit: 'axllent/mailpit:latest',
 	mockserver: 'mockserver/mockserver:5.15.0',
 	gitea: 'gitea/gitea:1.25.1',
-	keycloak: 'quay.io/keycloak/keycloak:26.2',
+	keycloak: 'keycloak/keycloak:26.4',
 } as const;

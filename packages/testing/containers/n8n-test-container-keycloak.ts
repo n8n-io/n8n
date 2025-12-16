@@ -287,10 +287,7 @@ export function getKeycloakN8nEnvironment(
 	certPath = N8N_KEYCLOAK_CERT_PATH,
 ): Record<string, string> {
 	return {
-		E2E_TESTS: 'true',
 		NODE_EXTRA_CA_CERTS: certPath,
 		NO_PROXY: `localhost,127.0.0.1,${hostname},host.docker.internal`,
-		HTTP_PROXY: '',
-		HTTPS_PROXY: '',
 	};
 }

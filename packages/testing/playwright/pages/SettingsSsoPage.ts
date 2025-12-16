@@ -12,16 +12,14 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	async selectOidcProtocol(): Promise<void> {
-		await this.getProtocolSelect().locator('div').first().click();
-		await this.page.getByText('OIDC', { exact: true }).click();
+		await this.getProtocolSelect().locator('.el-select').click();
+		await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'OIDC' }).click();
 	}
 
 	async selectSamlProtocol(): Promise<void> {
-		await this.getProtocolSelect().locator('div').first().click();
-		await this.page.getByText('SAML', { exact: true }).click();
+		await this.getProtocolSelect().locator('.el-select').click();
+		await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'SAML' }).click();
 	}
-
-	// --- OIDC Form Elements ---
 
 	getOidcDiscoveryEndpointInput(): Locator {
 		return this.page.getByTestId('oidc-discovery-endpoint');
@@ -98,8 +96,6 @@ export class SettingsSsoPage extends BasePage {
 		}
 	}
 
-	// --- SAML Form Elements ---
-
 	getSamlSaveButton(): Locator {
 		return this.page.getByTestId('sso-save');
 	}
@@ -107,8 +103,6 @@ export class SettingsSsoPage extends BasePage {
 	getSamlLoginToggle(): Locator {
 		return this.page.getByTestId('sso-toggle');
 	}
-
-	// --- General Elements ---
 
 	getSsoContentLicensed(): Locator {
 		return this.page.getByTestId('sso-content-licensed');
