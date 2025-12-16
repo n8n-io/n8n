@@ -6,11 +6,13 @@ import { WorkflowStatusController } from '../workflow-status.controller';
 import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { UrlService } from '@/services/url.service';
+import type { GlobalConfig } from '@n8n/config';
 
 describe('WorkflowStatusController', () => {
 	let controller: WorkflowStatusController;
 	let mockService: jest.Mocked<CredentialResolverWorkflowService>;
 	let mockUrlService: jest.Mocked<UrlService>;
+	let mockGlobalConfig: jest.Mocked<GlobalConfig>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -23,7 +25,13 @@ describe('WorkflowStatusController', () => {
 			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
 		} as unknown as jest.Mocked<UrlService>;
 
-		controller = new WorkflowStatusController(mockService, mockUrlService);
+		mockGlobalConfig = {
+			endpoints: {
+				rest: 'rest',
+			},
+		} as unknown as jest.Mocked<GlobalConfig>;
+
+		controller = new WorkflowStatusController(mockService, mockUrlService, mockGlobalConfig);
 	});
 
 	describe('checkWorkflowForExecution', () => {

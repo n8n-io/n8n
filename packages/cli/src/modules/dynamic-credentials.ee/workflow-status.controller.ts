@@ -6,12 +6,14 @@ import { CredentialResolverWorkflowService } from './services/credential-resolve
 import { WorkflowExecutionStatus } from '@n8n/api-types';
 import { getBearerToken } from './utils';
 import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
 
 @RestController('/workflows')
 export class WorkflowStatusController {
 	constructor(
 		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
 		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -40,6 +42,7 @@ export class WorkflowStatusController {
 		const isReady = status.every((s) => s.status === 'configured');
 
 		const basePath = this.urlService.getInstanceBaseUrl();
+		const restPath = this.globalConfig.endpoints.rest;
 
 		const executionStatus: WorkflowExecutionStatus = {
 			workflowId,
@@ -48,7 +51,7 @@ export class WorkflowStatusController {
 				credentialId: s.credentialId,
 				credentialStatus: s.status,
 				credentialType: s.credentialType,
-				authorizationUrl: `${basePath}/rest/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
+				authorizationUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
 			})),
 		};
 		return executionStatus;
