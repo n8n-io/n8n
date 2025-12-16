@@ -263,9 +263,9 @@ export class TestRunnerService {
 		// the same way as it would be passed in manual mode
 		if (this.executionsConfig.mode === 'queue') {
 			data.executionData = createRunExecutionData({
+				executionData: null,
 				resultData: {
 					pinData,
-					runData: {},
 				},
 				manualData: {
 					userId: metadata.userId,
