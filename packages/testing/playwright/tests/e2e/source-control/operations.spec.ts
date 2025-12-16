@@ -1,8 +1,6 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
-import { initSourceControl } from '../../../utils/source-control-helper';
-
-const REPO_URL = 'ssh://git@gitea/giteaadmin/n8n-test-repo.git';
+import { setupGitRepo } from '../../../utils/source-control-helper';
 
 test.use({
 	addContainerCapability: {
@@ -11,12 +9,11 @@ test.use({
 });
 
 test.describe('Source Control Operations @capability:source-control', () => {
-	test.describe.configure({ mode: 'serial' });
+	let repoUrl: string;
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		await initSourceControl({ n8n, n8nContainer });
-		await n8n.api.sourceControl.connect({ repositoryUrl: REPO_URL });
+		repoUrl = await setupGitRepo(n8n, n8nContainer);
 
 		await n8n.goHome();
 		// Enable features required for project workflows and moving resources
@@ -286,7 +283,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.api.tags.delete(tag.id);
 
 			// re-connect to source control
-			await n8n.api.sourceControl.connect({ repositoryUrl: REPO_URL });
+			await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
 
 			// pull all resources
 			await n8n.navigate.toHome();
@@ -316,12 +313,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await expect(n8n.canvas.tagsManagerModal.getTable().getByText('pull-test-tag')).toBeVisible();
 		});
 
-		test('should pull modified and deleted resources from remote', async ({
-			n8n,
-			n8nContainer,
-		}) => {
-			await connectToSourceControl({ n8n, n8nContainer });
-
+		test('should pull modified and deleted resources from remote', async ({ n8n }) => {
 			const project = await n8n.api.projects.createProject('Pull Test Project');
 			const workflow = await n8n.api.workflows.createInProject(project.id, {
 				name: 'Pull Test Workflow',
@@ -346,7 +338,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			});
 
 			// re-connect to source control
-			await n8n.api.sourceControl.connect({ repositoryUrl: REPO_URL });
+			await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
 
 			// pull
 			await n8n.navigate.toHome();

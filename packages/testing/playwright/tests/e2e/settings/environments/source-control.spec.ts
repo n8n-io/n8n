@@ -1,6 +1,12 @@
+import { addGiteaBranch, addGiteaRepo } from 'n8n-containers/n8n-test-container-gitea';
+
 import { expect, test } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
-import { initSourceControl } from '../../../../utils/source-control-helper';
+import {
+	buildRepoUrl,
+	generateUniqueRepoName,
+	initSourceControl,
+} from '../../../../utils/source-control-helper';
 
 test.use({
 	addContainerCapability: {
@@ -18,17 +24,27 @@ async function saveSettings(n8n: n8nPage) {
 }
 
 test.describe('Source Control Settings @capability:source-control', () => {
-	test.describe.configure({ mode: 'serial' });
+	let repoUrl: string;
+	let repoName: string;
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await initSourceControl({ n8n, n8nContainer });
+
+		// Create unique repo with branches via API (not UI)
+		repoName = generateUniqueRepoName();
+		const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
+
+		await addGiteaRepo(giteaContainer!, repoName, 'giteaadmin', 'giteapassword');
+
+		repoUrl = buildRepoUrl(repoName);
 	});
 
 	test('should connect to Git repository using SSH', async ({ n8n }) => {
+		// Test UI connection flow with unique repo
 		await n8n.navigate.toEnvironments();
 
-		await n8n.settingsEnvironment.fillRepoUrl('ssh://git@gitea/giteaadmin/n8n-test-repo.git');
+		await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
 		await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
 		await n8n.settingsEnvironment.getConnectButton().click();
 
@@ -37,20 +53,29 @@ test.describe('Source Control Settings @capability:source-control', () => {
 
 		await n8n.settingsEnvironment.getBranchSelect().click();
 		await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
 
 		// Verify source control connected indicator is visible
 		await n8n.navigate.toHome();
 		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
 	});
 
-	test('should switch between branches', async ({ n8n }) => {
+	test('should switch between branches', async ({ n8n, n8nContainer }) => {
+		const giteaContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
+		await addGiteaBranch(giteaContainer!, repoName, 'development', 'giteaadmin', 'giteapassword');
+		await addGiteaBranch(giteaContainer!, repoName, 'staging', 'giteaadmin', 'giteapassword');
+		await addGiteaBranch(giteaContainer!, repoName, 'production', 'giteaadmin', 'giteapassword');
+
+		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+
 		await n8n.navigate.toEnvironments();
 
 		// Switch to 'development' branch
-		await n8n.settingsEnvironment.selectBranch('development');
+		await n8n.settingsEnvironment.getBranchSelect().click();
+		await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
+		await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
+		await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
+		await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
+		await n8n.page.getByRole('option', { name: 'development' }).click();
 		await saveSettings(n8n);
 
 		// Verify branch switched by checking preferences
@@ -69,6 +94,8 @@ test.describe('Source Control Settings @capability:source-control', () => {
 	});
 
 	test('should enable read-only mode and restrict operations', async ({ n8n }) => {
+		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+
 		await n8n.navigate.toEnvironments();
 
 		await n8n.settingsEnvironment.enableReadOnlyMode();
@@ -88,6 +115,8 @@ test.describe('Source Control Settings @capability:source-control', () => {
 	});
 
 	test('should disconnect and reconnect with existing keys', async ({ n8n }) => {
+		await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+
 		await n8n.navigate.toEnvironments();
 		await n8n.settingsEnvironment.disconnect();
 
@@ -97,7 +126,7 @@ test.describe('Source Control Settings @capability:source-control', () => {
 
 		// Reconnect
 		await n8n.navigate.toEnvironments();
-		await n8n.settingsEnvironment.fillRepoUrl('ssh://git@gitea/giteaadmin/n8n-test-repo.git');
+		await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
 		await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
 		await n8n.settingsEnvironment.getConnectButton().click();
 
