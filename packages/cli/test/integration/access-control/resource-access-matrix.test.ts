@@ -64,6 +64,8 @@ describe('Resource Access Control Matrix Tests', () => {
 		ownerAgent = testServer.authAgentFor(owner);
 		testUserAgent = testServer.authAgentFor(testUser);
 
+		await utils.initCredentialsTypes();
+
 		// Create custom roles with specific scopes
 		workflowReadOnlyRole = await createCustomRoleWithScopeSlugs(
 			['workflow:read', 'workflow:list'],
@@ -135,7 +137,7 @@ describe('Resource Access Control Matrix Tests', () => {
 	});
 
 	afterAll(async () => {
-		await testDb.truncate(['User']);
+		await testDb.truncate(['User', 'ProjectRelation']);
 		await cleanupRolesAndScopes();
 	});
 

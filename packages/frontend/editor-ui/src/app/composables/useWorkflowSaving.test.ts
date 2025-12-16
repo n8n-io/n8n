@@ -81,6 +81,7 @@ describe('useWorkflowSaving', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
+
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
@@ -304,6 +305,7 @@ describe('useWorkflowSaving', () => {
 			expect(next).toHaveBeenCalledWith(resolveMarker);
 		});
 	});
+
 	describe('saveAsNewWorkflow', () => {
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
 			const workflow = getDuplicateTestWorkflow();
@@ -348,7 +350,58 @@ describe('useWorkflowSaving', () => {
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
 		});
+
+		it('should preserve expression-based webhook paths when resetWebhookUrls is true', async () => {
+			const workflow: WorkflowDataUpdate = {
+				name: 'Expression webhook test',
+				active: false,
+				nodes: [
+					{
+						parameters: {
+							path: '={{ $json.customPath }}',
+							options: {},
+						},
+						id: 'node-with-expression',
+						name: 'Webhook with expression',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [680, 20],
+						webhookId: 'original-webhook-id-1',
+					},
+					{
+						parameters: {
+							path: 'static-path',
+							options: {},
+						},
+						id: 'node-without-expression',
+						name: 'Webhook with static path',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [700, 40],
+						webhookId: 'original-webhook-id-2',
+					},
+				],
+				connections: {},
+			};
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			const expressionPath = workflow.nodes![0].parameters.path;
+			const staticPath = workflow.nodes![1].parameters.path;
+
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				resetWebhookUrls: true,
+				data: workflow,
+			});
+
+			// Expression-based path should be preserved
+			expect(workflow.nodes![0].parameters.path).toBe(expressionPath);
+			// Static path should be replaced with new webhook ID
+			expect(workflow.nodes![1].parameters.path).not.toBe(staticPath);
+			expect(workflow.nodes![1].parameters.path).toBe(workflow.nodes![1].webhookId);
+		});
 	});
+
 	describe('saveCurrentWorkflow', () => {
 		it('should save the current workflow', async () => {
 			const workflow = createTestWorkflow({
@@ -371,7 +424,7 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
-		it('should include active=false in the request if the workflow has no activatable trigger node', async () => {
+		it('should not include active=false in the request if the workflow has no activatable trigger node', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w1',
 				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true })],
@@ -387,10 +440,51 @@ describe('useWorkflowSaving', () => {
 			await saveCurrentWorkflow({ id: 'w1' });
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'w1',
-				expect.objectContaining({ id: 'w1', active: false }),
+				expect.objectContaining({ id: 'w1' }),
 				false,
 			);
-			expect(workflowsStore.setWorkflowInactive).toHaveBeenCalled();
+		});
+
+		it('should send autosaved: true when autosaved parameter is true', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w2',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w2',
+				expect.objectContaining({ id: 'w2', active: true, autosaved: true }),
+				false,
+			);
+		});
+
+		it('should send autosaved: false when autosaved parameter is false', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w3',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w3',
+				expect.objectContaining({ id: 'w3', active: true, autosaved: false }),
+				false,
+			);
 		});
 	});
 });

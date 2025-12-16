@@ -47,7 +47,10 @@ export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
 export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
+
+// Chat hub (search) tools
 export const JINA_AI_TOOL_NODE_TYPE = 'n8n-nodes-base.jinaAiTool';
+export const SERP_API_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolSerpApi';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -100,7 +103,6 @@ export const RESPOND_TO_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
 export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
-export const SEAR_XNG_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolSearXng';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,

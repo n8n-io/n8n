@@ -5,6 +5,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 export async function setupRedis({
 	redisImage,
@@ -209,8 +210,9 @@ function buildCaddyConfig(upstreamServers: string[]): string {
 :80 {
   # Reverse proxy with load balancing
   reverse_proxy ${backends} {
-    # Enable sticky sessions using cookie
-    lb_policy cookie
+    # Use first available backend for simpler debugging
+    # (cookie-based sticky sessions can cause issues with separate API/browser contexts)
+    lb_policy first
 
     # Health check (optional)
     health_uri /healthz
@@ -352,7 +354,7 @@ export async function setupProxyServer({
 	}
 }
 
-const TASK_RUNNER_IMAGE = 'n8nio/runners:nightly';
+const TASK_RUNNER_IMAGE = TEST_CONTAINER_IMAGES.taskRunner;
 
 export async function setupTaskRunner({
 	projectName,

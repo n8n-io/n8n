@@ -1589,6 +1589,25 @@ export function useCanvasOperations() {
 			);
 		};
 
+		const filterConnectionsByType = (
+			connections: Array<NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
+			type: NodeConnectionType,
+		) =>
+			connections.filter((connection) => {
+				const connectionType = typeof connection === 'string' ? connection : connection.type;
+				return connectionType === type;
+			});
+
+		const getInputFilter = (
+			connection?: NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration,
+		) => {
+			if (connection && typeof connection === 'object' && 'filter' in connection) {
+				return connection.filter;
+			}
+
+			return undefined;
+		};
+
 		if (sourceConnection.type !== targetConnection.type) {
 			return false;
 		}
@@ -1613,13 +1632,11 @@ export function useCanvasOperations() {
 				) || [];
 		}
 
-		const sourceNodeHasOutputConnectionOfType = !!sourceNodeOutputs.find((output) => {
-			const outputType = typeof output === 'string' ? output : output.type;
-			return outputType === sourceConnection.type;
-		});
+		const sourceOutputsOfType = filterConnectionsByType(sourceNodeOutputs, sourceConnection.type);
+		const sourceNodeHasOutputConnectionOfType = sourceOutputsOfType.length > 0;
 
 		const sourceNodeHasOutputConnectionPortOfType =
-			sourceConnection.index < sourceNodeOutputs.length;
+			sourceConnection.index < sourceOutputsOfType.length;
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
@@ -1644,31 +1661,33 @@ export function useCanvasOperations() {
 				) || [];
 		}
 
-		const targetNodeHasInputConnectionOfType = !!targetNodeInputs.find((input) => {
-			const inputType = typeof input === 'string' ? input : input.type;
-			if (inputType !== targetConnection.type) return false;
+		const targetInputsOfType = filterConnectionsByType(targetNodeInputs, targetConnection.type);
+		const targetNodeHasInputConnectionOfType = targetInputsOfType.length > 0;
+		const targetNodeHasInputConnectionPortOfType =
+			targetConnection.index < targetInputsOfType.length;
 
-			const filter = typeof input === 'object' && 'filter' in input ? input.filter : undefined;
-			if (
-				(filter?.nodes?.length && !filter.nodes?.includes(sourceNode.type)) ||
-				(filter?.excludedNodes?.length && filter.excludedNodes?.includes(sourceNode.type))
-			) {
-				toast.showToast({
-					title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
-					message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
-						interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
-					}),
-					type: 'error',
-					duration: 5000,
-				});
+		const targetConnectionDefinition = targetNodeHasInputConnectionPortOfType
+			? targetInputsOfType[targetConnection.index]
+			: undefined;
+		const targetConnectionFilter = getInputFilter(targetConnectionDefinition);
 
-				return false;
-			}
+		if (
+			(targetConnectionFilter?.nodes?.length &&
+				!targetConnectionFilter.nodes.includes(sourceNode.type)) ||
+			(targetConnectionFilter?.excludedNodes?.length &&
+				targetConnectionFilter.excludedNodes.includes(sourceNode.type))
+		) {
+			toast.showToast({
+				title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+				message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
+					interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+				}),
+				type: 'error',
+				duration: 5000,
+			});
 
-			return true;
-		});
-
-		const targetNodeHasInputConnectionPortOfType = targetConnection.index < targetNodeInputs.length;
+			return false;
+		}
 
 		const isMissingInputConnection =
 			!targetNodeHasInputConnectionOfType || !targetNodeHasInputConnectionPortOfType;
@@ -1736,8 +1755,8 @@ export function useCanvasOperations() {
 		nodeHelpers.credentialsUpdated.value = false;
 	}
 
-	function initializeWorkspace(data: IWorkflowDb) {
-		workflowHelpers.initState(data);
+	async function initializeWorkspace(data: IWorkflowDb) {
+		await workflowHelpers.initState(data);
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isUnknownNode =
@@ -1798,7 +1817,7 @@ export function useCanvasOperations() {
 		// In this object all that nodes get saved in the format:
 		//   old-name -> new-name
 		const nodeNameTable: {
-			[key: string]: string;
+			[key: string]: string | undefined;
 		} = {};
 		const newNodeNames = new Set<string>((data.nodes ?? []).map((node) => node.name));
 
@@ -1900,11 +1919,12 @@ export function useCanvasOperations() {
 
 		// Rename all the nodes of which the name changed
 		for (oldName in nodeNameTable) {
-			if (oldName === nodeNameTable[oldName]) {
+			const nameToChangeTo = nodeNameTable[oldName];
+			if (!nameToChangeTo || oldName === nameToChangeTo) {
 				// Name did not change so skip
 				continue;
 			}
-			tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+			tempWorkflow.renameNode(oldName, nameToChangeTo);
 		}
 
 		if (data.pinData) {
@@ -1919,14 +1939,16 @@ export function useCanvasOperations() {
 					continue;
 				}
 
-				const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
-				try {
-					const pinnedDataForNode = usePinnedData(node);
-					pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
-					pinDataSuccess = true;
-				} catch (error) {
-					pinDataSuccess = false;
-					console.error(error);
+				const node = tempWorkflow.nodes[nodeNameTable[nodeName] ?? nodeName];
+				if (node) {
+					try {
+						const pinnedDataForNode = usePinnedData(node);
+						pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
+						pinDataSuccess = true;
+					} catch (error) {
+						pinDataSuccess = false;
+						console.error(error);
+					}
 				}
 			}
 		}
@@ -2102,6 +2124,7 @@ export function useCanvasOperations() {
 
 			return workflowData;
 		} catch (error) {
+			console.error(error); // leaving to help make debugging future issues easier
 			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));
 			return {};
 		}
@@ -2304,7 +2327,7 @@ export function useCanvasOperations() {
 			toast.showMessage({ title, message, type: 'error', duration: 0 });
 		}
 
-		initializeWorkspace(data.workflowData);
+		await initializeWorkspace(data.workflowData);
 
 		workflowState.setWorkflowExecutionData(data);
 

@@ -8,7 +8,6 @@ import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-type
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
-import FileType from 'file-type';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -127,6 +126,22 @@ export class ChatHubAttachmentService {
 		);
 	}
 
+	async getDataUrl(binaryData: IBinaryData): Promise<string> {
+		if (binaryData.data.startsWith('data:')) {
+			return binaryData.data;
+		}
+
+		const buffer = await this.binaryDataService.getAsBuffer(binaryData);
+		const base64Data = buffer.toString(BINARY_ENCODING);
+		const mimeType = binaryData.mimeType || 'application/octet-stream';
+
+		return `data:${mimeType};base64,${base64Data}`;
+	}
+
+	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
+		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
 	/**
 	 * Processes a single attachment by populating metadata and storing it.
 	 */
@@ -137,22 +152,22 @@ export class ChatHubAttachmentService {
 		buffer: Buffer,
 	): Promise<IBinaryData> {
 		const sanitizedFileName = sanitizeFilename(attachment.fileName);
-		const fileTypeData = await FileType.fromBuffer(buffer);
-
-		// Only trust content-based detection for security
-		const mimeType = fileTypeData?.mime ?? 'application/octet-stream';
 
 		// Construct IBinaryData with all required fields
 		const binaryData: IBinaryData = {
 			data: attachment.data,
-			mimeType,
+			mimeType: attachment.mimeType,
 			fileName: sanitizedFileName,
 			fileSize: `${buffer.length}`,
-			fileExtension: fileTypeData?.ext,
+			fileExtension: sanitizedFileName?.split('.').pop(),
 		};
 
 		return await this.binaryDataService.store(
-			FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
+			FileLocation.ofCustom({
+				sourceType: 'chat_message_attachment',
+				pathSegments: ['chat-hub', 'sessions', sessionId, 'messages', messageId],
+				sourceId: messageId,
+			}),
 			buffer,
 			binaryData,
 		);

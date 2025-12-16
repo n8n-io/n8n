@@ -1,13 +1,24 @@
+import { AzureKeyCredential, SearchIndexClient } from '@azure/search-documents';
 import { AzureAISearchVectorStore } from '@langchain/community/vectorstores/azure_aisearch';
-import { AzureKeyCredential } from '@azure/search-documents';
 import { mock } from 'jest-mock-extended';
-import type { ISupplyDataFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	IExecuteFunctions,
+} from 'n8n-workflow';
 
-import { VectorStoreAzureAISearch, getIndexName } from './VectorStoreAzureAISearch.node';
+import {
+	VectorStoreAzureAISearch,
+	getIndexName,
+	clearAzureSearchIndex,
+} from './VectorStoreAzureAISearch.node';
 
 jest.mock('@langchain/community/vectorstores/azure_aisearch');
 jest.mock('@azure/identity');
 jest.mock('@azure/search-documents');
+
+const MockedSearchIndexClient = SearchIndexClient as jest.MockedClass<typeof SearchIndexClient>;
 
 describe('VectorStoreAzureAISearch', () => {
 	const vectorStore = new VectorStoreAzureAISearch();
@@ -121,6 +132,145 @@ describe('VectorStoreAzureAISearch', () => {
 		// Verify getNodeParameter was called with correct signature (no itemIndex)
 		expect(loadOptionsFunctions.getNodeParameter).toHaveBeenCalledWith('indexName', '', {
 			extractValue: true,
+		});
+	});
+
+	describe('clearIndex functionality', () => {
+		const mockDeleteIndex = jest.fn().mockResolvedValue(undefined);
+		const mockContext = mock<IExecuteFunctions>();
+		const mockLogger = { debug: jest.fn() };
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+
+			// Setup mock for SearchIndexClient
+			MockedSearchIndexClient.mockImplementation(
+				() =>
+					({
+						deleteIndex: mockDeleteIndex,
+					}) as unknown as SearchIndexClient,
+			);
+
+			// Setup common mocks for context
+			mockContext.getCredentials.mockResolvedValue({
+				endpoint: 'https://test-search.search.windows.net',
+				apiKey: 'test-api-key',
+			});
+
+			mockContext.getNode.mockReturnValue({
+				id: 'test-node-id',
+				name: 'Azure AI Search',
+				type: 'vectorStoreAzureAISearch',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			mockContext.logger = mockLogger as unknown as IExecuteFunctions['logger'];
+		});
+
+		it('should delete index when clearIndex is true', async () => {
+			mockContext.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'indexName':
+						return 'test-index';
+					case 'options':
+						return { clearIndex: true };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await clearAzureSearchIndex(mockContext, 0);
+
+			// Verify the function returned true (index was deleted)
+			expect(result).toBe(true);
+
+			// Verify SearchIndexClient was instantiated with correct credentials
+			expect(MockedSearchIndexClient).toHaveBeenCalledWith(
+				'https://test-search.search.windows.net',
+				expect.any(AzureKeyCredential),
+			);
+
+			// Verify deleteIndex was called with the correct index name
+			expect(mockDeleteIndex).toHaveBeenCalledWith('test-index');
+
+			// Verify debug log was called
+			expect(mockLogger.debug).toHaveBeenCalledWith('Deleted Azure AI Search index: test-index');
+		});
+
+		it('should NOT delete index when clearIndex is false', async () => {
+			mockContext.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'indexName':
+						return 'test-index';
+					case 'options':
+						return { clearIndex: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await clearAzureSearchIndex(mockContext, 0);
+
+			// Verify the function returned false (index was not deleted)
+			expect(result).toBe(false);
+
+			// Verify SearchIndexClient was NOT instantiated
+			expect(MockedSearchIndexClient).not.toHaveBeenCalled();
+
+			// Verify deleteIndex was NOT called
+			expect(mockDeleteIndex).not.toHaveBeenCalled();
+		});
+
+		it('should NOT delete index when clearIndex option is not provided', async () => {
+			mockContext.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'indexName':
+						return 'test-index';
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await clearAzureSearchIndex(mockContext, 0);
+
+			// Verify the function returned false (index was not deleted)
+			expect(result).toBe(false);
+
+			// Verify SearchIndexClient was NOT instantiated
+			expect(MockedSearchIndexClient).not.toHaveBeenCalled();
+
+			// Verify deleteIndex was NOT called
+			expect(mockDeleteIndex).not.toHaveBeenCalled();
+		});
+
+		it('should return false and log error when deleteIndex fails', async () => {
+			mockContext.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'indexName':
+						return 'test-index';
+					case 'options':
+						return { clearIndex: true };
+					default:
+						return undefined;
+				}
+			});
+
+			// Make deleteIndex throw an error
+			mockDeleteIndex.mockRejectedValueOnce(new Error('Index not found'));
+
+			const result = await clearAzureSearchIndex(mockContext, 0);
+
+			// Verify the function returned false (deletion failed gracefully)
+			expect(result).toBe(false);
+
+			// Verify the error was logged
+			expect(mockLogger.debug).toHaveBeenCalledWith('Error deleting index (may not exist):', {
+				message: 'Index not found',
+			});
 		});
 	});
 });

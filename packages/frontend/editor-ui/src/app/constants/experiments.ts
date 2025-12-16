@@ -11,10 +11,6 @@ export const CANVAS_ZOOMED_VIEW_EXPERIMENT = createExperiment('canvas_zoomed_vie
 
 export const NDV_IN_FOCUS_PANEL_EXPERIMENT = createExperiment('ndv_in_focus_panel');
 
-export const COMMAND_BAR_EXPERIMENT = createExperiment('command_bar');
-
-export const NDV_UI_OVERHAUL_EXPERIMENT = createExperiment('029_ndv_ui_overhaul');
-
 export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = createExperiment('043_workflow_builder_release');
 
 export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = createExperiment(
@@ -40,12 +36,19 @@ export const PRE_BUILT_AGENTS_EXPERIMENT = createExperiment('038_pre_built_agent
 
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const TEMPLATES_DATA_QUALITY_EXPERIMENT = createExperiment('046_templates_data_quality', {
+export const UPGRADE_PLAN_CTA_EXPERIMENT = {
+	name: '054_upgrade_plan_cta',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
+	name: '046_templates_data_quality',
 	control: 'control',
 	variant1: 'variant-batch-1',
 	variant2: 'variant-batch-2',
 	variant3: 'variant-batch-3',
-});
+};
 
 export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
 	control: 'control',
@@ -53,11 +56,12 @@ export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-wor
 	variant2: 'variant-2-twoboxes',
 });
 
-export const READY_TO_RUN_V2_PART2_EXPERIMENT = createExperiment('045_ready-to-run-worfklow_v2-2', {
+export const READY_TO_RUN_V2_P3_EXPERIMENT = {
+	name: '059_ready-to-run-worfklow_v2-3',
 	control: 'control',
-	variant3: 'variant-3',
-	variant4: 'variant-4',
-});
+	variant5: 'variant-5',
+	variant6: 'variant-6',
+};
 
 export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3');
 
@@ -65,19 +69,34 @@ export const PROJECT_VARIABLES_EXPERIMENT = createExperiment('046_project_variab
 
 export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
 
-export const SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT = {
-	name: '050_sso_jit_provisioning',
+export const TEMPLATE_SETUP_EXPERIENCE = {
+	name: '055_template_setup_experience',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
+	name: '056_ai_builder_template_examples',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const AI_BUILDER_MULTI_AGENT_EXPERIMENT = {
+	name: '057_ai_builder_multi_agent',
+	control: 'control',
+	variant: 'variant',
 };
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
-	NDV_UI_OVERHAUL_EXPERIMENT.name,
-	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
-	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
+	READY_TO_RUN_V2_P3_EXPERIMENT.name,
+	UPGRADE_PLAN_CTA_EXPERIMENT.name,
+	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
+	AI_BUILDER_MULTI_AGENT_EXPERIMENT.name,
+	TEMPLATE_SETUP_EXPERIENCE.name,
 ];

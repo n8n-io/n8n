@@ -1,8 +1,8 @@
+import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
-import path from 'path';
 
 export interface CsvColumnMetadata {
 	name: string;
@@ -44,7 +44,7 @@ export class CsvParserService {
 	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types
 	 */
 	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
-		const filePath = path.join(this.uploadDir, fileId);
+		const filePath = safeJoinPath(this.uploadDir, fileId);
 		let rowCount = 0;
 		let firstDataRow: Record<string, string> | null = null;
 		let columnNames: string[] = [];
@@ -58,10 +58,7 @@ export class CsvParserService {
 						}
 					: false,
 				skip_empty_lines: true,
-			});
-
-			createReadStream(filePath)
-				.pipe(parser)
+			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
 
@@ -90,6 +87,8 @@ export class CsvParserService {
 					});
 				})
 				.on('error', reject);
+
+			createReadStream(filePath).on('error', reject).pipe(parser);
 		});
 	}
 
@@ -100,7 +99,7 @@ export class CsvParserService {
 		fileId: string,
 		hasHeaders: boolean = true,
 	): Promise<Array<Record<string, string>>> {
-		const filePath = path.join(this.uploadDir, fileId);
+		const filePath = safeJoinPath(this.uploadDir, fileId);
 
 		const rows: Array<Record<string, string>> = [];
 		let columnNames: string[] = [];
@@ -109,10 +108,7 @@ export class CsvParserService {
 			const parser = parse({
 				columns: hasHeaders ? true : false,
 				skip_empty_lines: true,
-			});
-
-			createReadStream(filePath)
-				.pipe(parser)
+			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					if (!hasHeaders && Array.isArray(row)) {
 						const processed = this.processRowWithoutHeaders(row, columnNames);
@@ -126,6 +122,8 @@ export class CsvParserService {
 					resolve(rows);
 				})
 				.on('error', reject);
+
+			createReadStream(filePath).on('error', reject).pipe(parser);
 		});
 	}
 

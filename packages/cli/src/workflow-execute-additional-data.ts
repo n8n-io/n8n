@@ -92,6 +92,10 @@ export function getRunData(
 	};
 }
 
+/**
+ * Loads workflow data for sub-workflow execution.
+ * Uses the active version when available.
+ */
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
@@ -105,27 +109,39 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = Container.get(GlobalConfig).tags.disabled ? [] : ['tags'];
+		const baseRelations = ['activeVersion'];
+		const relations = Container.get(GlobalConfig).tags.disabled
+			? [...baseRelations]
+			: [...baseRelations, 'tags'];
 
-		workflowData = await Container.get(WorkflowRepository).get(
+		const workflowFromDb = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },
 			{ relations },
 		);
 
-		if (workflowData === undefined || workflowData === null) {
+		if (workflowFromDb === undefined || workflowFromDb === null) {
 			throw new UnexpectedError('Workflow does not exist.', {
 				extra: { workflowId: workflowInfo.id },
 			});
 		}
+
+		if (!workflowFromDb.activeVersion) {
+			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id },
+			});
+		}
+
+		workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
+		workflowFromDb.connections = workflowFromDb.activeVersion.connections;
+
+		workflowData = workflowFromDb;
 	} else {
 		workflowData = workflowInfo.code ?? null;
 		if (workflowData) {
 			if (!workflowData.id) {
 				workflowData.id = parentWorkflowId;
 			}
-			if (!workflowData.settings) {
-				workflowData.settings = parentWorkflowSettings;
-			}
+			workflowData.settings ??= parentWorkflowSettings;
 		}
 	}
 
@@ -183,7 +199,7 @@ async function startExecution(
 		name: workflowName,
 		nodes: workflowData.nodes,
 		connections: workflowData.connections,
-		active: workflowData.active,
+		active: workflowData.activeVersionId !== null,
 		nodeTypes,
 		staticData: workflowData.staticData,
 		settings: workflowData.settings,
@@ -210,12 +226,17 @@ async function startExecution(
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
-		const additionalDataIntegrated = await getBase();
+		const workflowSettings = workflowData.settings;
+		const additionalDataIntegrated = await getBase({
+			workflowId: workflowData.id,
+			workflowSettings,
+		});
 		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
 			executionId,
 			workflowData,
 			additionalData.userId,
+			options.parentExecution,
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
@@ -231,7 +252,6 @@ async function startExecution(
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		const workflowSettings = workflowData.settings;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
 			// We might have received a max timeout timestamp from the parent workflow
 			// If we did, then we get the minimum time between the two timeouts
@@ -366,12 +386,14 @@ export async function getBase({
 	projectId,
 	currentNodeParameters,
 	executionTimeoutTimestamp,
+	workflowSettings,
 }: {
 	userId?: string;
 	workflowId?: string;
 	projectId?: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
+	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
@@ -396,6 +418,7 @@ export async function getBase({
 		userId,
 		setExecutionStatus,
 		variables,
+		workflowSettings,
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);
 			const executionData = await executionRepository.findSingleExecution(executionId, {
@@ -445,6 +468,7 @@ export async function getBase({
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
+		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

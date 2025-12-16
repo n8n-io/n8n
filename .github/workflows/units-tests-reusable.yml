@@ -37,7 +37,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Build
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
 
@@ -70,7 +70,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Build
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
 
@@ -103,12 +103,12 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Build
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: pnpm --filter=n8n-nodes-base test
+        run: pnpm turbo test --filter=n8n-nodes-base
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -140,7 +140,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Build
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
 
