@@ -277,9 +277,13 @@ const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
-	return route.params.name as string;
+	const name = route.params.name;
+	return Array.isArray(name) ? name[0] : name;
 });
-const routeNodeId = computed(() => route.params.nodeId as string | undefined);
+const routeNodeId = computed(() => {
+	const nodeId = route.query.nodeId;
+	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
+});
 
 // Check if this is a new workflow by looking for the ?new query param
 const isNewWorkflowRoute = computed(() => {
@@ -407,19 +411,46 @@ async function initializeRoute(force = false) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
 
-			if (!isDemoRoute.value) {
-				await loadCredentials();
+			if (isDemoRoute.value) {
+				return await initializeWorkspaceForNewWorkflow();
 			}
 
-			// If there is no workflow id, treat it as a new workflow
-			if (isNewWorkflowRoute.value || isDemoRoute.value) {
-				if (route.meta?.nodeView === true) {
-					await initializeWorkspaceForNewWorkflow();
+			await loadCredentials();
+
+			let workflowData: IWorkflowDb | undefined = undefined;
+			let error: (Error & { httpStatusCode: number }) | undefined = undefined;
+			try {
+				workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
+			} catch (err) {
+				error = err;
+			}
+
+			if (!workflowData) {
+				if (isNewWorkflowRoute.value && route.meta?.nodeView === true) {
+					return await initializeWorkspaceForNewWorkflow();
 				}
-				return;
+
+				if (error?.httpStatusCode === 404) {
+					return await router.replace({
+						name: VIEWS.ENTITY_NOT_FOUND,
+						params: { entityType: 'workflow' },
+					});
+				}
+				if (error?.httpStatusCode === 403) {
+					return await router.replace({
+						name: VIEWS.ENTITY_UNAUTHORIZED,
+						params: { entityType: 'workflow' },
+					});
+				}
+
+				toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+
+				return router.push({
+					name: VIEWS.NEW_WORKFLOW,
+				});
 			}
 
-			await initializeWorkspaceForExistingWorkflow(workflowId.value);
+			await initializeWorkspaceForExistingWorkflow(workflowData);
 
 			void nextTick(() => {
 				updateNodesIssues();
@@ -455,59 +486,32 @@ async function initializeWorkspaceForNewWorkflow() {
 	fitView();
 }
 
-async function initializeWorkspaceForExistingWorkflow(id: string) {
-	try {
-		const workflowData = await workflowsStore.fetchWorkflow(id);
+async function initializeWorkspaceForExistingWorkflow(workflowData: IWorkflowDb) {
+	await openWorkflow(workflowData);
 
-		await openWorkflow(workflowData);
-
-		if (workflowData.parentFolder) {
-			workflowsStore.setParentFolder(workflowData.parentFolder);
-		}
-
-		if (workflowData.meta?.onboardingId) {
-			trackOpenWorkflowFromOnboardingTemplate();
-		}
-
-		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
-			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
-				workflowData.meta.templateId.split('-').pop() ?? '',
-			);
-		}
-
-		if (workflowData.meta?.templateId?.startsWith('37_onboarding_experiments_batch_aug11')) {
-			readyToRunWorkflowsStore.trackOpenWorkflow(
-				workflowData.meta.templateId.split('-').pop() ?? '',
-			);
-		}
-
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
-			workflowData.homeProject,
-			workflowData.sharedWithProjects,
-		);
-		void workflowsStore.fetchLastSuccessfulExecution();
-	} catch (error) {
-		if (error.httpStatusCode === 404) {
-			return await router.replace({
-				name: VIEWS.ENTITY_NOT_FOUND,
-				params: { entityType: 'workflow' },
-			});
-		}
-		if (error.httpStatusCode === 403) {
-			return await router.replace({
-				name: VIEWS.ENTITY_UNAUTHORIZED,
-				params: { entityType: 'workflow' },
-			});
-		}
-
-		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
-		void router.push({
-			name: VIEWS.NEW_WORKFLOW,
-		});
-	} finally {
-		uiStore.nodeViewInitialized = true;
-		initializedWorkflowId.value = workflowId.value;
+	if (workflowData.parentFolder) {
+		workflowsStore.setParentFolder(workflowData.parentFolder);
 	}
+
+	if (workflowData.meta?.onboardingId) {
+		trackOpenWorkflowFromOnboardingTemplate();
+	}
+
+	if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
+		aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
+			workflowData.meta.templateId.split('-').pop() ?? '',
+		);
+	}
+
+	if (workflowData.meta?.templateId?.startsWith('37_onboarding_experiments_batch_aug11')) {
+		readyToRunWorkflowsStore.trackOpenWorkflow(workflowData.meta.templateId.split('-').pop() ?? '');
+	}
+
+	await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+		workflowData.homeProject,
+		workflowData.sharedWithProjects,
+	);
+	void workflowsStore.fetchLastSuccessfulExecution();
 }
 
 function updateNodesIssues() {
