@@ -41,7 +41,14 @@ describe('ExecutionDataService', () => {
 			expect(result.data.resultData.error?.message).toBe(error.message);
 			expect(result.data.resultData.runData).toEqual({});
 			expect(result.data.resultData.lastNodeExecuted).toBeUndefined();
-			expect(result.data.executionData).toBeUndefined();
+			expect(result.data.executionData).toEqual({
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [],
+				runtimeData: undefined,
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			});
 		});
 	});
 });

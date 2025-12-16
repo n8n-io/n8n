@@ -51,6 +51,8 @@ interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
 
+export type RunnerStatus = { available: true } | { available: false; reason?: string };
+
 @Service()
 export abstract class TaskRequester {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
@@ -63,6 +65,8 @@ export abstract class TaskRequester {
 
 	private readonly executionIdsToTaskIds: Map<string, Set<string>> = new Map();
 
+	private readonly unavailableRunners: Map<string, string> = new Map();
+
 	constructor(
 		private readonly nodeTypes: NodeTypes,
 		private readonly eventService: EventService,
@@ -70,6 +74,15 @@ export abstract class TaskRequester {
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
 	) {}
+
+	setRunnerUnavailable(taskType: string, reason: string) {
+		this.unavailableRunners.set(taskType, reason);
+	}
+
+	getRunnerStatus(taskType: string): RunnerStatus {
+		const reason = this.unavailableRunners.get(taskType);
+		return reason ? { available: false, reason } : { available: true };
+	}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,

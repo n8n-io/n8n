@@ -795,6 +795,7 @@ describe('Request Helper Functions', () => {
 						refresh_token: 'new-refresh-token',
 					}),
 				}),
+				mockAdditionalData,
 			);
 		});
 
@@ -837,6 +838,7 @@ describe('Request Helper Functions', () => {
 						refresh_token: 'new-refresh-token',
 					}),
 				}),
+				mockAdditionalData,
 			);
 		});
 
@@ -876,6 +878,7 @@ describe('Request Helper Functions', () => {
 						refresh_token: 'new-refresh-token',
 					}),
 				}),
+				mockAdditionalData,
 			);
 		});
 

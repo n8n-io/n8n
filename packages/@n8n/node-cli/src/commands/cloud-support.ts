@@ -6,7 +6,7 @@ import picocolors from 'picocolors';
 
 import { suggestCloudSupportCommand, suggestLintCommand } from '../utils/command-suggestions';
 import { getPackageJson, updatePackageJson } from '../utils/package';
-import { ensureN8nPackage, onCancel, withCancelHandler } from '../utils/prompts';
+import { ensureN8nPackage, getCommandHeader, onCancel, withCancelHandler } from '../utils/prompts';
 
 export default class CloudSupport extends Command {
 	static override description = 'Enable or disable cloud support for this node';
@@ -41,7 +41,7 @@ export default class CloudSupport extends Command {
 	}
 
 	private async enableCloudSupport(workingDir: string): Promise<void> {
-		intro(picocolors.inverse(' n8n-node cloud-support enable '));
+		intro(await getCommandHeader('n8n-node cloud-support enable'));
 
 		await this.updateEslintConfig(workingDir, true);
 		log.success(`Updated ${picocolors.cyan('eslint.config.mjs')} to use default config`);
@@ -56,7 +56,7 @@ export default class CloudSupport extends Command {
 	}
 
 	private async disableCloudSupport(workingDir: string): Promise<void> {
-		intro(picocolors.inverse(' n8n-node cloud-support disable '));
+		intro(await getCommandHeader('n8n-node cloud-support disable'));
 
 		log.warning(`This will make your node ineligible for n8n Cloud verification!
 
@@ -115,7 +115,7 @@ export default configWithoutCloudSupport;
 	}
 
 	private async showCloudSupportStatus(workingDir: string): Promise<void> {
-		intro(picocolors.inverse(' n8n-node cloud-support '));
+		intro(await getCommandHeader('n8n-node cloud-support'));
 
 		try {
 			const packageJson = await getPackageJson(workingDir);

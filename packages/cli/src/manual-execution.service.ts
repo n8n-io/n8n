@@ -9,12 +9,11 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
 	IRun,
-	IRunExecutionData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
@@ -70,7 +69,7 @@ export class ManualExecutionService {
 			let waitingExecution: IWaitingForExecution = {};
 			let waitingExecutionSource: IWaitingForExecutionSource = {};
 
-			if (data.destinationNode !== data.triggerToStartFrom.name) {
+			if (data.destinationNode?.nodeName !== data.triggerToStartFrom.name) {
 				const recreatedStack = recreateNodeExecutionStack(
 					filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
 					new Set(startNodes),
@@ -82,16 +81,17 @@ export class ManualExecutionService {
 				waitingExecutionSource = recreatedStack.waitingExecutionSource;
 			}
 
-			const executionData: IRunExecutionData = {
-				resultData: { runData, pinData },
+			const executionData = createRunExecutionData({
+				resultData: {
+					runData,
+					pinData,
+				},
 				executionData: {
-					contextData: {},
-					metadata: {},
 					nodeExecutionStack,
 					waitingExecution,
 					waitingExecutionSource,
 				},
-			};
+			});
 
 			if (data.destinationNode) {
 				executionData.startData = { destinationNode: data.destinationNode };
@@ -119,10 +119,10 @@ export class ManualExecutionService {
 			const startNode = this.getExecutionStartNode(data, workflow);
 
 			if (data.destinationNode) {
-				const destinationNode = workflow.getNode(data.destinationNode);
+				const destinationNode = workflow.getNode(data.destinationNode.nodeName);
 				a.ok(
 					destinationNode,
-					`Could not find a node named "${data.destinationNode}" in the workflow.`,
+					`Could not find a node named "${data.destinationNode.nodeName}" in the workflow.`,
 				);
 
 				const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -147,7 +147,8 @@ export class ManualExecutionService {
 						data.executionData.startData.originalDestinationNode = data.destinationNode;
 					}
 					// Set destination to Tool Executor
-					data.destinationNode = TOOL_EXECUTOR_NODE_NAME;
+					// TODO(CAT-1265): Verify that this works as expected with inclusive mode.
+					data.destinationNode = { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' };
 				}
 			}
 

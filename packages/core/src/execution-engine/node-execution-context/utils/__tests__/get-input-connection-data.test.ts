@@ -685,9 +685,9 @@ describe('makeHandleToolInvocation', () => {
 			connectedNodeType,
 			runExecutionData,
 		);
-		const result = await handleToolInvocation(toolArgs);
+		const result = handleToolInvocation(toolArgs);
 
-		expect(result).toBe('Error during node execution: Execution failed');
+		await expect(result).rejects.toThrow('Execution failed');
 		expect(mockContext.addOutputData).toHaveBeenCalledWith(
 			NodeConnectionTypes.AiTool,
 			0,
@@ -774,11 +774,12 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			const result = await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
+
+			await expect(result).rejects.toThrow('Test error');
 
 			expect(contextFactory).toHaveBeenCalledTimes(1);
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
-			expect(result).toContain('Error during node execution');
 		});
 
 		it('should retry up to maxTries when retryOnFail is true', async () => {
@@ -799,11 +800,11 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			const result = await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
 
+			await expect(result).rejects.toThrow('Test error');
 			expect(contextFactory).toHaveBeenCalledTimes(3);
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(3);
-			expect(result).toContain('Error during node execution');
 		});
 
 		it('should succeed on retry after initial failure', async () => {
@@ -861,7 +862,8 @@ describe('makeHandleToolInvocation', () => {
 					runExecutionData,
 				);
 
-				await handleToolInvocation(toolArgs);
+				const result = handleToolInvocation(toolArgs);
+				await expect(result).rejects.toThrow('Test error');
 
 				expect(connectedNodeType.execute).toHaveBeenCalledTimes(expected);
 			}
@@ -889,7 +891,9 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
+
+			await expect(result).rejects.toThrow('Test error');
 
 			expect(sleepWithAbortSpy).toHaveBeenCalledWith(1500, undefined);
 			sleepWithAbortSpy.mockRestore();
@@ -998,9 +1002,9 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			const result = await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
 
-			expect(result).toBe('Error during node execution: Execution was cancelled');
+			await expect(result).rejects.toThrow('Execution was cancelled');
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
 		});
 

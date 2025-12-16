@@ -5,6 +5,12 @@ import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { programmaticValidation } from '@/validation/programmatic';
+import type {
+	ProgrammaticViolation,
+	ProgrammaticChecksResult,
+	TelemetryValidationStatus,
+} from '@/validation/types';
+import { PROGRAMMATIC_VIOLATION_NAMES } from '@/validation/types';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
@@ -18,6 +24,26 @@ export const VALIDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'validate_workflow',
 	displayTitle: 'Validating workflow',
 };
+
+/**
+ * Creates a compacted validation result for use in telemetry
+ * @returns `{ X: 'pass' | 'fail', Y: 'pass' | 'fail', ... }`
+ */
+function collectValidationResultForTelemetry(
+	results: ProgrammaticChecksResult,
+): TelemetryValidationStatus {
+	const status = Object.fromEntries(
+		PROGRAMMATIC_VIOLATION_NAMES.map((name) => [name, 'pass' as const]),
+	) as TelemetryValidationStatus;
+
+	Object.values(results).forEach((violations: ProgrammaticViolation[]) => {
+		violations?.forEach((violation) => {
+			status[violation.name] = 'fail';
+		});
+	});
+
+	return status;
+}
 
 export function createValidateWorkflowTool(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -45,12 +71,15 @@ export function createValidateWorkflowTool(
 					parsedNodeTypes,
 				);
 
+				const validationResultForTelemetry = collectValidationResultForTelemetry(violations);
+
 				const message = formatWorkflowValidation(violations);
 
 				reporter.complete({ message });
 
 				return createSuccessResponse(config, message, {
 					workflowValidation: violations,
+					validationHistory: [validationResultForTelemetry],
 				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {

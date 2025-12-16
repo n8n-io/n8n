@@ -1,5 +1,12 @@
 import { ChatHubProvider } from '@n8n/api-types';
-import { WithTimestamps, DateTimeColumn, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
+import {
+	JsonColumn,
+	WithTimestamps,
+	DateTimeColumn,
+	User,
+	CredentialsEntity,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -9,8 +16,10 @@ import {
 	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
+import type { INode } from 'n8n-workflow';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
+import type { ChatHubAgent } from './chat-hub-agent.entity';
 
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestamps {
@@ -86,13 +95,19 @@ export class ChatHubSession extends WithTimestamps {
 	 * ID of the custom agent to use (if applicable).
 	 * Only set when provider is 'custom-agent'.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	agentId: string | null;
 
-	/*
-	 * Cached name of the custom agent to use (if applicable).
-	 * In case agent gets deleted
-	 * Only set when provider is 'custom-agent'.
+	/**
+	 * Custom n8n agent workflow to use (if applicable)
+	 */
+	@ManyToOne('ChatHubAgent', { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'agentId' })
+	agent?: Relation<ChatHubAgent> | null;
+
+	/**
+	 * Cached display name of the agent/model.
+	 * Used for all providers (LLM providers, custom agents, and n8n workflows).
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	agentName: string | null;
@@ -102,4 +117,10 @@ export class ChatHubSession extends WithTimestamps {
 	 */
 	@OneToMany('ChatHubMessage', 'session')
 	messages?: Array<Relation<ChatHubMessage>>;
+
+	/**
+	 * The tools available to the agent as JSON `INode` definitions.
+	 */
+	@JsonColumn({ default: '[]' })
+	tools: INode[];
 }
