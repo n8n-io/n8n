@@ -2,11 +2,9 @@
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { VIEWS } from '@/app/constants';
 import { N8nText } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import ChatAgentSearchSort from '@/features/ai/chatHub/components/ChatAgentSearchSort.vue';
-import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
 import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
@@ -19,17 +17,14 @@ import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCar
 import { useI18n } from '@n8n/i18n';
 
 const chatStore = useChatStore();
-const usersStore = useUsersStore();
 const router = useRouter();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const i18n = useI18n();
 
 const agentFilter = ref<ChatAgentFilter>({ search: '', sortBy: 'updatedAt' });
 
-const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
-
-const readyToShowList = computed(() => chatStore.agentsReady);
-const allModels = computed(() => chatStore.agents.n8n.models);
+const readyToShowList = computed(() => !!chatStore.agents.n8n);
+const allModels = computed(() => chatStore.agents.n8n?.['']?.models ?? []);
 const agents = computed(() => filterAndSortAgents(allModels.value, agentFilter.value));
 
 async function handleEditAgent(model: ChatHubConversationModel) {
@@ -46,15 +41,9 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 	}
 }
 
-watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) {
-			void chatStore.fetchAgents(credentials, { minLoadingTime: 250 });
-		}
-	},
-	{ immediate: true },
-);
+onMounted(() => {
+	void chatStore.fetchAgents('n8n', null, { minLoadingTime: 250 });
+});
 </script>
 
 <template>

@@ -1,7 +1,6 @@
 import {
 	chatHubProviderSchema,
 	type ChatHubConversationModel,
-	type ChatModelsResponse,
 	type ChatHubSessionDto,
 	type ChatModelDto,
 	type ChatSessionId,
@@ -18,15 +17,22 @@ import type {
 	ChatStreamingState,
 	FlattenedModel,
 	ChatConversation,
+	ChatModelsResponse,
+	CredentialsMap,
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
-export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
+export function findOneFromModelsResponse(
+	response: ChatModelsResponse,
+	credentials: CredentialsMap | null,
+): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
-		if (response[provider].models.length > 0) {
-			return response[provider].models[0];
+		const key = isLlmProvider(provider) ? '' : (credentials?.[provider] ?? '');
+
+		if ((response[provider]?.[key]?.models ?? []).length > 0) {
+			return response[provider]?.[key]?.models[0];
 		}
 	}
 

@@ -2,8 +2,7 @@ import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ChatHubSendMessageRequest,
-	ChatModelsRequest,
-	ChatModelsResponse,
+	ChatModelDto,
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
 	ChatHubRegenerateMessageRequest,
@@ -16,6 +15,7 @@ import type {
 	ChatHubUpdateConversationRequest,
 	EnrichedStructuredChunk,
 	ChatHubLLMProvider,
+	ChatHubProvider,
 } from '@n8n/api-types';
 import type { ChatProviderSettingsDto } from '@n8n/api-types';
 
@@ -24,10 +24,12 @@ const STREAM_SEPARATOR = '\n';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
-	payload: ChatModelsRequest,
-): Promise<ChatModelsResponse> => {
-	const apiEndpoint = '/chat/models';
-	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
+	provider: ChatHubProvider,
+	credentialId: string | null,
+): Promise<ChatModelDto[]> => {
+	const queryParams = credentialId ? `?credentialId=${encodeURIComponent(credentialId)}` : '';
+	const apiEndpoint = `/chat/models/${provider}${queryParams}`;
+	return await makeRestApiRequest<ChatModelDto[]>(context, 'GET', apiEndpoint);
 };
 
 export function sendMessageApi(

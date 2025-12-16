@@ -213,16 +213,6 @@ export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
 
-/**
- * Request schema for fetching available chat models
- * Maps provider names to credential IDs (null if no credential available)
- */
-export const chatModelsRequestSchema = z.object({
-	credentials: z.record(chatHubProviderSchema, z.string().nullable()),
-});
-
-export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
-
 export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
 
 export interface ChatModelMetadataDto {
@@ -242,37 +232,6 @@ export interface ChatModelDto {
 	createdAt: string | null;
 	metadata: ChatModelMetadataDto;
 }
-
-/**
- * Response type for fetching available chat models
- */
-export type ChatModelsResponse = Record<
-	ChatHubProvider,
-	{
-		models: ChatModelDto[];
-		error?: string;
-	}
->;
-
-export const emptyChatModelsResponse: ChatModelsResponse = {
-	openai: { models: [] },
-	anthropic: { models: [] },
-	google: { models: [] },
-	azureOpenAi: { models: [] },
-	azureEntraId: { models: [] },
-	ollama: { models: [] },
-	awsBedrock: { models: [] },
-	vercelAiGateway: { models: [] },
-	xAiGrok: { models: [] },
-	groq: { models: [] },
-	openRouter: { models: [] },
-	deepSeek: { models: [] },
-	cohere: { models: [] },
-	mistralCloud: { models: [] },
-	n8n: { models: [] },
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'custom-agent': { models: [] },
-};
 
 /**
  * Chat attachment schema for incoming requests.

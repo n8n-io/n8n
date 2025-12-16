@@ -197,6 +197,8 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	});
 });
 
+const selectedProvider = computed(() => selectedModel.value?.model.provider ?? null);
+
 const customAgentId = computed(() =>
 	selectedModel.value?.model.provider === 'custom-agent'
 		? selectedModel.value.model.agentId
@@ -247,9 +249,12 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 		};
 	},
 );
+const credentialIdForSelectedProvider = computed<string | null>(
+	() => Object.values(credentialsForSelectedProvider.value ?? {})[0]?.id ?? null,
+);
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
 const issue = computed<null | 'missingCredentials' | 'missingAgent'>(() => {
-	if (!chatStore.agentsReady) {
+	if (selectedModel.value && !chatStore.agents[selectedModel.value.model.provider]) {
 		return null;
 	}
 
@@ -324,7 +329,7 @@ watch(
 			return;
 		}
 
-		const model = findOneFromModelsResponse(models) ?? null;
+		const model = findOneFromModelsResponse(models, credentialsByProvider.value) ?? null;
 
 		if (model) {
 			void handleSelectAgent(model);
@@ -370,10 +375,10 @@ watch(
 
 // Reload models when credentials are updated
 watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) {
-			void chatStore.fetchAgents(credentials);
+	[selectedProvider, credentialIdForSelectedProvider],
+	([provider, cred]) => {
+		if (provider && cred) {
+			void chatStore.fetchAgents(provider, cred);
 		}
 	},
 	{ immediate: true },

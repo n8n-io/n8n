@@ -156,13 +156,13 @@ async function loadSettings() {
 async function loadAvailableModels(credentialId: string) {
 	loadingModels.value = true;
 	try {
-		const credentials = {
-			[props.data.provider]: credentialId,
-		};
+		const response = await fetchChatModelsApi(
+			useRootStore().restApiContext,
+			props.data.provider,
+			credentialId,
+		);
 
-		const response = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
-
-		availableModels.value = response[props.data.provider].models || [];
+		availableModels.value = response;
 	} catch (error) {
 		toast.showError(
 			error,

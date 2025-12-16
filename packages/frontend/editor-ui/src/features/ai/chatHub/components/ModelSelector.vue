@@ -2,13 +2,16 @@
 import { computed, useCssModule, useTemplateRef } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
+import {
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatHubLLMProviderSchema,
+	chatHubProviderSchema,
+} from '@n8n/api-types';
 import type {
 	ChatHubProvider,
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatHubConversationModel,
-	ChatModelsResponse,
 } from '@n8n/api-types';
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -36,6 +39,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
+import { useChatStore } from '../chat.store';
+import { watch } from 'vue';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 const MAX_AGENT_NAME_CHARS = 30;
@@ -47,16 +52,12 @@ const {
 	credentials,
 	text,
 	warnMissingCredentials = false,
-	agents,
-	isLoading,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
 	warnMissingCredentials?: boolean;
-	agents: ChatModelsResponse;
-	isLoading: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -81,6 +82,7 @@ const credentialsStore = useCredentialsStore();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
 const styles = useCssModule();
+const chatStore = useChatStore();
 
 const credentialsName = computed(() =>
 	selectedAgent
@@ -105,13 +107,13 @@ const menu = computed(() => {
 		// Create submenu items for each project
 		const n8nAgentsSubmenu: (typeof N8nNavigationDropdown)['menu'] = [];
 
-		if (isLoading) {
+		if (!chatStore.agents.n8n?.['']) {
 			n8nAgentsSubmenu.push({
 				id: 'loading',
 				title: i18n.baseText('generic.loadingEllipsis'),
 				disabled: true,
 			});
-		} else if (agents.n8n.models.length === 0) {
+		} else if ((chatStore.agents.n8n?.['']?.models ?? []).length === 0) {
 			n8nAgentsSubmenu.push({
 				id: 'no-agents',
 				title: i18n.baseText('chatHub.workflowAgents.empty.noAgents'),
@@ -119,7 +121,7 @@ const menu = computed(() => {
 			});
 		} else {
 			n8nAgentsSubmenu.push(
-				...agents.n8n.models.map((agent) => {
+				...(chatStore.agents.n8n?.['']?.models ?? []).map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {
@@ -136,9 +138,10 @@ const menu = computed(() => {
 			);
 		}
 
-		const customAgents = isLoading
+		const isPersonalAgentsLoading = !chatStore.agents['custom-agent']?.[''];
+		const customAgents = isPersonalAgentsLoading
 			? []
-			: agents['custom-agent'].models.map((agent) => {
+			: (chatStore.agents['custom-agent']?.['']?.models ?? []).map((agent) => {
 					const id = stringifyModel(agent.model);
 					fullNamesMap[id] = agent.name;
 					return {
@@ -160,7 +163,7 @@ const menu = computed(() => {
 			iconSize: 'large',
 			iconMargin: false,
 			submenu: [
-				...(isLoading
+				...(isPersonalAgentsLoading
 					? [
 							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
 							{ isDivider: true as const, id: 'divider' },
@@ -192,6 +195,8 @@ const menu = computed(() => {
 
 	for (const provider of chatHubLLMProviderSchema.options) {
 		const settings = settingStore.moduleSettings?.['chat-hub']?.providers[provider];
+		const key = credentials?.[provider] ?? '';
+		const isLoading = !chatStore.agents[provider]?.[credentials?.[provider] ?? ''];
 
 		// Filter out disabled providers from the menu
 		if (settings && !settings.enabled) continue;
@@ -220,7 +225,7 @@ const menu = computed(() => {
 			continue;
 		}
 
-		const theAgents = [...agents[provider].models];
+		const theAgents = [...(chatStore.agents[provider]?.[key]?.models ?? [])];
 
 		// Add any manually defined models in settings
 		for (const model of settings?.allowedModels ?? []) {
@@ -247,7 +252,7 @@ const menu = computed(() => {
 			}
 		}
 
-		const error = agents[provider].error;
+		const error = chatStore.agents[provider]?.[key]?.error;
 		const agentOptions =
 			theAgents.length > 0
 				? theAgents
@@ -374,6 +379,21 @@ function onSelect(id: string) {
 
 	emit('change', parsedModel);
 }
+
+// Update agents when credentials are updated
+watch(
+	() => credentials,
+	(cred, prevCred) => {
+		for (const provider of chatHubProviderSchema.options) {
+			if (prevCred === cred) {
+				continue;
+			}
+
+			void chatStore.fetchAgents(provider, cred?.[provider] ?? null);
+		}
+	},
+	{ immediate: true },
+);
 
 onClickOutside(
 	computed(() => dropdownRef.value?.$el),

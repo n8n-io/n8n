@@ -14,9 +14,8 @@ import type {
 } from '@n8n/api-types';
 import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, useTemplateRef, watch, ref } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
-import { useChatStore } from '../chat.store';
 
 const { isNewSession, selectedModel, credentials, readyToShowModelSelector } = defineProps<{
 	isNewSession: boolean;
@@ -38,9 +37,6 @@ const sidebar = useChatHubSidebarState();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
 const i18n = useI18n();
-const chatStore = useChatStore();
-
-const isLoadingAgents = ref(false);
 
 const showOpenWorkflow = computed(() => {
 	return (
@@ -64,22 +60,6 @@ function onNewChat() {
 
 	void router.push({ name: CHAT_VIEW, force: true });
 }
-
-// Update agents when credentials are updated
-watch(
-	() => credentials,
-	async (creds) => {
-		if (creds) {
-			isLoadingAgents.value = true;
-			try {
-				await chatStore.fetchAgents(creds);
-			} finally {
-				isLoadingAgents.value = false;
-			}
-		}
-	},
-	{ immediate: true },
-);
 
 defineExpose({
 	openModelSelector: () => modelSelectorRef.value?.open(),
@@ -109,8 +89,6 @@ defineExpose({
 				:selected-agent="selectedModel"
 				:credentials="credentials"
 				text
-				:agents="chatStore.agents"
-				:is-loading="isLoadingAgents"
 				@change="onModelChange"
 				@create-custom-agent="emit('createCustomAgent')"
 				@select-credential="

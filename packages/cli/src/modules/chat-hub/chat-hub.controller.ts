@@ -1,6 +1,6 @@
 import {
 	ChatHubSendMessageRequest,
-	ChatModelsResponse,
+	ChatModelDto,
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
@@ -12,6 +12,7 @@ import {
 	ChatHubUpdateAgentRequest,
 	ChatHubConversationsRequest,
 	ViewableMimeTypes,
+	ChatHubProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -50,14 +51,19 @@ export class ChatHubController {
 		private readonly logger: Logger,
 	) {}
 
-	@Post('/models')
+	@Get('/models/:provider')
 	@GlobalScope('chatHub:message')
-	async getModels(
+	async getProviderModels(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body payload: ChatModelsRequestDto,
-	): Promise<ChatModelsResponse> {
-		return await this.chatModelsService.getModels(req.user, payload.credentials);
+		@Param('provider') provider: ChatHubProvider,
+		@Query query: ChatModelsRequestDto,
+	): Promise<ChatModelDto[]> {
+		return await this.chatModelsService.getModelsForProvider(
+			req.user,
+			provider,
+			query.credentialId ?? null,
+		);
 	}
 
 	@Get('/conversations')

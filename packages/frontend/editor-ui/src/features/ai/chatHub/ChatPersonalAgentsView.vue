@@ -4,7 +4,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { N8nButton, N8nText } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import ChatAgentSearchSort from '@/features/ai/chatHub/components/ChatAgentSearchSort.vue';
@@ -32,8 +32,9 @@ const agentFilter = ref<ChatAgentFilter>({ search: '', sortBy: 'updatedAt' });
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
-const readyToShowList = computed(() => chatStore.agentsReady);
-const allModels = computed(() => chatStore.agents['custom-agent'].models);
+const readyToShowList = computed(() => !!chatStore.agents['custom-agent']);
+const allModels = computed(() => chatStore.agents['custom-agent']?.['']?.models ?? []);
+
 const agents = computed(() => filterAndSortAgents(allModels.value, agentFilter.value));
 
 function handleCreateAgent() {
@@ -72,22 +73,16 @@ async function handleDeleteAgent(agentId: string) {
 	}
 
 	try {
-		await chatStore.deleteCustomAgent(agentId, credentialsByProvider.value);
+		await chatStore.deleteCustomAgent(agentId);
 		toast.showMessage({ type: 'success', title: i18n.baseText('chatHub.agents.delete.success') });
 	} catch (error) {
 		toast.showError(error, i18n.baseText('chatHub.agents.delete.error'));
 	}
 }
 
-watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) {
-			void chatStore.fetchAgents(credentials, { minLoadingTime: 250 });
-		}
-	},
-	{ immediate: true },
-);
+onMounted(() => {
+	void chatStore.fetchAgents('custom-agent', null);
+});
 </script>
 
 <template>

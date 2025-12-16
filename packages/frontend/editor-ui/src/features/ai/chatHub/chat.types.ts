@@ -110,3 +110,7 @@ export type ChatHubConversationModelWithCachedDisplayName = z.infer<
 export interface FetchOptions {
 	minLoadingTime?: number;
 }
+
+export type ChatModelsResponse = Partial<
+	Record<ChatHubProvider, Partial<Record<string, { models: ChatModelDto[]; error?: string }>>>
+>;

@@ -25,10 +25,8 @@ import {
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
-	emptyChatModelsResponse,
 	type ChatHubConversationModel,
 	type ChatHubSendMessageRequest,
-	type ChatModelsResponse,
 	type ChatHubSessionDto,
 	type ChatMessageId,
 	type ChatSessionId,
@@ -42,13 +40,14 @@ import {
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
 	type AgentIconOrEmoji,
+	type ChatHubProvider,
 } from '@n8n/api-types';
 import type {
-	CredentialsMap,
 	ChatMessage,
 	ChatConversation,
 	ChatStreamingState,
 	FetchOptions,
+	ChatModelsResponse,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -58,6 +57,7 @@ import {
 	isMatchedAgent,
 	createAiMessageFromStreamingState,
 	flattenModel,
+	isLlmProvider,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -71,7 +71,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
 
-	const agents = ref<ChatModelsResponse | null>(null);
+	const agents = ref<ChatModelsResponse>({});
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
@@ -291,14 +291,41 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message.updatedAt = new Date().toISOString();
 	}
 
-	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
-		[agents.value] = await Promise.all([
-			fetchChatModelsApi(rootStore.restApiContext, {
-				credentials: credentialMap,
-			}),
-			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
-		]);
-		return agents.value;
+	async function fetchAgents(
+		provider: ChatHubProvider,
+		credentialId: string | null,
+		options: FetchOptions = {},
+	) {
+		if (
+			isLlmProvider(provider) &&
+			credentialId === null &&
+			!!agents.value[provider]?.[credentialId ?? '']
+		) {
+			return;
+		}
+
+		try {
+			const [models] = await Promise.all([
+				isLlmProvider(provider) && credentialId === null
+					? Promise.resolve([])
+					: fetchChatModelsApi(rootStore.restApiContext, provider, credentialId),
+				new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
+			]);
+
+			agents.value[provider] ??= {};
+			agents.value[provider][credentialId ?? ''] = { models };
+		} catch (error) {
+			agents.value[provider] ??= {};
+			agents.value[provider][credentialId ?? ''] = {
+				models: [],
+				error:
+					error instanceof ResponseError && error.httpStatusCode && error.httpStatusCode < 500
+						? error.message
+						: i18n.baseText('generic.unknownError'),
+			};
+		}
+
+		return agents.value[provider];
 	}
 
 	async function fetchSessions(reset: boolean, options: FetchOptions = {}) {
@@ -783,19 +810,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function getCustomAgent(agentId: string) {
-		return agents.value?.['custom-agent'].models.find(
+		return agents.value['custom-agent']?.['']?.models.find(
 			(model) => 'agentId' in model && model.agentId === agentId,
 		);
 	}
 
-	async function createCustomAgent(
-		payload: ChatHubCreateAgentRequest,
-		credentials: CredentialsMap,
-	): Promise<ChatModelDto> {
+	async function createCustomAgent(payload: ChatHubCreateAgentRequest): Promise<ChatModelDto> {
 		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
-		const baseModel = agents.value?.[customAgent.provider]?.models.find(
-			(model) => model.name === customAgent.model,
-		);
+		const baseModel = Object.values(agents.value[customAgent.provider] ?? {})
+			.flatMap((e) => e?.models ?? [])
+			.find((model) => model.name === customAgent.model);
 		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
@@ -812,10 +836,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				available: true,
 			},
 		};
-		agents.value?.['custom-agent'].models.push(agent);
+		agents.value ??= {};
+		agents.value['custom-agent'] ??= {};
+		agents.value['custom-agent'][''] ??= { models: [] };
+		agents.value['custom-agent'][''].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
 
-		await fetchAgents(credentials);
+		await fetchAgents('custom-agent', null);
 
 		telemetry.track('User created agent', { ...flattenModel(payload) });
 
@@ -825,48 +852,48 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function updateCustomAgent(
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
-		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
 		const customAgent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
 
 		// Update the agent in models as well
-		if (agents.value?.['custom-agent']) {
-			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
-				'agentId' in model && model.agentId === agentId
-					? { ...model, name: customAgent.name }
-					: model,
+		if (agents.value['custom-agent']?.['']) {
+			agents.value['custom-agent'][''].models = agents.value['custom-agent'][''].models.map(
+				(model) =>
+					'agentId' in model && model.agentId === agentId
+						? { ...model, name: customAgent.name }
+						: model,
 			);
 		}
 
 		customAgents.value[agentId] = customAgent;
 
-		await fetchAgents(credentials);
+		await fetchAgents('custom-agent', null);
 
 		return customAgent;
 	}
 
-	async function deleteCustomAgent(agentId: string, credentials: CredentialsMap) {
+	async function deleteCustomAgent(agentId: string) {
 		await deleteAgentApi(rootStore.restApiContext, agentId);
 
 		// Remove the agent from models as well
-		if (agents.value?.['custom-agent']) {
-			agents.value['custom-agent'].models = agents.value['custom-agent'].models.filter(
+		if (agents.value?.['custom-agent']?.['']) {
+			agents.value['custom-agent'][''].models = agents.value['custom-agent']['']?.models.filter(
 				(model) => !('agentId' in model) || model.agentId !== agentId,
 			);
 		}
 
 		delete customAgents.value[agentId];
 
-		await fetchAgents(credentials);
+		await fetchAgents('custom-agent', null);
 	}
 
 	function getAgent(
 		model: ChatHubConversationModel,
 		fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
 	): ChatModelDto {
-		const agent = agents.value?.[model.provider]?.models.find((candidate) =>
-			isMatchedAgent(candidate, model),
-		);
+		const agent = Object.values(agents.value?.[model.provider] ?? {})
+			.flatMap((e) => e?.models ?? [])
+			.find((candidate) => isMatchedAgent(candidate, model));
 
 		if (agent) {
 			return agent;
@@ -929,8 +956,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * models and agents
 		 */
-		agents: computed(() => agents.value ?? emptyChatModelsResponse),
-		agentsReady: computed(() => agents.value !== null),
+		agents: computed(() => agents.value),
 		customAgents,
 		getAgent,
 		fetchAgents,

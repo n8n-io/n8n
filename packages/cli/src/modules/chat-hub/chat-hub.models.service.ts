@@ -1,11 +1,8 @@
 import {
-	chatHubProviderSchema,
-	emptyChatModelsResponse,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubLLMProvider,
 	type ChatHubProvider,
 	type ChatModelDto,
-	type ChatModelsResponse,
 } from '@n8n/api-types';
 import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -22,6 +19,7 @@ import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { chatTriggerParamsShape } from './chat-hub.types';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -37,61 +35,36 @@ export class ChatHubModelsService {
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 	) {}
 
-	async getModels(
+	async getModelsForProvider(
 		user: User,
-		credentialIds: Record<ChatHubLLMProvider, string | null>,
-	): Promise<ChatModelsResponse> {
+		provider: ChatHubProvider,
+		credentialId: string | null,
+	): Promise<ChatModelDto[]> {
 		const additionalData = await getBase({ userId: user.id });
-		const providers = chatHubProviderSchema.options;
+		const credentials: INodeCredentials = {};
 
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
+		if (provider !== 'n8n' && provider !== 'custom-agent') {
+			if (!credentialId) {
+				return [];
+			}
 
-		const responses = await Promise.all(
-			providers.map<Promise<[ChatHubProvider, ChatModelsResponse[ChatHubProvider]]>>(
-				async (provider: ChatHubProvider) => {
-					const credentials: INodeCredentials = {};
+			// Ensure the user has the permission to read the credential
+			const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+				'credential:read',
+			]);
 
-					if (provider !== 'n8n' && provider !== 'custom-agent') {
-						const credentialId = credentialIds[provider];
-						if (!credentialId) {
-							return [provider, { models: [] }];
-						}
+			if (!allCredentials.some((credential) => credential.id === credentialId)) {
+				throw new BadRequestError('Could not retrieve models. Verify credentials.');
+			}
 
-						// Ensure the user has the permission to read the credential
-						if (!allCredentials.some((credential) => credential.id === credentialId)) {
-							return [
-								provider,
-								{ models: [], error: 'Could not retrieve models. Verify credentials.' },
-							];
-						}
+			credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]] = { name: '', id: credentialId };
+		}
 
-						credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]] = { name: '', id: credentialId };
-					}
-
-					try {
-						return [
-							provider,
-							await this.fetchModelsForProvider(user, provider, credentials, additionalData),
-						];
-					} catch {
-						return [
-							provider,
-							{ models: [], error: 'Could not retrieve models. Verify credentials.' },
-						];
-					}
-				},
-			),
-		);
-
-		return responses.reduce<ChatModelsResponse>(
-			(acc, [provider, res]) => {
-				acc[provider] = res;
-				return acc;
-			},
-			{ ...emptyChatModelsResponse },
-		);
+		try {
+			return await this.fetchModelsForProvider(user, provider, credentials, additionalData);
+		} catch (error) {
+			throw new BadRequestError('Could not retrieve models. Verify credentials.');
+		}
 	}
 
 	private async fetchModelsForProvider(
@@ -99,68 +72,68 @@ export class ChatHubModelsService {
 		provider: ChatHubProvider,
 		credentials: INodeCredentials,
 		additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse[ChatHubProvider]> {
+	): Promise<ChatModelDto[]> {
 		switch (provider) {
 			case 'openai': {
 				const rawModels = await this.fetchOpenAiModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'openai') };
+				return this.transformAndFilterModels(rawModels, 'openai');
 			}
 			case 'anthropic': {
 				const rawModels = await this.fetchAnthropicModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'anthropic') };
+				return this.transformAndFilterModels(rawModels, 'anthropic');
 			}
 			case 'google': {
 				const rawModels = await this.fetchGoogleModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'google') };
+				return this.transformAndFilterModels(rawModels, 'google');
 			}
 			case 'ollama': {
 				const rawModels = await this.fetchOllamaModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'ollama') };
+				return this.transformAndFilterModels(rawModels, 'ollama');
 			}
 			case 'azureOpenAi': {
 				const rawModels = this.fetchAzureOpenAiModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'azureOpenAi') };
+				return this.transformAndFilterModels(rawModels, 'azureOpenAi');
 			}
 			case 'azureEntraId': {
 				const rawModels = this.fetchAzureEntraIdModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'azureEntraId') };
+				return this.transformAndFilterModels(rawModels, 'azureEntraId');
 			}
 			case 'awsBedrock': {
 				const rawModels = await this.fetchAwsBedrockModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'awsBedrock') };
+				return this.transformAndFilterModels(rawModels, 'awsBedrock');
 			}
 			case 'vercelAiGateway': {
 				const rawModels = await this.fetchVercelAiGatewayModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'vercelAiGateway') };
+				return this.transformAndFilterModels(rawModels, 'vercelAiGateway');
 			}
 			case 'xAiGrok': {
 				const rawModels = await this.fetchXAiGrokModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'xAiGrok') };
+				return this.transformAndFilterModels(rawModels, 'xAiGrok');
 			}
 			case 'groq': {
 				const rawModels = await this.fetchGroqModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'groq') };
+				return this.transformAndFilterModels(rawModels, 'groq');
 			}
 			case 'openRouter': {
 				const rawModels = await this.fetchOpenRouterModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'openRouter') };
+				return this.transformAndFilterModels(rawModels, 'openRouter');
 			}
 			case 'deepSeek': {
 				const rawModels = await this.fetchDeepSeekModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'deepSeek') };
+				return this.transformAndFilterModels(rawModels, 'deepSeek');
 			}
 			case 'cohere': {
 				const rawModels = await this.fetchCohereModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'cohere') };
+				return this.transformAndFilterModels(rawModels, 'cohere');
 			}
 			case 'mistralCloud': {
 				const rawModels = await this.fetchMistralCloudModels(credentials, additionalData);
-				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
+				return this.transformAndFilterModels(rawModels, 'mistralCloud');
 			}
 			case 'n8n':
-				return { models: await this.fetchAgentWorkflowsAsModels(user) };
+				return await this.fetchAgentWorkflowsAsModels(user);
 			case 'custom-agent':
-				return { models: await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id) };
+				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
 		}
 	}
 

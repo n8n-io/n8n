@@ -98,7 +98,9 @@ export function useChatHubCommands(options: {
 	const filteredModels = computed<ChatModelDto[]>(() => {
 		const trimmed = (lastQuery.value || '').trim().toLowerCase();
 
-		const allModels = Object.values(chatStore.agents).flatMap((available) => available.models);
+		const allModels = Object.values(chatStore.agents).flatMap((available) =>
+			Object.values(available).flatMap((e) => e?.models ?? []),
+		); // TODO: this will cause duplicate models if more than one credentials exist per provider
 
 		if (!trimmed) {
 			return allModels;
