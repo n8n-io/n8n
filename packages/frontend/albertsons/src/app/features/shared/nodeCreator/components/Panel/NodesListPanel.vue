@@ -22,7 +22,7 @@ import { useViewStacks } from '@/features/shared/nodeCreator/composables/useView
 import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
 import SearchBar from '@/features/shared/nodeCreator/components/Panel/SearchBar.vue';
 import ActionsRenderer from '@/features/shared/nodeCreator/components/Modes/ActionsMode.vue';
-import NodesRenderer from '@/features/shared/nodeCreator/components/Modes/NodesMode.vue';
+import NodesRenderer from '@src/app/features/shared/nodeCreator/components/Modes/NodesMode.vue';
 import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/app/composables/useDebounce';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -34,6 +34,7 @@ import CommunityNodeFooter from '@/features/settings/communityNodes/components/n
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
+import { WHITELISTED_NODES } from '@src/utils/whitelistNodes';
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
 
@@ -142,14 +143,18 @@ watch(
 			console.warn(`No view found for ${itemKey}`);
 			return;
 		}
+		// Original view
 		const view = matchedView(mergedNodes);
-
-		console.log('>>>views 22222-----', view?.items);
+		console.log('>>>ORIGINAL NODES : ', view?.items);
+		const whitelistedNodes = view?.items?.filter((item: any) => {
+			return WHITELISTED_NODES.includes(item.key);
+		});
+		console.log('>>>WHITELISTED NODES : ', whitelistedNodes);
 
 		pushViewStack({
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
-			items: view.items as INodeCreateElement[],
+			items: whitelistedNodes as INodeCreateElement[],
 			info: view.info,
 			hasSearch: true,
 			mode: 'nodes',
