@@ -249,13 +249,23 @@ export function prepareReturnItem(
 ) {
 	const jsonValues: AssignmentCollectionValue['assignments'] = [];
 	const binaryValues: AssignmentCollectionValue['assignments'] = [];
+	const { binaryMode } = context.getWorkflowSettings();
 
 	for (const assignment of value?.assignments ?? []) {
 		if (assignment.type === 'binary') {
-			binaryValues.push(assignment);
-		} else {
-			jsonValues.push(assignment);
+			// in not 'combined' mode push to binary assignments
+			if (binaryMode !== 'combined') {
+				binaryValues.push(assignment);
+				continue;
+			}
+			// if binary data has no id push to binary assignments so binary data be converted later
+			if (isBinaryData(assignment.value) && !assignment.value.id) {
+				binaryValues.push(assignment);
+				continue;
+			}
 		}
+
+		jsonValues.push(assignment);
 	}
 
 	const newData = Object.fromEntries(

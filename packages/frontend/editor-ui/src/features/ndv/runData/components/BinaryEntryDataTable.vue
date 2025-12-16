@@ -27,8 +27,9 @@ const tablePreview = computed(() => {
 
 const fileName = computed(() => {
 	const { fileName, fileExtension } = props.value;
-	if (fileName?.includes('.')) return fileName;
-	return `${fileName}.${fileExtension}`;
+	const name = fileName ?? 'file';
+	if (name?.includes('.')) return name;
+	return `${name}.${fileExtension}`;
 });
 
 const fileUrl = computed(() => {
@@ -41,8 +42,14 @@ const fileMeta = computed(() => {
 	return mimeType + (fileSize ? `, ${fileSize}` : '');
 });
 
-const downloadBinaryData = () => {
-	saveAs(fileUrl.value, fileName.value);
+const downloadBinaryData = async () => {
+	try {
+		const response = await fetch(fileUrl.value);
+		const blob = await response.blob();
+		saveAs(blob, fileName.value);
+	} catch (error) {
+		console.error('Error downloading file');
+	}
 };
 
 const viewBinaryData = () => {
@@ -61,6 +68,12 @@ const containerStyle = computed(() => ({
 const isDownloadHovered = ref(false);
 
 const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 'text-base'));
+
+const fileIcon = computed(() => {
+	const mimeType = props.value.mimeType;
+	const isTextFile = mimeType?.startsWith('text/') ?? false;
+	return isTextFile ? 'file-text' : 'file';
+});
 </script>
 
 <template>
@@ -68,7 +81,7 @@ const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 
 		<div :class="$style.wrapper" @click="viewBinaryData">
 			<img v-if="tablePreview" :src="fileUrl" :class="$style.imagePreview" />
 			<div v-else :class="$style.iconWrapper">
-				<N8nIcon icon="file" size="xlarge" />
+				<N8nIcon :icon="fileIcon" size="xlarge" />
 			</div>
 		</div>
 		<div :class="$style.info">
@@ -94,7 +107,12 @@ const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 
 	width: 100%;
 	min-height: 50px;
 	min-width: 150px;
-	padding-bottom: var(--spacing--2xs);
+	padding-bottom: var(--spacing--4xs);
+	padding-left: var(--spacing--4xs);
+	border-style: solid;
+	border-radius: var(--radius);
+	border-width: 1px;
+	border-color: var(--color--foreground--shade-1);
 
 	&:hover {
 		.download {
@@ -122,8 +140,7 @@ const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 
 	width: 40px;
 	height: 40px;
 	overflow: hidden;
-	background-color: var(--color--background--shade-1);
-	border-radius: 50%;
+	color: var(--color--text--shade-2);
 }
 
 .imagePreview {

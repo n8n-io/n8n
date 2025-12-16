@@ -36,10 +36,19 @@ const props = defineProps<Props>();
 
 async function downloadBinaryData() {
 	if (!props.binaryData) return;
-	const { id, fileName, mimeType, fileExtension } = props.binaryData;
-	const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-	const name = [fileName, fileExtension].join('.');
-	saveAs(url, name);
+	try {
+		const { id, fileName, mimeType, fileExtension } = props.binaryData;
+		const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
+		let name = fileName ?? 'file';
+		if (!name.includes('.')) {
+			name = [name, fileExtension].join('.');
+		}
+		const response = await fetch(url);
+		const blob = await response.blob();
+		saveAs(blob, name);
+	} catch (error) {
+		console.error('Error downloading file');
+	}
 }
 
 function viewBinaryData() {

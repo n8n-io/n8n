@@ -163,6 +163,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return null;
 	}
 
+	getWorkflowSettings() {
+		return this.workflow.settings;
+	}
+
 	@Memoized
 	get nodeType() {
 		const { type, typeVersion } = this.node;
