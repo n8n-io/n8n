@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
-
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
 import {
@@ -13,8 +13,8 @@ import {
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,21 +24,20 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBecomeTemplateCreatorStore } from '@/app/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import BottomMenu from '@/app/components/BottomMenu.vue';
-import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
+import { useKeybindings } from '@/app/composables/useKeybindings';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
-import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
-import MainSidebarTrialUpgrade from './MainSidebarTrialUpgrade.vue';
-import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
-import { useSidebarLayout } from '../composables/useSidebarLayout';
-import { useSettingsItems } from '../composables/useSettingsItems';
-import { useRouter } from 'vue-router';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
+import BottomMenu from '@/app/components/BottomMenu.vue';
+import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
+import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
+import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
+import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
+import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
