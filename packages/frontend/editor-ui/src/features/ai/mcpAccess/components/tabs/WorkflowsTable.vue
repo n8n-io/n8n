@@ -15,11 +15,7 @@ import {
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
-import {
-	ELIGIBLE_WORKFLOWS_DOCS_SECTION,
-	MCP_DOCS_PAGE_URL,
-	MCP_TOOLTIP_DELAY,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
 import { getResourcePermissions } from '@n8n/permissions';
 
