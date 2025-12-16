@@ -42,9 +42,12 @@ test.describe('@isolated', () => {
 			await n8n.canvas.openShareModal();
 			await n8n.workflowSharingModal.addUser(MEMBER_1_EMAIL);
 			await n8n.workflowSharingModal.save();
+			// there was a save here - looks like could be removed
 
 			await n8n.navigate.toWorkflow('new');
 			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Workflow W2');
+			// no idea why we were not saving workflow here
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 		});
 
 		test('should create C2, share C2 with U1 and U2, as U3', async ({ n8n }) => {
@@ -80,6 +83,7 @@ test.describe('@isolated', () => {
 			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
+			// there was a save here - looks like could be removed
 
 			await n8n.canvas.openNode('Append a block');
 
@@ -103,8 +107,10 @@ test.describe('@isolated', () => {
 			await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
 			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
+			// there was a save here - looks like could be removed
 
 			await n8n.canvas.openNode('Append a block');
 
