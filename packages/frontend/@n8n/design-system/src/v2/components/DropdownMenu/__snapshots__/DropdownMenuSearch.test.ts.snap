@@ -1,0 +1,135 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render with custom placeholder 1`] = `
+<div
+  class="search-container"
+>
+  <svg
+    aria-hidden="true"
+    class="n8n-icon search-icon"
+    data-icon="search"
+    focusable="false"
+    height="16px"
+    role="img"
+    viewBox="0 0 24 24"
+    width="16px"
+  >
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    >
+      <path
+        d="m21 21l-4.34-4.34"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="8"
+      />
+    </g>
+  </svg>
+  <input
+    class="search-input"
+    placeholder="Type to filter..."
+    type="text"
+    value=""
+  />
+</div>
+`;
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render with search icon by default 1`] = `
+<div
+  class="search-container"
+>
+  <svg
+    aria-hidden="true"
+    class="n8n-icon search-icon"
+    data-icon="search"
+    focusable="false"
+    height="16px"
+    role="img"
+    viewBox="0 0 24 24"
+    width="16px"
+  >
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    >
+      <path
+        d="m21 21l-4.34-4.34"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="8"
+      />
+    </g>
+  </svg>
+  <input
+    class="search-input"
+    placeholder="Search..."
+    type="text"
+    value=""
+  />
+</div>
+`;
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render with value 1`] = `
+<div
+  class="search-container"
+>
+  <svg
+    aria-hidden="true"
+    class="n8n-icon search-icon"
+    data-icon="search"
+    focusable="false"
+    height="16px"
+    role="img"
+    viewBox="0 0 24 24"
+    width="16px"
+  >
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    >
+      <path
+        d="m21 21l-4.34-4.34"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="8"
+      />
+    </g>
+  </svg>
+  <input
+    class="search-input"
+    placeholder="Search..."
+    type="text"
+    value="search term"
+  />
+</div>
+`;
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render without search icon when showIcon is false 1`] = `
+<div
+  class="search-container"
+>
+  <!--v-if-->
+  <input
+    class="search-input"
+    placeholder="Search..."
+    type="text"
+    value=""
+  />
+</div>
+`;
