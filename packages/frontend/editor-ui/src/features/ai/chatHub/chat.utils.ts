@@ -318,7 +318,12 @@ export function buildUiMessages(
 		if (streaming.retryOfMessageId === id && !streaming.messageId) {
 			// While waiting for streaming to start on regeneration, show previously generated message
 			// in running state as an immediate feedback
-			messagesToShow.push({ ...message, content: '', status: 'running' });
+			messagesToShow.push({
+				...message,
+				content: '',
+				status: 'running',
+				...flattenModel(streaming.agent.model),
+			});
 			foundRunning = true;
 			continue;
 		}
