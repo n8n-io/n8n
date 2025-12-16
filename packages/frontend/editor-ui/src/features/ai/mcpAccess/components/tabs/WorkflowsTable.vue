@@ -145,15 +145,6 @@ const onConnectClick = () => {
 							:label="i18n.baseText('settings.mcp.connectWorkflows')"
 							@click="onConnectClick"
 						/>
-						<N8nLink
-							data-test-id="mcp-workflow-table-empty-state-docs-link"
-							:new-window="true"
-							:to="`${MCP_DOCS_PAGE_URL}#${ELIGIBLE_WORKFLOWS_DOCS_SECTION}`"
-							:theme="'text'"
-							size="small"
-						>
-							{{ i18n.baseText('settings.mcp.workflows.table.empty.docs') }}
-						</N8nLink>
 					</div>
 				</template>
 				<template #[`item.workflow`]="{ item }">
