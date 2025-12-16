@@ -13,8 +13,8 @@ export let SYSLOG_TLS_PORT = 0;
 /**
  * Get an available port by creating and immediately closing a server.
  */
-const getAvailablePort = (): Promise<number> =>
-	new Promise((resolve, reject) => {
+const getAvailablePort = async (): Promise<number> =>
+	await new Promise((resolve, reject) => {
 		const server = net.createServer();
 		server.unref();
 		server.on('error', reject);
