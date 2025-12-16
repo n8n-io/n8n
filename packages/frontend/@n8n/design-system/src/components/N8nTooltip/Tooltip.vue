@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue';
 
 import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
+import { n8nHtml as vN8nHtml } from '../../directives';
 import N8nButton from '../N8nButton';
 
 defineOptions({
@@ -75,33 +76,36 @@ const handleOpenChange = (open: boolean) => {
 </script>
 
 <template>
-	<TooltipProvider>
+	<TooltipProvider
+		:delay-duration="showAfter"
+		:disable-hoverable-content="disableHoverableContent"
+		:skip-delay-duration="0"
+	>
 		<TooltipRoot
-			:disabled="disabled"
-			:delay-duration="showAfter"
 			:open="isControlled ? isOpen : undefined"
-			:disable-hoverable-content="disableHoverableContent"
+			:default-open="false"
+			:disabled="disabled"
+			:disable-closing-trigger="true"
+			:ignore-non-keyboard-focus="true"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as-child>
+			<TooltipTrigger as-child :disabled="disabled">
 				<slot />
 			</TooltipTrigger>
-
-			<TooltipPortal v-if="teleported" :to="appendTo ?? 'body'">
+			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
 				<TooltipContent
-					v-bind="$attrs"
+					:class="['n8n-tooltip', contentClass]"
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
 					:avoid-collisions="avoidCollisions"
-					:class="['n8n-tooltip', contentClass]"
+					:collision-padding="8"
 				>
 					<slot name="content">
-						<div v-n8n-html="content"></div>
+						<span v-n8n-html="content ?? ''" />
 					</slot>
-
 					<div
-						v-if="buttons && buttons.length"
+						v-if="buttons.length"
 						:class="$style.buttons"
 						:style="{ justifyContent: justifyButtons }"
 					>
@@ -111,37 +115,9 @@ const handleOpenChange = (open: boolean) => {
 							v-bind="{ ...button.attrs, ...button.listeners }"
 						/>
 					</div>
-
-					<TooltipArrow :class="$style.arrow" />
+					<TooltipArrow :class="$style.arrow" :width="8" :height="4" />
 				</TooltipContent>
 			</TooltipPortal>
-			<TooltipContent
-				v-else
-				v-bind="$attrs"
-				:side="placementParts.side"
-				:align="placementParts.align"
-				:side-offset="offset"
-				:avoid-collisions="avoidCollisions"
-				:class="['n8n-tooltip', contentClass]"
-			>
-				<slot name="content">
-					<div v-n8n-html="content"></div>
-				</slot>
-
-				<div
-					v-if="buttons && buttons.length"
-					:class="$style.buttons"
-					:style="{ justifyContent: justifyButtons }"
-				>
-					<N8nButton
-						v-for="button in buttons"
-						:key="button.attrs.label"
-						v-bind="{ ...button.attrs, ...button.listeners }"
-					/>
-				</div>
-
-				<TooltipArrow :class="$style.arrow" />
-			</TooltipContent>
 		</TooltipRoot>
 	</TooltipProvider>
 </template>
