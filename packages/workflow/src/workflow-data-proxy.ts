@@ -58,12 +58,10 @@ export class WorkflowDataProxy {
 
 	private timezone: string;
 
-	private returnExecutionData: <T extends INodeExecutionData | INodeExecutionData[]>(
-		data: T,
+	private returnExecutionData: (
+		data: INodeExecutionData | INodeExecutionData[],
 		fullItem?: boolean,
-	) => T extends INodeExecutionData[]
-		? IDataObject[] | INodeExecutionData[]
-		: IDataObject | INodeExecutionData;
+	) => IDataObject[] | INodeExecutionData[] | IDataObject | INodeExecutionData;
 
 	// TODO: Clean that up at some point and move all the options into an options object
 	constructor(
@@ -1449,29 +1447,25 @@ export class WorkflowDataProxy {
 				);
 			},
 			// this is legacy syntax that is not documented
-			// if workflow is in combined binary mode, will return same as the $json result
-			$item:
-				that.workflow.settings?.binaryMode === 'combined'
-					? {} // Placeholder
-					: (itemIndex: number, runIndex?: number) => {
-							const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
-							const dataProxy = new WorkflowDataProxy(
-								this.workflow,
-								this.runExecutionData,
-								this.runIndex,
-								itemIndex,
-								this.activeNodeName,
-								this.connectionInputData,
-								that.siblingParameters,
-								that.mode,
-								that.additionalKeys,
-								that.executeData,
-								defaultReturnRunIndex,
-								{},
-								that.contextNodeName,
-							);
-							return dataProxy.getDataProxy();
-						},
+			$item: (itemIndex: number, runIndex?: number) => {
+				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
+				const dataProxy = new WorkflowDataProxy(
+					this.workflow,
+					this.runExecutionData,
+					this.runIndex,
+					itemIndex,
+					this.activeNodeName,
+					this.connectionInputData,
+					that.siblingParameters,
+					that.mode,
+					that.additionalKeys,
+					that.executeData,
+					defaultReturnRunIndex,
+					{},
+					that.contextNodeName,
+				);
+				return dataProxy.getDataProxy();
+			},
 			$fromAI: handleFromAi,
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
 			$fromai: handleFromAi,

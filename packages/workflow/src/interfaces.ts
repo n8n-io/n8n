@@ -2319,7 +2319,7 @@ export interface IWorkflowDataProxyData {
 	$data: any;
 	$env: any;
 	$evaluateExpression: (expression: string, itemIndex?: number) => NodeParameterValueType;
-	$item: IDataObject | ((itemIndex: number, runIndex?: number) => IWorkflowDataProxyData);
+	$item: (itemIndex: number, runIndex?: number) => IWorkflowDataProxyData;
 	$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => INodeExecutionData[];
 	$json: INodeExecutionData['json'];
 	$node: any;
