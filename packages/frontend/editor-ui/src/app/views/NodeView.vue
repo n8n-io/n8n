@@ -60,7 +60,6 @@ import {
 	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
@@ -567,9 +566,7 @@ function trackOpenWorkflowFromOnboardingTemplate() {
  */
 
 const triggerNodes = computed(() => {
-	return editableWorkflow.value.nodes.filter(
-		(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
-	);
+	return editableWorkflow.value.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
 });
 
 const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
@@ -841,6 +838,11 @@ async function onOpenRenameNodeModal(id: string) {
 		let shouldSaveAfterRename = false;
 
 		const handleKeyDown = (e: KeyboardEvent) => {
+			// Stop propagation for space key to prevent VueFlow from intercepting it
+			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
 			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
 				e.preventDefault();
 				shouldSaveAfterRename = true;
