@@ -20,6 +20,7 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	credentialId?: string;
 	workflowId?: string;
 	workflowName?: string;
+	activeVersionId?: string | null;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {

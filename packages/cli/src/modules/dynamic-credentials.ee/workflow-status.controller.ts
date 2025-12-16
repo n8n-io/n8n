@@ -4,9 +4,7 @@ import { Request, Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
 import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-
-const BEARER_TOKEN_REGEX = /^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(.+)$/;
+import { getBearerToken } from './utils';
 
 @RestController('/workflows')
 export class WorkflowStatusController {
@@ -26,18 +24,7 @@ export class WorkflowStatusController {
 	@Get('/:workflowId/execution-status', { skipAuth: true })
 	async checkWorkflowForExecution(req: Request, _res: Response): Promise<WorkflowExecutionStatus> {
 		const workflowId = req.params['workflowId'];
-		const headerValue = req.headers['authorization']?.toString();
-
-		if (!headerValue) {
-			throw new UnauthenticatedError();
-		}
-
-		const result = BEARER_TOKEN_REGEX.exec(headerValue);
-		const token = result ? result[1] : null;
-
-		if (!token) {
-			throw new BadRequestError('Authorization header is malformed');
-		}
+		const token = getBearerToken(req);
 
 		if (!workflowId) {
 			throw new BadRequestError('Workflow ID is missing');

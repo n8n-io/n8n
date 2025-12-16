@@ -86,9 +86,10 @@ jobs:
           fetch-depth: 0
 
       - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm build:n8n
+          enable-docker-cache: 'true'
 
       - name: Determine Docker tags for all images
         id: determine-tags
@@ -103,9 +104,6 @@ jobs:
           cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
             echo "${key}: ${value%%,*}..."  # Show first tag for brevity
           done
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Login to GitHub Container Registry
         if: needs.determine-build-context.outputs.push_enabled == 'true'
@@ -125,7 +123,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push n8n Docker image
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
           file: ./docker/images/n8n/Dockerfile
@@ -140,7 +138,7 @@ jobs:
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
       - name: Build and push task runners Docker image (Alpine)
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
           file: ./docker/images/runners/Dockerfile
@@ -155,7 +153,7 @@ jobs:
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
       - name: Build and push task runners Docker image (distroless)
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
           file: ./docker/images/runners/Dockerfile.distroless
