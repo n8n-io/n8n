@@ -1,11 +1,7 @@
 import { mocked } from 'vitest-mock-extended';
 
 import { type IConnection, type IConnections } from '../src';
-import {
-	compareConnections,
-	mergeConnectionDiff,
-	type ConnectionsDiff,
-} from '../src/connections-diff';
+import { compareConnections } from '../src/connections-diff';
 
 // Mock IConnection for testing
 const createConnection = (node: string, type: IConnection['type'], index: number): IConnection =>
