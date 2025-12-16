@@ -1,3 +1,12 @@
+## [1.123.6-exp.0](https://github.com/n8n-io/n8n/compare/n8n@1.123.6...n8n@1.123.6-exp.0) (2025-12-16)
+
+
+### Bug Fixes
+
+* **ai-builder:** Updating stream recursion limit and removing tool node static parameter validation ([#23023](https://github.com/n8n-io/n8n/issues/23023)) ([5da8443](https://github.com/n8n-io/n8n/commit/5da844341b703b41e100f98b299f8212dd88cbbc))
+
+
+
 ## [1.123.6](https://github.com/n8n-io/n8n/compare/n8n@1.123.5...n8n@1.123.6) (2025-12-15)
 
 
