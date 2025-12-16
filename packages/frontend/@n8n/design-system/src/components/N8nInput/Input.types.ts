@@ -32,6 +32,7 @@ export interface InputEmits {
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 	keydown: [event: KeyboardEvent];
+	mousedown: [event: MouseEvent];
 }
 
 export interface InputSlots {

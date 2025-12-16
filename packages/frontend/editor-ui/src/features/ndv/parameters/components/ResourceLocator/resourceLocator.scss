@@ -81,6 +81,7 @@ $--mode-selector-width: 92px;
 		right: var(--resource-locator--input-issues--width);
 		border: 1px solid var(--border-color);
 		border-radius: var(--radius);
+		pointer-events: none;
 	}
 
 	.backgroundOverride {

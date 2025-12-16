@@ -127,6 +127,11 @@ const onKeydown = (event: KeyboardEvent) => {
 	emit('keydown', event);
 };
 
+// Handle mousedown event
+const onMousedown = (event: MouseEvent) => {
+	emit('mousedown', event);
+};
+
 // Clear input
 const onClear = () => {
 	emit('update:modelValue', '');
@@ -316,6 +321,7 @@ defineExpose({ focus, blur, select });
 			@blur="onBlur"
 			@focus="onFocus"
 			@keydown="onKeydown"
+			@mousedown="onMousedown"
 		/>
 
 		<!-- Textarea element -->
@@ -337,6 +343,7 @@ defineExpose({ focus, blur, select });
 			@blur="onBlur"
 			@focus="onFocus"
 			@keydown="onKeydown"
+			@mousedown="onMousedown"
 		/>
 
 		<!-- Suffix slot -->
@@ -368,8 +375,9 @@ defineExpose({ focus, blur, select });
 	align-items: center;
 	width: 100%;
 	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-2);
+	border: var(--input--border-width, var(--border-width))
+		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
+	background-color: var(--input--color--background, var(--color--background--light-2));
 	transition:
 		border-color 0.2s,
 		box-shadow 0.2s;
