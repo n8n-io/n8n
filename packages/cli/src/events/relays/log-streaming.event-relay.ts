@@ -145,13 +145,14 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflow }: RelayEventMap['workflow-saved']) {
+	private workflowSaved({ user, workflow, settingsChanged }: RelayEventMap['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
 				...user,
 				workflowId: workflow.id,
 				workflowName: workflow.name,
+				...(settingsChanged && { settingsChanged }),
 			},
 		});
 	}
