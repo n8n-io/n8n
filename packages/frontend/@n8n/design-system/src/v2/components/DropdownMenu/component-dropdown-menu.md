@@ -18,30 +18,27 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `defaultOpen?: boolean` The open state of the dropdown when initially rendered
 - `placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end' | 'left' | 'left-start' | 'left-end' | 'right' | 'right-start' | 'right-end'` Dropdown placement relative to trigger | `default: 'bottom'`
 - `trigger?: 'click' | 'hover'` How the dropdown is triggered | `default: 'click'`
-- `activatorIcon?: IconName` Icon for the default trigger button | `default: 'ellipsis'`
+- `activatorIcon?: IconOrEmoji` Icon or emoji for the default trigger button | `default: { type: 'icon', value: 'ellipsis' }`
 - `disabled?: boolean` When `true`, prevents the user from interacting with dropdown
 - `teleported?: boolean` Whether to teleport the dropdown to body | `default: true`
 - `maxHeight?: string | number` Maximum height of the dropdown menu
-- `hideArrow?: boolean` Whether to hide the dropdown arrow/caret | `default: false`
 - `loading?: boolean` Whether to show loading state
 - `loadingItemCount?: number` Number of skeleton items to show when loading | `default: 3`
 - `extraPopperClass?: string` Additional CSS class for the dropdown popper
-- `closeOnParentScroll?: boolean` Whether to close dropdown when parent scrolls | `default: true`
 
 
 **Search-specific Props**
 - `searchable?: boolean` Enable search functionality
+- `showSearchIcon?: boolean` Whether to show the search icon in search input | `default: true`
 - `searchPlaceholder?: string` Search input placeholder
-- `minSearchLength?: number` Minimum characters before filtering | `default: 0`
 - `searchDebounce?: number` Debounce delay in ms | `default: 300`
-- `filterFn?: (item: DropdownMenuItem<T>, searchTerm: string) => boolean` Custom filter function
-- `noResultsText?: string` Text shown when no items match | `default: 'No results found'`
 
 
 **Events**
 
 - `update:modelValue(open: boolean)` Emitted when dropdown open state changes
 - `select(value: T)` Emitted when a menu item is selected
+- `search(searchTerm: string, itemId?: T)` Emitted when search input changes (debounced). `itemId` is undefined for root-level search, or the item's ID for sub-menu search
 
 **Exposed Methods**
 
@@ -56,18 +53,30 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `item-leading` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T>, ui: { class: string } }`
 - `item-trailing` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T>, ui: { class: string } }`
 - `loading` Custom loading state
+- `empty` Custom empty state when no items
 
 **Types**
 
 ```typescript
+type IconOrEmoji =
+  | { type: 'icon'; value: IconName }
+  | { type: 'emoji'; value: string };
+
 type DropdownMenuItemProps<T = string> = {
   id: T;
   label: string;
-  icon?: IconName;
+  icon?: IconOrEmoji;
   disabled?: boolean;
   divided?: boolean; // Shows separator above item
   checked?: boolean; // Shows checkmark
   class?: string | Record<string, boolean> | Array<string>;
+  // Sub-menu support
+  children?: Array<DropdownMenuItemProps<T>>;
+  loading?: boolean;
+  loadingItemCount?: number;
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  showSearchIcon?: boolean;
 }
 ```
 
@@ -79,11 +88,23 @@ A companion component for rendering individual dropdown items with full slot-bas
 
 - `id: T` Unique identifier for the item
 - `label?: string` Display text for the item
-- `icon?: IconName` Icon displayed before the label
+- `icon?: IconOrEmoji` Icon or emoji displayed before the label
 - `disabled?: boolean` Whether the item is disabled
 - `divided?: boolean` Whether to show a separator above the item (from `ActionDropdownItem`)
 - `checked?: boolean` Whether to show a checkmark indicator (from `ActionDropdownItem`)
 - `class?: string` Additional CSS classes
+- `children?: Array<DropdownMenuItemProps<T>>` Nested menu items (creates a sub-menu)
+- `loading?: boolean` Whether to show loading state in sub-menu
+- `loadingItemCount?: number` Number of skeleton items when loading | `default: 3`
+- `searchable?: boolean` Enable search functionality for this item's children
+- `searchPlaceholder?: string` Search input placeholder
+- `showSearchIcon?: boolean` Whether to show the search icon
+
+**Events**
+
+- `select(value: T)` Emitted when item or child is selected
+- `search(searchTerm: string, itemId: T)` Emitted when sub-menu search changes
+- `update:subMenuOpen(open: boolean)` Emitted when sub-menu open state changes
 
 **Slots**
 
@@ -97,9 +118,9 @@ A companion component for rendering individual dropdown items with full slot-bas
 ```vue
 <script setup lang="ts">
 const dropdownItems = ref([
-  { id: 'edit', label: 'Edit', icon: 'pen' },
-  { id: 'duplicate', label: 'Duplicate', icon: 'copy' },
-  { id: 'delete', label: 'Delete', icon: 'trash', divided: true }
+  { id: 'edit', label: 'Edit', icon: { type: 'icon', value: 'pen' } },
+  { id: 'duplicate', label: 'Duplicate', icon: { type: 'icon', value: 'copy' } },
+  { id: 'delete', label: 'Delete', icon: { type: 'icon', value: 'trash' }, divided: true }
 ])
 
 const handleSelect = (action: string) => {
@@ -121,9 +142,9 @@ const handleSelect = (action: string) => {
 <script setup lang="ts">
 const isOpen = ref(false)
 const items = ref([
-  { id: 'profile', label: 'Profile', icon: 'user' },
-  { id: 'settings', label: 'Settings', icon: 'cog' },
-  { id: 'logout', label: 'Sign out', icon: 'sign-out', divided: true }
+  { id: 'profile', label: 'Profile', icon: { type: 'icon', value: 'user' } },
+  { id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'cog' } },
+  { id: 'logout', label: 'Sign out', icon: { type: 'icon', value: 'sign-out' }, divided: true }
 ])
 </script>
 
@@ -142,14 +163,33 @@ const items = ref([
 </template>
 ```
 
+**With emoji activator**
+
+```vue
+<script setup lang="ts">
+const items = ref([
+  { id: 'option-1', label: 'Option 1' },
+  { id: 'option-2', label: 'Option 2' }
+])
+</script>
+
+<template>
+  <N8nDropdownMenu
+    :items="items"
+    :activator-icon="{ type: 'emoji', value: '🎉' }"
+    @select="handleSelect"
+  />
+</template>
+```
+
 **With badges and shortcuts using slots**
 
 ```vue
 <script setup lang="ts">
 const items = ref([
-  { id: 'save', label: 'Save', icon: 'save' },
-  { id: 'share', label: 'Share', icon: 'share' },
-  { id: 'pro', label: 'Pro Feature', icon: 'star', disabled: true }
+  { id: 'save', label: 'Save', icon: { type: 'icon', value: 'save' } },
+  { id: 'share', label: 'Share', icon: { type: 'icon', value: 'share' } },
+  { id: 'pro', label: 'Pro Feature', icon: { type: 'icon', value: 'star' }, disabled: true }
 ])
 
 const handleUpgrade = () => {
@@ -160,7 +200,7 @@ const handleUpgrade = () => {
 <template>
   <N8nDropdownMenu
     :items="items"
-    activator-icon="ellipsis"
+    :activator-icon="{ type: 'icon', value: 'ellipsis' }"
     @select="handleSelect"
   >
     <template #item-trailing="{ item, ui }">
@@ -188,6 +228,66 @@ const handleUpgrade = () => {
       </N8nBadge>
     </template>
   </N8nDropdownMenu>
+</template>
+```
+
+**Sub-menu example**
+
+```vue
+<script setup lang="ts">
+const items = ref([
+  { id: 'file', label: 'File', icon: { type: 'icon', value: 'file' } },
+  {
+    id: 'export',
+    label: 'Export as...',
+    icon: { type: 'icon', value: 'download' },
+    children: [
+      { id: 'pdf', label: 'PDF' },
+      { id: 'csv', label: 'CSV' },
+      { id: 'json', label: 'JSON' }
+    ]
+  },
+])
+</script>
+
+<template>
+  <N8nDropdownMenu :items="items" @select="handleSelect" />
+</template>
+```
+
+**Searchable sub-menu (async search)**
+
+```vue
+<script setup lang="ts">
+const users = ref([])
+const loading = ref(false)
+
+const items = computed(() => [
+  {
+    id: 'select-user',
+    label: 'Assign to...',
+    searchable: true,
+    searchPlaceholder: 'Search users...',
+    loading: loading.value,
+    children: users.value
+  },
+])
+
+const handleSearch = async (term: string, itemId?: string) => {
+  if (itemId === 'select-user') {
+    loading.value = true
+    users.value = await fetchUsers(term)
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <N8nDropdownMenu
+    :items="items"
+    @select="handleSelect"
+    @search="handleSearch"
+  />
 </template>
 ```
 
@@ -258,7 +358,7 @@ const items = ref([
 <N8nDropdownMenu
   :items="items"
   placement="bottom-start"
-  :activator-icon="icon"
+  :activator-icon="{ type: 'icon', value: icon }"
   @select="onSelect"
 >
   <!-- Badge functionality now handled via slots -->
@@ -298,6 +398,10 @@ const items = ref([
 
 ## Implementation Notes
 
-- In order to make `closeOnParentScroll` work, we need to migrate `useParentScroll` composable
+- `closeOnParentScroll` is not yet implemented - requires `useParentScroll` composable migration
 - The new `update:modelValue` replaces both `visible-change` and `visibleChange` events
-- Search is opt-in via `searchable` prop. If turned on, a search input is injected at the top of the dropdown content
+- Search is opt-in via `searchable` prop. Both root-level and sub-menu search are supported
+- Search filtering is not built-in - use the `search` event to filter items externally (e.g., for async search)
+- The `icon` prop now accepts `IconOrEmoji` type: `{ type: 'icon', value: 'pen' }` or `{ type: 'emoji', value: '🎉' }`
+- Keyboard navigation in searchable menus uses virtual highlighting (focus stays in search input)
+- Non-searchable menus use Reka UI's built-in roving focus for keyboard navigation
