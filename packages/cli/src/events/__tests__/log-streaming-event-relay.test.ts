@@ -110,6 +110,76 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-activated` event', () => {
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: '123',
+					email: 'john@n8n.io',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: 'owner' },
+				},
+				workflowId: 'wf123',
+				workflow: mock<IWorkflowDb>({
+					id: 'wf123',
+					name: 'Test Workflow',
+					activeVersionId: 'version-abc-123',
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.activated',
+				payload: {
+					userId: '123',
+					_email: 'john@n8n.io',
+					_firstName: 'John',
+					_lastName: 'Doe',
+					globalRole: 'owner',
+					workflowId: 'wf123',
+					workflowName: 'Test Workflow',
+					activeVersionId: 'version-abc-123',
+				},
+			});
+		});
+
+		it('should log on `workflow-deactivated` event', () => {
+			const event: RelayEventMap['workflow-deactivated'] = {
+				user: {
+					id: '456',
+					email: 'jane@n8n.io',
+					firstName: 'Jane',
+					lastName: 'Smith',
+					role: { slug: 'user' },
+				},
+				workflowId: 'wf789',
+				workflow: mock<IWorkflowDb>({
+					id: 'wf789',
+					name: 'Deactivated Workflow',
+					activeVersionId: 'version-xyz-789',
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-deactivated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.deactivated',
+				payload: {
+					userId: '456',
+					_email: 'jane@n8n.io',
+					_firstName: 'Jane',
+					_lastName: 'Smith',
+					globalRole: 'user',
+					workflowId: 'wf789',
+					workflowName: 'Deactivated Workflow',
+					activeVersionId: 'version-xyz-789',
+				},
+			});
+		});
+
 		it('should log on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: {
@@ -149,6 +219,85 @@ describe('LogStreamingEventRelay', () => {
 				},
 				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
 				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.updated',
+				payload: {
+					userId: '789',
+					_email: 'alex@n8n.io',
+					_firstName: 'Alex',
+					_lastName: 'Johnson',
+					globalRole: 'editor',
+					workflowId: 'wf101',
+					workflowName: 'Updated Workflow',
+				},
+			});
+		});
+
+		it('should log on `workflow-saved` event with settings changes', () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: '789',
+					email: 'alex@n8n.io',
+					firstName: 'Alex',
+					lastName: 'Johnson',
+					role: { slug: 'editor' },
+				},
+				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
+				publicApi: false,
+				settingsChanged: {
+					saveDataErrorExecution: {
+						from: 'none',
+						to: 'all',
+					},
+					saveManualExecutions: {
+						from: false,
+						to: true,
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.updated',
+				payload: {
+					userId: '789',
+					_email: 'alex@n8n.io',
+					_firstName: 'Alex',
+					_lastName: 'Johnson',
+					globalRole: 'editor',
+					workflowId: 'wf101',
+					workflowName: 'Updated Workflow',
+					settingsChanged: {
+						saveDataErrorExecution: {
+							from: 'none',
+							to: 'all',
+						},
+						saveManualExecutions: {
+							from: false,
+							to: true,
+						},
+					},
+				},
+			});
+		});
+
+		it('should not include settingsChanged when no settings changed', () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: '789',
+					email: 'alex@n8n.io',
+					firstName: 'Alex',
+					lastName: 'Johnson',
+					role: { slug: 'editor' },
+				},
+				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
+				publicApi: false,
+				// settingsChanged is not included when no settings changed
 			};
 
 			eventService.emit('workflow-saved', event);
@@ -614,7 +763,7 @@ describe('LogStreamingEventRelay', () => {
 					{
 						id: 'node1',
 						name: 'Start Node',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 200],
 					},
@@ -663,7 +812,7 @@ describe('LogStreamingEventRelay', () => {
 					{
 						id: 'node1',
 						name: 'Start Node',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [100, 200],
 					},
@@ -1083,6 +1232,30 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each(['manual', 'timeout', 'shutdown'] as const)(
+			'should log on `execution-cancelled` event with %s reason',
+			(reason) => {
+				const event: RelayEventMap['execution-cancelled'] = {
+					executionId: 'exec-cancelled-123',
+					workflowId: 'wf-456',
+					workflowName: 'Cancelled Workflow',
+					reason,
+				};
+
+				eventService.emit('execution-cancelled', event);
+
+				expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.workflow.cancelled',
+					payload: {
+						executionId: 'exec-cancelled-123',
+						workflowId: 'wf-456',
+						workflowName: 'Cancelled Workflow',
+						reason,
+					},
+				});
+			},
+		);
 	});
 
 	describe('AI events', () => {

@@ -3,10 +3,11 @@ import { computed } from 'vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
-import { N8nActionDropdown, N8nBadge, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const { agent } = defineProps<{
 	agent: ChatModelDto;
@@ -22,13 +23,16 @@ const i18n = useI18n();
 type MenuAction = 'edit' | 'delete';
 
 const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
-	return [
-		{ id: 'edit' as const, label: i18n.baseText('chatHub.agent.card.menu.edit') },
-		...(agent.model.provider === 'custom-agent'
-			? [{ id: 'delete' as const, label: i18n.baseText('chatHub.agent.card.menu.delete') }]
-			: []),
-	];
+	return agent.model.provider === 'custom-agent'
+		? [{ id: 'delete' as const, label: i18n.baseText('chatHub.agent.card.menu.delete') }]
+		: [];
 });
+
+const canEdit = computed(
+	() =>
+		agent.model.provider === 'custom-agent' ||
+		hasPermission(['rbac'], { rbac: { scope: ['workflow:read'] } }),
+);
 
 function handleSelectMenu(action: MenuAction) {
 	switch (action) {
@@ -54,16 +58,9 @@ function handleSelectMenu(action: MenuAction) {
 			</N8nText>
 		</div>
 
-		<N8nBadge theme="tertiary" show-border :class="$style.badge">
-			{{
-				agent.model.provider === 'n8n'
-					? i18n.baseText('chatHub.agent.card.badge.n8nWorkflow')
-					: i18n.baseText('chatHub.agent.card.badge.customAgent')
-			}}
-		</N8nBadge>
-
 		<div :class="$style.actions">
 			<N8nIconButton
+				v-if="canEdit"
 				icon="pen"
 				type="tertiary"
 				size="medium"
@@ -71,6 +68,7 @@ function handleSelectMenu(action: MenuAction) {
 				@click.prevent="emit('edit')"
 			/>
 			<N8nActionDropdown
+				v-if="menuItems.length > 0"
 				:items="menuItems"
 				placement="bottom-end"
 				@select="handleSelectMenu"

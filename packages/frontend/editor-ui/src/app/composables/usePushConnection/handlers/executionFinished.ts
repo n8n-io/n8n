@@ -94,10 +94,8 @@ export async function executionFinished(
 			);
 		} else if (
 			templateId === 'ready-to-run-ai-workflow' ||
-			templateId === 'ready-to-run-ai-workflow-v1' ||
-			templateId === 'ready-to-run-ai-workflow-v2' ||
-			templateId === 'ready-to-run-ai-workflow-v3' ||
-			templateId === 'ready-to-run-ai-workflow-v4'
+			templateId === 'ready-to-run-ai-workflow-v5' ||
+			templateId === 'ready-to-run-ai-workflow-v6'
 		) {
 			if (data.status === 'success') {
 				readyToRunStore.trackExecuteAiWorkflowSuccess();
