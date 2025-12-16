@@ -1,4 +1,4 @@
-import { ZodIssue } from 'zod';
+import type { ZodIssue } from 'zod';
 
 /**
  * Base error class for all syslog client errors.
@@ -36,7 +36,7 @@ export class ValidationError extends SyslogClientError {
 		Object.setPrototypeOf(this, ValidationError.prototype);
 	}
 
-	public static fromZod(message: string, zodErrors: ZodIssue[]) {
+	static fromZod(message: string, zodErrors: ZodIssue[]) {
 		const errors = zodErrors.map((zodError) => ({
 			path: zodError.path.join('.'),
 			message: zodError.message,

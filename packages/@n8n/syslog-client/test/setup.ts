@@ -56,8 +56,8 @@ let tlsServer: tls.Server | null = null;
 /**
  * Helper to await syslog messages from UDP server.
  */
-export const awaitUdpMsg = (): Promise<string> =>
-	new Promise((resolve) => {
+export const awaitUdpMsg = async (): Promise<string> =>
+	await new Promise((resolve) => {
 		const queued = queuedUdpMessages.shift();
 		if (queued) return resolve(queued);
 		pendingUdpResolvers.push(resolve);
@@ -66,8 +66,8 @@ export const awaitUdpMsg = (): Promise<string> =>
 /**
  * Helper to await syslog messages from TCP server.
  */
-export const awaitTcpMsg = (): Promise<string> =>
-	new Promise((resolve) => {
+export const awaitTcpMsg = async (): Promise<string> =>
+	await new Promise((resolve) => {
 		const queued = queuedTcpMessages.shift();
 		if (queued) return resolve(queued);
 		pendingTcpResolvers.push(resolve);
@@ -76,8 +76,8 @@ export const awaitTcpMsg = (): Promise<string> =>
 /**
  * Helper to await syslog messages from TLS server.
  */
-export const awaitTlsMsg = (): Promise<string> =>
-	new Promise((resolve) => {
+export const awaitTlsMsg = async (): Promise<string> =>
+	await new Promise((resolve) => {
 		const queued = queuedTlsMessages.shift();
 		if (queued) return resolve(queued);
 		pendingTlsResolvers.push(resolve);
@@ -86,7 +86,7 @@ export const awaitTlsMsg = (): Promise<string> =>
 /**
  * Escape special regex characters.
  */
-const escapeRegExp = (string: string): string => string.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+const escapeRegExp = (text: string): string => text.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 
 /**
  * Construct regex to match RFC 3164 syslog message.

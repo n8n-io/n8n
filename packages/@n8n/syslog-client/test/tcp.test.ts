@@ -151,7 +151,7 @@ describe('SyslogClient - TCP Transport', () => {
 			});
 
 			const callbackPromise = new Promise<void>((resolve) => {
-				client.log(
+				void client.log(
 					'With options',
 					{
 						facility: Facility.System,
@@ -206,7 +206,7 @@ describe('SyslogClient - TCP Transport', () => {
 			expect(error).toBeInstanceOf(Error);
 		});
 
-		it('should handle invalid port', async () => {
+		it('should handle invalid port', () => {
 			expect(() => {
 				new SyslogClient('127.0.0.1', {
 					port: 502342323,

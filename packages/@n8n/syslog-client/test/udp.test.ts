@@ -114,7 +114,7 @@ describe('SyslogClient - UDP Transport', () => {
 			client.close();
 		});
 
-		it('should handle invalid bind address', async () => {
+		it('should handle invalid bind address', () => {
 			expect(() => {
 				new SyslogClient('127.0.0.1', {
 					port: SYSLOG_UDP_PORT,

@@ -7,12 +7,12 @@ import type TestAgent from 'supertest/lib/agent';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+
 import { TlsSyslogServer } from './tls-server';
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
-jest.setTimeout(20000);
 
 const tlsServer = new TlsSyslogServer();
 let serverPort: number;
@@ -26,12 +26,13 @@ const testServer = utils.setupTestServer({
 });
 
 afterAll(async () => {
-	jest.mock('@/eventbus/message-event-bus/message-event-bus');
 	await eventBus?.close();
+	// Undo the "unmock" from above
+	jest.mock('@/eventbus/message-event-bus/message-event-bus');
+	await tlsServer.stop();
 });
 
 beforeAll(async () => {
-	// Start real TLS syslog server
 	serverPort = await tlsServer.start();
 
 	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
@@ -40,11 +41,6 @@ beforeAll(async () => {
 	eventBus = Container.get(MessageEventBus);
 	logger = Container.get(Logger);
 	await eventBus.initialize();
-});
-
-afterAll(async () => {
-	await eventBus?.close();
-	await tlsServer.stop();
 });
 
 describe('TLS Syslog E2E', () => {
@@ -121,6 +117,7 @@ describe('TLS Syslog E2E', () => {
 		// Should NOT receive message (cert validation failed)
 		await expect(tlsServer.waitForMessage(2000)).rejects.toThrow('Timeout');
 
+		//	Should output an error log message.
 		expect(loggerErrorSpy).toHaveBeenCalledWith('Transport error');
 
 		loggerErrorSpy.mockRestore();
