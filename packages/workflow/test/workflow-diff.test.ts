@@ -501,18 +501,15 @@ describe('groupWorkflows', () => {
 						from: baseWorkflow,
 						to: baseWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(baseWorkflow, baseWorkflow),
 					},
 					{
 						from: nextWorkflow,
 						to: nextWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(nextWorkflow, nextWorkflow),
 					},
-					new WorkflowChangeSet(
-						compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
-						compareConnections(baseWorkflow.connections, nextWorkflow.connections),
-					),
+					new WorkflowChangeSet(baseWorkflow, nextWorkflow),
 				);
 
 				expect(result).toEqual(expected);

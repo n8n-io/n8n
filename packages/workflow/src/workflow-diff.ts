@@ -113,10 +113,12 @@ function mergeNodeDiff(
 }
 
 export class WorkflowChangeSet<T extends DiffableNode> {
-	constructor(
-		public nodes: WorkflowDiff<T> = new Map(),
-		public connections: ConnectionsDiff = { added: {}, removed: {} },
-	) {}
+	readonly nodes: WorkflowDiff<T>;
+	readonly connections: ConnectionsDiff;
+	constructor(from: DiffableWorkflow<T>, to: DiffableWorkflow<T>) {
+		this.nodes = compareWorkflowsNodes(from.nodes, to.nodes);
+		this.connections = compareConnections(from.connections, to.connections);
+	}
 
 	hasChanges() {
 		for (const nodeDiff of this.nodes.values()) {
@@ -187,8 +189,7 @@ function compareWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	previous: W,
 	next: W,
 ): GroupedWorkflowHistory<W> {
-	const nodesDiff = compareWorkflowsNodes(previous.nodes, next.nodes);
-	const workflowChangeSet = new WorkflowChangeSet(nodesDiff);
+	const workflowChangeSet = new WorkflowChangeSet(previous, next);
 	return {
 		workflowChangeSet,
 		groupedWorkflows: [],
@@ -215,7 +216,7 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 	if (workflows.length === 1) {
 		return [
 			{
-				workflowChangeSet: new WorkflowChangeSet(),
+				workflowChangeSet: new WorkflowChangeSet(workflows[0], workflows[0]),
 				groupedWorkflows: [],
 				from: workflows[0],
 				to: workflows[0],
@@ -233,12 +234,7 @@ export function groupWorkflows<W extends IWorkflowBase = IWorkflowBase>(
 		prevDiffsLength = diffs.length;
 		const n = diffs.length;
 		diffLoop: for (let i = n - 1; i > 0; --i) {
-			const nodesDiff = compareWorkflowsNodes(diffs[i - 1].from.nodes, diffs[i].to.nodes);
-			const connectionsDiff = compareConnections(
-				diffs[i - 1].from.connections,
-				diffs[i].to.connections,
-			);
-			const wcs = new WorkflowChangeSet(nodesDiff, connectionsDiff);
+			const wcs = new WorkflowChangeSet(diffs[i - 1].from, diffs[i].to);
 			for (const shouldSkip of skipRules) {
 				if (shouldSkip(diffs[i - 1], diffs[i], wcs)) continue diffLoop;
 			}
