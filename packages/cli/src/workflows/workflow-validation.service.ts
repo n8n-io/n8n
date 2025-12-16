@@ -47,9 +47,6 @@ export class WorkflowValidationService {
 	 * This prevents publishing a parent workflow that references draft-only sub-workflows,
 	 * which would cause runtime errors when the workflow is triggered in production.
 	 *
-	 * @param nodes - The nodes in the workflow being validated
-	 * @param getWorkflowStatus - Function to check if a workflow is published
-	 * @returns Validation result with details of any invalid references
 	 */
 	async validateSubWorkflowReferences(
 		nodes: INode[],
