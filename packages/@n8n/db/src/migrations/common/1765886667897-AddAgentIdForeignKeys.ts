@@ -8,12 +8,14 @@ const table = {
 
 export class AddAgentIdForeignKeys1765886667897 implements ReversibleMigration {
 	async up({ schemaBuilder: { addForeignKey }, runQuery, escape }: MigrationContext) {
+		const escapedAgentIdColumn = escape.columnName('agentId');
+
 		// Clean up orphaned agentId references before adding foreign key constraint
 		await runQuery(
-			`UPDATE ${escape.tableName(table.sessions)} SET "agentId" = NULL WHERE "agentId" IS NOT NULL AND "agentId" NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
+			`UPDATE ${escape.tableName(table.sessions)} SET ${escapedAgentIdColumn} = NULL WHERE ${escapedAgentIdColumn} IS NOT NULL AND ${escapedAgentIdColumn} NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
 		);
 		await runQuery(
-			`UPDATE ${escape.tableName(table.messages)} SET "agentId" = NULL WHERE "agentId" IS NOT NULL AND "agentId" NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
+			`UPDATE ${escape.tableName(table.messages)} SET ${escapedAgentIdColumn} = NULL WHERE ${escapedAgentIdColumn} IS NOT NULL AND ${escapedAgentIdColumn} NOT IN (SELECT id FROM ${escape.tableName(table.agents)})`,
 		);
 
 		// Add foreign key constraint for agentId in sessions table
