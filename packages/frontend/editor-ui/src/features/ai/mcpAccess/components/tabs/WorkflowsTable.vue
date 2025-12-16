@@ -142,7 +142,7 @@ const onConnectClick = () => {
 						<N8nButton
 							data-test-id="mcp-workflow-table-empty-state-button"
 							type="primary"
-							:label="i18n.baseText('settings.mcp.workflows.table.empty.button.label')"
+							:label="i18n.baseText('settings.mcp.connectWorkflows')"
 							@click="onConnectClick"
 						/>
 						<N8nLink

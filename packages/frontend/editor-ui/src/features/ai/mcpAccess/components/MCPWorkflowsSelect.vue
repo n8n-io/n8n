@@ -65,9 +65,7 @@ async function waitFor(timeout: number) {
 }
 
 function focusOnInput() {
-	if (workflowOptions.value.length > 0) {
-		selectRef.value?.focusOnInput();
-	}
+	selectRef.value?.focusOnInput();
 }
 
 function removeOption(value: string) {
@@ -96,7 +94,6 @@ defineExpose({
 		:filterable="true"
 		:remote="true"
 		:remote-method="searchWorkflows"
-		:no-data-text="i18n.baseText('settings.mcp.connectWorkflows.emptyState')"
 		:popper-class="{
 			[$style['mcp-workflows-select-loading']]: isLoading,
 			[$style['mcp-workflows-select-empty']]: showEmptyState,
@@ -105,6 +102,9 @@ defineExpose({
 		<template #prefix>
 			<N8nIcon :class="$style['search-icon']" icon="search" size="large" />
 		</template>
+		<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">
+			{{ i18n.baseText('settings.mcp.connectWorkflows.emptyState') }}
+		</N8nOption>
 		<N8nOption
 			v-for="workflow in workflowOptions"
 			:key="workflow.id"
@@ -128,5 +128,10 @@ defineExpose({
 	min-height: var(--spacing--5xl);
 	align-items: center;
 	justify-content: space-around;
+}
+
+.empty-option {
+	cursor: default !important;
+	color: var(--color--text) !important;
 }
 </style>
