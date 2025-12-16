@@ -11,12 +11,12 @@ export class SourceControlPullModal {
 		await this.page.getByTestId('main-sidebar-source-control-pull').click();
 	}
 
-	getPullButton(): Locator {
+	getPullAndOverrideButton(): Locator {
 		return this.page.getByTestId('force-pull');
 	}
 
 	async pull(): Promise<void> {
-		await this.getPullButton().click();
+		await this.getPullAndOverrideButton().click();
 	}
 
 	getWorkflowsTab(): Locator {

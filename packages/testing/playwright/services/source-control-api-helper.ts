@@ -20,7 +20,6 @@ export class SourceControlApiHelper {
 			},
 		});
 		if (!response.ok()) {
-			console.log(await response.text());
 			throw new TestError(`Failed to disconnect from source control: ${await response.text()}`);
 		}
 		const result = await response.json();
