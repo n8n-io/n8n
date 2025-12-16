@@ -18,7 +18,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
@@ -28,6 +27,7 @@ import {
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
+import { ndvEventBus } from '../ndv.eventBus';
 import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -41,7 +41,7 @@ import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
@@ -70,7 +70,6 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -83,7 +82,7 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
+const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
 const selectedInput = ref<string | undefined>();
 const triggerWaitingWarningEnabled = ref(false);
@@ -348,6 +347,10 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
 
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
+};
+
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
 		onSaveWorkflow(e);
@@ -384,9 +387,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 
 const onWorkflowActivate = () => {
 	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -457,7 +458,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
+	ndvStore.setOutputRunIndex(runInputIndex.value);
 	isLinkingEnabled.value = true;
 	trackLinking('input');
 };
@@ -520,14 +521,14 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
 	runInputIndex.value = run;
 	if (linked.value) {
-		runOutputIndex.value = run;
+		ndvStore.setOutputRunIndex(run);
 	}
 	trackRunChange(run, 'input');
 };
@@ -597,7 +598,7 @@ watch(
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
+			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
@@ -651,7 +652,7 @@ watch(
 );
 
 watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
+	ndvStore.setOutputRunIndex(-1);
 });
 
 watch(maxInputRun, () => {
@@ -702,10 +703,12 @@ watch(mainPanelRef, (mainPanel) => {
 onMounted(() => {
 	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>

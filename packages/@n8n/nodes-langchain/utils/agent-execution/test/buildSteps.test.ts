@@ -538,4 +538,274 @@ describe('buildSteps', () => {
 			expect(result[0].observation).toBe('""');
 		});
 	});
+
+	describe('Anthropic thinking blocks reconstruction', () => {
+		it('should reconstruct AIMessage with thinking content blocks', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: 'I need to calculate 2+2 using the calculator tool.',
+									thinkingType: 'thinking',
+									thinkingSignature: 'test_signature_123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog).toBeDefined();
+			expect(result[0].action.messageLog).toHaveLength(1);
+
+			const message = result[0].action.messageLog![0];
+			const content = message.content;
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			// First block should be thinking
+			expect(content[0]).toEqual({
+				type: 'thinking',
+				thinking: 'I need to calculate 2+2 using the calculator tool.',
+				signature: 'test_signature_123',
+			});
+			// Second block should be tool_use
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_123',
+				name: 'Calculator',
+			});
+		});
+
+		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Search',
+							input: {
+								id: 'call_456',
+								input: { query: 'sensitive search' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_456',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: 'This thinking was redacted by safety systems.',
+									thinkingType: 'redacted_thinking',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { results: [] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog).toBeDefined();
+			expect(result[0].action.messageLog).toHaveLength(1);
+
+			const message = result[0].action.messageLog![0];
+			const content = message.content;
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			// First block should be redacted_thinking
+			expect(content[0]).toEqual({
+				type: 'redacted_thinking',
+				data: 'This thinking was redacted by safety systems.',
+			});
+			// Second block should be tool_use
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_456',
+				name: 'Search',
+			});
+		});
+
+		it('should use string content when no thinking blocks present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								// No thinking blocks
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog).toBeDefined();
+			expect(result[0].action.messageLog).toHaveLength(1);
+
+			const message = result[0].action.messageLog![0];
+			expect(typeof message.content).toBe('string');
+			expect(message.content).toContain('Calling Calculator');
+			expect(message).toHaveProperty('tool_calls');
+		});
+
+		it('should handle thinking content without thinkingType', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: 'Some thinking content',
+									// Missing thinkingType
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should fall back to string content when thinkingType is missing
+			expect(typeof message.content).toBe('string');
+		});
+
+		it('should work alongside Gemini thought_signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'Gemini thought signature',
+								},
+								anthropic: {
+									thinkingContent: 'Anthropic thinking content',
+									thinkingType: 'thinking',
+									thinkingSignature: 'anthropic_sig_456',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should use Anthropic thinking blocks in content
+			const content = message.content;
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			// First block should be thinking
+			expect(content[0]).toEqual({
+				type: 'thinking',
+				thinking: 'Anthropic thinking content',
+				signature: 'anthropic_sig_456',
+			});
+			// Second block should be tool_use
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_123',
+				name: 'Calculator',
+			});
+			// When thinking blocks are present, tool_calls is not used (everything is in content array)
+			// Note: Anthropic thinking and Gemini thought_signature are mutually exclusive
+		});
+	});
 });

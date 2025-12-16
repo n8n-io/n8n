@@ -31,18 +31,20 @@ import type { Response } from 'express';
 import { jsonStringify } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
+		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
@@ -55,7 +57,7 @@ export class ChatHubController {
 		_res: Response,
 		@Body payload: ChatModelsRequestDto,
 	): Promise<ChatModelsResponse> {
-		return await this.chatService.getModels(req.user, payload.credentials);
+		return await this.chatModelsService.getModels(req.user, payload.credentials);
 	}
 
 	@Get('/conversations')
@@ -132,16 +134,6 @@ export class ChatHubController {
 		res: Response,
 		@Body payload: ChatHubSendMessageRequest,
 	) {
-		this.logger.debug(
-			`Chat send request received: ${jsonStringify({
-				...payload,
-				attachments: payload.attachments?.map((a) => ({
-					fileName: a.fileName,
-					data: `${a.data.length} characters (Base64)`,
-				})),
-			})}`,
-		);
-
 		try {
 			await this.chatService.sendHumanMessage(res, req.user, {
 				...payload,
@@ -184,8 +176,6 @@ export class ChatHubController {
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	) {
-		this.logger.debug(`Chat edit request received: ${jsonStringify(payload)}`);
-
 		try {
 			await this.chatService.editMessage(res, req.user, {
 				...payload,
@@ -230,8 +220,6 @@ export class ChatHubController {
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
-		this.logger.debug(`Chat retry request received: ${jsonStringify(payload)}`);
-
 		try {
 			await this.chatService.regenerateAIMessage(res, req.user, {
 				...payload,
@@ -275,8 +263,6 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') messageId: ChatMessageId,
 	) {
-		this.logger.debug(`Chat stop request received: ${jsonStringify({ sessionId, messageId })}`);
-
 		await this.chatService.stopGeneration(req.user, sessionId, messageId);
 		res.status(204).send();
 	}

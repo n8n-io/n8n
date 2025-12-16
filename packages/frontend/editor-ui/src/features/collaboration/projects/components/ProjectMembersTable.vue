@@ -52,6 +52,7 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 	{
 		title: i18n.baseText('projects.settings.table.header.role'),
 		key: 'role',
+		width: 200,
 		disableSort: true,
 	},
 	{

@@ -25,6 +25,7 @@ import type {
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -35,6 +36,12 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+
+const SINGLE_WEBHOOK_TRIGGERS = [
+	'n8n-nodes-base.telegramTrigger',
+	'n8n-nodes-base.slackTrigger',
+	'n8n-nodes-base.facebookLeadAdsTrigger',
+];
 
 /**
  * Service for handling the execution of webhooks of manual executions
@@ -105,14 +112,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { pushRef, workflowEntity, webhook: testWebhook } = registration;
-		// TODO(CAT-1265): support destination node mode in test webhook registration.
-		const destinationNode: IDestinationNode | undefined = registration.destinationNode
-			? {
-					nodeName: registration.destinationNode,
-					mode: 'inclusive',
-				}
-			: undefined;
+		const { pushRef, workflowEntity, webhook: testWebhook, destinationNode } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -279,6 +279,7 @@ export class TestWebhooks implements IWebhookManager {
 		pushRef?: string;
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
+		workflowIsActive?: boolean;
 	}) {
 		const {
 			userId,
@@ -288,6 +289,7 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
+			workflowIsActive,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -315,6 +317,18 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
+		}
+
+		// Check if any webhook is a single webhook trigger and workflow is active
+		if (workflowIsActive) {
+			const singleWebhookTrigger = webhooks.find((w) =>
+				SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
+			);
+			if (singleWebhookTrigger) {
+				throw new SingleWebhookTriggerError(
+					workflow.getNode(singleWebhookTrigger.node)?.name ?? '',
+				);
+			}
 		}
 
 		const timeout = setTimeout(
@@ -352,11 +366,11 @@ export class TestWebhooks implements IWebhookManager {
 
 			cacheableWebhook.userId = userId;
 
-			// TODO(CAT-1265): support destination node mode in test webhook registration.
 			const registration: TestWebhookRegistration = {
+				version: 1,
 				pushRef,
 				workflowEntity,
-				destinationNode: destinationNode?.nodeName,
+				destinationNode,
 				webhook: cacheableWebhook as IWebhookData,
 			};
 
@@ -486,9 +500,10 @@ export class TestWebhooks implements IWebhookManager {
 			if (staticData) workflow.staticData = staticData;
 
 			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
-		}
 
-		await this.registrations.deregisterAll();
+			// Deregister only this webhook, not all webhooks from other running workflows
+			await this.registrations.deregister(webhook);
+		}
 	}
 
 	/**

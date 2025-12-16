@@ -1,6 +1,7 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
+	CancellationReason,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
@@ -86,6 +87,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		previousWorkflow?: IWorkflowDb;
+		aiBuilderAssisted?: boolean;
 	};
 
 	'workflow-activated': {
@@ -393,6 +396,9 @@ export type RelayEventMap = {
 
 	'execution-cancelled': {
 		executionId: string;
+		workflowId?: string;
+		workflowName?: string;
+		reason: CancellationReason;
 	};
 
 	// #endregion
