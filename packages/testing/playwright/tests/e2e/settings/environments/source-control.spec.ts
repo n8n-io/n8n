@@ -2,23 +2,13 @@ import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
 
 import { expect, test } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
+import { initSourceControlPreferences } from '../../../../utils/source-control-helper';
 
 test.use({
 	addContainerCapability: {
 		sourceControl: true,
 	},
 });
-
-async function setupSourceControl(n8n: n8nPage) {
-	await n8n.api.enableFeature('sourceControl');
-	// This is needed because the DB reset wipes out source control preferences
-	await n8n.page.request.post('/rest/source-control/preferences', {
-		data: {
-			connectionType: 'ssh',
-			keyGeneratorType: 'ed25519',
-		},
-	});
-}
 
 async function saveSettings(n8n: n8nPage) {
 	await n8n.settingsEnvironment.getSaveButton().click();
@@ -32,8 +22,12 @@ async function saveSettings(n8n: n8nPage) {
 test.describe('Source Control Settings @capability:source-control', () => {
 	test.describe.configure({ mode: 'serial' });
 
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.api.enableFeature('sourceControl');
+	});
+
 	test('should connect to Git repository using SSH', async ({ n8n, n8nContainer }) => {
-		await setupSourceControl(n8n);
+		await initSourceControlPreferences(n8n);
 
 		const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
 		const preferences = await preferencesResponse.json();
