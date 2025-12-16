@@ -197,7 +197,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		<template #customContent>
 			<footer class="mt-2xs">
 				{{ i18n.baseText('executionsLandingPage.emptyState.accordion.footer') }}
-				<N8nTooltip :disabled="workflowsStore.isWorkflowSaved[currentWorkflowId.value]">
+				<N8nTooltip :disabled="workflowsStore.isWorkflowSaved[currentWorkflowId]">
 					<template #content>
 						<div>
 							<N8nLink @click.prevent="onSaveWorkflowClick">{{
@@ -207,7 +207,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 						</div>
 					</template>
 					<N8nLink
-						:class="{ [$style.disabled]: !workflowsStore.isWorkflowSaved[currentWorkflowId.value] }"
+						:class="{ [$style.disabled]: !workflowsStore.isWorkflowSaved[currentWorkflowId] }"
 						size="small"
 						@click.prevent="openWorkflowSettings"
 					>
