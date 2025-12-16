@@ -28,20 +28,16 @@ async function connectToSourceControl({
 }: { n8n: n8nPage; n8nContainer: N8NStack }): Promise<void> {
 	await setupSourceControl(n8n);
 
-	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-	const preferences = await preferencesResponse.json();
-	const sshKey = preferences.data.publicKey;
+	const preferences = await n8n.api.sourceControl.getPreferences();
+	const sshKey = preferences.publicKey;
 
 	const sourceControlContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
 	expect(sourceControlContainer).toBeDefined();
 	await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
 
-	await n8n.navigate.toEnvironments();
-	await n8n.settingsEnvironment.fillRepoUrl('ssh://git@gitea/giteaadmin/n8n-test-repo.git');
-	await n8n.settingsEnvironment.getConnectButton().click();
-
-	await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
-	await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+	await n8n.api.sourceControl.connect({
+		repositoryUrl: 'ssh://git@gitea/giteaadmin/n8n-test-repo.git',
+	});
 }
 
 test.describe('Source Control Operations @capability:source-control', () => {
