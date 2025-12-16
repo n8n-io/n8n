@@ -76,6 +76,11 @@ const handleOpenChange = (open: boolean) => {
 	internalOpen.value = open;
 	emit('update:modelValue', open);
 
+	if (!open) {
+		highlightedIndex.value = -1;
+		openSubMenuIndex.value = -1;
+	}
+
 	if (props.searchable) {
 		if (open) {
 			void nextTick(() => {
@@ -227,6 +232,8 @@ const open = () => {
 const close = () => {
 	internalOpen.value = false;
 	emit('update:modelValue', false);
+	highlightedIndex.value = -1;
+	openSubMenuIndex.value = -1;
 };
 
 watch(
@@ -234,6 +241,10 @@ watch(
 	(newValue) => {
 		if (newValue !== undefined) {
 			internalOpen.value = newValue;
+			if (!newValue) {
+				highlightedIndex.value = -1;
+				openSubMenuIndex.value = -1;
+			}
 		}
 	},
 	{ immediate: true },
@@ -245,13 +256,6 @@ watch(
 		highlightedIndex.value = -1;
 	},
 );
-
-watch(internalOpen, (isOpen) => {
-	if (!isOpen) {
-		highlightedIndex.value = -1;
-		openSubMenuIndex.value = -1;
-	}
-});
 
 defineExpose({ open, close });
 </script>
