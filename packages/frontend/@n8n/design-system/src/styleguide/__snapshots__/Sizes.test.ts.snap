@@ -1,0 +1,16 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Sizes > should render a section with a variable 1`] = `
+"<table class="table">
+  <tr>
+    <th class="row">Name</th>
+    <th class="row">rem</th>
+    <th class="row">px</th>
+  </tr>
+  <tr>
+    <td>--font-weight--regular</td>
+    <td>400</td>
+    <td>6400</td>
+  </tr>
+</table>"
+`;

@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AssistantLoadingMessage > renders loading message correctly 1`] = `
+<div>
+  <div
+    class="container"
+    data-v-4e90e01e=""
+  >
+    <div
+      class="loadingSpinner"
+      data-v-4e90e01e=""
+    >
+      <svg
+        aria-hidden="true"
+        class="n8n-icon spin"
+        data-icon="spinner"
+        data-v-4e90e01e=""
+        fill="none"
+        focusable="false"
+        height="16px"
+        role="img"
+        viewBox="0 0 24 24"
+        width="16px"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M12 2v3M12 19v3M12 2v3M12 19v3M22.005 11.995h-3M5.005 11.995h-3M19.08 19.068l-2.122-2.122M7.059 7.047 4.938 4.926M4.938 19.068l2.12-2.122M16.958 7.047l2.122-2.121"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-width="2"
+          style="stroke: currentColor; stroke-opacity: 1;"
+        />
+      </svg>
+    </div>
+    <transition-stub
+      appear="false"
+      css="true"
+      data-v-4e90e01e=""
+      mode="out-in"
+      name="slide-vertical"
+      persisted="false"
+    >
+      <n8n-text-stub
+        bold="true"
+        compact="false"
+        data-v-4e90e01e=""
+        size="small"
+        tag="span"
+      />
+    </transition-stub>
+  </div>
+</div>
+`;

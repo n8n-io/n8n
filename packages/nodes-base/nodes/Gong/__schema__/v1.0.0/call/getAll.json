@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "customData": {
+            "type": "null"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isPrivate": {
+            "type": "boolean"
+        },
+        "language": {
+            "type": "string"
+        },
+        "media": {
+            "type": "string"
+        },
+        "meetingUrl": {
+            "type": "string"
+        },
+        "primaryUserId": {
+            "type": "string"
+        },
+        "purpose": {
+            "type": "null"
+        },
+        "scheduled": {
+            "type": "string"
+        },
+        "scope": {
+            "type": "string"
+        },
+        "started": {
+            "type": "string"
+        },
+        "system": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "workspaceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

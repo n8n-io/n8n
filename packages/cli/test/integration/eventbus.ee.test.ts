@@ -1,3 +1,5 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type {
@@ -13,7 +15,8 @@ import {
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 
-import type { User } from '@/databases/entities/user';
+import { mock } from 'jest-mock-extended';
+
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
@@ -27,11 +30,14 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.mock('axios');
+
+const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+mockedAxios.create.mockReturnValue(mockAxiosInstance);
+
 jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
@@ -89,7 +95,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
@@ -244,8 +250,8 @@ test('should send message to webhook ', async () => {
 
 	webhookDestination.enable();
 
-	mockedAxios.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
-	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
@@ -256,7 +262,7 @@ test('should send message to webhook ', async () => {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
-					expect(mockedAxios.request).toHaveBeenCalled();
+					expect(mockAxiosInstance.request).toHaveBeenCalled();
 					webhookDestination.disable();
 					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);

@@ -4,12 +4,6 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
         "businessPhones": {
             "type": "array",
             "items": {
@@ -21,22 +15,18 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string"
-                    },
                     "address": {
                         "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "name",
-                    "address"
-                ]
+                }
             }
+        },
+        "id": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.etag",
-        "id"
-    ]
+    "version": 4
 }

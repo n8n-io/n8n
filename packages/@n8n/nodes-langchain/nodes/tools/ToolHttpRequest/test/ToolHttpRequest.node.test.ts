@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import type { N8nTool } from '@utils/N8nTool';
@@ -8,8 +8,8 @@ import { ToolHttpRequest } from '../ToolHttpRequest.node';
 
 describe('ToolHttpRequest', () => {
 	const httpTool = new ToolHttpRequest();
-	const helpers = mock<IExecuteFunctions['helpers']>();
-	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+	const helpers = mock<ISupplyDataFunctions['helpers']>();
+	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -236,6 +236,69 @@ describe('ToolHttpRequest', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should return the error when receiving text that contains a null character', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello\0World',
+				headers: {
+					'content-type': 'text/plain',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+			expect(helpers.httpRequest).toHaveBeenCalled();
+			// Check that the returned string is formatted as an error message.
+			expect(res).toContain('error');
+			expect(res).toContain('Binary data is not supported');
+		});
+
+		it('should return the error when receiving a JSON response containing a null character', async () => {
+			// Provide a raw JSON string with a literal null character.
+			helpers.httpRequest.mockResolvedValue({
+				body: '{"message":"hello\0world"}',
+				headers: {
+					'content-type': 'application/json',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/json';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+			expect(helpers.httpRequest).toHaveBeenCalled();
+			// Check that the tool returns an error string rather than resolving to valid JSON.
+			expect(res).toContain('error');
+			expect(res).toContain('Binary data is not supported');
 		});
 	});
 

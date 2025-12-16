@@ -1,15 +1,15 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
+import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
+	CancellationReason,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	JsonValue,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { GlobalRole, User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -18,7 +18,9 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: string;
+	role?: {
+		slug: string;
+	};
 };
 
 export type RelayEventMap = {
@@ -39,7 +41,7 @@ export type RelayEventMap = {
 	'first-production-workflow-succeeded': {
 		projectId: string;
 		workflowId: string;
-		userId: string;
+		userId: string | null;
 	};
 
 	'first-workflow-data-loaded': {
@@ -61,6 +63,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		projectId: string;
 		projectType: string;
+		uiContext?: string;
 	};
 
 	'workflow-deleted': {
@@ -69,8 +72,37 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'workflow-archived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
+	'workflow-unarchived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
 	'workflow-saved': {
 		user: UserLike;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+		previousWorkflow?: IWorkflowDb;
+		aiBuilderAssisted?: boolean;
+		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
+	};
+
+	'workflow-activated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+	};
+
+	'workflow-deactivated': {
+		user: UserLike;
+		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
 	};
@@ -100,13 +132,17 @@ export type RelayEventMap = {
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	'node-post-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
+		nodeId?: string;
 		nodeName: string;
+		nodeType?: string;
 	};
 
 	// #endregion
@@ -189,7 +225,17 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'user-retried-execution': {
+		userId: string;
+		publicApi: boolean;
+	};
+
 	'user-retrieved-workflow': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-workflow-version': {
 		userId: string;
 		publicApi: boolean;
 	};
@@ -222,8 +268,10 @@ export type RelayEventMap = {
 			| 'Reset password'
 			| 'New user invite'
 			| 'Resend invite'
+			| 'Workflow auto-deactivated'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -259,7 +307,9 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
-			| 'Credentials shared';
+			| 'Workflow auto-deactivated'
+			| 'Credentials shared'
+			| 'Project shared';
 		publicApi: boolean;
 	};
 
@@ -274,6 +324,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
+		uiContext?: string;
 	};
 
 	'credentials-shared': {
@@ -345,20 +396,27 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'execution-cancelled': {
+		executionId: string;
+		workflowId?: string;
+		workflowName?: string;
+		reason: CancellationReason;
+	};
+
 	// #endregion
 
 	// #region Project
 
 	'team-project-updated': {
 		userId: string;
-		role: GlobalRole;
+		role: string;
 		members: ProjectRelation[];
 		projectId: string;
 	};
 
 	'team-project-deleted': {
 		userId: string;
-		role: GlobalRole;
+		role: string;
 		projectId: string;
 		removalType: 'transfer' | 'delete';
 		targetProjectId?: string;
@@ -366,7 +424,8 @@ export type RelayEventMap = {
 
 	'team-project-created': {
 		userId: string;
-		role: GlobalRole;
+		role: string;
+		uiContext?: string;
 	};
 
 	// #endregion
@@ -378,15 +437,18 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
 	};
 
 	'source-control-user-finished-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 	};
 
@@ -396,6 +458,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;
 		credsEligible: number;
@@ -404,6 +467,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-finished-push-ui': {
+		userId: string;
 		workflowsEligible: number;
 		workflowsPushed: number;
 		credsPushed: number;
@@ -428,7 +492,13 @@ export type RelayEventMap = {
 
 	// #region Variable
 
-	'variable-created': {};
+	'variable-created': {
+		projectId?: string;
+	};
+
+	'variable-updated': {
+		projectId?: string;
+	};
 
 	// #endregion
 
@@ -474,6 +544,62 @@ export type RelayEventMap = {
 
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
+	};
+
+	// #endregion
+
+	// #region SSO
+
+	'sso-user-project-access-updated': {
+		projectsRemoved: number;
+		projectsAdded: number;
+		userId: string;
+	};
+
+	'sso-user-instance-role-updated': {
+		role: string;
+		userId: string;
+	};
+
+	// #region runner
+
+	'runner-task-requested': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	'runner-response-received': {
+		taskId: string;
+		nodeId: string;
+		workflowId: string;
+		executionId: string;
+	};
+
+	// #endregion
+
+	// #region queue
+
+	'job-enqueued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-dequeued': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+	};
+
+	'job-stalled': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
 	};
 
 	// #endregion

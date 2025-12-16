@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

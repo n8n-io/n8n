@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "finish_reason": {
+            "type": "string"
+        },
+        "index": {
+            "type": "integer"
+        },
+        "text": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

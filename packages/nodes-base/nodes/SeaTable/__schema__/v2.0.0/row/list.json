@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "_archived": {
+            "type": "boolean"
+        },
+        "_creator": {
+            "type": "string"
+        },
+        "_ctime": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        },
+        "_last_modifier": {
+            "type": "string"
+        },
+        "_locked": {
+            "type": "null"
+        },
+        "_locked_by": {
+            "type": "null"
+        },
+        "_mtime": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -31,6 +31,23 @@ export class Snowflake implements ICredentialType {
 				'The default virtual warehouse to use for the session after connecting. Used for performing queries, loading data, etc.',
 		},
 		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'Password',
+					value: 'password',
+				},
+				{
+					name: 'Key-Pair',
+					value: 'keyPair',
+				},
+			],
+			default: 'password',
+			description: 'The way to authenticate with Snowflake',
+		},
+		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
@@ -44,6 +61,40 @@ export class Snowflake implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['password'],
+				},
+			},
+		},
+		{
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+				rows: 4,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['keyPair'],
+				},
+			},
+			description:
+				'Private PEM key for Key-pair authentication with Snowflake, follow guide <a href="https://docs.snowflake.com/en/user-guide/key-pair-auth" target="_blank">here</a>',
+		},
+		{
+			displayName: 'Passphrase',
+			name: 'passphrase',
+			type: 'string',
+			default: '',
+			description:
+				'If the private key is encrypted, you must provide the passphrase used to encrypt it',
+			typeOptions: {
+				password: true,
+			},
 		},
 		{
 			displayName: 'Schema',

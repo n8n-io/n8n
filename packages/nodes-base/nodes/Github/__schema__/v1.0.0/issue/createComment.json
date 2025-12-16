@@ -1,43 +1,78 @@
 {
     "type": "object",
     "properties": {
-        "url": {
+        "author_association": {
+            "type": "string"
+        },
+        "body": {
+            "type": "string"
+        },
+        "created_at": {
             "type": "string"
         },
         "html_url": {
             "type": "string"
         },
-        "issue_url": {
-            "type": "string"
-        },
         "id": {
             "type": "integer"
         },
+        "issue_url": {
+            "type": "string"
+        },
         "node_id": {
+            "type": "string"
+        },
+        "performed_via_github_app": {
+            "type": "null"
+        },
+        "reactions": {
+            "type": "object",
+            "properties": {
+                "-1": {
+                    "type": "integer"
+                },
+                "+1": {
+                    "type": "integer"
+                },
+                "confused": {
+                    "type": "integer"
+                },
+                "eyes": {
+                    "type": "integer"
+                },
+                "heart": {
+                    "type": "integer"
+                },
+                "hooray": {
+                    "type": "integer"
+                },
+                "laugh": {
+                    "type": "integer"
+                },
+                "rocket": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
             "type": "string"
         },
         "user": {
             "type": "object",
             "properties": {
-                "login": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "node_id": {
-                    "type": "string"
-                },
                 "avatar_url": {
                     "type": "string"
                 },
-                "gravatar_id": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "html_url": {
+                "events_url": {
                     "type": "string"
                 },
                 "followers_url": {
@@ -49,130 +84,50 @@
                 "gists_url": {
                     "type": "string"
                 },
+                "gravatar_id": {
+                    "type": "string"
+                },
+                "html_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "organizations_url": {
+                    "type": "string"
+                },
+                "received_events_url": {
+                    "type": "string"
+                },
+                "repos_url": {
+                    "type": "string"
+                },
+                "site_admin": {
+                    "type": "boolean"
+                },
                 "starred_url": {
                     "type": "string"
                 },
                 "subscriptions_url": {
                     "type": "string"
                 },
-                "organizations_url": {
-                    "type": "string"
-                },
-                "repos_url": {
-                    "type": "string"
-                },
-                "events_url": {
-                    "type": "string"
-                },
-                "received_events_url": {
-                    "type": "string"
-                },
                 "type": {
+                    "type": "string"
+                },
+                "url": {
                     "type": "string"
                 },
                 "user_view_type": {
                     "type": "string"
-                },
-                "site_admin": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "login",
-                "id",
-                "node_id",
-                "avatar_url",
-                "gravatar_id",
-                "url",
-                "html_url",
-                "followers_url",
-                "following_url",
-                "gists_url",
-                "starred_url",
-                "subscriptions_url",
-                "organizations_url",
-                "repos_url",
-                "events_url",
-                "received_events_url",
-                "type",
-                "site_admin"
-            ]
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "author_association": {
-            "type": "string"
-        },
-        "body": {
-            "type": "string"
-        },
-        "reactions": {
-            "type": "object",
-            "properties": {
-                "url": {
-                    "type": "string"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "+1": {
-                    "type": "integer"
-                },
-                "-1": {
-                    "type": "integer"
-                },
-                "laugh": {
-                    "type": "integer"
-                },
-                "hooray": {
-                    "type": "integer"
-                },
-                "confused": {
-                    "type": "integer"
-                },
-                "heart": {
-                    "type": "integer"
-                },
-                "rocket": {
-                    "type": "integer"
-                },
-                "eyes": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "url",
-                "total_count",
-                "+1",
-                "-1",
-                "laugh",
-                "hooray",
-                "confused",
-                "heart",
-                "rocket",
-                "eyes"
-            ]
-        },
-        "performed_via_github_app": {
-            "type": "null"
+            }
         }
     },
-    "required": [
-        "url",
-        "html_url",
-        "issue_url",
-        "id",
-        "node_id",
-        "user",
-        "created_at",
-        "updated_at",
-        "author_association",
-        "body",
-        "reactions",
-        "performed_via_github_app"
-    ]
+    "version": 1
 }

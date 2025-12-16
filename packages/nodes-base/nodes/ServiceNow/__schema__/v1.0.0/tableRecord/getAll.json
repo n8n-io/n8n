@@ -1,56 +1,30 @@
 {
     "type": "object",
     "properties": {
-        "number": {
+        "state": {
             "type": "string"
         },
-        "short_description": {
+        "sys_class_name": {
             "type": "string"
         },
-        "sys_id": {
+        "sys_created_by": {
             "type": "string"
         },
-        "author": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
-        },
-        "rating": {
+        "sys_created_on": {
             "type": "string"
         },
-        "language": {
+        "sys_mod_count": {
             "type": "string"
         },
-        "embedded_media": {
+        "sys_tags": {
             "type": "string"
         },
-        "content": {
+        "sys_updated_by": {
             "type": "string"
         },
-        "helpful_text": {
-            "type": "string"
-        },
-        "last_updated_on": {
-            "type": "string"
-        },
-        "last_helpful_rating": {
-            "type": "string"
-        },
-        "last_rating": {
-            "type": "string"
-        },
-        "view_count": {
+        "sys_updated_on": {
             "type": "string"
         }
-    }
+    },
+    "version": 4
 }

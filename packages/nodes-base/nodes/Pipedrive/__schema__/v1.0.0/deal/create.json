@@ -1,167 +1,87 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "active": {
+            "type": "boolean"
+        },
+        "activities_count": {
             "type": "integer"
-        },
-        "creator_user_id": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "has_pic": {
-                    "type": "integer"
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
-        },
-        "user_id": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "has_pic": {
-                    "type": "integer"
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
-        },
-        "stage_id": {
-            "type": "integer"
-        },
-        "title": {
-            "type": "string"
         },
         "acv": {
             "type": "null"
         },
-        "mrr": {
+        "acv_currency": {
             "type": "null"
-        },
-        "arr": {
-            "type": "null"
-        },
-        "currency": {
-            "type": "string"
         },
         "add_time": {
             "type": "string"
         },
-        "update_time": {
-            "type": "string"
-        },
-        "stage_change_time": {
+        "arr": {
             "type": "null"
         },
-        "active": {
-            "type": "boolean"
+        "arr_currency": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "creator_user_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "currency": {
+            "type": "string"
         },
         "deleted": {
             "type": "boolean"
         },
-        "status": {
-            "type": "string"
-        },
-        "probability": {
-            "type": "null"
-        },
-        "next_activity_date": {
-            "type": "null"
-        },
-        "next_activity_time": {
-            "type": "null"
-        },
-        "next_activity_id": {
-            "type": "null"
-        },
-        "last_activity_id": {
-            "type": "null"
-        },
-        "last_activity_date": {
-            "type": "null"
-        },
-        "lost_reason": {
-            "type": "null"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "pipeline_id": {
-            "type": "integer"
-        },
-        "lost_time": {
-            "type": "null"
-        },
-        "products_count": {
-            "type": "integer"
-        },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
+        "done_activities_count": {
             "type": "integer"
         },
         "email_messages_count": {
             "type": "integer"
         },
-        "activities_count": {
-            "type": "integer"
-        },
-        "done_activities_count": {
-            "type": "integer"
-        },
-        "undone_activities_count": {
-            "type": "integer"
-        },
-        "participants_count": {
-            "type": "integer"
-        },
         "expected_close_date": {
+            "type": "null"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "formatted_value": {
+            "type": "string"
+        },
+        "formatted_weighted_value": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_activity_date": {
+            "type": "null"
+        },
+        "last_activity_id": {
             "type": "null"
         },
         "last_incoming_mail_time": {
@@ -173,128 +93,116 @@
         "local_lost_date": {
             "type": "null"
         },
-        "origin": {
-            "type": "string"
-        },
-        "origin_id": {
+        "lost_reason": {
             "type": "null"
         },
-        "channel": {
+        "lost_time": {
             "type": "null"
         },
-        "channel_id": {
-            "type": "null"
-        },
-        "stage_order_nr": {
-            "type": "integer"
-        },
-        "next_activity_subject": {
-            "type": "null"
-        },
-        "next_activity_type": {
-            "type": "null"
-        },
-        "next_activity_duration": {
-            "type": "null"
-        },
-        "next_activity_note": {
-            "type": "null"
-        },
-        "formatted_value": {
-            "type": "string"
-        },
-        "formatted_weighted_value": {
-            "type": "string"
-        },
-        "weighted_value_currency": {
-            "type": "string"
-        },
-        "acv_currency": {
+        "mrr": {
             "type": "null"
         },
         "mrr_currency": {
             "type": "null"
         },
-        "arr_currency": {
+        "next_activity_date": {
             "type": "null"
         },
-        "owner_name": {
-            "type": "string"
+        "next_activity_duration": {
+            "type": "null"
         },
-        "cc_email": {
-            "type": "string"
+        "next_activity_id": {
+            "type": "null"
+        },
+        "next_activity_note": {
+            "type": "null"
+        },
+        "next_activity_subject": {
+            "type": "null"
+        },
+        "next_activity_time": {
+            "type": "null"
+        },
+        "next_activity_type": {
+            "type": "null"
+        },
+        "notes_count": {
+            "type": "integer"
         },
         "org_hidden": {
             "type": "boolean"
         },
+        "origin": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "participants_count": {
+            "type": "integer"
+        },
         "person_hidden": {
             "type": "boolean"
+        },
+        "pipeline_id": {
+            "type": "integer"
+        },
+        "probability": {
+            "type": "null"
+        },
+        "products_count": {
+            "type": "integer"
+        },
+        "stage_change_time": {
+            "type": "null"
+        },
+        "stage_id": {
+            "type": "integer"
+        },
+        "stage_order_nr": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "weighted_value_currency": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "creator_user_id",
-        "user_id",
-        "person_id",
-        "org_id",
-        "stage_id",
-        "title",
-        "value",
-        "currency",
-        "add_time",
-        "update_time",
-        "stage_change_time",
-        "active",
-        "deleted",
-        "status",
-        "probability",
-        "next_activity_date",
-        "next_activity_time",
-        "next_activity_id",
-        "last_activity_id",
-        "last_activity_date",
-        "lost_reason",
-        "visible_to",
-        "close_time",
-        "pipeline_id",
-        "won_time",
-        "first_won_time",
-        "lost_time",
-        "products_count",
-        "files_count",
-        "notes_count",
-        "followers_count",
-        "email_messages_count",
-        "activities_count",
-        "done_activities_count",
-        "undone_activities_count",
-        "participants_count",
-        "expected_close_date",
-        "last_incoming_mail_time",
-        "last_outgoing_mail_time",
-        "label",
-        "local_won_date",
-        "local_lost_date",
-        "local_close_date",
-        "origin",
-        "origin_id",
-        "channel",
-        "channel_id",
-        "stage_order_nr",
-        "person_name",
-        "org_name",
-        "next_activity_subject",
-        "next_activity_type",
-        "next_activity_duration",
-        "next_activity_note",
-        "formatted_value",
-        "weighted_value",
-        "formatted_weighted_value",
-        "weighted_value_currency",
-        "rotten_time",
-        "owner_name",
-        "cc_email",
-        "org_hidden",
-        "person_hidden"
-    ]
+    "version": 1
 }

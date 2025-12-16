@@ -1,0 +1,78 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"filter": {}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [140, 1100],
+			"id": "4107ee9d-37e1-4d85-9099-25ec13211ee1",
+			"name": "Get Many",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Many": [
+			{
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "112507770188715252055",
+					"primaryEmail": "new@example.com",
+					"name": {
+						"givenName": "New",
+						"familyName": "User",
+						"fullName": "New User"
+					},
+					"isAdmin": false,
+					"lastLoginTime": "1970-01-01T00:00:00.000Z",
+					"creationTime": "2024-12-20T20:48:53.000Z",
+					"suspended": true
+				}
+			},
+			{
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "222459372679230452528",
+					"primaryEmail": "test33@example.com",
+					"name": {
+						"givenName": "New",
+						"familyName": "Test",
+						"fullName": "New Test"
+					},
+					"isAdmin": true,
+					"lastLoginTime": "2024-12-19T08:39:56.000Z",
+					"creationTime": "2024-09-06T11:48:38.000Z",
+					"suspended": false
+				}
+			}
+		]
+	}
+}

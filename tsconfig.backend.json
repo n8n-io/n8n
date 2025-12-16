@@ -1,5 +1,0 @@
-{
-	"compilerOptions": {
-		"types": ["node", "jest"]
-	}
-}

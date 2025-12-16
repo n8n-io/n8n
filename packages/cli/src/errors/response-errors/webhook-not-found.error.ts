@@ -51,7 +51,7 @@ export class WebhookNotFoundError extends NotFoundError {
 		if (!webhookMethods?.length) {
 			hintMsg =
 				hint === 'default'
-					? "Click the 'Test workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)"
+					? "Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)"
 					: "The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 		}
 

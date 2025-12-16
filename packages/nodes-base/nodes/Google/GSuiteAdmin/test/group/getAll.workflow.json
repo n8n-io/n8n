@@ -1,0 +1,74 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "getAll",
+				"returnAll": true,
+				"filter": {}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [100, 1120],
+			"id": "30263040-3578-4ce6-b19c-f665b85ca301",
+			"name": "Get Many",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Many": [
+			{
+				"json": {
+					"kind": "admin#directory#group",
+					"id": "01x0gk373c9z46j",
+					"etag": "\"example\"",
+					"email": "newoness@example.com",
+					"name": "NewOness",
+					"directMembersCount": "1",
+					"description": "test",
+					"adminCreated": true,
+					"nonEditableAliases": ["NewOness@example.com.test-google-a.com"]
+				}
+			},
+			{
+				"json": {
+					"kind": "admin#directory#group",
+					"id": "01tuee742txc3k4",
+					"etag": "\"example\"",
+					"email": "newonesss@example.com",
+					"name": "NewOne3",
+					"directMembersCount": "0",
+					"description": "test",
+					"adminCreated": true,
+					"nonEditableAliases": ["NewOnesss@example.com.test-google-a.com"]
+				}
+			}
+		]
+	}
+}

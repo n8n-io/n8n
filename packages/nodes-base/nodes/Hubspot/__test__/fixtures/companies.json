@@ -1,0 +1,84 @@
+{
+	"companies": [
+		{
+			"portalId": 62515,
+			"additionalDomains": [],
+			"properties": {
+				"website": {
+					"sourceId": null,
+					"timestamp": 1457513066540,
+					"versions": [
+						{
+							"timestamp": 1457513066540,
+							"sourceVid": [],
+							"name": "website",
+							"value": "example.com",
+							"source": "COMPANIES"
+						}
+					],
+					"value": "example.com",
+					"source": "COMPANIES"
+				},
+				"name": {
+					"sourceId": "name",
+					"timestamp": 1464484587592,
+					"versions": [
+						{
+							"name": "name",
+							"sourceId": "name",
+							"timestamp": 1464484587592,
+							"value": "Example Company",
+							"source": "BIDEN",
+							"sourceVid": []
+						}
+					],
+					"value": "Example Company",
+					"source": "BIDEN"
+				}
+			},
+			"isDeleted": false,
+			"companyId": 115200636
+		},
+		{
+			"portalId": 62515,
+			"additionalDomains": [],
+			"properties": {
+				"website": {
+					"sourceId": null,
+					"timestamp": 1457535205549,
+					"versions": [
+						{
+							"timestamp": 1457535205549,
+							"sourceVid": [],
+							"name": "website",
+							"value": "test.com",
+							"source": "COMPANIES"
+						}
+					],
+					"value": "test.com",
+					"source": "COMPANIES"
+				},
+				"name": {
+					"sourceId": "name",
+					"timestamp": 1468832771769,
+					"versions": [
+						{
+							"name": "name",
+							"sourceId": "name",
+							"timestamp": 1468832771769,
+							"value": "Test Company",
+							"source": "BIDEN",
+							"sourceVid": []
+						}
+					],
+					"value": "Test Company",
+					"source": "BIDEN"
+				}
+			},
+			"isDeleted": false,
+			"companyId": 115279791
+		}
+	],
+	"has-more": false,
+	"offset": 115279791
+}

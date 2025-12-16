@@ -1,18 +1,23 @@
+import { mock } from 'jest-mock-extended';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 import { FileSystemManager } from '@/binary-data/file-system.manager';
-import { isStream } from '@/binary-data/object-store/utils';
+import type { ErrorReporter } from '@/errors';
 import { toFileId, toStream } from '@test/utils';
+
+import type { BinaryData } from '../types';
 
 jest.mock('fs');
 jest.mock('fs/promises');
 
 const storagePath = tmpdir();
+const errorReporter = mock<ErrorReporter>();
 
-const fsManager = new FileSystemManager(storagePath);
+const fsManager = new FileSystemManager(storagePath, errorReporter);
 
 const toFullFilePath = (fileId: string) => path.join(storagePath, fileId);
 
@@ -37,7 +42,11 @@ describe('store()', () => {
 	it('should store a buffer', async () => {
 		const metadata = { mimeType: 'text/plain' };
 
-		const result = await fsManager.store(workflowId, executionId, mockBuffer, metadata);
+		const result = await fsManager.store(
+			{ type: 'execution', workflowId, executionId },
+			mockBuffer,
+			metadata,
+		);
 
 		expect(result.fileSize).toBe(mockBuffer.length);
 	});
@@ -70,7 +79,7 @@ describe('getAsStream()', () => {
 
 		const stream = await fsManager.getAsStream(fileId);
 
-		expect(isStream(stream)).toBe(true);
+		expect(stream).toBeInstanceOf(Readable);
 		expect(fs.createReadStream).toHaveBeenCalledWith(toFullFilePath(fileId), {
 			highWaterMark: undefined,
 		});
@@ -99,16 +108,23 @@ describe('getMetadata()', () => {
 describe('copyByFileId()', () => {
 	it('should copy by file ID and return the file ID', async () => {
 		fsp.copyFile = jest.fn().mockResolvedValue(undefined);
+		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
 
 		// @ts-expect-error - private method
 		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
 
-		const targetFileId = await fsManager.copyByFileId(workflowId, executionId, fileId);
+		const targetFileId = await fsManager.copyByFileId(
+			{ type: 'execution', workflowId, executionId },
+			fileId,
+		);
 
 		const sourcePath = toFullFilePath(fileId);
 		const targetPath = toFullFilePath(targetFileId);
 
 		expect(fsp.copyFile).toHaveBeenCalledWith(sourcePath, targetPath);
+
+		// Make sure metadata file was written
+		expect(fsp.writeFile).toBeCalledTimes(1);
 	});
 });
 
@@ -129,8 +145,7 @@ describe('copyByFilePath()', () => {
 		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
 
 		const result = await fsManager.copyByFilePath(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			sourceFilePath,
 			metadata,
 		);
@@ -152,9 +167,9 @@ describe('deleteMany()', () => {
 	};
 
 	it('should delete many files by workflow ID and execution ID', async () => {
-		const ids = [
-			{ workflowId, executionId },
-			{ workflowId: otherWorkflowId, executionId: otherExecutionId },
+		const ids: BinaryData.FileLocation[] = [
+			{ type: 'execution', workflowId, executionId },
+			{ type: 'execution', workflowId: otherWorkflowId, executionId: otherExecutionId },
 		];
 
 		fsp.rm = jest.fn().mockResolvedValue(undefined);
@@ -177,7 +192,9 @@ describe('deleteMany()', () => {
 	});
 
 	it('should suppress error on non-existing filepath', async () => {
-		const ids = [{ workflowId: 'does-not-exist', executionId: 'does-not-exist' }];
+		const ids: BinaryData.FileLocation[] = [
+			{ type: 'execution', workflowId: 'does-not-exist', executionId: 'does-not-exist' },
+		];
 
 		fsp.rm = jest.fn().mockResolvedValue(undefined);
 

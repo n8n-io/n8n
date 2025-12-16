@@ -2,7 +2,7 @@ import {
 	projectNameSchema,
 	projectTypeSchema,
 	projectIconSchema,
-	projectRoleSchema,
+	projectDescriptionSchema,
 	projectRelationSchema,
 } from '../project.schema';
 
@@ -57,15 +57,13 @@ describe('project.schema', () => {
 		});
 	});
 
-	describe('projectRoleSchema', () => {
+	describe('projectDescriptionSchema', () => {
 		test.each([
-			{ name: 'valid role: project:personalOwner', value: 'project:personalOwner', expected: true },
-			{ name: 'valid role: project:admin', value: 'project:admin', expected: true },
-			{ name: 'valid role: project:editor', value: 'project:editor', expected: true },
-			{ name: 'valid role: project:viewer', value: 'project:viewer', expected: true },
-			{ name: 'invalid role', value: 'invalid-role', expected: false },
-		])('should validate $name', ({ value, expected }) => {
-			const result = projectRoleSchema.safeParse(value);
+			{ description: 'valid description', value: 'Nice Description', expected: true },
+			{ description: 'empty description', value: '', expected: true },
+			{ description: 'name too long', value: 'a'.repeat(513), expected: false },
+		])('should validate $description', ({ value, expected }) => {
+			const result = projectDescriptionSchema.safeParse(value);
 			expect(result.success).toBe(expected);
 		});
 	});
@@ -84,7 +82,7 @@ describe('project.schema', () => {
 			},
 			{
 				name: 'invalid role',
-				value: { userId: 'user-123', role: 'invalid-role' },
+				value: { userId: 'user-123', role: 'project:personalOwner' },
 				expected: false,
 			},
 			{

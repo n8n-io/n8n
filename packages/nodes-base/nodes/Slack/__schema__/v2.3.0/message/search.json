@@ -1,14 +1,47 @@
 {
     "type": "object",
     "properties": {
-        "iid": {
-            "type": "string"
-        },
-        "team": {
-            "type": "string"
-        },
-        "score": {
-            "type": "integer"
+        "blocks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "block_id": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "elements": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "text": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "channel": {
             "type": "object",
@@ -17,6 +50,9 @@
                     "type": "string"
                 },
                 "is_channel": {
+                    "type": "boolean"
+                },
+                "is_ext_shared": {
                     "type": "boolean"
                 },
                 "is_group": {
@@ -28,125 +64,47 @@
                 "is_mpim": {
                     "type": "boolean"
                 },
-                "is_shared": {
-                    "type": "boolean"
-                },
                 "is_org_shared": {
                     "type": "boolean"
                 },
-                "is_ext_shared": {
+                "is_pending_ext_shared": {
                     "type": "boolean"
                 },
                 "is_private": {
                     "type": "boolean"
                 },
+                "is_shared": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
-                },
-                "is_pending_ext_shared": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "id",
-                "is_channel",
-                "is_group",
-                "is_im",
-                "is_mpim",
-                "is_shared",
-                "is_org_shared",
-                "is_ext_shared",
-                "is_private",
-                "name"
-            ]
+            }
+        },
+        "iid": {
+            "type": "string"
+        },
+        "no_reactions": {
+            "type": "boolean"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
         },
         "type": {
             "type": "string"
         },
         "username": {
             "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "blocks": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "block_id": {
-                        "type": "string"
-                    },
-                    "elements": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
-                                "elements": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "type": {
-                                                "type": "string"
-                                            },
-                                            "user_id": {
-                                                "type": "string"
-                                            },
-                                            "text": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "unicode": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
-                                    }
-                                }
-                            },
-                            "required": [
-                                "type"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
-            }
-        },
-        "text": {
-            "type": "string"
-        },
-        "permalink": {
-            "type": "string"
-        },
-        "no_reactions": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "iid",
-        "team",
-        "score",
-        "channel",
-        "type",
-        "user",
-        "username",
-        "ts",
-        "text",
-        "permalink"
-    ]
+    "version": 1
 }

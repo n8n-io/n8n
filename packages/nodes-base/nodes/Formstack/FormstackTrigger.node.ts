@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { IFormstackWebhookResponseBody } from './GenericFunctions';
 import { apiRequest, getForms } from './GenericFunctions';
@@ -24,7 +24,7 @@ export class FormstackTrigger implements INodeType {
 			name: 'Formstack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'formstackApi',

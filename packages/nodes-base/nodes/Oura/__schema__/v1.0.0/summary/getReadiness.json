@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "contributors": {
+            "type": "object",
+            "properties": {
+                "activity_balance": {
+                    "type": "integer"
+                },
+                "body_temperature": {
+                    "type": "integer"
+                },
+                "previous_night": {
+                    "type": "integer"
+                },
+                "recovery_index": {
+                    "type": "integer"
+                },
+                "resting_heart_rate": {
+                    "type": "integer"
+                }
+            }
+        },
+        "day": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "score": {
+            "type": "integer"
+        },
+        "temperature_deviation": {
+            "type": "number"
+        },
+        "timestamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

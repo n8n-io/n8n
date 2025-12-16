@@ -1,6 +1,6 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "0.22.0",
+  "version": "1.0.0-rc.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,9 +9,10 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "main": "dist/index.js",
@@ -22,5 +23,8 @@
   ],
   "dependencies": {
     "axios": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }

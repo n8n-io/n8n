@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INode, type IPinData, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data';
@@ -82,8 +82,12 @@ function findStartNodesRecursive(
 			current.name,
 			// last run
 			-1,
-			NodeConnectionType.Main,
-			0,
+			NodeConnectionTypes.Main,
+			// Although this is a Loop node, the graph may not actually have a loop here e.g.,
+			// while the workflow is under development. If there's not a loop, we treat the loop
+			// node as a normal node and take the data from the first output at index 1.
+			// If there *is* a loop, we take the data from the `done` output at index 0.
+			isALoop(graph, current) ? 0 : 1,
 		);
 
 		if (nodeRunData === null || nodeRunData.length === 0) {
@@ -111,7 +115,8 @@ function findStartNodesRecursive(
 		// If the node has multiple outputs, only follow the outputs that have run data.
 		const hasNoRunData =
 			nodeRunData === null || nodeRunData === undefined || nodeRunData.data.length === 0;
-		if (hasNoRunData) {
+		const hasNoPinnedData = pinData[outGoingConnection.from.name] === undefined;
+		if (hasNoRunData && hasNoPinnedData) {
 			continue;
 		}
 
@@ -127,6 +132,10 @@ function findStartNodesRecursive(
 	}
 
 	return startNodes;
+}
+
+function isALoop(graph: DirectedGraph, node: INode): boolean {
+	return graph.getChildren(node).has(node);
 }
 
 /**

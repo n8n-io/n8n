@@ -1,17 +1,18 @@
 {
     "type": "object",
     "properties": {
+        "create_date": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
         "name": {
             "type": "string"
-        },
-        "expected_revenue": {
-            "type": "integer"
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 8
 }

@@ -1,4 +1,3 @@
-import './polyfills';
 import { Container } from '@n8n/di';
 import { ensureError, setGlobalState } from 'n8n-workflow';
 
@@ -55,12 +54,20 @@ void (async function start() {
 	});
 
 	sentry = Container.get(TaskRunnerSentry);
-	await sentry.initIfEnabled();
+	try {
+		await sentry.initIfEnabled();
+	} catch (error) {
+		console.error(
+			'FAILED TO INITIALIZE SENTRY. ERROR REPORTING WILL BE DISABLED. THIS IS LIKELY A CONFIGURATION OR ENVIRONMENT ISSUE.',
+			error,
+		);
+		sentry = undefined;
+	}
 
 	runner = new JsTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {
 		// Use shorter timeout since we know we don't have any tasks running
-		void createSignalHandler('IDLE_TIMEOUT', 1)();
+		void createSignalHandler('IDLE_TIMEOUT', 3)();
 	});
 
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;

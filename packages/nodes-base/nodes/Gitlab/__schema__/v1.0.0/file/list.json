@@ -4,24 +4,18 @@
         "id": {
             "type": "string"
         },
-        "name": {
+        "mode": {
             "type": "string"
         },
-        "type": {
+        "name": {
             "type": "string"
         },
         "path": {
             "type": "string"
         },
-        "mode": {
+        "type": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "path",
-        "mode"
-    ]
+    "version": 1
 }

@@ -1,17 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "lastUpdated": {
-            "type": "string"
-        },
         "createdOn": {
             "type": "string"
-        },
-        "isArchived": {
-            "type": "boolean"
         },
         "fieldData": {
             "type": "object",
@@ -21,25 +12,18 @@
                 },
                 "slug": {
                     "type": "string"
-                },
-                "body": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "slug"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "lastUpdated": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "cmsLocaleId",
-        "lastPublished",
-        "lastUpdated",
-        "createdOn",
-        "isArchived",
-        "isDraft",
-        "fieldData"
-    ]
+    "version": 1
 }

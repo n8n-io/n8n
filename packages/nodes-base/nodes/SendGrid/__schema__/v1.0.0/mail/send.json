@@ -4,5 +4,6 @@
         "messageId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

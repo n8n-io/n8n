@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
 	NodeOperationError,
@@ -19,7 +19,7 @@ const node: INode = {
 	typeVersion: 3,
 	position: [42, 42],
 	parameters: {
-		mode: 'manual',
+		mode: 'raw',
 		fields: {
 			values: [],
 		},
@@ -36,8 +36,8 @@ const createMockExecuteFunction = (
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);
@@ -129,7 +129,7 @@ describe('test Set2, rawMode/json Mode', () => {
 			const output = await execute.call(fakeExecuteFunction, item, 0, options, {}, node);
 
 			expect(output).toEqual({
-				json: { error: "The 'JSON Output' in item 0 contains invalid JSON" },
+				json: { error: "The 'JSON Output' in item 0 does not contain a valid JSON object" },
 				pairedItem: { item: 0 },
 			});
 		});

@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "exchange": {
+            "type": "string"
+        },
+        "symbol": {
+            "type": "string"
+        },
+        "volume": {
+            "type": "integer"
+        }
+    },
+    "version": 3
+}

@@ -7,8 +7,8 @@ import { rawBodyReader, bodyParser } from '@/middlewares/body-parser';
 
 describe('bodyParser', () => {
 	const server = createServer((req: Request, res: Response) => {
-		rawBodyReader(req, res, async () => {
-			bodyParser(req, res, () => res.end(JSON.stringify(req.body)));
+		void rawBodyReader(req, res, async () => {
+			void bodyParser(req, res, () => res.end(JSON.stringify(req.body)));
 		});
 	});
 

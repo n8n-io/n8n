@@ -1,0 +1,109 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "blob",
+				"operation": "create",
+				"container": { "__rl": true, "value": "mycontainer", "mode": "list" },
+				"blobCreate": "myblob",
+				"options": {
+					"accessTier": "Hot",
+					"blobType": "BlockBlob",
+					"cacheControl": "no-cache",
+					"contentCrc64": "3EDB64E77CB16A4C",
+					"contentEncoding": "utf8",
+					"contentLanguage": "en-US",
+					"contentMd5": "b97f46db5f3be7709d942eefe30e5b45",
+					"contentType": "application/json",
+					"encryptionContext": "context",
+					"encryptionScope": "encryptionScope",
+					"expiryOption": "Absolute",
+					"filename": "file.json",
+					"immutabilityPolicyUntilDate": "2025-01-01T00:00:00",
+					"immutabilityPolicyMode": "unlocked",
+					"leaseId": "leaseId123",
+					"legalHold": true,
+					"metadata": { "metadataValues": [{ "fieldName": "key1", "fieldValue": "value1" }] },
+					"origin": "http://contoso.com",
+					"tags": { "tagValues": [{ "tagName": "tag1", "tagValue": "value1" }] }
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"convertAllData": false,
+				"options": { "useRawData": true }
+			},
+			"name": "Move Binary Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "221e00ed-8c9b-4313-a4d6-b87c64b09d80"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\n  \"data\": {\n    \"my_field_1\": \"value\",\n    \"my_field_2\": 1\n  }\n}\n",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "6c03903b-0177-4e94-b1ad-4f6ad9e84f62",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Move Binary Data": { "main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]] },
+		"Edit Fields": { "main": [[{ "node": "Move Binary Data", "type": "main", "index": 0 }]] }
+	},
+	"pinData": {
+		"Azure Storage": [
+			{
+				"json": {
+					"etag": "\"0x22769D26D3F3740\"",
+					"lastModified": "Thu, 23 Jan 2025 17:53:23 GMT",
+					"contentMd5": "aWQGHD8kGQd5ZtEN/S1/aw==",
+					"requestId": "75b87ee3-a7f7-468d-b7d1-e7e7b3173dab",
+					"version": "2025-01-05",
+					"date": "Thu, 23 Jan 2025 17:53:23 GMT",
+					"requestServerEncrypted": true,
+					"accessControlAllowCredentials": "access-control-allow-credentials",
+					"accessControlAllowOrigin": "access-control-allow-origin",
+					"accessControlExposeHeaders": "access-control-expose-headers",
+					"contentCrc64": "x-ms-content-crc64",
+					"contentLength": 0,
+					"encryptionKeySha256": "x-ms-encryption-key-sha256",
+					"encryptionScope": "x-ms-encryption-scope",
+					"versionId": "Thu, 23 Jan 2025 17:53:23 GMT",
+					"keepAlive": "timeout=5",
+					"server": "Azurite-Blob/3.33.0"
+				}
+			}
+		]
+	}
+}

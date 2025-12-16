@@ -1,6 +1,6 @@
 import * as a from 'assert';
-import type { IConnections, INode, WorkflowParameters } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
+import type { IConnections, INode, WorkflowParameters, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 export type GraphConnection = {
 	from: INode;
@@ -48,6 +48,25 @@ export class DirectedGraph {
 
 	getNodes() {
 		return new Map(this.nodes.entries());
+	}
+
+	/**
+	 * Returns a set of nodes whose names match the provided array of names.
+	 *
+	 * Only nodes that exist in the graph will be included in the result.
+	 */
+	getNodesByNames(names: string[]) {
+		const nodes: Set<INode> = new Set();
+
+		for (const name of names) {
+			const node = this.nodes.get(name);
+
+			if (node) {
+				nodes.add(node);
+			}
+		}
+
+		return nodes;
 	}
 
 	getConnections(filter: { to?: INode } = {}) {
@@ -105,12 +124,12 @@ export class DirectedGraph {
 			const newConnections: GraphConnection[] = [];
 
 			for (const incomingConnection of incomingConnections) {
-				if (options.skipConnectionFn && options.skipConnectionFn(incomingConnection)) {
+				if (options.skipConnectionFn?.(incomingConnection)) {
 					continue;
 				}
 
 				for (const outgoingConnection of outgoingConnections) {
-					if (options.skipConnectionFn && options.skipConnectionFn(outgoingConnection)) {
+					if (options.skipConnectionFn?.(outgoingConnection)) {
 						continue;
 					}
 
@@ -167,7 +186,7 @@ export class DirectedGraph {
 
 		const connection: GraphConnection = {
 			...connectionInput,
-			type: connectionInput.type ?? NodeConnectionType.Main,
+			type: connectionInput.type ?? NodeConnectionTypes.Main,
 			outputIndex: connectionInput.outputIndex ?? 0,
 			inputIndex: connectionInput.inputIndex ?? 0,
 		};
@@ -456,6 +475,44 @@ export class DirectedGraph {
 						// TODO: What's with the input type?
 						const { node: toNodeName, type: _inputType, index: inputIndex } = conn;
 						const to = workflow.getNode(toNodeName);
+						a.ok(to);
+
+						graph.addConnection({
+							from,
+							to,
+							// TODO: parse outputType instead of casting it
+							type: outputType as NodeConnectionType,
+							outputIndex,
+							inputIndex,
+						});
+					}
+				}
+			}
+		}
+
+		return graph;
+	}
+
+	static fromNodesAndConnections(nodes: INode[], connections: IConnections): DirectedGraph {
+		const graph = new DirectedGraph();
+
+		graph.addNodes(...nodes);
+
+		// Create a map for quick node lookup
+		const nodeMap = new Map<string, INode>();
+		for (const node of nodes) {
+			nodeMap.set(node.name, node);
+		}
+
+		for (const [fromNodeName, iConnection] of Object.entries(connections)) {
+			const from = nodeMap.get(fromNodeName);
+			a.ok(from);
+
+			for (const [outputType, outputs] of Object.entries(iConnection)) {
+				for (const [outputIndex, conns] of outputs.entries()) {
+					for (const conn of conns ?? []) {
+						const { node: toNodeName, type: _inputType, index: inputIndex } = conn;
+						const to = nodeMap.get(toNodeName);
 						a.ok(to);
 
 						graph.addConnection({

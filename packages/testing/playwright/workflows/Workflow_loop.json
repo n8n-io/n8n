@@ -1,0 +1,110 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -10],
+			"id": "cc68bd44-e150-403c-afaf-bd0bac0459dd",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [{data:1},{data:2},{data:3}]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, -10],
+			"id": "461b130c-0efb-4201-8210-d5e794e88ed8",
+			"name": "Code"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [440, -10],
+			"id": "16860d82-1b2c-4882-ad76-43cc2042d695",
+			"name": "Loop Over Items"
+		},
+		{
+			"parameters": {
+				"amount": 2
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [660, 40],
+			"id": "9ede6c97-a3c5-4f42-adcc-dfe66fc7a2a8",
+			"name": "Wait",
+			"webhookId": "36d32e2d-a9cf-4dc7-b138-70d7966c96d7"
+		},
+		{
+			"parameters": {
+				"jsCode": "throw Error('test!!!')"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [660, -160],
+			"id": "05ad4f4d-10fc-4bec-9145-0e5c20f455c4",
+			"name": "Code1"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "74f18f142a6ddf6880a6f8c5b30685f621743a7a66d8d94c8f164937f4dd5515"
+	}
+}

@@ -1,8 +1,7 @@
+import type { CreateCredentialDto } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import { nanoId, date } from 'minifaker';
 import { randomString } from 'n8n-workflow';
-
-import type { CredentialRequest } from '@/requests';
 
 type NewCredentialWithSCopes = {
 	scopes: Scope[];
@@ -33,9 +32,7 @@ export const credentialScopes: Scope[] = [
 	'credential:update',
 ];
 
-export const createNewCredentialsPayload = (
-	payload?: Partial<CredentialRequest.CredentialProperties>,
-): CredentialRequest.CredentialProperties => {
+export const createNewCredentialsPayload = (payload?: Partial<CreateCredentialDto>) => {
 	return {
 		name,
 		type,

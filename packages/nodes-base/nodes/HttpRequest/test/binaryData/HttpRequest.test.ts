@@ -1,26 +1,19 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import {
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-	initBinaryDataService,
-} from '@test/nodes/Helpers';
-
 describe('Test Binary Data Download', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const tests = workflowToTests(workflows);
-
 	const baseUrl = 'https://dummy.domain';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		nock(baseUrl)
 			.persist()
 			.get('/path/to/image.png')
 			.reply(200, Buffer.from('test'), { 'content-type': 'image/png' });
+
+		nock(baseUrl)
+			.persist()
+			.get('/path/to/text.txt')
+			.reply(200, Buffer.from('test'), { 'content-type': 'text/plain; charset=utf-8' });
 
 		nock(baseUrl)
 			.persist()
@@ -31,9 +24,6 @@ describe('Test Binary Data Download', () => {
 			'content-disposition': 'attachment; filename="testing.jpg"',
 		});
 	});
-	const nodeTypes = setup(tests);
 
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	new NodeTestHarness().setupTests({ assertBinaryData: true });
 });

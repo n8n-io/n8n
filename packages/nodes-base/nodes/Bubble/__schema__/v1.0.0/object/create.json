@@ -1,15 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "status": {
+        "id": {
             "type": "string"
         },
-        "id": {
+        "status": {
             "type": "string"
         }
     },
-    "required": [
-        "status",
-        "id"
-    ]
+    "version": 1
 }

@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "body": {
+            "type": "string"
+        },
+        "client_iden": {
+            "type": "string"
+        },
+        "created": {
+            "type": "number"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "dismissed": {
+            "type": "boolean"
+        },
+        "iden": {
+            "type": "string"
+        },
+        "modified": {
+            "type": "number"
+        },
+        "receiver_email": {
+            "type": "string"
+        },
+        "receiver_email_normalized": {
+            "type": "string"
+        },
+        "receiver_iden": {
+            "type": "string"
+        },
+        "sender_name": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

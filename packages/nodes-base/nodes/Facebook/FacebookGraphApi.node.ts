@@ -8,7 +8,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,9 @@ export class FacebookGraphApi implements INodeType {
 		defaults: {
 			name: 'Facebook Graph API',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'facebookGraphApi',
@@ -79,6 +80,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v23.0',
+						value: 'v23.0',
+					},
+					{
+						name: 'v22.0',
+						value: 'v22.0',
 					},
 					{
 						name: 'v21.0',

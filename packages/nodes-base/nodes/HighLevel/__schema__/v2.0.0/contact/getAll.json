@@ -1,65 +1,25 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "contactName": {
-            "type": "string"
-        },
-        "dnd": {
-            "type": "boolean"
-        },
-        "type": {
-            "type": "string"
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "country": {
-            "type": "string"
-        },
-        "website": {
-            "type": "null"
-        },
         "attributions": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "utmSessionSource": {
-                        "type": "string"
-                    },
                     "isFirst": {
                         "type": "boolean"
                     },
                     "medium": {
                         "type": "string"
+                    },
+                    "utmSessionSource": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "utmSessionSource",
-                    "medium"
-                ]
+                }
             }
+        },
+        "contactName": {
+            "type": "string"
         },
         "customFields": {
             "type": "array",
@@ -69,12 +29,30 @@
                     "id": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
+                }
+            }
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
+        },
+        "dnd": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
             }
         }
-    }
+    },
+    "version": 1
 }

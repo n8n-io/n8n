@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
-            "type": "string"
-        },
         "etag": {
             "type": "string"
         },
@@ -16,25 +13,30 @@
                 "videoId": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "kind",
-                "videoId"
-            ]
+            }
+        },
+        "kind": {
+            "type": "string"
         },
         "snippet": {
             "type": "object",
             "properties": {
-                "publishedAt": {
-                    "type": "string"
-                },
                 "channelId": {
                     "type": "string"
                 },
-                "title": {
+                "channelTitle": {
                     "type": "string"
                 },
                 "description": {
+                    "type": "string"
+                },
+                "liveBroadcastContent": {
+                    "type": "string"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "publishTime": {
                     "type": "string"
                 },
                 "thumbnails": {
@@ -43,87 +45,52 @@
                         "default": {
                             "type": "object",
                             "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
                                 "url": {
                                     "type": "string"
                                 },
                                 "width": {
                                     "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "url",
-                                "width",
-                                "height"
-                            ]
-                        },
-                        "medium": {
-                            "type": "object",
-                            "properties": {
-                                "url": {
-                                    "type": "string"
-                                },
-                                "width": {
-                                    "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "url",
-                                "width",
-                                "height"
-                            ]
+                            }
                         },
                         "high": {
                             "type": "object",
                             "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
                                 "url": {
                                     "type": "string"
                                 },
                                 "width": {
                                     "type": "integer"
-                                },
+                                }
+                            }
+                        },
+                        "medium": {
+                            "type": "object",
+                            "properties": {
                                 "height": {
                                     "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "url",
-                                "width",
-                                "height"
-                            ]
+                            }
                         }
-                    },
-                    "required": [
-                        "default",
-                        "medium",
-                        "high"
-                    ]
+                    }
                 },
-                "channelTitle": {
-                    "type": "string"
-                },
-                "liveBroadcastContent": {
-                    "type": "string"
-                },
-                "publishTime": {
+                "title": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "publishedAt",
-                "channelId",
-                "title",
-                "description",
-                "thumbnails",
-                "channelTitle",
-                "liveBroadcastContent",
-                "publishTime"
-            ]
+            }
         }
-    }
+    },
+    "version": 1
 }

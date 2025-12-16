@@ -7,9 +7,12 @@ import type {
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport } from './utils';
-import { createEmailBody } from '../../../utils/sendAndWait/email-templates';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import {
-	configureWaitTillDate,
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
+} from '../../../utils/sendAndWait/email-templates';
+import {
 	createButton,
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
@@ -27,12 +30,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
 
-	const instanceId = this.getInstanceId();
+	let htmlBody: string;
 
-	const htmlBody = createEmailBody(config.message, buttons.join('\n'), instanceId);
+	if (config.appendAttribution !== false) {
+		const instanceId = this.getInstanceId();
+		htmlBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		htmlBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const mailOptions: IDataObject = {
 		from: fromEmail,

@@ -10,7 +10,7 @@ export class ClickUpApi implements ICredentialType {
 
 	displayName = 'ClickUp API';
 
-	documentationUrl = 'clickUp';
+	documentationUrl = 'clickup';
 
 	properties: INodeProperties[] = [
 		{

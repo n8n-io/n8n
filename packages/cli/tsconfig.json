@@ -1,5 +1,8 @@
 {
-	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
 	"compilerOptions": {
 		"rootDir": ".",
 		"emitDecoratorMetadata": true,
@@ -17,12 +20,20 @@
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso.ee/saml/saml-schema-metadata-2.0.xsd"],
 	"references": [
-		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" },
+		{ "path": "../nodes-base/tsconfig.build.cjs.json" },
+		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../@n8n/api-types/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },
+		{ "path": "../@n8n/constants/tsconfig.build.json" },
+		{ "path": "../@n8n/decorators/tsconfig.build.json" },
+		{ "path": "../@n8n/db/tsconfig.build.json" },
+		{ "path": "../@n8n/errors/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-test-utils/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },
+		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" }
 	]
 }

@@ -1,10 +1,27 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription, type INodeProperties } from 'n8n-workflow';
 
 import * as drive from './drive/Drive.resource';
 import * as file from './file/File.resource';
 import * as fileFolder from './fileFolder/FileFolder.resource';
 import * as folder from './folder/Folder.resource';
+
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName:
+		'Retrieve, analyze, and answer questions using your Google Drive documents with our pre-built',
+	name: 'preBuiltAgentsCalloutGoogleDrive',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Knowledge store agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'knowledge_store_agent_with_google_drive',
+		},
+	},
+	default: '',
+};
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Drive',
@@ -17,8 +34,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Drive',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
@@ -41,6 +58,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		preBuiltAgentsCallout,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',

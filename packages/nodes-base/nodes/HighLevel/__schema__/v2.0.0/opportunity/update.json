@@ -4,91 +4,16 @@
         "opportunity": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "monetaryValue": {
-                    "type": "integer"
-                },
-                "pipelineId": {
-                    "type": "string"
-                },
-                "pipelineStageId": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "lastStatusChangeAt": {
-                    "type": "string"
-                },
-                "lastStageChangeAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "contactId": {
-                    "type": "string"
-                },
-                "isAttribute": {
-                    "type": "boolean"
-                },
-                "internalSource": {
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "apiVersion": {
-                            "type": "string"
-                        },
-                        "channel": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "type",
-                        "id"
-                    ]
-                },
-                "locationId": {
-                    "type": "string"
-                },
-                "lastActionDate": {
-                    "type": "string"
-                },
-                "followers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "contact": {
                     "type": "object",
                     "properties": {
+                        "email": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "string"
                         },
                         "name": {
-                            "type": "string"
-                        },
-                        "email": {
                             "type": "string"
                         },
                         "phone": {
@@ -100,57 +25,87 @@
                                 "type": "string"
                             }
                         }
-                    },
-                    "required": [
-                        "id",
-                        "name",
-                        "email",
-                        "phone",
-                        "tags",
-                        "followers"
-                    ]
+                    }
                 },
-                "customFields": {
+                "contactId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "followers": {
                     "type": "array",
                     "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "fieldValue"
-                        ]
+                        "type": "string"
                     }
+                },
+                "id": {
+                    "type": "string"
                 },
                 "indexVersion": {
                     "type": "integer"
+                },
+                "internalSource": {
+                    "type": "object",
+                    "properties": {
+                        "apiVersion": {
+                            "type": "string"
+                        },
+                        "channel": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "isAttribute": {
+                    "type": "boolean"
+                },
+                "lastActionDate": {
+                    "type": "string"
+                },
+                "lastStageChangeAt": {
+                    "type": "string"
+                },
+                "lastStatusChangeAt": {
+                    "type": "string"
+                },
+                "locationId": {
+                    "type": "string"
+                },
+                "monetaryValue": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pipelineId": {
+                    "type": "string"
+                },
+                "pipelineStageId": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name",
-                "monetaryValue",
-                "pipelineId",
-                "pipelineStageId",
-                "status",
-                "lastStatusChangeAt",
-                "lastStageChangeAt",
-                "createdAt",
-                "updatedAt",
-                "contactId",
-                "isAttribute",
-                "internalSource",
-                "locationId",
-                "lastActionDate",
-                "followers",
-                "contact"
-            ]
+            }
         },
         "traceId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

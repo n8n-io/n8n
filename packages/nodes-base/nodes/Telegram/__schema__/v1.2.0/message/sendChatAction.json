@@ -8,8 +8,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

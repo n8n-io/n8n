@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type JsonObject,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -28,8 +28,9 @@ export class Xero implements INodeType {
 		defaults: {
 			name: 'Xero',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'xeroOAuth2Api',
@@ -144,7 +145,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the brading themes to display them to user so that they can
+			// Get all the currencies to display them to user so that they can
 			// select them easily
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -153,11 +154,9 @@ export class Xero implements INodeType {
 					organizationId,
 				});
 				for (const currency of currencies) {
-					const currencyName = currency.Code;
-					const currencyId = currency.Description;
 					returnData.push({
-						name: currencyName,
-						value: currencyId,
+						name: currency.Description, // e.g. "Euro"
+						value: currency.Code, // e.g. "EUR"
 					});
 				}
 				return returnData;

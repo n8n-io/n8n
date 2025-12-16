@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "collections": {
+            "type": "null"
+        },
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "permissions": {
+            "type": "null"
+        },
+        "resetPasswordEnrolled": {
+            "type": "boolean"
+        },
+        "ssoExternalId": {
+            "type": "null"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "twoFactorEnabled": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "userId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

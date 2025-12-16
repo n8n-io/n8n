@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "rest_id": {
+            "type": "string"
+        },
+        "retweeted": {
+            "type": "boolean"
+        }
+    },
+    "version": 2
+}

@@ -1,3 +1,11 @@
+import type { User, ICredentialsDb } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
@@ -7,16 +15,8 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import * as Db from '@/db';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { ICredentialsDb } from '@/interfaces';
 import type { CredentialRequest } from '@/requests';
 
 import type { IDependency, IJsonSchema } from '../../../types';
@@ -53,14 +53,16 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const result = await Db.transaction(async (transactionManager) => {
+	const projectRepository = Container.get(ProjectRepository);
+	const { manager: dbManager } = projectRepository;
+	const result = await dbManager.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
 
 		const newSharedCredential = new SharedCredentials();
 
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			user.id,
 			transactionManager,
 		);
@@ -204,15 +206,21 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			const displayOptionsValues = property.displayOptions.show[dependantName];
 			let dependantValue: DisplayCondition | string | number | boolean = '';
 
-			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
+			if (
+				displayOptionsValues &&
+				Array.isArray(displayOptionsValues) &&
+				displayOptionsValues[0] !== undefined &&
+				displayOptionsValues[0] !== null
+			) {
 				dependantValue = displayOptionsValues[0];
 			}
 
-			if (propertyRequiredDependencies[dependantName] === undefined) {
-				propertyRequiredDependencies[dependantName] = {};
-			}
+			// Create a unique key for each dependant name and value combination
+			// so that if multiple properties depend on the same property but different values
+			// they get their own if-then-else block
+			const dependencyKey = `${dependantName}:${JSON.stringify(dependantValue)}`;
 
-			if (!resolveProperties.includes(dependantName)) {
+			if (!resolveProperties.includes(dependencyKey)) {
 				let conditionalValue;
 				if (typeof dependantValue === 'object' && dependantValue._cnd) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -278,7 +286,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						enum: [dependantValue],
 					};
 				}
-				propertyRequiredDependencies[dependantName] = {
+				propertyRequiredDependencies[dependencyKey] = {
 					if: {
 						properties: {
 							[dependantName]: conditionalValue,
@@ -291,14 +299,13 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						allOf: [],
 					},
 				};
+				resolveProperties.push(dependencyKey);
 			}
 
-			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependantName].else?.allOf.push({
+			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
 				not: { required: [property.name] },
 			});
-
-			resolveProperties.push(dependantName);
 			// remove global required
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}

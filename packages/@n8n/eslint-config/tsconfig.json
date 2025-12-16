@@ -1,0 +1,15 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"rootDir": "src",
+		"outDir": "dist",
+		"types": ["vitest/globals"],
+		"esModuleInterop": true,
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
+		"declaration": true
+	},
+	"include": ["src/**/*.ts"],
+	"files": []
+}

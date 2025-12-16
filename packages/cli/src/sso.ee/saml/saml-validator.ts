@@ -1,6 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
+import { Constants, IdentityProvider } from 'samlify';
+import type { IdentityProviderInstance } from 'samlify';
 import type { XMLFileInfo, XMLLintOptions, XMLValidationResult } from 'xmllint-wasm';
+
+import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
 
 @Service()
 export class SamlValidator {
@@ -21,8 +25,24 @@ export class SamlValidator {
 		this.xmllint = await import('xmllint-wasm');
 	}
 
+	validateIdentiyProvider(idp: IdentityProviderInstance) {
+		const binding = idp.entityMeta.getSingleSignOnService(Constants.wording.binding.redirect);
+		if (typeof binding !== 'string') {
+			throw new InvalidSamlMetadataError('only SAML redirect binding is supported.');
+		}
+	}
+
 	async validateMetadata(metadata: string): Promise<boolean> {
-		return await this.validateXml('metadata', metadata);
+		const validXML = await this.validateXml('metadata', metadata);
+
+		if (validXML) {
+			const idp = IdentityProvider({
+				metadata,
+			});
+			this.validateIdentiyProvider(idp);
+		}
+
+		return validXML;
 	}
 
 	async validateResponse(response: string): Promise<boolean> {

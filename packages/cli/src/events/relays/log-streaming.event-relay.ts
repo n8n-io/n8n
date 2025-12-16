@@ -1,7 +1,8 @@
+import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { Redactable } from '@/decorators/redactable';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -12,6 +13,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	constructor(
 		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		super(eventService);
 	}
@@ -20,6 +22,10 @@ export class LogStreamingEventRelay extends EventRelay {
 		this.setupListeners({
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
+			'workflow-archived': (event) => this.workflowArchived(event),
+			'workflow-unarchived': (event) => this.workflowUnarchived(event),
+			'workflow-activated': (event) => this.workflowActivated(event),
+			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
@@ -47,6 +53,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
+			'execution-cancelled': (event) => this.executionCancelled(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -61,6 +68,11 @@ export class LogStreamingEventRelay extends EventRelay {
 			'ai-llm-errored': (event) => this.aiLlmErrored(event),
 			'ai-vector-store-populated': (event) => this.aiVectorStorePopulated(event),
 			'ai-vector-store-updated': (event) => this.aiVectorStoreUpdated(event),
+			'runner-task-requested': (event) => this.runnerTaskRequested(event),
+			'runner-response-received': (event) => this.runnerResponseReceived(event),
+			'job-enqueued': (event) => this.jobEnqueued(event),
+			'job-dequeued': (event) => this.jobDequeued(event),
+			'job-stalled': (event) => this.jobStalled(event),
 		});
 	}
 
@@ -87,13 +99,60 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflow }: RelayEventMap['workflow-saved']) {
+	private workflowArchived({ user, workflowId }: RelayEventMap['workflow-archived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.archived',
+			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowUnarchived({ user, workflowId }: RelayEventMap['workflow-unarchived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.unarchived',
+			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.activated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowDeactivated({
+		user,
+		workflowId,
+		workflow,
+	}: RelayEventMap['workflow-deactivated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.deactivated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName: workflow.name,
+				activeVersionId: workflow.activeVersionId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowSaved({ user, workflow, settingsChanged }: RelayEventMap['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
 				...user,
 				workflowId: workflow.id,
 				workflowName: workflow.name,
+				...(settingsChanged && { settingsChanged }),
 			},
 		});
 	}
@@ -123,10 +182,11 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, ...rest } = event;
+		const { runData, workflow, executionId, ...rest } = event;
 
 		const payload = {
 			...rest,
+			executionId,
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
 			workflowId: workflow.id,
@@ -138,6 +198,18 @@ export class LogStreamingEventRelay extends EventRelay {
 				eventName: 'n8n.workflow.success',
 				payload,
 			});
+
+			if (runData?.jobId) {
+				void this.eventBus.sendQueueEvent({
+					eventName: 'n8n.queue.job.completed',
+					payload: {
+						executionId,
+						workflowId: workflow.id,
+						hostId: this.instanceSettings.hostId,
+						jobId: runData.jobId.toString(),
+					},
+				});
+			}
 
 			return;
 		}
@@ -154,34 +226,60 @@ export class LogStreamingEventRelay extends EventRelay {
 				errorMessage: runData?.data.resultData.error?.message.toString(),
 			},
 		});
+
+		if (runData?.jobId) {
+			void this.eventBus.sendQueueEvent({
+				eventName: 'n8n.queue.job.failed',
+				payload: {
+					executionId,
+					workflowId: workflow.id,
+					hostId: this.instanceSettings.hostId,
+					jobId: runData.jobId.toString(),
+				},
+			});
+		}
 	}
 
 	// #endregion
 
 	// #region Node
 
-	private nodePreExecute({ workflow, executionId, nodeName }: RelayEventMap['node-pre-execute']) {
+	private nodePreExecute({
+		workflow,
+		executionId,
+		nodeId,
+		nodeName,
+		nodeType,
+	}: RelayEventMap['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				executionId,
-				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeType,
 				nodeName,
+				nodeId,
 			},
 		});
 	}
 
-	private nodePostExecute({ workflow, executionId, nodeName }: RelayEventMap['node-post-execute']) {
+	private nodePostExecute({
+		workflow,
+		executionId,
+		nodeType,
+		nodeName,
+		nodeId,
+	}: RelayEventMap['node-post-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				executionId,
-				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeType,
 				nodeName,
+				nodeId,
 			},
 		});
 	}
@@ -401,6 +499,23 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	private executionCancelled({
+		executionId,
+		workflowId,
+		workflowName,
+		reason,
+	}: RelayEventMap['execution-cancelled']) {
+		void this.eventBus.sendWorkflowEvent({
+			eventName: 'n8n.workflow.cancelled',
+			payload: {
+				executionId,
+				workflowId,
+				workflowName,
+				reason,
+			},
+		});
+	}
+
 	// #endregion
 
 	// #region AI
@@ -501,6 +616,49 @@ export class LogStreamingEventRelay extends EventRelay {
 	private aiVectorStoreUpdated(payload: RelayEventMap['ai-vector-store-updated']) {
 		void this.eventBus.sendAiNodeEvent({
 			eventName: 'n8n.ai.vector.store.updated',
+			payload,
+		});
+	}
+
+	// #endregion
+
+	// #region runner
+
+	private runnerTaskRequested(payload: RelayEventMap['runner-task-requested']) {
+		void this.eventBus.sendRunnerEvent({
+			eventName: 'n8n.runner.task.requested',
+			payload,
+		});
+	}
+
+	private runnerResponseReceived(payload: RelayEventMap['runner-response-received']) {
+		void this.eventBus.sendRunnerEvent({
+			eventName: 'n8n.runner.response.received',
+			payload,
+		});
+	}
+
+	// #endregion
+
+	// #region queue
+
+	private jobEnqueued(payload: RelayEventMap['job-enqueued']) {
+		void this.eventBus.sendQueueEvent({
+			eventName: 'n8n.queue.job.enqueued',
+			payload,
+		});
+	}
+
+	private jobDequeued(payload: RelayEventMap['job-dequeued']) {
+		void this.eventBus.sendQueueEvent({
+			eventName: 'n8n.queue.job.dequeued',
+			payload,
+		});
+	}
+
+	private jobStalled(payload: RelayEventMap['job-stalled']) {
+		void this.eventBus.sendQueueEvent({
+			eventName: 'n8n.queue.job.stalled',
 			payload,
 		});
 	}

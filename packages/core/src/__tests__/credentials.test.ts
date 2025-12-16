@@ -118,4 +118,74 @@ describe('Credentials', () => {
 			},
 		);
 	});
+
+	describe('updateData', () => {
+		const nodeCredentials = { id: '123', name: 'Test Credential' };
+		const credentialType = 'testApi';
+
+		test('should update existing data', () => {
+			const credentials = new Credentials(
+				nodeCredentials,
+				credentialType,
+				cipher.encrypt({
+					username: 'olduser',
+					password: 'oldpass',
+					apiKey: 'oldkey',
+				}),
+			);
+
+			credentials.updateData({ username: 'newuser', password: 'newpass' });
+
+			expect(credentials.getData()).toEqual({
+				username: 'newuser',
+				password: 'newpass',
+				apiKey: 'oldkey',
+			});
+		});
+
+		test('should delete specified keys', () => {
+			const credentials = new Credentials(
+				nodeCredentials,
+				credentialType,
+				cipher.encrypt({
+					username: 'testuser',
+					password: 'testpass',
+					apiKey: 'testkey',
+				}),
+			);
+
+			credentials.updateData({}, ['username', 'apiKey']);
+
+			expect(credentials.getData()).toEqual({
+				password: 'testpass',
+			});
+		});
+
+		test('should update and delete keys in same operation', () => {
+			const credentials = new Credentials(
+				nodeCredentials,
+				credentialType,
+				cipher.encrypt({
+					username: 'olduser',
+					password: 'oldpass',
+					apiKey: 'oldkey',
+				}),
+			);
+
+			credentials.updateData({ username: 'newuser' }, ['apiKey']);
+
+			expect(credentials.getData()).toEqual({
+				username: 'newuser',
+				password: 'oldpass',
+			});
+		});
+
+		test('should throw an error if no data was previously set', () => {
+			const credentials = new Credentials(nodeCredentials, credentialType);
+
+			expect(() => {
+				credentials.updateData({ username: 'newuser' });
+			}).toThrow(CREDENTIAL_ERRORS.NO_DATA);
+		});
+	});
 });

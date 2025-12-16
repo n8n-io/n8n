@@ -4,33 +4,27 @@
         "@odata.context": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
+        "childFolderCount": {
+            "type": "integer"
         },
         "displayName": {
             "type": "string"
         },
-        "parentFolderId": {
+        "id": {
             "type": "string"
         },
-        "childFolderCount": {
-            "type": "integer"
+        "isHidden": {
+            "type": "boolean"
         },
-        "unreadItemCount": {
-            "type": "integer"
+        "parentFolderId": {
+            "type": "string"
         },
         "totalItemCount": {
             "type": "integer"
         },
-        "sizeInBytes": {
+        "unreadItemCount": {
             "type": "integer"
-        },
-        "isHidden": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "@odata.context",
-        "id"
-    ]
+    "version": 2
 }

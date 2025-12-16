@@ -1,13 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "Status": {
-            "type": "string"
-        },
-        "CustomID": {
-            "type": "string"
-        },
-        "To": {
+        "Bcc": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -15,22 +9,16 @@
                     "Email": {
                         "type": "string"
                     },
-                    "MessageUUID": {
+                    "MessageHref": {
                         "type": "string"
                     },
                     "MessageID": {
                         "type": "integer"
                     },
-                    "MessageHref": {
+                    "MessageUUID": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "Email",
-                    "MessageUUID",
-                    "MessageID",
-                    "MessageHref"
-                ]
+                }
             }
         },
         "Cc": {
@@ -41,25 +29,25 @@
                     "Email": {
                         "type": "string"
                     },
-                    "MessageUUID": {
+                    "MessageHref": {
                         "type": "string"
                     },
                     "MessageID": {
                         "type": "integer"
                     },
-                    "MessageHref": {
+                    "MessageUUID": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "Email",
-                    "MessageUUID",
-                    "MessageID",
-                    "MessageHref"
-                ]
+                }
             }
         },
-        "Bcc": {
+        "CustomID": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "To": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -67,23 +55,18 @@
                     "Email": {
                         "type": "string"
                     },
-                    "MessageUUID": {
+                    "MessageHref": {
                         "type": "string"
                     },
                     "MessageID": {
                         "type": "integer"
                     },
-                    "MessageHref": {
+                    "MessageUUID": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "Email",
-                    "MessageUUID",
-                    "MessageID",
-                    "MessageHref"
-                ]
+                }
             }
         }
-    }
+    },
+    "version": 1
 }

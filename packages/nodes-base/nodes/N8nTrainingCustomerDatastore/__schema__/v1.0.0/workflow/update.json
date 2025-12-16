@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
-            "type": "string"
+        "active": {
+            "type": "boolean"
         },
-        "updatedAt": {
+        "createdAt": {
             "type": "string"
         },
         "id": {
@@ -13,16 +13,24 @@
         "name": {
             "type": "string"
         },
-        "active": {
-            "type": "boolean"
-        },
         "nodes": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
+                    "id": {
                         "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "resource": {
+                                "type": "string"
+                            }
+                        }
                     },
                     "position": {
                         "type": "array",
@@ -30,21 +38,10 @@
                             "type": "integer"
                         }
                     },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "webhookId": {
+                    "type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "parameters",
-                    "id",
-                    "name"
-                ]
+                }
             }
         },
         "settings": {
@@ -53,31 +50,17 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "executionOrder"
-            ]
-        },
-        "versionId": {
-            "type": "string"
+            }
         },
         "triggerCount": {
             "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "string"
         }
     },
-    "required": [
-        "createdAt",
-        "updatedAt",
-        "id",
-        "name",
-        "active",
-        "nodes",
-        "connections",
-        "settings",
-        "staticData",
-        "meta",
-        "pinData",
-        "versionId",
-        "triggerCount"
-    ]
+    "version": 1
 }

@@ -1,11 +1,12 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { SettingsRepository } from '@n8n/db';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { mockLogger } from '@test/mocking';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -25,7 +26,7 @@ function makeDateWithHourOffset(offsetInHours: number): Date {
 const licenseConfig: GlobalConfig['license'] = {
 	serverUrl: MOCK_SERVER_URL,
 	autoRenewalEnabled: true,
-	autoRenewOffset: MOCK_RENEW_OFFSET,
+	detachFloatingOnShutdown: true,
 	activationKey: MOCK_ACTIVATION_KEY,
 	tenantId: 1,
 	cert: '',
@@ -60,6 +61,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -90,6 +92,7 @@ describe('License', () => {
 				loadCertStr: expect.any(Function),
 				saveCertStr: expect.any(Function),
 				onFeatureChange: expect.any(Function),
+				onLicenseRenewed: expect.any(Function),
 				collectUsageMetrics: expect.any(Function),
 				collectPassthroughData: expect.any(Function),
 				server: MOCK_SERVER_URL,
@@ -101,7 +104,14 @@ describe('License', () => {
 	test('attempts to activate license with provided key', async () => {
 		await license.activate(MOCK_ACTIVATION_KEY);
 
-		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY);
+		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY, undefined);
+	});
+
+	test('attempts to activate license with eulaUri', async () => {
+		const eulaUri = 'https://n8n.io/legal/eula/';
+		await license.activate(MOCK_ACTIVATION_KEY, eulaUri);
+
+		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY, eulaUri);
 	});
 
 	test('renews license', async () => {
@@ -111,13 +121,13 @@ describe('License', () => {
 	});
 
 	test('check if feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check if sharing feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -129,7 +139,7 @@ describe('License', () => {
 	});
 
 	test('check fetching feature values', async () => {
-		license.getFeatureValue(MOCK_FEATURE_FLAG);
+		license.getValue(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -212,9 +222,158 @@ describe('License', () => {
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan).toBeUndefined();
 	});
+
+	describe('onExpirySoon', () => {
+		it.each([
+			{
+				instanceType: 'main' as const,
+				isLeader: true,
+				shouldReload: false,
+				description: 'Leader main should not reload',
+			},
+			{
+				instanceType: 'main' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Follower main should reload',
+			},
+			{
+				instanceType: 'worker' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Worker should reload',
+			},
+			{
+				instanceType: 'webhook' as const,
+				isLeader: false,
+				shouldReload: true,
+				description: 'Webhook should reload',
+			},
+		])('$description', async ({ instanceType, isLeader, shouldReload }) => {
+			const logger = mockLogger();
+			const reloadSpy = jest.spyOn(License.prototype, 'reload').mockResolvedValueOnce();
+			const instanceSettings = mock<InstanceSettings>({ instanceType });
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
+
+			license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig }),
+			);
+
+			await license.init();
+
+			const licenseManager = LicenseManager as jest.MockedClass<typeof LicenseManager>;
+			const calls = licenseManager.mock.calls;
+			const licenseManagerCall = calls[calls.length - 1][0];
+			const onExpirySoon = licenseManagerCall.onExpirySoon;
+
+			if (shouldReload) {
+				expect(onExpirySoon).toBeDefined();
+				onExpirySoon!();
+				expect(reloadSpy).toHaveBeenCalled();
+			} else {
+				expect(onExpirySoon).toBeUndefined();
+				expect(reloadSpy).not.toHaveBeenCalled();
+			}
+		});
+	});
 });
 
 describe('License', () => {
+	describe('onCertRefresh', () => {
+		let license: License;
+		const instanceSettings = mock<InstanceSettings>({
+			instanceId: 'test-instance',
+			instanceType: 'main',
+			isLeader: true,
+		});
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+		});
+
+		it('should register callback and call it on license reload', async () => {
+			const callback = jest.fn();
+			license.onCertRefresh(callback);
+
+			await license.reload();
+
+			expect(callback).toHaveBeenCalledWith('');
+		});
+
+		it('should call multiple registered callbacks', async () => {
+			const callback1 = jest.fn();
+			const callback2 = jest.fn();
+
+			license.onCertRefresh(callback1);
+			license.onCertRefresh(callback2);
+
+			await license.reload();
+
+			expect(callback1).toHaveBeenCalledTimes(1);
+			expect(callback2).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return unsubscribe function that removes callback', async () => {
+			const callback = jest.fn();
+			const unsubscribe = license.onCertRefresh(callback);
+
+			unsubscribe();
+			await license.reload();
+
+			expect(callback).not.toHaveBeenCalled();
+		});
+
+		it('should continue calling other callbacks if one throws', async () => {
+			const errorCallback = jest.fn().mockImplementation(() => {
+				throw new Error('Callback error');
+			});
+			const callback2 = jest.fn();
+
+			license.onCertRefresh(errorCallback);
+			license.onCertRefresh(callback2);
+
+			await license.reload();
+
+			expect(errorCallback).toHaveBeenCalled();
+			expect(callback2).toHaveBeenCalled();
+		});
+
+		it('should pass the loaded certificate to callbacks', async () => {
+			const settingsRepository = mock<SettingsRepository>();
+			settingsRepository.findOne.mockResolvedValue({ value: 'test-cert-value' } as any);
+
+			const globalConfig = mock<GlobalConfig>({
+				license: licenseConfig,
+				multiMainSetup: { enabled: false },
+			});
+			license = new License(
+				mockLogger(),
+				instanceSettings,
+				settingsRepository,
+				mock(),
+				globalConfig,
+			);
+			await license.init();
+
+			const callback = jest.fn();
+			license.onCertRefresh(callback);
+
+			await license.reload();
+
+			expect(callback).toHaveBeenCalledWith('test-cert-value');
+		});
+	});
+
 	describe('init', () => {
 		it('when leader main with N8N_LICENSE_AUTO_RENEW_ENABLED=true, should enable renewal', async () => {
 			const globalConfig = mock<GlobalConfig>({
@@ -283,22 +442,6 @@ describe('License', () => {
 			expect(LicenseManager).toHaveBeenCalledWith(
 				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
 			);
-		});
-	});
-
-	describe('reinit', () => {
-		it('should reinitialize license manager', async () => {
-			const license = new License(mockLogger(), mock(), mock(), mock(), mock());
-			await license.init();
-
-			const initSpy = jest.spyOn(license, 'init');
-
-			await license.reinit();
-
-			expect(initSpy).toHaveBeenCalledWith({ forceRecreate: true });
-
-			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
-			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
 		});
 	});
 });

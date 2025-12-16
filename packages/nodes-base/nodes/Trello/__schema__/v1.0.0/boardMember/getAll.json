@@ -1,19 +1,15 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "fullName": {
             "type": "string"
         },
-        "fullName": {
+        "id": {
             "type": "string"
         },
         "username": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "fullName",
-        "username"
-    ]
+    "version": 1
 }

@@ -4,133 +4,27 @@
         "_id": {
             "type": "integer"
         },
-        "link": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "excerpt": {
-            "type": "string"
-        },
-        "note": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "user": {
-            "type": "object",
-            "properties": {
-                "$ref": {
-                    "type": "string"
-                },
-                "$id": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "$ref",
-                "$id"
-            ]
-        },
-        "cover": {
-            "type": "string"
-        },
-        "media": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "link": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "type",
-                    "link"
-                ]
-            }
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "highlights": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "text": {
-                        "type": "string"
-                    },
-                    "note": {
-                        "type": "string"
-                    },
-                    "color": {
-                        "type": "string"
-                    },
-                    "created": {
-                        "type": "string"
-                    },
-                    "lastUpdate": {
-                        "type": "string"
-                    },
-                    "creatorRef": {
-                        "type": "integer"
-                    },
-                    "_id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "text",
-                    "note",
-                    "color",
-                    "created",
-                    "lastUpdate",
-                    "creatorRef",
-                    "_id"
-                ]
-            }
-        },
-        "important": {
-            "type": "boolean"
-        },
-        "removed": {
-            "type": "boolean"
-        },
-        "created": {
-            "type": "string"
-        },
         "collection": {
             "type": "object",
             "properties": {
-                "$ref": {
-                    "type": "string"
-                },
                 "$id": {
                     "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
                 },
                 "oid": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "$ref",
-                "$id",
-                "oid"
-            ]
+            }
         },
-        "lastUpdate": {
+        "collectionId": {
+            "type": "integer"
+        },
+        "cover": {
             "type": "string"
         },
-        "domain": {
+        "created": {
             "type": "string"
         },
         "creatorRef": {
@@ -139,28 +33,77 @@
                 "_id": {
                     "type": "integer"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "avatar": {
                     "type": "string"
                 },
                 "email": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "_id",
-                "name",
-                "avatar",
-                "email"
-            ]
+            }
         },
-        "sort": {
-            "type": "integer"
+        "domain": {
+            "type": "string"
         },
-        "collectionId": {
-            "type": "integer"
+        "excerpt": {
+            "type": "string"
+        },
+        "highlights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "created": {
+                        "type": "string"
+                    },
+                    "creatorRef": {
+                        "type": "integer"
+                    },
+                    "lastUpdate": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "important": {
+            "type": "boolean"
+        },
+        "lastUpdate": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "media": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "link": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "note": {
+            "type": "string"
         },
         "reminder": {
             "type": "object",
@@ -168,31 +111,37 @@
                 "date": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "date"
-            ]
+            }
+        },
+        "removed": {
+            "type": "boolean"
+        },
+        "sort": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "$id": {
+                    "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "required": [
-        "_id",
-        "link",
-        "title",
-        "excerpt",
-        "note",
-        "type",
-        "user",
-        "cover",
-        "media",
-        "tags",
-        "highlights",
-        "removed",
-        "created",
-        "collection",
-        "lastUpdate",
-        "domain",
-        "creatorRef",
-        "sort",
-        "collectionId"
-    ]
+    "version": 1
 }

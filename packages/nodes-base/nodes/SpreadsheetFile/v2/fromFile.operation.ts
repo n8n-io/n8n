@@ -1,10 +1,29 @@
-import { parse as createCSVParser } from 'csv-parse';
+import { parse as createCSVParser, type Options as CSVOptions } from 'csv-parse';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Sheet2JSONOpts, WorkBook, ParsingOptions } from 'xlsx';
-import { read as xlsxRead, readFile as xlsxReadFile, utils as xlsxUtils } from 'xlsx';
+import type { Sheet2JSONOpts, ParsingOptions } from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
 import { binaryProperty, fromFileOptions } from '../description';
+
+interface Options {
+	maxRowCount?: number;
+	delimiter?: string;
+	fromLine?: number;
+	encoding?: BufferEncoding;
+	enableBOM?: boolean;
+	skipRecordsWithErrors?: {
+		value?: { enabled?: boolean; maxSkippedRecords?: number };
+	};
+	to?: number;
+	relaxQuotes?: boolean;
+	includeEmptyCells?: boolean;
+	rawData?: boolean;
+	readAsString?: boolean;
+	sheetName?: string;
+	range?: number | string;
+	headerRow?: boolean;
+}
 
 export const description: INodeProperties[] = [
 	binaryProperty,
@@ -59,10 +78,15 @@ export const description: INodeProperties[] = [
 	fromFileOptions,
 ];
 
+export interface FromFileOptions {
+	failOnCsvBufferError?: boolean;
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	fileFormatProperty = 'fileFormat',
+	{ failOnCsvBufferError = false }: FromFileOptions = {},
 ) {
 	const returnData: INodeExecutionData[] = [];
 	let fileExtension;
@@ -70,7 +94,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const options = this.getNodeParameter('options', i, {});
+			const options = this.getNodeParameter('options', i, {}) as Options;
 			fileFormat = this.getNodeParameter(fileFormatProperty, i, '');
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
@@ -88,13 +112,16 @@ export async function execute(
 
 			if (fileFormat === 'csv') {
 				const maxRowCount = options.maxRowCount as number;
-				const parser = createCSVParser({
-					delimiter: options.delimiter as string,
-					fromLine: options.fromLine as number,
-					encoding: options.encoding as BufferEncoding,
-					bom: options.enableBOM as boolean,
+				const skipRecordsWithErrors = options.skipRecordsWithErrors?.value?.enabled;
+				const csvOptions: CSVOptions = {
+					delimiter: options.delimiter,
+					fromLine: options.fromLine,
+					encoding: options.encoding,
+					bom: options.enableBOM,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
+					skip_records_with_error: skipRecordsWithErrors,
 					columns: options.headerRow !== false,
+					relax_quotes: options.relaxQuotes,
 					onRecord: (record) => {
 						if (!options.includeEmptyCells) {
 							record = Object.fromEntries(
@@ -103,10 +130,17 @@ export async function execute(
 						}
 						rows.push(record);
 					},
+				};
+				const parser = createCSVParser(csvOptions);
+
+				let skippedRecords = 0;
+				parser.on('skip', (_err) => {
+					skippedRecords += 1;
 				});
+
 				if (binaryData.id) {
 					const stream = await this.helpers.getBinaryStream(binaryData.id);
-					await new Promise<void>(async (resolve, reject) => {
+					await new Promise<void>((resolve, reject) => {
 						parser.on('error', reject);
 						parser.on('readable', () => {
 							stream.unpipe(parser);
@@ -117,22 +151,46 @@ export async function execute(
 					});
 				} else {
 					parser.write(binaryData.data, BINARY_ENCODING);
-					parser.end();
+
+					if (failOnCsvBufferError) {
+						await new Promise<void>((resolve, reject) => {
+							parser.on('error', reject);
+							parser.on('readable', () => {
+								resolve();
+							});
+							parser.end();
+						});
+					} else {
+						// this ignores errors, but we keep it for backwards compatibility
+						parser.end();
+					}
+				}
+
+				const maxSkippedRecords = options.skipRecordsWithErrors?.value?.maxSkippedRecords ?? -1;
+				if (skipRecordsWithErrors && maxSkippedRecords > 0 && skippedRecords > maxSkippedRecords) {
+					throw new NodeOperationError(this.getNode(), 'Max number of skipped records exceeded', {
+						itemIndex: i,
+					});
 				}
 			} else {
-				let workbook: WorkBook;
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
-				if (options.readAsString) xlsxOptions.type = 'string';
 
+				let buffer: Buffer;
 				if (binaryData.id) {
-					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-					workbook = xlsxReadFile(binaryPath, xlsxOptions);
+					const chunkSize = 256 * 1024;
+					const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+					buffer = await this.helpers.binaryToBuffer(stream);
 				} else {
-					const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
-					workbook = xlsxRead(
-						options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
-						xlsxOptions,
-					);
+					buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+				}
+
+				let workbook;
+				if (options.readAsString) {
+					xlsxOptions.type = 'binary';
+					const binaryString = buffer.toString('binary');
+					workbook = xlsxRead(binaryString, xlsxOptions);
+				} else {
+					workbook = xlsxRead(buffer, xlsxOptions);
 				}
 
 				if (workbook.SheetNames.length === 0) {

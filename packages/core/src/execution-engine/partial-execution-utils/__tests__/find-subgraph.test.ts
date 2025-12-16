@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createNodeData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -31,6 +31,27 @@ describe('findSubgraph', () => {
 		const subgraph = findSubgraph({ graph, destination, trigger });
 
 		expect(subgraph).toEqual(graph);
+	});
+
+	//                 ►►
+	//                ┌──────┐
+	//                │orphan│
+	//                └──────┘
+	//  ┌───────┐     ┌───────────┐
+	//  │trigger├────►│destination│
+	//  └───────┘     └───────────┘
+	test('works with a single node', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const destination = createNodeData({ name: 'destination' });
+		const orphan = createNodeData({ name: 'orphan' });
+
+		const graph = new DirectedGraph()
+			.addNodes(trigger, destination, orphan)
+			.addConnections({ from: trigger, to: destination });
+
+		const subgraph = findSubgraph({ graph, destination: orphan, trigger: orphan });
+
+		expect(subgraph).toEqual(new DirectedGraph().addNode(orphan));
 	});
 
 	//                     ►►
@@ -170,7 +191,7 @@ describe('findSubgraph', () => {
 		//                   ┌┴──────┐
 		//                   │aiModel│
 		//                   └───────┘
-		test('always retain connections that have a different type than `NodeConnectionType.Main`', () => {
+		test('always retain connections that have a different type than `NodeConnectionTypes.Main`', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
 			const destination = createNodeData({ name: 'destination' });
@@ -180,7 +201,7 @@ describe('findSubgraph', () => {
 				.addNodes(trigger, destination, aiModel)
 				.addConnections(
 					{ from: trigger, to: destination },
-					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: destination },
+					{ from: aiModel, type: NodeConnectionTypes.AiLanguageModel, to: destination },
 				);
 
 			// ACT
@@ -215,7 +236,7 @@ describe('findSubgraph', () => {
 				.addNodes(trigger, root, aiModel, destination)
 				.addConnections(
 					{ from: trigger, to: aiModel },
-					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: root },
+					{ from: aiModel, type: NodeConnectionTypes.AiLanguageModel, to: root },
 					{ from: root, to: destination },
 				);
 

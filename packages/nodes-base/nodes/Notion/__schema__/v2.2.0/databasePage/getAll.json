@@ -11,8 +11,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "url"
-    ]
+    "version": 2
 }

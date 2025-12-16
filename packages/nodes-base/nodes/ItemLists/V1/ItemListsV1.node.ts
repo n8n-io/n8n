@@ -5,7 +5,7 @@ import lt from 'lodash/lt';
 import pick from 'lodash/pick';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -30,8 +30,8 @@ export class ItemListsV1 implements INodeType {
 			defaults: {
 				name: 'Item Lists',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [],
 			properties: [
 				{

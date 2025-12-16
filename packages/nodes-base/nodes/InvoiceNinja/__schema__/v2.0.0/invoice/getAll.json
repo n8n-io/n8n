@@ -1,17 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "user_id": {
-            "type": "string"
-        },
-        "project_id": {
-            "type": "string"
+        "archived_at": {
+            "type": "integer"
         },
         "assigned_user_id": {
             "type": "string"
+        },
+        "auto_bill_enabled": {
+            "type": "boolean"
         },
         "balance": {
             "type": "integer"
@@ -19,121 +16,7 @@
         "client_id": {
             "type": "string"
         },
-        "vendor_id": {
-            "type": "string"
-        },
-        "status_id": {
-            "type": "string"
-        },
-        "design_id": {
-            "type": "string"
-        },
-        "recurring_id": {
-            "type": "string"
-        },
         "created_at": {
-            "type": "integer"
-        },
-        "updated_at": {
-            "type": "integer"
-        },
-        "archived_at": {
-            "type": "integer"
-        },
-        "is_deleted": {
-            "type": "boolean"
-        },
-        "number": {
-            "type": "string"
-        },
-        "discount": {
-            "type": "integer"
-        },
-        "po_number": {
-            "type": "string"
-        },
-        "date": {
-            "type": "string"
-        },
-        "last_sent_date": {
-            "type": "string"
-        },
-        "next_send_date": {
-            "type": "string"
-        },
-        "due_date": {
-            "type": "string"
-        },
-        "terms": {
-            "type": "string"
-        },
-        "public_notes": {
-            "type": "string"
-        },
-        "private_notes": {
-            "type": "string"
-        },
-        "uses_inclusive_taxes": {
-            "type": "boolean"
-        },
-        "tax_name1": {
-            "type": "string"
-        },
-        "tax_name2": {
-            "type": "string"
-        },
-        "tax_rate2": {
-            "type": "integer"
-        },
-        "tax_name3": {
-            "type": "string"
-        },
-        "tax_rate3": {
-            "type": "integer"
-        },
-        "is_amount_discount": {
-            "type": "boolean"
-        },
-        "footer": {
-            "type": "string"
-        },
-        "partial": {
-            "type": "integer"
-        },
-        "partial_due_date": {
-            "type": "string"
-        },
-        "custom_value1": {
-            "type": "string"
-        },
-        "custom_value2": {
-            "type": "string"
-        },
-        "custom_value3": {
-            "type": "string"
-        },
-        "custom_value4": {
-            "type": "string"
-        },
-        "has_tasks": {
-            "type": "boolean"
-        },
-        "has_expenses": {
-            "type": "boolean"
-        },
-        "custom_surcharge1": {
-            "type": "integer"
-        },
-        "custom_surcharge2": {
-            "type": "integer"
-        },
-        "custom_surcharge3": {
-            "type": "integer"
-        },
-        "custom_surcharge4": {
-            "type": "integer"
-        },
-        "exchange_rate": {
             "type": "integer"
         },
         "custom_surcharge_tax1": {
@@ -148,57 +31,122 @@
         "custom_surcharge_tax4": {
             "type": "boolean"
         },
+        "custom_surcharge1": {
+            "type": "integer"
+        },
+        "custom_surcharge2": {
+            "type": "integer"
+        },
+        "custom_surcharge3": {
+            "type": "integer"
+        },
+        "custom_surcharge4": {
+            "type": "integer"
+        },
+        "custom_value1": {
+            "type": "string"
+        },
+        "custom_value2": {
+            "type": "string"
+        },
+        "custom_value3": {
+            "type": "string"
+        },
+        "custom_value4": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "design_id": {
+            "type": "string"
+        },
+        "discount": {
+            "type": "integer"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "entity_type": {
+            "type": "string"
+        },
+        "exchange_rate": {
+            "type": "integer"
+        },
+        "footer": {
+            "type": "string"
+        },
+        "has_expenses": {
+            "type": "boolean"
+        },
+        "has_tasks": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "invitations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "archived_at": {
+                        "type": "integer"
+                    },
+                    "client_contact_id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "integer"
+                    },
+                    "email_error": {
+                        "type": "string"
+                    },
+                    "email_status": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "key": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string"
+                    },
+                    "message_id": {
+                        "type": "string"
+                    },
+                    "opened_date": {
+                        "type": "string"
+                    },
+                    "sent_date": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "integer"
+                    },
+                    "viewed_date": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "is_amount_discount": {
+            "type": "boolean"
+        },
+        "is_deleted": {
+            "type": "boolean"
+        },
+        "last_sent_date": {
+            "type": "string"
+        },
         "line_items": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "notes": {
-                        "type": "string"
-                    },
-                    "product_key": {
-                        "type": "string"
-                    },
-                    "tax_rate1": {
-                        "type": "integer"
-                    },
-                    "tax_rate2": {
-                        "type": "integer"
-                    },
-                    "tax_name1": {
-                        "type": "string"
-                    },
-                    "tax_name2": {
-                        "type": "string"
-                    },
-                    "type_id": {
-                        "type": "string"
-                    },
-                    "tax_id": {
-                        "type": "string"
-                    },
-                    "product_cost": {
-                        "type": "integer"
-                    },
-                    "discount": {
-                        "type": "integer"
-                    },
-                    "is_amount_discount": {
-                        "type": "boolean"
-                    },
-                    "tax_name3": {
-                        "type": "string"
-                    },
-                    "tax_rate3": {
-                        "type": "integer"
-                    },
-                    "sort_id": {
-                        "type": "string"
-                    },
-                    "tax_amount": {
-                        "type": "integer"
-                    },
-                    "date": {
+                    "_id": {
                         "type": "string"
                     },
                     "custom_value1": {
@@ -213,50 +161,94 @@
                     "custom_value4": {
                         "type": "string"
                     },
-                    "task_id": {
+                    "date": {
                         "type": "string"
+                    },
+                    "discount": {
+                        "type": "integer"
                     },
                     "expense_id": {
                         "type": "string"
                     },
-                    "unit_code": {
+                    "is_amount_discount": {
+                        "type": "boolean"
+                    },
+                    "notes": {
                         "type": "string"
                     },
-                    "_id": {
+                    "product_cost": {
+                        "type": "integer"
+                    },
+                    "product_key": {
+                        "type": "string"
+                    },
+                    "sort_id": {
+                        "type": "string"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "tax_amount": {
+                        "type": "integer"
+                    },
+                    "tax_id": {
+                        "type": "string"
+                    },
+                    "tax_name1": {
+                        "type": "string"
+                    },
+                    "tax_name2": {
+                        "type": "string"
+                    },
+                    "tax_name3": {
+                        "type": "string"
+                    },
+                    "tax_rate1": {
+                        "type": "integer"
+                    },
+                    "tax_rate2": {
+                        "type": "integer"
+                    },
+                    "tax_rate3": {
+                        "type": "integer"
+                    },
+                    "type_id": {
+                        "type": "string"
+                    },
+                    "unit_code": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "cost",
-                    "notes",
-                    "product_key",
-                    "tax_rate1",
-                    "tax_rate2",
-                    "tax_name1",
-                    "tax_name2",
-                    "quantity",
-                    "type_id",
-                    "tax_id",
-                    "product_cost",
-                    "discount",
-                    "is_amount_discount",
-                    "tax_name3",
-                    "tax_rate3",
-                    "sort_id",
-                    "line_total",
-                    "gross_line_total",
-                    "tax_amount",
-                    "date",
-                    "custom_value1",
-                    "custom_value2",
-                    "custom_value3",
-                    "custom_value4",
-                    "task_id",
-                    "expense_id"
-                ]
+                }
             }
         },
-        "entity_type": {
+        "next_send_date": {
+            "type": "string"
+        },
+        "number": {
+            "type": "string"
+        },
+        "partial": {
+            "type": "integer"
+        },
+        "partial_due_date": {
+            "type": "string"
+        },
+        "po_number": {
+            "type": "string"
+        },
+        "private_notes": {
+            "type": "string"
+        },
+        "project_id": {
+            "type": "string"
+        },
+        "public_notes": {
+            "type": "string"
+        },
+        "recurring_id": {
+            "type": "string"
+        },
+        "reminder_last_sent": {
             "type": "string"
         },
         "reminder1_sent": {
@@ -268,143 +260,42 @@
         "reminder3_sent": {
             "type": "string"
         },
-        "reminder_last_sent": {
+        "status_id": {
             "type": "string"
         },
         "subscription_id": {
             "type": "string"
         },
-        "auto_bill_enabled": {
+        "tax_name1": {
+            "type": "string"
+        },
+        "tax_name2": {
+            "type": "string"
+        },
+        "tax_name3": {
+            "type": "string"
+        },
+        "tax_rate2": {
+            "type": "integer"
+        },
+        "tax_rate3": {
+            "type": "integer"
+        },
+        "terms": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "integer"
+        },
+        "user_id": {
+            "type": "string"
+        },
+        "uses_inclusive_taxes": {
             "type": "boolean"
         },
-        "invitations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "client_contact_id": {
-                        "type": "string"
-                    },
-                    "key": {
-                        "type": "string"
-                    },
-                    "link": {
-                        "type": "string"
-                    },
-                    "sent_date": {
-                        "type": "string"
-                    },
-                    "viewed_date": {
-                        "type": "string"
-                    },
-                    "opened_date": {
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "type": "integer"
-                    },
-                    "archived_at": {
-                        "type": "integer"
-                    },
-                    "created_at": {
-                        "type": "integer"
-                    },
-                    "email_status": {
-                        "type": "string"
-                    },
-                    "email_error": {
-                        "type": "string"
-                    },
-                    "message_id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "client_contact_id",
-                    "key",
-                    "link",
-                    "sent_date",
-                    "viewed_date",
-                    "opened_date",
-                    "updated_at",
-                    "archived_at",
-                    "created_at",
-                    "email_status",
-                    "email_error",
-                    "message_id"
-                ]
-            }
+        "vendor_id": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "user_id",
-        "project_id",
-        "assigned_user_id",
-        "amount",
-        "balance",
-        "client_id",
-        "vendor_id",
-        "status_id",
-        "design_id",
-        "recurring_id",
-        "created_at",
-        "updated_at",
-        "archived_at",
-        "is_deleted",
-        "number",
-        "discount",
-        "po_number",
-        "date",
-        "last_sent_date",
-        "next_send_date",
-        "due_date",
-        "terms",
-        "public_notes",
-        "private_notes",
-        "uses_inclusive_taxes",
-        "tax_name1",
-        "tax_rate1",
-        "tax_name2",
-        "tax_rate2",
-        "tax_name3",
-        "tax_rate3",
-        "total_taxes",
-        "is_amount_discount",
-        "footer",
-        "partial",
-        "partial_due_date",
-        "custom_value1",
-        "custom_value2",
-        "custom_value3",
-        "custom_value4",
-        "has_tasks",
-        "has_expenses",
-        "custom_surcharge1",
-        "custom_surcharge2",
-        "custom_surcharge3",
-        "custom_surcharge4",
-        "exchange_rate",
-        "custom_surcharge_tax1",
-        "custom_surcharge_tax2",
-        "custom_surcharge_tax3",
-        "custom_surcharge_tax4",
-        "line_items",
-        "entity_type",
-        "reminder1_sent",
-        "reminder2_sent",
-        "reminder3_sent",
-        "reminder_last_sent",
-        "paid_to_date",
-        "subscription_id",
-        "auto_bill_enabled",
-        "tax_info",
-        "e_invoice",
-        "invitations",
-        "documents"
-    ]
+    "version": 1
 }

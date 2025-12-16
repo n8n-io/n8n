@@ -1,34 +1,10 @@
-import type { LdapConfig } from './types';
-
-export const LDAP_FEATURE_NAME = 'features.ldap';
+import type { LdapConfig } from '@n8n/constants';
 
 export const LDAP_LOGIN_LABEL = 'sso.ldap.loginLabel';
 
 export const LDAP_LOGIN_ENABLED = 'sso.ldap.loginEnabled';
 
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
-
-export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
-	loginEnabled: false,
-	loginLabel: '',
-	connectionUrl: '',
-	allowUnauthorizedCerts: false,
-	connectionSecurity: 'none',
-	connectionPort: 389,
-	baseDn: '',
-	bindingAdminDn: '',
-	bindingAdminPassword: '',
-	firstNameAttribute: '',
-	lastNameAttribute: '',
-	emailAttribute: '',
-	loginIdAttribute: '',
-	ldapIdAttribute: '',
-	userFilter: '',
-	synchronizationEnabled: false,
-	synchronizationInterval: 60,
-	searchPageSize: 0,
-	searchTimeout: 60,
-};
 
 export const LDAP_CONFIG_SCHEMA = {
 	$schema: 'https://json-schema.org/draft/2019-09/schema',
@@ -91,6 +67,9 @@ export const LDAP_CONFIG_SCHEMA = {
 		searchTimeout: {
 			type: 'number',
 		},
+		enforceEmailUniqueness: {
+			type: 'boolean',
+		},
 	},
 	required: [
 		'loginEnabled',
@@ -128,4 +107,5 @@ export const NON_SENSIBLE_LDAP_CONFIG_PROPERTIES: Array<keyof LdapConfig> = [
 	'searchPageSize',
 	'searchTimeout',
 	'loginLabel',
+	'enforceEmailUniqueness',
 ];

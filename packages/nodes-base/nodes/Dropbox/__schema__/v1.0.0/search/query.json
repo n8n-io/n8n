@@ -7,6 +7,9 @@
         "client_modified": {
             "type": "string"
         },
+        "content_hash": {
+            "type": "string"
+        },
         "file_owner_team_encrypted_id": {
             "type": "string"
         },
@@ -19,23 +22,35 @@
         "name": {
             "type": "string"
         },
+        "path_display": {
+            "type": "string"
+        },
+        "path_lower": {
+            "type": "string"
+        },
         "rev": {
             "type": "string"
         },
         "server_modified": {
             "type": "string"
         },
+        "sharing_info": {
+            "type": "object",
+            "properties": {
+                "modified_by": {
+                    "type": "string"
+                },
+                "parent_shared_folder_id": {
+                    "type": "string"
+                },
+                "read_only": {
+                    "type": "boolean"
+                }
+            }
+        },
         "size": {
             "type": "integer"
-        },
-        "content_hash": {
-            "type": "string"
-        },
-        "path_display": {
-            "type": "string"
-        },
-        "path_lower": {
-            "type": "string"
         }
-    }
+    },
+    "version": 2
 }

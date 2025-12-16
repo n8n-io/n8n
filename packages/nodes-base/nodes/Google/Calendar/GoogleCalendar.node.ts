@@ -9,13 +9,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 	NodeExecutionHint,
+	INodeProperties,
 } from 'n8n-workflow';
-import {
-	NodeConnectionType,
-	NodeApiError,
-	NodeOperationError,
-	NodeExecutionOutput,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
@@ -36,6 +32,22 @@ import {
 } from './GenericFunctions';
 import { sortItemKeysByPriorityList } from '../../../utils/utilities';
 
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Interact with your Google Calendar using our pre-built',
+	name: 'preBuiltAgentsCalloutGoogleCalendar',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Calendar agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'calendar_agent_with_gcal',
+		},
+	},
+	default: '',
+};
+
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Calendar',
@@ -48,8 +60,8 @@ export class GoogleCalendar implements INodeType {
 		defaults: {
 			name: 'Google Calendar',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -58,6 +70,7 @@ export class GoogleCalendar implements INodeType {
 			},
 		],
 		properties: [
+			preBuiltAgentsCallout,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -811,7 +824,7 @@ export class GoogleCalendar implements INodeType {
 		}
 
 		if (hints.length) {
-			return new NodeExecutionOutput([nodeExecutionData], hints);
+			this.addExecutionHints(...hints);
 		}
 
 		return [nodeExecutionData];

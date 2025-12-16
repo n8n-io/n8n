@@ -5,7 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -37,8 +37,8 @@ export class Baserow implements INodeType {
 		defaults: {
 			name: 'Baserow',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -120,7 +120,9 @@ export class Baserow implements INodeType {
 					endpoint,
 					jwtToken,
 				)) as LoadedResource[];
-				return toOptions(databases);
+				// Baserow has different types of applications, we only want the databases
+				// https://api.baserow.io/api/redoc/#tag/Applications/operation/list_all_applications
+				return toOptions(databases.filter((database) => database.type === 'database'));
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {

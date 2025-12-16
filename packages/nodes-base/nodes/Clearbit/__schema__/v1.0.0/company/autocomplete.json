@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "domain": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,0 +1,208 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nCheckbox > should render with both child and label 1`] = `
+<div>
+  <label
+    class="el-checkbox n8n-checkbox n8nCheckbox"
+    labelsize="medium"
+  >
+    <span
+      class="el-checkbox__input"
+    >
+      <input
+        class="el-checkbox__original"
+        type="checkbox"
+        value="Checkbox"
+      />
+      <span
+        class="el-checkbox__inner"
+      />
+    </span>
+    <span
+      class="el-checkbox__label"
+    >
+      
+      
+      <strong>
+        Bold text
+      </strong>
+      
+      <div
+        class="container"
+        data-test-id="input-label"
+      >
+        <div
+          class="labelRow"
+        >
+          <label
+            class="n8n-input-label inputLabel heading medium"
+          >
+            <div
+              class="main-content"
+            >
+              <div
+                class="title"
+              >
+                <span
+                  class="n8n-text size-medium regular"
+                >
+                  
+                  Checkbox 
+                  <!--v-if-->
+                  
+                </span>
+              </div>
+              <!--v-if-->
+            </div>
+            <div
+              class="trailing-content"
+            >
+              <!--v-if-->
+              <!--v-if-->
+              <!--v-if-->
+            </div>
+          </label>
+          <!--v-if-->
+        </div>
+        
+        
+      </div>
+      
+      <!--v-if-->
+    </span>
+  </label>
+</div>
+`;
+
+exports[`components > N8nCheckbox > should render with child 1`] = `
+<div>
+  <label
+    class="el-checkbox n8n-checkbox n8nCheckbox"
+    labelsize="medium"
+  >
+    <span
+      class="el-checkbox__input"
+    >
+      <input
+        class="el-checkbox__original"
+        type="checkbox"
+      />
+      <span
+        class="el-checkbox__inner"
+      />
+    </span>
+    <span
+      class="el-checkbox__label"
+    >
+      
+      
+      <strong>
+        Bold text
+      </strong>
+      
+      <!--v-if-->
+      
+      <!--v-if-->
+    </span>
+  </label>
+</div>
+`;
+
+exports[`components > N8nCheckbox > should render with label 1`] = `
+<div>
+  <label
+    class="el-checkbox n8n-checkbox n8nCheckbox"
+    labelsize="medium"
+  >
+    <span
+      class="el-checkbox__input"
+    >
+      <input
+        class="el-checkbox__original"
+        type="checkbox"
+        value="Checkbox"
+      />
+      <span
+        class="el-checkbox__inner"
+      />
+    </span>
+    <span
+      class="el-checkbox__label"
+    >
+      
+      
+      
+      <div
+        class="container"
+        data-test-id="input-label"
+      >
+        <div
+          class="labelRow"
+        >
+          <label
+            class="n8n-input-label inputLabel heading medium"
+          >
+            <div
+              class="main-content"
+            >
+              <div
+                class="title"
+              >
+                <span
+                  class="n8n-text size-medium regular"
+                >
+                  
+                  Checkbox 
+                  <!--v-if-->
+                  
+                </span>
+              </div>
+              <!--v-if-->
+            </div>
+            <div
+              class="trailing-content"
+            >
+              <!--v-if-->
+              <!--v-if-->
+              <!--v-if-->
+            </div>
+          </label>
+          <!--v-if-->
+        </div>
+        
+        
+      </div>
+      
+      <!--v-if-->
+    </span>
+  </label>
+</div>
+`;
+
+exports[`components > N8nCheckbox > should render without label and child content 1`] = `
+<div>
+  <label
+    class="el-checkbox n8n-checkbox n8nCheckbox"
+    labelsize="medium"
+  >
+    <span
+      class="el-checkbox__input"
+    >
+      <input
+        class="el-checkbox__original"
+        type="checkbox"
+      />
+      <span
+        class="el-checkbox__inner"
+      />
+    </span>
+    <span
+      class="el-checkbox__label"
+    >
+      
+      
+      <!--v-if-->
+    </span>
+  </label>
+</div>
+`;

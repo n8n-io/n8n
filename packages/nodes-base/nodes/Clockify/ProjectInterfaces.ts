@@ -1,9 +1,11 @@
 import type { IHourlyRateDto, IMembershipDto } from './CommonDtos';
 
-const enum EstimateEnum {
-	AUTO = 'AUTO',
-	MANUAL = 'MANUAL',
-}
+const Estimates = {
+	AUTO: 'AUTO',
+	MANUAL: 'MANUAL',
+} as const;
+
+type EstimateEnum = (typeof Estimates)[keyof typeof Estimates];
 
 interface IEstimateDto {
 	estimate: string;
@@ -40,10 +42,12 @@ export interface IProjectRequest {
 	tasks: ITaskDto;
 }
 
-const enum TaskStatusEnum {
-	ACTIVE = 'ACTIVE',
-	DONE = 'DONE',
-}
+const TaskStatuses = {
+	ACTIVE: 'ACTIVE',
+	DONE: 'DONE',
+} as const;
+
+type TaskStatusEnum = (typeof TaskStatuses)[keyof typeof TaskStatuses];
 
 export interface ITaskDto {
 	assigneeIds: object;

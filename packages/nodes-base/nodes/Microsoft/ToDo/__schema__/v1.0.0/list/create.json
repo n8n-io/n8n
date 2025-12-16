@@ -10,6 +10,9 @@
         "displayName": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "isOwner": {
             "type": "boolean"
         },
@@ -18,18 +21,7 @@
         },
         "wellknownListName": {
             "type": "string"
-        },
-        "id": {
-            "type": "string"
         }
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "displayName",
-        "isOwner",
-        "isShared",
-        "wellknownListName",
-        "id"
-    ]
+    "version": 1
 }

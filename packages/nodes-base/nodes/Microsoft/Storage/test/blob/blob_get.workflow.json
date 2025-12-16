@@ -1,0 +1,115 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "blob",
+				"operation": "get",
+				"container": { "__rl": true, "value": "mycontainer", "mode": "list" },
+				"blob": { "__rl": true, "value": "myblob", "mode": "list" },
+				"options": {
+					"leaseId": "leaseId123",
+					"origin": "origin123",
+					"simplify": false,
+					"upn": true
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
+		}
+	},
+
+	"pinData": {
+		"Azure Storage": [
+			{
+				"binary": {
+					"data": {
+						"data": "ewoiZGF0YSI6ewoibXlfZmllbGRfMSI6InZhbHVlIiwKIm15X2ZpZWxkXzIiOjEKfQp9",
+						"fileExtension": "json",
+						"fileName": "file.json",
+						"fileSize": "51 B",
+						"fileType": "json",
+						"mimeType": "application/json"
+					}
+				},
+				"json": {
+					"name": "myblob",
+					"properties": {
+						"clientRequestId": "x-ms-client-request-id",
+						"lastModified": "last-modified",
+						"creationTime": "x-ms-creation-time",
+						"tagCount": "x-ms-tag-count",
+						"contentType": "application/json",
+						"contentRange": "content-range",
+						"etag": "\"0x22769D26D3F3740\"",
+						"contentMd5": "content-md5",
+						"contentCrc64": "x-ms-content-crc64",
+						"contentEncoding": "content-encoding",
+						"contentLanguage": "content-language",
+						"cacheControl": "cache-control",
+						"contentDisposition": "attachment; filename=\"file.json\"",
+						"blobSequenceNumber": "x-ms-blob-sequence-number",
+						"blobType": "x-ms-blob-type",
+						"copyCompletionTime": "x-ms-copy-completion-time",
+						"copyStatusDescription": "x-ms-copy-status-description",
+						"copyId": "x-ms-copy-id",
+						"copyProgress": "x-ms-copy-progress",
+						"copySource": "x-ms-copy-source",
+						"copyStatus": "x-ms-copy-status",
+						"incrementalCopy": "x-ms-incremental-copy",
+						"leaseDuration": "x-ms-lease-duration",
+						"leaseState": "x-ms-lease-state",
+						"leaseStatus": "x-ms-lease-status",
+						"accessControlAllowOrigin": "access-control-allow-origin",
+						"accessControlExposeHeaders": "access-control-expose-headers",
+						"vary": "vary",
+						"accessControlAllowCredentials": "access-control-allow-credentials",
+						"blobCommittedBlockCount": "x-ms-blob-committed-block-count",
+						"serverEncrypted": "x-ms-server-encrypted",
+						"encryptionKeySha256": "x-ms-encryption-key-sha256",
+						"encryptionContext": "x-ms-encryption-context",
+						"encryptionScope": "x-ms-encryption-scope",
+						"blobContentMd5": "x-ms-blob-content-md5",
+						"lastAccessTime": "x-ms-last-access-time",
+						"blobSealed": "x-ms-blob-sealed",
+						"immutabilityPolicyUntilDate": "x-ms-immutability-policy-until-date",
+						"immutabilityPolicyMode": "x-ms-immutability-policy-mode",
+						"legalHold": "x-ms-legal-hold",
+						"owner": "x-ms-owner",
+						"group": "x-ms-group",
+						"permissions": "x-ms-permissions",
+						"acl": "x-ms-acl",
+						"resourceType": "x-ms-resource-type",
+						"acceptRanges": "accept-ranges",
+						"date": "Thu, 23 Jan 2025 17:53:23 GMT",
+						"requestId": "75b87ee3-a7f7-468d-b7d1-e7e7b3173dab",
+						"version": "2025-01-05"
+					},
+					"metadata": { "key1": "value1" }
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,13 @@
+diff --git a/index.d.ts b/index.d.ts
+index fbad2c77669b1effe9d1ca30f518eb5e0058f2e0..6dc02519a6a8dfe1c7dc7d4d600478ba841b172a 100644
+--- a/index.d.ts
++++ b/index.d.ts
+@@ -641,7 +641,7 @@ export interface Request<
+ 
+     query: ReqQuery;
+ 
+-    route: any;
++    route?: Pick<IRoute, 'path' | 'stack'>;
+ 
+     signedCookies: any;
+ 

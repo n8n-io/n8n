@@ -1,0 +1,328 @@
+{
+	"name": "Baserow Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-20, 400],
+			"id": "fccdbab1-aa37-4606-8744-520e19a90a01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"databaseId": 199364,
+				"tableId": 482710,
+				"rowId": "1"
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "56b90399-9400-4fff-84b5-75430102119d",
+			"name": "Baserow > Get",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"databaseId": 199364,
+				"tableId": 482710,
+				"limit": 2,
+				"additionalOptions": {}
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1,
+			"position": [200, 200],
+			"id": "8a183257-3297-4ec9-bcae-aefb1f563355",
+			"name": "Baserow > Get Many",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 0],
+			"id": "5afa3206-a796-41dc-a2c5-54b5b9f2fbf4",
+			"name": "GetResponse"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 200],
+			"id": "d61f9e61-856a-4590-aad1-d7ef88e7185b",
+			"name": "GetMany Response"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"databaseId": 199364,
+				"tableId": 482710,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": 3799030,
+							"fieldValue": "Nathan"
+						},
+						{
+							"fieldId": 3799031,
+							"fieldValue": "testing"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1,
+			"position": [200, 400],
+			"id": "e3c5b6c4-b4b3-40ac-8d12-2a240c174e81",
+			"name": "Baserow > Create",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 400],
+			"id": "bb7648a4-1d81-421f-927d-0942325db4c9",
+			"name": "Create Response"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"databaseId": 199364,
+				"tableId": 482710,
+				"rowId": "3",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": 3799032,
+							"fieldValue": "true"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1,
+			"position": [200, 600],
+			"id": "557a163a-0d60-4dbf-b4e0-342533b56ad5",
+			"name": "Baserow > Update",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 600],
+			"id": "34992c77-25d1-4af4-a667-ca452049908d",
+			"name": "Update Response"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 800],
+			"id": "76e75c2a-2c6e-4307-ad67-fbc3d442ea53",
+			"name": "Delete Response"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"databaseId": 199364,
+				"tableId": 482710,
+				"rowId": "3"
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1,
+			"position": [200, 800],
+			"id": "f1c84a01-f514-49c2-a54e-548b15dc91fd",
+			"name": "Baserow > Delete",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"GetResponse": [
+			{
+				"json": {
+					"id": 1,
+					"order": "1.00000000000000000000",
+					"Name": "Foo",
+					"Notes": "bar",
+					"Active": false
+				}
+			}
+		],
+		"GetMany Response": [
+			{
+				"json": {
+					"id": 1,
+					"order": "1.00000000000000000000",
+					"Name": "Foo",
+					"Notes": "bar",
+					"Active": false
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"order": "2.00000000000000000000",
+					"Name": "Bar",
+					"Notes": "foo",
+					"Active": true
+				}
+			}
+		],
+		"Create Response": [
+			{
+				"json": {
+					"id": 3,
+					"order": "3.00000000000000000000",
+					"Name": "Nathan",
+					"Notes": "testing",
+					"Active": false
+				}
+			}
+		],
+		"Update Response": [
+			{
+				"json": {
+					"id": 3,
+					"order": "3.00000000000000000000",
+					"Name": "Nathan",
+					"Notes": "testing",
+					"Active": true
+				}
+			}
+		],
+		"Delete Response": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Baserow > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Get": {
+			"main": [
+				[
+					{
+						"node": "GetResponse",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Get Many": {
+			"main": [
+				[
+					{
+						"node": "GetMany Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Create": {
+			"main": [
+				[
+					{
+						"node": "Create Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Update": {
+			"main": [
+				[
+					{
+						"node": "Update Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Delete": {
+			"main": [
+				[
+					{
+						"node": "Delete Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "72dbd4c1-80b9-4a22-a298-7bcd577e2f0c",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "2IrLMcqSSFfSyj76",
+	"tags": []
+}

@@ -1,0 +1,252 @@
+{
+    "type": "object",
+    "properties": {
+        "acl": {
+            "type": "object",
+            "properties": {
+                "app": {
+                    "type": "string"
+                },
+                "can_write": {
+                    "type": "boolean"
+                },
+                "modifiable": {
+                    "type": "boolean"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "perms": {
+                    "type": "object",
+                    "properties": {
+                        "read": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "write": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "sharing": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "string"
+                }
+            }
+        },
+        "author": {
+            "type": "string"
+        },
+        "bundleVersion": {
+            "type": "string"
+        },
+        "cursorTime": {
+            "type": "string"
+        },
+        "defaultSaveTTL": {
+            "type": "string"
+        },
+        "defaultTTL": {
+            "type": "string"
+        },
+        "delegate": {
+            "type": "string"
+        },
+        "diskUsage": {
+            "type": "integer"
+        },
+        "dispatchState": {
+            "type": "string"
+        },
+        "doneProgress": {
+            "type": "integer"
+        },
+        "earliestTime": {
+            "type": "string"
+        },
+        "entryUrl": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isDone": {
+            "type": "boolean"
+        },
+        "isEventsPreviewEnabled": {
+            "type": "boolean"
+        },
+        "isFailed": {
+            "type": "boolean"
+        },
+        "isFinalized": {
+            "type": "boolean"
+        },
+        "isPaused": {
+            "type": "boolean"
+        },
+        "isPreviewEnabled": {
+            "type": "boolean"
+        },
+        "isSaved": {
+            "type": "boolean"
+        },
+        "isSavedSearch": {
+            "type": "boolean"
+        },
+        "isZombie": {
+            "type": "boolean"
+        },
+        "label": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "alternate": {
+                    "type": "string"
+                },
+                "control": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "string"
+                },
+                "results": {
+                    "type": "string"
+                },
+                "results_preview": {
+                    "type": "string"
+                },
+                "search.log": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "timeline": {
+                    "type": "string"
+                }
+            }
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "help": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "numPreviews": {
+            "type": "integer"
+        },
+        "performance": {
+            "type": "object",
+            "properties": {
+                "startup.configuration": {
+                    "type": "object",
+                    "properties": {
+                        "duration_secs": {
+                            "type": "number"
+                        },
+                        "invocations": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "startup.handoff": {
+                    "type": "object",
+                    "properties": {
+                        "duration_secs": {
+                            "type": "number"
+                        },
+                        "invocations": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "pid": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "provenance": {
+            "type": "string"
+        },
+        "published": {
+            "type": "string"
+        },
+        "request": {
+            "type": "object",
+            "properties": {
+                "search": {
+                    "type": "string"
+                }
+            }
+        },
+        "resultPreviewCount": {
+            "type": "integer"
+        },
+        "runtime": {
+            "type": "object",
+            "properties": {
+                "auto_cancel": {
+                    "type": "string"
+                },
+                "auto_pause": {
+                    "type": "string"
+                }
+            }
+        },
+        "sampleRatio": {
+            "type": "string"
+        },
+        "sampleSeed": {
+            "type": "string"
+        },
+        "search": {
+            "type": "string"
+        },
+        "searchProviders": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "sid": {
+            "type": "string"
+        },
+        "statusBuckets": {
+            "type": "integer"
+        },
+        "ttl": {
+            "type": "integer"
+        },
+        "updated": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

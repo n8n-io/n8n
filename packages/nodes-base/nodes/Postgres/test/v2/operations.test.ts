@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -37,8 +37,8 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);
@@ -361,6 +361,26 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			items,
 			nodeOptions,
 		);
+	});
+
+	it('should execute queries with null key/value pairs', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2)',
+			options: {
+				queryReplacement: '"={{ betty }}, {{ null }}"',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
 	});
 
 	it('should execute queries with multiple json key/value pairs', async () => {
@@ -692,6 +712,51 @@ describe('Test PostgresV2, insert operation', () => {
 			expect(convertValuesToJsonWithPgpSpy).toHaveBeenCalledWith(pg, columnsInfo, valuePassedIn);
 			expect(hasJsonDataTypeInSchemaSpy).toHaveBeenCalledWith(columnsInfo);
 		});
+	});
+
+	it('should insert default values if no values are provided', async () => {
+		const nodeParameters: IDataObject = {
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			dataMode: 'defineBelow',
+			valuesToSend: {
+				values: [],
+			},
+			options: { nodeVersion: 2.6 },
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await insert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+			pgPromise(),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO $1:name.$2:name DEFAULT VALUES RETURNING *',
+					values: ['public', 'my_table', {}],
+				},
+			],
+			items,
+			nodeOptions,
+		);
 	});
 });
 

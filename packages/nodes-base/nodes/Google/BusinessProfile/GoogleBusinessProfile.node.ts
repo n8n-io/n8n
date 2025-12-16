@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { searchAccounts, searchLocations, searchPosts, searchReviews } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -16,8 +16,9 @@ export class GoogleBusinessProfile implements INodeType {
 		defaults: {
 			name: 'Google Business Profile',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		hints: [
 			{
 				message: 'Please select a parameter in the options to modify the post',

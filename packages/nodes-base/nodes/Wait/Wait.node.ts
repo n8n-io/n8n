@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -7,8 +6,15 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	WAIT_INDEFINITELY,
+	FORM_TRIGGER_NODE_TYPE,
+	tryToParseDateTime,
+	NodeOperationError,
+} from 'n8n-workflow';
 
+import { validateWaitAmount, validateWaitUnit } from './validation';
 import { updateDisplayOptions } from '../../utils/utilities';
 import {
 	formDescription,
@@ -18,7 +24,7 @@ import {
 	formTitle,
 	appendAttributionToForm,
 } from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
+import { formWebhook } from '../Form/utils/utils';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -42,6 +48,7 @@ const toWaitAmount: INodeProperties = {
 	},
 	default: 1,
 	description: 'The time to wait',
+	validateType: 'number',
 };
 
 const unitSelector: INodeProperties = {
@@ -77,7 +84,7 @@ const waitTimeProperties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether the workflow will automatically resume execution after the specified limit type',
+			'Whether to limit the time this node should wait for a user response before execution resumes',
 		displayOptions: {
 			show: {
 				resume: ['webhook', 'form'],
@@ -219,6 +226,34 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 
 const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
 
+const waitingTooltip = (
+	parameters: { resume: string; options?: Record<string, string> },
+	resumeUrl: string,
+	formResumeUrl: string,
+) => {
+	const resume = parameters.resume;
+
+	if (['webhook', 'form'].includes(resume as string)) {
+		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+		let message = '';
+		const url = `${resume === 'form' ? formResumeUrl : resumeUrl}${suffix}`;
+
+		if (resume === 'form') {
+			message = 'Execution will continue when form is submitted on ';
+		}
+
+		if (resume === 'webhook') {
+			message = 'Execution will continue when webhook is received on ';
+		}
+
+		return `${message}<a href="${url}" target="_blank">${url}</a>`;
+	}
+
+	return 'Execution will continue when wait time is over';
+};
+
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
 
@@ -234,9 +269,10 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl, $execution.resumeFormUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -251,7 +287,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 			{
 				name: 'default',
@@ -261,7 +297,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 		],
 		properties: [
@@ -459,14 +495,47 @@ export class Wait extends Webhook {
 		const resume = context.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
-			return await this.configureAndPutToWait(context);
+			let hasFormTrigger = false;
+
+			if (resume === 'form') {
+				const parentNodes = context.getParentNodes(context.getNode().name);
+				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			}
+
+			const returnData = await this.configureAndPutToWait(context);
+
+			if (resume === 'form' && hasFormTrigger) {
+				context.sendResponse({
+					headers: {
+						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
+					},
+					statusCode: 307,
+				});
+			}
+
+			return returnData;
 		}
 
 		let waitTill: Date;
 		if (resume === 'timeInterval') {
-			const unit = context.getNodeParameter('unit', 0) as string;
+			const unit = context.getNodeParameter('unit', 0);
 
-			let waitAmount = context.getNodeParameter('amount', 0) as number;
+			if (!validateWaitUnit(unit)) {
+				throw new NodeOperationError(
+					context.getNode(),
+					"Invalid wait unit. Valid units are 'seconds', 'minutes', 'hours', or 'days'.",
+				);
+			}
+
+			let waitAmount = context.getNodeParameter('amount', 0);
+
+			if (!validateWaitAmount(waitAmount)) {
+				throw new NodeOperationError(
+					context.getNode(),
+					'Invalid wait amount. Please enter a number that is 0 or greater.',
+				);
+			}
+
 			if (unit === 'minutes') {
 				waitAmount *= 60;
 			}
@@ -483,20 +552,17 @@ export class Wait extends Webhook {
 			// a number of seconds added to the current timestamp
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
-			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+			try {
+				const dateTimeStrRaw = context.getNodeParameter('dateTime', 0);
+				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw, context.getTimezone());
 
-			if (isNaN(Date.parse(dateTimeStr))) {
+				waitTill = parsedDateTime.toUTC().toJSDate();
+			} catch (e) {
 				throw new NodeOperationError(
 					context.getNode(),
-					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
+					'Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
 				);
 			}
-
-			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
-				zone: context.getTimezone(),
-			})
-				.toUTC()
-				.toJSDate();
 		}
 
 		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);

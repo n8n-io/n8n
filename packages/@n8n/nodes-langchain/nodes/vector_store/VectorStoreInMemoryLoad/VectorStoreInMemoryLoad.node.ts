@@ -1,7 +1,6 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -10,7 +9,7 @@ import {
 
 import { logWrapper } from '@utils/logWrapper';
 
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryLoad implements INodeType {
@@ -38,16 +37,16 @@ export class VectorStoreInMemoryLoad implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -63,14 +62,14 @@ export class VectorStoreInMemoryLoad implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			itemIndex,
 		)) as Embeddings;
 
 		const workflowId = this.getWorkflow().id;
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
 
-		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, this.logger);
 		const vectorStoreInstance = await vectorStoreSingleton.getVectorStore(
 			`${workflowId}__${memoryKey}`,
 		);

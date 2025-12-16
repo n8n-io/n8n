@@ -1,126 +1,27 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "custom_item_id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "status": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "orderindex": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "status",
-                "id",
-                "color",
-                "type",
-                "orderindex"
-            ]
-        },
-        "orderindex": {
-            "type": "string"
-        },
-        "date_created": {
-            "type": "string"
-        },
-        "date_updated": {
-            "type": "string"
-        },
         "archived": {
             "type": "boolean"
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "username",
-                "color",
-                "email",
-                "profilePicture"
-            ]
         },
         "assignees": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "email": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "integer"
                     },
                     "initials": {
                         "type": "string"
-                    },
-                    "email": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "username",
-                    "color",
-                    "initials",
-                    "email",
-                    "profilePicture"
-                ]
-            }
-        },
-        "watchers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
                     },
                     "username": {
                         "type": "string"
-                    },
-                    "initials": {
-                        "type": "string"
-                    },
-                    "email": {
-                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "username",
-                    "color",
-                    "initials",
-                    "email",
-                    "profilePicture"
-                ]
+                }
             }
         },
         "checklists": {
@@ -128,128 +29,45 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
-                    "task_id": {
-                        "type": "string"
-                    },
                     "name": {
-                        "type": "string"
-                    },
-                    "date_created": {
                         "type": "string"
                     },
                     "orderindex": {
                         "type": "integer"
                     },
-                    "creator": {
-                        "type": "integer"
-                    },
                     "resolved": {
                         "type": "integer"
                     },
+                    "task_id": {
+                        "type": "string"
+                    },
                     "unresolved": {
                         "type": "integer"
-                    },
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "string"
-                                },
-                                "name": {
-                                    "type": "string"
-                                },
-                                "orderindex": {
-                                    "type": "integer"
-                                },
-                                "assignee": {
-                                    "type": "null"
-                                },
-                                "group_assignee": {
-                                    "type": "null"
-                                },
-                                "resolved": {
-                                    "type": "boolean"
-                                },
-                                "parent": {
-                                    "type": "null"
-                                },
-                                "date_created": {
-                                    "type": "string"
-                                },
-                                "start_date": {
-                                    "type": "null"
-                                },
-                                "start_date_time": {
-                                    "type": "boolean"
-                                },
-                                "due_date": {
-                                    "type": "null"
-                                },
-                                "due_date_time": {
-                                    "type": "boolean"
-                                },
-                                "sent_due_date_notif": {
-                                    "type": "null"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "name",
-                                "orderindex",
-                                "assignee",
-                                "group_assignee",
-                                "resolved",
-                                "parent",
-                                "date_created",
-                                "start_date",
-                                "start_date_time",
-                                "due_date",
-                                "due_date_time",
-                                "sent_due_date_notif",
-                                "children"
-                            ]
-                        }
                     }
-                },
-                "required": [
-                    "id",
-                    "task_id",
-                    "name",
-                    "date_created",
-                    "orderindex",
-                    "creator",
-                    "resolved",
-                    "unresolved",
-                    "items"
-                ]
+                }
             }
         },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "tag_fg": {
-                        "type": "string"
-                    },
-                    "tag_bg": {
-                        "type": "string"
-                    }
+        "creator": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
                 },
-                "required": [
-                    "name",
-                    "tag_fg",
-                    "tag_bg",
-                    "creator"
-                ]
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
             }
         },
         "custom_fields": {
@@ -257,6 +75,12 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "hide_from_guests": {
+                        "type": "boolean"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -283,45 +107,84 @@
                                         "orderindex": {
                                             "type": "integer"
                                         }
-                                    },
-                                    "required": [
-                                        "id",
-                                        "color"
-                                    ]
+                                    }
                                 }
+                            },
+                            "sorting": {
+                                "type": "string"
                             }
                         }
-                    },
+                    }
+                }
+            }
+        },
+        "custom_item_id": {
+            "type": "integer"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_updated": {
+            "type": "string"
+        },
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
                     "date_created": {
                         "type": "string"
                     },
-                    "hide_from_guests": {
-                        "type": "boolean"
+                    "depends_on": {
+                        "type": "string"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "userid": {
+                        "type": "string"
+                    },
+                    "workspace_id": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "type",
-                    "type_config",
-                    "date_created",
-                    "hide_from_guests",
-                    "required"
-                ]
+                }
             }
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
         },
         "linked_tasks": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "task_id": {
+                    "date_created": {
                         "type": "string"
                     },
                     "link_id": {
                         "type": "string"
                     },
-                    "date_created": {
+                    "task_id": {
                         "type": "string"
                     },
                     "userid": {
@@ -330,14 +193,21 @@
                     "workspace_id": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "list": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
                 },
-                "required": [
-                    "task_id",
-                    "link_id",
-                    "date_created",
-                    "userid",
-                    "workspace_id"
-                ]
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
             }
         },
         "locations": {
@@ -351,11 +221,104 @@
                     "name": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "string"
+        },
+        "permission_level": {
+            "type": "string"
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
                 },
-                "required": [
-                    "id",
-                    "name"
-                ]
+                "hidden": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "sharing": {
+            "type": "object",
+            "properties": {
+                "public": {
+                    "type": "boolean"
+                },
+                "public_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "public_share_expires_on": {
+                    "type": "null"
+                },
+                "seo_optimized": {
+                    "type": "boolean"
+                },
+                "token": {
+                    "type": "null"
+                }
+            }
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "orderindex": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tag_bg": {
+                        "type": "string"
+                    },
+                    "tag_fg": {
+                        "type": "string"
+                    }
+                }
             }
         },
         "team_id": {
@@ -364,154 +327,26 @@
         "url": {
             "type": "string"
         },
-        "sharing": {
-            "type": "object",
-            "properties": {
-                "public": {
-                    "type": "boolean"
-                },
-                "public_share_expires_on": {
-                    "type": "null"
-                },
-                "public_fields": {
-                    "type": "array",
-                    "items": {
+        "watchers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "username": {
                         "type": "string"
                     }
-                },
-                "token": {
-                    "type": "null"
-                },
-                "seo_optimized": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "public",
-                "public_share_expires_on",
-                "public_fields",
-                "token",
-                "seo_optimized"
-            ]
-        },
-        "permission_level": {
-            "type": "string"
-        },
-        "list": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
-        },
-        "project": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "hidden": {
-                    "type": "boolean"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "hidden",
-                "access"
-            ]
-        },
-        "folder": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "hidden": {
-                    "type": "boolean"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "hidden",
-                "access"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id"
-            ]
+            }
         }
     },
-    "required": [
-        "id",
-        "custom_id",
-        "custom_item_id",
-        "name",
-        "text_content",
-        "description",
-        "status",
-        "orderindex",
-        "date_created",
-        "date_updated",
-        "date_closed",
-        "date_done",
-        "archived",
-        "creator",
-        "assignees",
-        "group_assignees",
-        "watchers",
-        "checklists",
-        "tags",
-        "parent",
-        "top_level_parent",
-        "priority",
-        "due_date",
-        "start_date",
-        "points",
-        "time_estimate",
-        "custom_fields",
-        "dependencies",
-        "linked_tasks",
-        "locations",
-        "team_id",
-        "url",
-        "sharing",
-        "permission_level",
-        "list",
-        "project",
-        "folder",
-        "space"
-    ]
+    "version": 1
 }

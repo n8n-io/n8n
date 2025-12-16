@@ -234,12 +234,16 @@ export async function execute(
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
 		if (nodeVersion >= 2.4) {
-			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+			item = convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
 		}
 
 		values.push(checkItemAgainstSchema(this.getNode(), item, tableSchema, i));
 
 		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
+
+		if (nodeVersion >= 2.6 && Object.keys(item).length === 0) {
+			query = 'INSERT INTO $1:name.$2:name DEFAULT VALUES';
+		}
 
 		[query, values] = addReturning(query, outputColumns, values);
 

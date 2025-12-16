@@ -1,0 +1,66 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "5eb6b347-b34e-4112-9601-f7aa94f26575",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"webhookId": "4fb58136-3481-494a-a30f-d9e064dac186"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.9,
+			"position": [220, 0],
+			"id": "32534841-9474-4890-9998-65d6a56bdf0c",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"response": "Hello from **e2e** model!!!"
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatE2eTest",
+			"typeVersion": 1,
+			"position": [308, 220],
+			"id": "2f239d5b-95ef-4949-92b6-5a7541e1029f",
+			"name": "E2E Chat Model"
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [[]]
+		},
+		"E2E Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "14f5bd03485879885c6d92999d35d4d24556536fa2b675f932eb27193691e2b2"
+	}
+}

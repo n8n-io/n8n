@@ -2,12 +2,12 @@ import { type MockProxy, mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
+import { configureWaitTillDate } from '../configureWaitTillDate.util';
 import {
 	getSendAndWaitProperties,
 	getSendAndWaitConfig,
 	createEmail,
 	sendAndWaitWebhook,
-	configureWaitTillDate,
 } from '../utils';
 
 describe('Send and Wait utils tests', () => {
@@ -62,25 +62,20 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
-
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			);
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
 			expect(config).toEqual({
+				appendAttribution: undefined,
 				title: 'Test subject',
 				message: 'Test message',
-				url: 'http://localhost/testNodeId',
 				options: [
 					{
 						label: 'Approve',
-						value: 'true',
 						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				],
 			});
@@ -102,13 +97,12 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			);
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+				'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+			);
 
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
@@ -117,13 +111,13 @@ describe('Send and Wait utils tests', () => {
 				expect.arrayContaining([
 					{
 						label: 'Reject',
-						value: 'false',
 						style: 'secondary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 					},
 					{
 						label: 'Approve',
-						value: 'true',
 						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				]),
 			);
@@ -146,13 +140,7 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
 		});
 
 		it('should create a valid email object', () => {
@@ -212,6 +200,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle freeText GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -219,6 +208,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -236,9 +226,13 @@ describe('Send and Wait utils tests', () => {
 				noWebhookResponse: true,
 			});
 
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
+
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
-				validForm: true,
 				formTitle: '',
 				formDescription: 'Test message',
 				formDescriptionMetadata: 'Test message',
@@ -285,6 +279,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle customForm GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -292,6 +287,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -304,6 +300,7 @@ describe('Send and Wait utils tests', () => {
 						responseFormTitle: 'Test title',
 						responseFormDescription: 'Test description',
 						responseFormButtonLabel: 'Test button',
+						responseFormCustomCss: 'body { background-color: red; }',
 					},
 				};
 				return params[parameterName];
@@ -315,9 +312,13 @@ describe('Send and Wait utils tests', () => {
 				noWebhookResponse: true,
 			});
 
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
+
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
-				validForm: true,
 				formTitle: 'Test title',
 				formDescription: 'Test description',
 				formDescriptionMetadata: 'Test description',
@@ -336,13 +337,16 @@ describe('Send and Wait utils tests', () => {
 				],
 				appendAttribution: true,
 				buttonLabel: 'Test button',
+				dangerousCustomCss: 'body { background-color: red; }',
 			});
 		});
 
 		it('should handle customForm POST webhook', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
+				contentType: 'multipart/form-data',
 			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
@@ -367,6 +371,34 @@ describe('Send and Wait utils tests', () => {
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
 			expect(result.workflowData).toEqual([[{ json: { data: { 'test 1': 'test value' } } }]]);
+		});
+
+		it('should return noWebhookResponse if method GET and user-agent is bot', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				headers: {
+					'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+				},
+				query: { approved: 'false' },
+			} as any);
+
+			const send = jest.fn();
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'approval',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(send).toHaveBeenCalledWith('');
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });
@@ -465,5 +497,77 @@ describe('configureWaitTillDate', () => {
 		expect(() => configureWaitTillDate(mockExecuteFunctions)).toThrow(
 			'Could not configure Limit Wait Time',
 		);
+	});
+
+	it('should return WAIT_INDEFINITELY when limitWaitTime is false', () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		expect(result).toBe(WAIT_INDEFINITELY);
+	});
+
+	it('should calculate minutes correctly in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true) // limitWaitTime
+			.mockReturnValueOnce('afterTimeInterval') // limitType
+			.mockReturnValueOnce(15) // resumeAmount
+			.mockReturnValueOnce('minutes'); // resumeUnit
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		const expectedDate = new Date(new Date().getTime() + 15 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should calculate hours correctly in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('afterTimeInterval')
+			.mockReturnValueOnce(3)
+			.mockReturnValueOnce('hours');
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		const expectedDate = new Date(new Date().getTime() + 3 * 60 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should calculate days correctly in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('afterTimeInterval')
+			.mockReturnValueOnce(5)
+			.mockReturnValueOnce('days');
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		const expectedDate = new Date(new Date().getTime() + 5 * 24 * 60 * 60 * 1000);
+		expect(result.getTime()).toBeCloseTo(expectedDate.getTime(), -2);
+	});
+
+	it('should handle maxDateAndTime in root location', () => {
+		const maxDateAndTime = '2024-12-31T23:59:59Z';
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('maxDateAndTime')
+			.mockReturnValueOnce(maxDateAndTime);
+
+		const result = configureWaitTillDate(mockExecuteFunctions, 'root');
+		expect(result).toEqual(new Date(maxDateAndTime));
+	});
+
+	it('should throw error for invalid date in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('maxDateAndTime')
+			.mockReturnValueOnce('not-a-valid-date');
+
+		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
+	});
+
+	it('should throw error for invalid resumeAmount in root location', () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce(true)
+			.mockReturnValueOnce('afterTimeInterval')
+			.mockReturnValueOnce('not-a-number')
+			.mockReturnValueOnce('minutes');
+
+		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
 	});
 });

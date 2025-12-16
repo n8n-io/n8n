@@ -7,22 +7,26 @@
                 "xmlns": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "xmlns"
-            ]
-        },
-        "Location": {
-            "type": "string"
+            }
         },
         "Bucket": {
+            "type": "string"
+        },
+        "ChecksumCRC64NVME": {
+            "type": "string"
+        },
+        "ChecksumType": {
+            "type": "string"
+        },
+        "ETag": {
             "type": "string"
         },
         "Key": {
             "type": "string"
         },
-        "ETag": {
+        "Location": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

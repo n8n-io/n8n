@@ -1,6 +1,5 @@
 import { mock } from 'jest-mock-extended';
 import type {
-	IGetExecuteTriggerFunctions,
 	INode,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
@@ -15,6 +14,7 @@ import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-wor
 import type { ErrorReporter } from '@/errors/error-reporter';
 
 import { ActiveWorkflows } from '../active-workflows';
+import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
 import type { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
@@ -196,7 +196,7 @@ describe('ActiveWorkflows', () => {
 
 				// Get the executeTrigger function that was registered
 				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
-				const executeTrigger = registerCronCall[2] as () => Promise<void>;
+				const executeTrigger = registerCronCall[1] as () => Promise<void>;
 
 				// Execute the trigger function to simulate a regular poll
 				await executeTrigger();

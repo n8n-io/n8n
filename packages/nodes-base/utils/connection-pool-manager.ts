@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { OperationalError, type Logger } from 'n8n-workflow';
 
 let instance: ConnectionPoolManager;
 
@@ -15,19 +16,23 @@ type RegistrationOptions = {
 };
 
 type GetConnectionOption<Pool> = RegistrationOptions & {
-	/** When a node requests for a connection pool, but none is available, this handler is called to create new instance of the pool, which then cached and re-used until it goes stale.  */
-	fallBackHandler: () => Promise<Pool>;
+	/**
+	 * When a node requests for a connection pool, but none is available, this
+	 * handler is called to create new instance of the pool, which is then cached
+	 * and re-used until it goes stale.
+	 */
+	fallBackHandler: (abortController: AbortController) => Promise<Pool>;
 
-	/** When a pool hasn't been used in a while, or when the server is shutting down, this handler is invoked to close the pool */
-	cleanUpHandler: (pool: Pool) => Promise<void>;
+	wasUsed: (pool: Pool) => void;
 };
 
 type Registration<Pool> = {
 	/** This is an instance of a Connection Pool class, that gets reused across multiple executions */
 	pool: Pool;
 
-	/** @see GetConnectionOption['closeHandler'] */
-	cleanUpHandler: (pool: Pool) => Promise<void>;
+	abortController: AbortController;
+
+	wasUsed: (pool: Pool) => void;
 
 	/** We keep this timestamp to check if a pool hasn't been used in a while, and if it needs to be closed */
 	lastUsed: number;
@@ -38,9 +43,9 @@ export class ConnectionPoolManager {
 	 * Gets the singleton instance of the ConnectionPoolManager.
 	 * Creates a new instance if one doesn't exist.
 	 */
-	static getInstance(): ConnectionPoolManager {
+	static getInstance(logger: Logger): ConnectionPoolManager {
 		if (!instance) {
-			instance = new ConnectionPoolManager();
+			instance = new ConnectionPoolManager(logger);
 		}
 		return instance;
 	}
@@ -51,9 +56,12 @@ export class ConnectionPoolManager {
 	 * Private constructor that initializes the connection pool manager.
 	 * Sets up cleanup handlers for process exit and stale connections.
 	 */
-	private constructor() {
+	private constructor(private readonly logger: Logger) {
 		// Close all open pools when the process exits
-		process.on('exit', () => this.onShutdown());
+		process.on('exit', () => {
+			this.logger.debug('ConnectionPoolManager: Shutting down. Cleaning up all pools');
+			this.purgeConnections();
+		});
 
 		// Regularly close stale pools
 		setInterval(() => this.cleanupStaleConnections(), cleanUpInterval);
@@ -84,15 +92,44 @@ export class ConnectionPoolManager {
 		const key = this.makeKey(options);
 
 		let value = this.map.get(key);
-		if (!value) {
-			value = {
-				pool: await options.fallBackHandler(),
-				cleanUpHandler: options.cleanUpHandler,
-			} as Registration<unknown>;
+
+		if (value) {
+			value.lastUsed = Date.now();
+			value.wasUsed(value.pool);
+			return value.pool as T;
+		}
+
+		const abortController = new AbortController();
+		value = {
+			pool: await options.fallBackHandler(abortController),
+			abortController,
+			wasUsed: options.wasUsed,
+		} as Registration<unknown>;
+
+		// It's possible that `options.fallBackHandler` already called the abort
+		// function. If that's the case let's not continue.
+		if (abortController.signal.aborted) {
+			throw new OperationalError('Could not create pool. Connection attempt was aborted.', {
+				cause: abortController.signal.reason,
+			});
 		}
 
 		this.map.set(key, { ...value, lastUsed: Date.now() });
+		abortController.signal.addEventListener('abort', async () => {
+			this.logger.debug('ConnectionPoolManager: Got abort signal, cleaning up pool.');
+			this.cleanupConnection(key);
+		});
+
 		return value.pool as T;
+	}
+
+	private cleanupConnection(key: string) {
+		const registration = this.map.get(key);
+
+		if (registration) {
+			this.map.delete(key);
+			registration.abortController.abort();
+		}
 	}
 
 	/**
@@ -101,37 +138,21 @@ export class ConnectionPoolManager {
 	 */
 	private cleanupStaleConnections() {
 		const now = Date.now();
-		for (const [key, { cleanUpHandler, lastUsed, pool }] of this.map.entries()) {
+		for (const [key, { lastUsed }] of this.map.entries()) {
 			if (now - lastUsed > ttl) {
-				void cleanUpHandler(pool);
-				this.map.delete(key);
+				this.logger.debug('ConnectionPoolManager: Found stale pool. Cleaning it up.');
+				void this.cleanupConnection(key);
 			}
 		}
 	}
 
 	/**
 	 * Removes and cleans up all existing connection pools.
+	 * Connections are closed in the background.
 	 */
-	async purgeConnections(): Promise<void> {
-		await Promise.all(
-			[...this.map.entries()].map(async ([key, value]) => {
-				this.map.delete(key);
-
-				return await value.cleanUpHandler(value.pool);
-			}),
-		);
-	}
-
-	/**
-	 * Cleans up all connection pools when the process is shutting down.
-	 * Does not wait for cleanup promises to resolve also does not remove the
-	 * references from the pool.
-	 *
-	 * Only call this on process shutdown.
-	 */
-	onShutdown() {
-		for (const { cleanUpHandler, pool } of this.map.values()) {
-			void cleanUpHandler(pool);
+	purgeConnections(): void {
+		for (const key of this.map.keys()) {
+			this.cleanupConnection(key);
 		}
 	}
 }

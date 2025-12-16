@@ -109,7 +109,6 @@ describe('FormTrigger', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 
 		expect(responseData).toEqual({ noWebhookResponse: true });
@@ -149,7 +148,11 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 
@@ -190,8 +193,9 @@ describe('FormTrigger', () => {
 			);
 
 			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
 					node: {
+						typeVersion: 2.1,
 						parameters: {
 							responseMode: 'onReceived',
 						},
@@ -207,7 +211,10 @@ describe('FormTrigger', () => {
 					],
 				}),
 			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'On form submission node not correctly configured'),
+				new NodeOperationError(
+					mock<INode>(),
+					'Unused Respond to Webhook node found in the workflow',
+				),
 			);
 		});
 	});
@@ -237,6 +244,33 @@ describe('FormTrigger', () => {
 		expect(response.setHeader).toHaveBeenCalledWith(
 			'WWW-Authenticate',
 			'Basic realm="Enter credentials"',
+		);
+	});
+
+	it('should apply customCss property to form render', async () => {
+		const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+		const { response } = await testVersionedWebhookTriggerNode(FormTrigger, 2.2, {
+			mode: 'manual',
+			node: {
+				typeVersion: 2.2,
+				parameters: {
+					formTitle: 'Custom CSS Test',
+					formDescription: 'Testing custom CSS',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					options: {
+						customCss: '.form-input { border-color: red; }',
+					},
+				},
+			},
+		});
+
+		expect(response.render).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				dangerousCustomCss: '.form-input { border-color: red; }',
+			}),
 		);
 	});
 
@@ -287,7 +321,11 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 

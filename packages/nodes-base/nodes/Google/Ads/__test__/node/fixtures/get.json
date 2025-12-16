@@ -1,0 +1,27 @@
+{
+	"results": [
+		{
+			"campaign": {
+				"resourceName": "customers/5171368254/campaigns/22682295812",
+				"status": "ENABLED",
+				"advertisingChannelType": "SEARCH",
+				"name": "Search-1",
+				"id": "22682295812"
+			},
+			"metrics": {
+				"videoViews": "0",
+				"conversions": 0,
+				"costMicros": "0",
+				"impressions": "0",
+				"interactions": "0"
+			},
+			"campaignBudget": {
+				"resourceName": "customers/5171368254/campaignBudgets/14669466664",
+				"period": "DAILY",
+				"amountMicros": "10000000"
+			}
+		}
+	],
+	"fieldMask": "campaign.id,campaign.name,campaignBudget.amountMicros,campaignBudget.period,campaign.status,campaign.optimizationScore,campaign.advertisingChannelType,campaign.advertisingChannelSubType,metrics.impressions,metrics.interactions,metrics.interactionRate,metrics.averageCost,metrics.costMicros,metrics.conversions,metrics.costPerConversion,metrics.conversionsFromInteractionsRate,metrics.videoViews,metrics.averageCpm,metrics.ctr",
+	"queryResourceConsumption": "596"
+}

@@ -1,13 +1,19 @@
 {
     "type": "object",
     "properties": {
+        "ChecksumAlgorithm": {
+            "type": "string"
+        },
+        "ChecksumType": {
+            "type": "string"
+        },
+        "ETag": {
+            "type": "string"
+        },
         "Key": {
             "type": "string"
         },
         "LastModified": {
-            "type": "string"
-        },
-        "ETag": {
             "type": "string"
         },
         "Size": {
@@ -17,11 +23,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "Key",
-        "LastModified",
-        "ETag",
-        "Size",
-        "StorageClass"
-    ]
+    "version": 3
 }

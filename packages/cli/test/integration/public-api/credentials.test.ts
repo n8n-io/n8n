@@ -1,10 +1,9 @@
+import type { CredentialPayload } from '@n8n/backend-test-utils';
+import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
-
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { createTeamProject } from '@test-integration/db/projects';
 
 import {
 	affixRoleToSaveCredential,
@@ -12,10 +11,7 @@ import {
 	getCredentialSharings,
 } from '../shared/db/credentials';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { randomName } from '../shared/random';
-import * as testDb from '../shared/test-db';
-import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
-import type { SuperAgentTest } from '../shared/types';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 let owner: User;
@@ -40,7 +36,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 });
 
 describe('POST /credentials', () => {
@@ -91,6 +87,75 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
+	});
+
+	test('should create credential with isResolvable set to true', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: true,
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(true);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should create credential with isResolvable set to false', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: false,
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(false);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should default isResolvable to false when not provided', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			// isResolvable not provided
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const { id, isResolvable } = response.body;
+
+		expect(isResolvable).toBe(false);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		expect(credential.isResolvable).toBe(false);
 	});
 });
 

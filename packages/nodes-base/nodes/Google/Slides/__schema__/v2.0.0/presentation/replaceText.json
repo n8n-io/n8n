@@ -15,15 +15,9 @@
                             "occurrencesChanged": {
                                 "type": "integer"
                             }
-                        },
-                        "required": [
-                            "occurrencesChanged"
-                        ]
+                        }
                     }
-                },
-                "required": [
-                    "replaceAllText"
-                ]
+                }
             }
         },
         "writeControl": {
@@ -32,15 +26,8 @@
                 "requiredRevisionId": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "requiredRevisionId"
-            ]
+            }
         }
     },
-    "required": [
-        "presentationId",
-        "replies",
-        "writeControl"
-    ]
+    "version": 1
 }

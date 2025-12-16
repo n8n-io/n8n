@@ -5,7 +5,7 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 
 	displayName = 'Microsoft Azure Monitor OAuth2 API';
 
-	extends = ['microsoftOAuth2Api'];
+	extends = ['oAuth2Api'];
 
 	documentationUrl = 'microsoftazuremonitor';
 
@@ -18,6 +18,22 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 	};
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Client Credentials',
+					value: 'clientCredentials',
+				},
+			],
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Tenant ID',
 			required: true,
@@ -59,19 +75,28 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: '=https://login.microsoftonline.com/{{$self["tenantId"]}}/oauth2/token',
+			default:
+				'=https://login.microsoftonline.com/{{$self["tenantId"]}}/oauth2/{{$self["grantType"] === "clientCredentials" ? "v2.0/" : ""}}token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: '=resource={{$self["resource"]}}',
+			default:
+				'={{$self["grantType"] === "clientCredentials" ? "" : "resource=" + $self["resource"]}}',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '',
+			default:
+				'={{$self["grantType"] === "clientCredentials" ? $self["resource"] + "/.default" : ""}}',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'body',
 		},
 	];
 }

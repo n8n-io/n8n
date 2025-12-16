@@ -1,0 +1,74 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["3394"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["14"],
+			"request-id": ["req_011CUfbE1wxpzMScnL7cbbs1"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:27:46Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15495000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:27:47Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:27:46Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["14995000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:27:48 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["99748582b88fb104-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01JoUd9h17PFe1FZCXo19L53",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_011HQYsRa6fTQJaVzCSRMztH",
+						"name": "categorize_prompt",
+						"input": {
+							"prompt": "I want to build an n8n workflow that automatically creates YouTube chapter timestamps by analyzing the video captions. When I trigger it manually, it should take a video ID as input, fetch the existing video metadata and captions from YouTube, use an AI language model like Google Gemini to parse the transcript into chapters with timestamps, and then update the video's description with these chapters appended. The goal is to save time and improve SEO by automating the whole process."
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 3,
+					"cache_creation_input_tokens": 11239,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 11239,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 149,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFKb1VkOWgxN1BGZTFGWkNYbzE5TDUzIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTFIUVlzUmE2ZlRRSmFWekNTUk16dEgiLCJuYW1lIjoiY2F0ZWdvcml6ZV9wcm9tcHQiLCJpbnB1dCI6eyJwcm9tcHQiOiJJIHdhbnQgdG8gYnVpbGQgYW4gbjhuIHdvcmtmbG93IHRoYXQgYXV0b21hdGljYWxseSBjcmVhdGVzIFlvdVR1YmUgY2hhcHRlciB0aW1lc3RhbXBzIGJ5IGFuYWx5emluZyB0aGUgdmlkZW8gY2FwdGlvbnMuIFdoZW4gSSB0cmlnZ2VyIGl0IG1hbnVhbGx5LCBpdCBzaG91bGQgdGFrZSBhIHZpZGVvIElEIGFzIGlucHV0LCBmZXRjaCB0aGUgZXhpc3RpbmcgdmlkZW8gbWV0YWRhdGEgYW5kIGNhcHRpb25zIGZyb20gWW91VHViZSwgdXNlIGFuIEFJIGxhbmd1YWdlIG1vZGVsIGxpa2UgR29vZ2xlIEdlbWluaSB0byBwYXJzZSB0aGUgdHJhbnNjcmlwdCBpbnRvIGNoYXB0ZXJzIHdpdGggdGltZXN0YW1wcywgYW5kIHRoZW4gdXBkYXRlIHRoZSB2aWRlbydzIGRlc2NyaXB0aW9uIHdpdGggdGhlc2UgY2hhcHRlcnMgYXBwZW5kZWQuIFRoZSBnb2FsIGlzIHRvIHNhdmUgdGltZSBhbmQgaW1wcm92ZSBTRU8gYnkgYXV0b21hdGluZyB0aGUgd2hvbGUgcHJvY2Vzcy4ifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjozLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjExMjM5LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MTEyMzksImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxNDksInNlcnZpY2VfdGllciI6InN0YW5kYXJkIn19"
+		}
+	},
+	"id": "1761928197553-unknown-host-POST-_v1_messages-0b9a5a1d.json",
+	"priority": 24,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

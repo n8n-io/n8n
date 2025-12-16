@@ -57,6 +57,10 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
 
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&token=abc',
+		);
+
 		const result = await discord.execute.call(mockExecuteFunctions);
 
 		expect(result).toEqual([items]);
@@ -74,7 +78,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 								label: 'Approve',
 								style: 5,
 								type: 2,
-								url: 'http://localhost/waiting-webhook/nodeID?approved=true',
+								url: 'http://localhost/waiting-webhook/nodeID?approved=true&token=abc',
 							},
 						],
 						type: 1,
@@ -84,7 +88,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 					{
 						color: 5814783,
 						description:
-							'my message\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId)',
+							'my message\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.discord_instanceId)',
 					},
 				],
 			},

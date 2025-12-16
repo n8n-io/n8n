@@ -1,26 +1,37 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
-            "type": "string"
+        "active": {
+            "type": "boolean"
         },
-        "updatedAt": {
+        "createdAt": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            }
+        },
         "name": {
             "type": "string"
-        },
-        "active": {
-            "type": "boolean"
         },
         "nodes": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -29,24 +40,10 @@
                             }
                         }
                     },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
                     "type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "parameters",
-                    "id",
-                    "name",
-                    "type",
-                    "typeVersion",
-                    "position"
-                ]
+                }
             }
         },
         "settings": {
@@ -55,16 +52,7 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "executionOrder"
-            ]
-        },
-        "versionId": {
-            "type": "string"
-        },
-        "triggerCount": {
-            "type": "integer"
+            }
         },
         "shared": {
             "type": "array",
@@ -74,34 +62,16 @@
                     "createdAt": {
                         "type": "string"
                     },
-                    "updatedAt": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    },
-                    "workflowId": {
-                        "type": "string"
-                    },
-                    "projectId": {
-                        "type": "string"
-                    },
                     "project": {
                         "type": "object",
                         "properties": {
                             "createdAt": {
                                 "type": "string"
                             },
-                            "updatedAt": {
-                                "type": "string"
-                            },
                             "id": {
                                 "type": "string"
                             },
                             "name": {
-                                "type": "string"
-                            },
-                            "type": {
                                 "type": "string"
                             },
                             "projectRelations": {
@@ -112,16 +82,13 @@
                                         "createdAt": {
                                             "type": "string"
                                         },
-                                        "updatedAt": {
+                                        "projectId": {
                                             "type": "string"
                                         },
                                         "role": {
                                             "type": "string"
                                         },
-                                        "userId": {
-                                            "type": "string"
-                                        },
-                                        "projectId": {
+                                        "updatedAt": {
                                             "type": "string"
                                         },
                                         "user": {
@@ -130,11 +97,8 @@
                                                 "createdAt": {
                                                     "type": "string"
                                                 },
-                                                "updatedAt": {
-                                                    "type": "string"
-                                                },
-                                                "id": {
-                                                    "type": "string"
+                                                "disabled": {
+                                                    "type": "boolean"
                                                 },
                                                 "email": {
                                                     "type": "string"
@@ -142,71 +106,81 @@
                                                 "firstName": {
                                                     "type": "string"
                                                 },
-                                                "lastName": {
+                                                "id": {
                                                     "type": "string"
                                                 },
-                                                "role": {
-                                                    "type": "string"
-                                                },
-                                                "disabled": {
-                                                    "type": "boolean"
-                                                },
-                                                "mfaEnabled": {
+                                                "isOwner": {
                                                     "type": "boolean"
                                                 },
                                                 "isPending": {
                                                     "type": "boolean"
                                                 },
-                                                "isOwner": {
+                                                "lastName": {
+                                                    "type": "string"
+                                                },
+                                                "mfaEnabled": {
                                                     "type": "boolean"
+                                                },
+                                                "role": {
+                                                    "type": "string"
+                                                },
+                                                "settings": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "firstSuccessfulWorkflowId": {
+                                                            "type": "string"
+                                                        },
+                                                        "npsSurvey": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "lastShownAt": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "responded": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            }
+                                                        },
+                                                        "userActivated": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "userActivatedAt": {
+                                                            "type": "integer"
+                                                        }
+                                                    }
+                                                },
+                                                "updatedAt": {
+                                                    "type": "string"
                                                 }
-                                            },
-                                            "required": [
-                                                "createdAt",
-                                                "updatedAt",
-                                                "id",
-                                                "email",
-                                                "firstName",
-                                                "lastName",
-                                                "personalizationAnswers",
-                                                "settings",
-                                                "role",
-                                                "disabled",
-                                                "mfaEnabled",
-                                                "isPending",
-                                                "isOwner"
-                                            ]
+                                            }
+                                        },
+                                        "userId": {
+                                            "type": "string"
                                         }
-                                    },
-                                    "required": [
-                                        "createdAt",
-                                        "updatedAt",
-                                        "role",
-                                        "userId",
-                                        "projectId",
-                                        "user"
-                                    ]
+                                    }
                                 }
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "updatedAt": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "createdAt",
-                            "updatedAt",
-                            "id",
-                            "name",
-                            "type",
-                            "projectRelations"
-                        ]
+                        }
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "workflowId": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "createdAt",
-                    "updatedAt",
-                    "role",
-                    "workflowId",
-                    "projectId",
-                    "project"
-                ]
+                }
             }
         },
         "tags": {
@@ -217,23 +191,27 @@
                     "createdAt": {
                         "type": "string"
                     },
-                    "updatedAt": {
-                        "type": "string"
-                    },
                     "id": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "createdAt",
-                    "updatedAt",
-                    "id",
-                    "name"
-                ]
+                }
             }
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
