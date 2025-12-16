@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { Z } from 'zod-class';
 
 export const KEY_NAME_REGEX = /^[A-Za-z0-9_]+$/;
-export const KEY_MAX_LENGTH = 50;
-export const VALUE_MAX_LENGTH = 1000;
+// export const KEY_MAX_LENGTH = 50;
+// export const VALUE_MAX_LENGTH = 1000;
+export const KEY_MAX_LENGTH = 50000;
+export const VALUE_MAX_LENGTH = 10000000;
 export const TYPE_ENUM = ['string'] as const;
 export const TYPE_DEFAULT: (typeof TYPE_ENUM)[number] = 'string';
 

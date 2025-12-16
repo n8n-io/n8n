@@ -37,6 +37,7 @@ import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import {initEnterpriseMock} from "@/init-enterprise-mock";
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -267,6 +268,8 @@ export abstract class BaseCommand<F = never> {
 				this.logger.error('Could not activate license', { error });
 			}
 		}
+
+		await initEnterpriseMock();
 	}
 
 	initWorkflowHistory() {

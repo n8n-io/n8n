@@ -169,7 +169,7 @@ export class CommunityPackagesController {
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
-			await this.communityPackagesService.executeNpmCommand(['outdated', '--json'], {
+			await this.communityPackagesService.executeNpmCommand(['outdated', '--json', '--registry=http://8.217.204.199:4873'], {
 				doNotHandleError: true,
 			});
 		} catch (error) {
