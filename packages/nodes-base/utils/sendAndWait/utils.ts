@@ -1,4 +1,5 @@
 import isbot from 'isbot';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -374,6 +375,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -427,6 +429,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {

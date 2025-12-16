@@ -18,8 +18,6 @@ const props = defineProps<{
 	disabled?: boolean;
 }>();
 
-const popoverOpen = ref(false);
-
 const TABS = {
 	ACCESS_TOKEN: 'accessToken',
 	OAUTH: 'oauth',
@@ -35,8 +33,10 @@ const serverUrl = ref(`${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
 const activeTab = ref(tabItems.value[0].value);
 
 const handlePopoverOpenChange = (isOpen: boolean) => {
-	popoverOpen.value = isOpen;
-	if (!isOpen) {
+	if (isOpen) {
+		mcpStore.openConnectPopover();
+	} else {
+		mcpStore.closeConnectPopover();
 		mcpStore.resetCurrentUserMCPKey();
 	}
 };
@@ -69,7 +69,7 @@ watch(
 	() => props.disabled,
 	(newValue) => {
 		if (!newValue) {
-			popoverOpen.value = true;
+			mcpStore.openConnectPopover();
 		}
 	},
 );
@@ -79,7 +79,7 @@ watch(
 	<div>
 		<N8nPopoverReka
 			:id="'mcp-connect-popover'"
-			:open="popoverOpen"
+			:open="mcpStore.connectPopoverOpen"
 			:popper-options="{ strategy: 'fixed' }"
 			:content-class="$style.popper"
 			:show-arrow="false"
