@@ -195,10 +195,40 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Attributes',
+					displayName: 'Attributes (Existing Selector)',
 					name: 'additionalAttributes',
 					type: 'multiOptions',
 					default: [],
+					placeholder: 'Add Attribute',
+					description: 'Choose which optional attributes to configure for this field',
+					options: [
+						{
+							name: 'Custom Field Name',
+							value: 'fieldName',
+						},
+						{
+							name: 'Placeholder',
+							value: 'placeholder',
+						},
+						{
+							name: 'Default Value',
+							value: 'defaultValue',
+						},
+						{
+							name: 'Required Field',
+							value: 'requiredField',
+						},
+					],
+				},
+				{
+					displayName: 'Attributes',
+					name: 'additionalAttributes',
+					type: 'multiOptions',
+					typeOptions: {
+						hideSelectedTags: true,
+					},
+					default: [],
+					placeholder: 'Add Attribute',
 					description: 'Choose which optional attributes to configure for this field',
 					displayOptions: {
 						hide: {

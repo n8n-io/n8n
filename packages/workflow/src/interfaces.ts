@@ -1464,6 +1464,7 @@ export interface INodePropertyTypeOptions {
 	minValue?: number; // Supported by: number
 	multipleValues?: boolean; // Supported by: <All>
 	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
+	hideSelectedTags?: boolean; // Supported by: multiOptions - hides selected tags in dropdown button
 	numberPrecision?: number; // Supported by: number
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string

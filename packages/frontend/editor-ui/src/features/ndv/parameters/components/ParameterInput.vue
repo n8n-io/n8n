@@ -216,6 +216,7 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
+const hideSelectedTagsOption = ref<string | undefined>(undefined);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -977,6 +978,22 @@ function expressionUpdated(value: string) {
 		? { __rl: true, value, mode: modelValueResourceLocator.value.mode }
 		: value;
 	valueChanged(val);
+}
+
+function hideSelectedTagsOptionSelected(optionValue: string) {
+	const currentValue = Array.isArray(displayValue.value) ? [...displayValue.value] : [];
+
+	// Toggle the option
+	if (currentValue.includes(optionValue)) {
+		// Remove it
+		const newValue = currentValue.filter((v: unknown) => v !== optionValue);
+		valueChanged(newValue);
+	} else {
+		// Add it
+		valueChanged([...currentValue, optionValue]);
+	}
+
+	hideSelectedTagsOption.value = undefined;
 }
 
 function onBlur() {
@@ -1761,6 +1778,39 @@ onUpdated(async () => {
 				</N8nOption>
 			</N8nSelect>
 
+			<div
+				v-if="parameter.type === 'multiOptions' && parameter.typeOptions?.hideSelectedTags"
+				class="add-option"
+			>
+				<N8nSelect
+					v-model="hideSelectedTagsOption"
+					:placeholder="parameter.placeholder || parameter.displayName || 'Add option'"
+					size="small"
+					filterable
+					:disabled="isReadOnly || remoteParameterOptionsLoading"
+					@update:model-value="hideSelectedTagsOptionSelected"
+				>
+					<N8nOption
+						v-for="option in parameterOptions"
+						:key="option.value.toString()"
+						:value="option.value"
+						:label="getOptionsOptionDisplayName(option)"
+					>
+						<div class="list-option">
+							<div class="option-headline">
+								<span>{{ getOptionsOptionDisplayName(option) }}</span>
+								<N8nIcon
+									v-if="Array.isArray(displayValue) && displayValue.includes(option.value)"
+									icon="check"
+									size="small"
+									color="primary"
+								/>
+							</div>
+						</div>
+					</N8nOption>
+				</N8nSelect>
+			</div>
+
 			<N8nSelect
 				v-else-if="parameter.type === 'multiOptions'"
 				ref="inputField"
@@ -1920,6 +1970,10 @@ onUpdated(async () => {
 		font-weight: var(--font-weight--medium);
 		line-height: var(--line-height--md);
 		overflow-wrap: break-word;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing--xs);
 	}
 
 	.option-description {
