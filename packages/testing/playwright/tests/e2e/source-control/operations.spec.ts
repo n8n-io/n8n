@@ -280,7 +280,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 	});
 
 	test.describe('Pull Operations', () => {
-		test('should pull new and modified resources from remote', async ({ n8n, n8nContainer }) => {
+		test('should pull new resources from remote', async ({ n8n, n8nContainer }) => {
 			await connectToSourceControl({ n8n, n8nContainer });
 
 			// create project
@@ -317,26 +317,49 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.api.projects.deleteProject(project.id); // This also deletes all related resources
 			await n8n.api.tags.delete(tag.id);
 
-			// connect again
-			await n8n.api.sourceControl.connect({
-				repositoryUrl: REPO_URL,
-			});
+			// re-connect to source control
+			await n8n.api.sourceControl.connect({ repositoryUrl: REPO_URL });
 
 			// pull all resources
 			await n8n.navigate.toHome();
 			await n8n.sourceControlPullModal.open();
 			await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
 
+			// check that all new resources are pulled
 			await n8n.navigate.toProjectSettings(project.id);
 			await expect(n8n.projectSettings.getTitle()).toHaveText(project.name);
 
-			await n8n.navigate.toFolder(folder.id, project.id);
+			await n8n.projectTabs.clickCredentialsTab();
+			await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible();
+
+			await n8n.projectTabs.clickVariablesTab();
+			await expect(n8n.variables.getVariableRow(variable.key)).toBeVisible();
+
+			await n8n.projectTabs.clickWorkflowsTab();
+			await expect(n8n.workflows.cards.getFolder(folder.name)).toBeVisible();
+
+			await n8n.workflows.cards.openFolder(folder.name);
 			await expect(n8n.workflows.cards.getWorkflow(workflow.name)).toBeVisible();
 
-			await n8n.navigate.toWorkflow(workflow.id);
-			// check that the variable is pulled
-			// check that the credential is pulled
-			// check that the tag is pulled
+			await n8n.workflows.cards.clickWorkflowCard(workflow.name);
+			await n8n.canvas.openTagManagerModal();
+			await expect(n8n.canvas.tagsManagerModal.getModal()).toBeVisible();
+			await expect(n8n.canvas.tagsManagerModal.getTable()).toBeVisible();
+			await expect(n8n.canvas.tagsManagerModal.getTable().getByText('pull-test-tag')).toBeVisible();
+		});
+
+		test('should pull modified and deleted resources from remote', () => {
+			// add new project
+			// add workflow to project
+			// push
+			// disconnect
+			// modify workflow name
+			// add new workflow to project
+			// pull
+			// check that the modal is visible
+			// click on pull & override button
+			// check that the workflow name is reverted
+			// check that the added workflow has been deleted
 		});
 	});
 
