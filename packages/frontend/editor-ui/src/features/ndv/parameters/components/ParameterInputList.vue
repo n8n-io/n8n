@@ -761,7 +761,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					:display-options="item.showOptions"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
-					:hide-label="false"
+					:hide-label="item.parameter.hideLabel ?? false"
 					:node-values="nodeValues"
 					@update="valueChanged"
 					@blur="onParameterBlur(item.parameter.name)"

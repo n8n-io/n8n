@@ -195,6 +195,18 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Placeholder',
+					name: 'placeholder',
+					description: 'Sample text to display inside the field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
+						},
+					},
+				},
+				{
 					displayName: 'Custom Field Name',
 					name: 'fieldName',
 					description:
@@ -208,37 +220,6 @@ export const formFields: INodeProperties = {
 						show: {
 							'@feature': ['useAdditionalAttributes'],
 							additionalAttributes: ['fieldName'],
-						},
-					},
-				},
-				{
-					displayName: 'Placeholder',
-					name: 'placeholder',
-					description: 'Sample text to display inside the field',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
-						},
-						show: {
-							'@feature': ['useAdditionalAttributes'],
-							additionalAttributes: ['placeholder'],
-						},
-					},
-				},
-				{
-					displayName: 'Placeholder',
-					name: 'placeholder',
-					description: 'Sample text to display inside the field',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						hide: {
-							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
-						},
-						show: {
-							'@feature': [{ _cnd: { not: 'useAdditionalAttributes' } }],
 						},
 					},
 				},
@@ -669,6 +650,7 @@ export const formFields: INodeProperties = {
 					default: [],
 					placeholder: 'Add Attribute',
 					description: 'Choose which optional attributes to configure for this field',
+					hideLabel: true,
 					displayOptions: {
 						hide: {
 							fieldType: ['html', 'hiddenField'],
@@ -681,10 +663,6 @@ export const formFields: INodeProperties = {
 						{
 							name: 'Custom Field Name',
 							value: 'fieldName',
-						},
-						{
-							name: 'Placeholder',
-							value: 'placeholder',
 						},
 						{
 							name: 'Default Value',

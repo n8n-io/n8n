@@ -1612,6 +1612,8 @@ export interface INodeProperties {
 	allowArbitraryValues?: boolean;
 	// This field indicates that the field is a resolvable field that should be resolved in dynamic credential setup
 	resolvableField?: boolean;
+	// Hides the label above the parameter input field in the UI
+	hideLabel?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {

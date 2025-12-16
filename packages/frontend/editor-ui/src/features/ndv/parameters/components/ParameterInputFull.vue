@@ -342,7 +342,7 @@ function removeOverride(clearField = false) {
 		@mouseleave="onWrapperMouseLeave"
 	>
 		<template
-			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
+			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top' && !hideLabel"
 			#persistentOptions
 		>
 			<div
@@ -356,7 +356,7 @@ function removeOverride(clearField = false) {
 			</div>
 		</template>
 
-		<template v-if="displayOptions && optionsPosition === 'top'" #options>
+		<template v-if="displayOptions && optionsPosition === 'top' && !hideLabel" #options>
 			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
