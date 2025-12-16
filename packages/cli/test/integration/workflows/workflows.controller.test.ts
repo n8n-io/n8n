@@ -162,7 +162,7 @@ describe('POST /workflows', () => {
 		await authMemberAgent.post('/workflows').send(payload1).expect(200);
 		const response = await authMemberAgent.post('/workflows').send(payload2);
 
-		expect(response.status).toBe(500);
+		expect(response.status).toBe(400);
 	});
 
 	test('should return scopes on created workflow', async () => {
