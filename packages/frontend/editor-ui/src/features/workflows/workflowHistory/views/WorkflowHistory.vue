@@ -27,7 +27,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { calculateWorkflowChecksum, type IUser } from 'n8n-workflow';
+import type { IUser } from 'n8n-workflow';
 
 import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -260,14 +260,19 @@ const restoreWorkflowVersion = async (
 			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
 	}
 
+	const versionIdBeforeRestore = workflow.versionId;
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
 		workflowId.value,
 		id,
 		deactivateAndRestore,
 	);
 
-	if (workflowId.value === workflowsStore.workflowId) {
-		workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(activeWorkflow.value));
+	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.restore.alreadyRestored'),
+			type: 'info',
+		});
+		return;
 	}
 
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
@@ -542,16 +547,6 @@ watchEffect(async () => {
 .listComponentWrapper {
 	grid-area: list;
 	position: relative;
-
-	&::before {
-		content: '';
-		display: block;
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		width: var(--border-width);
-		background-color: var(--color--foreground);
-	}
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 }
 </style>
