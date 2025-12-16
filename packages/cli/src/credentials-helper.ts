@@ -362,7 +362,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		 * We skip dynamic credentials resolution for manual triggers,
 		 * this helps workflow developers to run workflows with static credentials.
 		 */
-		if (additionalData.executionContext?.triggerNode?.type !== 'n8n-nodes-base.manualTrigger') {
+		if (additionalData.executionContext?.credentials !== undefined) {
 			// Resolve dynamic credentials if configured (EE feature)
 			decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
