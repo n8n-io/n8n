@@ -971,8 +971,6 @@ export class WorkflowService {
 			const nextValue = next[key as keyof IWorkflowSettings];
 
 			if (!isEqual(prevValue, nextValue)) {
-				// IWorkflowSettings values are all JSON-compatible primitives (string | number | boolean | undefined)
-				// After nullish coalescing, they become valid JsonValue types
 				const from: JsonValue = prevValue ?? null;
 				const to: JsonValue = nextValue ?? null;
 				changes[key] = { from, to };
