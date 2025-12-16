@@ -2101,6 +2101,8 @@
 	"projectRoles.workflow:move.tooltip": "Transfer workflows to another project",
 	"projectRoles.workflow:delete": "Delete",
 	"projectRoles.workflow:delete.tooltip": "Delete workflows",
+	"projectRoles.workflow:publish": "Publish",
+	"projectRoles.workflow:publish.tooltip": "Allows publishing and unpublishing workflows",
 
 	"projectRoles.credential:read": "View",
 	"projectRoles.credential:read.tooltip": "View credentials details (secret masked) and use them in workflows",
