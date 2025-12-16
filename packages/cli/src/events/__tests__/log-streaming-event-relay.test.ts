@@ -110,6 +110,76 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-activated` event', () => {
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: '123',
+					email: 'john@n8n.io',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: 'owner' },
+				},
+				workflowId: 'wf123',
+				workflow: mock<IWorkflowDb>({
+					id: 'wf123',
+					name: 'Test Workflow',
+					activeVersionId: 'version-abc-123',
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.activated',
+				payload: {
+					userId: '123',
+					_email: 'john@n8n.io',
+					_firstName: 'John',
+					_lastName: 'Doe',
+					globalRole: 'owner',
+					workflowId: 'wf123',
+					workflowName: 'Test Workflow',
+					activeVersionId: 'version-abc-123',
+				},
+			});
+		});
+
+		it('should log on `workflow-deactivated` event', () => {
+			const event: RelayEventMap['workflow-deactivated'] = {
+				user: {
+					id: '456',
+					email: 'jane@n8n.io',
+					firstName: 'Jane',
+					lastName: 'Smith',
+					role: { slug: 'user' },
+				},
+				workflowId: 'wf789',
+				workflow: mock<IWorkflowDb>({
+					id: 'wf789',
+					name: 'Deactivated Workflow',
+					activeVersionId: 'version-xyz-789',
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-deactivated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.deactivated',
+				payload: {
+					userId: '456',
+					_email: 'jane@n8n.io',
+					_firstName: 'Jane',
+					_lastName: 'Smith',
+					globalRole: 'user',
+					workflowId: 'wf789',
+					workflowName: 'Deactivated Workflow',
+					activeVersionId: 'version-xyz-789',
+				},
+			});
+		});
+
 		it('should log on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: {
