@@ -108,7 +108,7 @@ export function processHitlResponses(
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: hitl.gatedToolNodeName,
-				input: hitl.originalInput,
+				input: { tool: hitl.toolName, ...hitl.originalInput },
 				type: NodeConnectionTypes.AiTool,
 				id: `hitl_approved_${actionResponse.action.id}`,
 				metadata: {
