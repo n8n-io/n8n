@@ -396,7 +396,8 @@ describe('groupWorkflows', () => {
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[0]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(0);
+			expect(grouped[0].workflowChangeSet.nodes.size).toEqual(1);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toEqual(NodeDiffStatus.Eq);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 	});

@@ -164,7 +164,7 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 	for (const d of diff.nodes.values()) {
 		if (d.status === NodeDiffStatus.Deleted) return false;
 		if (d.status === NodeDiffStatus.Added) continue;
-		const nextNode = next.from.nodes.find((x) => x.name === d.node.name);
+		const nextNode = next.from.nodes.find((x) => x.id === d.node.id);
 		if (!nextNode) throw new Error('invariant broken');
 		if (d.status === NodeDiffStatus.Modified && !nodeIsAdditive(d.node, nextNode)) return false;
 	}
