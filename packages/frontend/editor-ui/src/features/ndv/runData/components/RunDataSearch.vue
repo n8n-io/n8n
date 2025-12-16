@@ -44,7 +44,7 @@ const popOutWindow = inject(PopOutWindowKey, undefined);
 const keyboardEventTarget = computed(() => popOutWindow?.value?.document ?? window.document);
 const focusReturnTo = ref<Element | null>(null);
 
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const search = ref(props.modelValue ?? '');
 const opened = ref(!!search.value);
 const placeholder = computed(() => {

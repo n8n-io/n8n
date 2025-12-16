@@ -147,7 +147,7 @@ const searchFilter = ref('');
 const cachedResponses = ref<Record<string, IResourceLocatorQuery>>({});
 const hasCompletedASearch = ref(false);
 const width = ref(0);
-const inputRef = ref<HTMLInputElement>();
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const containerRef = ref<HTMLDivElement>();
 const dropdownRef = ref<InstanceType<typeof ResourceLocatorDropdown>>();
 const showSlowLoadNotice = ref(false);
@@ -665,6 +665,12 @@ function onInputMouseDown(event: MouseEvent): void {
 	}
 }
 
+function onInputContainerClick(): void {
+	// Focus the input when clicking anywhere in the container
+	// This ensures the dropdown opens in list mode even when clicking on the container itself
+	inputRef.value?.focus();
+}
+
 function onModeSelected(value: string): void {
 	if (typeof props.modelValue !== 'object') {
 		emit('update:modelValue', { __rl: true, value: props.modelValue, mode: value });
@@ -1084,7 +1090,11 @@ function removeOverride() {
 					</N8nSelect>
 				</div>
 
-				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+				<div
+					:class="$style.inputContainer"
+					data-test-id="rlc-input-container"
+					@click="onInputContainerClick"
+				>
 					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"

@@ -787,13 +787,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async searchOutputData(searchTerm: string) {
-		await this.outputPanel.getSearchContainer().click();
-		await this.outputPanel.getSearchInput().fill(searchTerm);
+		// Click on the search input (even with opacity:0) to focus and expand it
+		const searchInput = this.outputPanel.getSearchInput();
+		// eslint-disable-next-line playwright/no-force-option
+		await searchInput.click({ force: true });
+		// Wait for the search input to become visible (it has opacity: 0 when collapsed)
+		await searchInput.waitFor({ state: 'visible' });
+		await searchInput.fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
-		await this.inputPanel.getSearchContainer().click();
-		await this.inputPanel.getSearchInput().fill(searchTerm);
+		// Click on the search input (even with opacity:0) to focus and expand it
+		const searchInput = this.inputPanel.getSearchInput();
+		// eslint-disable-next-line playwright/no-force-option
+		await searchInput.click({ force: true });
+		// Wait for the search input to become visible (it has opacity: 0 when collapsed)
+		await searchInput.waitFor({ state: 'visible' });
+		await searchInput.fill(searchTerm);
 	}
 
 	/**
