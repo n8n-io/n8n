@@ -576,7 +576,6 @@ export class OauthService {
 		credentialResolverId: string,
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(oauthTokenData, ['csrfSecret']);
 
 		const credentialStoreMetadata: CredentialStoreMetadata = {
 			id: credential.id,
