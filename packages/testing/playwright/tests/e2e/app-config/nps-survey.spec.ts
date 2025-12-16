@@ -99,9 +99,11 @@ test.describe('NPS Survey', () => {
 		await setupRequirements(getNpsTestRequirements);
 		await n8n.canvas.visitWithTimestamp(NOW);
 		await n8n.canvas.clickSaveWorkflowButton();
-		await n8n.notifications.quickCloseAll();
 
+		// Wait for NPS modal to be visible before closing notifications
+		// This ensures the drawer animation has completed
 		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+		await n8n.notifications.quickCloseAll();
 		await n8n.npsSurvey.closeSurvey();
 		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
@@ -111,9 +113,10 @@ test.describe('NPS Survey', () => {
 
 		await n8n.canvas.visitWithTimestamp(NOW + SEVEN_DAYS + 10000);
 		await n8n.canvas.clickSaveWorkflowButton();
-		await n8n.notifications.quickCloseAll();
 
+		// Wait for NPS modal to be visible before closing notifications
 		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+		await n8n.notifications.quickCloseAll();
 		await n8n.npsSurvey.closeSurvey();
 		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
@@ -123,9 +126,10 @@ test.describe('NPS Survey', () => {
 
 		await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY);
 		await n8n.canvas.clickSaveWorkflowButton();
-		await n8n.notifications.quickCloseAll();
 
+		// Wait for NPS modal to be visible before closing notifications
 		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+		await n8n.notifications.quickCloseAll();
 		await n8n.npsSurvey.closeSurvey();
 		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
