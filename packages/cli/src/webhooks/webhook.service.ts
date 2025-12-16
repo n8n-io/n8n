@@ -304,15 +304,15 @@ export class WebhookService {
 
 	private async _findWebhookConflicts(
 		workflow: Workflow,
-		checkEntries: {
+		checkEntries: Array<{
 			node: INode;
 			webhooks: IWebhookData[];
-		}[],
+		}>,
 	) {
-		const conflicts: {
+		const conflicts: Array<{
 			trigger: INode;
 			conflict: Partial<WebhookEntity>;
-		}[] = [];
+		}> = [];
 
 		while (checkEntries.length > 0) {
 			const { node, webhooks } = checkEntries.pop()!;
@@ -369,7 +369,7 @@ export class WebhookService {
 			}))
 			.filter(({ webhooks }) => webhooks.length !== 0);
 
-		return this._findWebhookConflicts(workflow, checkEntries);
+		return await this._findWebhookConflicts(workflow, checkEntries);
 	}
 
 	async createWebhookIfNotExists(
