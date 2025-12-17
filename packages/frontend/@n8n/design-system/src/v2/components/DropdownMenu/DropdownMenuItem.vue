@@ -17,7 +17,7 @@ import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigati
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
-const SUBMENU_FOCUS_DELAY = 150;
+const SUBMENU_FOCUS_DELAY = 10;
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
