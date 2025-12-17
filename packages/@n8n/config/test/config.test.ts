@@ -327,6 +327,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: false,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
+			enableGitNodeAllConfigKeys: false,
 		},
 		executions: {
 			mode: 'regular',
