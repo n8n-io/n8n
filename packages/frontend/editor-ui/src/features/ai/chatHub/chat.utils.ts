@@ -10,6 +10,7 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
+	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -22,16 +23,6 @@ import type {
 import { CHAT_VIEW } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
-export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
-	for (const provider of chatHubProviderSchema.options) {
-		if (response[provider].models.length > 0) {
-			return response[provider].models[0];
-		}
-	}
-
-	return undefined;
-}
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -333,6 +324,36 @@ export function isLlmProviderModel(
 	model?: ChatHubConversationModel,
 ): model is ChatHubConversationModel & { provider: ChatHubLLMProvider } {
 	return isLlmProvider(model?.provider);
+}
+
+export function findOneFromModelsResponse(
+	response: ChatModelsResponse,
+	providerSettings: Record<ChatHubLLMProvider, ChatProviderSettingsDto>,
+): ChatModelDto | undefined {
+	for (const provider of chatHubProviderSchema.options) {
+		const settings: ChatProviderSettingsDto | undefined = isLlmProvider(provider)
+			? providerSettings[provider]
+			: undefined;
+
+		if (!settings?.enabled) {
+			continue;
+		}
+
+		const availableModels = response[provider].models.filter((providerModel) => {
+			const { model } = providerModel;
+			if (isLlmProviderModel(model) && settings.allowedModels.length > 0) {
+				return settings.allowedModels.some((allowed) => allowed.model === model.model);
+			}
+
+			return true;
+		});
+
+		if (availableModels.length > 0) {
+			return availableModels[0];
+		}
+	}
+
+	return undefined;
 }
 
 export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
