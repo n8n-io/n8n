@@ -246,17 +246,16 @@ describe('EventSelection.ee.vue', () => {
 		it('should reflect anonymizeAuditMessages value from store', () => {
 			logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages = true;
 
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
 			// Find the anonymization checkbox wrapper and check its checkbox state
-			const checkboxId = getByText('Anonymize', { exact: false, selector: 'label' }).getAttribute(
-				'for',
+			expect(getByRole('checkbox', { name: /anonymize/i }).getAttribute('data-state')).toBe(
+				'checked',
 			);
-			expect(document.getElementById(checkboxId!)!.getAttribute('data-state')).toBe('checked');
 		});
 
 		it('should disable anonymization checkbox in readonly mode', () => {
@@ -274,20 +273,13 @@ describe('EventSelection.ee.vue', () => {
 		});
 
 		it('should emit input event when anonymization checkbox changes', async () => {
-			const { emitted, container } = renderComponent({
+			const { emitted, getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			// Find the anonymization checkbox (it's the second checkbox after n8n.audit group)
-			const checkboxes = container.querySelectorAll('[role="checkbox"]');
-			// The anonymization checkbox is after the n8n.audit group checkbox
-			// Based on the mock data order: workflow (1), workflow children (2), node (1), node children (2), audit (1), anonymize (1), audit children (2)
-			// That would be index 5 (0-based) for the anonymize checkbox
-			const anonymizeCheckbox = checkboxes[5] as HTMLElement;
-
-			anonymizeCheckbox?.click();
+			getByRole('checkbox', { name: /anonymize/i }).click();
 
 			await vi.waitFor(() => {
 				expect(emitted()).toHaveProperty('input');
@@ -295,17 +287,13 @@ describe('EventSelection.ee.vue', () => {
 		});
 
 		it('should emit change event with correct payload when anonymization changes', async () => {
-			const { emitted, container } = renderComponent({
+			const { emitted, getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			const checkboxes = container.querySelectorAll('[role="checkbox"]');
-			// The anonymization checkbox is after the n8n.audit group checkbox
-			const anonymizeCheckbox = checkboxes[5] as HTMLElement;
-
-			anonymizeCheckbox?.click();
+			getByRole('checkbox', { name: /anonymize/i }).click();
 
 			await vi.waitFor(() => {
 				expect(emitted()).toHaveProperty('change');
@@ -366,20 +354,16 @@ describe('EventSelection.ee.vue', () => {
 		});
 
 		it('should update store destination when anonymization changes', async () => {
-			const { container } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			const checkboxes = container.querySelectorAll('[role="checkbox"]');
-			// The anonymization checkbox is after the n8n.audit group checkbox
-			const anonymizeCheckbox = checkboxes[5] as HTMLElement;
-
 			const initialValue =
 				logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages;
 
-			anonymizeCheckbox?.click();
+			getByRole('checkbox', { name: /anonymize/i }).click();
 
 			await vi.waitFor(() => {
 				// Store should be updated

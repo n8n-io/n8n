@@ -274,7 +274,7 @@ describe('FromAiParametersModal', () => {
 		});
 
 		const inputs = getByTestId('from-ai-parameters-modal-inputs');
-		await userEvent.click(inputs.querySelector('input[value="testBoolean"]') as Element);
+		await userEvent.click(getByTestId('query.testBoolean'));
 		await userEvent.clear(inputs.querySelector('input[name="query.testParam"]') as Element);
 		await userEvent.type(
 			inputs.querySelector('input[name="query.testParam"]') as Element,
