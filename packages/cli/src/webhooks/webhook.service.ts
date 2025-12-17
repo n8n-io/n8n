@@ -361,12 +361,19 @@ export class WebhookService {
 		return conflicts;
 	}
 
+	/**
+	 * Analyzes all webhooks within the provided workflow. Returns all nodes that have a webhook conflict either
+	 * within the same workflow or with other published workflows.
+	 * @param workflow Workflow
+	 * @param additionalData Workflow execution data
+	 * @returns list of all nodes with existing webhook conflicts
+	 */
 	async findWebhookConflicts(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const checkEntries = Object.values(workflow.nodes)
 			.map((node) => ({
 				node,
 				webhooks: this.getNodeWebhooks(workflow, node, additionalData)
-					// ignore webhooks without fixed path, for example the wait node
+					// ignore webhooks without fixed path, for example thewait node
 					.filter(({ path, webhookId }) => path || webhookId),
 			}))
 			.filter(({ webhooks }) => webhooks.length !== 0);
