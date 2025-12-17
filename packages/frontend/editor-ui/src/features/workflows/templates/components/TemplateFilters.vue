@@ -156,3 +156,21 @@ watch(
 	cursor: pointer;
 }
 </style>
+
+<style lang="scss">
+.template-filters {
+	.el-checkbox {
+		display: flex;
+		white-space: unset;
+	}
+
+	.el-checkbox__label {
+		top: -2px;
+		position: relative;
+		font-size: var(--font-size--xs);
+		line-height: var(--line-height--lg);
+		color: var(--color--text--shade-1);
+		padding-left: var(--spacing--2xs);
+	}
+}
+</style>
