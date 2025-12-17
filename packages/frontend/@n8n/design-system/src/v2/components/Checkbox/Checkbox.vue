@@ -27,10 +27,14 @@ function onUpdate(value: boolean | 'indeterminate') {
 </script>
 
 <template>
-	<Primitive :as :class="$style.checkbox" :data-disabled="disabled ? '' : undefined">
+	<Primitive
+		:as
+		:class="[$style.checkbox, $attrs.class]"
+		:data-disabled="disabled ? '' : undefined"
+	>
 		<CheckboxRoot
 			:id="uuid"
-			v-bind="{ ...rootProps, ...$attrs }"
+			v-bind="rootProps"
 			:model-value="computedValue"
 			:name="name"
 			:disabled="disabled"
@@ -78,6 +82,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	border: var(--border);
 	color: white;
 	cursor: inherit;
+	flex-shrink: 0;
 
 	&[data-state='checked'],
 	&[data-state='indeterminate'] {
@@ -109,6 +114,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	line-height: 1;
 	cursor: inherit;
 	color: var(--color--text--shade-1);
+	flex: 1;
 	&[data-disabled] {
 		color: var(--color--text--tint-1);
 	}
