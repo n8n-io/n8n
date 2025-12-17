@@ -46,8 +46,6 @@ describe('POST /credentials', () => {
 			type: 'githubApi',
 			data: {
 				accessToken: 'abcdefghijklmnopqrstuvwxyz',
-				user: 'test',
-				server: 'testServer',
 			},
 		};
 
@@ -95,8 +93,6 @@ describe('POST /credentials', () => {
 			type: 'githubApi',
 			data: {
 				accessToken: 'abcdefghijklmnopqrstuvwxyz',
-				user: 'test',
-				server: 'testServer',
 			},
 			isResolvable: true,
 		};
@@ -118,8 +114,6 @@ describe('POST /credentials', () => {
 			type: 'githubApi',
 			data: {
 				accessToken: 'abcdefghijklmnopqrstuvwxyz',
-				user: 'test',
-				server: 'testServer',
 			},
 			isResolvable: false,
 		};
@@ -141,8 +135,6 @@ describe('POST /credentials', () => {
 			type: 'githubApi',
 			data: {
 				accessToken: 'abcdefghijklmnopqrstuvwxyz',
-				user: 'test',
-				server: 'testServer',
 			},
 			// isResolvable not provided
 		};
@@ -300,6 +292,111 @@ describe('DELETE /credentials/:id', () => {
 	});
 });
 
+describe('PATCH /credentials/:id', () => {
+	test('owner can update owned credential', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const patchPayload = dbCredential();
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(patchPayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body;
+
+		expect(name).toBe(patchPayload.name);
+		expect(type).toBe(patchPayload.type);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+
+		expect(credential.name).toBe(patchPayload.name);
+		expect(credential.type).toBe(patchPayload.type);
+		expect(credential.data).not.toBe(patchPayload.data);
+	});
+
+	test('member can update owned credential', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		const patchPayload = dbCredential();
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(patchPayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body;
+
+		expect(name).toBe(patchPayload.name);
+		expect(type).toBe(patchPayload.type);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+
+		expect(credential.name).toBe(patchPayload.name);
+		expect(credential.type).toBe(patchPayload.type);
+		expect(credential.data).not.toBe(patchPayload.data);
+	});
+
+	test('member cannot update non-owned credential', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const patchPayload = dbCredential();
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(patchPayload);
+
+		expect(response.statusCode).toBe(403);
+
+		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
+	});
+
+	test('returns 404 for non-existent credential', async () => {
+		const response = await authOwnerAgent.patch('/credentials/123').send(dbCredential());
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('does not allow overwriting oauthTokenData', async () => {
+		// Arrange: create credential with oauthTokenData in DB
+		const payload = dbCredential();
+		(payload.data as any).oauthTokenData = { access_token: 'foo' };
+
+		const savedCredential = await saveCredential(payload, { user: owner });
+
+		// Act: attempt to overwrite oauthTokenData via public API
+		const patchPayload = {
+			...payload,
+			data: {
+				...(payload.data as object),
+				accessToken: 'new',
+				oauthTokenData: { access_token: 'bar' },
+			},
+		};
+
+		const res = await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload);
+
+		expect(res.statusCode).toBe(200);
+
+		// Assert: DB value preserved for oauthTokenData; accessToken updated
+		const dbEntity = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
+		const unencrypted = createCredentialsFromCredentialsEntity(dbEntity);
+
+		expect(unencrypted.getData().oauthTokenData).toEqual((payload as any).data.oauthTokenData);
+		expect(unencrypted.getData().accessToken).toBe('new');
+	});
+});
+
 describe('GET /credentials/schema/:credentialType', () => {
 	test('should fail due to not found type', async () => {
 		const response = await authOwnerAgent.get('/credentials/schema/testing');
@@ -410,8 +507,6 @@ const credentialPayload = (): CredentialPayload => ({
 	type: 'githubApi',
 	data: {
 		accessToken: randomString(6, 16),
-		server: randomString(1, 10),
-		user: randomString(1, 10),
 	},
 });
 
