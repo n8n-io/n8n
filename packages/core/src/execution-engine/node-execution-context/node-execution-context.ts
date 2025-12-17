@@ -17,6 +17,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	NodeFeatures,
 	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
@@ -166,6 +167,26 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	get nodeType() {
 		const { type, typeVersion } = this.node;
 		return this.workflow.nodeTypes.getByNameAndVersion(type, typeVersion);
+	}
+
+	/**
+	 * Gets the feature flags for the current node version.
+	 * Uses declarative features from the node type description.
+	 * @private
+	 */
+	@Memoized
+	private get nodeFeatures(): NodeFeatures {
+		const description = this.nodeType.description;
+		return NodeHelpers.getNodeFeatures(description.features, this.node.typeVersion);
+	}
+
+	/**
+	 * Checks if a feature is enabled for the current node version.
+	 * @param featureName - The name of the feature to check
+	 * @returns true if the feature is enabled, false otherwise
+	 */
+	isNodeFeatureEnabled(featureName: string): boolean {
+		return this.nodeFeatures[featureName] ?? false;
 	}
 
 	@Memoized

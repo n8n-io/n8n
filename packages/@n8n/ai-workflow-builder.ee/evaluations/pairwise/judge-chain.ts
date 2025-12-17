@@ -1,8 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
-import { createEvaluatorChain, invokeEvaluatorChain } from './evaluators/base';
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import { createEvaluatorChain, invokeEvaluatorChain } from '../chains/evaluators/base';
 
 export interface PairwiseEvaluationInput {
 	evalCriteria: {
@@ -76,27 +77,30 @@ Analyze the following n8n workflow against the provided checklist of criteria.
 </instructions>
 `;
 
-export function createPairwiseEvaluatorChain(llm: BaseChatModel) {
-	return createEvaluatorChain(
-		llm,
-		pairwiseEvaluationLLMResultSchema,
-		EVALUATOR_SYSTEM_PROMPT,
-		humanTemplate,
-	);
-}
-
 export async function evaluateWorkflowPairwise(
 	llm: BaseChatModel,
 	input: PairwiseEvaluationInput,
+	config?: RunnableConfig,
 ): Promise<PairwiseEvaluationResult> {
 	const dos = input.evalCriteria?.dos ?? '';
 	const donts = input.evalCriteria?.donts ?? '';
 	const criteriaList = `[DO]\n${dos}\n\n[DONT]\n${donts}`;
 
-	const result = await invokeEvaluatorChain(createPairwiseEvaluatorChain(llm), {
-		userPrompt: criteriaList,
-		generatedWorkflow: input.workflowJSON,
-	});
+	const chain = createEvaluatorChain(
+		llm,
+		pairwiseEvaluationLLMResultSchema,
+		EVALUATOR_SYSTEM_PROMPT,
+		humanTemplate,
+	);
+
+	const result = await invokeEvaluatorChain(
+		chain,
+		{
+			userPrompt: criteriaList,
+			generatedWorkflow: input.workflowJSON,
+		},
+		config,
+	);
 
 	const totalRules = result.passes.length + result.violations.length;
 	const diagnosticScore = totalRules > 0 ? result.passes.length / totalRules : 0;
