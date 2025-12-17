@@ -19,9 +19,9 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { calculateWorkflowChecksum, INode } from 'n8n-workflow';
-import { ResponseError } from '@n8n/rest-api-client/utils';
-import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
+import type { INode } from 'n8n-workflow';
+import type { ResponseError } from '@n8n/rest-api-client/utils';
+import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -160,6 +160,52 @@ export function useWorkflowActivate() {
 		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
+	const parseWebhookConflictError = (error: ResponseError) => {
+		try {
+			const { errorCode, hint } = error;
+			if (errorCode === 409) {
+				const parsedHint = JSON.parse(hint ?? '') as Array<{
+					trigger: INode;
+					conflict: Awaited<ReturnType<typeof findWebhook>>;
+				}>;
+				if (
+					Array.isArray(parsedHint) &&
+					parsedHint.length > 0 &&
+					Object.hasOwn(parsedHint[0] as object, 'trigger')
+				) {
+					return parsedHint;
+				}
+			}
+			return null;
+		} catch {
+			return null;
+		}
+	};
+
+	const handleWebhookConflictError = async (error: ResponseError) => {
+		const { trigger, conflict } = parseWebhookConflictError(error)?.pop() || {};
+		let workflowName = conflict?.workflowId;
+		try {
+			if (conflict?.workflowId) {
+				const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict?.workflowId);
+				workflowName = conflictingWorkflow.name;
+			}
+		} catch {}
+
+		uiStore.openModalWithData({
+			name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+			data: {
+				triggerType: trigger?.type,
+				workflowName,
+				...conflict,
+			},
+		});
+	};
+
+	const isWebhookConflictError = (error: ResponseError) => {
+		return parseWebhookConflictError(error) !== null;
+	};
+
 	const publishWorkflow = async (
 		workflowId: string,
 		versionId: string,
@@ -211,7 +257,7 @@ export function useWorkflowActivate() {
 			return { success: true };
 		} catch (error) {
 			if (isWebhookConflictError(error)) {
-				handleWebhookConflictError(error);
+				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };
 			} else {
 				toast.showError(
@@ -229,47 +275,6 @@ export function useWorkflowActivate() {
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
-	};
-
-	const handleWebhookConflictError = async (error: ResponseError) => {
-		const { trigger, conflict } = parseWebhookConflictError(error)?.pop() || {};
-		let workflowName = conflict?.workflowId;
-		try {
-			if (conflict?.workflowId) {
-				const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict?.workflowId);
-				workflowName = conflictingWorkflow.name;
-			}
-		} catch {}
-
-		uiStore.openModalWithData({
-			name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
-			data: {
-				triggerType: trigger?.type,
-				workflowName: workflowName,
-				...conflict,
-			},
-		});
-	};
-
-	const parseWebhookConflictError = (
-		error: ResponseError,
-	): { trigger: INode; conflict: Awaited<ReturnType<typeof findWebhook>> }[] | null => {
-		try {
-			const { errorCode, hint } = error;
-			if (errorCode === 409) {
-				const parsedHint = JSON.parse(hint ?? '');
-				if (Array.isArray(parsedHint) && parsedHint.length > 0 && parsedHint[0].trigger) {
-					return parsedHint;
-				}
-			}
-			return null;
-		} catch {
-			return null;
-		}
-	};
-
-	const isWebhookConflictError = (error: ResponseError) => {
-		return parseWebhookConflictError(error) !== null;
 	};
 
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {
