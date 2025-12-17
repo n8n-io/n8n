@@ -287,7 +287,10 @@ defineExpose({ open, close });
 	</DropdownMenuRoot>
 </template>
 
-<style module>
+<style module lang="scss">
+// According to figma
+$menu_width: 180px;
+
 .activator {
 	display: inline-flex;
 	align-items: center;
@@ -322,16 +325,15 @@ defineExpose({ open, close });
 }
 
 .content {
-	min-width: 160px;
-	padding-top: var(--spacing--4xs);
+	display: flex;
+	flex-direction: column;
+	width: $menu_width;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
 	border: var(--border);
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow);
-	/**
-	 * TODO: do we have a better way to manage z-indexes globally?
-	 */
-	z-index: 999999;
 }
 
 .loading-container {

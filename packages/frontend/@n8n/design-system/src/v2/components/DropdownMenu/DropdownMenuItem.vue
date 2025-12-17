@@ -271,9 +271,6 @@ watch(
 </template>
 
 <style module lang="scss">
-// According to figma
-$menu_width: 180px;
-
 .wrapper {
 	display: contents;
 }
@@ -289,7 +286,6 @@ $menu_width: 180px;
 	display: flex;
 	align-items: center;
 	height: var(--spacing--xl);
-	max-width: $menu_width;
 	padding: var(--spacing--2xs);
 	position: relative;
 	user-select: none;
@@ -358,7 +354,7 @@ $menu_width: 180px;
 .separator {
 	height: 1px;
 	background-color: var(--color--foreground);
-	margin: var(--spacing--4xs) 0;
+	margin: var(--spacing--5xs) 0;
 }
 
 .loading-container {
