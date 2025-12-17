@@ -3992,10 +3992,6 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.start",
-		"popularity": 0
-	},
-	{
 		"id": "@n8n/n8n-nodes-langchain.memoryZep",
 		"popularity": 0
 	}

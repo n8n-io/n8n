@@ -403,7 +403,7 @@ describe('WorkflowBuilderAgent', () => {
 						{
 							id: 'node-1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [0, 0] as [number, number],
 							parameters: {},

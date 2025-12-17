@@ -461,7 +461,7 @@ n1["Empty Node"]
 							parameters: {},
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 						},
@@ -483,7 +483,7 @@ n1["Empty Node"]
 			const expected = `\`\`\`mermaid
 flowchart TD
 %% This is a note
-%% n8n-nodes-base.start
+%% n8n-nodes-base.manualTrigger
 n1["Start"]
 \`\`\``;
 
@@ -583,7 +583,7 @@ n1 --> n2["End"]
 						},
 						{
 							parameters: {
-								content: "## I'm a Sticky",
+								content: '## I\'m a Sticky',
 								height: 416,
 								width: 400,
 							},
@@ -635,7 +635,7 @@ n2 --> n3{"Filter"}
 							parameters: {},
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 						},
@@ -656,7 +656,7 @@ n2 --> n3{"Filter"}
 
 			const expected = `\`\`\`mermaid
 flowchart TD
-%% n8n-nodes-base.start
+%% n8n-nodes-base.manualTrigger
 n1["Start"]
 \`\`\``;
 
