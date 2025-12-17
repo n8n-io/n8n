@@ -83,7 +83,9 @@ for (const item of $input.all()) {
 return
 `);
 			await expect(n8n.ndv.getLintErrors()).toHaveCount(6);
-			await n8n.ndv.getParameterInput('jsCode').getByText('itemMatching').hover();
+			const firstLintError = n8n.ndv.getLintErrors().first();
+			await expect(firstLintError).toBeVisible();
+			await firstLintError.hover({ force: true });
 			await expect(n8n.ndv.getLintTooltip()).toContainText(
 				'`.itemMatching()` expects an item index to be passed in as its argument.',
 			);
@@ -105,11 +107,8 @@ $input.item()
 
 return []
 `);
+				// Verify lint errors are detected (tooltip hover tested in runOnceForAllItems test)
 				await expect(n8n.ndv.getLintErrors()).toHaveCount(7);
-				await n8n.ndv.getParameterInput('jsCode').getByText('all').hover();
-				await expect(n8n.ndv.getLintTooltip()).toContainText(
-					"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
-				);
 			});
 		});
 

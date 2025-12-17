@@ -130,6 +130,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useWorkflowState } from '@/app/composables/useWorkflowState';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -1756,7 +1757,7 @@ export function useCanvasOperations() {
 	}
 
 	async function initializeWorkspace(data: IWorkflowDb) {
-		await workflowHelpers.initState(data);
+		await workflowHelpers.initState(data, useWorkflowState());
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isUnknownNode =
