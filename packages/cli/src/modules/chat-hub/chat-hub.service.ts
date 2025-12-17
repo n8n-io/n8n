@@ -1392,19 +1392,6 @@ export class ChatHubService {
 	}
 
 	/**
-	 * Updates the title of a session
-	 */
-	async updateSessionTitle(userId: string, sessionId: ChatSessionId, title: string) {
-		const session = await this.sessionRepository.getOneById(sessionId, userId);
-
-		if (!session) {
-			throw new NotFoundError('Session not found');
-		}
-
-		return await this.sessionRepository.updateChatTitle(sessionId, title);
-	}
-
-	/**
 	 * Updates a session with the provided fields
 	 */
 	async updateSession(

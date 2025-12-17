@@ -11,12 +11,17 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 	}
 
 	async createAgent(agent: Partial<ChatHubAgent>, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.insert(ChatHubAgent, agent);
-			return await em.findOneOrFail(ChatHubAgent, {
-				where: { id: agent.id },
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.insert(ChatHubAgent, agent);
+				return await em.findOneOrFail(ChatHubAgent, {
+					where: { id: agent.id },
+				});
+			},
+			false,
+		);
 	}
 
 	async updateAgent(
@@ -29,18 +34,28 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 		>,
 		trx?: EntityManager,
 	) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.update(ChatHubAgent, { id }, updates);
-			return await em.findOneOrFail(ChatHubAgent, {
-				where: { id },
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.update(ChatHubAgent, { id }, updates);
+				return await em.findOneOrFail(ChatHubAgent, {
+					where: { id },
+				});
+			},
+			false,
+		);
 	}
 
 	async deleteAgent(id: string, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.delete(ChatHubAgent, { id });
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.delete(ChatHubAgent, { id });
+			},
+			false,
+		);
 	}
 
 	async getManyByUserId(userId: string) {

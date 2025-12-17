@@ -13,49 +13,66 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	}
 
 	async createChatSession(session: Partial<ChatHubSession>, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.insert(ChatHubSession, session);
-			return await em.findOneOrFail(ChatHubSession, {
-				where: { id: session.id },
-				relations: ['messages'],
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.insert(ChatHubSession, session);
+				return await em.findOneOrFail(ChatHubSession, {
+					where: { id: session.id },
+					relations: ['messages'],
+				});
+			},
+			false,
+		);
 	}
 
-	async updateLastMessageAt(id: string, lastMessageAt: Date, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.update(ChatHubSession, { id }, { lastMessageAt });
-			return await em.findOneOrFail(ChatHubSession, {
-				where: { id },
-				relations: ['messages'],
-			});
-		});
+	async updateLastMessageAt(id: string, trx?: EntityManager) {
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.update(ChatHubSession, { id }, { lastMessageAt: new Date() });
+			},
+			false,
+		);
 	}
 
 	async updateChatTitle(id: string, title: string, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.update(ChatHubSession, { id }, { title });
-			return await em.findOneOrFail(ChatHubSession, {
-				where: { id },
-				relations: ['messages'],
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.update(ChatHubSession, { id }, { title });
+			},
+			false,
+		);
 	}
 
 	async updateChatSession(id: string, updates: Partial<ChatHubSession>, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			await em.update(ChatHubSession, { id }, updates);
-			return await em.findOneOrFail(ChatHubSession, {
-				where: { id },
-				relations: ['messages'],
-			});
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				await em.update(ChatHubSession, { id }, updates);
+				return await em.findOneOrFail(ChatHubSession, {
+					where: { id },
+					relations: ['messages'],
+				});
+			},
+			false,
+		);
 	}
 
 	async deleteChatHubSession(id: string, trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.delete(ChatHubSession, { id });
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.delete(ChatHubSession, { id });
+			},
+			false,
+		);
 	}
 
 	async getManyByUserId(userId: string, limit: number, cursor?: string) {
@@ -117,8 +134,13 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	}
 
 	async deleteAll(trx?: EntityManager) {
-		return await withTransaction(this.manager, trx, async (em) => {
-			return await em.createQueryBuilder().delete().from(ChatHubSession).execute();
-		});
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.createQueryBuilder().delete().from(ChatHubSession).execute();
+			},
+			false,
+		);
 	}
 }
