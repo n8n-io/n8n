@@ -10,6 +10,7 @@ const menuItems = ref([
 	{ label: 'Dashboard', key: 'dashboard', path: '/dashboard', active: false },
 	{ label: 'Playground', key: 'playground', path: '/workflow/new', active: false },
 	{ label: 'AI Agent Builder', key: 'builder', path: '/workflow/new', active: false },
+	{ label: 'My Agents', key: 'builder', path: '/agents', active: false },
 	{ label: 'Templates', key: 'templates', path: '/templates', active: false },
 	{ label: 'How to use', key: 'howto', path: '/how-to', active: false },
 	{ label: 'FAQs', key: 'faqs', path: '/faqs', active: false },

@@ -214,6 +214,11 @@ async function onSaveButtonClick() {
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
 
+		await albertsonsRestApiRequest('POST', `/v1/userAgentMappings/create`, {
+			ownerId: usersStore.currentUser.id,
+			workflowId: id,
+		});
+
 		await npsSurveyStore.fetchPromptsData();
 
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
