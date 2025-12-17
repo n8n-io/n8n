@@ -2,8 +2,10 @@ import type { WorkflowActivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export async function workflowActivated({ data }: WorkflowActivated) {
+	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
@@ -19,7 +21,7 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 			if (!updatedWorkflow.checksum) {
 				throw new Error('Failed to fetch workflow');
 			}
-			workflowsStore.setWorkflow(updatedWorkflow);
+			await initializeWorkspace(updatedWorkflow);
 		}
 	}
 

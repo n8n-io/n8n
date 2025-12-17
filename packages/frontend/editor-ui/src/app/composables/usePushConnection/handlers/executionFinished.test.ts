@@ -336,7 +336,7 @@ describe('executionFinished', () => {
 			expect(trackExecuteAiWorkflow).toHaveBeenCalledWith('error');
 		});
 
-		it('should track execution of ready-to-run-ai-workflow-v1', async () => {
+		it('should track execution of ready-to-run-ai-workflow-v5', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
@@ -347,7 +347,7 @@ describe('executionFinished', () => {
 			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
-				meta: { templateId: 'ready-to-run-ai-workflow-v1' },
+				meta: { templateId: 'ready-to-run-ai-workflow-v5' },
 			} as IWorkflowDb);
 
 			const trackExecuteAiWorkflowSuccess = vi.spyOn(
@@ -379,7 +379,7 @@ describe('executionFinished', () => {
 			expect(trackExecuteAiWorkflowSuccess).toHaveBeenCalled();
 		});
 
-		it('should track execution of ready-to-run-ai-workflow-v4', async () => {
+		it('should track execution of ready-to-run-ai-workflow-v6', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
@@ -390,7 +390,7 @@ describe('executionFinished', () => {
 			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
-				meta: { templateId: 'ready-to-run-ai-workflow-v4' },
+				meta: { templateId: 'ready-to-run-ai-workflow-v6' },
 			} as IWorkflowDb);
 
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
