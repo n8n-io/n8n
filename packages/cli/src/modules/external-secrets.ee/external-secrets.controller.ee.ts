@@ -28,7 +28,7 @@ export class ExternalSecretsController {
 	@Get('/providers')
 	@GlobalScope('externalSecretsProvider:list')
 	async getProviders() {
-		return await this.secretsService.getProviders();
+		return this.secretsService.getProviders();
 	}
 
 	@Get('/providers/:provider')
@@ -71,13 +71,13 @@ export class ExternalSecretsController {
 	@GlobalScope('externalSecretsProvider:sync')
 	async updateProvider(req: ExternalSecretsRequest.UpdateProvider, res: Response) {
 		const providerName = req.params.provider;
-		const resp = await this.secretsService.updateProvider(providerName);
-		if (resp) {
-			res.statusCode = 200;
-		} else {
+		try {
+			await this.secretsService.updateProvider(providerName);
+			return { updated: true };
+		} catch (error) {
 			res.statusCode = 400;
+			return { updated: false };
 		}
-		return { updated: resp };
 	}
 
 	@Get('/secrets')
