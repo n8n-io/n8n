@@ -661,7 +661,7 @@ export class SourceControlImportService {
 		// as project creation might cause constraint issues.
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
-			this.logger.debug(`Parsing workflow file ${candidate.file}`);
+			this.logger.debug(`Importing workflow file ${candidate.file}`);
 
 			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
