@@ -65,6 +65,12 @@ export const description: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'e.g. My Table',
+			},
+			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
