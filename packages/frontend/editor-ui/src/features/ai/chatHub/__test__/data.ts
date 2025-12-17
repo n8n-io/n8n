@@ -56,10 +56,11 @@ export function createMockSession(overrides: Partial<ChatHubSessionDto> = {}): C
 		model: 'gpt-4',
 		workflowId: null,
 		agentId: null,
-		agentName: null,
+		agentName: 'gpt-4',
 		agentIcon: null,
 		createdAt: '2024-01-15T12:00:00Z',
 		updatedAt: '2024-01-15T12:00:00Z',
+		tools: [],
 		...overrides,
 	};
 }
@@ -78,7 +79,6 @@ export function createMockMessageDto(
 		model: null,
 		workflowId: null,
 		agentId: null,
-		agentIcon: null,
 		executionId: null,
 		previousMessageId: null,
 		retryOfMessageId: null,
