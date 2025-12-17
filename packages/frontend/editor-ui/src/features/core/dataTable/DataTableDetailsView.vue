@@ -9,7 +9,8 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { DATA_TABLE_VIEW, MIN_LOADING_TIME } from '@/features/core/dataTable/constants';
+import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
@@ -85,7 +86,7 @@ const debouncedHideSaving = debounce(
 	() => {
 		saving.value = false;
 	},
-	{ debounceTime: MIN_LOADING_TIME, trailing: true },
+	{ debounceTime: LOADING_ANIMATION_MIN_DURATION, trailing: true },
 );
 
 const onToggleSave = (value: boolean) => {
