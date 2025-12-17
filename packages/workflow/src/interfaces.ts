@@ -1302,6 +1302,25 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export type ChatMessageButtonType = 'primary' | 'secondary';
+
+export type ApprovalChatMessage = {
+	type: 'approval';
+	text: string;
+	approve: {
+		text: string;
+		link: string;
+		type: ChatMessageButtonType;
+	};
+	decline?: {
+		text: string;
+		link: string;
+		type: ChatMessageButtonType;
+	};
+};
+
+export type ChatMessage = ApprovalChatMessage | string;
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -1330,7 +1349,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: string;
+	sendMessage?: ChatMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it

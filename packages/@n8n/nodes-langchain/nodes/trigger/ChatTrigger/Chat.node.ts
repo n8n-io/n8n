@@ -26,6 +26,9 @@ import type {
 	NodeTypeAndVersion,
 	INode,
 	INodePropertyOptions,
+	ChatMessage,
+	ApprovalChatMessage,
+	ChatMessageButtonType,
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
@@ -61,7 +64,7 @@ const getSendAndWaitPropertiesForChatNode = () => {
 	return filteredProperties;
 };
 
-function getMessageContent(ctx: IExecuteFunctions) {
+function getChatMessage(ctx: IExecuteFunctions): ChatMessage {
 	const nodeVersion = ctx.getNode().typeVersion;
 	const message = ctx.getNodeParameter('message', 0, '') as string;
 	if (nodeVersion < 1.1) {
@@ -79,10 +82,36 @@ function getMessageContent(ctx: IExecuteFunctions) {
 		return message;
 	}
 
-	// TODO: better styling for approval options
+	let approvalMessage: ApprovalChatMessage | undefined;
 	const config = getSendAndWaitConfig(ctx);
-	const urls = config.options.map((option) => `[${option.label}](${option.url})`);
-	return `${message}\n\n\n\n${urls.join('\n\n')}`;
+	if (config.options.length === 2) {
+		approvalMessage = {
+			type: 'approval',
+			text: message,
+			approve: {
+				text: config.options[1].label,
+				link: config.options[1].url,
+				type: config.options[1].style as ChatMessageButtonType,
+			},
+			decline: {
+				text: config.options[0].label,
+				link: config.options[0].url,
+				type: config.options[0].style as ChatMessageButtonType,
+			},
+		};
+	} else if (config.options.length === 1) {
+		approvalMessage = {
+			type: 'approval',
+			text: message,
+			approve: {
+				text: config.options[0].label,
+				link: config.options[0].url,
+				type: config.options[0].style as ChatMessageButtonType,
+			},
+		};
+	}
+
+	return approvalMessage ?? message;
 }
 
 export class Chat implements INodeType {
@@ -352,7 +381,7 @@ export class Chat implements INodeType {
 			);
 		}
 
-		const message = getMessageContent(this);
+		const message = getChatMessage(this);
 		const options = this.getNodeParameter('options', 0, {}) as {
 			memoryConnection?: boolean;
 		};
@@ -363,7 +392,8 @@ export class Chat implements INodeType {
 				| undefined;
 
 			if (memory) {
-				await memory.chatHistory.addAIMessage(message);
+				const text = typeof message === 'string' ? message : message.text;
+				await memory.chatHistory.addAIMessage(text);
 			}
 		}
 

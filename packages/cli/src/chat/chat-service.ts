@@ -136,7 +136,10 @@ export class ChatService {
 		session: Session,
 		sessionKey: string,
 	) {
-		const message = getMessage(execution);
+		let message = getMessage(execution);
+		if (typeof message === 'object') {
+			message = JSON.stringify(message);
+		}
 
 		if (message === undefined) return;
 
