@@ -20,6 +20,7 @@ jobs:
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
+      workflows_changed: ${{ steps.paths-filter.outputs.workflows == 'true' }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -46,6 +47,8 @@ jobs:
             non-python:
               - '**'
               - '!packages/@n8n/task-runner-python/**'
+            workflows:
+              - .github/**
       - name: Setup and Build
         if: steps.paths-filter.outputs.non-python == 'true'
         uses: ./.github/actions/setup-nodejs
@@ -134,6 +137,15 @@ jobs:
     uses: ./.github/workflows/playwright-test-ci.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  poutine-scan:
+    name: Poutine Security Scan
+    needs: install-and-build
+    if: needs.install-and-build.outputs.workflows_changed == 'true'
+    uses: ./.github/workflows/security-poutine-scan-callable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
   # This job is required by GitHub branch protection rules.
