@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { VIEWS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { isComponentPublicInstance } from '@/app/utils/typeGuards';
+import type { IWorkflowDb } from '@/Interface';
+import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import type { ExecutionSummary } from 'n8n-workflow';
 import type { ComponentPublicInstance } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
+import { useExecutionsStore } from '../../executions.store';
+import type { ExecutionFilterType } from '../../executions.types';
+import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
+import ExecutionsFilter from '../ExecutionsFilter.vue';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
-import ExecutionsFilter from '../ExecutionsFilter.vue';
-import { VIEWS } from '@/app/constants';
-import type { ExecutionSummary } from 'n8n-workflow';
-import { useExecutionsStore } from '../../executions.store';
-import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionFilterType } from '../../executions.types';
-import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
@@ -200,7 +200,11 @@ const goToUpgrade = () => {
 				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
 			/>
-			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
+			<ExecutionsFilter
+				popover-side="right"
+				popover-align="start"
+				@filter-changed="onFilterChanged"
+			/>
 		</div>
 		<div
 			ref="executionListRef"
