@@ -246,31 +246,17 @@ describe('EventSelection.ee.vue', () => {
 		it('should reflect anonymizeAuditMessages value from store', () => {
 			logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages = true;
 
-			const { container } = renderComponent({
+			const { getByText } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
 			// Find the anonymization checkbox wrapper and check its checkbox state
-			const labels = container.querySelectorAll('label');
-			const anonymizeLabel = Array.from(labels).find((label) =>
-				label.textContent?.includes('Anonymize'),
+			const checkboxId = getByText('Anonymize', { exact: false, selector: 'label' }).getAttribute(
+				'for',
 			);
-			const checkboxRoot = anonymizeLabel
-				?.closest('[data-disabled]')
-				?.querySelector('[role="checkbox"]');
-			if (!checkboxRoot) {
-				// Alternative: find by traversing from parent
-				const checkboxes = container.querySelectorAll('[role="checkbox"]');
-				const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
-					const parent = cb.closest('span, div');
-					return parent?.textContent?.includes('Anonymize');
-				});
-				expect(anonymizeCheckbox?.getAttribute('data-state')).toBe('checked');
-			} else {
-				expect(checkboxRoot.getAttribute('data-state')).toBe('checked');
-			}
+			expect(document.getElementById(checkboxId!)!.getAttribute('data-state')).toBe('checked');
 		});
 
 		it('should disable anonymization checkbox in readonly mode', () => {
