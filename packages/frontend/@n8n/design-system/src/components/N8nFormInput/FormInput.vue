@@ -182,7 +182,6 @@ defineExpose({ inputRef });
 		ref="inputRef"
 		:label="label"
 		:disabled="disabled"
-		:label-size="labelSize as CheckboxLabelSizePropType"
 		:model-value="modelValue as CheckboxModelValuePropType"
 		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
