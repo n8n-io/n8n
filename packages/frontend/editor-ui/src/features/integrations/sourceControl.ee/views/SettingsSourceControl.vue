@@ -499,11 +499,13 @@ watch(connectionType, () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
-							<template #bold>
-								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
-							</template>
-						</I18nT>
+						<template #label>
+							<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
+								<template #bold>
+									<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
+								</template>
+							</I18nT>
+						</template>
 					</N8nCheckbox>
 				</div>
 				<div :class="$style.group">
