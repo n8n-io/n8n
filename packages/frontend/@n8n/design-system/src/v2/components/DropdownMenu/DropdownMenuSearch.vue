@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import { ref, useCssModule } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 defineOptions({ name: 'N8nDropdownMenuSearch' });
 
 withDefaults(
 	defineProps<{
 		modelValue?: string;
 		placeholder?: string;
-		showIcon?: boolean;
 	}>(),
 	{
 		modelValue: '',
 		placeholder: 'Search...',
-		showIcon: true,
 	},
 );
 
@@ -74,13 +70,6 @@ defineExpose({ focus, inputRef });
 
 <template>
 	<div :class="$style['search-container']">
-		<Icon
-			v-if="showIcon"
-			:class="$style['search-icon']"
-			icon="search"
-			size="large"
-			color="text-light"
-		/>
 		<input
 			ref="inputRef"
 			type="text"
@@ -99,13 +88,6 @@ defineExpose({ focus, inputRef });
 	align-items: center;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-bottom: var(--border);
-	margin-bottom: var(--spacing--4xs);
-	gap: var(--spacing--3xs);
-}
-
-.search-icon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
 }
 
 .search-input {

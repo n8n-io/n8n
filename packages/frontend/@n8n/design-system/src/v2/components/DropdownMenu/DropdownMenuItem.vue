@@ -196,7 +196,6 @@ watch(
 						ref="searchRef"
 						:model-value="searchTerm"
 						:placeholder="searchPlaceholder ?? 'Search...'"
-						:show-icon="showSearchIcon !== false"
 						@update:model-value="handleSearchUpdate"
 						@key:escape="closeSubMenu"
 						@key:navigate="subMenuNavigation.navigate"

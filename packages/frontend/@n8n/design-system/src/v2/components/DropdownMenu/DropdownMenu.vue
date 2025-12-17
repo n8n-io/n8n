@@ -28,7 +28,6 @@ const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	loading: false,
 	loadingItemCount: 3,
 	searchable: false,
-	showSearchIcon: true,
 	searchPlaceholder: 'Search...',
 	searchDebounce: 300,
 });
@@ -233,7 +232,6 @@ defineExpose({ open, close });
 						ref="searchRef"
 						:model-value="searchTerm"
 						:placeholder="searchPlaceholder"
-						:show-icon="showSearchIcon"
 						@update:model-value="handleSearchUpdate"
 						@key:escape="close"
 						@key:navigate="navigation.navigate"

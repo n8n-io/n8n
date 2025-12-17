@@ -6,18 +6,8 @@ import DropdownMenuSearch from './DropdownMenuSearch.vue';
 
 describe('v2/components/DropdownMenuSearch', () => {
 	describe('rendering', () => {
-		it('should render with search icon by default', () => {
+		it('should render correctly', () => {
 			const { container } = render(DropdownMenuSearch);
-
-			expect(container.firstElementChild).toMatchSnapshot();
-		});
-
-		it('should render without search icon when showIcon is false', () => {
-			const { container } = render(DropdownMenuSearch, {
-				props: {
-					showIcon: false,
-				},
-			});
 
 			expect(container.firstElementChild).toMatchSnapshot();
 		});

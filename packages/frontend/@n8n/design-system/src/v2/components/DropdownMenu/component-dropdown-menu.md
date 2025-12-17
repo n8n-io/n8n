@@ -29,7 +29,6 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 
 **Search-specific Props**
 - `searchable?: boolean` Enable search functionality
-- `showSearchIcon?: boolean` Whether to show the search icon in search input | `default: true`
 - `searchPlaceholder?: string` Search input placeholder
 - `searchDebounce?: number` Debounce delay in ms | `default: 300`
 
@@ -76,7 +75,6 @@ type DropdownMenuItemProps<T = string> = {
   loadingItemCount?: number;
   searchable?: boolean;
   searchPlaceholder?: string;
-  showSearchIcon?: boolean;
 }
 ```
 
@@ -98,7 +96,6 @@ A companion component for rendering individual dropdown items with full slot-bas
 - `loadingItemCount?: number` Number of skeleton items when loading | `default: 3`
 - `searchable?: boolean` Enable search functionality for this item's children
 - `searchPlaceholder?: string` Search input placeholder
-- `showSearchIcon?: boolean` Whether to show the search icon
 
 **Events**
 

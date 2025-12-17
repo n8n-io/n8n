@@ -586,7 +586,6 @@ export const SearchableRoot: Story = {
 				searchable
 				:search-placeholder="args.searchPlaceholder"
 				:search-debounce="args.searchDebounce"
-				:show-search-icon="false"
 				@search="handleSearch"
 				@select="handleSelect"
 			/>

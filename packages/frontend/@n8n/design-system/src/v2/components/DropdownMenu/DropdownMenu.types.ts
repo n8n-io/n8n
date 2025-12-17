@@ -46,8 +46,6 @@ export type DropdownMenuItemProps<T = string> = {
 	searchable?: boolean;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
-	/** Whether to show the search icon */
-	showSearchIcon?: boolean;
 	/** Whether this item is currently highlighted via keyboard navigation */
 	highlighted?: boolean;
 	/** Whether this item's sub-menu should be open (controlled by parent for keyboard nav) */
@@ -83,8 +81,6 @@ export interface DropdownMenuProps<T = string> {
 	extraPopperClass?: string;
 	/** Enable search functionality */
 	searchable?: boolean;
-	/** Whether to show the search icon */
-	showSearchIcon?: boolean;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */
