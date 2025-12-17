@@ -1,6 +1,7 @@
 import {
 	type StructuredChunk,
 	type JINA_AI_TOOL_NODE_TYPE,
+	type SERP_API_TOOL_NODE_TYPE,
 	type INode,
 	INodeSchema,
 } from 'n8n-workflow';
@@ -27,6 +28,21 @@ export const chatHubLLMProviderSchema = z.enum([
 	'mistralCloud',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+/**
+ * Schema for icon or emoji representation
+ */
+export const agentIconOrEmojiSchema = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('icon'),
+		value: z.string(),
+	}),
+	z.object({
+		type: z.literal('emoji'),
+		value: z.string(),
+	}),
+]);
+export type AgentIconOrEmoji = z.infer<typeof agentIconOrEmojiSchema>;
 
 export const chatHubProviderSchema = z.enum([
 	...chatHubLLMProviderSchema.options,
@@ -59,7 +75,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	mistralCloud: 'mistralCloudApi',
 };
 
-export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE;
+export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SERP_API_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
@@ -221,6 +237,7 @@ export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
+	icon: AgentIconOrEmoji | null;
 	updatedAt: string | null;
 	createdAt: string | null;
 	metadata: ChatModelMetadataDto;
@@ -362,6 +379,7 @@ export interface ChatHubSessionDto {
 	workflowId: string | null;
 	agentId: string | null;
 	agentName: string;
+	agentIcon: AgentIconOrEmoji | null;
 	createdAt: string;
 	updatedAt: string;
 	tools: INode[];
@@ -413,6 +431,7 @@ export interface ChatHubAgentDto {
 	id: string;
 	name: string;
 	description: string | null;
+	icon: AgentIconOrEmoji | null;
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
@@ -426,6 +445,7 @@ export interface ChatHubAgentDto {
 export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
+	icon: agentIconOrEmojiSchema,
 	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
@@ -436,6 +456,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
+	icon: agentIconOrEmojiSchema.optional(),
 	systemPrompt: z.string().min(1).optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),

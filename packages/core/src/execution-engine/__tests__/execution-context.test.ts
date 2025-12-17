@@ -20,7 +20,7 @@ describe('establishExecutionContext', () => {
 
 	describe('successful context establishment', () => {
 		it('should establish context with version 1 and timestamp', async () => {
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
@@ -58,7 +58,7 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should mutate the provided runExecutionData object', async () => {
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
@@ -91,7 +91,7 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should establish context when execution stack has multiple nodes', async () => {
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 			const secondNode = mock<INode>({ name: 'Second', type: 'n8n-nodes-base.set' });
 			const runExecutionData = createRunExecutionData({
 				startData: {},
@@ -245,7 +245,7 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should create unique timestamps for different executions', async () => {
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 
 			const runExecutionData1 = createRunExecutionData({
 				startData: {},
@@ -464,7 +464,7 @@ describe('establishExecutionContext', () => {
 				executionContext: parentContext,
 			};
 
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
@@ -523,7 +523,7 @@ describe('establishExecutionContext', () => {
 				// executionContext is undefined
 			};
 
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
@@ -836,7 +836,7 @@ describe('establishExecutionContext', () => {
 				credentials: 'metadata-credentials',
 			};
 
-			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
+			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
 			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
