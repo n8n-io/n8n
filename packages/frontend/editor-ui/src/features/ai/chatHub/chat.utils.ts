@@ -328,7 +328,7 @@ export function buildUiMessages(
 			continue;
 		}
 
-		if (index === conversation.activeMessageChain.length - 1) {
+		if (streaming.messageId && index === conversation.activeMessageChain.length - 1) {
 			// When agent responds multiple messages (e.g. when tools are used),
 			// there's a noticeable time gap between messages.
 			// In order to indicate that agent is still responding, show the last AI message as running
