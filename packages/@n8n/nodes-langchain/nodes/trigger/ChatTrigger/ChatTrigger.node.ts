@@ -417,7 +417,7 @@ export class ChatTrigger extends Node {
 			},
 			{
 				displayName:
-					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it. Currently, only streaming response mode is supported.',
+					'Your n8n users will be able to use this agent in <a href="/home/chat/" target="_blank">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it. Currently, only "Streaming" and "When Last Node Finishes" response modes are supported.',
 				name: 'availableInChatNotice',
 				type: 'notice',
 				displayOptions: {
@@ -543,7 +543,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [streamingResponseMode],
+						options: [streamingResponseMode, lastNodeResponseMode],
 						default: 'streaming',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [true] } },
@@ -578,7 +578,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [streamingResponseMode],
+						options: [streamingResponseMode, lastNodeResponseMode],
 						default: 'streaming',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [true] } },

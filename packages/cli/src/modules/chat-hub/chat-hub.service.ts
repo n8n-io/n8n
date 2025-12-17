@@ -64,6 +64,7 @@ import {
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 	STREAM_CLOSE_TIMEOUT,
+	SUPPORTED_RESPONSE_MODES,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -234,11 +235,11 @@ export class ChatHubService {
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
+			model,
 			workflowData,
 			executionData,
 			sessionId,
 			messageId,
-			model,
 			null,
 			responseMode,
 		);
@@ -359,11 +360,11 @@ export class ChatHubService {
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
+			model,
 			workflowData,
 			executionData,
 			sessionId,
 			messageId,
-			model,
 			null,
 			responseMode,
 		);
@@ -432,11 +433,11 @@ export class ChatHubService {
 		await this.executeChatWorkflowWithCleanup(
 			res,
 			user,
+			model,
 			workflowData,
 			executionData,
 			sessionId,
 			previousMessageId,
-			model,
 			retryOfMessageId,
 			responseMode,
 		);
@@ -626,9 +627,9 @@ export class ChatHubService {
 		}
 
 		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
-		if (responseMode !== 'streaming') {
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(
-				'Chat Trigger node response mode must be set to streaming to use the workflow on Chat',
+				'Chat Trigger node response mode must be set to "Streaming" or "When Last Node Finishes" to use the workflow on Chat',
 			);
 		}
 
@@ -729,11 +730,11 @@ export class ChatHubService {
 	private async executeChatWorkflow(
 		res: Response,
 		user: User,
+		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null = null,
 		executionMode: WorkflowExecuteMode = 'chat',
 		responseMode: ChatTriggerResponseMode,
@@ -742,10 +743,123 @@ export class ChatHubService {
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
 		);
 
-		if (responseMode !== 'streaming') {
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
 		}
 
+		if (responseMode === 'lastNode') {
+			return await this.executeLastNode(
+				res,
+				user,
+				model,
+				workflowData,
+				executionData,
+				sessionId,
+				previousMessageId,
+				retryOfMessageId,
+				executionMode,
+			);
+		} else if (responseMode === 'streaming') {
+			return await this.executeWithStreaming(
+				res,
+				user,
+				model,
+				workflowData,
+				executionData,
+				sessionId,
+				previousMessageId,
+				retryOfMessageId,
+				executionMode,
+			);
+		}
+	}
+
+	private async executeLastNode(
+		res: Response,
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+		executionMode: WorkflowExecuteMode,
+	) {
+		// Capture the streaming response as it's being generated to save
+		// partial messages in the database when generation gets cancelled.
+		// let executionId: string | undefined = undefined;
+
+		// const transform = (text: string) => {
+		// 	const trimmed = text.trim();
+		// 	if (!trimmed) return text;
+
+		// 	let chunk: StructuredChunk | null = null;
+		// 	try {
+		// 		chunk = jsonParse<StructuredChunk>(trimmed);
+		// 	} catch {
+		// 		return text;
+		// 	}
+
+		// 	const message = aggregator.ingest(chunk);
+		// 	const enriched: EnrichedStructuredChunk = {
+		// 		...chunk,
+		// 		metadata: {
+		// 			...chunk.metadata,
+		// 			messageId: message.id,
+		// 			previousMessageId: message.previousMessageId,
+		// 			retryOfMessageId: message.retryOfMessageId,
+		// 			executionId: executionId ? +executionId : null,
+		// 		},
+		// 	};
+
+		// 	return jsonStringify(enriched) + '\n';
+		// };
+
+		// const stream = interceptResponseWrites(res, transform);
+
+		// stream.on('finish', aggregator.finalizeAll);
+		// stream.on('close', aggregator.finalizeAll);
+
+		// stream.writeHead(200, JSONL_STREAM_HEADERS);
+		// stream.flushHeaders();
+
+		const execution = await this.workflowExecutionService.executeChatWorkflow(
+			user,
+			workflowData,
+			executionData,
+			undefined,
+			true,
+			executionMode,
+		);
+
+		const executionId = execution.executionId;
+
+		if (!executionId) {
+			throw new OperationalError('There was a problem starting the chat execution.');
+		}
+
+		await this.waitForExecutionCompletion(executionId);
+
+		// await this.saveAIMessage({
+		// 	...message,
+		// 	sessionId,
+		// 	executionId,
+		// 	model,
+		// 	retryOfMessageId,
+		// });
+	}
+
+	private async executeWithStreaming(
+		res: Response,
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+		executionMode: WorkflowExecuteMode,
+	) {
 		// Capture the streaming response as it's being generated to save
 		// partial messages in the database when generation gets cancelled.
 		let executionId: string | undefined = undefined;
@@ -850,9 +964,9 @@ export class ChatHubService {
 		stream.flushHeaders();
 
 		const execution = await this.workflowExecutionService.executeChatWorkflow(
+			user,
 			workflowData,
 			executionData,
-			user,
 			stream,
 			true,
 			executionMode,
@@ -954,11 +1068,11 @@ export class ChatHubService {
 	private async executeChatWorkflowWithCleanup(
 		res: Response,
 		user: User,
+		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
-		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null,
 		responseMode: ChatTriggerResponseMode,
 	) {
@@ -970,11 +1084,11 @@ export class ChatHubService {
 			await this.executeChatWorkflow(
 				res,
 				user,
+				model,
 				workflowData,
 				executionData,
 				sessionId,
 				previousMessageId,
-				model,
 				retryOfMessageId,
 				executionMode,
 				responseMode,
@@ -1223,9 +1337,9 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 	): Promise<string | null> {
 		const { executionId } = await this.workflowExecutionService.executeChatWorkflow(
+			user,
 			workflowData,
 			executionData,
-			user,
 			undefined,
 			false,
 			'chat',
