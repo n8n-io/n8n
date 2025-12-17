@@ -19,8 +19,7 @@ import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -146,9 +145,8 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: string | number | boolean) {
-	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
-	emit('update:autoRefresh', boolValue);
+function onAutoRefreshChange(enabled: boolean) {
+	emit('update:autoRefresh', enabled);
 }
 
 function scrollToActiveCard(): void {
@@ -196,13 +194,12 @@ const goToUpgrade = () => {
 			/>
 		</div>
 		<div :class="$style.controls">
-			<ElCheckbox
+			<N8nCheckbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
-			>
-				{{ i18n.baseText('executionsList.autoRefresh') }}
-			</ElCheckbox>
+			/>
 			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
@@ -336,10 +333,5 @@ const goToUpgrade = () => {
 		height: 60px;
 		border-radius: 0;
 	}
-}
-
-:deep(.el-checkbox) {
-	display: flex;
-	align-items: center;
 }
 </style>

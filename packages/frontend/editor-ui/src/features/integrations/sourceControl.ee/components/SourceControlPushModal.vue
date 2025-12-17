@@ -1038,18 +1038,6 @@ onMounted(async () => {
 		-webkit-box-orient: vertical;
 		word-wrap: break-word; /* Important for long words! */
 	}
-
-	:global(.el-checkbox__label) {
-		display: flex;
-		width: 100%;
-		justify-content: space-between;
-		align-items: center;
-		gap: 30px;
-	}
-
-	:global(.el-checkbox__inner) {
-		transition: none;
-	}
 }
 
 .badges {
