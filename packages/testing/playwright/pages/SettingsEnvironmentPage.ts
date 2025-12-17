@@ -49,7 +49,9 @@ export class SettingsEnvironmentPage extends BasePage {
 	async disconnect(): Promise<void> {
 		await this.getDisconnectButton().click();
 
-		const confirmModal = this.page.getByRole('dialog').filter({ hasText: 'Are you sure?' });
+		const confirmModal = this.page
+			.getByRole('dialog')
+			.filter({ hasText: 'Disconnect Git repository' });
 		await expect(confirmModal).toBeVisible();
 		await confirmModal.locator('.btn--confirm').click();
 	}
