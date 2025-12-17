@@ -5,7 +5,6 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { storeToRefs } from 'pinia';
 import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -43,7 +42,6 @@ const i18n = useI18n();
 const router = useRouter();
 
 const autosaveStore = useWorkflowAutosaveStore();
-const { autoSaveState, pendingAutoSave } = storeToRefs(autosaveStore);
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 
 const autoSaveForPublish = ref(false);
@@ -54,63 +52,52 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
-const saveBeforePublish = async (): Promise<boolean> => {
-	console.log('[Publish] 💾 Saving workflow');
-	const saved = await saveCurrentWorkflow({}, true);
-	autoSaveForPublish.value = false;
-	if (!saved) {
-		console.log('[Publish] ❌ Save failed');
-		return false;
+/**
+ * Cancel autosave if scheduled or wait for it to finish if in progress
+ * Save immediately if autosave idle or cancelled
+ */
+const saveBeforePublish = async () => {
+	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
+		console.log('[Publish] ⏳ Waiting for in-progress autosave to complete');
+		autoSaveForPublish.value = true;
+		try {
+			await autosaveStore.pendingAutoSave;
+			console.log('[Publish] ✅ Autosave completed');
+		} finally {
+			autoSaveForPublish.value = false;
+		}
+	} else if (autosaveStore.autoSaveState === AutoSaveState.Scheduled) {
+		console.log('[Publish] ⏹️ Cancelling scheduled autosave');
+		cancelAutoSave();
 	}
-	console.log('[Publish] ✅ Save completed');
-	return true;
+
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		console.log('[Publish] ⏳ Saving unsaved changes before publish');
+		autoSaveForPublish.value = true;
+		try {
+			const saved = await saveCurrentWorkflow({}, true);
+			if (!saved) {
+				console.log('[Publish] ❌ Save failed');
+				throw new Error('Failed to save workflow before publish');
+			}
+			console.log('[Publish] ✅ Save completed');
+		} finally {
+			autoSaveForPublish.value = false;
+		}
+	} else {
+		console.log('[Publish] No unsaved changes, skipping save');
+	}
 };
 
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		autoSaveForPublish.value = true;
-
-		// Cancel autosave if if scheduled or wait for it to finish if in progress
-		// Save immediately if autosave idle or cancelled
-		switch (autoSaveState.value) {
-			case AutoSaveState.InProgress: {
-				console.log('[Publish] ⏳ Waiting for in-progress autosave to complete');
-				if (pendingAutoSave.value) {
-					await pendingAutoSave.value;
-				}
-				autoSaveForPublish.value = false;
-
-				if (!uiStore.stateIsDirty) {
-					console.log('[Publish] ✅ Autosave completed successfully');
-					break;
-				}
-
-				console.log('[Publish] ⚠️ Autosave failed, saving manually');
-				if (!(await saveBeforePublish())) {
-					return;
-				}
-				break;
-			}
-
-			case AutoSaveState.Scheduled: {
-				console.log('[Publish] ⏹️ Cancelling scheduled autosave');
-				cancelAutoSave();
-				if (!(await saveBeforePublish())) {
-					return;
-				}
-				break;
-			}
-
-			case AutoSaveState.Idle: {
-				if (!(await saveBeforePublish())) {
-					return;
-				}
-				break;
-			}
+		try {
+			await saveBeforePublish();
+		} catch (error) {
+			console.error('[Publish] ❌ Error saving workflow before publish:', error);
+			return;
 		}
-	} else {
-		console.log('[Publish] No unsaved changes, skipping save');
 	}
 
 	uiStore.openModalWithData({

@@ -32,7 +32,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
-import { storeToRefs } from 'pinia';
 
 export function useWorkflowSaving({
 	router,
@@ -59,7 +58,6 @@ export function useWorkflowSaving({
 		useWorkflowHelpers();
 
 	const autosaveStore = useWorkflowAutosaveStore();
-	const { autoSaveState, pendingAutoSave } = storeToRefs(autosaveStore);
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -435,7 +433,7 @@ export function useWorkflowSaving({
 	const autoSaveWorkflowDebounced = useDebounceFn(
 		() => {
 			// Check if cancelled during debounce period
-			if (autoSaveState.value === AutoSaveState.Idle) {
+			if (autosaveStore.autoSaveState === AutoSaveState.Idle) {
 				console.log('[AutoSave] Cancelled during debounce');
 				return;
 			}
@@ -477,8 +475,6 @@ export function useWorkflowSaving({
 		saveCurrentWorkflow,
 		saveAsNewWorkflow,
 		autoSaveWorkflow: scheduleAutoSave,
-		autoSaveState,
 		cancelAutoSave,
-		pendingAutoSave,
 	};
 }
