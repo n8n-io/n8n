@@ -168,7 +168,7 @@ async function onPublishButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
-	const result = await albertsonsRestApiRequest('POST', `/v1/templates/publish/${id}`, {
+	const result = await albertsonsRestApiRequest('POST', `/v1/agent-library/publish/${id}`, {
 		authorId: usersStore.currentUser.id,
 		authorName: usersStore.currentUser.firstName + ' ' + usersStore.currentUser.lastName,
 	});
