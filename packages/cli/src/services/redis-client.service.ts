@@ -163,7 +163,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		options: RedisOptions,
 		retryStrategy: () => number | null,
 	): ClusterOptions {
-		const { slotsRefreshTimeout, slotsRefreshInterval, skipDns } =
+		const { slotsRefreshTimeout, slotsRefreshInterval, dnsResolveStrategy } =
 			this.globalConfig.queue.bull.redis;
 		const clusterOptions: ClusterOptions = {
 			redisOptions: options,
@@ -174,7 +174,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		// NOTE: this is necessary to use AWS Elasticache Clusters with TLS.
 		// See https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls.
-		if (skipDns) {
+		if (dnsResolveStrategy === 'NONE') {
 			clusterOptions.dnsLookup = (address, lookupFn) => lookupFn(null, address);
 		}
 

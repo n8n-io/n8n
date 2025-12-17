@@ -60,11 +60,18 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
 
-	/** Whether to skip DNS resolution for Redis connections.
-	 * NOTE: necessary for AWS ElastiCache clusters with TLS. See https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
+	/**
+	 * DNS resolution strategy for Redis hostnames on initial client connection.
+	 * - `LOOKUP` (default): Use system DNS resolver to resolve hostnames to IP addresses.
+	 * - `NONE`: Disable DNS resolution and pass hostnames directly to Redis client.
+	 *
+	 * DNS lookups can be error prone, especially in combination with TLS certificates.
+	 * Especially AWS Elasticache cluster connections often lead to invalid certificate errors due to hostname/ip mismatches.
+	 * For AWS ElastiCache clusters with TLS, it is recommended to set this option to `NONE`.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
 	 */
-	@Env('QUEUE_BULL_REDIS_SKIP_DNS')
-	skipDns: boolean = false;
+	@Env('QUEUE_BULL_REDIS_DNS_LOOKUP_STRATEGY')
+	dnsResolveStrategy: 'LOOKUP' | 'NONE' = 'LOOKUP';
 
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
