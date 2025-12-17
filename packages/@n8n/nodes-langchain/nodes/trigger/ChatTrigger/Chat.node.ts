@@ -276,7 +276,34 @@ export class Chat implements INodeType {
 			}
 		}
 
-		return [[data]];
+		if (nodeVersion < 1.1) {
+			return [[data]];
+		}
+
+		const responseType = context.getNodeParameter(
+			'responseType',
+			0,
+			FREE_TEXT_CHAT_RESPONSE_TYPE,
+		) as string;
+		const isFreeText = responseType === FREE_TEXT_CHAT_RESPONSE_TYPE;
+		return [
+			[
+				{
+					...data,
+					json: {
+						// put everything under the `data` key to be consistent
+						// with other HITL nodes
+						data: {
+							...data.json,
+							// if the response type is not "Free Text" and the
+							// user has typed something - we assume it's
+							// disapproval
+							approved: isFreeText ? undefined : false,
+						},
+					},
+				},
+			],
+		];
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
