@@ -1302,24 +1302,24 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
-export type ChatMessageButtonType = 'primary' | 'secondary';
+export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 
-export type ApprovalChatMessage = {
+export type ChatNodeApprovalMessage = {
 	type: 'approval';
 	text: string;
 	approve: {
 		text: string;
 		link: string;
-		type: ChatMessageButtonType;
+		type: ChatNodeMessageButtonType;
 	};
 	decline?: {
 		text: string;
 		link: string;
-		type: ChatMessageButtonType;
+		type: ChatNodeMessageButtonType;
 	};
 };
 
-export type ChatMessage = ApprovalChatMessage | string;
+export type ChatNodeMessage = ChatNodeApprovalMessage | string;
 
 export interface INodeExecutionData {
 	[key: string]:
@@ -1349,7 +1349,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: ChatMessage;
+	sendMessage?: ChatNodeMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it

@@ -26,9 +26,9 @@ import type {
 	NodeTypeAndVersion,
 	INode,
 	INodePropertyOptions,
-	ChatMessage,
-	ApprovalChatMessage,
-	ChatMessageButtonType,
+	ChatNodeApprovalMessage,
+	ChatNodeMessageButtonType,
+	ChatNodeMessage,
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
@@ -64,7 +64,7 @@ const getSendAndWaitPropertiesForChatNode = () => {
 	return filteredProperties;
 };
 
-function getChatMessage(ctx: IExecuteFunctions): ChatMessage {
+function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
 	const nodeVersion = ctx.getNode().typeVersion;
 	const message = ctx.getNodeParameter('message', 0, '') as string;
 	if (nodeVersion < 1.1) {
@@ -82,7 +82,7 @@ function getChatMessage(ctx: IExecuteFunctions): ChatMessage {
 		return message;
 	}
 
-	let approvalMessage: ApprovalChatMessage | undefined;
+	let approvalMessage: ChatNodeApprovalMessage | undefined;
 	const config = getSendAndWaitConfig(ctx);
 	if (config.options.length === 2) {
 		approvalMessage = {
@@ -91,12 +91,12 @@ function getChatMessage(ctx: IExecuteFunctions): ChatMessage {
 			approve: {
 				text: config.options[1].label,
 				link: config.options[1].url,
-				type: config.options[1].style as ChatMessageButtonType,
+				type: config.options[1].style as ChatNodeMessageButtonType,
 			},
 			decline: {
 				text: config.options[0].label,
 				link: config.options[0].url,
-				type: config.options[0].style as ChatMessageButtonType,
+				type: config.options[0].style as ChatNodeMessageButtonType,
 			},
 		};
 	} else if (config.options.length === 1) {
@@ -106,7 +106,7 @@ function getChatMessage(ctx: IExecuteFunctions): ChatMessage {
 			approve: {
 				text: config.options[0].label,
 				link: config.options[0].url,
-				type: config.options[0].style as ChatMessageButtonType,
+				type: config.options[0].style as ChatNodeMessageButtonType,
 			},
 		};
 	}
