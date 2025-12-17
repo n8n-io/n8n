@@ -11,7 +11,7 @@ import { NodeOperationError } from 'n8n-workflow';
  * @throws NodeOperationError if query is invalid
  */
 export function validateEmbedQueryInput(query: unknown, node: INode): string {
-	if (query === undefined || query === null || query === '') {
+	if (typeof query !== 'string' || query === '') {
 		throw new NodeOperationError(node, 'Cannot embed empty or undefined text', {
 			description:
 				'The text provided for embedding is empty or undefined. ' +
@@ -20,7 +20,7 @@ export function validateEmbedQueryInput(query: unknown, node: INode): string {
 				'or a required field is missing.',
 		});
 	}
-	return query as string;
+	return query;
 }
 
 /**
