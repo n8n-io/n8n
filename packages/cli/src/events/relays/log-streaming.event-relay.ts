@@ -56,6 +56,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
+			'execution-deleted': (event) => this.executionDeleted(event),
+			'workflow-executed': (event) => this.workflowExecuted(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -531,6 +533,28 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowName,
 				reason,
 			},
+		});
+	}
+
+	@Redactable()
+	private executionDeleted({ user, executionIds }: RelayEventMap['execution-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.execution.deleted',
+			payload: { ...user, executionIds },
+		});
+	}
+
+	@Redactable()
+	private workflowExecuted({
+		user,
+		workflowId,
+		workflowName,
+		executionId,
+		executionMode,
+	}: RelayEventMap['workflow-executed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.workflow.executed',
+			payload: { ...user, workflowId, workflowName, executionId, executionMode },
 		});
 	}
 

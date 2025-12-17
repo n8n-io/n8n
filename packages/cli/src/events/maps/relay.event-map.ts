@@ -412,6 +412,19 @@ export type RelayEventMap = {
 		reason: CancellationReason;
 	};
 
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+	};
+
+	'workflow-executed': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		executionMode: 'manual' | 'retry';
+	};
+
 	// #endregion
 
 	// #region Project

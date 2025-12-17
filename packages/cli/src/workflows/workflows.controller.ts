@@ -586,11 +586,29 @@ export class WorkflowsController {
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 
-		return await this.workflowExecutionService.executeManually(
+		const result = await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
 			req.headers['push-ref'],
 		);
+
+		if ('executionId' in result) {
+			this.eventService.emit('workflow-executed', {
+				user: {
+					id: req.user.id,
+					email: req.user.email,
+					firstName: req.user.firstName,
+					lastName: req.user.lastName,
+					role: req.user.role,
+				},
+				workflowId: req.body.workflowData.id,
+				workflowName: req.body.workflowData.name,
+				executionId: result.executionId,
+				executionMode: 'manual',
+			});
+		}
+
+		return result;
 	}
 
 	@Licensed('feat:sharing')
