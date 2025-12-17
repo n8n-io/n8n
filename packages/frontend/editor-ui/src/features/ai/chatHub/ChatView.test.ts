@@ -1,18 +1,19 @@
-import { describe, it, beforeEach, expect, vi } from 'vitest';
-import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { emptyChatModelsResponse, type EnrichedStructuredChunk } from '@n8n/api-types';
+import userEvent from '@testing-library/user-event';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { reactive } from 'vue';
 import {
-	createMockModelsResponse,
 	createMockAgent,
 	createMockConversationResponse,
-	createMockSession,
 	createMockMessageDto,
+	createMockModelsResponse,
+	createMockSession,
 	createMockStreamChunk,
 } from './__test__/data';
-import ChatView from './ChatView.vue';
 import * as chatApi from './chat.api';
-import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
+import ChatView from './ChatView.vue';
 
 // Mock external stores and modules
 vi.mock('@/features/settings/users/users.store', () => ({
@@ -68,10 +69,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	}),
 }));
 
-// Create a reactive route object that can be shared
-import { reactive } from 'vue';
-import type { EnrichedStructuredChunk } from '@n8n/api-types';
-const mockRoute = reactive<{ params: Record<string, any>; query: Record<string, any> }>({
+const mockRoute = reactive<{ params: Record<string, unknown>; query: Record<string, unknown> }>({
 	params: {},
 	query: {},
 });
@@ -84,6 +82,7 @@ const mockRouterPush = vi.fn((route) => {
 });
 
 vi.mock('vue-router', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('vue-router')>();
 
 	return {
@@ -100,14 +99,14 @@ const renderComponent = createComponentRenderer(ChatView);
 
 describe('ChatView', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let onMessageUpdated: (chunk: EnrichedStructuredChunk) => void;
-	let onDone: () => void;
+	let sendMessageUpdated: (chunk: EnrichedStructuredChunk) => void;
+	let sendDone: () => void;
 
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		onMessageUpdated = () => {};
-		onDone = () => {};
+		sendMessageUpdated = () => {};
+		sendDone = () => {};
 
 		mockRoute.params = {};
 		mockRoute.query = {};
@@ -116,21 +115,21 @@ describe('ChatView', () => {
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
 		vi.mocked(chatApi.sendMessageApi).mockImplementation((_ctx, _, onMessageUpdated_, onDone_) => {
-			onMessageUpdated = onMessageUpdated_;
-			onDone = onDone_;
+			sendMessageUpdated = onMessageUpdated_;
+			sendDone = onDone_;
 		});
 		vi.mocked(chatApi.editMessageApi).mockClear();
 		vi.mocked(chatApi.editMessageApi).mockImplementation(
-			(_ctx, _sessionId, _editId, _payload, onMessageUpdated_, onDone_) => {
-				onMessageUpdated = onMessageUpdated_;
-				onDone = onDone_;
+			(_ctx, _request, onMessageUpdated_, onDone_) => {
+				sendMessageUpdated = onMessageUpdated_;
+				sendDone = onDone_;
 			},
 		);
 		vi.mocked(chatApi.regenerateMessageApi).mockClear();
 		vi.mocked(chatApi.regenerateMessageApi).mockImplementation(
-			(_ctx, _sessionId, _retryId, _payload, onMessageUpdated_, onDone_) => {
-				onMessageUpdated = onMessageUpdated_;
-				onDone = onDone_;
+			(_ctx, _request, onMessageUpdated_, onDone_) => {
+				sendMessageUpdated = onMessageUpdated_;
+				sendDone = onDone_;
 			},
 		);
 		vi.mocked(chatApi.stopGenerationApi).mockClear();
@@ -197,17 +196,19 @@ describe('ChatView', () => {
 				}),
 			}),
 		);
-		vi.mocked(chatApi.fetchConversationsApi).mockResolvedValue([]);
+		vi.mocked(chatApi.fetchConversationsApi).mockResolvedValue({
+			data: [],
+			nextCursor: null,
+			hasMore: false,
+		});
 		vi.mocked(chatApi.updateConversationApi).mockClear();
 	});
 
-	describe('Rendering new session', () => {
-		it('displays chat starter, conversation header, and prompt input', async () => {
+	describe('Rendering the new chat UI', () => {
+		it('displays greeting message', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(rendered.queryByRole('log')).not.toBeInTheDocument();
 			expect(await rendered.findByText('Hello, Test!')).toBeInTheDocument();
-			expect(await rendered.findByRole('textbox')).toBeInTheDocument();
 		});
 
 		it('preselects agent from agentId query parameter', async () => {
@@ -236,14 +237,10 @@ describe('ChatView', () => {
 
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByRole('button', { name: /GPT-4/i })).toBeInTheDocument();
+			expect(await rendered.findByRole('button', { name: /gpt-4/ })).toBeInTheDocument();
 		});
 
-		it.todo('preselects first available agent when no preference exists', async () => {
-			// Create fresh pinia instance for this test
-			const freshPinia = createPinia();
-			setActivePinia(freshPinia);
-
+		it('preselects first available agent when no preference exists', async () => {
 			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
 				createMockModelsResponse({
 					openai: {
@@ -265,40 +262,22 @@ describe('ChatView', () => {
 				}),
 			);
 
-			const rendered = renderComponent({ pinia: freshPinia });
+			const rendered = renderComponent({ pinia });
 
-			expect(
-				await rendered.findByRole('button', { name: /GPT-4/i }, { timeout: 3000 }),
-			).toBeInTheDocument();
+			expect(await rendered.findByRole('button', { name: /GPT-4/ })).toBeInTheDocument();
 		});
 
-		it('disables prompt when no agents are available', async () => {
-			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(
-				createMockModelsResponse({
-					openai: { models: [] },
-					anthropic: { models: [] },
-					'custom-agent': { models: [] },
-					n8n: { models: [] },
-				}),
-			);
+		it('should show callout if no agent is available', async () => {
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
 
 			const rendered = renderComponent({ pinia });
 
-			// Wait for the agents to be loaded and the missingAgent state to be set
-			await vi.waitFor(() => {
-				const textbox = rendered.getByRole('textbox');
-				expect(textbox).toBeDisabled();
-			});
-
-			// Also verify the callout message appears
-			const callouts = rendered.queryAllByText((content, element) => {
-				return element?.textContent?.includes('select a model to start a conversation') ?? false;
-			});
-			expect(callouts.length).toBeGreaterThan(0);
+			expect(await rendered.findByText('select a model')).toBeInTheDocument();
+			expect(await rendered.findByRole('textbox')).toBeDisabled();
 		});
 	});
 
-	describe('Rendering existing session', () => {
+	describe('Rendering existing sessions', () => {
 		beforeEach(() => {
 			mockRoute.params = { id: 'existing-session-123' };
 
@@ -334,49 +313,42 @@ describe('ChatView', () => {
 			);
 		});
 
+		it('preselects agent set for the session', async () => {
+			const rendered = renderComponent({ pinia });
+
+			expect(
+				await rendered.findByRole('button', { name: /Test Custom Agent/i }),
+			).toBeInTheDocument();
+		});
+
 		it('displays conversation with messages loaded from API', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByText('The weather is sunny today.')).toBeInTheDocument();
+			await vi.waitFor(() => {
+				const messages = rendered.container.querySelectorAll('[data-message-id]');
 
-			const messages = rendered.container.querySelectorAll('[data-message-id]');
-			expect(messages).toHaveLength(2);
-			expect(messages[0]).toHaveTextContent('What is the weather today?');
-			expect(messages[1]).toHaveTextContent('The weather is sunny today.');
+				expect(messages).toHaveLength(2);
+				expect(messages[0]).toHaveTextContent('What is the weather today?');
+				expect(messages[1]).toHaveTextContent('The weather is sunny today.');
+			});
 		});
 
-		it.todo(
-			'displays error toast and redirects to chat view when fetching conversation fails',
-			async () => {
-				vi.mocked(chatApi.fetchSingleConversationApi).mockRejectedValue(
-					new Error('Conversation not found'),
-				);
+		it('displays error toast and redirects to chat view when fetching conversation fails', async () => {
+			vi.mocked(chatApi.fetchSingleConversationApi).mockRejectedValue(
+				new Error('Conversation not found'),
+			);
 
-				const rendered = renderComponent({ pinia });
+			const rendered = renderComponent({ pinia });
 
-				expect(await rendered.findByText(/Error fetching a conversation/i)).toBeInTheDocument();
+			expect(await rendered.findByText(/Failed to load conversation/i)).toBeInTheDocument();
 
-				await vi.waitFor(() => {
-					expect(mockRouterPush).toHaveBeenCalledWith({ name: 'chat' });
-				});
-			},
-		);
+			await vi.waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith({ name: 'chat' }));
+		});
 
 		it.todo(
 			'handles when the agent selected for the conversation is not available anymore',
 			async () => {
-				vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(
-					createMockModelsResponse({
-						openai: {
-							models: [
-								createMockAgent({
-									name: 'GPT-4',
-									model: { provider: 'openai', model: 'gpt-4' },
-								}),
-							],
-						},
-					}),
-				);
+				vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
 
 				const rendered = renderComponent({ pinia });
 
@@ -393,14 +365,11 @@ describe('ChatView', () => {
 			mockRoute.query = { agentId: 'agent-123' };
 
 			const rendered = renderComponent({ pinia });
+			const textarea = await rendered.findByRole('textbox');
 
-			const textarea = (await rendered.findByRole('textbox')) as HTMLTextAreaElement;
 			await user.click(textarea);
 			await user.type(textarea, 'What is n8n?');
-
-			// Click the submit button instead of pressing Enter
-			const submitButton = rendered.getByRole('button', { name: /send/i });
-			await user.click(submitButton);
+			await user.click(rendered.getByRole('button', { name: /send/i }));
 
 			expect(chatApi.sendMessageApi).toHaveBeenCalledWith(
 				expect.anything(),
@@ -419,7 +388,7 @@ describe('ChatView', () => {
 			const messageIdFromApi = apiCallArgs[1].messageId;
 			const sessionIdFromApi = apiCallArgs[1].sessionId;
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'begin',
 					content: '',
@@ -430,12 +399,10 @@ describe('ChatView', () => {
 				}),
 			);
 
-			await vi.waitFor(() => expect(textarea.value).toBe(''));
-
+			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 			await rendered.findByText('What is n8n?');
-			let messages = rendered.container.querySelectorAll('[data-message-id]');
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'item',
 					content: 'n8n is',
@@ -448,7 +415,7 @@ describe('ChatView', () => {
 
 			expect(await rendered.findByText(/n8n is/)).toBeInTheDocument();
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'item',
 					content: ' a workflow',
@@ -461,7 +428,7 @@ describe('ChatView', () => {
 
 			expect(await rendered.findByText(/n8n is a workflow/)).toBeInTheDocument();
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'item',
 					content: ' automation tool.',
@@ -472,7 +439,7 @@ describe('ChatView', () => {
 				}),
 			);
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'end',
 					content: '',
@@ -483,7 +450,7 @@ describe('ChatView', () => {
 				}),
 			);
 
-			onDone();
+			sendDone();
 
 			expect(await rendered.findByText('n8n is a workflow automation tool.')).toBeInTheDocument();
 			expect(mockRouterPush).toHaveBeenCalledWith({
@@ -491,7 +458,8 @@ describe('ChatView', () => {
 				params: { id: sessionIdFromApi },
 			});
 
-			messages = rendered.container.querySelectorAll('[data-message-id]');
+			const messages = rendered.container.querySelectorAll('[data-message-id]');
+
 			expect(messages).toHaveLength(2);
 			expect(messages[0]).toHaveTextContent('What is n8n?');
 			expect(messages[1]).toHaveTextContent('n8n is a workflow automation tool.');
@@ -534,14 +502,11 @@ describe('ChatView', () => {
 			);
 
 			const rendered = renderComponent({ pinia });
+			const textarea = await rendered.findByRole('textbox');
 
-			const textarea = (await rendered.findByRole('textbox')) as HTMLTextAreaElement;
 			await user.click(textarea);
 			await user.type(textarea, 'New question');
-
-			// Click the submit button instead of pressing Enter
-			const submitButton = rendered.getByRole('button', { name: /send/i });
-			await user.click(submitButton);
+			await user.click(rendered.getByRole('button', { name: /send/i }));
 
 			expect(chatApi.sendMessageApi).toHaveBeenCalledWith(
 				expect.anything(),
@@ -560,7 +525,7 @@ describe('ChatView', () => {
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'begin',
 					content: '',
@@ -571,9 +536,9 @@ describe('ChatView', () => {
 				}),
 			);
 
-			await vi.waitFor(() => expect(textarea.value).toBe(''));
+			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'item',
 					content: 'AI response here',
@@ -584,7 +549,7 @@ describe('ChatView', () => {
 				}),
 			);
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'end',
 					content: '',
@@ -595,7 +560,7 @@ describe('ChatView', () => {
 				}),
 			);
 
-			onDone();
+			sendDone();
 
 			expect(await rendered.findByText('AI response here')).toBeInTheDocument();
 
@@ -626,7 +591,7 @@ describe('ChatView', () => {
 			const messageIdFromApi = sendApiCall[1].messageId;
 			const sessionId = sendApiCall[1].sessionId;
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'begin',
 					content: '',
@@ -637,7 +602,7 @@ describe('ChatView', () => {
 				}),
 			);
 
-			onMessageUpdated(
+			sendMessageUpdated(
 				createMockStreamChunk({
 					type: 'item',
 					content: 'Starting response...',
