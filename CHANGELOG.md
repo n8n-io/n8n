@@ -1,3 +1,16 @@
+## [2.1.1](https://github.com/n8n-io/n8n/compare/n8n@2.1.0...n8n@2.1.1) (2025-12-17)
+
+
+### Bug Fixes
+
+* **ai-builder:** Connection validation respects node version and type ([#23349](https://github.com/n8n-io/n8n/issues/23349)) ([adc07da](https://github.com/n8n-io/n8n/commit/adc07da00b99b000eeda48077f243b739872b777))
+* **core:** Error running evaluations in queue mode ([#23248](https://github.com/n8n-io/n8n/issues/23248)) ([499b435](https://github.com/n8n-io/n8n/commit/499b43573ef9a6f1e73c13c17c1ecba4f65f54da))
+* **editor:** Fix wf nodes not updated correctly on workflow activated/deactivated events ([#23333](https://github.com/n8n-io/n8n/issues/23333)) ([9a85ca7](https://github.com/n8n-io/n8n/commit/9a85ca7e5920297fbc31c2a87335190dfc352d5a))
+* **editor:** Select default Chat hub model to use from models allowed by settings ([#23348](https://github.com/n8n-io/n8n/issues/23348)) ([2c23652](https://github.com/n8n-io/n8n/commit/2c2365244d2d61b4f0573bac6392a9c26ddbd569))
+* Only support specified git config keys in Git node ([#23264](https://github.com/n8n-io/n8n/issues/23264)) ([d9527bd](https://github.com/n8n-io/n8n/commit/d9527bde2a255340f4224a9f2d5f014a0dfd076f))
+
+
+
 # [2.1.0](https://github.com/n8n-io/n8n/compare/n8n@2.0.0...n8n@2.1.0) (2025-12-15)
 
 
