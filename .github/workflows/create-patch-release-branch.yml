@@ -47,18 +47,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git switch "n8n@${{ inputs.old_version }}" --detach
           BRANCH="patch/${{ inputs.new_version }}"
-          git checkout -b $BRANCH
+          git checkout -b "$BRANCH"
           IFS=',' read -ra SHAS <<< "${{ inputs.commit_shas }}"
           for sha in "${SHAS[@]}"; do
-            sha=$(echo $sha | xargs)
-            if ! git merge-base --is-ancestor $sha HEAD; then
+            sha=$(echo "$sha" | xargs)
+            if ! git merge-base --is-ancestor "$sha" HEAD; then
               echo "Cherry-picking commit $sha"
-              git cherry-pick $sha
+              git cherry-pick "$sha"
             else
               echo "Commit $sha is already in the branch, skipping"
             fi
           done
-          git push -f origin $BRANCH
+          git push -f origin "$BRANCH"
       - name: Notify if cherry-pick is successful
         if: ${{ success() }}
         run: |
