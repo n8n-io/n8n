@@ -15,6 +15,7 @@ import type {
 import { parseWorkflowMessage } from './collaboration.message';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
@@ -227,5 +228,22 @@ export class CollaborationService {
 			lockHolder,
 		});
 		return lockHolder;
+	}
+
+	/**
+	 * Validates that if a write lock exists for a workflow, the requesting user holds it.
+	 * Throws ForbiddenError if another user has the write lock.
+	 */
+	async validateWriteLock(
+		userId: User['id'],
+		workflowId: Workflow['id'],
+		action: string,
+	): Promise<void> {
+		const writeLockHolder = await this.getWriteLock(userId, workflowId);
+		if (writeLockHolder && writeLockHolder !== userId) {
+			throw new ForbiddenError(
+				`Cannot ${action} workflow - another user currently has write access`,
+			);
+		}
 	}
 }

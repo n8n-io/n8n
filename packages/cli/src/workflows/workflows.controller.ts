@@ -446,6 +446,8 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
 
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'update');
+
 		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } =
 			req.body;
@@ -500,6 +502,8 @@ export class WorkflowsController {
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'delete');
+
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to delete a workflow without permissions', {
@@ -521,6 +525,8 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'archive');
+
 		const workflow = await this.workflowService.archive(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to archive a workflow without permissions', {
@@ -544,6 +550,8 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'unarchive');
+
 		const workflow = await this.workflowService.unarchive(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to unarchive a workflow without permissions', {
@@ -568,6 +576,8 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ActivateWorkflowDto,
 	) {
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'activate');
+
 		const { versionId, name, description, expectedChecksum } = body;
 
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
@@ -587,6 +597,8 @@ export class WorkflowsController {
 	@ProjectScope('workflow:publish')
 	async deactivate(req: WorkflowRequest.Deactivate) {
 		const { workflowId } = req.params;
+
+		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'deactivate');
 
 		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
 
