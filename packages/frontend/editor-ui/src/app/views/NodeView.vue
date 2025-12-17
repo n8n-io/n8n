@@ -1609,6 +1609,10 @@ function checkIfEditingIsAllowed(): boolean {
 		return false;
 	}
 
+	if (collaborationStore.shouldBeReadOnly) {
+		return false;
+	}
+
 	if (isReadOnlyRoute.value || isReadOnlyEnvironment.value) {
 		const messageContext = isReadOnlyRoute.value ? 'executions' : 'workflows';
 		readOnlyNotification.value = toast.showMessage({

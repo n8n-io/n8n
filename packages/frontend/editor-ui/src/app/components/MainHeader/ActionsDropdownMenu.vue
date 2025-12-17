@@ -151,14 +151,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
-			disabled: !onWorkflowPage.value || props.workflowPermissions.update !== true,
+			disabled: !onWorkflowPage.value,
 		});
 	}
 
-	if (
-		(props.workflowPermissions.update === true && !props.readOnly && !props.isArchived) ||
-		props.isNewWorkflow
-	) {
+	if ((!props.readOnly && !props.isArchived) || props.isNewWorkflow) {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),

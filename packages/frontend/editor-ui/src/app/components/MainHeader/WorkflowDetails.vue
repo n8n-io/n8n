@@ -508,8 +508,8 @@ onBeforeUnmount(() => {
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
-							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
-							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							:read-only="readOnly || isArchived"
+							:disabled="readOnly || isArchived"
 							@update:model-value="onNameSubmit"
 						/>
 					</template>
@@ -519,11 +519,7 @@ onBeforeUnmount(() => {
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
-					v-if="
-						isTagsEditEnabled &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
+					v-if="isTagsEditEnabled && !(readOnly || isArchived)"
 					ref="dropdown"
 					v-model="appliedTagIds"
 					:event-bus="tagsEventBus"
@@ -533,13 +529,7 @@ onBeforeUnmount(() => {
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
-				<div
-					v-else-if="
-						(tags ?? []).length === 0 &&
-						!(readOnly || isArchived) &&
-						(isNewWorkflow || workflowPermissions.update)
-					"
-				>
+				<div v-else-if="(tags ?? []).length === 0 && !(readOnly || isArchived)">
 					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 						+ {{ i18n.baseText('workflowDetails.addTag') }}
 					</span>

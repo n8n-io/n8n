@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
@@ -23,6 +24,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
+import { getResourcePermissions } from '@n8n/permissions';
 
 import { N8nIcon } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
@@ -34,6 +36,7 @@ const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -72,7 +75,18 @@ const hideMenuBar = computed(() =>
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = computed(() => String(route.params.name || workflowsStore.workflowId));
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
-const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const workflowPermissions = computed(() => {
+	if (!workflow.value?.scopes) return {};
+	return getResourcePermissions(workflow.value.scopes).workflow;
+});
+
+const readOnly = computed(
+	() =>
+		sourceControlStore.preferences.branchReadOnly ||
+		collaborationStore.shouldBeReadOnly ||
+		workflowPermissions.value.update === false,
+);
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
