@@ -297,7 +297,7 @@ watch(
 		&:hover,
 		&[data-highlighted],
 		&.highlighted {
-			background-color: var(--color--background--light-1);
+			background-color: var(--color--foreground--tint-1);
 			cursor: pointer;
 		}
 	}
