@@ -9,11 +9,9 @@ test.use({
 });
 
 test.describe('Push resources to Git @capability:source-control', () => {
-	let repoUrl: string;
-
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		repoUrl = await setupGitRepo(n8n, n8nContainer);
+		await setupGitRepo(n8n, n8nContainer);
 
 		await n8n.goHome();
 		// Enable features required for project workflows and moving resources
