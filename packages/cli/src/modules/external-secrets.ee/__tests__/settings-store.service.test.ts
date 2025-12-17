@@ -221,7 +221,7 @@ describe('SettingsStore', () => {
 			expect(result.isNewProvider).toBe(true);
 			expect(result.settings['new-provider']).toMatchObject({
 				connected: false,
-				connectedAt: expect.any(Date),
+				connectedAt: null,
 				settings: { newKey: 'newValue' },
 			});
 		});
@@ -248,6 +248,25 @@ describe('SettingsStore', () => {
 			await store.updateProvider('dummy', { connected: false });
 
 			expect(settingsRepo.findByKey).toHaveBeenCalled();
+		});
+
+		it('should not mutate cache if save fails', async () => {
+			// Load initial settings into cache
+			await store.load();
+			const cachedBefore = store.getCached();
+			const initialConnectedValue = cachedBefore.dummy?.connected;
+
+			// Mock save to fail
+			settingsRepo.upsert.mockRejectedValueOnce(new Error('Database error'));
+
+			// Attempt to update provider (should fail)
+			await expect(
+				store.updateProvider('dummy', { connected: !initialConnectedValue }),
+			).rejects.toThrow('Database error');
+
+			// Verify cache was not mutated
+			const cachedAfter = store.getCached();
+			expect(cachedAfter.dummy?.connected).toBe(initialConnectedValue);
 		});
 	});
 
@@ -312,6 +331,24 @@ describe('SettingsStore', () => {
 				connected: false,
 				settings: { key2: 'value2' },
 			});
+		});
+
+		it('should not mutate cache if save fails', async () => {
+			// Load initial settings into cache
+			await store.load();
+			const cachedBefore = store.getCached();
+			expect(cachedBefore.dummy).toBeDefined();
+
+			// Mock save to fail
+			settingsRepo.upsert.mockRejectedValueOnce(new Error('Database error'));
+
+			// Attempt to remove provider (should fail)
+			await expect(store.removeProvider('dummy')).rejects.toThrow('Database error');
+
+			// Verify cache still has the provider
+			const cachedAfter = store.getCached();
+			expect(cachedAfter.dummy).toBeDefined();
+			expect(cachedAfter.dummy?.connected).toBe(cachedBefore.dummy?.connected);
 		});
 	});
 

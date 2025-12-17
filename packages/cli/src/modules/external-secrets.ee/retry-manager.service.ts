@@ -28,6 +28,9 @@ export class ExternalSecretsRetryManager {
 		key: string,
 		operation: RetryOperation,
 	): Promise<{ success: boolean; error?: Error }> {
+		// Cancel any existing retry - a new manual attempt supersedes scheduled retries
+		this.cancelRetry(key);
+
 		const result = await operation();
 		if (result.success) {
 			return result;
@@ -45,12 +48,9 @@ export class ExternalSecretsRetryManager {
 		key: string,
 		operation: RetryOperation,
 		currentBackoff = EXTERNAL_SECRETS_INITIAL_BACKOFF,
+		attempt = 0,
 	): void {
-		// Cancel any existing retry for this key
-		this.cancelRetry(key);
-
 		const nextBackoff = Math.min(currentBackoff * 2, EXTERNAL_SECRETS_MAX_BACKOFF);
-		const attempt = this.retries.get(key)?.attempt ?? 0;
 
 		const timeout = setTimeout(async () => {
 			this.logger.debug(`Retrying operation for ${key} (attempt ${attempt + 1})`);
@@ -63,7 +63,7 @@ export class ExternalSecretsRetryManager {
 			}
 
 			this.logger.error(`Retry failed for ${key}`, { error: result.error });
-			this.scheduleRetry(key, operation, nextBackoff);
+			this.scheduleRetry(key, operation, nextBackoff, attempt + 1);
 		}, currentBackoff);
 
 		this.retries.set(key, {

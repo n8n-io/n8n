@@ -81,12 +81,14 @@ export class ExternalSecretsSettingsStore {
 		providerName: string,
 		partialSettings: Partial<SecretsProviderSettings>,
 	): Promise<{ settings: ExternalSecretsSettings; isNewProvider: boolean }> {
-		const settings = await this.reload();
+		const loadedSettings = await this.reload();
+		// Create a shallow copy to avoid mutating the cache before save
+		const settings = { ...loadedSettings };
 		const isNewProvider = !(providerName in settings);
 
 		const defaultValues: SecretsProviderSettings = {
 			connected: false,
-			connectedAt: new Date(),
+			connectedAt: null,
 			settings: {},
 		};
 
@@ -112,7 +114,9 @@ export class ExternalSecretsSettingsStore {
 	 * Remove a provider from settings
 	 */
 	async removeProvider(providerName: string): Promise<void> {
-		const settings = await this.load();
+		const loadedSettings = await this.load();
+		// Create a shallow copy to avoid mutating the cache before save
+		const settings = { ...loadedSettings };
 		delete settings[providerName];
 		await this.save(settings);
 	}
