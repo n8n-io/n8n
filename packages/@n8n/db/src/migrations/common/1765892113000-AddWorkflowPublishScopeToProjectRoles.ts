@@ -9,8 +9,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  *
  * This migration:
  * 1. Ensures the workflow:publish scope exists in the scope table
- * 2. Finds all project roles with workflow:update scope
- * 3. Grants workflow:publish to those roles
+ * 2. Finds all project roles with workflow:update scope and grants workflow:publish to them
  *
  * Both system roles (managed by code) and custom roles (user-created) are updated.
  */
@@ -41,50 +40,25 @@ export class AddWorkflowPublishScopeToProjectRoles1765892113000 implements Rever
 
 		logger.debug('Ensured workflow:publish scope exists');
 
-		// Step 2: Find eligible project roles
-		const findEligibleRolesQuery = `
-			SELECT DISTINCT role.${roleSlugColumn} as roleSlug
-			FROM ${roleTableName} role
-			INNER JOIN ${roleScopeTableName} role_scope
-				ON role.${roleSlugColumn} = role_scope.${roleScopeRoleSlugColumn}
-			WHERE role.${roleTypeColumn} = :roleType
-				AND role_scope.${roleScopeScopeSlugColumn} = :updateScope
-				AND NOT EXISTS (
-					SELECT 1
-					FROM ${roleScopeTableName} role_scope_check
-					WHERE role_scope_check.${roleScopeRoleSlugColumn} = role.${roleSlugColumn}
-						AND role_scope_check.${roleScopeScopeSlugColumn} = :publishScope
-				)
-		`;
+		// Step 2: Add workflow:publish to eligible project roles (batch operation)
+		const batchInsertQuery = `
+		INSERT INTO ${roleScopeTableName} (${roleScopeRoleSlugColumn}, ${roleScopeScopeSlugColumn})
+		SELECT DISTINCT role.${roleSlugColumn}, :publishScope
+		FROM ${roleTableName} role
+		INNER JOIN ${roleScopeTableName} role_scope
+			ON role.${roleSlugColumn} = role_scope.${roleScopeRoleSlugColumn}
+		WHERE role.${roleTypeColumn} = :roleType
+			AND role_scope.${roleScopeScopeSlugColumn} = :updateScope
+		ON CONFLICT (${roleScopeRoleSlugColumn}, ${roleScopeScopeSlugColumn}) DO NOTHING
+	`;
 
-		const rolesToMigrate = await runQuery<Array<{ roleSlug: string }>>(findEligibleRolesQuery, {
+		await runQuery(batchInsertQuery, {
 			roleType: 'project',
 			updateScope: 'workflow:update',
 			publishScope: 'workflow:publish',
 		});
 
-		logger.info(`Found ${rolesToMigrate.length} project roles requiring workflow:publish scope`);
-
-		if (rolesToMigrate.length === 0) {
-			logger.info('No project roles require workflow:publish scope - migration is a no-op');
-			return;
-		}
-
-		// Step 3: Add workflow:publish to eligible roles
-		const insertRoleScopeQuery = `
-			INSERT INTO ${roleScopeTableName} (${roleScopeRoleSlugColumn}, ${roleScopeScopeSlugColumn})
-         	VALUES (:roleSlug, :scopeSlug)
-         	ON CONFLICT (${roleScopeRoleSlugColumn}, ${roleScopeScopeSlugColumn}) DO NOTHING
-		`;
-
-		for (const role of rolesToMigrate) {
-			await runQuery(insertRoleScopeQuery, {
-				roleSlug: role.roleSlug,
-				scopeSlug: 'workflow:publish',
-			});
-		}
-
-		logger.info(`Added workflow:publish scope to ${rolesToMigrate.length} project roles`);
+		logger.info('Added workflow:publish scope to project roles with workflow:update');
 	}
 
 	async down({ escape, runQuery, logger }: MigrationContext) {
