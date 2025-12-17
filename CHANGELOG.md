@@ -1,3 +1,13 @@
+## [1.123.7](https://github.com/n8n-io/n8n/compare/n8n@1.123.6...n8n@1.123.7) (2025-12-17)
+
+
+### Bug Fixes
+
+* **core:** Error running evaluations in queue mode ([#23341](https://github.com/n8n-io/n8n/issues/23341)) ([e6fe97c](https://github.com/n8n-io/n8n/commit/e6fe97cb31f302b9170360abfb55913511dfd650))
+* Only support specified git config keys in Git node ([#23346](https://github.com/n8n-io/n8n/issues/23346)) ([5102991](https://github.com/n8n-io/n8n/commit/5102991310eb827066dd6573c69034f837fa68f7))
+
+
+
 ## [1.123.6](https://github.com/n8n-io/n8n/compare/n8n@1.123.5...n8n@1.123.6) (2025-12-15)
 
 
