@@ -246,11 +246,14 @@ export async function setupCaddyLoadBalancer({
 	projectName,
 	mainCount,
 	network,
+	hostPort,
 }: {
 	caddyImage?: string;
 	projectName: string;
 	mainCount: number;
 	network: StartedNetwork;
+	/** Optional pre-allocated host port (for OIDC callback URL consistency) */
+	hostPort?: number;
 }): Promise<StartedTestContainer> {
 	// Generate upstream server addresses
 	const upstreamServers = Array.from(
@@ -266,7 +269,7 @@ export async function setupCaddyLoadBalancer({
 	try {
 		return await new GenericContainer(caddyImage)
 			.withNetwork(network)
-			.withExposedPorts(80)
+			.withExposedPorts(hostPort ? { container: 80, host: hostPort } : 80)
 			.withCopyContentToContainer([{ content: caddyConfig, target: '/etc/caddy/Caddyfile' }])
 			.withWaitStrategy(Wait.forListeningPorts())
 			.withLabels({

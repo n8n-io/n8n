@@ -62,4 +62,10 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_HOOKS')
 	enableGitNodeHooks: boolean = false;
+
+	/**
+	 * Whether to enable arbitrary git config keys.
+	 */
+	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
+	enableGitNodeAllConfigKeys: boolean = false;
 }
