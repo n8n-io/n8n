@@ -68,7 +68,8 @@ export class WorkflowValidationService {
 
 		for (const node of executeWorkflowNodes) {
 			const workflowId = this.extractWorkflowId(node);
-			const source = node.parameters?.source as string | undefined;
+			const source: string | undefined =
+				typeof node.parameters?.source === 'string' ? node.parameters.source : undefined;
 
 			if (this.shouldSkipSubWorkflowValidation(workflowId, source)) {
 				continue;
@@ -108,14 +109,21 @@ export class WorkflowValidationService {
 	}
 
 	/**
+	 * Type guard to check if a value is an object with a value property.
+	 */
+	private hasValueProperty(obj: unknown): obj is { value?: string } {
+		return typeof obj === 'object' && obj !== null && 'value' in obj;
+	}
+
+	/**
 	 * Extracts the workflow ID from an Execute Workflow node's parameters.
 	 * Handles both old format (string) and new format (object with value property).
 	 */
 	private extractWorkflowId(node: INode): string | undefined {
 		const workflowIdParam = node.parameters?.workflowId;
 
-		if (typeof workflowIdParam === 'object' && workflowIdParam !== null) {
-			return (workflowIdParam as { value?: string }).value;
+		if (this.hasValueProperty(workflowIdParam)) {
+			return workflowIdParam.value;
 		}
 
 		if (typeof workflowIdParam === 'string') {
