@@ -60,7 +60,7 @@ import {
 	createAiMessageFromStreamingState,
 	flattenModel,
 	createHumanMessageFromStreamingState,
-	promisifyStreamingEndpoint,
+	promisifyStreamingApi,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -556,7 +556,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			agent,
 		};
 
-		await promisifyStreamingEndpoint(sendMessageApi)(
+		await promisifyStreamingApi(sendMessageApi)(
 			rootStore.restApiContext,
 			{
 				model: agent.model,
@@ -617,7 +617,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			attachments: [],
 		};
 
-		await promisifyStreamingEndpoint(editMessageApi)(
+		await promisifyStreamingApi(editMessageApi)(
 			rootStore.restApiContext,
 			{ sessionId, editId, payload },
 			onStreamMessage,
@@ -662,7 +662,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			attachments: [],
 		};
 
-		await promisifyStreamingEndpoint(regenerateMessageApi)(
+		await promisifyStreamingApi(regenerateMessageApi)(
 			rootStore.restApiContext,
 			{ sessionId, retryId, payload },
 			onStreamMessage,

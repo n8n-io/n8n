@@ -410,7 +410,10 @@ type StreamApi<T> = (
 	onError: (e: unknown) => void,
 ) => void;
 
-export function promisifyStreamingEndpoint<T>(
+/**
+ * Converts streaming API to return a promise that resolves when the first chunk is received.
+ */
+export function promisifyStreamingApi<T>(
 	streamingApi: StreamApi<T>,
 ): (...args: Parameters<StreamApi<T>>) => Promise<void> {
 	return async (ctx, payload, onChunk, onDone, onError) => {
