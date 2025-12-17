@@ -234,7 +234,7 @@ test.describe('@isolated', () => {
 
 			await n8n.sideBar.clickHomeButton();
 			await n8n.workflows.clickNewWorkflowCard();
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test workflow');
+			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Sharing Test Workflow');
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.sideBar.clickHomeButton();
@@ -261,7 +261,7 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.close();
 
 			await n8n.projectTabs.clickWorkflowsTab();
-			await n8n.workflows.shareWorkflow('Test workflow');
+			await n8n.workflows.shareWorkflow('Sharing Test Workflow');
 
 			await n8n.workflowSharingModal.getUsersSelect().click();
 			const workflowSharingDropdown = n8n.workflowSharingModal.getVisibleDropdown();
