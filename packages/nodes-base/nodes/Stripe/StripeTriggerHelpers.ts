@@ -31,6 +31,15 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 		return false;
 	}
 
+	// Verify timestamp
+	const currentTimestamp = Math.floor(Date.now() / 1000);
+	const webhookTimestamp = parseInt(timestamp, 10);
+	const TIMESTAMP_TOLERANCE_SECONDS = 300; // 5 minutes
+
+	if (Math.abs(currentTimestamp - webhookTimestamp) > TIMESTAMP_TOLERANCE_SECONDS) {
+		return false;
+	}
+
 	try {
 		if (typeof credential.signatureSecret !== 'string') {
 			return false;
