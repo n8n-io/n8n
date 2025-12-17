@@ -7,7 +7,6 @@ import {
 	FORM_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -93,6 +92,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { hasRole } from '@/app/utils/rbac/checks';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -367,6 +367,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	});
 
+	const canViewWorkflows = computed(
+		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
+	);
+
 	/**
 	 * Sets the active execution id
 	 *
@@ -518,7 +522,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					// we use the information available to figure out what are trigger nodes
 					// @ts-ignore
 					trigger:
-						(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
+						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
 							nodeTypeDescription.inputs.length === 0 &&
 							!nodeTypeDescription.webhooks) ||
 						undefined,
@@ -640,7 +644,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			isArchived?: boolean;
 			parentFolderId?: string;
 			availableInMCP?: boolean;
-			triggerNodeType?: string;
+			triggerNodeTypes?: string[];
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
@@ -683,7 +687,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		tags,
 		select,
 		isArchived,
-		triggerNodeType,
+		triggerNodeTypes,
 	}: {
 		projectId?: string;
 		query?: string;
@@ -691,7 +695,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		tags?: string[];
 		select?: string[];
 		isArchived?: boolean;
-		triggerNodeType?: string;
+		triggerNodeTypes?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
@@ -699,7 +703,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeTypes,
 			tags,
 			isArchived,
-			triggerNodeType,
+			triggerNodeTypes,
 		};
 
 		// Check if filter has meaningful values (not just undefined, null, or empty arrays/strings)
@@ -2106,6 +2110,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
 		getWebhookUrl,
+		canViewWorkflows,
 		defaults,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
