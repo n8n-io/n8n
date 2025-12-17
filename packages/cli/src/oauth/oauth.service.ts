@@ -181,7 +181,7 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(data: CreateCsrfStateData): [string, string] {
+	createCsrfState(data: CreateCsrfStateData): [string, string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfState = {
@@ -189,8 +189,10 @@ export class OauthService {
 			createdAt: Date.now(),
 			...data,
 		};
+
+		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
 		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
-		return [csrfSecret, encryptedState];
+		return [csrfSecret, encryptedState, base64State];
 	}
 
 	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
@@ -369,7 +371,7 @@ export class OauthService {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState(csrfData);
+		const [csrfSecret, state, base64State] = this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -380,7 +382,7 @@ export class OauthService {
 			oAuthOptions.query = qs.parse(oauthCredentials.authQueryParameters);
 		}
 
-		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+		await this.externalHooks.run('oauth2.authenticate', [{ ...oAuthOptions, state: base64State }]);
 
 		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
@@ -576,6 +578,7 @@ export class OauthService {
 		credentialResolverId: string,
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(oauthTokenData, ['csrfSecret']);
 
 		const credentialStoreMetadata: CredentialStoreMetadata = {
 			id: credential.id,
