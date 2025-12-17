@@ -270,7 +270,10 @@ watch(
 	</div>
 </template>
 
-<style module>
+<style module lang="scss">
+// According to figma
+$menu_width: 180px;
+
 .wrapper {
 	display: contents;
 }
@@ -285,7 +288,8 @@ watch(
 	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
-	min-height: var(--spacing--lg);
+	height: var(--spacing--xl);
+	max-width: $menu_width;
 	padding: var(--spacing--2xs);
 	position: relative;
 	user-select: none;
@@ -340,6 +344,9 @@ watch(
 
 .item-label {
 	flex-grow: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .item-check,
