@@ -24,6 +24,7 @@ import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { isDebouncedFunction } from '@/app/utils/typeGuards';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -465,7 +466,9 @@ export function useWorkflowSaving({
 	};
 
 	const cancelAutoSave = () => {
-		(autoSaveWorkflowDebounced as { cancel?: () => void }).cancel?.();
+		if (isDebouncedFunction(autoSaveWorkflowDebounced)) {
+			autoSaveWorkflowDebounced.cancel();
+		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
 
