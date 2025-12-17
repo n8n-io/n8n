@@ -773,6 +773,121 @@ export const SearchableSubmenu: Story = {
 	},
 };
 
+export const LazyLoadingSubmenu: Story = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			// Define all possible children upfront (simulates API response)
+			const allRecentFiles = [
+				{ id: 'doc1', label: 'Project Proposal.docx' },
+				{ id: 'doc2', label: 'Meeting Notes.md' },
+				{ id: 'doc3', label: 'Budget 2024.xlsx' },
+				{ id: 'doc4', label: 'Presentation.pptx' },
+			];
+
+			const allSharedFiles = [
+				{ id: 'shared1', label: 'Team Roadmap' },
+				{ id: 'shared2', label: 'Design Assets' },
+			];
+
+			// Track loading states - start as true so skeleton shows on first hover
+			const recentFilesLoading = ref(true);
+			const recentFilesChildren = ref([] as typeof allRecentFiles);
+
+			const sharedLoading = ref(true);
+			const sharedChildren = ref([] as typeof allSharedFiles);
+
+			// Simulates fetching recent files from an API
+			const fetchRecentFiles = () => {
+				console.log('Fetching recent files...');
+				setTimeout(() => {
+					recentFilesChildren.value = allRecentFiles;
+					recentFilesLoading.value = false;
+					console.log('Recent files loaded!');
+				}, 500);
+			};
+
+			// Simulates fetching shared files from an API
+			const fetchSharedFiles = () => {
+				console.log('Fetching shared files...');
+				setTimeout(() => {
+					sharedChildren.value = allSharedFiles;
+					sharedLoading.value = false;
+					console.log('Shared files loaded!');
+				}, 500);
+			};
+
+			// Reset state when dropdown closes
+			const handleOpenChange = (open: boolean) => {
+				if (!open) {
+					// Reset state when dropdown closes so loading shows again next time
+					recentFilesLoading.value = true;
+					recentFilesChildren.value = [];
+					sharedLoading.value = true;
+					sharedChildren.value = [];
+				}
+			};
+
+			// Fetch data when specific submenu opens
+			const handleSubmenuToggle = (itemId: string, open: boolean) => {
+				console.log('Submenu toggle:', itemId, open);
+				if (!open) return;
+
+				if (itemId === 'recent' && recentFilesLoading.value) {
+					fetchRecentFiles();
+				} else if (itemId === 'shared' && sharedLoading.value) {
+					fetchSharedFiles();
+				}
+			};
+
+			const items = computed(() => [
+				{ id: 'new', label: 'New File', icon: { type: 'icon', value: 'plus' } },
+				{
+					id: 'recent',
+					label: 'Recent Files',
+					icon: { type: 'icon', value: 'clock' },
+					loading: recentFilesLoading.value,
+					loadingItemCount: 4,
+					children: recentFilesChildren.value,
+				},
+				{
+					id: 'shared',
+					label: 'Shared With Me',
+					icon: { type: 'icon', value: 'users' },
+					loading: sharedLoading.value,
+					loadingItemCount: 2,
+					children: sharedChildren.value,
+				},
+				{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'cog' }, divided: true },
+			]);
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			return { items, handleSelect, handleOpenChange, handleSubmenuToggle };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
+				Open the dropdown and hover over "Recent Files" or "Shared With Me" to see lazy loading in action.
+				Each submenu fetches its content independently when hovered.
+			</p>
+			<DropdownMenu
+				:items="items"
+				@select="handleSelect"
+				@update:model-value="handleOpenChange"
+				@submenu:toggle="handleSubmenuToggle"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
 export const EmptyState: Story = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({

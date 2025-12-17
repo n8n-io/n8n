@@ -36,6 +36,7 @@ const emit = defineEmits<{
 	'update:modelValue': [open: boolean];
 	select: [value: T];
 	search: [searchTerm: string, itemId?: T];
+	'submenu:toggle': [itemId: T, open: boolean];
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T>>();
@@ -133,6 +134,11 @@ const handleContentKeydown = (event: KeyboardEvent) => {
 };
 
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
+	const item = props.items[index];
+	if (item) {
+		emit('submenu:toggle', item.id, open);
+	}
+
 	if (open) {
 		openSubMenuIndex.value = index;
 		navigation.reset();

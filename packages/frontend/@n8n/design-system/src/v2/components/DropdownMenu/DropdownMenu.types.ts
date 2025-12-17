@@ -94,6 +94,8 @@ export interface DropdownMenuEmits<T = string> {
 	(e: 'select', value: T): void;
 	/** Emitted when search input value changes (debounced). itemId is undefined for root-level search, or the item's ID for sub-menu search */
 	(e: 'search', searchTerm: string, itemId?: T): void;
+	/** Emitted when a sub-menu opens or closes */
+	(e: 'submenu:toggle', itemId: T, open: boolean): void;
 }
 
 type SlotUiProps = { class: string };

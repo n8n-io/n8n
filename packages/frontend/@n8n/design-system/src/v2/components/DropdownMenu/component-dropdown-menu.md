@@ -38,6 +38,7 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `update:modelValue(open: boolean)` Emitted when dropdown open state changes
 - `select(value: T)` Emitted when a menu item is selected
 - `search(searchTerm: string, itemId?: T)` Emitted when search input changes (debounced). `itemId` is undefined for root-level search, or the item's ID for sub-menu search
+- `submenu:toggle(itemId: T, open: boolean)` Emitted when a sub-menu opens or closes. Useful for lazy loading sub-menu content
 
 **Exposed Methods**
 
@@ -307,6 +308,53 @@ onMounted(async () => {
     :items="items"
     :loading="loading"
     :loading-item-count="5"
+  />
+</template>
+```
+
+**Lazy loading sub-menu items**
+
+```vue
+<script setup lang="ts">
+const recentFilesLoading = ref(true)
+const recentFiles = ref([])
+
+const items = computed(() => [
+  { id: 'new', label: 'New File', icon: { type: 'icon', value: 'plus' } },
+  {
+    id: 'recent',
+    label: 'Recent Files',
+    icon: { type: 'icon', value: 'clock' },
+    loading: recentFilesLoading.value,
+    loadingItemCount: 4,
+    children: recentFiles.value
+  },
+  { id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'cog' } }
+])
+
+const handleSubmenuToggle = async (itemId: string, open: boolean) => {
+  // Only fetch when sub-menu opens and data hasn't been loaded
+  if (itemId === 'recent' && open && recentFilesLoading.value) {
+    recentFiles.value = await fetchRecentFiles()
+    recentFilesLoading.value = false
+  }
+}
+
+// Reset on dropdown close to show loading again next time
+const handleOpenChange = (open: boolean) => {
+  if (!open) {
+    recentFilesLoading.value = true
+    recentFiles.value = []
+  }
+}
+</script>
+
+<template>
+  <N8nDropdownMenu
+    :items="items"
+    @select="handleSelect"
+    @update:model-value="handleOpenChange"
+    @submenu:toggle="handleSubmenuToggle"
   />
 </template>
 ```
