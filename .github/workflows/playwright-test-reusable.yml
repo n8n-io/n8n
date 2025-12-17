@@ -55,7 +55,6 @@ on:
         required: false
 
 env:
-  PLAYWRIGHT_BROWSERS_PATH: ms-playwright-cache
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
@@ -77,7 +76,7 @@ jobs:
         shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7, 8]') }}
     name: Test (Machine ${{ matrix.shard }})
     env:
-      CURRENTS_PROJECT_ID: I0yzoc
+      CURRENTS_PROJECT_ID: qyhJh8
       CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
       CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
       CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}

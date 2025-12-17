@@ -2,7 +2,7 @@ import type { CurrentsConfig } from '@currents/playwright';
 
 const config: CurrentsConfig = {
 	recordKey: process.env.CURRENTS_RECORD_KEY ?? '',
-	projectId: process.env.CURRENTS_PROJECT_ID ?? 'I0yzoc',
+	projectId: process.env.CURRENTS_PROJECT_ID ?? 'qyhJh8',
 	ciBuildId: `${process.env.GITHUB_REPOSITORY}-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`,
 	orchestration: {
 		batchSize: 4,
