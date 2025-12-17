@@ -21,6 +21,7 @@ describe('prepareReturnItem', () => {
 
 	const mockContext = mock<IExecuteFunctions>({
 		getNodeParameter: jest.fn(),
+		getWorkflowSettings: () => ({}),
 		helpers: {
 			assertBinaryData: jest.fn(),
 		},

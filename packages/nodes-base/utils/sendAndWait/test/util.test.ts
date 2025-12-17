@@ -17,6 +17,7 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getWorkflowSettings = jest.fn().mockReturnValue({});
 	});
 
 	describe('getSendAndWaitProperties', () => {
