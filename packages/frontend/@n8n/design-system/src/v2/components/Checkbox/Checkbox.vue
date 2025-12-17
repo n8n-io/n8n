@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
+import { reactiveOmit, reactivePick } from '@vueuse/core';
 import { CheckboxIndicator, CheckboxRoot, Label, Primitive, useForwardProps } from 'reka-ui';
-import { computed, useId } from 'vue';
+import { computed, useAttrs, useId } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -19,6 +19,10 @@ const rootProps = useForwardProps(reactivePick(props, 'required', 'value', 'defa
 const modelValue = defineModel<boolean>({ default: undefined });
 const computedValue = computed(() => (props.indeterminate ? 'indeterminate' : modelValue.value));
 
+const attrs = useAttrs();
+const primitiveClass = computed(() => attrs.class);
+const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+
 function onUpdate(value: boolean | 'indeterminate') {
 	// @ts-expect-error - 'target' does not exist in type 'EventInit'
 	emit('change', new Event('change', { target: { value } }));
@@ -29,12 +33,12 @@ function onUpdate(value: boolean | 'indeterminate') {
 <template>
 	<Primitive
 		:as
-		:class="[$style.checkbox, $attrs.class]"
+		:class="[$style.checkbox, primitiveClass]"
 		:data-disabled="disabled ? '' : undefined"
 	>
 		<CheckboxRoot
 			:id="uuid"
-			v-bind="rootProps"
+			v-bind="{ ...rootProps, ...rootAttrs }"
 			:model-value="computedValue"
 			:name="name"
 			:disabled="disabled"
