@@ -158,7 +158,7 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	it('should emit "update" when sticky note color is changed', async () => {
-		const { getAllByTestId, getByTestId, emitted } = renderComponent({
+		const { getByTestId, emitted } = renderComponent({
 			pinia,
 			global: {
 				provide: {
@@ -176,7 +176,13 @@ describe('CanvasNodeToolbar', () => {
 		});
 
 		await userEvent.click(getByTestId('change-sticky-color'));
-		await userEvent.click(getAllByTestId('color')[0]);
+
+		// Use screen queries for teleported popover content
+		await waitFor(() => {
+			expect(screen.getAllByTestId('color')).toHaveLength(7);
+		});
+
+		await userEvent.click(screen.getAllByTestId('color')[0]);
 
 		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
 	});

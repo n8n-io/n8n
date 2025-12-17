@@ -181,6 +181,15 @@ export type RelayEventMap = {
 		fieldsChanged: string[];
 	};
 
+	'user-mfa-enabled': {
+		user: UserLike;
+	};
+
+	'user-mfa-disabled': {
+		user: UserLike;
+		disableMethod: 'mfaCode' | 'recoveryCode';
+	};
+
 	'user-signed-up': {
 		user: UserLike;
 		userType: AuthProviderType;
