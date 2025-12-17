@@ -333,6 +333,7 @@ export class ExecutionService {
 				role: req.user.role,
 			},
 			executionIds: ids ?? [],
+			deleteBefore,
 		});
 	}
 

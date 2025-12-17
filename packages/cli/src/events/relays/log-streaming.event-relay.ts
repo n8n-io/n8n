@@ -537,10 +537,14 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private executionDeleted({ user, executionIds }: RelayEventMap['execution-deleted']) {
+	private executionDeleted({
+		user,
+		executionIds,
+		deleteBefore,
+	}: RelayEventMap['execution-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.execution.deleted',
-			payload: { ...user, executionIds },
+			payload: { ...user, executionIds, deleteBefore: deleteBefore?.toISOString() },
 		});
 	}
 

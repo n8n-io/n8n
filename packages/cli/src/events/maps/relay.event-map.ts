@@ -415,6 +415,7 @@ export type RelayEventMap = {
 	'execution-deleted': {
 		user: UserLike;
 		executionIds: string[];
+		deleteBefore?: Date;
 	};
 
 	'workflow-executed': {

@@ -1359,6 +1359,7 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'User',
 					globalRole: 'global:owner',
 					executionIds: ['exec1', 'exec2'],
+					deleteBefore: undefined,
 				},
 			});
 		});
@@ -1386,6 +1387,7 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'Deleter',
 					globalRole: 'global:member',
 					executionIds: ['exec-single'],
+					deleteBefore: undefined,
 				},
 			});
 		});
@@ -1413,6 +1415,37 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'Deleter',
 					globalRole: 'global:owner',
 					executionIds: [],
+					deleteBefore: undefined,
+				},
+			});
+		});
+
+		it('should log on `execution-deleted` event with deleteBefore date filter', () => {
+			const deleteBefore = new Date('2024-01-01T00:00:00.000Z');
+			const event: RelayEventMap['execution-deleted'] = {
+				user: {
+					id: 'user999',
+					email: 'datefilter@example.com',
+					firstName: 'Date',
+					lastName: 'Filter',
+					role: { slug: 'global:owner' },
+				},
+				executionIds: [],
+				deleteBefore,
+			};
+
+			eventService.emit('execution-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.execution.deleted',
+				payload: {
+					userId: 'user999',
+					_email: 'datefilter@example.com',
+					_firstName: 'Date',
+					_lastName: 'Filter',
+					globalRole: 'global:owner',
+					executionIds: [],
+					deleteBefore: '2024-01-01T00:00:00.000Z',
 				},
 			});
 		});
