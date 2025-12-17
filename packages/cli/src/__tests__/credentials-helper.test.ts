@@ -565,11 +565,8 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
-			expect(call[2]).toBe(additionalDataWithoutContext);
-			expect(call[2].executionContext).toBeUndefined();
-			expect(call[3]).toBe('manual');
-			expect(call[4]).toBe(false); // canUseExternalSecrets
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
 		test('should skip resolution when credentials context is missing', async () => {
