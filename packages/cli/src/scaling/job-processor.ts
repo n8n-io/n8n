@@ -26,7 +26,10 @@ import type {
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import {
+	getWorkflowActiveStatusFromWorkflowData,
+	isManualOrChatExecution,
+} from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -128,7 +131,7 @@ export class JobProcessor {
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		// Use draft sub-workflows for manual/chat executions
-		additionalData.useDraftSubWorkflows = ['manual', 'chat'].includes(execution.mode);
+		additionalData.useDraftSubWorkflows = isManualOrChatExecution(execution.mode);
 
 		const { pushRef } = job.data;
 

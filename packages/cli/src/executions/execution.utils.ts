@@ -13,3 +13,14 @@ import type { IWorkflowBase } from 'n8n-workflow';
 export function getWorkflowActiveStatusFromWorkflowData(workflowData: IWorkflowBase): boolean {
 	return !!workflowData.activeVersionId || workflowData.active;
 }
+
+/**
+ * Determines if an execution mode is manual or chat.
+ *
+ * Manual and chat executions use draft sub-workflows to enable
+ * iterating on sub-workflows without requiring them to be published.
+ *
+ */
+export function isManualOrChatExecution(executionMode: string): boolean {
+	return ['manual', 'chat'].includes(executionMode);
+}
