@@ -220,11 +220,13 @@ defineExpose({ open, close });
 				:id="id"
 				ref="contentRef"
 				:class="[$style.content, extraPopperClass]"
+				data-menu-content
 				:side="placementParts.side"
 				:align="placementParts.align"
 				:side-offset="5"
 				:style="contentStyle"
 				@keydown="handleContentKeydown"
+				@mouseleave="navigation.reset"
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>

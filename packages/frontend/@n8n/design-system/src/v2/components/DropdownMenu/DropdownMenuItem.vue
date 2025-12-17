@@ -17,7 +17,7 @@ import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigati
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
-const SUBMENU_FOCUS_DELAY = 10;
+const SUBMENU_FOCUS_DELAY = 30;
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -306,14 +306,14 @@ watch(
 		cursor: not-allowed;
 	}
 
-	:global([data-menu-items]:hover) &.highlighted:not(:hover) {
+	:global([data-menu-content]:hover) &.highlighted:not(:hover) {
 		background-color: transparent;
 	}
 }
 
 .sub-trigger {
 	&[data-state='open'] {
-		background-color: var(--color--background--light-1);
+		background-color: var(--color--foreground--tint-1);
 	}
 }
 
