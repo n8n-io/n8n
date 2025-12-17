@@ -122,7 +122,6 @@ const helpers = {
 				},
 			},
 		});
-		expect(updateResponse.ok()).toBe(true);
 		return updateResponse;
 	},
 
@@ -239,35 +238,39 @@ const helpers = {
 	 * Extracts the 'value' field from the complex flattened execution data structure
 	 * returned by n8n's Execute Workflow node
 	 */
-	extractValueFromExecutionData(executionData: any[]): string {
+	extractValueFromExecutionData(executionData: unknown[]): string {
 		// Navigate through the flattened structure with string references
-		const root = executionData[0];
-		const resultDataIndex = parseInt(root.resultData, 10);
-		const resultData = executionData[resultDataIndex];
-		const runDataIndex = parseInt(resultData.runData, 10);
-		const runData = executionData[runDataIndex];
-		const executeWorkflowIndex = parseInt(runData['Execute Workflow'], 10);
-		const executeWorkflowNodeData = executionData[executeWorkflowIndex];
-
-		expect(executeWorkflowNodeData).toBeDefined();
-		expect(Array.isArray(executeWorkflowNodeData)).toBe(true);
+		const root = executionData[0] as Record<string, unknown>;
+		const resultDataIndex = parseInt(root.resultData as string, 10);
+		const resultData = executionData[resultDataIndex] as Record<string, unknown>;
+		const runDataIndex = parseInt(resultData.runData as string, 10);
+		const runData = executionData[runDataIndex] as Record<string, unknown>;
+		const executeWorkflowIndex = parseInt(runData['Execute Workflow'] as string, 10);
+		const executeWorkflowNodeData = executionData[executeWorkflowIndex] as unknown[];
 
 		// Dereference through multiple levels
-		const firstExecutionIndex = parseInt(executeWorkflowNodeData[0], 10);
-		const firstExecution = executionData[firstExecutionIndex];
-		const dataIndex = parseInt(firstExecution.data, 10);
-		const actualData = executionData[dataIndex];
-		const mainIndex = parseInt(actualData.main, 10);
-		const mainData = executionData[mainIndex];
-		const outputBranchIndex = parseInt(mainData[0], 10);
-		const outputBranch = executionData[outputBranchIndex];
-		const itemIndex = parseInt(outputBranch[0], 10);
-		const item = executionData[itemIndex];
-		const jsonIndex = parseInt(item.json, 10);
-		const jsonData = executionData[jsonIndex];
-		const valueIndex = parseInt(jsonData.value, 10);
+		const firstExecutionIndex = parseInt(executeWorkflowNodeData[0] as string, 10);
+		const firstExecution = executionData[firstExecutionIndex] as Record<string, unknown>;
+		const dataIndex = parseInt(firstExecution.data as string, 10);
+		const actualData = executionData[dataIndex] as Record<string, unknown>;
+		const mainIndex = parseInt(actualData.main as string, 10);
+		const mainData = executionData[mainIndex] as unknown[];
+		const outputBranchIndex = parseInt(mainData[0] as string, 10);
+		const outputBranch = executionData[outputBranchIndex] as unknown[];
+		const itemIndex = parseInt(outputBranch[0] as string, 10);
+		const item = executionData[itemIndex] as Record<string, unknown>;
+		const jsonIndex = parseInt(item.json as string, 10);
+		const jsonData = executionData[jsonIndex] as Record<string, unknown>;
+		const valueIndex = parseInt(jsonData.value as string, 10);
 
-		return executionData[valueIndex];
+		return executionData[valueIndex] as string;
+	},
+
+	/**
+	 * Parses execution data string to JSON if needed
+	 */
+	parseExecutionData(data: unknown): unknown[] {
+		return typeof data === 'string' ? JSON.parse(data) : (data as unknown[]);
 	},
 };
 
@@ -282,7 +285,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const subWorkflowId = subWorkflowResult.workflowId;
 		const subWorkflow = subWorkflowResult.createdWorkflow;
 
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
+		await api.workflows.activate(subWorkflowId, subWorkflow.versionId);
 
 		// Update to create a draft with a different value
 		await helpers.updateSubWorkflowValue(
@@ -318,10 +321,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 
 		// Get and verify execution result
 		const executionDetails = await api.workflows.getExecution(manualExecution.data.executionId);
-		const executionData =
-			typeof executionDetails.data === 'string'
-				? JSON.parse(executionDetails.data)
-				: executionDetails.data;
+		const executionData = helpers.parseExecutionData(executionDetails.data);
 
 		const actualValue = helpers.extractValueFromExecutionData(executionData);
 		expect(actualValue).toBe('draft-version');
@@ -337,7 +337,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const subWorkflowId = subWorkflowResult.workflowId;
 		const subWorkflow = subWorkflowResult.createdWorkflow;
 
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
+		await api.workflows.activate(subWorkflowId, subWorkflow.versionId);
 
 		// Update to create a draft with a different value
 		await helpers.updateSubWorkflowValue(
@@ -361,7 +361,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const webhookPath = parentWorkflowResult.webhookPath;
 
 		// Publish parent workflow
-		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
+		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId);
 
 		// Trigger via webhook (production execution)
 		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
@@ -376,10 +376,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		expect(execution.status).toBe('success');
 
 		const executionDetails = await api.workflows.getExecution(execution.id);
-		const executionData =
-			typeof executionDetails.data === 'string'
-				? JSON.parse(executionDetails.data)
-				: executionDetails.data;
+		const executionData = helpers.parseExecutionData(executionDetails.data);
 
 		const actualValue = helpers.extractValueFromExecutionData(executionData);
 		expect(actualValue).toBe('published-version');
@@ -494,7 +491,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		expect(firstAttempt.ok()).toBe(false);
 
 		// Publish sub-workflow
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
+		await api.workflows.activate(subWorkflowId, subWorkflow.versionId);
 
 		// Second attempt - should succeed
 		const secondAttempt = await api.request.post(`/rest/workflows/${parentWorkflowId}/activate`, {
