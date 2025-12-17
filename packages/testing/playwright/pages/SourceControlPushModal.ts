@@ -7,10 +7,6 @@ export class SourceControlPushModal {
 		return this.page.getByTestId('sourceControlPush-modal');
 	}
 
-	async open(): Promise<void> {
-		await this.page.getByTestId('main-sidebar-source-control-push').click();
-	}
-
 	getSubmitButton(): Locator {
 		return this.page.getByTestId('source-control-push-modal-submit');
 	}

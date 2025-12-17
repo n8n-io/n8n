@@ -126,6 +126,10 @@ export class SidebarPage {
 		return this.page.getByTestId('main-sidebar-source-control-push');
 	}
 
+	getSourceControlPullButton(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-pull');
+	}
+
 	getSourceControlConnectedIndicator(): Locator {
 		return this.page.getByTestId('main-sidebar-source-control-connected');
 	}

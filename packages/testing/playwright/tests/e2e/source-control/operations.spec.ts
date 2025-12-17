@@ -34,7 +34,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.navigate.toWorkflow(workflow.id);
 
 			// check modal
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 			const isWorkflowsTabSelected = await n8n.sourceControlPushModal.isWorkflowsTabSelected();
 			expect(isWorkflowsTabSelected).toBe(true);
@@ -50,7 +50,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
 
 			// check no changes to commit
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 
@@ -87,7 +87,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 
 			// Open push modal
 			await n8n.navigate.toHome();
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
 			// check notice
@@ -132,7 +132,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 
 			// Push it to Git first
 			await n8n.navigate.toHome();
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
 			await n8n.sourceControlPushModal.selectWorkflowsTab();
@@ -148,7 +148,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 
 			await n8n.api.credentials.deleteCredential(credential.id);
 
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
 			await n8n.sourceControlPushModal.selectWorkflowsTab();
@@ -168,7 +168,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
 
 			// check no changes to commit
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 
@@ -196,7 +196,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			});
 
 			// check resources
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();
@@ -222,7 +222,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.canvas.saveWorkflow();
 
 			// check resources
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
@@ -241,7 +241,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
 
 			// Verify no more changes
-			await n8n.sourceControlPushModal.open();
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 	});
@@ -287,7 +287,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 
 			// pull all resources
 			await n8n.navigate.toHome();
-			await n8n.sourceControlPullModal.open();
+			await n8n.sideBar.getSourceControlPullButton().click();
 			await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
 
 			// check that all new resources are pulled
@@ -342,7 +342,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 
 			// pull
 			await n8n.navigate.toHome();
-			await n8n.sourceControlPullModal.open();
+			await n8n.sideBar.getSourceControlPullButton().click();
 			await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
 
 			// check that conflicts are detected

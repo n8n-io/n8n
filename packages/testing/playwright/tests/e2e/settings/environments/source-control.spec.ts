@@ -104,6 +104,7 @@ test.describe('Source Control Settings @capability:source-control', () => {
 		// Verify push button is disabled in read-only mode
 		await n8n.navigate.toHome();
 		await expect(n8n.sideBar.getSourceControlPushButton()).toBeDisabled();
+		await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
 
 		await n8n.navigate.toEnvironments();
 		await n8n.settingsEnvironment.disableReadOnlyMode();
@@ -112,6 +113,7 @@ test.describe('Source Control Settings @capability:source-control', () => {
 		// Verify push button is enabled again
 		await n8n.navigate.toHome();
 		await expect(n8n.sideBar.getSourceControlPushButton()).toBeEnabled();
+		await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
 	});
 
 	test('should disconnect and reconnect with existing keys', async ({ n8n }) => {

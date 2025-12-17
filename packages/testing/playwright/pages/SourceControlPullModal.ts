@@ -7,10 +7,6 @@ export class SourceControlPullModal {
 		return this.page.getByTestId('sourceControlPull-modal');
 	}
 
-	async open(): Promise<void> {
-		await this.page.getByTestId('main-sidebar-source-control-pull').click();
-	}
-
 	getPullAndOverrideButton(): Locator {
 		return this.page.getByTestId('force-pull');
 	}
