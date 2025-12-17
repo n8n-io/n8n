@@ -263,6 +263,7 @@ describe('WorkflowStatusController', () => {
 					{
 						credentialId: 'cred-1',
 						credentialStatus: 'missing',
+						credentialName: 'My OAuth2 Credential',
 						credentialType: 'oauth2Api',
 						authorizationUrl:
 							'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver-1',
