@@ -713,7 +713,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('sso-user-project-access-updated', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('Sso user project acess update', {
+			expect(telemetry.track).toHaveBeenCalledWith('Sso user project access update', {
 				user_id: 'user123',
 				projects_removed: 2,
 				projects_added: 3,
@@ -882,6 +882,10 @@ describe('TelemetryEventRelay', () => {
 				num_tags: 0,
 				public_api: false,
 				sharing_role: undefined,
+				meta: undefined, // workflow.meta is undefined in mock
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
 			});
 		});
 
@@ -1269,7 +1273,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					id: 'node1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					parameters: {},
 					typeVersion: 1,
 					position: [100, 200],

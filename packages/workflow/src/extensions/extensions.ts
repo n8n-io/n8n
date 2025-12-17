@@ -1,3 +1,10 @@
+import type { Completion } from '@codemirror/autocomplete';
+
+export type Alias = { label: string; info?: string; mode?: 'prefix' | 'exact' };
+export interface AliasCompletion extends Completion {
+	alias?: Alias[];
+}
+
 export interface ExtensionMap {
 	typeName: string;
 	functions: Record<string, Extension>;
@@ -35,6 +42,7 @@ export type DocMetadata = {
 	section?: string;
 	hidden?: boolean;
 	aliases?: string[];
+	aliasMode?: 'prefix' | 'exact';
 	args?: DocMetadataArgument[];
 	examples?: DocMetadataExample[];
 	docURL?: string;

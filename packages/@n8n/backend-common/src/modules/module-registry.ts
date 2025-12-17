@@ -37,6 +37,8 @@ export class ModuleRegistry {
 		'mcp',
 		'provisioning',
 		'breaking-changes',
+		'dynamic-credentials',
+		'chat-hub',
 	];
 
 	private readonly activeModules: string[] = [];

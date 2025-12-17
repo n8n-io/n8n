@@ -77,7 +77,11 @@ export class EnterpriseCredentialsService {
 		return await em.save(newSharedCredentials);
 	}
 
-	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
+	async getOne(credentialId: string) {
+		return await this.credentialsFinderService.findCredentialById(credentialId);
+	}
+
+	async getOneForUser(user: User, credentialId: string, includeDecryptedData: boolean) {
 		let credential: CredentialsEntity | null = null;
 		let decryptedData: ICredentialDataDecryptedObject | null = null;
 
