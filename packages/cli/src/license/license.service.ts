@@ -109,9 +109,9 @@ export class LicenseService {
 		return this.license.getManagementJwt();
 	}
 
-	async activateLicense(activationKey: string, eulaUri?: string) {
+	async activateLicense(activationKey: string, eulaUri?: string, userEmail?: string) {
 		try {
-			await this.license.activate(activationKey, eulaUri);
+			await this.license.activate(activationKey, eulaUri, userEmail);
 		} catch (e) {
 			// Check if this is a EULA_REQUIRED error from license server
 			if (this.isEulaRequiredError(e)) {
