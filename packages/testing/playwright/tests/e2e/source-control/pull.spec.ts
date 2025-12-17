@@ -13,13 +13,8 @@ test.describe('Pull resources from Git @capability:source-control', () => {
 
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		repoUrl = await setupGitRepo(n8n, n8nContainer);
-
-		await n8n.goHome();
-		// Enable features required for project workflows and moving resources
 		await n8n.api.enableFeature('variables');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
+		repoUrl = await setupGitRepo(n8n, n8nContainer);
 	});
 
 	test('should pull new resources from remote', async ({ n8n }) => {
