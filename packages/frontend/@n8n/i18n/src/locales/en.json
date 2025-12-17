@@ -3283,6 +3283,7 @@
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add workflow",
 	"workflows.publish": "Publish",
+	"workflows.publish.permissionDenied": "You don't have permission to publish this workflow",
 	"workflows.project.add": "Add workflow to project",
 	"workflows.item.open": "Open",
 	"workflows.item.share": "Share...",

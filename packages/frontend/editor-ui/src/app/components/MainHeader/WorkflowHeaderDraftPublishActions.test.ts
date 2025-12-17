@@ -190,13 +190,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Publish button visibility', () => {
-		it('should be hidden when user lacks workflow:publish permission', () => {
+		it('should be hidden when user lacks workflow:publish and workflow:update permission', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						publish: false,
+						update: false,
 					},
 				},
 			});
@@ -279,6 +280,21 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(openModalSpy).not.toHaveBeenCalled();
 		});
+
+		it('should be disabled when user lacks workflow:publish permission', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: true,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
 	});
 
 	describe('Publish indicator visibility', () => {
@@ -356,6 +372,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-publish-indicator')).toBeInTheDocument();
+		});
+
+		it('should not show publish indicator when user does not have publish permission', () => {
+			// TODO: implement
 		});
 	});
 

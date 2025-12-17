@@ -85,6 +85,10 @@ const isWorkflowSaved = computed(() => {
 });
 
 const showPublishIndicator = computed(() => {
+	if (!props.workflowPermissions.publish) {
+		return false;
+	}
+
 	if (!containsTrigger.value) {
 		return false;
 	}
@@ -143,16 +147,24 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<div v-if="!isArchived && workflowPermissions.publish" :class="$style.publishButtonWrapper">
-			<N8nButton
-				:loading="autoSaveForPublish"
-				:disabled="isWorkflowSaving"
-				type="secondary"
-				data-test-id="workflow-open-publish-modal-button"
-				@click="onPublishButtonClick"
-			>
-				{{ locale.baseText('workflows.publish') }}
-			</N8nButton>
+		<div
+			v-if="!isArchived && (workflowPermissions.update || workflowPermissions.publish)"
+			:class="$style.publishButtonWrapper"
+		>
+			<N8nTooltip :disabled="workflowPermissions.publish" :placement="'bottom'">
+				<template #content>
+					{{ i18n.baseText('workflows.publish.permissionDenied') }}
+				</template>
+				<N8nButton
+					:loading="autoSaveForPublish"
+					:disabled="!workflowPermissions.publish || isWorkflowSaving"
+					type="secondary"
+					data-test-id="workflow-open-publish-modal-button"
+					@click="onPublishButtonClick"
+				>
+					{{ locale.baseText('workflows.publish') }}
+				</N8nButton>
+			</N8nTooltip>
 			<span
 				v-if="showPublishIndicator"
 				:class="$style.publishButtonIndicator"
