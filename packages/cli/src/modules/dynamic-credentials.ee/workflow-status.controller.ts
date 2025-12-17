@@ -4,14 +4,16 @@ import { Request, Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
 import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-
-const BEARER_TOKEN_REGEX = /^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(.+)$/;
+import { getBearerToken } from './utils';
+import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
 
 @RestController('/workflows')
 export class WorkflowStatusController {
 	constructor(
 		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
+		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -26,18 +28,7 @@ export class WorkflowStatusController {
 	@Get('/:workflowId/execution-status', { skipAuth: true })
 	async checkWorkflowForExecution(req: Request, _res: Response): Promise<WorkflowExecutionStatus> {
 		const workflowId = req.params['workflowId'];
-		const headerValue = req.headers['authorization']?.toString();
-
-		if (!headerValue) {
-			throw new UnauthenticatedError();
-		}
-
-		const result = BEARER_TOKEN_REGEX.exec(headerValue);
-		const token = result ? result[1] : null;
-
-		if (!token) {
-			throw new BadRequestError('Authorization header is malformed');
-		}
+		const token = getBearerToken(req);
 
 		if (!workflowId) {
 			throw new BadRequestError('Workflow ID is missing');
@@ -50,6 +41,9 @@ export class WorkflowStatusController {
 
 		const isReady = status.every((s) => s.status === 'configured');
 
+		const basePath = this.urlService.getInstanceBaseUrl();
+		const restPath = this.globalConfig.endpoints.rest;
+
 		const executionStatus: WorkflowExecutionStatus = {
 			workflowId,
 			readyToExecute: isReady,
@@ -57,7 +51,7 @@ export class WorkflowStatusController {
 				credentialId: s.credentialId,
 				credentialStatus: s.status,
 				credentialType: s.credentialType,
-				authorizationUrl: `/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
+				authorizationUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
 			})),
 		};
 		return executionStatus;
