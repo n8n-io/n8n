@@ -213,7 +213,7 @@ watch(
 						/>
 					</div>
 					<template v-else-if="hasChildren">
-						<div :class="$style['children-container']">
+						<div :class="$style['children-container']" data-menu-items>
 							<template v-for="(child, childIndex) in props.children" :key="child.id">
 								<N8nDropdownMenuItem
 									v-bind="child"
@@ -304,6 +304,10 @@ watch(
 	&[data-disabled] {
 		color: var(--color--text--tint-1);
 		cursor: not-allowed;
+	}
+
+	:global([data-menu-items]:hover) &.highlighted:not(:hover) {
+		background-color: transparent;
 	}
 }
 

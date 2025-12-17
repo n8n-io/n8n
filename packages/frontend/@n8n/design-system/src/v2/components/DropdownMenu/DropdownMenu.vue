@@ -135,6 +135,7 @@ const handleContentKeydown = (event: KeyboardEvent) => {
 const handleSubMenuOpenChange = (index: number, open: boolean) => {
 	if (open) {
 		openSubMenuIndex.value = index;
+		navigation.reset();
 	} else if (openSubMenuIndex.value === index) {
 		openSubMenuIndex.value = -1;
 		// Return focus appropriately when sub-menu closes
@@ -240,7 +241,7 @@ defineExpose({ open, close });
 						@key:enter="navigation.handleEnter"
 					/>
 
-					<div :class="$style['items-container']">
+					<div :class="$style['items-container']" data-menu-items>
 						<template v-if="loading">
 							<slot name="loading">
 								<N8nLoading
