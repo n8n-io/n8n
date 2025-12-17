@@ -43,7 +43,7 @@ export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPopover } from './N8nPopover';
-export { default as N8nPopoverReka } from './N8nPopoverReka';
+export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export { default as N8nPromptInput } from './N8nPromptInput';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
