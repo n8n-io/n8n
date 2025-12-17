@@ -264,7 +264,7 @@ defineExpose({
 						:key="index"
 						:file="file"
 						:is-previewable="true"
-						:is-removable="true"
+						:is-removable="messagingState === 'idle'"
 						@remove="removeAttachment"
 					/>
 				</div>
