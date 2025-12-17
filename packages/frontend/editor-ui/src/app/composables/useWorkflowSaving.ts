@@ -9,6 +9,7 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
+	AutoSaveState,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -29,6 +30,8 @@ import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWo
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { storeToRefs } from 'pinia';
 
 export function useWorkflowSaving({
 	router,
@@ -53,6 +56,9 @@ export function useWorkflowSaving({
 	const builderStore = useBuilderStore();
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
+
+	const autosaveStore = useWorkflowAutosaveStore();
+	const { autoSaveState, pendingAutoSave } = storeToRefs(autosaveStore);
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -425,21 +431,51 @@ export function useWorkflowSaving({
 		}
 	}
 
-	const autoSaveWorkflow = useDebounceFn(
-		async () => {
-			const saved = await saveCurrentWorkflow({}, true, false, true);
-			if (saved) {
-				console.log('[AutoSave] ✅ Workflow saved successfully');
+	const autoSaveWorkflowDebounced = useDebounceFn(
+		() => {
+			// Check if cancelled during debounce period
+			if (autoSaveState.value === AutoSaveState.Idle) {
+				console.log('[AutoSave] Cancelled during debounce');
+				return;
 			}
+
+			autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
+
+			const savePromise = (async () => {
+				try {
+					const saved = await saveCurrentWorkflow({}, true, false, true);
+					if (saved) {
+						console.log('[AutoSave] ✅ Workflow saved successfully');
+					}
+				} finally {
+					autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+					autosaveStore.setPendingAutoSave(null);
+				}
+			})();
+
+			autosaveStore.setPendingAutoSave(savePromise);
 		},
 		1500,
 		{ maxWait: 5000 },
 	);
 
+	const scheduleAutoSave = () => {
+		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+		void autoSaveWorkflowDebounced();
+	};
+
+	const cancelAutoSave = () => {
+		(autoSaveWorkflowDebounced as { cancel?: () => void }).cancel?.();
+		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+	};
+
 	return {
 		promptSaveUnsavedWorkflowChanges,
 		saveCurrentWorkflow,
 		saveAsNewWorkflow,
-		autoSaveWorkflow,
+		autoSaveWorkflow: scheduleAutoSave,
+		autoSaveState,
+		cancelAutoSave,
+		pendingAutoSave,
 	};
 }

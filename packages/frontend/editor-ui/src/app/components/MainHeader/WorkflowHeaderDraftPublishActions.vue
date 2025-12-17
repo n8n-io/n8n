@@ -5,7 +5,8 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { storeToRefs } from 'pinia';
+import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -14,6 +15,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import {
 	getLastPublishedVersion,
 	generateVersionName,
@@ -39,7 +41,11 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+const autosaveStore = useWorkflowAutosaveStore();
+const { autoSaveState, pendingAutoSave } = storeToRefs(autosaveStore);
+const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
+
 const autoSaveForPublish = ref(false);
 
 const isWorkflowSaving = computed(() => {
@@ -52,12 +58,39 @@ const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
 		autoSaveForPublish.value = true;
-		const saved = await saveCurrentWorkflow({}, true);
-		autoSaveForPublish.value = false;
-		if (!saved) {
-			// If save failed, don't open the modal
-			return;
+
+		// Cancel autosave if if scheduled or wait for it to finish if in progress
+		// Save immediately if autosave idle or cancelled
+		switch (autoSaveState.value) {
+			case AutoSaveState.InProgress: {
+				if (pendingAutoSave.value) {
+					await pendingAutoSave.value;
+				}
+				autoSaveForPublish.value = false;
+				console.log('[Publish] ✅ Autosave completed');
+				break;
+			}
+
+			case AutoSaveState.Scheduled: {
+				console.log('[Publish] ⏹️ Cancelling scheduled autosave');
+				cancelAutoSave();
+				// Fall through to save immediately
+			}
+
+			default:
+				{
+					const saved = await saveCurrentWorkflow({}, true);
+					autoSaveForPublish.value = false;
+					if (!saved) {
+						console.log('[Publish] ❌ Save failed, not opening modal');
+						return;
+					}
+					console.log('[Publish] ✅ Save completed');
+				}
+				break;
 		}
+	} else {
+		console.log('[Publish] No unsaved changes, skipping save');
 	}
 
 	uiStore.openModalWithData({
