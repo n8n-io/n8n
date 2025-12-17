@@ -145,7 +145,7 @@ export = {
 			});
 
 			// Handle isGlobal toggle if provided
-			const isGlobal = body?.Global;
+			const isGlobal = body?.isGlobal;
 			if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
 				const licenseState = Container.get(LicenseState);
 				if (!licenseState.isSharingLicensed()) {
