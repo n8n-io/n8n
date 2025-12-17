@@ -27,6 +27,10 @@ export const properties: INodeProperties[] = [
 				name: 'GPT Image 1',
 				value: 'gpt-image-1',
 			},
+			{
+				name: 'GPT Image 1.5',
+				value: 'gpt-image-1.5',
+			},
 		],
 	},
 	{
@@ -36,7 +40,7 @@ export const properties: INodeProperties[] = [
 		required: true,
 		default: '',
 		description:
-			'A text description of the desired image(s). Maximum 1000 characters for dall-e-2, 32000 characters for gpt-image-1.',
+			'A text description of the desired image(s). Maximum 1000 characters for dall-e-2, 32000 characters for gpt-image-1 and gpt-image-1.5.',
 		placeholder: 'A beautiful sunset over mountains',
 		typeOptions: {
 			rows: 2,
@@ -56,7 +60,7 @@ export const properties: INodeProperties[] = [
 			'Add one or more binary fields to include images with your prompt. Each image should be a png, webp, or jpg file less than 50MB. You can provide up to 16 images.',
 		displayOptions: {
 			show: {
-				'/model': ['gpt-image-1'],
+				'/model': ['gpt-image-1', 'gpt-image-1.5'],
 			},
 		},
 		options: [
@@ -167,7 +171,7 @@ export const properties: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				'/model': ['gpt-image-1'],
+				'/model': ['gpt-image-1', 'gpt-image-1.5'],
 			},
 		},
 	},
@@ -200,7 +204,7 @@ export const properties: INodeProperties[] = [
 		type: 'options',
 		default: 'png',
 		description:
-			'The format in which the generated images are returned. Only supported for gpt-image-1.',
+			'The format in which the generated images are returned. Only supported for gpt-image-1 and gpt-image-1.5.',
 		options: [
 			{
 				name: 'PNG',
@@ -217,7 +221,7 @@ export const properties: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				'/model': ['gpt-image-1'],
+				'/model': ['gpt-image-1', 'gpt-image-1.5'],
 			},
 		},
 	},
@@ -227,14 +231,14 @@ export const properties: INodeProperties[] = [
 		type: 'number',
 		default: 100,
 		description:
-			'The compression level (0-100%) for the generated images. Only supported for gpt-image-1 with webp or jpeg output formats.',
+			'The compression level (0-100%) for the generated images. Only supported for gpt-image-1 and gpt-image-1.5 with webp or jpeg output formats.',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
-				'/model': ['gpt-image-1'],
+				'/model': ['gpt-image-1', 'gpt-image-1.5'],
 				outputFormat: ['webp', 'jpeg'],
 			},
 		},
@@ -261,7 +265,7 @@ export const properties: INodeProperties[] = [
 				type: 'options',
 				default: 'auto',
 				description:
-					'Allows to set transparency for the background of the generated image(s). Only supported for gpt-image-1.',
+					'Allows to set transparency for the background of the generated image(s). Only supported for gpt-image-1 and gpt-image-1.5.',
 				options: [
 					{
 						name: 'Auto',
@@ -278,7 +282,7 @@ export const properties: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/model': ['gpt-image-1'],
+						'/model': ['gpt-image-1', 'gpt-image-1.5'],
 					},
 				},
 			},
@@ -288,7 +292,7 @@ export const properties: INodeProperties[] = [
 				type: 'options',
 				default: 'low',
 				description:
-					'Control how much effort the model will exert to match the style and features of input images. Only supported for gpt-image-1.',
+					'Control how much effort the model will exert to match the style and features of input images. Only supported for gpt-image-1 and gpt-image-1.5.',
 				options: [
 					{
 						name: 'Low',
@@ -301,7 +305,7 @@ export const properties: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/model': ['gpt-image-1'],
+						'/model': ['gpt-image-1', 'gpt-image-1.5'],
 					},
 				},
 			},
@@ -328,11 +332,11 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('model', i);
+	const model = this.getNodeParameter('model', i) as string;
 	const prompt = this.getNodeParameter('prompt', i);
 	const options = this.getNodeParameter('options', i, {});
 
-	const isGPTImage1 = model === 'gpt-image-1';
+	const isGPTImage1 = model.startsWith('gpt-image-1');
 	const isDallE2 = model === 'dall-e-2';
 
 	const n = this.getNodeParameter('n', i, 1) as number;
