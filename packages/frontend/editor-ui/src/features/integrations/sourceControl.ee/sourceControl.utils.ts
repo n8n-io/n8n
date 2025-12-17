@@ -47,7 +47,7 @@ export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 	pushStatusPriority[status] ?? 0;
 
 const createVariablesToast = (router: Router) => {
-	const route = { name: VIEWS.PROJECTS_VARIABLES, query: { incomplete: 'true' } };
+	const route = { name: VIEWS.HOME_VARIABLES, query: { incomplete: 'true' } };
 	const { href } = router.resolve(route);
 
 	return {

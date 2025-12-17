@@ -226,7 +226,8 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getVisiblePoppers() {
-		return this.page.locator('.el-popper:visible');
+		// Match Reka UI popovers (data-side is unique to Reka UI positioned content)
+		return this.page.locator('[data-state="open"][data-side]');
 	}
 
 	async clearExpressionEditor(parameterName?: string) {
@@ -284,7 +285,8 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getVisiblePopper() {
-		return this.page.locator('.el-popper:visible');
+		// Match both Element+ poppers (.el-popper:visible) and Reka UI poppers ([data-state="open"])
+		return this.page.locator('.el-popper:visible, [data-state="open"][role="dialog"]');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
