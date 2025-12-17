@@ -172,7 +172,7 @@ test.describe('Source Control Operations @capability:source-control', () => {
 			await n8n.notifications.waitForNotificationAndClose('No changes to commit');
 		});
 
-		test('should push of selected resources', async ({ n8n }) => {
+		test('should push selected resources', async ({ n8n }) => {
 			// Create multiple workflows
 			const workflowA = await n8n.api.workflows.createWorkflow({
 				name: 'Workflow A',
