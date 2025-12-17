@@ -1,8 +1,10 @@
 import type { WorkflowDeactivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export async function workflowDeactivated({ data }: WorkflowDeactivated) {
+	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
@@ -13,7 +15,7 @@ export async function workflowDeactivated({ data }: WorkflowDeactivated) {
 			if (!updatedWorkflow.checksum) {
 				throw new Error('Failed to fetch workflow');
 			}
-			workflowsStore.setWorkflow(updatedWorkflow);
+			await initializeWorkspace(updatedWorkflow);
 		}
 	}
 }

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import {
 	N8nMenuItem,
-	N8nPopoverReka,
+	N8nPopover,
 	N8nText,
 	isCustomMenuItem,
 	type IMenuItem,
@@ -95,7 +95,7 @@ function onLogout() {
 		<div :class="$style.bottomMenuItems">
 			<template v-for="item in items" :key="item.id">
 				<!-- Help popover -->
-				<N8nPopoverReka
+				<N8nPopover
 					v-if="item.children && item.id === 'help'"
 					key="help"
 					side="right"
@@ -136,9 +136,9 @@ function onLogout() {
 							@click="() => handleSelect(item.id)"
 						/>
 					</template>
-				</N8nPopoverReka>
+				</N8nPopover>
 				<!-- Settings popover -->
-				<N8nPopoverReka
+				<N8nPopover
 					v-else-if="item.children && item.id === 'settings'"
 					key="settings"
 					side="right"
@@ -171,7 +171,7 @@ function onLogout() {
 							@click="() => handleSelect(item.id)"
 						/>
 					</template>
-				</N8nPopoverReka>
+				</N8nPopover>
 				<!-- Items without children -->
 				<N8nMenuItem
 					v-else

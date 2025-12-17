@@ -27,7 +27,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-import type { INode, INodes } from 'n8n-workflow';
+import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
 import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -417,12 +417,19 @@ export class WorkflowService {
 			});
 		}
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+
+		const settingsChangesDetail = this.calculateSettingsChanges(
+			workflow.settings,
+			updatedWorkflow.settings,
+		);
+
 		this.eventService.emit('workflow-saved', {
 			user,
 			workflow: updatedWorkflow,
 			publicApi,
 			previousWorkflow: workflow,
 			aiBuilderAssisted,
+			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
 		});
 
 		// Activate workflow if requested, or
@@ -940,5 +947,36 @@ export class WorkflowService {
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
 		}
+	}
+
+	/**
+	 * Calculates which workflow settings changed between two versions.
+	 * Returns an object with { settingKey: { from, to } } for each changed setting,
+	 * or undefined if no settings changed.
+	 */
+	private calculateSettingsChanges(
+		previousSettings: IWorkflowSettings | undefined,
+		newSettings: IWorkflowSettings | undefined,
+	): Record<string, { from: JsonValue; to: JsonValue }> | undefined {
+		const changes: Record<string, { from: JsonValue; to: JsonValue }> = {};
+
+		const prev = previousSettings ?? {};
+		const next = newSettings ?? {};
+
+		// Get all unique keys from both previous and new settings
+		const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+
+		for (const key of allKeys) {
+			const prevValue = prev[key as keyof IWorkflowSettings];
+			const nextValue = next[key as keyof IWorkflowSettings];
+
+			if (!isEqual(prevValue, nextValue)) {
+				const from: JsonValue = prevValue ?? null;
+				const to: JsonValue = nextValue ?? null;
+				changes[key] = { from, to };
+			}
+		}
+
+		return Object.keys(changes).length > 0 ? changes : undefined;
 	}
 }
