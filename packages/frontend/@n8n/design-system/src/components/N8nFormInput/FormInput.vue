@@ -13,7 +13,6 @@ import type {
 	InputTypePropType,
 	SwitchModelValuePropType,
 	CheckboxModelValuePropType,
-	CheckboxLabelSizePropType,
 	InputAutocompletePropType,
 } from '../../types';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
