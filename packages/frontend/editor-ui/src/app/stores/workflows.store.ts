@@ -1644,6 +1644,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
 		}
 
+		// Update workflowsById cache to keep it in sync
+		addWorkflow(updatedWorkflow);
+
 		if (
 			workflowHelpers.containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
 			!usersStore.isEasyAIWorkflowOnboardingDone
