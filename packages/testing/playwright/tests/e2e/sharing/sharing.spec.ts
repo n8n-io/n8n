@@ -235,6 +235,7 @@ test.describe('@isolated', () => {
 			await n8n.sideBar.clickHomeButton();
 			await n8n.workflows.clickNewWorkflowCard();
 			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test workflow');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.sideBar.clickHomeButton();
 			await n8n.projectTabs.clickCredentialsTab();
@@ -244,6 +245,8 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.renameCredential('Notion API');
 			await n8n.credentials.credentialModal.save();
 			await n8n.credentials.credentialModal.close();
+
+			await n8n.navigate.toCredentials();
 
 			await n8n.credentials.cards.getCredential('Notion API').click();
 			await n8n.credentials.credentialModal.changeTab('Sharing');
@@ -294,6 +297,8 @@ test.describe('@isolated', () => {
 			await sharingDropdown2.locator('li').nth(1).click();
 			await n8n.credentials.credentialModal.saveSharing();
 			await n8n.credentials.credentialModal.close();
+
+			await n8n.navigate.toCredentials();
 
 			// One credential labeled "Personal"
 			await expect(n8n.credentials.cards.getCredentials()).toHaveCount(2);
