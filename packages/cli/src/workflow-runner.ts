@@ -36,7 +36,6 @@ import {
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
-import { isManualOrChatExecution } from '@/executions/execution.utils';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -254,9 +253,6 @@ export class WorkflowRunner {
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
-		// Use draft sub-workflows for manual/chat executions to enable
-		// iterating on sub-workflows without requiring them to be published
-		additionalData.useDraftSubWorkflows = isManualOrChatExecution(data.executionMode);
 
 		additionalData.executionId = executionId;
 

@@ -38,6 +38,7 @@ import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
+import { isManualOrChatExecution } from '@/executions/execution.utils';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -173,7 +174,11 @@ export async function executeWorkflow(
 ): Promise<ExecuteWorkflowData> {
 	const activeExecutions = Container.get(ActiveExecutions);
 
-	const useDraftVersion = additionalData.useDraftSubWorkflows ?? false;
+	// Use draft sub-workflows for manual/chat executions to enable
+	// iterating on sub-workflows without requiring them to be published
+	const useDraftVersion = options.executionMode
+		? isManualOrChatExecution(options.executionMode)
+		: false;
 	const workflowData =
 		options.loadedWorkflowData ??
 		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings, {
@@ -268,8 +273,6 @@ async function startExecution(
 		}
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
-		// Propagate draft sub-workflow setting to nested sub-workflows
-		additionalDataIntegrated.useDraftSubWorkflows = additionalData.useDraftSubWorkflows;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
