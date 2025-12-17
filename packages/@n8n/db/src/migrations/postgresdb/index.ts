@@ -125,6 +125,7 @@ import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/176
 import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
 import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459448000-AddResolvableFieldsToCredentials';
+import { AddWorkflowPublishScopeToProjectRoles1765892113000 } from '../common/1765892113000-AddWorkflowPublishScopeToProjectRoles';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -255,4 +256,5 @@ export const postgresMigrations: Migration[] = [
 	AddDynamicCredentialEntryTable1764689388394,
 	BackfillMissingWorkflowHistoryRecords1765448186933,
 	AddResolvableFieldsToCredentials1765459448000,
+	AddWorkflowPublishScopeToProjectRoles1765892113000,
 ];

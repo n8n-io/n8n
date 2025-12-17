@@ -88,51 +88,21 @@ export class AddWorkflowPublishScopeToProjectRoles1765892113000 implements Rever
 	}
 
 	async down({ escape, runQuery, logger }: MigrationContext) {
-		const roleTableName = escape.tableName('role');
 		const roleScopeTableName = escape.tableName('role_scope');
-		const roleSlugColumn = escape.columnName('slug');
-		const roleTypeColumn = escape.columnName('roleType');
-		const roleScopeRoleSlugColumn = escape.columnName('roleSlug');
 		const roleScopeScopeSlugColumn = escape.columnName('scopeSlug');
 
-		// Find project roles with both workflow:update and workflow:publish
-		const findRolesToRevertQuery = `
-			SELECT role.${roleSlugColumn} as roleSlug
-			FROM ${roleTableName} role
-			INNER JOIN ${roleScopeTableName} role_scope
-				ON role.${roleSlugColumn} = role_scope.${roleScopeRoleSlugColumn}
-			WHERE role.${roleTypeColumn} = :roleType
-				AND role_scope.${roleScopeScopeSlugColumn} IN (:updateScope, :publishScope)
-			GROUP BY role.${roleSlugColumn}
-			HAVING COUNT(DISTINCT role_scope.${roleScopeScopeSlugColumn}) = 2
+		// Remove all workflow:publish scopes from all roles
+		// Since the up migration only adds workflow:publish to roles with workflow:update,
+		// all workflow:publish scopes can be safely removed to revert the migration.
+		const deleteQuery = `
+			DELETE FROM ${roleScopeTableName}
+			WHERE ${roleScopeScopeSlugColumn} = :publishScope
 		`;
 
-		const rolesToRevert = await runQuery<Array<{ roleSlug: string }>>(findRolesToRevertQuery, {
-			roleType: 'project',
-			updateScope: 'workflow:update',
+		await runQuery(deleteQuery, {
 			publishScope: 'workflow:publish',
 		});
 
-		logger.info(`Found ${rolesToRevert.length} project roles to revert`);
-
-		if (rolesToRevert.length === 0) {
-			return;
-		}
-
-		// Remove workflow:publish from role_scope
-		const deleteRoleScopeQuery = `
-			DELETE FROM ${roleScopeTableName}
-			WHERE ${roleScopeRoleSlugColumn} = :roleSlug
-				AND ${roleScopeScopeSlugColumn} = :scopeSlug
-		`;
-
-		for (const role of rolesToRevert) {
-			await runQuery(deleteRoleScopeQuery, {
-				roleSlug: role.roleSlug,
-				scopeSlug: 'workflow:publish',
-			});
-		}
-
-		logger.info(`Removed workflow:publish scope from ${rolesToRevert.length} project roles`);
+		logger.info('Removed workflow:publish scope from all roles');
 	}
 }
