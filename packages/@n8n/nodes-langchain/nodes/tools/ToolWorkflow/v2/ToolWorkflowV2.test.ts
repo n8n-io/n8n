@@ -53,6 +53,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		getTimezone: jest.fn(),
 		getWorkflow: jest.fn(),
 		getWorkflowStaticData: jest.fn(),
+		getWorkflowSettings: jest.fn(() => ({})),
 		logger: {
 			debug: jest.fn(),
 			error: jest.fn(),
