@@ -1,0 +1,59 @@
+{
+	"name": "AWS ELB Remove Listener Certificate Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "listenerCertificate",
+				"operation": "remove",
+				"loadBalancerId": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-lb/1234567890123456",
+				"listenerId": "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/test-lb/1234567890123456/f2f7dc8efc522ab2",
+				"certificateId": "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+			},
+			"type": "n8n-nodes-base.awsElb",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Remove Listener Certificate",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Remove Listener Certificate": [
+			{
+				"json": {
+					"sucess": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Remove Listener Certificate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

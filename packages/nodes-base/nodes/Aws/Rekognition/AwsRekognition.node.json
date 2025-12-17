@@ -1,0 +1,24 @@
+{
+	"node": "n8n-nodes-base.awsRekognition",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsrekognition/"
+			}
+		],
+		"generic": [
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
+			}
+		]
+	}
+}
