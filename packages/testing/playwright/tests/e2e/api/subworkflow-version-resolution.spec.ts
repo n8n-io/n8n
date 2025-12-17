@@ -1,5 +1,7 @@
+import type { INode } from 'n8n-workflow';
+
 import { test, expect } from '../../../fixtures/base';
-import type { WorkflowsApi } from '../../../services/workflow-api-helper';
+import type { ApiHelpers } from '../../../services/api-helper';
 
 /**
  * E2E tests for sub-workflow version resolution (ADO-4535)
@@ -16,7 +18,7 @@ const helpers = {
 	/**
 	 * Creates a sub-workflow with Execute Workflow Trigger and Set Value nodes
 	 */
-	async createSubWorkflow(api: WorkflowsApi, name: string, value: string) {
+	async createSubWorkflow(api: ApiHelpers, name: string, value: string) {
 		return await api.workflows.createWorkflowFromDefinition({
 			name,
 			nodes: [
@@ -68,7 +70,7 @@ const helpers = {
 	 * Updates a sub-workflow to set a new value (creates a draft version)
 	 */
 	async updateSubWorkflowValue(
-		api: WorkflowsApi,
+		api: ApiHelpers,
 		workflowId: string,
 		versionId: string,
 		name: string,
@@ -129,7 +131,7 @@ const helpers = {
 	 * Creates a parent workflow with Manual Trigger and Execute Workflow node
 	 */
 	async createParentWorkflowWithManualTrigger(
-		api: WorkflowsApi,
+		api: ApiHelpers,
 		name: string,
 		subWorkflowId: string,
 	) {
@@ -180,7 +182,7 @@ const helpers = {
 	 * Creates a parent workflow with Webhook trigger and Execute Workflow node
 	 */
 	async createParentWorkflowWithWebhook(
-		api: WorkflowsApi,
+		api: ApiHelpers,
 		name: string,
 		subWorkflowId: string,
 		webhookPath: string,
@@ -285,13 +287,13 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const subWorkflowId = subWorkflowResult.workflowId;
 		const subWorkflow = subWorkflowResult.createdWorkflow;
 
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId);
+		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
 
 		// Update to create a draft with a different value
 		await helpers.updateSubWorkflowValue(
 			api,
 			subWorkflowId,
-			subWorkflow.versionId,
+			subWorkflow.versionId!,
 			subWorkflow.name,
 			'draft-version',
 		);
@@ -337,13 +339,13 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const subWorkflowId = subWorkflowResult.workflowId;
 		const subWorkflow = subWorkflowResult.createdWorkflow;
 
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId);
+		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
 
 		// Update to create a draft with a different value
 		await helpers.updateSubWorkflowValue(
 			api,
 			subWorkflowId,
-			subWorkflow.versionId,
+			subWorkflow.versionId!,
 			subWorkflow.name,
 			'draft-version',
 		);
@@ -361,7 +363,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const webhookPath = parentWorkflowResult.webhookPath;
 
 		// Publish parent workflow
-		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId);
+		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
 
 		// Trigger via webhook (production execution)
 		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
@@ -437,7 +439,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 			data: {
 				versionId: workflow.versionId,
 				name: workflow.name,
-				nodes: workflow.nodes.map((node) =>
+				nodes: workflow.nodes.map((node: INode) =>
 					node.type === 'n8n-nodes-base.executeWorkflow'
 						? {
 								...node,
@@ -491,7 +493,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		expect(firstAttempt.ok()).toBe(false);
 
 		// Publish sub-workflow
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId);
+		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
 
 		// Second attempt - should succeed
 		const secondAttempt = await api.request.post(`/rest/workflows/${parentWorkflowId}/activate`, {
