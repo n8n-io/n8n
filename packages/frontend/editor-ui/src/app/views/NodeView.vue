@@ -280,7 +280,7 @@ const workflowId = computed(() => {
 	return Array.isArray(name) ? name[0] : name;
 });
 const routeNodeId = computed(() => {
-	const nodeId = route.query.nodeId;
+	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
 });
 
@@ -1982,6 +1982,7 @@ onMounted(() => {
 
 				// A delay here makes opening the NDV a bit less jarring
 				setTimeout(() => {
+					console.log(routeNodeId.value);
 					if (routeNodeId.value) {
 						updateNodeRoute(routeNodeId.value);
 					}
