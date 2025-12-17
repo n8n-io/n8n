@@ -1,10 +1,5 @@
 import { Container } from '@n8n/di';
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	IRunNodeResponse,
-	WorkflowSettingsBinaryMode,
-} from 'n8n-workflow';
+import type { IBinaryKeyData, IRunNodeResponse, WorkflowSettingsBinaryMode } from 'n8n-workflow';
 import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY, UnexpectedError } from 'n8n-workflow';
 
 import { BinaryDataConfig } from '../binary-data/binary-data.config';
@@ -26,9 +21,10 @@ export async function convertBinaryData(
 			if (!item.binary) continue;
 
 			item.json = { ...item.json };
+			item.binary = { ...item.binary };
 
 			const embededBinaries: IBinaryKeyData = {};
-			const jsonBinaries: IDataObject = {};
+			const jsonBinaries: IBinaryKeyData = {};
 
 			for (const [key, value] of Object.entries(item.binary)) {
 				if (value?.id) {
@@ -57,17 +53,23 @@ export async function convertBinaryData(
 				jsonBinaries[key] = binaryData;
 			}
 
-			const existingValue = item.json[BINARY_IN_JSON_PROPERTY];
-			if (existingValue && (Array.isArray(existingValue) || typeof existingValue !== 'object')) {
+			const existingValue = item.json[BINARY_IN_JSON_PROPERTY] ?? {};
+			if (Array.isArray(existingValue) || typeof existingValue !== 'object') {
 				throw new UnexpectedError(
 					`Binary data could not be converted. Item already has '${BINARY_IN_JSON_PROPERTY}' field, but value type is not an object`,
 				);
 			}
 
 			if (Object.keys(jsonBinaries).length) {
-				const existingJsonBinaries = (existingValue as IBinaryKeyData) ?? {};
+				const existingJsonBinaries = existingValue as IBinaryKeyData;
 				item.json[BINARY_IN_JSON_PROPERTY] = { ...existingJsonBinaries, ...jsonBinaries };
 			}
+			// if (Object.keys(jsonBinaries).length) {
+			// 	for (const [key, value] of Object.entries(jsonBinaries)) {
+			// 		const binaryPropertyName = item.json[key] ? `${key}|${value.fileName}` : key;
+			// 		item.json[binaryPropertyName] = value;
+			// 	}
+			// }
 
 			item.binary = Object.keys(embededBinaries).length ? embededBinaries : undefined;
 		}
