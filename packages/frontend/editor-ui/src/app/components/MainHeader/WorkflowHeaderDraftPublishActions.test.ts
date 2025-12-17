@@ -389,10 +389,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
 		});
-
-		it('should not show publish indicator when user does not have publish permission', () => {
-			// TODO: implement
-		});
 	});
 
 	describe('Save button state', () => {
