@@ -25,9 +25,17 @@ import type {
 	INodeType,
 	NodeTypeAndVersion,
 	INode,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
+
+const freeTextResponseTypeOption: INodePropertyOptions = {
+	name: 'Free Text',
+	// use a different name to not show options for `freeText` response type
+	value: FREE_TEXT_CHAT_RESPONSE_TYPE,
+	description: 'User can respond in the chat',
+};
 
 const getSendAndWaitPropertiesForChatNode = () => {
 	const originalProperties = getSendAndWaitProperties([], null);
@@ -37,20 +45,16 @@ const getSendAndWaitPropertiesForChatNode = () => {
 	);
 	const responseTypeProperty = filteredProperties.find((p) => p.name === 'responseType');
 	if (responseTypeProperty) {
-		responseTypeProperty.options = [
-			// for now we only support `approval` and `freeText` response types
-			{
-				name: 'Approval',
-				value: 'approval',
-				description: 'User can approve/disapprove from within the message',
-			},
-			{
-				name: 'Free Text',
-				// use a different name to not show options for `freeText` response type
-				value: FREE_TEXT_CHAT_RESPONSE_TYPE,
-				description: 'User can respond in the chat',
-			},
-		];
+		const approvalOption = responseTypeProperty.options?.find(
+			(o) => 'value' in o && o.value === 'approval',
+		);
+		responseTypeProperty.options = approvalOption
+			? [
+					// for now we only support `approval` and `freeText` response types
+					approvalOption,
+					freeTextResponseTypeOption,
+				]
+			: [freeTextResponseTypeOption];
 		responseTypeProperty.default = FREE_TEXT_CHAT_RESPONSE_TYPE;
 	}
 
