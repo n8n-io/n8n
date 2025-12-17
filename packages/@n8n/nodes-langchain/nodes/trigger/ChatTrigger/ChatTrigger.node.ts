@@ -401,11 +401,19 @@ export class ChatTrigger extends Node {
 				default: false,
 				noDataExpression: true,
 				description: 'Whether to make the agent available in n8n Chat',
+			},
+			{
+				displayName:
+					'Your Chat Trigger node is out of date. To update, delete this node and insert a new Chat Trigger node.',
+				name: 'availableInChatNotice',
+				type: 'notice',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.4 } }],
+						availableInChat: [true],
+						'@version': [{ _cnd: { lt: 1.2 } }],
 					},
 				},
+				default: '',
 			},
 			{
 				displayName:
@@ -415,6 +423,7 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 				default: '',
@@ -430,6 +439,7 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 			},
@@ -446,6 +456,7 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 			},
@@ -512,6 +523,16 @@ export class ChatTrigger extends Node {
 						options: [lastNodeResponseMode, respondToWebhookResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						displayName: 'Response Mode',
+						name: 'responseMode',
+						type: 'options',
+						options: [streamingResponseMode],
+						default: 'streaming',
+						description: 'When and how to respond to the webhook',
+						displayOptions: { show: { '/availableInChat': [true] } },
 					},
 				],
 			},

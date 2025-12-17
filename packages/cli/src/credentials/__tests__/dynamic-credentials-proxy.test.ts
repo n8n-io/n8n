@@ -47,6 +47,7 @@ describe('DynamicCredentialsProxy', () => {
 			id: 'cred-123',
 			name: 'Test Credential',
 			isResolvable: false,
+			type: 'oAuth2Api',
 		};
 
 		it('should return static data when no provider is set and credential is not resolvable', async () => {

@@ -2,21 +2,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import McpConnectPopover from './McpConnectPopover.vue';
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
-	}),
-}));
-
-const mockResetCurrentUserMCPKey = vi.fn();
-
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
-	useMCPStore: () => ({
-		resetCurrentUserMCPKey: mockResetCurrentUserMCPKey,
 	}),
 }));
 
@@ -36,17 +29,23 @@ vi.mock('./MCPAccessTokenPopoverTab.vue', () => ({
 	},
 }));
 
+let pinia: ReturnType<typeof createTestingPinia>;
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+let mcpStore: MockedStore<typeof useMCPStore>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 describe('McpConnectPopover', () => {
 	beforeEach(() => {
+		pinia = createTestingPinia({ stubActions: false });
+
 		renderComponent = createComponentRenderer(McpConnectPopover, {
-			pinia: createTestingPinia(),
+			pinia,
 		});
 
 		rootStore = mockedStore(useRootStore);
 		rootStore.urlBaseEditor = 'http://localhost:5678/';
+
+		mcpStore = mockedStore(useMCPStore);
 	});
 
 	afterEach(() => {
@@ -95,7 +94,7 @@ describe('McpConnectPopover', () => {
 
 		it('should reset current user MCP key when popover closes', async () => {
 			const user = userEvent.setup();
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 
 			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
 
@@ -103,10 +102,12 @@ describe('McpConnectPopover', () => {
 				expect(getByTestId('mcp-connect-popover-content')).toBeVisible();
 			});
 
-			await user.keyboard('{Escape}');
+			// Click trigger again to close popover (toggle behavior)
+			await user.click(getByTestId('mcp-connect-popover-trigger-button'));
 
 			await waitFor(() => {
-				expect(mockResetCurrentUserMCPKey).toHaveBeenCalled();
+				expect(queryByTestId('mcp-connect-popover-content')).not.toBeInTheDocument();
+				expect(mcpStore.resetCurrentUserMCPKey).toHaveBeenCalled();
 			});
 		});
 	});
