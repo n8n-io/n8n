@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
@@ -48,14 +48,9 @@ export class SettingsEnvironmentPage extends BasePage {
 
 	async disconnect(): Promise<void> {
 		await this.getDisconnectButton().click();
-		// Handle disconnect confirmation modal
-		const modal = this.page.getByRole('dialog');
-		try {
-			await modal.waitFor({ state: 'visible', timeout: 2000 });
-			// Click confirm button using standard CSS class selector
-			await modal.locator('.btn--confirm').click();
-		} catch {
-			// Modal didn't appear or timed out
-		}
+
+		const confirmModal = this.page.getByRole('dialog').filter({ hasText: 'Are you sure?' });
+		await expect(confirmModal).toBeVisible();
+		await confirmModal.locator('.btn--confirm').click();
 	}
 }
