@@ -403,7 +403,7 @@ describe('Table Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'returnAll') return false;
 				if (paramName === 'limit') return 50;
-				if (paramName === 'options') return { sortBy: 'name:asc' };
+				if (paramName === 'options') return { sortField: 'name', sortDirection: 'asc' };
 				return undefined;
 			});
 

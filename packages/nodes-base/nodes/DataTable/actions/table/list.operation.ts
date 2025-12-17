@@ -60,21 +60,28 @@ export const description: INodeProperties[] = [
 				description: 'Filter data tables by name (case-insensitive)',
 			},
 			{
-				displayName: 'Sort By',
-				name: 'sortBy',
+				displayName: 'Sort Field',
+				name: 'sortField',
 				type: 'options',
-				default: 'name:asc',
+				default: 'name',
 				options: [
-					{ name: 'Created (Newest)', value: 'createdAt:desc' },
-					{ name: 'Created (Oldest)', value: 'createdAt:asc' },
-					{ name: 'Name (A-Z)', value: 'name:asc' },
-					{ name: 'Name (Z-A)', value: 'name:desc' },
-					{ name: 'Size (Largest)', value: 'sizeBytes:desc' },
-					{ name: 'Size (Smallest)', value: 'sizeBytes:asc' },
-					{ name: 'Updated (Newest)', value: 'updatedAt:desc' },
-					{ name: 'Updated (Oldest)', value: 'updatedAt:asc' },
+					{ name: 'Created', value: 'createdAt' },
+					{ name: 'Name', value: 'name' },
+					{ name: 'Size', value: 'sizeBytes' },
+					{ name: 'Updated', value: 'updatedAt' },
 				],
-				description: 'How to sort the returned data tables',
+				description: 'Field to sort by',
+			},
+			{
+				displayName: 'Sort Direction',
+				name: 'sortDirection',
+				type: 'options',
+				default: 'asc',
+				options: [
+					{ name: 'Ascending', value: 'asc' },
+					{ name: 'Descending', value: 'desc' },
+				],
+				description: 'Sort direction',
 			},
 		],
 	},
@@ -88,15 +95,17 @@ export async function execute(
 	const limit = this.getNodeParameter('limit', index, 50) as number;
 	const options = this.getNodeParameter('options', index, {}) as {
 		filterName?: string;
-		sortBy?: ListDataTableOptions['sortBy'];
+		sortField?: string;
+		sortDirection?: 'asc' | 'desc';
 	};
 
 	const aggregateProxy = await getDataTableAggregateProxy(this);
 
 	const queryOptions: ListDataTableOptions = {};
 
-	if (options.sortBy) {
-		queryOptions.sortBy = options.sortBy;
+	if (options.sortField && options.sortDirection) {
+		queryOptions.sortBy =
+			`${options.sortField}:${options.sortDirection}` as ListDataTableOptions['sortBy'];
 	}
 
 	if (options.filterName) {
