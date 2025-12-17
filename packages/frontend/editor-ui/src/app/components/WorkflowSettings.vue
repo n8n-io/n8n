@@ -82,14 +82,14 @@ const executionOrderOptions = ref<Array<{ key: string; value: string; descriptio
 	},
 	{
 		key: 'v1',
-		value: 'Run each branch one at a time (v1, legacy)',
+		value: 'Run each branch one at a time (v1, recommended)',
 		description: 'Executes each branch in turn, completing one branch before starting another',
 	},
 	{
 		key: 'v2',
-		value: 'Run each branch one at a time with optimized binaries & expressions (v2, recommended)',
+		value: 'Run each branch one at a time with optimized binaries & expressions (v2, beta)',
 		description:
-			"Uses v1 execution logic with combined binary mode where binaries included in the item's json data and expressions are simplified.",
+			"Not recommended to use in production! Uses v1 execution logic with combined binary mode where binaries included in the item's json data and expressions are simplified.",
 	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
@@ -214,17 +214,7 @@ const filteredExecutionOrderOptions = computed(() => {
 		return executionOrderOptions.value;
 	}
 
-	return executionOrderOptions.value
-		.filter((option) => option.key !== 'v2')
-		.map((option) => {
-			if (option.key === 'v1') {
-				return {
-					...option,
-					value: 'Run each branch one at a time (v1, recommended)',
-				};
-			}
-			return option;
-		});
+	return executionOrderOptions.value.filter((option) => option.key !== 'v2');
 });
 
 const onCallerIdsInput = (str: string) => {
