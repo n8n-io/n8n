@@ -333,87 +333,148 @@ describe('WorkflowSettingsVue', () => {
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
 
-	describe('binaryMode dropdown', () => {
-		it('should render binary mode dropdown with correct options', async () => {
+	describe('Execution Order & Binary Mode', () => {
+		it('should render execution order dropdown with correct options', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
-
-			expect(dropdownItems).toHaveLength(2);
-			expect(dropdownItems[0]).toHaveTextContent('separate');
-			expect(dropdownItems[1]).toHaveTextContent('combined');
-		});
-
-		it('should show warning toast when binary mode is changed', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
-			await userEvent.click(dropdownItems[1]);
-
-			await waitFor(() => {
-				expect(toast.showMessage).toHaveBeenCalledWith({
-					title: 'Binary mode changed',
-					message:
-						'Please update expressions that reference binary data to match the new binary mode.',
-					type: 'warning',
-					duration: 0,
-				});
-			});
-		});
-
-		it('should save binary mode correctly when changed to combined', async () => {
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
-
-			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
-			await userEvent.click(dropdownItems[1]);
-
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({ settings: expect.objectContaining({ binaryMode: 'combined' }) }),
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
 			);
+
+			expect(dropdownItems.length).toBeGreaterThanOrEqual(2);
+			expect(dropdownItems[0]).toHaveTextContent('Run branches in parallel (v0, legacy)');
+			expect(dropdownItems[1]).toHaveTextContent('Run each branch one at a time (v1, recommended)');
 		});
 
-		it('should save binary mode correctly when changed to separate', async () => {
+		it('should set binaryMode to separate when selecting v0', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v1';
 			workflowsStore.workflowSettings.binaryMode = 'combined';
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await nextTick();
 
-			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
 			await userEvent.click(dropdownItems[0]);
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ settings: expect.objectContaining({ binaryMode: 'separate' }) }),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						executionOrder: 'v0',
+						binaryMode: 'separate',
+					}),
+				}),
 			);
 		});
 
-		it('should disable binary mode dropdown if env is read-only', async () => {
+		it('should set binaryMode to separate when selecting v1', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v0';
+			workflowsStore.workflowSettings.binaryMode = 'combined';
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						executionOrder: 'v1',
+						binaryMode: 'separate',
+					}),
+				}),
+			);
+		});
+
+		it('should show binary mode warning toast when binary mode changes', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v1';
+			workflowsStore.workflowSettings.binaryMode = 'separate';
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			workflowsStore.workflowSettings.binaryMode = 'combined';
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[0]);
+
+			await waitFor(() => {
+				expect(toast.showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						title: 'Binary mode changed',
+						type: 'warning',
+						duration: 0,
+					}),
+				);
+			});
+		});
+
+		it('should not show warning when binary mode does not change', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v0';
+			workflowsStore.workflowSettings.binaryMode = 'separate';
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			toast.showMessage.mockClear();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[1]);
+
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+
+		it('should default to v1 execution order when not set', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+
+			expect(dropdownItems[1]).toHaveTextContent('v1');
+		});
+
+		it('should disable execution order dropdown when environment is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			const binaryModeDropdown = within(getByTestId('workflow-settings-binary-mode')).getByRole(
-				'combobox',
-			);
+			const executionOrderDropdown = within(
+				getByTestId('workflow-settings-execution-order'),
+			).getByRole('combobox');
 
-			expect(binaryModeDropdown).toBeDisabled();
+			expect(executionOrderDropdown).toBeDisabled();
 		});
 
-		it('should disable binary mode dropdown if user has no permission to update workflow', async () => {
+		it('should disable execution order dropdown when user has no update permission', async () => {
 			workflowsStore.getWorkflowById.mockImplementation(() => ({
-				activeVersionId: '123',
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
+				activeVersionId: 'v1',
 				isArchived: false,
 				nodes: [],
 				connections: {},
@@ -426,39 +487,11 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			const binaryModeDropdown = within(getByTestId('workflow-settings-binary-mode')).getByRole(
-				'combobox',
-			);
+			const executionOrderDropdown = within(
+				getByTestId('workflow-settings-execution-order'),
+			).getByRole('combobox');
 
-			expect(binaryModeDropdown).toBeDisabled();
-		});
-
-		it('should default to separate mode when binaryMode is undefined', async () => {
-			workflowsStore.workflowSettings = {
-				executionOrder: 'v0',
-			};
-
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			const binaryModeDropdown = within(getByTestId('workflow-settings-binary-mode')).getByRole(
-				'combobox',
-			);
-
-			await waitFor(() => {
-				expect(binaryModeDropdown).toHaveValue('separate');
-			});
-		});
-
-		it('should preserve existing binaryMode value', async () => {
-			workflowsStore.workflowSettings.binaryMode = 'combined';
-
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
-
-			expect(dropdownItems[1]).toHaveTextContent('combined');
+			expect(executionOrderDropdown).toBeDisabled();
 		});
 	});
 

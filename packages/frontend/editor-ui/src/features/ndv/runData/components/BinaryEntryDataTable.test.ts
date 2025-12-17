@@ -200,6 +200,11 @@ describe('BinaryEntryDataTable.vue', () => {
 
 			const { saveAs } = await import('file-saver');
 
+			const mockBlob = new Blob(['file content'], { type: 'application/pdf' });
+			global.fetch = vi.fn().mockResolvedValue({
+				blob: vi.fn().mockResolvedValue(mockBlob),
+			});
+
 			const binaryData = createBinaryMetadata();
 			const { container } = renderComponent({
 				props: { value: binaryData },
@@ -208,7 +213,9 @@ describe('BinaryEntryDataTable.vue', () => {
 			const downloadButton = container.querySelector('.download') as HTMLElement;
 			await fireEvent.click(downloadButton);
 
-			expect(saveAs).toHaveBeenCalledWith('https://example.com/file.pdf', 'test-file.pdf');
+			await vi.waitFor(() => {
+				expect(saveAs).toHaveBeenCalledWith(mockBlob, 'test-file.pdf');
+			});
 		});
 
 		it('renders download button', () => {

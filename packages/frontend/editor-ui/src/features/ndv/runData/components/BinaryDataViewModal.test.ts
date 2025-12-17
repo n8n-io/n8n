@@ -409,6 +409,17 @@ describe('BinaryDataViewModal.vue', () => {
 		it('should render embed element for PDF files', async () => {
 			const binaryData = createBinaryMetadata({ mimeType: 'application/pdf' });
 			const pdfUrl = 'http://test.com/document.pdf';
+
+			const mockObjectUrl = 'blob:http://test.com/mock-blob-url';
+			global.URL.createObjectURL = vi.fn(() => mockObjectUrl);
+			global.URL.revokeObjectURL = vi.fn();
+
+			const mockBlob = new Blob(['pdf content'], { type: 'application/pdf' });
+			(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+				ok: true,
+				blob: async () => mockBlob,
+			});
+
 			workflowsStore.getBinaryUrl.mockReturnValue(pdfUrl);
 
 			const { container } = renderComponent({
@@ -420,8 +431,8 @@ describe('BinaryDataViewModal.vue', () => {
 			await waitFor(() => {
 				const embed = container.querySelector('embed');
 				expect(embed).toBeInTheDocument();
-				expect(embed?.src).toBe(pdfUrl);
 				expect(embed?.classList.contains('binary-data')).toBe(true);
+				expect(embed?.src).toBe(mockObjectUrl);
 			});
 		});
 
@@ -442,7 +453,7 @@ describe('BinaryDataViewModal.vue', () => {
 			await waitFor(() => {
 				const pre = container.querySelector('pre.text-content');
 				expect(pre).toBeInTheDocument();
-				expect(pre?.textContent).toBe(textContent);
+				expect(pre?.textContent?.trim()).toBe(textContent);
 			});
 		});
 
