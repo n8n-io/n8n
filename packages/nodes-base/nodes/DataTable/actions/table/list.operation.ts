@@ -81,7 +81,6 @@ export const description: INodeProperties[] = [
 					{ name: 'Ascending', value: 'asc' },
 					{ name: 'Descending', value: 'desc' },
 				],
-				description: 'Sort direction',
 			},
 		],
 	},
