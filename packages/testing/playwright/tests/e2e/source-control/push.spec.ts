@@ -11,13 +11,9 @@ test.use({
 test.describe('Push resources to Git @capability:source-control', () => {
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
 		await n8n.api.enableFeature('sourceControl');
-		await setupGitRepo(n8n, n8nContainer);
-
-		await n8n.goHome();
-		// Enable features required for project workflows and moving resources
 		await n8n.api.enableFeature('variables');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
+
+		await setupGitRepo(n8n, n8nContainer);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {
@@ -84,6 +80,10 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// Open push modal
 		await n8n.navigate.toHome();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow in Folder A')).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow in Folder B')).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow('Root Workflow')).toBeVisible();
+
 		await n8n.sideBar.getSourceControlPushButton().click();
 		await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
@@ -129,6 +129,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// Push it to Git first
 		await n8n.navigate.toHome();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow to Modify')).toBeVisible();
 		await n8n.sideBar.getSourceControlPushButton().click();
 		await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
@@ -193,6 +194,11 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		});
 
 		// check resources
+		await n8n.navigate.toHome();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow A')).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow B')).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow('Workflow C')).toBeVisible();
+
 		await n8n.sideBar.getSourceControlPushButton().click();
 		await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
@@ -222,7 +228,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();
-		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).not.toBeVisible();
+		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).toBeHidden();
 
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeChecked();
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).not.toBeChecked();
