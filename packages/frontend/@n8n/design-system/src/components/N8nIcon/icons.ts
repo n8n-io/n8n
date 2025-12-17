@@ -72,6 +72,7 @@ import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
+import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
 import IconLucideCircleMinus from '~icons/lucide/circle-minus';
 import IconLucideCirclePause from '~icons/lucide/circle-pause';
@@ -150,6 +151,8 @@ import IconLucideMaximize from '~icons/lucide/maximize';
 import IconLucideMaximize2 from '~icons/lucide/maximize-2';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
+import IconLucideMessageSquare from '~icons/lucide/message-square';
+import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
@@ -517,6 +520,7 @@ export const updatedIconSet = {
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
 	'circle-dot': IconLucideCircleDot,
+	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
 	'circle-minus': IconLucideCircleMinus,
 	'circle-pause': IconLucideCirclePause,
@@ -595,6 +599,8 @@ export const updatedIconSet = {
 	'maximize-2': IconLucideMaximize2,
 	menu: IconLucideMenu,
 	'message-circle': IconLucideMessageCircle,
+	'message-square': IconLucideMessageSquare,
+	'message-square-plus': IconLucideMessageSquarePlus,
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,

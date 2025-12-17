@@ -46,6 +46,8 @@ export {
 	type ChatHubAgentDto,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	type AgentIconOrEmoji,
+	agentIconOrEmojiSchema,
 	type EnrichedStructuredChunk,
 	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
@@ -133,6 +135,11 @@ export type {
 	ExternalSecretsProviderProperty,
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
+
+export {
+	WorkflowExecutionStatusSchema,
+	type WorkflowExecutionStatus,
+} from './schemas/workflow-execution-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
 

@@ -237,7 +237,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const createWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
+	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -308,14 +308,14 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, false));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.length <= 2 || !workflowsStore.canViewWorkflows) {
 			return [];
 		}
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, true));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -350,20 +350,24 @@ export function useWorkflowNavigationCommands(options: {
 		};
 		return [
 			...(hasCreatePermission ? [newWorkflowCommand] : []),
-			{
-				id: ITEM_ID.OPEN_WORKFLOW,
-				title: i18n.baseText('commandBar.workflows.open'),
-				section: i18n.baseText('commandBar.sections.workflows'),
-				placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
-				children: openWorkflowCommands.value,
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'arrow-right',
-						color: 'text-light',
-					},
-				},
-			},
+			...(workflowsStore.canViewWorkflows
+				? [
+						{
+							id: ITEM_ID.OPEN_WORKFLOW,
+							title: i18n.baseText('commandBar.workflows.open'),
+							section: i18n.baseText('commandBar.sections.workflows'),
+							placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
+							children: openWorkflowCommands.value,
+							icon: {
+								component: N8nIcon,
+								props: {
+									icon: 'arrow-right',
+									color: 'text-light',
+								},
+							},
+						},
+					]
+				: []),
 			...rootWorkflowItems.value,
 		];
 	});

@@ -299,6 +299,8 @@ describe('CredentialsView', () => {
 			await flushPromises();
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
 
+			// Open filter popover first
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
@@ -333,6 +335,8 @@ describe('CredentialsView', () => {
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
 			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
 
+			// Open filter popover first
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
@@ -367,6 +371,8 @@ describe('CredentialsView', () => {
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
 			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
 
+			// Open filter popover first
+			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
