@@ -6,10 +6,10 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import MessageApproval from '@n8n/chat/components/MessageApproval.vue';
 import { ChatOptionsSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import { v4 as uuid } from 'uuid';
 import type { InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -17,7 +17,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { constructChatWebsocketUrl } from '@n8n/chat/utils';
+import { constructChatWebsocketUrl, parseBotChatMessageContent } from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
@@ -112,6 +112,9 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			disabled: params.isDisabled,
 			allowFileUploads: params.allowFileUploads,
 			allowedFilesMimeTypes,
+			messageComponents: {
+				approval: MessageApproval,
+			},
 		};
 
 		return { chatConfig, chatOptions };
@@ -194,10 +197,8 @@ export function useChatState(isReadOnly: boolean): ChatState {
 					}
 					setLoadingState(false);
 					const newMessage: ChatMessage & { sessionId: string } = {
-						text: event.data,
-						sender: 'bot',
+						...parseBotChatMessageContent(event.data as string),
 						sessionId: currentSessionId.value,
-						id: uuid(),
 					};
 					logsStore.addChatMessage(newMessage);
 

@@ -1,3 +1,4 @@
+import MessageApproval from '@n8n/chat/components/MessageApproval.vue';
 import type { ChatOptions } from '@n8n/chat/types';
 
 export const defaultOptions: ChatOptions = {
@@ -26,6 +27,9 @@ export const defaultOptions: ChatOptions = {
 	},
 	theme: {},
 	enableStreaming: false,
+	messageComponents: {
+		approval: MessageApproval,
+	},
 };
 
 export const defaultMountingTarget = '#n8n-chat';
