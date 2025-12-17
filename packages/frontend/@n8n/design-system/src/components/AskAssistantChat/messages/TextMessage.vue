@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { onClickOutside, useElementBounding } from '@vueuse/core';
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
-import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
+import RestoreVersionLink from './RestoreVersionLink.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';
-import N8nIcon from '../../N8nIcon';
 
 interface Props {
 	message: ChatUI.TextMessage & { quickReplies?: ChatUI.QuickReply[] };
@@ -28,24 +26,12 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
-	restore: [versionId: string];
 	restoreConfirm: [versionId: string, messageId: string];
 	restoreCancel: [];
 	showVersion: [versionId: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
-
-const formattedDate = computed(() => {
-	if (!props.message.revertVersion?.createdAt) return '';
-	const date = new Date(props.message.revertVersion.createdAt);
-	return date.toLocaleString(undefined, {
-		month: 'short',
-		day: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit',
-	});
-});
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
@@ -58,33 +44,6 @@ const isOverflowing = ref(false);
 // Should match --assistant--text-message--collapsed--max-height in _tokens.scss
 const MAX_HEIGHT = 200;
 
-// Restore version confirm dialog
-const showRestoreConfirm = ref(false);
-const restoreButtonRef = ref<HTMLElement | null>(null);
-const restoreConfirmRef = ref<HTMLElement | null>(null);
-
-// Close confirm dialog when clicking outside
-onClickOutside(restoreConfirmRef, () => {
-	if (showRestoreConfirm.value) {
-		showRestoreConfirm.value = false;
-	}
-});
-
-// Calculate modal position based on button location
-const modalStyle = computed(() => {
-	// Get restore button bounding rect for positioning the teleported modal
-	const restoreButtonBounding = useElementBounding(restoreButtonRef);
-	if (!showRestoreConfirm.value) return {};
-
-	// Position modal below the button, aligned to the right
-	return {
-		position: 'fixed' as const,
-		top: `${restoreButtonBounding.bottom.value + 8}px`,
-		right: `${window.innerWidth - restoreButtonBounding.right.value - restoreButtonBounding.width.value / 4}px`,
-		zIndex: 9999,
-	};
-});
-
 function checkOverflow() {
 	if (userContentRef.value) {
 		isOverflowing.value = userContentRef.value.scrollHeight > MAX_HEIGHT;
@@ -93,26 +52,6 @@ function checkOverflow() {
 
 function toggleExpanded() {
 	isExpanded.value = !isExpanded.value;
-}
-
-function handleRestoreClick() {
-	showRestoreConfirm.value = true;
-}
-
-function handleRestoreConfirm() {
-	if (props.message.revertVersion && props.message.id) {
-		emit('restoreConfirm', props.message.revertVersion.id, props.message.id);
-	}
-	showRestoreConfirm.value = false;
-}
-
-function handleRestoreCancel() {
-	emit('restoreCancel');
-	showRestoreConfirm.value = false;
-}
-
-function handleShowVersion(versionId: string) {
-	emit('showVersion', versionId);
 }
 
 onMounted(() => {
@@ -149,38 +88,15 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	>
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
 			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
-			<div v-if="message.role === 'user' && message.revertVersion" :class="$style.restoreWrapper">
-				<div :class="$style.restoreContainer">
-					<div :class="$style.restoreLine"></div>
-					<button
-						ref="restoreButtonRef"
-						:class="[$style.restoreButton, { [$style.disabled]: streaming }]"
-						type="button"
-						:disabled="streaming"
-						@click="handleRestoreClick"
-					>
-						<N8nIcon icon="undo-2" size="medium" />
-						{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
-					</button>
-					<div :class="$style.restoreLine"></div>
-				</div>
-				<!-- Teleport modal to body to escape the messages container stacking context -->
-				<Teleport to="body">
-					<div
-						v-if="showRestoreConfirm && message.revertVersion"
-						ref="restoreConfirmRef"
-						:style="modalStyle"
-					>
-						<RestoreVersionConfirm
-							:version-id="message.revertVersion.id"
-							:prune-time-hours="pruneTimeHours"
-							@confirm="handleRestoreConfirm"
-							@cancel="handleRestoreCancel"
-							@show-version="handleShowVersion"
-						/>
-					</div>
-				</Teleport>
-			</div>
+			<RestoreVersionLink
+				v-if="message.role === 'user' && message.revertVersion"
+				:revert-version="message.revertVersion"
+				:streaming="streaming"
+				:prune-time-hours="pruneTimeHours"
+				@restore-confirm="(versionId) => emit('restoreConfirm', versionId, message.id!)"
+				@restore-cancel="emit('restoreCancel')"
+				@show-version="(versionId) => emit('showVersion', versionId)"
+			/>
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
 				<div
@@ -276,63 +192,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 	&:hover {
 		text-decoration: underline;
-	}
-}
-
-.restoreWrapper {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 100%;
-	margin-bottom: var(--spacing--2xs);
-}
-
-.restoreContainer {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	padding: 0 var(--spacing--md);
-}
-
-.restoreLine {
-	flex: 1;
-	height: 1px;
-	background-color: var(--color--text--tint-1);
-}
-
-.restoreButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	background: none;
-	border: none;
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	cursor: pointer;
-	white-space: nowrap;
-	transition:
-		background-color 0.15s ease,
-		color 0.15s ease;
-	font-weight: var(--font-weight--medium);
-
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-	}
-
-	&:active {
-		background-color: var(--color--foreground);
-	}
-
-	&.disabled {
-		cursor: not-allowed;
-
-		&:hover,
-		&:active {
-			background-color: transparent;
-		}
 	}
 }
 
