@@ -1,24 +1,22 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { albertsonsRestApiRequest } from '@src/utils/albertsonsRestApiRequest';
+import { useUserAgentMappingsStore } from '@src/stores/userAgentMappings.store';
 
 const router = useRouter();
-const userAgentMappingsData = ref([]);
+const userAgentMappingsStore = useUserAgentMappingsStore();
 
-async function loadUserAgentMappingsData() {
-	const result = await albertsonsRestApiRequest('GET', `/v1/userAgentMappings/all`);
-	userAgentMappingsData.value = result;
-	console.log('agents', userAgentMappingsData.value);
-}
+onMounted(async () => {
+	await userAgentMappingsStore.fetchUserAgentMappings();
+});
+
+const userAgentMappingsData = computed(() => {
+	return userAgentMappingsStore.getUserAgentMappings();
+});
 
 function goToNewWorkflow() {
 	router.push('/workflow/new');
 }
-
-onMounted(() => {
-	loadUserAgentMappingsData();
-});
 </script>
 
 <template>
@@ -51,6 +49,7 @@ onMounted(() => {
 		<!-- Agent List -->
 		<div class="card">
 			<table>
+				<!-- Agent List : table header -->
 				<thead>
 					<tr>
 						<th>Name</th>
@@ -63,6 +62,7 @@ onMounted(() => {
 					</tr>
 				</thead>
 
+				<!-- Agent List : table body -->
 				<tbody>
 					<tr v-for="item in userAgentMappingsData" :key="item.id" class="workflow_entry">
 						<td>
