@@ -57,7 +57,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 
 <style lang="css" module>
 .checkbox {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	flex-direction: row;
 	cursor: pointer;
