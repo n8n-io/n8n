@@ -241,11 +241,6 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	padding-block: var(--spacing--4xs);
-
-	&.isMobileDevice {
-		padding-block: 0;
-	}
 }
 
 .header {

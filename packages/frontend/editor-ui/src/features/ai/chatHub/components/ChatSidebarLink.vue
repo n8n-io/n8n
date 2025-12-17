@@ -44,7 +44,7 @@ defineSlots<{
 				@click="emit('click', $event)"
 			>
 				<slot name="icon">
-					<N8nIcon v-if="icon" size="large" :icon="icon" />
+					<N8nIcon v-if="icon" size="large" :icon="icon" :class="$style.menuItemIcon" />
 				</slot>
 				<div v-if="!compact" :class="$style.textContainer">
 					<N8nText :class="$style.label" size="small" color="text-light">{{ label }}</N8nText>
@@ -83,7 +83,7 @@ defineSlots<{
 	&:has([aria-expanded='true']),
 	&.active,
 	&:hover {
-		background-color: var(--color--foreground);
+		background-color: var(--color--background--light-1);
 	}
 }
 

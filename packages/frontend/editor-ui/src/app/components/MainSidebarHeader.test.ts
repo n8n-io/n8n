@@ -41,7 +41,7 @@ describe('MainSidebarHeader', () => {
 		expect(() =>
 			createComponentRenderer(MainSidebarHeader, {
 				pinia,
-				props: { isCollapsed: true },
+				props: { isCollapsed: false },
 			})(),
 		).not.toThrow();
 	});

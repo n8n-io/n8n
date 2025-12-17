@@ -86,11 +86,7 @@ const onLogout = () => {
 		/>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
-				<ChatSidebarContent
-					:is-mobile-device="isMobileDevice"
-					:is-collapsed="isCollapsed"
-					:class="$style.links"
-				/>
+				<ChatSidebarContent :is-mobile-device="isMobileDevice" :is-collapsed="isCollapsed" />
 				<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @logout="onLogout" />
 			</div>
 		</N8nScrollArea>

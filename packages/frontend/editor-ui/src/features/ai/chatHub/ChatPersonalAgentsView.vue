@@ -150,17 +150,6 @@ watch(
 	position: relative;
 }
 
-.menuButton {
-	position: absolute;
-	top: 0;
-	left: 0;
-	margin: var(--spacing--sm);
-
-	.isMobileDevice & {
-		margin: var(--spacing--2xs);
-	}
-}
-
 .header {
 	display: flex;
 	justify-content: space-between;
