@@ -10,7 +10,7 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	ChatProviderSettingsDto,
+	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
