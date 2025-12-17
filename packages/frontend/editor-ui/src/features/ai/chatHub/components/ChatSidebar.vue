@@ -1,10 +1,8 @@
 <script lang="ts" setup>
 import { nextTick, computed } from 'vue';
-import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 import { type IMenuItem, N8nResizeWrapper } from '@n8n/design-system';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -16,7 +14,6 @@ import ChatSidebarContent from '@/features/ai/chatHub/components/ChatSidebarCont
 
 const i18n = useI18n();
 const router = useRouter();
-const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 
 const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
 	useSidebarLayout();
@@ -87,7 +84,7 @@ const onLogout = () => {
 		/>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
-				<ChatSidebarContent :is-mobile-device="isMobileDevice" :is-collapsed="isCollapsed" />
+				<ChatSidebarContent :is-collapsed="isCollapsed" />
 				<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @logout="onLogout" />
 			</div>
 		</N8nScrollArea>

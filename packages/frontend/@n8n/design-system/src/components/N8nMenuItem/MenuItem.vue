@@ -67,7 +67,7 @@ const iconColor = computed(() => {
 				:id="item.id"
 				:to="to"
 				role="menuitem"
-				:class="[$style.menuItem, { [$style.active]: active }]"
+				:class="[$style.menuItem, { [$style.active]: active, [$style.compact]: compact }]"
 				:aria-label="props.ariaLabel"
 				data-test-id="menu-item"
 				@click="emit('click')"
@@ -84,10 +84,12 @@ const iconColor = computed(() => {
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
-				<N8nText v-if="!compact" :class="$style.menuItemText" color="text-dark">
-					{{ item.label }}
-				</N8nText>
-				<BetaTag v-if="!compact && item.beta" />
+				<div :class="$style.menuItemLabel">
+					<N8nText v-if="!compact" :class="$style.menuItemText" color="text-dark">
+						{{ item.label }}
+					</N8nText>
+					<BetaTag v-if="!compact && item.beta" />
+				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
 		</N8nTooltip>
@@ -129,6 +131,10 @@ const iconColor = computed(() => {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
 	}
+
+	&.compact {
+		gap: 0;
+	}
 }
 
 .menuItem:focus-visible {
@@ -140,7 +146,6 @@ const iconColor = computed(() => {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	flex: 1;
 	line-height: var(--font-size--lg);
 	min-width: 0;
 }
@@ -179,5 +184,14 @@ const iconColor = computed(() => {
 	.menuItemIcon {
 		color: var(--color--text--shade-1);
 	}
+}
+
+.menuItemLabel {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+	gap: var(--spacing--3xs);
+	flex: 1;
+	min-width: 0;
 }
 </style>

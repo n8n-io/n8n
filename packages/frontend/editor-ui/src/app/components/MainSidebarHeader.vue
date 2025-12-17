@@ -232,7 +232,7 @@ const {
 
 .beta {
 	margin-top: var(--spacing--3xs);
-	margin-left: var(--spacing--4xs);
+	margin-left: var(--spacing--3xs);
 }
 
 .readOnlyEnvironmentIcon {

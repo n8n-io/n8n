@@ -20,7 +20,7 @@ import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 
-defineProps<{ isMobileDevice: boolean; isCollapsed: boolean }>();
+defineProps<{ isCollapsed: boolean }>();
 
 const route = useRoute();
 const router = useRouter();
@@ -143,7 +143,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="[$style.component, { [$style.isMobileDevice]: isMobileDevice }]">
+	<div :class="$style.component">
 		<div
 			:class="{
 				[$style.links]: true,
@@ -274,11 +274,7 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs);
-	gap: var(--spacing--xs);
-
-	.isMobileDevice & {
-		gap: var(--spacing--sm);
-	}
+	gap: var(--spacing--sm);
 
 	&.collapsed {
 		gap: 0;
