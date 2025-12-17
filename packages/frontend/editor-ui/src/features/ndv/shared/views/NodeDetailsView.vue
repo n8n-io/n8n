@@ -17,7 +17,6 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
@@ -184,10 +183,7 @@ const inputNode = computed(() => {
 const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 const isTriggerNode = computed(
-	() =>
-		!!activeNodeType.value &&
-		(activeNodeType.value.group.includes('trigger') ||
-			activeNodeType.value.name === START_NODE_TYPE),
+	() => !!activeNodeType.value && activeNodeType.value.group.includes('trigger'),
 );
 
 const showTriggerPanel = computed(() => {

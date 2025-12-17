@@ -218,4 +218,16 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		const [identifier, parsedOptions] = await this.getIdentifier(options);
 		return await identifier.resolve(context, parsedOptions);
 	}
+
+	async validateIdentity(identity: string, handle: CredentialResolverHandle): Promise<void> {
+		const parsedOptions = await this.parseOptions(handle.configuration);
+		await this.resolveIdentifier(
+			{
+				identity,
+				version: 1,
+				metadata: {},
+			},
+			parsedOptions,
+		);
+	}
 }
