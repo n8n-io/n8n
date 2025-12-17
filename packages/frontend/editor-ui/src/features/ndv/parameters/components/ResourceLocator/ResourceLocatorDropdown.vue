@@ -361,24 +361,25 @@ watch(
 				>
 					<div :class="$style.resourceNameContainer">
 						<span>{{ result.name }}</span>
-						<div :class="$style.urlLink">
-							<N8nIcon
-								v-if="showHoverUrl && result.url && hoverIndex === i + 1"
-								icon="external-link"
-								:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
-								@click="openUrl($event, result.url)"
-							/>
-						</div>
-						<span v-if="result.isArchived" :class="$style.badgesContainer">
-							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
-								{{ i18n.baseText('workflows.item.archived') }}
-							</N8nBadge>
-						</span>
 						<slot
 							name="item-badge"
 							:item="result"
 							:is-hovered="showHoverUrl && hoverIndex === i + 1"
 						></slot>
+						<span v-if="result.isArchived" :class="$style.badgesContainer">
+							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+								{{ i18n.baseText('workflows.item.archived') }}
+							</N8nBadge>
+						</span>
+						<div :class="$style.urlLink">
+							<N8nIcon
+								v-if="showHoverUrl && result.url && hoverIndex === i + 1"
+								icon="external-link"
+								size="small"
+								:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
+								@click="openUrl($event, result.url)"
+							/>
+						</div>
 					</div>
 				</div>
 				<div v-if="props.loading && !props.errorView">
@@ -501,7 +502,7 @@ watch(
 	align-items: center;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
-	margin-left: auto;
+	margin-left: var(--spacing--2xs);
 
 	&:hover {
 		color: var(--color--primary);
@@ -511,7 +512,7 @@ watch(
 .badgesContainer {
 	display: inline-flex;
 	align-items: center;
-	margin-left: auto;
+	margin-left: var(--spacing--2xs);
 }
 
 .resourceNameContainer {
@@ -526,6 +527,8 @@ watch(
 .resourceNameContainer > :first-child {
 	overflow: hidden;
 	text-overflow: ellipsis;
+	flex: 1;
+	min-width: 0;
 }
 
 .searchIcon {

@@ -355,15 +355,16 @@ const onAddResourceClicked = async () => {
 				</div>
 			</template>
 			<template #item-badge="{ item, isHovered }">
-				<N8nTooltip
-					v-if="!item.active && isHovered"
-					:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
-					placement="top"
-				>
-					<span :class="$style.inactiveBadge">
-						<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
-					</span>
-				</N8nTooltip>
+				<span v-if="!item.active && isHovered" :class="$style.inactiveBadgeWrapper">
+					<N8nTooltip
+						:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+						placement="top"
+					>
+						<span :class="$style.inactiveBadge">
+							<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
+						</span>
+					</N8nTooltip>
+				</span>
 			</template>
 			<div
 				:class="{
@@ -483,6 +484,12 @@ const onAddResourceClicked = async () => {
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
+
+.inactiveBadgeWrapper {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
 
 .inactiveBadge {
 	display: inline-flex;
