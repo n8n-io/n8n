@@ -285,7 +285,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		updatedAt: new Date().toISOString(),
 		previousMessageId: streaming.promptPreviousMessageId,
 		retryOfMessageId: null,
-		revisionOfMessageId: null,
+		revisionOfMessageId: streaming.revisionOfMessageId,
 		responses: [],
 		alternatives: [],
 		attachments: streaming.attachments,

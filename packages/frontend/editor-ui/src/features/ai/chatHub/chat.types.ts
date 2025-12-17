@@ -89,6 +89,7 @@ export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['met
 	promptId: ChatMessageId;
 	sessionId: ChatSessionId;
 	retryOfMessageId: ChatMessageId | null;
+	revisionOfMessageId: ChatMessageId | null;
 	tools: INode[];
 	attachments: IBinaryData[];
 	agent: ChatModelDto;

@@ -551,6 +551,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			promptText: message,
 			sessionId,
 			retryOfMessageId: null,
+			revisionOfMessageId: null,
 			tools,
 			attachments,
 			agent,
@@ -613,6 +614,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			agent,
 			retryOfMessageId: null,
+			revisionOfMessageId: editId,
 			tools: [],
 			attachments: [],
 		};
@@ -658,6 +660,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			agent,
 			retryOfMessageId: retryId,
+			revisionOfMessageId: null,
 			tools: [],
 			attachments: [],
 		};
