@@ -20,13 +20,11 @@ export class SourceControlPullModal {
 	}
 
 	getWorkflowsTab(): Locator {
-		return this.page.getByTestId('source-control-pull-modal-tab').filter({ hasText: 'Workflows' });
+		return this.page.getByTestId('source-control-pull-modal-tab-workflow');
 	}
 
 	getCredentialsTab(): Locator {
-		return this.page
-			.getByTestId('source-control-pull-modal-tab')
-			.filter({ hasText: 'Credentials' });
+		return this.page.getByTestId('source-control-pull-modal-tab-credential');
 	}
 
 	async selectWorkflowsTab(): Promise<void> {
