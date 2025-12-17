@@ -31,6 +31,20 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 		return false;
 	}
 
+	// Validate timestamp to prevent replay attacks
+	// Stripe recommends a tolerance of 300 seconds (5 minutes)
+	const TIMESTAMP_TOLERANCE_SECONDS = 300;
+	const timestampNum = parseInt(timestamp, 10);
+	if (isNaN(timestampNum)) {
+		return false;
+	}
+
+	const currentTime = Math.floor(Date.now() / 1000);
+	const timeDifference = Math.abs(currentTime - timestampNum);
+	if (timeDifference > TIMESTAMP_TOLERANCE_SECONDS) {
+		return false;
+	}
+
 	try {
 		if (typeof credential.signatureSecret !== 'string') {
 			return false;
