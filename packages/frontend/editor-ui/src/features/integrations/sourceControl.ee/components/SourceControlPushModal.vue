@@ -730,6 +730,7 @@ onMounted(async () => {
 						width="304px"
 						:content-class="$style['popover-content']"
 						style="align-self: normal"
+						z-index="2000"
 					>
 						<template #trigger>
 							<N8nButton
