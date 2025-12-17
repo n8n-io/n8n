@@ -348,12 +348,8 @@ $menu_width: 180px;
 	padding: var(--spacing--4xs);
 }
 
-.loading-item {
-	margin-bottom: var(--spacing--4xs);
-
-	&:last-child {
-		margin-bottom: 0;
-	}
+.loading-item div {
+	height: var(--spacing--xl);
 }
 
 .empty-state {

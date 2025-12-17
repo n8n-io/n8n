@@ -362,14 +362,13 @@ watch(
 
 .loading-container {
 	padding: var(--spacing--4xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
-.loading-item {
-	margin-bottom: var(--spacing--4xs);
-
-	&:last-child {
-		margin-bottom: 0;
-	}
+.loading-item div {
+	height: var(--spacing--xl);
 }
 
 .empty-state {
