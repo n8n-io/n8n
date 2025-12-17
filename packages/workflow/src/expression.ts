@@ -1,8 +1,13 @@
+import { ApplicationError } from '@n8n/errors';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from '@n8n/errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
+import {
+	hasExpandableArrays,
+	expandArraysToObjects,
+	flattenExpandedArray,
+} from './expression-array-expander';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
@@ -10,7 +15,6 @@ import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
 import { getGlobalState } from './global-state';
-import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -24,9 +28,10 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './interfaces';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
-import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -537,7 +542,8 @@ export class Expression {
 			const returnData = parameterValue.map((item) =>
 				resolveParameterValue(item as NodeParameterValueType, {}),
 			);
-			return returnData as NodeParameterValue[] | INodeParameters[];
+			// Flatten any items that were expanded from array expressions (e.g., [*] wildcard)
+			return flattenExpandedArray(returnData) as NodeParameterValue[] | INodeParameters[];
 		}
 
 		if (parameterValue === null || parameterValue === undefined) {
@@ -550,12 +556,26 @@ export class Expression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
+		let hasExpressionArrays = false;
 
 		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(
+			const wasExpression = typeof value === 'string' && value.startsWith('=');
+			const resolved = resolveParameterValue(
 				value as NodeParameterValueType,
 				parameterValue as INodeParameters,
 			);
+			returnData[key] = resolved;
+
+			// Track if any expression string resolved to an array (e.g., from [*] wildcard)
+			if (wasExpression && Array.isArray(resolved)) {
+				hasExpressionArrays = true;
+			}
+		}
+
+		// If object has array values from [*] expressions, expand into multiple objects
+		// Only expand when at least one expression evaluated to an array
+		if (hasExpressionArrays && hasExpandableArrays(returnData)) {
+			return expandArraysToObjects(returnData);
 		}
 
 		if (returnObjectAsString && typeof returnData === 'object') {

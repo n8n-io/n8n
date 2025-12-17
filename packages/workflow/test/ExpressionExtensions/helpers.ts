@@ -1,4 +1,4 @@
-import type { IDataObject } from '../../src/interfaces';
+import type { IDataObject, NodeParameterValueType } from '../../src/interfaces';
 import { Workflow } from '../../src/workflow';
 import * as Helpers from '../helpers';
 
@@ -21,6 +21,18 @@ export const workflow = new Workflow({
 export const expression = workflow.expression;
 
 export const evaluate = (value: string, values?: IDataObject[]) =>
+	expression.getParameterValue(
+		value,
+		null,
+		0,
+		0,
+		'node',
+		values?.map((v) => ({ json: v })) ?? [],
+		'manual',
+		{},
+	);
+
+export const evaluateParam = (value: NodeParameterValueType, values?: IDataObject[]) =>
 	expression.getParameterValue(
 		value,
 		null,
