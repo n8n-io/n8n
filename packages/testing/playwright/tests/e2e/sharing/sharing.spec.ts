@@ -260,7 +260,8 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.saveSharing();
 			await n8n.credentials.credentialModal.close();
 
-			await n8n.projectTabs.clickWorkflowsTab();
+			await n8n.navigate.toWorkflows();
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
 			await n8n.workflows.shareWorkflow('Sharing Test Workflow');
 
 			await n8n.workflowSharingModal.getUsersSelect().click();
