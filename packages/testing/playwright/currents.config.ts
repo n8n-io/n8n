@@ -5,7 +5,7 @@ const config: CurrentsConfig = {
 	projectId: process.env.CURRENTS_PROJECT_ID ?? 'qyhJh8',
 	ciBuildId: `${process.env.GITHUB_REPOSITORY}-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`,
 	orchestration: {
-		batchSize: 4,
+		batchSize: 5,
 	},
 	...(process.env.BUILD_WITH_COVERAGE === 'true' && {
 		coverage: {
