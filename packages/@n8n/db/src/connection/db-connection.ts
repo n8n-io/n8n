@@ -12,6 +12,24 @@ import { DbConnectionOptions } from './db-connection-options';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
 
+/**
+ * Advisory lock key used to prevent concurrent database operations in multi-main setups.
+ * This ensures only one n8n instance runs migrations and initialization at a time.
+ * The number is arbitrary but should be unique to n8n.
+ */
+const ADVISORY_LOCK_KEY = 1850;
+
+/**
+ * Default timeout for acquiring advisory locks (in milliseconds).
+ * If the lock cannot be acquired within this time, an error is thrown.
+ */
+const ADVISORY_LOCK_TIMEOUT_MS = 30_000;
+
+/**
+ * Interval between lock acquisition attempts (in milliseconds).
+ */
+const ADVISORY_LOCK_RETRY_INTERVAL_MS = 500;
+
 type ConnectionState = {
 	connected: boolean;
 	migrated: boolean;
@@ -84,9 +102,65 @@ export class DbConnection {
 
 	async migrate() {
 		const { dataSource, connectionState } = this;
-		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await dataSource.runMigrations({ transaction: 'each' });
-		connectionState.migrated = true;
+
+		await this.withAdvisoryLock(async () => {
+			(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
+			await dataSource.runMigrations({ transaction: 'each' });
+			connectionState.migrated = true;
+		});
+	}
+
+	/**
+	 * Execute an async function with a PostgreSQL transaction-level advisory lock.
+	 * This ensures only one n8n instance executes the function at a time in multi-main setups.
+	 * For non-PostgreSQL databases, the function is executed without locking.
+	 *
+	 * Uses transaction-level locks (pg_try_advisory_xact_lock) which automatically release
+	 * when the transaction ends (commit or rollback) or if the connection drops.
+	 * This is safer than session-level locks as it prevents orphaned locks.
+	 *
+	 * The lock has a timeout to prevent indefinite blocking if another instance holds the lock.
+	 * If the lock cannot be acquired within the timeout, an error is thrown.
+	 */
+	async withAdvisoryLock<T>(fn: () => Promise<T>): Promise<T> {
+		const { dataSource, options } = this;
+		const isPostgres = options.type === 'postgres';
+
+		if (!isPostgres) {
+			return await fn();
+		}
+
+		// Use a transaction so the lock auto-releases on commit/rollback/connection drop
+		return await dataSource.transaction(async (entityManager) => {
+			const startTime = Date.now();
+			let lockAcquired = false;
+
+			// Try to acquire the transaction-level lock with timeout
+			while (!lockAcquired) {
+				const result = await entityManager.query<Array<{ pg_try_advisory_xact_lock: boolean }>>(
+					`SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_KEY})`,
+				);
+				lockAcquired = result[0]?.pg_try_advisory_xact_lock ?? false;
+
+				if (!lockAcquired) {
+					const elapsed = Date.now() - startTime;
+					if (elapsed >= ADVISORY_LOCK_TIMEOUT_MS) {
+						throw new OperationalError(
+							`Failed to acquire database advisory lock (key: ${ADVISORY_LOCK_KEY}) after ${ADVISORY_LOCK_TIMEOUT_MS}ms. ` +
+								'Another n8n instance may be holding the lock. ' +
+								'The lock will auto-release when that instance completes or its connection drops. ' +
+								'If you believe this is an error, you can identify and terminate the blocking session with: ' +
+								`SELECT pg_terminate_backend(pid) FROM pg_locks WHERE objid = ${ADVISORY_LOCK_KEY} AND locktype = 'advisory';`,
+						);
+					}
+					await setTimeoutP(ADVISORY_LOCK_RETRY_INTERVAL_MS);
+				}
+			}
+
+			// Lock acquired, execute the function
+			// Lock will auto-release when transaction commits or rolls back
+			return await fn();
+		});
 	}
 
 	async close() {

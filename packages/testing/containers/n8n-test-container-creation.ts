@@ -525,49 +525,54 @@ async function createN8NInstances({
 	resourceQuota,
 	keycloakCertPem,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
-	const instances: StartedTestContainer[] = [];
 	const log = createElapsedLogger('n8n-instances');
 
-	// Create main instances sequentially to avoid database migration conflicts
-	for (let i = 1; i <= mainCount; i++) {
-		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
+	// Create main instances in parallel - PostgreSQL advisory locks prevent
+	// concurrent migration conflicts (see db-connection.ts)
+	log(`Starting ${mainCount} main instance(s) in parallel...`);
+	const mainPromises = Array.from({ length: mainCount }, async (_, i) => {
+		const instanceNumber = i + 1;
+		const name =
+			mainCount > 1
+				? `${uniqueProjectName}-n8n-main-${instanceNumber}`
+				: `${uniqueProjectName}-n8n`;
 		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
-		log(`Starting main ${i}/${mainCount}: ${name}`);
-		const container = await createN8NContainer({
+		return await createN8NContainer({
 			name,
 			uniqueProjectName,
 			environment,
 			network,
 			isWorker: false,
-			instanceNumber: i,
+			instanceNumber,
 			networkAlias,
-			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
+			directPort: instanceNumber === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
 			keycloakCertPem,
 		});
-		instances.push(container);
-		log(`Main ${i}/${mainCount} ready`);
-	}
+	});
+	const mainInstances = await Promise.all(mainPromises);
+	log(`All ${mainCount} main instance(s) ready`);
 
-	// Create worker instances
-	for (let i = 1; i <= workerCount; i++) {
-		const name = `${uniqueProjectName}-n8n-worker-${i}`;
-		log(`Starting worker ${i}/${workerCount}: ${name}`);
-		const container = await createN8NContainer({
+	// Create worker instances in parallel - workers don't run migrations
+	log(`Starting ${workerCount} worker instance(s) in parallel...`);
+	const workerPromises = Array.from({ length: workerCount }, async (_, i) => {
+		const instanceNumber = i + 1;
+		const name = `${uniqueProjectName}-n8n-worker-${instanceNumber}`;
+		return await createN8NContainer({
 			name,
 			uniqueProjectName,
 			environment,
 			network,
 			isWorker: true,
-			instanceNumber: i,
+			instanceNumber,
 			resourceQuota,
 			keycloakCertPem,
 		});
-		instances.push(container);
-		log(`Worker ${i}/${workerCount} ready`);
-	}
+	});
+	const workerInstances = await Promise.all(workerPromises);
+	log(`All ${workerCount} worker instance(s) ready`);
 
-	return instances;
+	return [...mainInstances, ...workerInstances];
 }
 
 interface CreateContainerOptions {
