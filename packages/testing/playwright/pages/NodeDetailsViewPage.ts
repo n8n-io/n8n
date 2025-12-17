@@ -787,21 +787,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async searchOutputData(searchTerm: string) {
-		// Click on the search input (even with opacity:0) to focus and expand it
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.outputPanel.getSearchInput();
-		// eslint-disable-next-line playwright/no-force-option
-		await searchInput.click({ force: true });
-		// Wait for the search input to become visible (it has opacity: 0 when collapsed)
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
 		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
-		// Click on the search input (even with opacity:0) to focus and expand it
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.inputPanel.getSearchInput();
-		// eslint-disable-next-line playwright/no-force-option
-		await searchInput.click({ force: true });
-		// Wait for the search input to become visible (it has opacity: 0 when collapsed)
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
 		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
