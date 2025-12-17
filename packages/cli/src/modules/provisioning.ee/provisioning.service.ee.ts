@@ -10,18 +10,19 @@ import {
 	ProjectRepository,
 	ProjectRelation,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
-import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { EventService } from '@/events/event.service';
-import { type Publisher } from '@/scaling/pubsub/publisher.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ZodError } from 'zod';
-import { ProjectService } from '@/services/project.service.ee';
+import { Container, Service } from '@n8n/di';
+import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+import { ZodError } from 'zod';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+
+import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 
 @Service()
 export class ProvisioningService {
@@ -37,7 +38,6 @@ export class ProvisioningService {
 		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,
 		private readonly logger: Logger,
-		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
@@ -307,7 +307,10 @@ export class ProvisioningService {
 		this.provisioningConfig = await this.loadConfig();
 
 		if (this.instanceSettings.isMultiMain) {
-			await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({
+				command: 'reload-sso-provisioning-configuration',
+			});
 		}
 
 		return await this.getConfig();
