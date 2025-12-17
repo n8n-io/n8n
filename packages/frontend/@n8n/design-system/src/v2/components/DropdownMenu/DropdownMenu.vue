@@ -240,9 +240,9 @@ defineExpose({ open, close });
 						@key:enter="navigation.handleEnter"
 					/>
 
-					<template v-if="loading">
-						<slot name="loading">
-							<div :class="$style['loading-container']">
+					<div :class="$style['items-container']">
+						<template v-if="loading">
+							<slot name="loading">
 								<N8nLoading
 									v-for="i in loadingItemCount"
 									:key="i"
@@ -250,35 +250,35 @@ defineExpose({ open, close });
 									:class="$style['loading-item']"
 									variant="p"
 								/>
-							</div>
-						</slot>
-					</template>
-					<template v-else-if="items.length === 0">
-						<slot name="empty">
-							<div :class="$style['empty-state']">No items</div>
-						</slot>
-					</template>
-					<template v-else>
-						<template v-for="(item, index) in items" :key="item.id">
-							<slot name="item" :item="item">
-								<N8nDropdownMenuItem
-									v-bind="item"
-									:highlighted="highlightedIndex === index"
-									:sub-menu-open="openSubMenuIndex === index"
-									@select="handleItemSelect"
-									@search="handleItemSearch"
-									@update:sub-menu-open="(open: boolean) => handleSubMenuOpenChange(index, open)"
-								>
-									<template v-if="slots['item-leading']" #item-leading="{ ui }">
-										<slot name="item-leading" :item="item" :ui="ui" />
-									</template>
-									<template v-if="slots['item-trailing']" #item-trailing="{ ui }">
-										<slot name="item-trailing" :item="item" :ui="ui" />
-									</template>
-								</N8nDropdownMenuItem>
 							</slot>
 						</template>
-					</template>
+						<template v-else-if="items.length === 0">
+							<slot name="empty">
+								<div :class="$style['empty-state']">No items</div>
+							</slot>
+						</template>
+						<template v-else>
+							<template v-for="(item, index) in items" :key="item.id">
+								<slot name="item" :item="item">
+									<N8nDropdownMenuItem
+										v-bind="item"
+										:highlighted="highlightedIndex === index"
+										:sub-menu-open="openSubMenuIndex === index"
+										@select="handleItemSelect"
+										@search="handleItemSearch"
+										@update:sub-menu-open="(open: boolean) => handleSubMenuOpenChange(index, open)"
+									>
+										<template v-if="slots['item-leading']" #item-leading="{ ui }">
+											<slot name="item-leading" :item="item" :ui="ui" />
+										</template>
+										<template v-if="slots['item-trailing']" #item-trailing="{ ui }">
+											<slot name="item-trailing" :item="item" :ui="ui" />
+										</template>
+									</N8nDropdownMenuItem>
+								</slot>
+							</template>
+						</template>
+					</div>
 				</template>
 			</DropdownMenuContent>
 		</component>
@@ -326,15 +326,16 @@ $menu_width: 180px;
 	display: flex;
 	flex-direction: column;
 	width: $menu_width;
-	gap: var(--spacing--5xs);
-	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
 	border: var(--border);
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow);
 }
 
-.loading-container {
+.items-container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 	padding: var(--spacing--4xs);
 }
 
