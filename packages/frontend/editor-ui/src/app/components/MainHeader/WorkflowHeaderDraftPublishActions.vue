@@ -54,6 +54,18 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
+const saveBeforePublish = async (): Promise<boolean> => {
+	console.log('[Publish] 💾 Saving workflow');
+	const saved = await saveCurrentWorkflow({}, true);
+	autoSaveForPublish.value = false;
+	if (!saved) {
+		console.log('[Publish] ❌ Save failed');
+		return false;
+	}
+	console.log('[Publish] ✅ Save completed');
+	return true;
+};
+
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
@@ -63,31 +75,39 @@ const onPublishButtonClick = async () => {
 		// Save immediately if autosave idle or cancelled
 		switch (autoSaveState.value) {
 			case AutoSaveState.InProgress: {
+				console.log('[Publish] ⏳ Waiting for in-progress autosave to complete');
 				if (pendingAutoSave.value) {
 					await pendingAutoSave.value;
 				}
 				autoSaveForPublish.value = false;
-				console.log('[Publish] ✅ Autosave completed');
+
+				if (!uiStore.stateIsDirty) {
+					console.log('[Publish] ✅ Autosave completed successfully');
+					break;
+				}
+
+				console.log('[Publish] ⚠️ Autosave failed, saving manually');
+				if (!(await saveBeforePublish())) {
+					return;
+				}
 				break;
 			}
 
 			case AutoSaveState.Scheduled: {
 				console.log('[Publish] ⏹️ Cancelling scheduled autosave');
 				cancelAutoSave();
-				// Fall through to save immediately
-			}
-
-			default:
-				{
-					const saved = await saveCurrentWorkflow({}, true);
-					autoSaveForPublish.value = false;
-					if (!saved) {
-						console.log('[Publish] ❌ Save failed, not opening modal');
-						return;
-					}
-					console.log('[Publish] ✅ Save completed');
+				if (!(await saveBeforePublish())) {
+					return;
 				}
 				break;
+			}
+
+			case AutoSaveState.Idle: {
+				if (!(await saveBeforePublish())) {
+					return;
+				}
+				break;
+			}
 		}
 	} else {
 		console.log('[Publish] No unsaved changes, skipping save');
