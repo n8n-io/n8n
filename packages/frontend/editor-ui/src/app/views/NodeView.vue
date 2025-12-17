@@ -419,6 +419,14 @@ async function initializeRoute(force = false) {
 				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
 				if (!exists && route.meta?.nodeView === true) {
 					return await initializeWorkspaceForNewWorkflow();
+				} else {
+					await router.replace({
+						...route,
+						query: {
+							...route.query,
+							new: undefined,
+						},
+					});
 				}
 			}
 
