@@ -1409,9 +1409,9 @@ export function useCanvasOperations() {
 	/**
 	 * Gets all nodes that should be shifted when inserting a node.
 	 * Algorithm:
-	 * 1. Find nodes to the right of insertion (similar Y, larger X)
+	 * 1. Find nodes that overlap with or are to the right of insertion area (similar Y)
 	 * 2. Add nodes connected to them (downstream)
-	 * 3. Filter to only include nodes with X > insertion X
+	 * 3. Filter to only include nodes that need to move
 	 */
 	function getNodesToShift(
 		insertPosition: XYPosition,
@@ -1422,13 +1422,17 @@ export function useCanvasOperations() {
 		const insertY = insertPosition[1];
 		const yTolerance = DEFAULT_NODE_SIZE[1] * 2; // Nodes within ~2 node heights are considered "similar Y"
 
-		// Step 1: Find initial candidates - nodes to the right with similar Y position
+		// Step 1: Find initial candidates - nodes that overlap with or are to the right of insertion
+		// A node overlaps if its right edge extends into the insertion area
 		const initialCandidates = allNodes.filter((node) => {
 			if (node.type === STICKY_NODE_TYPE) return false;
 			if (node.name === sourceNodeName) return false;
 			const isSimilarY = Math.abs(node.position[1] - insertY) <= yTolerance;
-			const isToTheRight = node.position[0] >= insertX;
-			return isSimilarY && isToTheRight;
+			// Node overlaps or is to the right if its right edge is past the insertion X
+			// or its left edge is at/past the insertion X
+			const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+			const overlapsOrIsToTheRight = nodeRightEdge > insertX || node.position[0] >= insertX;
+			return isSimilarY && overlapsOrIsToTheRight;
 		});
 
 		// Step 2: Add all downstream connected nodes from initial candidates
@@ -1442,10 +1446,10 @@ export function useCanvasOperations() {
 			downstream.forEach((name) => candidateNames.add(name));
 		}
 
-		// Step 3: Filter regular nodes with X >= insertion X
+		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
 		const regularNodesToMove = allNodes.filter((node) => {
 			if (node.type === STICKY_NODE_TYPE) return false;
-			return candidateNames.has(node.name) && node.position[0] >= insertX;
+			return candidateNames.has(node.name);
 		});
 
 		// Step 4: Find sticky notes that need moving or stretching
