@@ -17,7 +17,6 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 type Props = {
 	collapsed: boolean;
 	planName?: string;
-	hideProjects?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -148,38 +147,34 @@ onBeforeUnmount(() => {
 				data-test-id="project-chat-menu-item"
 			/>
 		</div>
-		<template v-if="!props.hideProjects">
-			<N8nText
-				v-if="
-					!props.collapsed &&
-					projectsStore.isTeamProjectFeatureEnabled &&
-					displayProjects.length > 0
-				"
-				:class="[$style.projectsLabel]"
-				size="small"
-				bold
-				role="heading"
-				color="text-light"
-			>
-				{{ locale.baseText('projects.menu.title') }}
-			</N8nText>
-			<div
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
-				:class="$style.projectItems"
-			>
-				<N8nMenuItem
-					v-for="project in displayProjects"
-					:key="project.id"
-					:class="{
-						[$style.collapsed]: props.collapsed,
-					}"
-					:item="getProjectMenuItem(project)"
-					:compact="props.collapsed"
-					:active="activeTabId === project.id"
-					data-test-id="project-menu-item"
-				/>
-			</div>
-		</template>
+		<N8nText
+			v-if="
+				!props.collapsed && projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0
+			"
+			:class="[$style.projectsLabel]"
+			size="small"
+			bold
+			role="heading"
+			color="text-light"
+		>
+			{{ locale.baseText('projects.menu.title') }}
+		</N8nText>
+		<div
+			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+			:class="$style.projectItems"
+		>
+			<N8nMenuItem
+				v-for="project in displayProjects"
+				:key="project.id"
+				:class="{
+					[$style.collapsed]: props.collapsed,
+				}"
+				:item="getProjectMenuItem(project)"
+				:compact="props.collapsed"
+				:active="activeTabId === project.id"
+				data-test-id="project-menu-item"
+			/>
+		</div>
 	</div>
 </template>
 
