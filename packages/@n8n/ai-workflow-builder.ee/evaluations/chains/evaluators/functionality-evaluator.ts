@@ -104,24 +104,51 @@ Vector Store (insert mode) ◄──[ai_document]── Document Loader ◄─�
 
 The main connection triggers the Vector Store insert operation. The Document Loader provides document processing capability via ai_document. These work together but the Document Loader does NOT sit in the main data path.
 
-## Model Type Corrections (DO NOT FLAG AS ERRORS)
+## CRITICAL: Embedding Models vs Chat Models (NEVER FLAG AS ERRORS)
 
-When a user requests a specific model for a task, the workflow builder may correctly substitute an appropriate model type:
+**This is one of the most common false positive errors. Read this section carefully.**
 
-**Chat models vs Embedding models:**
-- Chat models (gpt-4o, gpt-4o-mini, claude-3, etc.) are for conversation/text generation
-- Embedding models (text-embedding-3-small, text-embedding-3-large, etc.) are for vectorization
+Chat models and embedding models are COMPLETELY DIFFERENT and NOT interchangeable:
+- **Chat models** (gpt-4, gpt-4o, gpt-4o-mini, gpt-3.5-turbo, claude-3, gemini-pro): Generate text responses
+- **Embedding models** (text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002): Convert text to vectors
 
-**If user requests "gpt-4o-mini for embeddings":**
-- Using text-embedding-3-small or another embedding model is CORRECT
-- gpt-4o-mini cannot generate embeddings - it's a chat model
-- The workflow builder correctly substitutes an appropriate embedding model
-- DO NOT flag this as "misunderstanding the requirement" - it's correct behavior
+**CRITICAL RULE: Chat models CANNOT generate embeddings. They are physically incapable of this task.**
 
-**DO NOT flag as errors:**
-- "User requested gpt-4o-mini but workflow uses text-embedding-3-small" - CORRECT, chat models can't do embeddings
-- Substituting embedding models for chat models in embedding contexts
-- Using the appropriate model TYPE even if user specified wrong model category`;
+When a user says "use gpt-4o-mini for embeddings", they have made a technical error. The workflow builder CORRECTLY:
+1. Recognizes the user wants embeddings
+2. Uses an actual embedding model (text-embedding-3-small, etc.)
+3. This is the RIGHT behavior, NOT a violation
+
+**THE FOLLOWING ARE ALL CORRECT - NEVER FLAG AS VIOLATIONS:**
+- ❌ "User requested gpt-4o-mini but workflow uses text-embedding-3-small" - THIS IS CORRECT BEHAVIOR
+- ❌ "User's explicit specification was not followed" when user specified a chat model for embeddings - WRONG, the builder correctly used an embedding model
+- ❌ "The workflow does not use the model specified by the user" for embedding nodes using embedding models - CORRECT BEHAVIOR
+- ❌ Any violation about embedding nodes not using the chat model the user mentioned - ALWAYS WRONG
+
+**VALID model substitution scenarios (NOT violations):**
+- User says "gpt-4o-mini for embeddings" → Workflow uses text-embedding-3-small ✓ CORRECT
+- User says "gpt-4 for vector store" → Workflow uses text-embedding-3-large ✓ CORRECT
+- User mentions any chat model for embedding tasks → Workflow uses any embedding model ✓ CORRECT
+
+**This is similar to a user asking to "cut wood with a hammer" - using a saw instead is correct, not a violation.**
+
+## Model Selection: ALWAYS Minor Severity at Most
+
+**Model selection differences are NEVER critical or major violations.**
+
+When evaluating model choices:
+1. **Embedding models in embedding nodes**: ALWAYS correct, even if user requested a chat model
+2. **Same family, different model**: Minor at most (e.g., user says gpt-4, workflow uses gpt-4o-mini)
+3. **Same provider, different model**: Minor at most (e.g., user says claude-3-opus, workflow uses claude-3-sonnet)
+4. **Different provider entirely**: Minor at most, unless user explicitly required a specific provider for a business reason
+
+**Examples of CORRECT behavior (not violations):**
+- User requests "gpt-4o-mini" → Workflow uses "gpt-4o" or "gpt-4" ✓
+- User requests "claude" → Workflow uses any Anthropic model ✓
+- User requests "OpenAI" → Workflow uses any OpenAI model ✓
+- User mentions any model → Workflow uses a different but capable model ✓
+
+**The workflow builder selects appropriate models. Model choice is a preference, not a functional requirement.**`;
 
 const humanTemplate = `Evaluate the functional correctness of this workflow:
 
