@@ -71,7 +71,7 @@ export function collectNodeConfigurationsFromWorkflows(
 }
 
 /**
- * Format node configuration examples as XML with token limit
+ * Format node configuration examples as markdown with token limit
  * Follows the same pattern as node-details.tool.ts for consistency
  */
 export function formatNodeConfigurationExamples(
@@ -87,7 +87,7 @@ export function formatNodeConfigurationExamples(
 		: configurations;
 
 	if (filtered.length === 0) {
-		return `<node_configuration_examples node_type="${nodeType}">No examples found</node_configuration_examples>`;
+		return `## Node Configuration Examples: ${nodeType}\n\nNo examples found.`;
 	}
 
 	// Limit to maxExamples and accumulate within token limit
@@ -96,7 +96,14 @@ export function formatNodeConfigurationExamples(
 		(acc, config) => {
 			const exampleStr = JSON.stringify(config.parameters, null, 2);
 			if (acc.chars + exampleStr.length <= maxChars) {
-				acc.parts.push(`<example version="${config.version}">\n${exampleStr}\n</example>`);
+				acc.parts.push(
+					`### Example (version ${config.version})`,
+					'',
+					'```json',
+					exampleStr,
+					'```',
+					'',
+				);
 				acc.chars += exampleStr.length;
 			}
 			return acc;
@@ -104,9 +111,5 @@ export function formatNodeConfigurationExamples(
 		{ parts: [], chars: 0 },
 	);
 
-	return [
-		`<node_configuration_examples node_type="${nodeType}">`,
-		...parts,
-		'</node_configuration_examples>',
-	].join('\n');
+	return [`## Node Configuration Examples: ${nodeType}`, '', ...parts].join('\n');
 }

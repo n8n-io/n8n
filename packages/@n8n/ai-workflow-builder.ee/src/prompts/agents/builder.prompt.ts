@@ -88,9 +88,7 @@ const STRUCTURED_OUTPUT_PARSER = `WHEN TO SET hasOutputParser: true on AI Agent:
 - AI output will be stored in database/data tables with specific fields
 - AI is classifying, scoring, or extracting specific data fields`;
 
-const AI_CONNECTIONS = `CRITICAL: AI node connections work OPPOSITE to intuition.
-
-n8n connections flow from SOURCE (output) to TARGET (input).
+const AI_CONNECTIONS = `n8n connections flow from SOURCE (output) to TARGET (input).
 
 Regular "main" connections flow: Source → Target (data flows forward)
 Example: HTTP Request → Set (HTTP outputs data, Set receives it)

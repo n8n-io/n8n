@@ -106,8 +106,7 @@ For numeric ranges (e.g., $100-$1000):
 
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
-const NODE_CONFIGURATION_EXAMPLES = `<node_configuration_examples>
-NODE CONFIGURATION EXAMPLES:
+const NODE_CONFIGURATION_EXAMPLES = `NODE CONFIGURATION EXAMPLES:
 When configuring complex nodes, use get_node_configuration_examples to see real-world examples from community templates:
 
 When to use:
@@ -119,15 +118,12 @@ Usage:
 - Call with nodeType: "n8n-nodes-base.httpRequest" (exact node type name)
 - Optionally filter by nodeVersion if needed
 - Examples show proven parameter configurations from community workflows
-- Use as reference for proper parameter structure and values
-</node_configuration_examples>`;
+- Use as reference for proper parameter structure and values`;
 
-const RESPONSE_FORMAT = `<response_format>
-After validation passes, provide a concise summary:
+const RESPONSE_FORMAT = `After validation passes, provide a concise summary:
 - List any placeholders requiring user configuration (e.g., "URL placeholder needs actual endpoint")
 - Note which nodes were configured and key settings applied
-- Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users
-</response_format>`;
+- Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users`;
 
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct

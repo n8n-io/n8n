@@ -52,7 +52,7 @@ Parameters:
 - nodeType: The exact node type (e.g., "n8n-nodes-base.httpRequest")
 - nodeVersion: Optional version number to filter examples
 
-Returns XML-formatted examples showing proven parameter configurations.`,
+Returns markdown-formatted examples showing proven parameter configurations.`,
 	},
 	connections: {
 		meta: {
@@ -195,29 +195,30 @@ const MAX_EXAMPLES = 1;
  * Generate mermaid connection examples for a specific node type
  */
 function formatConnectionExamples(nodeType: string, workflows: WorkflowMetadata[]): string {
-	const examples: string[] = [];
 	const shortNodeType = nodeType.split('.').pop() ?? nodeType;
 
-	for (const workflow of workflows.slice(0, MAX_EXAMPLES)) {
-		const mermaid = mermaidStringify(workflow, { includeNodeParameters: false });
-		examples.push(`<example workflow="${workflow.name}">\n${mermaid}\n</example>`);
+	if (workflows.length === 0) {
+		return `## Node Connection Examples: ${nodeType}\n\nNo connection examples found.`;
 	}
 
-	if (examples.length === 0) {
-		return `<node_connection_examples node_type="${nodeType}">No connection examples found</node_connection_examples>`;
-	}
-
-	return [
-		`<node_connection_examples node_type="${nodeType}" short_name="${shortNodeType}">`,
-		`These mermaid diagrams show workflows containing ${shortNodeType}.`,
+	const lines = [
+		`## Node Connection Examples: ${nodeType}`,
+		'',
+		`These mermaid diagrams show workflows containing **${shortNodeType}**.`,
+		'',
 		'Look for the target node in each diagram to understand:',
 		'- Which nodes typically come BEFORE this node (incoming connections)',
 		'- Which nodes typically come AFTER this node (outgoing connections)',
 		'- For multi-output nodes like splitInBatches: output 0 = "done" branch, output 1 = "loop" branch',
 		'',
-		...examples,
-		'</node_connection_examples>',
-	].join('\n');
+	];
+
+	for (const workflow of workflows.slice(0, MAX_EXAMPLES)) {
+		const mermaid = mermaidStringify(workflow, { includeNodeParameters: false });
+		lines.push(`### Example: ${workflow.name}`, '', '```mermaid', mermaid, '```', '');
+	}
+
+	return lines.join('\n');
 }
 
 /**
