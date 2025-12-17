@@ -6,12 +6,12 @@ defineProps<{
 	approve: {
 		text: string;
 		link: string;
-		style: 'primary' | 'secondary';
+		type: 'primary' | 'secondary';
 	};
 	decline?: {
 		text: string;
 		link: string;
-		style: 'primary' | 'secondary';
+		type: 'primary' | 'secondary';
 	};
 }>();
 </script>
@@ -20,12 +20,17 @@ defineProps<{
 	<div>
 		<p>{{ text }}</p>
 		<div :class="$style.buttons">
-			<N8nButton element="a" :href="approve.link" :type="approve.style">{{
+			<N8nButton element="a" :href="approve.link" :type="approve.type" target="_blank">{{
 				approve.text
 			}}</N8nButton>
-			<N8nButton v-if="decline" element="a" :href="decline.link" :type="decline.style">{{
-				decline.text
-			}}</N8nButton>
+			<N8nButton
+				v-if="decline"
+				element="a"
+				:href="decline.link"
+				:type="decline.type"
+				target="_blank"
+				>{{ decline.text }}</N8nButton
+			>
 		</div>
 	</div>
 </template>
