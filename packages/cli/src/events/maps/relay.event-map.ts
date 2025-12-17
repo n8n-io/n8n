@@ -6,6 +6,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	JsonValue,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
@@ -89,6 +90,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		previousWorkflow?: IWorkflowDb;
 		aiBuilderAssisted?: boolean;
+		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
 	};
 
 	'workflow-activated': {
