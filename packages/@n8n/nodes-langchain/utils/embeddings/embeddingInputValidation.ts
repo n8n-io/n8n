@@ -14,10 +14,7 @@ export function validateEmbedQueryInput(query: unknown, node: INode): string {
 	if (typeof query !== 'string' || query === '') {
 		throw new NodeOperationError(node, 'Cannot embed empty or undefined text', {
 			description:
-				'The text provided for embedding is empty or undefined. ' +
-				'This can happen when: the input expression evaluates to undefined, ' +
-				'the AI agent calls a tool without proper arguments, ' +
-				'or a required field is missing.',
+				'The text provided for embedding is empty or undefined. This can happen when: the input expression evaluates to undefined, the AI agent calls a tool without proper arguments, or a required field is missing.',
 		});
 	}
 	return query;
