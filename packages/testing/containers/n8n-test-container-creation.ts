@@ -38,6 +38,7 @@ import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpi
 import type { ObservabilityStack, ScrapeTarget } from './n8n-test-container-observability';
 import type { TracingStack } from './n8n-test-container-tracing';
 import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
+import { waitForNetworkQuiet } from './network-stabilization';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // --- Constants ---
@@ -528,6 +529,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	log(`Stack ready! baseUrl: ${baseUrl}`);
+
+	// Wait for Docker network changes to settle before proceeding.
+	// This prevents ERR_NETWORK_CHANGED errors when containers join the network.
+	await waitForNetworkQuiet();
+
 	return {
 		baseUrl,
 		stop: async () => {

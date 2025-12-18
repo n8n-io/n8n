@@ -65,38 +65,37 @@ test.describe('Multi-main Observability @capability:observability @capability:mu
 		const obsStack = n8nContainer.observability!;
 		const obs = new ObservabilityHelper(obsStack);
 
-		// ========== STEP 1: Verify metrics are being scraped ==========
-		// Wait for the n8n_version_info metric which is always present
-		// VictoriaMetrics scrapes every 5s, so we allow up to 60s for discovery
-		const versionMetric = await obs.metrics.waitForMetric('n8n_version_info', {
-			timeoutMs: 60000,
+		// Expected targets: 2 mains + 1 worker = 3 instances
+		const expectedTargets = 3;
+
+		// ========== STEP 1: Wait for all targets to be healthy ==========
+		// The 'up' metric indicates which targets are being scraped (1=up, 0=down)
+		// Poll until all expected targets are healthy (containers may still be starting)
+		const healthyTarget = await obs.metrics.waitForMetric('up', {
+			timeoutMs: 90000, // Allow time for all containers to start and be scraped
+			intervalMs: 2000,
+			predicate: (results) => {
+				const healthy = results.filter((r) => r.value === 1);
+				console.log(
+					`Waiting for healthy targets: ${healthy.length}/${expectedTargets}`,
+					healthy.map((r) => r.labels.instance),
+				);
+				return healthy.length >= expectedTargets;
+			},
 		});
 
-		expect(versionMetric).toBeTruthy();
-		console.log('n8n version metric found:', versionMetric?.labels);
+		expect(healthyTarget, 'Expected all scrape targets to become healthy').toBeTruthy();
 
-		// ========== STEP 2: Query scrape targets ==========
-		// The 'up' metric indicates which targets are being scraped (1=up, 0=down)
-		// Expected targets: 2 mains + 1 worker = 3 instances
+		// ========== STEP 2: Verify final state ==========
 		const allInstances = await obs.metrics.query('up');
+		const healthyTargets = allInstances.filter((m) => m.value === 1);
+
 		console.log(
-			`Found ${allInstances.length} scrape targets:`,
-			allInstances.map((m) => m.labels.instance),
+			`Final state: ${healthyTargets.length}/${allInstances.length} healthy targets:`,
+			healthyTargets.map((m) => m.labels.instance),
 		);
 
-		// Verify we have at least the 2 main instances (worker may or may not expose metrics)
-		expect(
-			allInstances.length,
-			'Expected at least 2 scrape targets (main instances)',
-		).toBeGreaterThanOrEqual(2);
-
-		// ========== STEP 3: Verify all targets are healthy ==========
-		const healthyTargets = allInstances.filter((m) => m.value === 1);
-		console.log(`Healthy targets: ${healthyTargets.length}/${allInstances.length}`);
-		expect(
-			healthyTargets.length,
-			'Expected all scrape targets to be healthy (up=1)',
-		).toBeGreaterThanOrEqual(2);
+		expect(healthyTargets.length).toBe(expectedTargets);
 	});
 
 	/**

@@ -254,6 +254,7 @@ source = '''
 .project = "${projectName}"
 .service = .label."com.docker.compose.service" || "unknown"
 .container = .container_name || "unknown"
+._stream = .stream || "unknown"
 # Remove fields that VictoriaLogs doesn't need
 del(.message)
 del(.timestamp)
