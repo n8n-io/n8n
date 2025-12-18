@@ -1,0 +1,63 @@
+import type { Unsubscribe } from '../types';
+import type { SyncTransport } from './types';
+
+type ReceiveHandler = (data: Uint8Array) => void;
+
+/**
+ * MockTransport - In-memory transport for testing sync flows.
+ *
+ * Two MockTransports can be linked together to simulate a bidirectional
+ * connection. Data sent on one transport is received by the other.
+ */
+export class MockTransport implements SyncTransport {
+	private peer: MockTransport | null = null;
+	private receiveHandlers = new Set<ReceiveHandler>();
+	private _connected = false;
+
+	get connected(): boolean {
+		return this._connected;
+	}
+
+	/**
+	 * Link two transports together for bidirectional communication.
+	 */
+	static link(a: MockTransport, b: MockTransport): void {
+		a.peer = b;
+		b.peer = a;
+	}
+
+	send(data: Uint8Array): void {
+		if (!this._connected) {
+			throw new Error('Transport not connected');
+		}
+		if (!this.peer) {
+			throw new Error('Transport has no peer');
+		}
+		// Simulate async delivery (but synchronous for deterministic tests)
+		this.peer.deliver(data);
+	}
+
+	onReceive(handler: ReceiveHandler): Unsubscribe {
+		this.receiveHandlers.add(handler);
+		return () => {
+			this.receiveHandlers.delete(handler);
+		};
+	}
+
+	async connect(): Promise<void> {
+		this._connected = true;
+	}
+
+	disconnect(): void {
+		this._connected = false;
+	}
+
+	/**
+	 * Deliver data to all receive handlers (called by peer).
+	 */
+	private deliver(data: Uint8Array): void {
+		for (const handler of this.receiveHandlers) {
+			handler(data);
+		}
+	}
+}

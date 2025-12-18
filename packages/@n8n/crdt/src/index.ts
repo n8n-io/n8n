@@ -22,6 +22,7 @@ export { AutomergeProvider } from './providers/automerge';
 
 // Transports
 export type { SyncTransport } from './transports';
+export { MockTransport } from './transports';
 
 /**
  * Creates a CRDT provider based on the given configuration.
