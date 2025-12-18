@@ -713,11 +713,11 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			// Mock vetted packages with checksum
 			mocked(getCommunityNodeTypes).mockResolvedValue([
 				{
 					packageName: 'package-1',
 					checksum: 'sha512-abc123',
+					npmVersion: '1.0.0',
 				} as never,
 			]);
 
@@ -727,6 +727,59 @@ describe('CommunityPackagesService', () => {
 				'package-1',
 				'1.0.0',
 				'sha512-abc123',
+			);
+		});
+
+		test('should use version-specific checksum from nodeVersions when installed version differs from latest', async () => {
+			const installedPackages = [installedPackage1]; // version 1.0.0
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-latest',
+					npmVersion: '2.0.0',
+					nodeVersions: [
+						{ npmVersion: '1.0.0', checksum: 'sha512-version-specific' },
+						{ npmVersion: '2.0.0', checksum: 'sha512-latest' },
+					],
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				'sha512-version-specific',
+			);
+		});
+
+		test('should pass undefined checksum when installed version is not in vetted list', async () => {
+			const installedPackages = [installedPackage1]; // version 1.0.0
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-latest',
+					npmVersion: '2.0.0',
+					nodeVersions: [{ npmVersion: '2.0.0', checksum: 'sha512-latest' }],
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
 			);
 		});
 	});

@@ -328,13 +328,18 @@ export class CommunityPackagesService {
 			});
 			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
 			const vettedPackages = await getCommunityNodeTypes(environment);
-			const checksumsByPackageName = new Map(
-				vettedPackages.map((p) => [p.packageName, p.checksum]),
-			);
+
+			const checksums = new Map<string, Map<string, string>>();
+			for (const p of vettedPackages) {
+				const versionMap = new Map<string, string>();
+				versionMap.set(p.npmVersion, p.checksum);
+				for (const v of p.nodeVersions ?? []) versionMap.set(v.npmVersion, v.checksum);
+				checksums.set(p.packageName, versionMap);
+			}
 
 			for (const missingPackage of missingPackages) {
 				try {
-					const checksum = checksumsByPackageName.get(missingPackage.packageName);
+					const checksum = checksums.get(missingPackage.packageName)?.get(missingPackage.version);
 					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
 					missingPackages.delete(missingPackage);
 				} catch (error) {
