@@ -1,5 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistoryRepository } from '@n8n/db';
+import { User, WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -201,7 +201,7 @@ describe('WorkflowHistoryService', () => {
 
 			const createdAt = new Date('2024-01-01');
 			const mockVersions = [{ versionId: 'version1', createdAt }];
-			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions as any);
+			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions as WorkflowHistory[]);
 
 			// Act
 			const result = await workflowHistoryService.getVersionsByIds(
