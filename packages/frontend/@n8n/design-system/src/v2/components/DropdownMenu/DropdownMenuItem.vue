@@ -17,7 +17,7 @@ import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigati
 import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
-const SUBMENU_FOCUS_DELAY = 30;
+const SUBMENU_FOCUS_DELAY = 100;
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -79,16 +79,17 @@ const hasSubMenu = computed(() => hasChildren.value || props.loading || props.se
 const handleSubMenuOpenChange = (open: boolean) => {
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
-	subMenuNavigation.reset();
-	if (props.searchable) {
-		if (open) {
-			setTimeout(() => {
-				searchRef.value?.focus();
-			}, SUBMENU_FOCUS_DELAY);
-		} else {
-			searchTerm.value = '';
-			emit('search', '', props.id);
-		}
+
+	if (open && props.searchable) {
+		subMenuNavigation.highlightFirst();
+		setTimeout(() => searchRef.value?.focus(), SUBMENU_FOCUS_DELAY);
+	} else {
+		subMenuNavigation.reset();
+	}
+
+	if (!open && props.searchable) {
+		searchTerm.value = '';
+		emit('search', '', props.id);
 	}
 };
 
@@ -213,7 +214,11 @@ watch(
 						/>
 					</div>
 					<template v-else-if="hasChildren">
-						<div :class="$style['children-container']" data-menu-items>
+						<div
+							:class="$style['children-container']"
+							data-menu-items
+							@mouseenter="subMenuNavigation.reset"
+						>
 							<template v-for="(child, childIndex) in props.children" :key="child.id">
 								<N8nDropdownMenuItem
 									v-bind="child"
@@ -306,7 +311,8 @@ watch(
 		cursor: not-allowed;
 	}
 
-	:global([data-menu-content]:hover) &.highlighted:not(:hover) {
+	:global([data-menu-content]:hover) &.highlighted:not(:hover),
+	:global([data-menu-items]:hover) &.highlighted:not(:hover) {
 		background-color: transparent;
 	}
 }

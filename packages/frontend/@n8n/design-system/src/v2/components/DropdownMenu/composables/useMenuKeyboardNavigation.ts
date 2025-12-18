@@ -111,6 +111,10 @@ export function useMenuKeyboardNavigation<T extends MenuNavigationItem>(
 		highlightedIndex.value = -1;
 	};
 
+	const highlightFirst = () => {
+		highlightedIndex.value = getNextValidIndex(-1, 1);
+	};
+
 	return {
 		highlightedIndex,
 		navigate,
@@ -119,5 +123,6 @@ export function useMenuKeyboardNavigation<T extends MenuNavigationItem>(
 		handleArrowLeft,
 		handleKeydown,
 		reset,
+		highlightFirst,
 	};
 }
