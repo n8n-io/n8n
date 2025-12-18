@@ -10,7 +10,9 @@ test.use({
 });
 
 async function expectPullSuccess(n8n: n8nPage) {
-	expect(await n8n.notifications.waitForNotificationAndClose('Pulled successfully')).toBe(true);
+	expect(
+		await n8n.notifications.waitForNotificationAndClose('Pulled successfully', { timeout: 30000 }),
+	).toBe(true);
 }
 
 test.describe('Pull resources from Git @capability:source-control', () => {

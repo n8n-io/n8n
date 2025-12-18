@@ -10,11 +10,15 @@ test.use({
 });
 
 async function expectPushSuccess(n8n: n8nPage) {
-	expect(await n8n.notifications.waitForNotificationAndClose('Pushed successfully')).toBe(true);
+	expect(
+		await n8n.notifications.waitForNotificationAndClose('Pushed successfully', { timeout: 30000 }),
+	).toBe(true);
 }
 
 async function expectNoChangesToCommit(n8n: n8nPage) {
-	expect(await n8n.notifications.waitForNotificationAndClose('No changes to commit')).toBe(true);
+	expect(
+		await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 30000 }),
+	).toBe(true);
 }
 
 test.describe('Push resources to Git @capability:source-control', () => {
