@@ -1,3 +1,8 @@
+import { AutomergeProvider } from './providers/automerge';
+import { YjsProvider } from './providers/yjs';
+import { CRDTEngine } from './types';
+import type { CRDTConfig, CRDTProvider } from './types';
+
 // Types
 export type {
 	Unsubscribe,
@@ -10,3 +15,25 @@ export type {
 
 // Constants (also exports corresponding types via declaration merging)
 export { ChangeAction, CRDTEngine } from './types';
+
+// Providers
+export { YjsProvider } from './providers/yjs';
+export { AutomergeProvider } from './providers/automerge';
+
+/**
+ * Creates a CRDT provider based on the given configuration.
+ * @param config - Configuration specifying which CRDT engine to use
+ * @returns A CRDTProvider instance for the specified engine
+ */
+export function createCRDTProvider(config: CRDTConfig): CRDTProvider {
+	switch (config.engine) {
+		case CRDTEngine.yjs:
+			return new YjsProvider();
+		case CRDTEngine.automerge:
+			return new AutomergeProvider();
+		default: {
+			const exhaustiveCheck: never = config.engine;
+			throw new Error(`Unknown CRDT engine: ${String(exhaustiveCheck)}`);
+		}
+	}
+}

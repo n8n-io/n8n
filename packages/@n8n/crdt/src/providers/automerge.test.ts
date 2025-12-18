@@ -1,14 +1,14 @@
 import type { CRDTDoc, CRDTMap, DeepChangeEvent } from '../types';
 import { ChangeAction } from '../types';
-import { YjsProvider } from './yjs';
+import { AutomergeProvider } from './automerge';
 
-describe('YjsProvider', () => {
+describe('AutomergeProvider', () => {
 	describe('CRDTMap basic operations', () => {
 		let doc: CRDTDoc;
 		let map: CRDTMap<string>;
 
 		beforeEach(() => {
-			const provider = new YjsProvider();
+			const provider = new AutomergeProvider();
 			doc = provider.createDoc('test');
 			map = doc.getMap<string>('test-map');
 		});
@@ -101,7 +101,7 @@ describe('YjsProvider', () => {
 		let map: CRDTMap<unknown>;
 
 		beforeEach(() => {
-			const provider = new YjsProvider();
+			const provider = new AutomergeProvider();
 			doc = provider.createDoc('test');
 			map = doc.getMap('test-map');
 		});
@@ -205,6 +205,7 @@ describe('YjsProvider', () => {
 			expect(changes[0].path).toEqual(['node-1']);
 			expect(changes[0].action).toBe(ChangeAction.update);
 			expect(changes[0].value).toEqual({ position: { x: 150, y: 200 } });
+			expect(changes[0].oldValue).toEqual({ position: { x: 100, y: 200 } });
 		});
 
 		it('should emit deep path when nested map is modified via get()', () => {

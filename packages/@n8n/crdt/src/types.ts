@@ -7,9 +7,9 @@ export type Unsubscribe = () => void;
  * Change action types for deep change events.
  */
 export const ChangeAction = {
-	Add: 'add',
-	Update: 'update',
-	Delete: 'delete',
+	add: 'add',
+	update: 'update',
+	delete: 'delete',
 } as const;
 
 export type ChangeAction = (typeof ChangeAction)[keyof typeof ChangeAction];
@@ -20,7 +20,7 @@ export type ChangeAction = (typeof ChangeAction)[keyof typeof ChangeAction];
  */
 export interface DeepChangeEvent {
 	/** Full path to changed value, e.g., ['node-1', 'position', 'x'] */
-	path: (string | number)[];
+	path: Array<string | number>;
 	/** Type of change */
 	action: ChangeAction;
 	/** New value (for add/update) */
@@ -82,8 +82,8 @@ export interface CRDTProvider {
  * Available CRDT engine types.
  */
 export const CRDTEngine = {
-	Yjs: 'yjs',
-	Automerge: 'automerge',
+	yjs: 'yjs',
+	automerge: 'automerge',
 } as const;
 
 export type CRDTEngine = (typeof CRDTEngine)[keyof typeof CRDTEngine];

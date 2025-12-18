@@ -32,7 +32,7 @@ function toYjsValue(value: unknown, doc: Y.Doc): unknown {
 	if (typeof value === 'object' && value.constructor === Object) {
 		const yMap = new Y.Map();
 		for (const [entryKey, entryValue] of Object.entries(value)) {
-			yMap.set(entryKey, toYjsValue(entryValue, doc) as unknown);
+			yMap.set(entryKey, toYjsValue(entryValue, doc));
 		}
 		return yMap;
 	}
@@ -92,17 +92,17 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 	}
 
 	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
-		const observer = (events: Y.YEvent<Y.Map<unknown>>[]) => {
+		const observer = (events: Array<Y.YEvent<Y.Map<unknown>>>) => {
 			const changes: DeepChangeEvent[] = events
 				.filter((event): event is Y.YMapEvent<unknown> => event instanceof Y.YMapEvent)
 				.flatMap((mapEvent) =>
 					Array.from(mapEvent.changes.keys, ([key, change]) => ({
 						path: [...mapEvent.path, key],
 						action: change.action,
-						...(change.action !== ChangeAction.Delete && {
+						...(change.action !== ChangeAction.delete && {
 							value: toJSONValue(mapEvent.target.get(key)),
 						}),
-						...(change.action !== ChangeAction.Add && {
+						...(change.action !== ChangeAction.add && {
 							oldValue: toJSONValue(change.oldValue),
 						}),
 					})),
@@ -128,7 +128,7 @@ class YjsDoc implements CRDTDoc {
 	private readonly yDoc: Y.Doc;
 	private readonly maps = new Map<string, YjsMap<unknown>>();
 
-	constructor(public readonly id: string) {
+	constructor(readonly id: string) {
 		this.yDoc = new Y.Doc({ guid: id });
 	}
 
@@ -155,7 +155,7 @@ class YjsDoc implements CRDTDoc {
  * Yjs implementation of CRDTProvider.
  */
 export class YjsProvider implements CRDTProvider {
-	readonly name = CRDTEngine.Yjs;
+	readonly name = CRDTEngine.yjs;
 
 	createDoc(id: string): CRDTDoc {
 		return new YjsDoc(id);
