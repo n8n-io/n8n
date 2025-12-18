@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { CHAT_STORE } from './constants';
+import { CHAT_STORE, CHAT_SESSIONS_PAGE_SIZE } from './constants';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
@@ -322,7 +322,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		try {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
-				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
+				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor),
 				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
