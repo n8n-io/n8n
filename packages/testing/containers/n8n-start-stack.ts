@@ -144,9 +144,10 @@ async function main() {
 	}
 
 	// Build configuration
+	// Note: taskRunner is intentionally omitted to let it default based on queue mode
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
-		taskRunner: values['task-runner'] ?? false,
+		taskRunner: values['task-runner'] ? true : undefined, // Only set if explicitly enabled
 		sourceControl: values['source-control'] ?? false,
 		oidc: values.oidc ?? false,
 		observability: values.observability ?? false,
@@ -317,11 +318,11 @@ function displayConfig(config: N8NConfig) {
 	}
 
 	// Display task runner status
-	if (config.taskRunner) {
-		log.info('Task runner: enabled (external container)');
-		if (!usePostgres) {
-			log.warn('Task runner recommended with PostgreSQL for better performance');
-		}
+	// Task runner defaults to enabled when queue mode is used
+	const taskRunnerEnabled = config.taskRunner ?? !!config.queueMode;
+	if (taskRunnerEnabled) {
+		const autoEnabled = config.taskRunner === undefined && !!config.queueMode;
+		log.info(`Task runner: enabled${autoEnabled ? ' (auto-enabled with queue mode)' : ''}`);
 	} else {
 		log.info('Task runner: disabled');
 	}

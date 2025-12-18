@@ -157,7 +157,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled = false,
 		projectName,
 		resourceQuota,
-		taskRunner = false,
+		taskRunner,
 		sourceControl = false,
 		email = false,
 		oidc = false,
@@ -165,7 +165,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		tracing = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
-	const taskRunnerEnabled = !!taskRunner;
+	// Task runner defaults to enabled when queue mode is used
+	const taskRunnerEnabled = taskRunner ?? !!queueConfig;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
 	const oidcEnabled = !!oidc;
