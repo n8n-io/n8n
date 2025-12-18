@@ -150,6 +150,8 @@ export class VariablesService {
 			throw new ForbiddenError('You are not allowed to delete this variable');
 		}
 
+		await this.delete(id);
+
 		this.eventService.emit('variable-deleted', {
 			user: {
 				id: user.id,
@@ -162,8 +164,6 @@ export class VariablesService {
 			variableKey: existingVariable?.key ?? '',
 			projectId: existingVariable?.project?.id,
 		});
-
-		await this.delete(id);
 	}
 
 	async delete(id: string): Promise<void> {
