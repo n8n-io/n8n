@@ -50,11 +50,13 @@ import {
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
@@ -320,12 +322,13 @@ watch(
 watch(
 	() => chatStore.agents,
 	(models) => {
-		if (!models || !!selectedModel.value || !isNewSession.value) {
+		const settings = settingsStore.moduleSettings?.['chat-hub'];
+
+		if (!models || !!selectedModel.value || !isNewSession.value || !settings) {
 			return;
 		}
 
-		const model = findOneFromModelsResponse(models) ?? null;
-
+		const model = findOneFromModelsResponse(models, settings.providers);
 		if (model) {
 			void handleSelectAgent(model);
 		}
@@ -601,7 +604,6 @@ function onFilesDropped(files: File[]) {
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="isNewSession || !!currentConversation"
-			:is-new-session="isNewSession"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"

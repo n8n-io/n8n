@@ -10,10 +10,11 @@ import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-const { session, isRenaming, active } = defineProps<{
+const { session, isRenaming, active, compact } = defineProps<{
 	session: ChatHubSessionDto;
 	isRenaming: boolean;
 	active: boolean;
+	compact: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -103,15 +104,17 @@ watch(
 	<ChatSidebarLink
 		:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: session.id } }"
 		:active="active"
+		:compact="compact"
 		:menu-items="dropdownItems"
-		:label="session.title"
+		:label="session.agentName"
+		:title="session.title"
 		@action-select="handleActionSelect"
 	>
 		<template v-if="isRenaming" #default>
 			<N8nInput
-				size="small"
 				ref="input"
 				v-model="editedLabel"
+				size="large"
 				@blur="handleBlur"
 				@keydown="handleKeyDown"
 			/>
