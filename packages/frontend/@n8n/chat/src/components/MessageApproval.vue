@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton } from '@n8n/design-system';
+import { Button } from '@n8n/chat/components';
 
 defineProps<{
 	text: string;
@@ -18,18 +18,18 @@ defineProps<{
 
 <template>
 	<div>
-		<p>{{ text }}</p>
+		<div>{{ text }}</div>
 		<div :class="$style.buttons">
-			<N8nButton element="a" :href="approve.link" :type="approve.type" target="_blank">{{
+			<Button element="a" :href="approve.link" :type="approve.type" target="_blank">{{
 				approve.text
-			}}</N8nButton>
-			<N8nButton
+			}}</Button>
+			<Button
 				v-if="decline"
 				element="a"
 				:href="decline.link"
 				:type="decline.type"
 				target="_blank"
-				>{{ decline.text }}</N8nButton
+				>{{ decline.text }}</Button
 			>
 		</div>
 	</div>
@@ -38,19 +38,7 @@ defineProps<{
 <style lang="scss" module>
 .buttons {
 	display: flex;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--xs);
-}
-
-.approve {
-	color: var(--chat--color-primary);
-	text-decoration: none;
-	&:hover {
-		text-decoration: underline;
-	}
-}
-.decline {
-	color: var(--chat--color-danger);
-	text-decoration: none;
+	gap: 12px;
+	margin-top: 12px;
 }
 </style>

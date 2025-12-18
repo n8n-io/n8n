@@ -7,7 +7,7 @@ import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import { constructChatWebsocketUrl } from '@n8n/chat/utils';
+import { constructChatWebsocketUrl, parseBotChatMessageContent } from '@n8n/chat/utils';
 
 import ChatFile from './ChatFile.vue';
 import type { ChatMessage } from '../types';
@@ -171,12 +171,8 @@ function setupWebsocketConnection(executionId: string) {
 					chatStore.waitingForResponse.value = true;
 					return;
 				}
-				const newMessage: ChatMessage = {
-					id: uuidv4(),
-					text: e.data,
-					sender: 'bot',
-				};
 
+				const newMessage = parseBotChatMessageContent(e.data as string);
 				chatStore.messages.value.push(newMessage);
 				waitingForChatResponse.value = true;
 				chatStore.waitingForResponse.value = false;

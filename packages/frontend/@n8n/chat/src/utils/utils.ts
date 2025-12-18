@@ -52,7 +52,7 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 			};
 		}
 	} catch {
-		// ignore error as message can be not a valid JSON
+		// ignore error as the message might be just a string
 	}
 	return chatMessage;
 }
