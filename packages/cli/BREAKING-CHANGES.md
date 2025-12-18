@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 2.0.0
+
+### What changed?
+
+The `npm` command is no longer available in the `n8nio/runners` image. Only `pnpm` is available for package management.
+
+### When is action necessary?
+
+If you are extending the `n8nio/runners` image and using `npm` to install dependencies. Replace any `npm install` commands with `pnpm install` in your Dockerfile or scripts.
+
 # 1.122.0
 
 ### What changed?

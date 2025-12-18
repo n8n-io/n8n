@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
@@ -243,6 +243,38 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	return actions;
 });
 
+function onUnpublishWorkflow() {
+	const workflowId = getWorkflowId(props.id, route.params.name);
+
+	if (!workflowId || !activeVersion.value) {
+		toast.showMessage({
+			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			toast.showMessage({
+				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: activeVersion.value.name,
+			eventBus: unpublishEventBus,
+		},
+	});
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
@@ -389,36 +421,21 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
-			if (!workflowId || !activeVersion.value) {
-				return;
-			}
-
-			const unpublishEventBus = createEventBus();
-			unpublishEventBus.once('unpublish', async () => {
-				const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
-				uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
-				if (success) {
-					toast.showMessage({
-						title: locale.baseText('workflowHistory.action.unpublish.success.title'),
-						type: 'success',
-					});
-				}
-			});
-
-			uiStore.openModalWithData({
-				name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-				data: {
-					versionName: activeVersion.value.name,
-					eventBus: unpublishEventBus,
-				},
-			});
+			onUnpublishWorkflow();
 			break;
 		}
 		default:
 			break;
 	}
 }
+
+onMounted(() => {
+	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
+});
 
 defineExpose({
 	importFileRef,

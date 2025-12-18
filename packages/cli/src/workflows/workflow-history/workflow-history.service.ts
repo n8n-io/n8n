@@ -84,10 +84,23 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
+	/**
+	 * Find a workflow history version without permission checks.
+	 */
+	async findVersion(workflowId: string, versionId: string): Promise<WorkflowHistory | null> {
+		return await this.workflowHistoryRepository.findOne({
+			where: {
+				workflowId,
+				versionId,
+			},
+		});
+	}
+
 	async saveVersion(
-		user: User,
+		user: User | string,
 		workflow: IWorkflowBase,
 		workflowId: string,
+		autosaved = false,
 		transactionManager?: EntityManager,
 	) {
 		if (!workflow.nodes || !workflow.connections) {
@@ -96,17 +109,20 @@ export class WorkflowHistoryService {
 			);
 		}
 
+		const authors = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+
 		const repository = transactionManager
 			? transactionManager.getRepository(WorkflowHistory)
 			: this.workflowHistoryRepository;
 
 		try {
 			await repository.insert({
-				authors: user.firstName + ' ' + user.lastName,
+				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
 				versionId: workflow.versionId,
 				workflowId,
+				autosaved,
 			});
 		} catch (e) {
 			const error = ensureError(e);
