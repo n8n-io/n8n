@@ -271,24 +271,9 @@ async function main() {
 		}
 
 		console.log('');
-		if (stack.observability?.vector) {
-			log.info('Logs are collected by Vector - you can close this terminal');
-			log.info('Containers will keep running (use docker to stop them)');
-		}
-		log.info('Press Ctrl+C to stop all containers');
+		log.info('Containers are running in the background');
+		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
 		console.log('');
-
-		// Keep process running for graceful shutdown
-		await new Promise<void>((resolve) => {
-			process.on('SIGINT', () => {
-				console.log('');
-				log.info('Stopping containers...');
-				void stack.stop().then(() => {
-					log.success('All containers stopped');
-					resolve();
-				});
-			});
-		});
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
 		process.exit(1);

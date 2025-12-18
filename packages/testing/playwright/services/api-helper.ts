@@ -343,7 +343,9 @@ export class ApiHelpers {
 				`Failed to get log streaming destinations: ${response.status()} ${await response.text()}`,
 			);
 		}
-		return await response.json();
+		const result = await response.json();
+		// Handle both direct response and {data: ...} wrapped response
+		return result.data ?? result;
 	}
 
 	/**

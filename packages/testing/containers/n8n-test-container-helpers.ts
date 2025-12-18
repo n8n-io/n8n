@@ -109,6 +109,7 @@ export class ContainerTestHelpers {
 				namePattern,
 				timeoutMs,
 				throwOnTimeout,
+				caseSensitive,
 			);
 		}
 
@@ -146,16 +147,19 @@ export class ContainerTestHelpers {
 		namePattern: string | RegExp | undefined,
 		timeoutMs: number,
 		throwOnTimeout: boolean,
+		caseSensitive: boolean,
 	): Promise<LogMatch | null> {
 		const patternStr = typeof messagePattern === 'string' ? messagePattern : messagePattern.source;
+		// LogsQL regex is case-sensitive by default; use (?i) prefix for case-insensitive
+		const regexPrefix = caseSensitive ? '' : '(?i)';
 
 		// Build LogsQL query - search for the pattern in the message field
 		// If namePattern is provided, also filter by container name
 		// Escape special characters to prevent query injection
-		let query = `_msg:~"${escapeLogsQL(patternStr)}"`;
+		let query = `_msg:~"${regexPrefix}${escapeLogsQL(patternStr)}"`;
 		if (namePattern) {
 			const containerPattern = typeof namePattern === 'string' ? namePattern : namePattern.source;
-			query = `container:~"${escapeLogsQL(containerPattern)}" AND ${query}`;
+			query = `container:~"${regexPrefix}${escapeLogsQL(containerPattern)}" AND ${query}`;
 		}
 
 		console.log(
