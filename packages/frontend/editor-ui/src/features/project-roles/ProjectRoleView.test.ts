@@ -35,6 +35,17 @@ vi.mock('vue-router', async () => {
 
 const renderComponent = createComponentRenderer(ProjectRoleView);
 
+const defaultScopes = [
+	'project:read',
+	'project:list',
+	'folder:read',
+	'folder:list',
+	'workflow:read',
+	'workflow:list',
+	'credential:read',
+	'credential:list',
+];
+
 // Mock role data
 const mockExistingRole = {
 	displayName: 'Test Role',
@@ -69,7 +80,7 @@ const mockSystemRoles = [
 		displayName: 'Project Viewer',
 		slug: 'project:viewer',
 		description: 'Viewer role',
-		scopes: ['workflow:read', 'credential:read'],
+		scopes: [...defaultScopes],
 		licensed: true,
 		systemRole: true,
 		roleType: 'project' as const,
@@ -130,17 +141,6 @@ const setupEditingRoleComponent = async () => {
 	await waitFor(() => expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled());
 	return component;
 };
-
-const defaultScopes = [
-	'project:read',
-	'project:list',
-	'folder:read',
-	'folder:list',
-	'workflow:read',
-	'workflow:list',
-	'credential:read',
-	'credential:list',
-];
 
 describe('ProjectRoleView', () => {
 	beforeEach(() => {

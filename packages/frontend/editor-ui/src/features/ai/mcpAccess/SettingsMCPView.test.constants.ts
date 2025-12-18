@@ -8,6 +8,7 @@ export const MCP_WORKFLOWS: WorkflowListItem[] = [
 		updatedAt: '2025-09-23T08:13:45.000Z',
 		name: 'MCP Test 1',
 		active: true,
+		activeVersionId: 'v1',
 		isArchived: false,
 		settings: {
 			availableInMCP: true,
@@ -35,6 +36,7 @@ export const MCP_WORKFLOWS: WorkflowListItem[] = [
 		updatedAt: '2025-09-23T08:13:45.000Z',
 		name: 'MCP Test 2',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		settings: {
 			availableInMCP: true,

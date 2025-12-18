@@ -1,15 +1,19 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { DatabaseConfig } from '@n8n/config';
+import type {
+	CredentialsRepository,
+	TagRepository,
+	WorkflowPublishHistoryRepository,
+} from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
+import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import { ImportService } from '../import.service';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import type { DatabaseConfig } from '@n8n/config';
+
+import { ImportService } from '../import.service';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -42,6 +46,7 @@ describe('ImportService', () => {
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDatabaseConfig: DatabaseConfig;
+	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -55,6 +60,7 @@ describe('ImportService', () => {
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDatabaseConfig = mock<DatabaseConfig>();
+		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -102,6 +108,7 @@ describe('ImportService', () => {
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			mockDatabaseConfig,
+			mockWorkflowPublishHistoryRepository,
 		);
 	});
 
@@ -351,8 +358,8 @@ describe('ImportService', () => {
 				{ id: 1, name: 'Test' },
 				{ id: 2, name: 'Test2' },
 			]);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}');
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}');
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
 		});
 
 		it('should handle empty lines in JSONL file', async () => {
@@ -488,6 +495,38 @@ describe('ImportService', () => {
 
 			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
+		});
+
+		it('should import entities with a custom encryption key', async () => {
+			const importMetadata = {
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+				tableNames: ['user'],
+			};
+
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockReturnValue(['INSERT COMMAND', { data: 'data' }]);
+
+			const mockEntities = [{ id: 1, name: 'Test User' }];
+			const mockContent = JSON.stringify(mockEntities[0]);
+			jest.mocked(readFile).mockResolvedValue(mockContent);
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				Object.keys(importMetadata.entityFiles),
+				importMetadata.entityFiles,
+				'custom-encryption-key',
+			);
+
+			expect(mockCipher.decrypt).toHaveBeenCalledWith(
+				'{"id":1,"name":"Test User"}',
+				'custom-encryption-key',
+			);
+			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 	});
 

@@ -4,6 +4,8 @@ import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
 import { ChatHubSession } from './chat-hub-session.entity';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 @Service()
 export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	constructor(dataSource: DataSource) {
@@ -56,11 +58,39 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		});
 	}
 
-	async getManyByUserId(userId: string) {
-		return await this.find({
-			where: { ownerId: userId },
-			order: { lastMessageAt: 'DESC', id: 'ASC' },
-		});
+	async getManyByUserId(userId: string, limit: number, cursor?: string) {
+		const queryBuilder = this.createQueryBuilder('session')
+			.leftJoinAndSelect('session.agent', 'agent')
+			.leftJoinAndSelect('session.workflow', 'workflow')
+			.leftJoinAndSelect('workflow.shared', 'shared')
+			.leftJoinAndSelect('shared.project', 'project')
+			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
+			.where('session.ownerId = :userId', { userId })
+			.addSelect("COALESCE(session.lastMessageAt, '1970-01-01')", 'sortdate')
+			.orderBy('sortdate', 'DESC')
+			.addOrderBy('session.id', 'ASC');
+
+		if (cursor) {
+			const cursorSession = await this.findOne({
+				where: { id: cursor, ownerId: userId },
+			});
+
+			if (!cursorSession) {
+				throw new NotFoundError('Cursor session not found');
+			}
+
+			queryBuilder.andWhere(
+				'(session.lastMessageAt < :lastMessageAt OR (session.lastMessageAt = :lastMessageAt AND session.id > :id))',
+				{
+					lastMessageAt: cursorSession.lastMessageAt,
+					id: cursorSession.id,
+				},
+			);
+		}
+
+		queryBuilder.take(limit);
+
+		return await queryBuilder.getMany();
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
@@ -70,7 +100,16 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 			async (em) => {
 				return await em.findOne(ChatHubSession, {
 					where: { id, ownerId: userId },
-					relations: ['messages'],
+					relations: {
+						messages: true,
+						agent: true,
+						workflow: {
+							shared: {
+								project: true,
+							},
+							activeVersion: true,
+						},
+					},
 				});
 			},
 			false,

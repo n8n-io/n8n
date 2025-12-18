@@ -25,6 +25,8 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	PRE_BUILT_AGENTS_COLLECTION,
+	RECOMMENDED_NODES,
+	BETA_NODES,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -252,11 +254,31 @@ export const removePreviewToken = (key: string) =>
 
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
-export function extendItemsWithUUID(items: INodeCreateElement[]) {
-	return items.map((item) => ({
-		...item,
-		uuid: `${item.key}-${uuidv4()}`,
-	}));
+function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
+	if (element.type !== 'node' || element.properties.tag) return element;
+
+	if (RECOMMENDED_NODES.includes(element.properties.name)) {
+		element.properties.tag = {
+			type: 'info',
+			text: i18n.baseText('generic.recommended'),
+		};
+	} else if (BETA_NODES.includes(element.properties.name)) {
+		element.properties.tag = {
+			type: 'info',
+			text: i18n.baseText('generic.betaProper'),
+		};
+	}
+
+	return element;
+}
+
+export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[] {
+	return items
+		.map((item) => ({
+			...item,
+			uuid: `${item.key}-${uuidv4()}`,
+		}))
+		.map(applyNodeTags);
 }
 
 export const filterAndSearchNodes = (
@@ -268,9 +290,7 @@ export const filterAndSearchNodes = (
 
 	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
 
-	const searchResult: INodeCreateElement[] = extendItemsWithUUID(
-		searchNodes(search || '', vettedNodes),
-	);
+	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
 
 	return searchResult;
 };
@@ -336,7 +356,7 @@ export function getRagStarterCallout(): OpenTemplateElement {
 			description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),
 			tag: {
 				type: 'info',
-				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				text: i18n.baseText('generic.recommended'),
 			},
 		},
 	};
@@ -355,7 +375,7 @@ export function getPreBuiltAgentsCallout(): ViewCreateElement {
 			borderless: true,
 			tag: {
 				type: 'info',
-				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				text: i18n.baseText('generic.recommended'),
 			},
 		},
 	};
@@ -375,7 +395,7 @@ export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 			description: i18n.baseText('nodeCreator.preBuiltAgents.description'),
 			tag: {
 				type: 'info',
-				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				text: i18n.baseText('generic.recommended'),
 			},
 		},
 	};
@@ -394,7 +414,7 @@ export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement
 			url: aiTemplatesURL,
 			tag: {
 				type: 'info',
-				text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+				text: i18n.baseText('generic.recommended'),
 			},
 		},
 	};

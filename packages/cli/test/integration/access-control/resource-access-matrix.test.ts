@@ -64,6 +64,8 @@ describe('Resource Access Control Matrix Tests', () => {
 		ownerAgent = testServer.authAgentFor(owner);
 		testUserAgent = testServer.authAgentFor(testUser);
 
+		await utils.initCredentialsTypes();
+
 		// Create custom roles with specific scopes
 		workflowReadOnlyRole = await createCustomRoleWithScopeSlugs(
 			['workflow:read', 'workflow:list'],
@@ -135,7 +137,7 @@ describe('Resource Access Control Matrix Tests', () => {
 	});
 
 	afterAll(async () => {
-		await testDb.truncate(['User']);
+		await testDb.truncate(['User', 'ProjectRelation']);
 		await cleanupRolesAndScopes();
 	});
 
@@ -174,7 +176,7 @@ describe('Resource Access Control Matrix Tests', () => {
 							id: 'uuid-1234',
 							parameters: {},
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [240, 300],
 						},
@@ -192,8 +194,8 @@ describe('Resource Access Control Matrix Tests', () => {
 				expect(response.body.data.length).toBeGreaterThan(0);
 			});
 
-			test('GET /workflows/new should return 200', async () => {
-				await testUserAgent.get('/workflows/new').expect(200);
+			test('GET /workflows/new should return 403', async () => {
+				await testUserAgent.get(`/workflows/new?projectId=${teamProject.id}`).expect(403);
 			});
 
 			test('GET /workflows/:id should return 200', async () => {
@@ -256,7 +258,7 @@ describe('Resource Access Control Matrix Tests', () => {
 							id: 'uuid-1234',
 							parameters: {},
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [240, 300],
 						},
@@ -276,7 +278,7 @@ describe('Resource Access Control Matrix Tests', () => {
 			});
 
 			test('GET /workflows/new should return 200', async () => {
-				await testUserAgent.get('/workflows/new').expect(200);
+				await testUserAgent.get(`/workflows/new?projectId=${teamProject.id}`).expect(200);
 			});
 
 			test('GET /workflows/:id should return 200', async () => {

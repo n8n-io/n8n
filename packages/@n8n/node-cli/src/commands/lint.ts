@@ -1,3 +1,4 @@
+import { intro } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -6,7 +7,7 @@ import picocolors from 'picocolors';
 import { ChildProcessError, runCommand } from '../utils/child-process';
 import { suggestCloudSupportCommand } from '../utils/command-suggestions';
 import { getPackageJson } from '../utils/package';
-import { ensureN8nPackage } from '../utils/prompts';
+import { ensureN8nPackage, getCommandHeader } from '../utils/prompts';
 import { isEnoentError } from '../utils/validation';
 
 export default class Lint extends Command {
@@ -19,6 +20,8 @@ export default class Lint extends Command {
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(Lint);
+
+		intro(await getCommandHeader('n8n-node lint'));
 
 		await ensureN8nPackage('lint');
 
@@ -36,6 +39,7 @@ export default class Lint extends Command {
 				context: 'local',
 				stdio: 'pipe',
 				env: { ...process.env, FORCE_COLOR: '1' },
+				alwaysPrintOutput: true,
 				printOutput: ({ stdout, stderr }) => {
 					eslintOutput = Buffer.concat([...stdout, ...stderr]).toString();
 					process.stdout.write(Buffer.concat(stdout));
@@ -130,8 +134,8 @@ ${picocolors.dim(`Note: This will switch to ${picocolors.magenta('configWithoutC
 
 	private containsCloudOnlyErrors(errorMessage: string): boolean {
 		const cloudOnlyRules = [
-			'@n8n/eslint-plugin-community-nodes/no-restricted-globals',
-			'@n8n/eslint-plugin-community-nodes/no-restricted-imports',
+			'@n8n/community-nodes/no-restricted-imports',
+			'@n8n/community-nodes/no-restricted-globals',
 		];
 
 		return cloudOnlyRules.some((rule) => errorMessage.includes(rule));

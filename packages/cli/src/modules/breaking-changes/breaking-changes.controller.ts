@@ -2,15 +2,15 @@ import {
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeReportResult,
+	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import { BreakingChangeService } from './breaking-changes.service';
-import { BreakingChangeVersion } from './types';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {

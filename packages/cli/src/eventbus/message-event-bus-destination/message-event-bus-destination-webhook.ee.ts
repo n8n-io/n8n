@@ -2,8 +2,9 @@
 
 import { Container } from '@n8n/di';
 import axios from 'axios';
-import type { AxiosRequestConfig, Method } from 'axios';
-import { Agent as HTTPSAgent } from 'https';
+import type { AxiosInstance, AxiosRequestConfig, CreateAxiosDefaults, Method } from 'axios';
+import { Agent as HTTPAgent, type AgentOptions as HTTPAgentOptions } from 'http';
+import { Agent as HTTPSAgent, type AgentOptions as HTTPSAgentOptions } from 'https';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
@@ -19,6 +20,12 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
+import {
+	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+} from '@n8n/constants';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -68,7 +75,9 @@ export class MessageEventBusDestinationWebhook
 
 	credentialsHelper?: CredentialsHelper;
 
-	axiosRequestOptions: AxiosRequestConfig;
+	axiosRequestOptions?: AxiosRequestConfig;
+
+	axiosInstance: AxiosInstance;
 
 	constructor(
 		eventBusInstance: MessageEventBus,
@@ -76,6 +85,7 @@ export class MessageEventBusDestinationWebhook
 	) {
 		super(eventBusInstance, options);
 		this.url = options.url;
+
 		this.label = options.label ?? 'Webhook Endpoint';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.webhook;
 		if (options.responseCodeMustMatch) this.responseCodeMustMatch = options.responseCodeMustMatch;
@@ -95,7 +105,60 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
+		const axiosSetting = this.buildAxiosSetting(options);
+
+		this.axiosInstance = axios.create(axiosSetting);
+
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+	}
+
+	private buildAxiosSetting(
+		axiosParameters: MessageEventBusDestinationWebhookOptions,
+	): CreateAxiosDefaults {
+		const axiosSetting: CreateAxiosDefaults = {
+			headers: {},
+			method: axiosParameters.method as Method,
+			url: axiosParameters.url,
+			maxRedirects: 0,
+		} as AxiosRequestConfig;
+
+		if (axiosParameters.options?.redirect?.followRedirects) {
+			axiosSetting.maxRedirects = axiosParameters.options.redirect?.maxRedirects;
+		}
+
+		axiosSetting.proxy = axiosParameters.options?.proxy;
+
+		axiosSetting.timeout =
+			axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
+
+		const agentOptions: HTTPAgentOptions = {
+			// keepAlive to keep TCP connections alive for reuse
+			keepAlive: axiosParameters.options?.socket?.keepAlive ?? true,
+			maxSockets: axiosParameters.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+			maxFreeSockets:
+				axiosParameters.options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+			maxTotalSockets:
+				axiosParameters.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+			// Socket timeout in milliseconds defaults to 5 seconds
+			timeout: axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+		};
+
+		const httpsAgentOptions: HTTPSAgentOptions = {
+			...agentOptions,
+		};
+
+		if (axiosParameters.options?.allowUnauthorizedCerts) {
+			httpsAgentOptions.rejectUnauthorized = false;
+		}
+
+		const url = new URL(axiosParameters.url);
+
+		if (url.protocol === 'https:') {
+			axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
+		} else {
+			axiosSetting.httpAgent = new HTTPAgent(agentOptions);
+		}
+		return axiosSetting;
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -117,7 +180,7 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	async generateAxiosOptions() {
-		if (this.axiosRequestOptions?.url) {
+		if (this.axiosRequestOptions) {
 			return;
 		}
 
@@ -126,34 +189,14 @@ export class MessageEventBusDestinationWebhook
 			method: this.method as Method,
 			url: this.url,
 			maxRedirects: 0,
-		} as AxiosRequestConfig;
+		};
 
-		if (this.credentialsHelper === undefined) {
-			this.credentialsHelper = Container.get(CredentialsHelper);
-		}
+		this.credentialsHelper ??= Container.get(CredentialsHelper);
 
 		const sendQuery = this.sendQuery;
 		const specifyQuery = this.specifyQuery;
 		const sendHeaders = this.sendHeaders;
 		const specifyHeaders = this.specifyHeaders;
-
-		if (this.options.allowUnauthorizedCerts) {
-			this.axiosRequestOptions.httpsAgent = new HTTPSAgent({ rejectUnauthorized: false });
-		}
-
-		if (this.options.redirect?.followRedirects) {
-			this.axiosRequestOptions.maxRedirects = this.options.redirect?.maxRedirects;
-		}
-
-		if (this.options.proxy) {
-			this.axiosRequestOptions.proxy = this.options.proxy;
-		}
-
-		if (this.options.timeout) {
-			this.axiosRequestOptions.timeout = this.options.timeout;
-		} else {
-			this.axiosRequestOptions.timeout = 10000;
-		}
 
 		if (this.sendQuery && this.options.queryParameterArrays) {
 			Object.assign(this.axiosRequestOptions, {
@@ -263,18 +306,25 @@ export class MessageEventBusDestinationWebhook
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
 
+		// we need to make a copy of the request here, because to access the credentials
+		// later on we are awaiting and therefore yielding to the event loop
+		// therefore a race condition can occur for multiple events being processed simultaneously
+		const request: AxiosRequestConfig = {
+			...(this.axiosRequestOptions ?? {}),
+		};
+
 		const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 
 		if (['PATCH', 'POST', 'PUT', 'GET'].includes(this.method.toUpperCase())) {
 			if (this.sendPayload) {
-				this.axiosRequestOptions.data = {
+				request.data = {
 					...msg,
 					__type: undefined,
 					payload,
 					ts: msg.ts.toISO(),
 				};
 			} else {
-				this.axiosRequestOptions.data = {
+				request.data = {
 					...msg,
 					__type: undefined,
 					payload: undefined,
@@ -311,29 +361,29 @@ export class MessageEventBusDestinationWebhook
 
 		if (httpBasicAuth) {
 			// Add credentials if any are set
-			this.axiosRequestOptions.auth = {
+			request.auth = {
 				username: httpBasicAuth.user as string,
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			this.axiosRequestOptions.headers = {
-				...this.axiosRequestOptions.headers,
+			request.headers = {
+				...request.headers,
 				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
 			};
 		} else if (httpQueryAuth) {
-			this.axiosRequestOptions.params = {
-				...this.axiosRequestOptions.params,
+			request.params = {
+				...request.params,
 				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
 			};
 		} else if (httpDigestAuth) {
-			this.axiosRequestOptions.auth = {
+			request.auth = {
 				username: httpDigestAuth.user as string,
 				password: httpDigestAuth.password as string,
 			};
 		}
 
 		try {
-			const requestResponse = await axios.request(this.axiosRequestOptions);
+			const requestResponse = await this.axiosInstance.request(request);
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.status === this.expectedStatusCode) {
@@ -349,10 +399,11 @@ export class MessageEventBusDestinationWebhook
 			}
 		} catch (error) {
 			this.logger.warn(
-				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${
+				`Webhook destination ${this.label} (${this.id}) failed to send message to: ${this.url} - ${
 					(error as Error).message
 				}`,
 			);
+			throw error;
 		}
 
 		return sendResult;
