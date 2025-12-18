@@ -162,7 +162,7 @@ export class VariablesService {
 			},
 			variableId: id,
 			variableKey: existingVariable?.key ?? '',
-			projectId: existingVariable?.project?.id,
+			...(existingVariable?.project?.id && { projectId: existingVariable.project.id }),
 		});
 	}
 
@@ -249,7 +249,7 @@ export class VariablesService {
 			},
 			variableId: saveResult.id,
 			variableKey: saveResult.key,
-			projectId: variable.projectId,
+			...(variable.projectId && { projectId: variable.projectId }),
 		});
 		await this.updateCache();
 		return saveResult;
@@ -315,7 +315,7 @@ export class VariablesService {
 			},
 			variableId: id,
 			variableKey: variable.key ?? existingVariable.key,
-			projectId: newProjectId,
+			...(newProjectId && { projectId: newProjectId }),
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;
