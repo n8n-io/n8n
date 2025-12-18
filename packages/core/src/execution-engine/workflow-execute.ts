@@ -1851,7 +1851,30 @@ export class WorkflowExecute {
 							}
 						} else {
 							// Node execution did fail so add error and stop execution
-							this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
+							// TODO: Remove when AI-723 lands.
+							// For AI tool nodes with rewireOutputLogTo, preserve inputOverride and set correct output type
+							if (executionNode.rewireOutputLogTo) {
+								taskData.inputOverride =
+									this.runExecutionData.resultData.runData[executionNode.name][runIndex]
+										?.inputOverride || {};
+								taskData.data = {
+									[executionNode.rewireOutputLogTo]: [
+										[{ json: { error: executionError.message } }],
+									],
+								} as ITaskDataConnections;
+							}
+
+							// TODO: Remove when AI-723 lands.
+							// Check if entry already exists (e.g., from requests-response.ts inputOverride)
+							const errorRunDataExists =
+								!!this.runExecutionData.resultData.runData[executionNode.name][runIndex];
+							if (errorRunDataExists) {
+								const currentTaskData =
+									this.runExecutionData.resultData.runData[executionNode.name][runIndex];
+								Object.assign(currentTaskData, taskData);
+							} else {
+								this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
+							}
 
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
