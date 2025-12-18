@@ -7,6 +7,8 @@ import {
 } from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
+import { getWorkflowVersionsByIds } from '@n8n/rest-api-client/api/workflowHistory';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function generateShortId() {
 	return Math.random().toString(36).substr(2, 9);
@@ -83,4 +85,70 @@ export function createBuilderPayload(
 export function shouldShowChat(routeName: string): boolean {
 	const ENABLED_VIEWS = ['workflow', 'workflowExecution'];
 	return ENABLED_VIEWS.includes(routeName);
+}
+
+/**
+ * Extracts all revertVersionId values from an array of messages.
+ * Only extracts from messages that have a string revertVersionId property.
+ */
+export function extractRevertVersionIds(messages: ChatRequest.MessageResponse[]): string[] {
+	return messages
+		.filter(
+			(msg): msg is ChatRequest.TextMessage & { revertVersionId: string } =>
+				'revertVersionId' in msg && typeof msg.revertVersionId === 'string',
+		)
+		.map((msg) => msg.revertVersionId);
+}
+
+/**
+ * Fetches which version IDs still exist in workflow history.
+ * Returns a Map of versionId -> createdAt for existing versions.
+ * Returns an empty map if the fetch fails (all versions will be treated as non-existent).
+ */
+export async function fetchExistingVersionIds(
+	restApiContext: IRestApiContext,
+	workflowId: string,
+	versionIds: string[],
+): Promise<Map<string, string>> {
+	if (versionIds.length === 0) {
+		return new Map();
+	}
+
+	try {
+		const versionsResponse = await getWorkflowVersionsByIds(
+			restApiContext,
+			workflowId,
+			versionIds,
+		);
+		return new Map(versionsResponse.versions.map((v) => [v.versionId, v.createdAt]));
+	} catch {
+		// Continue without enriching - all revertVersionIds will be removed
+		return new Map();
+	}
+}
+
+/**
+ * Enriches messages with revertVersion object containing both id and createdAt.
+ * If version doesn't exist in the map, removes revertVersionId from the message.
+ */
+export function enrichMessagesWithRevertVersion(
+	messages: ChatRequest.MessageResponse[],
+	versionMap: Map<string, string>,
+): ChatRequest.MessageResponse[] {
+	return messages.map((msg) => {
+		if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
+			const createdAt = versionMap.get(msg.revertVersionId);
+			if (createdAt) {
+				// Transform revertVersionId into revertVersion object
+				return {
+					...msg,
+					revertVersion: { id: msg.revertVersionId, createdAt },
+				};
+			}
+			// Version doesn't exist, remove revertVersionId
+			const { revertVersionId: _, ...rest } = msg;
+			return rest as ChatRequest.MessageResponse;
+		}
+		return msg;
+	});
 }

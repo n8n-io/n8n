@@ -36,6 +36,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -72,6 +73,14 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 		injectWorkflowState: vi.fn(),
 	};
 });
+
+// Mock useWorkflowSaving
+const saveCurrentWorkflowMock = vi.fn().mockResolvedValue(true);
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({
+		saveCurrentWorkflow: saveCurrentWorkflowMock,
+	}),
+}));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -602,6 +611,31 @@ describe('AI Builder store', () => {
 		);
 	});
 
+	it('should return early without sending message when workflow save fails', async () => {
+		const builderStore = useBuilderStore();
+
+		// Mock saveCurrentWorkflow to return false (save failed or user cancelled)
+		saveCurrentWorkflowMock.mockResolvedValueOnce(false);
+
+		// Mock that there are unsaved changes
+		const uiStore = mockedStore(useUIStore);
+		vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
+
+		// Verify no API call was made
+		apiSpy.mockClear();
+
+		await builderStore.sendChatMessage({ text: 'test message' });
+
+		// Should not call the API when save fails
+		expect(apiSpy).not.toHaveBeenCalled();
+
+		// Should not add any messages
+		expect(builderStore.chatMessages).toHaveLength(0);
+
+		// Should not be streaming
+		expect(builderStore.streaming).toBe(false);
+	});
+
 	describe('Abort functionality', () => {
 		it('should create and manage abort controller', async () => {
 			const builderStore = useBuilderStore();
@@ -754,7 +788,7 @@ describe('AI Builder store', () => {
 			// Verify the API was called with correct parameters
 			expect(apiSpy).toHaveBeenCalled();
 			const callArgs = apiSpy.mock.calls[0];
-			const signal = callArgs[5]; // The 6th argument is the abort signal
+			const signal = callArgs[6]; // The 7th argument is the abort signal (after versionId)
 			expect(signal).toBeDefined();
 			expect(signal).toBeInstanceOf(AbortSignal);
 
@@ -2545,6 +2579,22 @@ describe('AI Builder store', () => {
 				// Verify the method exists
 				expect(builderStore.restoreToVersion).toBeDefined();
 				expect(typeof builderStore.restoreToVersion).toBe('function');
+			});
+
+			it('should return undefined when workflow save fails with unsaved changes', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mock that there are unsaved changes
+				const uiStore = mockedStore(useUIStore);
+				vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
+
+				// Mock saveCurrentWorkflow to return false (save failed or user cancelled)
+				saveCurrentWorkflowMock.mockResolvedValueOnce(false);
+
+				const result = await builderStore.restoreToVersion('version-123', 'message-456');
+
+				// Should return undefined when save fails
+				expect(result).toBeUndefined();
 			});
 		});
 

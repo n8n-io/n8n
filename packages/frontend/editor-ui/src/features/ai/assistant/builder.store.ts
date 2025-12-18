@@ -20,9 +20,13 @@ import {
 	getSessionsMetadata,
 	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
-import { getWorkflowVersionsByIds } from '@n8n/rest-api-client/api/workflowHistory';
-import { generateMessageId, createBuilderPayload } from './builder.utils';
-import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import {
+	generateMessageId,
+	createBuilderPayload,
+	extractRevertVersionIds,
+	fetchExistingVersionIds,
+	enrichMessagesWithRevertVersion,
+} from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -411,7 +415,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Save if it's a new workflow or has unsaved changes
 		if (isNewWorkflow || hasUnsavedChanges) {
-			await workflowSaver.saveCurrentWorkflow();
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) {
+				throw new Error('Could not save changes');
+			}
 		}
 
 		const versionId = workflowsStore.workflowVersionId;
@@ -448,8 +455,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		// @todo test error saving
-		const revertVersion = await saveWorkflowAndGetRevertVersion();
+		let revertVersion;
+		try {
+			revertVersion = await saveWorkflowAndGetRevertVersion();
+		} catch {
+			return;
+		}
 
 		// Close NDV on new message
 		ndvStore.unsetActiveNodeName();
@@ -539,74 +550,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	/**
-	 * Extracts all revertVersionId values from an array of messages.
-	 * Only extracts from messages that have a string revertVersionId property.
-	 */
-	// @todo move these version utility functions out into util file or composable?
-	function extractRevertVersionIds(messages: ChatRequest.MessageResponse[]): string[] {
-		return messages
-			.filter(
-				(msg): msg is ChatRequest.TextMessage & { revertVersionId: string } =>
-					'revertVersionId' in msg && typeof msg.revertVersionId === 'string',
-			)
-			.map((msg) => msg.revertVersionId);
-	}
-
-	/**
-	 * Fetches which version IDs still exist in workflow history.
-	 * Returns a Map of versionId -> createdAt for existing versions.
-	 * Returns an empty map if the fetch fails (all versions will be treated as non-existent).
-	 */
-	// @todo move these version utility functions out into util file or composable?
-	async function fetchExistingVersionIds(
-		workflowId: string,
-		versionIds: string[],
-	): Promise<Map<string, string>> {
-		if (versionIds.length === 0) {
-			return new Map();
-		}
-
-		try {
-			const versionsResponse = await getWorkflowVersionsByIds(
-				rootStore.restApiContext,
-				workflowId,
-				versionIds,
-			);
-			return new Map(versionsResponse.versions.map((v) => [v.versionId, v.createdAt]));
-		} catch {
-			// Continue without enriching - all revertVersionIds will be removed
-			return new Map();
-		}
-	}
-
-	/**
-	 * Enriches messages with revertVersion object containing both id and createdAt.
-	 * If version doesn't exist in the map, removes revertVersionId from the message.
-	 */
-	// @todo move these version utility functions out into util file or composable?
-	function enrichMessagesWithRevertVersion(
-		messages: ChatRequest.MessageResponse[],
-		versionMap: Map<string, string>,
-	): ChatRequest.MessageResponse[] {
-		return messages.map((msg) => {
-			if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
-				const createdAt = versionMap.get(msg.revertVersionId);
-				if (createdAt) {
-					// Transform revertVersionId into revertVersion object
-					return {
-						...msg,
-						revertVersion: { id: msg.revertVersionId, createdAt },
-					};
-				}
-				// Version doesn't exist, remove revertVersionId
-				const { revertVersionId: _, ...rest } = msg;
-				return rest as ChatRequest.MessageResponse;
-			}
-			return msg;
-		});
-	}
-
-	/**
 	 * Loads the most recent chat session for the current workflow.
 	 * Only loads if a workflow ID exists (not for new unsaved workflows).
 	 * Replaces current chat messages entirely - does NOT merge with existing messages.
@@ -630,7 +573,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 				// Extract version IDs and check which still exist
 				const versionIds = extractRevertVersionIds(latestSession.messages);
-				const versionMap = await fetchExistingVersionIds(workflowId, versionIds);
+				const versionMap = await fetchExistingVersionIds(
+					rootStore.restApiContext,
+					workflowId,
+					versionIds,
+				);
 
 				// Enrich messages with revertVersion objects and convert to UI messages
 				const enrichedMessages = enrichMessagesWithRevertVersion(
@@ -916,12 +863,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * @param versionId - The workflow version ID to restore to
 	 * @param messageId - The message ID to truncate from
 	 */
-	async function restoreToVersion(versionId: string, messageId: string): Promise<IWorkflowDb> {
+	async function restoreToVersion(
+		versionId: string,
+		messageId: string,
+	): Promise<IWorkflowDb | undefined> {
 		const workflowId = workflowsStore.workflowId;
 
 		// Save current workflow if there are unsaved changes before restoring
 		if (uiStore.stateIsDirty) {
-			await workflowSaver.saveCurrentWorkflow();
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) {
+				// saving errored or user opted not to overwrite changes
+				return;
+			}
 		}
 
 		// 1. Restore the workflow using existing workflow history store
@@ -930,7 +884,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			versionId,
 			false,
 		);
-		// @todo is there a better way? cannot set all workflow because nodes/connections important seems to break
+
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
