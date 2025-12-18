@@ -3,7 +3,11 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
+
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	affixRoleToSaveCredential,
@@ -38,6 +42,19 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 });
+
+/**
+ * Helper function to fetch and decrypt credential data
+ */
+async function getDecryptedCredentialData(
+	credentialId: string,
+): Promise<ICredentialDataDecryptedObject> {
+	const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+		id: credentialId,
+	});
+	const credentialsService = Container.get(CredentialsService);
+	return credentialsService.decrypt(credential, true);
+}
 
 describe('POST /credentials', () => {
 	test('should create credentials', async () => {
@@ -585,6 +602,157 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(updatedCredential.isGlobal).toBe(true);
 		expect(updatedCredential.isResolvable).toBe(true);
+	});
+
+	test('should fail to update managed credentials', async () => {
+		const managedCredential = await saveCredential(
+			{ ...dbCredential(), isManaged: true },
+			{ user: owner },
+		);
+
+		const updatePayload = {
+			name: 'Trying to update managed credential',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${managedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Managed credentials cannot be updated');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: managedCredential.id,
+		});
+
+		expect(unchangedCredential.name).toBe(managedCredential.name);
+	});
+
+	test('should replace entire data object when isPartialData is false', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data to verify it has all fields
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		expect(originalData.accessToken).toBeDefined();
+		expect(originalData.server).toBeDefined();
+		expect(originalData.user).toBeDefined();
+
+		// Update with only some fields - entire data should be replaced
+		const updatePayload = {
+			data: {
+				accessToken: 'onlyThisField',
+			},
+			isPartialData: false,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// When isPartialData is false, the entire data object is replaced
+		// So only the fields provided in the update will exist
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe('onlyThisField');
+		expect(updatedData.server).toBeUndefined();
+		expect(updatedData.user).toBeUndefined();
+	});
+
+	test('should replace entire data object when isPartialData is not provided (defaults to false)', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data to verify it has all fields
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		expect(originalData.accessToken).toBeDefined();
+		expect(originalData.server).toBeDefined();
+		expect(originalData.user).toBeDefined();
+
+		// Update without isPartialData (defaults to false)
+		const updatePayload = {
+			data: {
+				accessToken: 'onlyThisField',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Without isPartialData, it defaults to false and replaces entire data object
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe('onlyThisField');
+		expect(updatedData.server).toBeUndefined();
+		expect(updatedData.user).toBeUndefined();
+	});
+
+	test('should merge data when isPartialData is true', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data to verify it has all fields
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		expect(originalData.accessToken).toBeDefined();
+		expect(originalData.server).toBeDefined();
+		expect(originalData.user).toBeDefined();
+
+		const originalServer = originalData.server as string;
+		const originalUser = originalData.user as string;
+
+		// Update with partial data that should be merged
+		const updatePayload = {
+			data: {
+				accessToken: 'updatedAccessToken',
+				// user and server fields should be preserved from existing credential
+			},
+			isPartialData: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// When isPartialData is true, the data is unredacted and merged
+		// so existing fields (user, server) should be preserved
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe('updatedAccessToken');
+		expect(updatedData.server).toBe(originalServer);
+		expect(updatedData.user).toBe(originalUser);
+	});
+
+	test('should unredact values when isPartialData is true', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Get original data
+		const originalData = await getDecryptedCredentialData(savedCredential.id);
+		const originalAccessToken = originalData.accessToken as string;
+		const originalServer = originalData.server as string;
+
+		// Update with redacted accessToken (should keep original) and new user
+		const updatePayload = {
+			data: {
+				accessToken: CREDENTIAL_BLANKING_VALUE, // Redacted value - should keep original
+				user: 'newUserValue',
+				// server is not provided - should be preserved
+			},
+			isPartialData: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify redacted value was unredacted (kept original)
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.accessToken).toBe(originalAccessToken); // Should keep original, not blanking value
+		expect(updatedData.user).toBe('newUserValue'); // Should be updated
+		expect(updatedData.server).toBe(originalServer); // Should be preserved
 	});
 });
 

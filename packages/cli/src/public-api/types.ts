@@ -154,6 +154,7 @@ export declare namespace CredentialRequest {
 			data?: ICredentialDataDecryptedObject;
 			isGlobal?: boolean;
 			isResolvable?: boolean;
+			isPartialData?: boolean;
 		},
 		{}
 	>;

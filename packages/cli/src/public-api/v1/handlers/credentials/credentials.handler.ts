@@ -16,6 +16,7 @@ import {
 } from './credentials.middleware';
 import {
 	createCredential,
+	CredentialsIsNotUpdatableError,
 	encryptCredential,
 	getCredentials,
 	getSharedCredentials,
@@ -73,6 +74,9 @@ export = {
 
 				return res.json(sanitizeCredentials(updatedCredential as CredentialsEntity));
 			} catch (error) {
+				if (error instanceof CredentialsIsNotUpdatableError) {
+					return res.status(400).json({ message: error.message });
+				}
 				const message = error instanceof Error ? error.message : 'Unknown error';
 				return res.status(500).json({ message });
 			}

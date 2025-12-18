@@ -8,19 +8,23 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
-import type {
-	DisplayCondition,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	INodeProperties,
-	INodePropertyOptions,
+import {
+	BaseError,
+	type DisplayCondition,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INodeProperties,
+	type INodePropertyOptions,
 } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
 
 import type { IDependency, IJsonSchema } from '../../../types';
+
+export class CredentialsIsNotUpdatableError extends BaseError {}
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -105,11 +109,16 @@ export async function updateCredential(
 		data?: ICredentialDataDecryptedObject;
 		isGlobal?: boolean;
 		isResolvable?: boolean;
+		isPartialData?: boolean;
 	},
 ): Promise<ICredentialsDb | null> {
 	const existingCredential = await getCredentials(credentialId);
 	if (!existingCredential) {
 		return null;
+	}
+
+	if (existingCredential.isManaged) {
+		throw new CredentialsIsNotUpdatableError('Managed credentials cannot be updated.');
 	}
 
 	// Merge the update data with existing credential
@@ -125,12 +134,48 @@ export async function updateCredential(
 
 	// If data is provided, encrypt it
 	if (updateData.data !== undefined) {
+		// Never allow changing oauthTokenData via API
+		if (updateData.data?.oauthTokenData) {
+			delete updateData.data.oauthTokenData;
+		}
+
+		let dataToEncrypt: ICredentialDataDecryptedObject;
+
+		// If isPartialData is true, merge with existing decrypted data and unredact
+		if (updateData.isPartialData === true) {
+			const credentialsService = Container.get(CredentialsService);
+
+			// Decrypt existing data to allow merging and unredaction
+			const decryptedData = credentialsService.decrypt(
+				existingCredential as CredentialsEntity,
+				true,
+			);
+
+			// First merge existing decrypted data with new data
+			// This ensures all existing fields are preserved unless explicitly overridden
+			const mergedData = {
+				...decryptedData,
+				...updateData.data,
+			};
+
+			// Then unredact any redacted values (e.g., replace "***" with original values)
+			dataToEncrypt = credentialsService.unredact(mergedData, decryptedData);
+
+			// Preserve oauthTokenData from existing credential
+			if (decryptedData.oauthTokenData) {
+				dataToEncrypt.oauthTokenData = decryptedData.oauthTokenData;
+			}
+		} else {
+			// isPartialData is false or undefined (default): replace entire data object
+			dataToEncrypt = updateData.data;
+		}
+
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, {
 			id: credentialId,
 			name: updateData.name ?? existingCredential.name,
 			type: updateData.type ?? existingCredential.type,
-			data: updateData.data,
+			data: dataToEncrypt,
 		});
 
 		const encryptedData = await encryptCredential(newCredential);

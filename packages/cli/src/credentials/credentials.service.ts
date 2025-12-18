@@ -35,12 +35,11 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from './credentials-finder.service';
-
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -50,7 +49,8 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+
+import { CredentialsFinderService } from './credentials-finder.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -452,7 +452,7 @@ export class CredentialsService {
 	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
-	): Promise<CredentialsEntity> {
+	): Promise<Omit<CredentialsEntity, 'data'> & { data?: ICredentialDataDecryptedObject }> {
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(mergedData.data, decryptedData);
@@ -461,16 +461,19 @@ export class CredentialsService {
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
 		const updateData = this.credentialsRepository.create(mergedData as ICredentialsDb);
-
 		await validateEntity(updateData);
+
+		const updateDataTyped = { ...updateData, data: mergedData.data } as Omit<
+			CredentialsEntity,
+			'data'
+		> & { data?: ICredentialDataDecryptedObject };
 
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData) {
-			// @ts-ignore
-			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+		if (decryptedData.oauthTokenData && updateDataTyped.data) {
+			updateDataTyped.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
-		return updateData;
+		return updateDataTyped;
 	}
 
 	createEncryptedData(credential: {
