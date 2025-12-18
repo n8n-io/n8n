@@ -26,8 +26,6 @@ jobs:
 
       - name: Login to GitHub Container Registry
         uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: true
 
       - name: Build
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0

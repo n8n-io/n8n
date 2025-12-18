@@ -120,8 +120,6 @@ jobs:
 
       - name: Login to GitHub Container Registry
         uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: true
 
       - name: Tag stable/latest GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
