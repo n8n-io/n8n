@@ -555,6 +555,15 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 						options: {},
 					},
 				};
+			case 'atlasCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'google':
 				return {
 					...common,

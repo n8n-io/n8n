@@ -14,6 +14,7 @@ import { Z } from 'zod-class';
 export const chatHubLLMProviderSchema = z.enum([
 	'openai',
 	'anthropic',
+	'atlasCloud',
 	'google',
 	'azureOpenAi',
 	'azureEntraId',
@@ -61,6 +62,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 > = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
+	atlasCloud: 'atlasCloudApi',
 	google: 'googlePalmApi',
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
@@ -87,6 +89,11 @@ const openAIModelSchema = z.object({
 
 const anthropicModelSchema = z.object({
 	provider: z.literal('anthropic'),
+	model: z.string(),
+});
+
+const atlasCloudModelSchema = z.object({
+	provider: z.literal('atlasCloud'),
 	model: z.string(),
 });
 
@@ -163,6 +170,7 @@ const chatAgentSchema = z.object({
 export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	openAIModelSchema,
 	anthropicModelSchema,
+	atlasCloudModelSchema,
 	googleModelSchema,
 	azureOpenAIModelSchema,
 	azureEntraIdModelSchema,
@@ -181,6 +189,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
+export type ChatHubAtlasCloudModel = z.infer<typeof atlasCloudModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubAzureEntraIdModel = z.infer<typeof azureEntraIdModelSchema>;
@@ -196,6 +205,7 @@ export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
 	| ChatHubAnthropicModel
+	| ChatHubAtlasCloudModel
 	| ChatHubGoogleModel
 	| ChatHubAzureOpenAIModel
 	| ChatHubAzureEntraIdModel
@@ -257,6 +267,7 @@ export type ChatModelsResponse = Record<
 export const emptyChatModelsResponse: ChatModelsResponse = {
 	openai: { models: [] },
 	anthropic: { models: [] },
+	atlasCloud: { models: [] },
 	google: { models: [] },
 	azureOpenAi: { models: [] },
 	azureEntraId: { models: [] },

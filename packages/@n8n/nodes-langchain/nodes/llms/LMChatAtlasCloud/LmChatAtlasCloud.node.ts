@@ -23,7 +23,7 @@ export class LmChatAtlasCloud implements INodeType {
 		icon: 'file:atlascloud.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Langrage Model Atlas Cloud',
+		description: 'Language Model Atlas Cloud',
 		defaults: {
 			name: 'Atlas Cloud Chat Model',
 		},
@@ -236,7 +236,7 @@ export class LmChatAtlasCloud implements INodeType {
 			apiKey: credentials.apiKey,
 			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout: options.timeout ?? 360000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
