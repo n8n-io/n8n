@@ -165,8 +165,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		tracing = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
-	// Task runner defaults to enabled when queue mode is used
-	const taskRunnerEnabled = taskRunner ?? !!queueConfig;
+	// Task runner is enabled by default for all containerized stacks (mirrors production default)
+	const taskRunnerEnabled = taskRunner ?? true;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
 	const oidcEnabled = !!oidc;

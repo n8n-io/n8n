@@ -44,7 +44,7 @@ ${colors.yellow}Usage:${colors.reset}
 ${colors.yellow}Options:${colors.reset}
   --postgres        Use PostgreSQL instead of SQLite
   --queue           Enable queue mode (requires PostgreSQL)
-  --task-runner     Enable external task runner container
+  --no-task-runner  Disable external task runner (enabled by default)
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
@@ -77,8 +77,8 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Queue mode (automatically uses PostgreSQL)${colors.reset}
   npm run stack --queue
 
-  ${colors.bright}# With external task runner${colors.reset}
-  npm run stack --postgres --task-runner
+  ${colors.bright}# Without task runner (task runner is enabled by default)${colors.reset}
+  npm run stack --no-task-runner
 
   ${colors.bright}# With source control (Git) testing${colors.reset}
   npm run stack --postgres --source-control
@@ -109,6 +109,7 @@ ${Object.keys(BASE_PERFORMANCE_PLANS)
 
 ${colors.yellow}Notes:${colors.reset}
   • SQLite is the default database (no external dependencies)
+  • Task runner is enabled by default (mirrors production)
   • Queue mode requires PostgreSQL and enables horizontal scaling
   • Use --name for running multiple instances in parallel
   • Performance plans simulate cloud constraints (SQLite only, resource-limited)
@@ -123,7 +124,7 @@ async function main() {
 			help: { type: 'boolean', short: 'h' },
 			postgres: { type: 'boolean' },
 			queue: { type: 'boolean' },
-			'task-runner': { type: 'boolean' },
+			'no-task-runner': { type: 'boolean' },
 			'source-control': { type: 'boolean' },
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
@@ -144,10 +145,10 @@ async function main() {
 	}
 
 	// Build configuration
-	// Note: taskRunner is intentionally omitted to let it default based on queue mode
+	// Task runner is enabled by default; use --no-task-runner to disable
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
-		taskRunner: values['task-runner'] ? true : undefined, // Only set if explicitly enabled
+		taskRunner: values['no-task-runner'] ? false : undefined, // Default true, only set false if explicitly disabled
 		sourceControl: values['source-control'] ?? false,
 		oidc: values.oidc ?? false,
 		observability: values.observability ?? false,
@@ -302,15 +303,9 @@ function displayConfig(config: N8NConfig) {
 		log.info('Queue mode: disabled');
 	}
 
-	// Display task runner status
-	// Task runner defaults to enabled when queue mode is used
-	const taskRunnerEnabled = config.taskRunner ?? !!config.queueMode;
-	if (taskRunnerEnabled) {
-		const autoEnabled = config.taskRunner === undefined && !!config.queueMode;
-		log.info(`Task runner: enabled${autoEnabled ? ' (auto-enabled with queue mode)' : ''}`);
-	} else {
-		log.info('Task runner: disabled');
-	}
+	// Display task runner status (enabled by default)
+	const taskRunnerEnabled = config.taskRunner ?? true;
+	log.info(`Task runner: ${taskRunnerEnabled ? 'enabled (default)' : 'disabled'}`);
 
 	// Display source control status
 	if (config.sourceControl) {
