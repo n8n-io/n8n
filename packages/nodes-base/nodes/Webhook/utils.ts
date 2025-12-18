@@ -10,6 +10,7 @@ import type {
 	MultiPartFormData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
@@ -137,17 +138,33 @@ export const isIpWhitelisted = (
 		whitelist = whitelist.split(',').map((entry) => entry.trim());
 	}
 
+	const allowList = getAllowList(whitelist);
+
 	for (const address of whitelist) {
-		if (ip?.includes(address)) {
+		if (ip === address || allowList.check(ip ?? '')) {
 			return true;
 		}
 
-		if (ips.some((entry) => entry.includes(address))) {
+		if (ips.some((entry) => allowList.check(entry))) {
 			return true;
 		}
 	}
 
 	return false;
+};
+
+const getAllowList = (whitelist: string[]) => {
+	const allowList = new BlockList();
+
+	for (const entry of whitelist) {
+		try {
+			allowList.addAddress(entry);
+		} catch {
+			// Ignore invalid entries
+		}
+	}
+
+	return allowList;
 };
 
 export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
