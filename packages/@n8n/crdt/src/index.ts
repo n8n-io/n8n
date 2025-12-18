@@ -20,6 +20,9 @@ export { ChangeAction, CRDTEngine } from './types';
 export { YjsProvider } from './providers/yjs';
 export { AutomergeProvider } from './providers/automerge';
 
+// Transports
+export type { SyncTransport } from './transports';
+
 /**
  * Creates a CRDT provider based on the given configuration.
  * @param config - Configuration specifying which CRDT engine to use
