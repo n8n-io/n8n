@@ -16,8 +16,8 @@ import type {
 	ChatHubUpdateConversationRequest,
 	EnrichedStructuredChunk,
 	ChatHubLLMProvider,
+	ChatProviderSettingsDto,
 } from '@n8n/api-types';
-import type { ChatProviderSettingsDto } from '@n8n/api-types';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
 const STREAM_SEPARATOR = '\n';

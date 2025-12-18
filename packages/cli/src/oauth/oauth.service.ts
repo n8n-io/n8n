@@ -211,7 +211,8 @@ export class OauthService {
 			return decoded;
 		}
 
-		if (decoded.userId !== req.user?.id) {
+		// if we skip auth on oauth callback, we cannot validate user id
+		if (!skipAuthOnOAuthCallback && decoded.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
 

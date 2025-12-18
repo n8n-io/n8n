@@ -147,11 +147,11 @@ watch(
 
 watch(
 	[isOpened, isLoadingAgent, nameInputRef],
-	async ([opened, isLoading, name]) => {
+	([opened, isLoading, nameInput]) => {
 		if (opened && !isLoading) {
 			// autofocus attribute doesn't work in modal
 			// https://github.com/element-plus/element-plus/issues/15250
-			name?.focus();
+			nameInput?.focus();
 		}
 	},
 	{ immediate: true, flush: 'post' },
@@ -308,8 +308,8 @@ function onSelectTools() {
 							:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
 						/>
 						<N8nInput
-							ref="nameInput"
 							id="agent-name"
+							ref="nameInput"
 							v-model="name"
 							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 							:maxlength="128"
