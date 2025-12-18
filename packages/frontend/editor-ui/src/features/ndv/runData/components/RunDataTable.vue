@@ -189,16 +189,16 @@ function onMouseLeaveCell() {
 	hoveringColumnIndex.value = -1;
 }
 
-function onMouseEnterKey(path: Array<string | number>, colIndex: number) {
-	hoveringPath.value = getCellExpression(path, colIndex);
+function onMouseEnterKey(path: Array<string | number>, colIndex: number, rowIndex?: number) {
+	hoveringPath.value = getCellExpression(path, colIndex, rowIndex);
 }
 
 function onMouseLeaveKey() {
 	hoveringPath.value = null;
 }
 
-function isHovering(path: Array<string | number>, colIndex: number) {
-	const expr = getCellExpression(path, colIndex);
+function isHovering(path: Array<string | number>, colIndex: number, rowIndex?: number) {
+	const expr = getCellExpression(path, colIndex, rowIndex);
 
 	return hoveringPath.value === expr;
 }
@@ -235,7 +235,7 @@ function getCellPathName(path: Array<string | number>, colIndex: number) {
 	return `${column}[${lastKey}]`;
 }
 
-function getCellExpression(path: Array<string | number>, colIndex: number) {
+function getCellExpression(path: Array<string | number>, colIndex: number, rowIndex?: number) {
 	if (!props.node) {
 		return '';
 	}
@@ -244,6 +244,7 @@ function getCellExpression(path: Array<string | number>, colIndex: number) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column, ...path],
+		itemIndex: rowIndex,
 	});
 }
 
@@ -303,12 +304,12 @@ function onCellDragEnd(el: HTMLElement) {
 	onDragEnd(el.dataset.name ?? '', 'tree', el.dataset.depth ?? '0');
 }
 
-function isDraggingKey(path: Array<string | number>, colIndex: number) {
+function isDraggingKey(path: Array<string | number>, colIndex: number, rowIndex?: number) {
 	if (!draggingPath.value) {
 		return;
 	}
 
-	return draggingPath.value === getCellExpression(path, colIndex);
+	return draggingPath.value === getCellExpression(path, colIndex, rowIndex);
 }
 
 function onDragEnd(column: string, src: string, depth = '0') {
@@ -731,17 +732,17 @@ watch(
 								<TextWithHighlights
 									data-target="mappable"
 									:class="{
-										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
-										[$style.draggingKey]: isDraggingKey(path, index2),
+										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2, index1),
+										[$style.draggingKey]: isDraggingKey(path, index2, index1),
 										[$style.dataKey]: true,
 										[$style.mappable]: mappingEnabled,
 									}"
 									:content="label || i18n.baseText('runData.unnamedField')"
 									:search="search"
 									:data-name="getCellPathName(path, index2)"
-									:data-value="getCellExpression(path, index2)"
+									:data-value="getCellExpression(path, index2, index1)"
 									:data-depth="path.length"
-									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseenter="() => onMouseEnterKey(path, index2, index1)"
 									@mouseleave="onMouseLeaveKey"
 								/>
 							</template>

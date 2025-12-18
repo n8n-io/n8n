@@ -30,12 +30,14 @@ export function getMappedExpression({
 	nodeName,
 	distanceFromActive,
 	path,
+	itemIndex,
 }: {
 	nodeName: string;
 	distanceFromActive: number;
 	path: Array<string | number> | string;
+	itemIndex?: number;
 }) {
-	const root = getNodeParentExpression({ nodeName, distanceFromActive });
+	const root = getNodeParentExpression({ nodeName, distanceFromActive, itemIndex });
 
 	if (typeof path === 'string') {
 		return `{{ ${root}${path} }}`;
@@ -47,10 +49,16 @@ export function getMappedExpression({
 export function getNodeParentExpression({
 	nodeName,
 	distanceFromActive,
+	itemIndex,
 }: {
 	nodeName: string;
 	distanceFromActive: number;
+	itemIndex?: number;
 }) {
+	if (itemIndex !== undefined && itemIndex > 0) {
+		return generatePath(`$('${escapeMappingString(nodeName)}').all()`, [itemIndex, 'json']);
+	}
+
 	return distanceFromActive === 1
 		? '$json'
 		: generatePath(`$('${escapeMappingString(nodeName)}')`, ['item', 'json']);

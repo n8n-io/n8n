@@ -67,12 +67,20 @@ const getShortKey = (el: HTMLElement) => {
 };
 
 const getJsonParameterPath = (path: string) => {
-	const subPath = path.replace(/^(\["?\d"?])/, ''); // remove item position
+	const match = path.match(/^\["?(\d+)"?]/);
+	let itemIndex: number | undefined;
+	let subPath = path;
+
+	if (match) {
+		itemIndex = parseInt(match[1], 10);
+		subPath = path.replace(/^(\["?\d"?])/, '');
+	}
 
 	return getMappedExpression({
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: subPath,
+		itemIndex,
 	});
 };
 
