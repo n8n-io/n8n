@@ -7,6 +7,8 @@ import {
 	PopoverRoot,
 	type PopoverRootProps,
 	PopoverTrigger,
+	type PointerDownOutsideEvent,
+	type FocusOutsideEvent,
 } from 'reka-ui';
 import { watch } from 'vue';
 import type { CSSProperties } from 'vue';
@@ -89,6 +91,21 @@ function handleOpenAutoFocus(e: Event) {
 	}
 }
 
+/**
+ * Handles outside interaction events to prevent Reka UI from interfering
+ * with Element Plus dropdown selections. Element Plus teleports dropdowns
+ * to the body, so Reka UI's DismissableLayer detects clicks on them as
+ * "outside" clicks, which would otherwise prevent proper selection.
+ *
+ * TODO: This workaround can be removed once N8nSelect is migrated to Reka UI.
+ */
+function handleOutsideInteraction(e: PointerDownOutsideEvent | FocusOutsideEvent) {
+	const target = e.target as HTMLElement | null;
+	if (target?.closest('.el-popper, .el-select-dropdown')) {
+		e.preventDefault();
+	}
+}
+
 // Watch open state to emit lifecycle events
 watch(
 	() => props.open,
@@ -118,6 +135,8 @@ watch(
 				:style="{ width, zIndex }"
 				:reference="reference"
 				@open-auto-focus="handleOpenAutoFocus"
+				@pointer-down-outside="handleOutsideInteraction"
+				@interact-outside="handleOutsideInteraction"
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"
