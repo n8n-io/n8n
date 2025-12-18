@@ -9,7 +9,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { isExpression, type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { useToast } from './useToast';
@@ -204,11 +203,7 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
-			if (tags) {
-				const createdTags = (workflowData.tags || []) as ITag[];
-				const tagIds = createdTags.map((tag: ITag): string => tag.id);
-				workflowState.setWorkflowTagIds(tagIds);
-			}
+			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
 
 			uiStore.stateIsDirty = false;
 			uiStore.removeActiveAction('workflowSaving');
@@ -396,9 +391,7 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			const createdTags = (workflowData.tags || []) as ITag[];
-			const tagIds = createdTags.map((tag: ITag) => tag.id);
-			workflowState.setWorkflowTagIds(tagIds);
+			workflowState.setWorkflowTagIds(workflowsStore.convertWorkflowTagsToIds(workflowData.tags));
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;

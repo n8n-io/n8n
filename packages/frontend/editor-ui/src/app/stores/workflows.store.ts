@@ -27,6 +27,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type {
 	WorkflowMetadata,
 	WorkflowDataCreate,
@@ -1059,9 +1060,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
+	/**
+	 * Converts workflow tags from ITag[] (API response format) to string[] (store format)
+	 * Or keeps original value if already in string[] format
+	 */
+	function convertWorkflowTagsToIds(tags: ITag[] | string[] | undefined): string[] {
+		if (!tags || !Array.isArray(tags)) return [];
+		if (tags.length === 0) return tags as string[];
+		if (typeof tags[0] === 'object' && 'id' in tags[0]) {
+			return (tags as ITag[]).map((tag) => tag.id);
+		}
+		return tags as string[];
+	}
+
 	function setWorkflow(value: IWorkflowDb): void {
+		const tags = convertWorkflowTagsToIds(value.tags);
 		workflow.value = {
 			...value,
+			...(tags.length > 0 ? { tags } : {}),
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
@@ -2088,6 +2104,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowMetadata,
 		addToWorkflowMetadata,
 		setWorkflow,
+		convertWorkflowTagsToIds,
 		pinData,
 		unpinData,
 		addConnection,
