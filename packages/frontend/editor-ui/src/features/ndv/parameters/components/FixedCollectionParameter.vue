@@ -203,6 +203,11 @@ const getVisibleFields = (property: INodePropertyCollection, index?: number): IN
 			return true;
 		}
 
+		// Always show notice fields - they're informational, not input fields
+		if (field.type === 'notice') {
+			return true;
+		}
+
 		// Show optional fields only if explicitly added
 		return addedFields?.has(field.name) ?? false;
 	});
