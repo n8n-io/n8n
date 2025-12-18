@@ -169,9 +169,6 @@ export async function setupN8nTracer({
 
 /**
  * Setup complete tracing stack with Jaeger and n8n-tracer
- *
- * @param deploymentMode - Always 'scaling' for container testing (HTTP ingest via log streaming).
- *                         'regular' mode watches local log files which doesn't apply to containers.
  */
 export async function setupTracingStack({
 	projectName,

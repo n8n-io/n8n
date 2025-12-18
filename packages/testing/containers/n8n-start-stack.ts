@@ -258,23 +258,15 @@ async function main() {
 			log.info(
 				`VictoriaMetrics UI: ${colors.cyan}${stack.observability.victoriaMetrics.queryEndpoint}/vmui${colors.reset}`,
 			);
-			log.info(
-				`Syslog endpoint: ${colors.cyan}${stack.observability.victoriaLogs.syslog.host}:${stack.observability.victoriaLogs.syslog.port}${colors.reset}`,
-			);
 			if (stack.observability.vector) {
 				log.success('Container logs collected by Vector (runs in background)');
 			}
 		}
 
-		// Display tracing configuration if enabled
 		if (stack.tracing) {
 			console.log('');
 			log.header('Tracing Stack (n8n-tracer + Jaeger)');
 			log.info(`Jaeger UI: ${colors.cyan}${stack.tracing.jaeger.uiUrl}${colors.reset}`);
-			log.info(
-				`n8n-tracer ingest: ${colors.cyan}${stack.tracing.n8nTracer.ingestUrl}${colors.reset}`,
-			);
-			log.info('Configure log streaming destination to send events to n8n-tracer');
 		}
 
 		console.log('');

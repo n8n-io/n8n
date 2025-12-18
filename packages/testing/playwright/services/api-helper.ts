@@ -335,6 +335,7 @@ export class ApiHelpers {
 	 *
 	 * @returns Array of destination configurations
 	 */
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	async getLogStreamingDestinations(): Promise<Array<{ id: string; __type: string }>> {
 		const response = await this.request.get('/rest/eventbus/destination');
 		if (!response.ok()) {

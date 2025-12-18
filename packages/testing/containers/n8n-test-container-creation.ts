@@ -317,9 +317,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
-	// Track observability stack for later return
 	let observabilityStack: ObservabilityStack | undefined;
-	// Track tracing stack for later return
 	let tracingStack: TracingStack | undefined;
 
 	let earlyAllocatedPort: number | undefined;
@@ -410,14 +408,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		log('Observability stack ready (logs collected by Vector)');
 	}
 
-	// Set up tracing stack for workflow execution visualization
 	if (tracingEnabled && network) {
 		log('Setting up tracing stack (n8n-tracer + Jaeger)...');
 		const { setupTracingStack } = await import('./n8n-test-container-tracing');
 
-		// Always use 'scaling' mode for container testing (HTTP ingest via log streaming)
-		// 'regular' mode watches local log files which doesn't apply to containers
-		// In scaling mode, queue tests show full job lifecycle, single instance shows workflow lifecycle
 		tracingStack = await setupTracingStack({
 			projectName: uniqueProjectName,
 			network,

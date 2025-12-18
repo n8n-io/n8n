@@ -1,6 +1,7 @@
 /**
  * Query helpers for VictoriaLogs and VictoriaMetrics
  */
+import { setTimeout as wait } from 'node:timers/promises';
 
 import type {
 	VictoriaLogsSetupResult,
@@ -34,7 +35,13 @@ export interface WaitForMetricOptions {
 	predicate?: (values: MetricResult[]) => boolean;
 }
 
-const sleep = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Escape special characters in LogsQL queries.
+ * LogsQL uses double quotes for string matching, so we need to escape them.
+ */
+export function escapeLogsQL(str: string): string {
+	return str.replace(/["\\]/g, '\\$&');
+}
 
 /**
  * Helper for querying VictoriaLogs
@@ -82,7 +89,7 @@ export class VictoriaLogsHelper {
 		while (Date.now() < deadline) {
 			const logs = await this.query(query, options);
 			if (logs.length > 0) return logs[0];
-			await sleep(interval);
+			await wait(interval);
 		}
 		return null;
 	}
@@ -135,7 +142,7 @@ export class VictoriaMetricsHelper {
 			} catch {
 				// Ignore transient errors during polling
 			}
-			await sleep(interval);
+			await wait(interval);
 		}
 		return null;
 	}

@@ -7,7 +7,7 @@ test.use({
 	},
 });
 
-test('Leader election @mode:multi-main @chaostest', async ({ chaos }) => {
+test('Leader election @mode:multi-main @chaostest @capability:observability', async ({ chaos }) => {
 	// First get the container (try main 1 first)
 	const namePattern = 'n8n-main-*';
 

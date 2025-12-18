@@ -50,10 +50,5 @@ test.describe('Log Streaming UI E2E @capability:observability', () => {
 		});
 
 		expect(testEvent).toBeTruthy();
-		console.log('Test event captured:', testEvent?.message.substring(0, 100));
-
-		// ========== CLEANUP ==========
-		await n8n.settingsLogStreaming.deleteDestination();
-		await n8n.settingsLogStreaming.confirmDialog();
 	});
 });

@@ -12,7 +12,7 @@ import {
 	type MailpitMessageSummary,
 } from './n8n-test-container-mailpit';
 import type { ObservabilityStack } from './n8n-test-container-observability';
-import { VictoriaLogsHelper } from './n8n-test-container-victoria-helpers';
+import { VictoriaLogsHelper, escapeLogsQL } from './n8n-test-container-victoria-helpers';
 
 export interface LogMatch {
 	container: StartedTestContainer;
@@ -151,10 +151,11 @@ export class ContainerTestHelpers {
 
 		// Build LogsQL query - search for the pattern in the message field
 		// If namePattern is provided, also filter by container name
-		let query = `_msg:~"${patternStr}"`;
+		// Escape special characters to prevent query injection
+		let query = `_msg:~"${escapeLogsQL(patternStr)}"`;
 		if (namePattern) {
 			const containerPattern = typeof namePattern === 'string' ? namePattern : namePattern.source;
-			query = `container:~"${containerPattern}" AND ${query}`;
+			query = `container:~"${escapeLogsQL(containerPattern)}" AND ${query}`;
 		}
 
 		console.log(
