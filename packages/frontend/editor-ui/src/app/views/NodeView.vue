@@ -325,8 +325,8 @@ async function initializeData() {
 
 		const promises: Array<Promise<unknown>> = [
 			workflowsStore.fetchActiveWorkflows(),
-			credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(true),
+			loadCredentials(),
 		];
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
@@ -431,8 +431,6 @@ async function initializeRoute(force = false) {
 			}
 
 			// Load existing workflow
-			await loadCredentials();
-
 			await initializeWorkspaceForExistingWorkflow(workflowId.value);
 
 			void nextTick(() => {
