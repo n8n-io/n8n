@@ -1902,11 +1902,6 @@ watch(
 );
 
 onBeforeRouteLeave(async (to, from, next) => {
-	// Close the focus panel when leaving the workflow view
-	if (focusPanelStore.focusPanelActive) {
-		focusPanelStore.closeFocusPanel();
-	}
-
 	const toNodeViewTab = getNodeViewTab(to);
 
 	if (
