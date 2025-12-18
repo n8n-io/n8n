@@ -60,6 +60,9 @@ type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
 
+export type UpdatableCredentialData = ICredentialsDb &
+	Partial<Pick<CredentialsEntity, 'isResolvable' | 'isGlobal'>>;
+
 @Service()
 export class CredentialsService {
 	constructor(
@@ -520,7 +523,7 @@ export class CredentialsService {
 		}
 	}
 
-	async update(credentialId: string, newCredentialData: ICredentialsDb) {
+	async update(credentialId: string, newCredentialData: UpdatableCredentialData) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB

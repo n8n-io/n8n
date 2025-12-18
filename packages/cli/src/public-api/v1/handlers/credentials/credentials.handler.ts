@@ -8,6 +8,7 @@ import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { UpdatableCredentialData } from '@/credentials/credentials.service';
 import { LicenseState } from '@n8n/backend-common';
 import { hasGlobalScope } from '@n8n/permissions';
 
@@ -23,7 +24,11 @@ import {
 	toJsonSchema,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
-import { apiKeyHasScope, projectScope } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScope,
+	projectScope,
+	apiKeyHasScopeWithGlobalScopeFallback,
+} from '../../shared/middlewares/global.middleware';
 
 export = {
 	createCredential: [
@@ -94,6 +99,10 @@ export = {
 		},
 	],
 	updateCredential: [
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'credential:delete',
+			globalScope: 'credential:update',
+		}),
 		projectScope('credential:update', 'credential'),
 		async (req: express.Request, res: express.Response): Promise<express.Response> => {
 			const { id: credentialId } = req.params as { id: string };
@@ -137,15 +146,19 @@ export = {
 			const prepared = await credentialsService.prepareUpdateData(body, decryptedData);
 
 			// Create encrypted data for persistence
-			const newCredentialData = credentialsService.createEncryptedData({
+			const baseData = credentialsService.createEncryptedData({
 				id: credential.id,
 				name: (prepared as any).name ?? credential.name,
 				type: (prepared as any).type ?? credential.type,
 				data: (prepared as any).data,
 			});
+			let newCredentialData: UpdatableCredentialData = {
+				...baseData,
+				isResolvable: body?.isResolvable ?? credential.isResolvable,
+			};
 
 			// Handle isGlobal toggle if provided
-			const isGlobal = body?.Global;
+			const isGlobal = body?.isGlobal;
 			if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
 				const licenseState = Container.get(LicenseState);
 				if (!licenseState.isSharingLicensed()) {
@@ -157,11 +170,8 @@ export = {
 						message: 'You do not have permission to change global sharing for credentials',
 					});
 				}
-				(newCredentialData as any).isGlobal = isGlobal;
+				newCredentialData = { ...newCredentialData, isGlobal };
 			}
-
-			// Preserve or update isResolvable
-			(newCredentialData as any).isResolvable = body?.isResolvable ?? credential.isResolvable;
 
 			const updated = await credentialsService.update(credentialId, newCredentialData);
 			if (!updated) {
