@@ -1,5 +1,6 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
+import type { n8nPage } from '../../../pages/n8nPage';
 import { setupGitRepo } from '../../../utils/source-control-helper';
 
 test.use({
@@ -7,6 +8,10 @@ test.use({
 		sourceControl: true,
 	},
 });
+
+async function expectPullSuccess(n8n: n8nPage) {
+	expect(await n8n.notifications.waitForNotificationAndClose('Pulled successfully')).toBe(true);
+}
 
 test.describe('Pull resources from Git @capability:source-control', () => {
 	let repoUrl: string;
@@ -58,7 +63,7 @@ test.describe('Pull resources from Git @capability:source-control', () => {
 		// pull all resources
 		await n8n.navigate.toHome();
 		await n8n.sideBar.getSourceControlPullButton().click();
-		await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
+		await expectPullSuccess(n8n);
 
 		// check that all new resources are pulled
 		await n8n.navigate.toProjectSettings(project.id);
@@ -129,7 +134,7 @@ test.describe('Pull resources from Git @capability:source-control', () => {
 
 		// click on pull & override button
 		await n8n.sourceControlPullModal.getPullAndOverrideButton().click();
-		await n8n.notifications.waitForNotificationAndClose('Pulled successfully');
+		await expectPullSuccess(n8n);
 
 		// check pulled resources
 		await n8n.navigate.toWorkflow(workflow.id);

@@ -1,5 +1,6 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
+import type { n8nPage } from '../../../pages/n8nPage';
 import { setupGitRepo } from '../../../utils/source-control-helper';
 
 test.use({
@@ -7,6 +8,14 @@ test.use({
 		sourceControl: true,
 	},
 });
+
+async function expectPushSuccess(n8n: n8nPage) {
+	expect(await n8n.notifications.waitForNotificationAndClose('Pushed successfully')).toBe(true);
+}
+
+async function expectNoChangesToCommit(n8n: n8nPage) {
+	expect(await n8n.notifications.waitForNotificationAndClose('No changes to commit')).toBe(true);
+}
 
 test.describe('Push resources to Git @capability:source-control', () => {
 	test.beforeEach(async ({ n8n, n8nContainer }) => {
@@ -39,11 +48,11 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// push
 		await n8n.sourceControlPushModal.push('Add test workflow with manual trigger');
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+		await expectPushSuccess(n8n);
 
 		// check no changes to commit
 		await n8n.sideBar.getSourceControlPushButton().click();
-		await n8n.notifications.waitForNotificationAndClose('No changes to commit');
+		await expectNoChangesToCommit(n8n);
 	});
 
 	test('should push all resource types together', async ({ n8n }) => {
@@ -110,7 +119,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// Push all resources
 		await n8n.sourceControlPushModal.push('Add all resource types');
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+		await expectPushSuccess(n8n);
 	});
 
 	test('should push modifications and deletions', async ({ n8n }) => {
@@ -136,7 +145,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await n8n.sourceControlPushModal.selectAllFilesInModal();
 
 		await n8n.sourceControlPushModal.push('new resources');
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+		await expectPushSuccess(n8n);
 
 		// modify and delete resources
 		await n8n.navigate.toWorkflow(workflow.id);
@@ -162,11 +171,11 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// push
 		await n8n.sourceControlPushModal.push('Modify workflow and delete credential');
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+		await expectPushSuccess(n8n);
 
 		// check no changes to commit
 		await n8n.sideBar.getSourceControlPushButton().click();
-		await n8n.notifications.waitForNotificationAndClose('No changes to commit');
+		await expectNoChangesToCommit(n8n);
 	});
 
 	test('should push selected resources', async ({ n8n }) => {
@@ -214,7 +223,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// push
 		await n8n.sourceControlPushModal.push('Push workflows A and C');
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+		await expectPushSuccess(n8n);
 
 		// modify workflow A
 		await n8n.navigate.toWorkflow(workflowA.id);
@@ -234,10 +243,10 @@ test.describe('Push resources to Git @capability:source-control', () => {
 
 		// push
 		await n8n.sourceControlPushModal.push('Push workflow A');
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully');
+		await expectPushSuccess(n8n);
 
 		// Verify no more changes
 		await n8n.sideBar.getSourceControlPushButton().click();
-		await n8n.notifications.waitForNotificationAndClose('No changes to commit');
+		await expectNoChangesToCommit(n8n);
 	});
 });
