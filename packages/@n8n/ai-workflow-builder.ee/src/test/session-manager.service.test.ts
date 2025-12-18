@@ -524,8 +524,8 @@ describe('SessionManagerService', () => {
 
 			expect(result).toBe(true);
 			// Verify the call to put includes only messages before msg-3
-			const putCall = (mockMemorySaver.put as jest.Mock).mock.calls[0];
-			const updatedCheckpoint = putCall[1];
+			const putCall = (mockMemorySaver.put as jest.Mock).mock.calls[0] as unknown[];
+			const updatedCheckpoint = putCall[1] as { channel_values: { messages: unknown[] } };
 			expect(updatedCheckpoint.channel_values.messages).toHaveLength(2);
 			expect(updatedCheckpoint.channel_values.messages).toEqual([msg1, msg2]);
 		});
