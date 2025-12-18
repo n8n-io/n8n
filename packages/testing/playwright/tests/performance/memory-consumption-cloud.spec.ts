@@ -14,23 +14,23 @@ test.use({
 });
 
 test.describe('Memory Consumption @capability:observability', () => {
-	const CONTAINER_STABILIZATION_TIME = 20000;
 	const STARTER_PLAN_MEMORY_LIMIT_MB = 768;
+	const METRICS_TIMEOUT_MS = 60000; // Wait up to 60s for metrics to be available
 
 	test('Memory consumption baseline with starter plan resources', async ({
 		n8nContainer,
 	}, testInfo) => {
 		const obs = new ObservabilityHelper(n8nContainer.observability!);
 
-		// Wait for container to stabilize and metrics to be scraped
-		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
+		// Wait for metrics to be scraped by VictoriaMetrics (polls until available)
+		const memoryQuery = 'avg_over_time(n8n_process_resident_memory_bytes[30s]) / 1024 / 1024';
+		const result = await obs.metrics.waitForMetric(memoryQuery, {
+			timeoutMs: METRICS_TIMEOUT_MS,
+			intervalMs: 2000,
+		});
 
-		// Query average memory over last 30 seconds (converted to MB in PromQL)
-		const result = await obs.metrics.query(
-			'avg_over_time(n8n_process_resident_memory_bytes[30s]) / 1024 / 1024',
-		);
-		expect(result.length, 'Expected metrics result to have at least one value').toBeGreaterThan(0);
-		const averageMemoryMB = result[0].value;
+		expect(result, 'Expected metrics result to be available').not.toBeNull();
+		const averageMemoryMB = result!.value;
 
 		await attachMetric(testInfo, 'memory-consumption-baseline', averageMemoryMB, 'MB');
 

@@ -361,9 +361,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const scrapeTargets: ScrapeTarget[] = [];
 
 		// Add main targets (all grouped under 'n8n-main' job)
+		// Hostname must match the container name: single instance uses '-n8n', multi uses '-n8n-main-{i}'
 		for (let i = 1; i <= mainCount; i++) {
 			const hostname =
-				mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n-main-1`;
+				mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
 			scrapeTargets.push({
 				job: 'n8n-main',
 				instance: `n8n-main-${i}`,
@@ -475,9 +476,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (taskRunnerEnabled && network) {
-		const taskBrokerUri = queueConfig?.workers
-			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
-			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
+		// Determine task broker hostname based on mode:
+		// - Queue mode with workers: use first worker
+		// - Queue mode without workers (multi-main): use first main (named -n8n-main-1)
+		// - Single instance: use main (named -n8n)
+		const taskBrokerHost = queueConfig?.workers
+			? `${uniqueProjectName}-n8n-worker-1`
+			: mainCount > 1
+				? `${uniqueProjectName}-n8n-main-1`
+				: `${uniqueProjectName}-n8n`;
+		const taskBrokerUri = `http://${taskBrokerHost}:5679`;
 
 		const taskRunnerContainer = await setupTaskRunner({
 			projectName: uniqueProjectName,
@@ -593,7 +601,6 @@ async function createN8NInstances({
 	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
-		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
 		log(`Starting main ${i}/${mainCount}: ${name}`);
 		const container = await createN8NContainer({
 			name,
@@ -602,7 +609,7 @@ async function createN8NInstances({
 			network,
 			isWorker: false,
 			instanceNumber: i,
-			networkAlias,
+			networkAlias: name, // Use container name as network alias for VictoriaMetrics scraping
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
 			keycloakCertPem,
