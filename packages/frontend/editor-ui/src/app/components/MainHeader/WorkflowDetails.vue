@@ -219,12 +219,7 @@ async function onTagsBlur() {
 		return;
 	}
 
-	// Request write access if we don't have it, otherwise record activity
-	if (!collaborationStore.isCurrentUserWriter) {
-		collaborationStore.requestWriteAccess();
-	} else {
-		collaborationStore.recordActivity();
-	}
+	collaborationStore.requestWriteAccess();
 
 	tagsSaving.value = true;
 
