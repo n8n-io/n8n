@@ -391,16 +391,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Read-only mode', () => {
-		it('should render publish button when read-only', () => {
-			const { getByTestId } = renderComponent({
+		it('should not render publish button when read-only', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
 					readOnly: true,
 				},
 			});
 
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toBeInTheDocument();
+			const publishButton = queryByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeInTheDocument();
 		});
 	});
 

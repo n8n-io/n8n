@@ -215,11 +215,11 @@ describe('WorkflowDetails', () => {
 			} as unknown as ReturnType<typeof useRoute>);
 		});
 
-		it('should not have workflow duplicate and import without update permission', async () => {
+		it('should not have workflow duplicate and import when read-only', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
+					readOnly: true,
 					isArchived: false,
 					scopes: ['workflow:read'],
 				},
