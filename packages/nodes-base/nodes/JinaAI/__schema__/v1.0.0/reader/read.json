@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "content": {
+            "type": "string"
+        },
         "description": {
             "type": "string"
         },
@@ -111,5 +114,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }
