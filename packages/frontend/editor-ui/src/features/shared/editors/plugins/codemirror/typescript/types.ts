@@ -20,6 +20,7 @@ export type WorkerInitOptions = {
 	inputNodeNames: string[];
 	variables: string[];
 	mode: CodeExecutionMode;
+	binaryMode?: 'combined' | 'separate';
 };
 
 export type NodeData = { json: Schema | undefined; binary: string[]; params: Schema };

@@ -18,6 +18,7 @@ import { walk } from './utils';
 export const useLinter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	language: MaybeRefOrGetter<CodeNodeEditorLanguage>,
+	binaryMode?: MaybeRefOrGetter<'combined' | 'separate' | undefined>,
 ) => {
 	const i18n = useI18n();
 	const linter = computed(() => {
@@ -30,6 +31,7 @@ export const useLinter = (
 	});
 
 	function lintSource(editorView: EditorView): Diagnostic[] {
+		const isCombinedBinaryMode = toValue(binaryMode) === 'combined';
 		const doc = editorView.state.doc.toString();
 		const script = `module.exports = async function() {${doc}\n}()`;
 
@@ -362,7 +364,7 @@ export const useLinter = (
 		 * const a = item.myField -> const a = item.json.myField;
 		 */
 
-		if (toValue(mode) === 'runOnceForAllItems') {
+		if (toValue(mode) === 'runOnceForAllItems' && !isCombinedBinaryMode) {
 			type TargetNode = RangeNode & {
 				left: { declarations: Array<{ id: { type: string; name: string } }> };
 			};
@@ -421,6 +423,9 @@ export const useLinter = (
 
 					if (!varName) return;
 
+					// Skip .json linting if in combined binary mode
+					if (isCombinedBinaryMode) return;
+
 					lintings.push({
 						from: start,
 						to: end,
@@ -470,6 +475,8 @@ export const useLinter = (
 
 				const [, fixEnd] = getRange(node.object.property);
 
+				if (isCombinedBinaryMode) return;
+
 				lintings.push({
 					from: start,
 					to: end,
@@ -512,6 +519,8 @@ export const useLinter = (
 			const [start, end] = getRange(node);
 
 			const [, fixEnd] = getRange(node.object);
+
+			if (isCombinedBinaryMode) return;
 
 			lintings.push({
 				from: start,
