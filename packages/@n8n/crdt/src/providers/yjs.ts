@@ -14,17 +14,53 @@ function toJSONValue(value: unknown): unknown {
 }
 
 /**
+ * Convert a plain JS object/array to nested Y.Map/Y.Array structures.
+ */
+function toYjsValue(value: unknown, doc: Y.Doc): unknown {
+	if (value === null || value === undefined) {
+		return value;
+	}
+
+	if (Array.isArray(value)) {
+		const yArray = new Y.Array();
+		for (const item of value) {
+			yArray.push([toYjsValue(item, doc)]);
+		}
+		return yArray;
+	}
+
+	if (typeof value === 'object' && value.constructor === Object) {
+		const yMap = new Y.Map();
+		for (const [entryKey, entryValue] of Object.entries(value)) {
+			yMap.set(entryKey, toYjsValue(entryValue, doc) as unknown);
+		}
+		return yMap;
+	}
+
+	// Primitives (string, number, boolean)
+	return value;
+}
+
+/**
  * Yjs implementation of CRDTMap.
  */
 class YjsMap<T = unknown> implements CRDTMap<T> {
-	constructor(private readonly yMap: Y.Map<T>) {}
+	constructor(
+		private readonly yMap: Y.Map<unknown>,
+		private readonly doc: Y.Doc,
+	) {}
 
-	get(key: string): T | undefined {
-		return this.yMap.get(key);
+	get(key: string): T | CRDTMap<unknown> | undefined {
+		const value = this.yMap.get(key);
+		if (value instanceof Y.Map) {
+			return new YjsMap(value, this.doc);
+		}
+		return value as T | undefined;
 	}
 
 	set(key: string, value: T): void {
-		this.yMap.set(key, value);
+		const yValue = toYjsValue(value, this.doc);
+		this.yMap.set(key, yValue);
 	}
 
 	delete(key: string): void {
@@ -39,12 +75,16 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 		return this.yMap.keys();
 	}
 
-	values(): IterableIterator<T> {
-		return this.yMap.values();
+	*values(): IterableIterator<T> {
+		for (const value of this.yMap.values()) {
+			yield toJSONValue(value) as T;
+		}
 	}
 
-	entries(): IterableIterator<[string, T]> {
-		return this.yMap.entries();
+	*entries(): IterableIterator<[string, T]> {
+		for (const [key, value] of this.yMap.entries()) {
+			yield [key, toJSONValue(value) as T];
+		}
 	}
 
 	toJSON(): Record<string, T> {
@@ -54,13 +94,13 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
 		const observer = (events: Y.YEvent<Y.Map<unknown>>[]) => {
 			const changes: DeepChangeEvent[] = events
-				.filter((e): e is Y.YMapEvent<unknown> => e instanceof Y.YMapEvent)
-				.flatMap((event) =>
-					Array.from(event.changes.keys, ([key, change]) => ({
-						path: [...event.path, key],
+				.filter((event): event is Y.YMapEvent<unknown> => event instanceof Y.YMapEvent)
+				.flatMap((mapEvent) =>
+					Array.from(mapEvent.changes.keys, ([key, change]) => ({
+						path: [...mapEvent.path, key],
 						action: change.action,
 						...(change.action !== ChangeAction.Delete && {
-							value: toJSONValue(event.target.get(key)),
+							value: toJSONValue(mapEvent.target.get(key)),
 						}),
 						...(change.action !== ChangeAction.Add && {
 							oldValue: toJSONValue(change.oldValue),
@@ -95,7 +135,7 @@ class YjsDoc implements CRDTDoc {
 	getMap<T = unknown>(name: string): CRDTMap<T> {
 		let map = this.maps.get(name);
 		if (!map) {
-			map = new YjsMap<unknown>(this.yDoc.getMap(name));
+			map = new YjsMap<unknown>(this.yDoc.getMap(name), this.yDoc);
 			this.maps.set(name, map);
 		}
 		return map as CRDTMap<T>;
