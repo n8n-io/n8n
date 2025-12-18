@@ -48,8 +48,13 @@ export interface ObservabilityStack {
 }
 
 export interface ScrapeTarget {
-	name: string;
+	/** Job name for grouping (e.g., 'n8n-main', 'n8n-worker') */
+	job: string;
+	/** Instance identifier (e.g., 'n8n-main-1', 'n8n-worker-2') */
+	instance: string;
+	/** Hostname for scraping */
 	host: string;
+	/** Port for scraping */
 	port: number;
 }
 
@@ -106,17 +111,23 @@ export async function setupVictoriaLogs({
 		.withName(`${projectName}-victoria-logs`)
 		.withNetwork(network)
 		.withNetworkAliases(hostname)
+		.withLabels({
+			'com.docker.compose.project': projectName,
+			'com.docker.compose.service': 'victoria-logs',
+		})
 		.withExposedPorts(VICTORIA_LOGS_HTTP_PORT, VICTORIA_LOGS_SYSLOG_PORT)
 		.withCommand([
 			'-storageDataPath=/victoria-logs-data',
 			'-retentionPeriod=1d',
 			`-syslog.listenAddr.tcp=:${VICTORIA_LOGS_SYSLOG_PORT}`,
 		])
-		.withWaitStrategy(Wait.forHttp('/health', VICTORIA_LOGS_HTTP_PORT).forStatusCode(200))
+		.withWaitStrategy(
+			Wait.forHttp('/health', VICTORIA_LOGS_HTTP_PORT).forStatusCode(200).withStartupTimeout(60000),
+		)
+		.withReuse()
 		.start();
 
 	const httpPort = container.getMappedPort(VICTORIA_LOGS_HTTP_PORT);
-	const syslogPort = container.getMappedPort(VICTORIA_LOGS_SYSLOG_PORT);
 
 	return {
 		container,
@@ -131,39 +142,45 @@ export async function setupVictoriaLogs({
 
 /**
  * Generate Prometheus scrape configuration for VictoriaMetrics
+ *
+ * Groups targets by job name so that:
+ * - job = service type (e.g., 'n8n-main', 'n8n-worker')
+ * - instance = specific instance identifier (e.g., 'n8n-main-1')
  */
 function generateScrapeConfig(targets: ScrapeTarget[]): string {
-	const scrapeConfigs = targets.map((target) => ({
-		job_name: target.name,
-		static_configs: [
-			{
-				targets: [`${target.host}:${target.port}`],
-				labels: {
-					instance: target.name,
-				},
-			},
-		],
-		metrics_path: '/metrics',
-		scrape_interval: '5s',
-	}));
+	// Group targets by job name
+	const jobGroups = new Map<string, ScrapeTarget[]>();
+	for (const target of targets) {
+		const existing = jobGroups.get(target.job) ?? [];
+		existing.push(target);
+		jobGroups.set(target.job, existing);
+	}
 
+	// Generate scrape config for each job group
+	const scrapeConfigs: string[] = [];
+	for (const [jobName, jobTargets] of jobGroups) {
+		const targetConfigs = jobTargets
+			.map(
+				(t) => `      - targets: ['${t.host}:${t.port}']
+        labels:
+          instance: '${t.instance}'`,
+			)
+			.join('\n');
+
+		scrapeConfigs.push(`  - job_name: '${jobName}'
+    static_configs:
+${targetConfigs}
+    metrics_path: '/metrics'
+    scrape_interval: '5s'`);
+	}
+
+	// Note: VictoriaMetrics doesn't support evaluation_interval (Prometheus-only field)
 	return `
 global:
   scrape_interval: 15s
-  evaluation_interval: 15s
 
 scrape_configs:
-${scrapeConfigs
-	.map(
-		(config) => `  - job_name: '${config.job_name}'
-    static_configs:
-      - targets: ['${config.static_configs[0].targets[0]}']
-        labels:
-          instance: '${config.static_configs[0].labels.instance}'
-    metrics_path: '${config.metrics_path}'
-    scrape_interval: '${config.scrape_interval}'`,
-	)
-	.join('\n')}
+${scrapeConfigs.join('\n')}
 `;
 }
 
@@ -191,6 +208,10 @@ export async function setupVictoriaMetrics({
 		.withName(`${projectName}-victoria-metrics`)
 		.withNetwork(network)
 		.withNetworkAliases(hostname)
+		.withLabels({
+			'com.docker.compose.project': projectName,
+			'com.docker.compose.service': 'victoria-metrics',
+		})
 		.withExposedPorts(VICTORIA_METRICS_HTTP_PORT)
 		.withCommand([
 			'-storageDataPath=/victoria-metrics-data',
@@ -203,7 +224,12 @@ export async function setupVictoriaMetrics({
 				target: '/etc/prometheus/prometheus.yml',
 			},
 		])
-		.withWaitStrategy(Wait.forHttp('/health', VICTORIA_METRICS_HTTP_PORT).forStatusCode(200))
+		.withWaitStrategy(
+			Wait.forHttp('/health', VICTORIA_METRICS_HTTP_PORT)
+				.forStatusCode(200)
+				.withStartupTimeout(60000),
+		)
+		.withReuse()
 		.start();
 
 	const httpPort = container.getMappedPort(VICTORIA_METRICS_HTTP_PORT);

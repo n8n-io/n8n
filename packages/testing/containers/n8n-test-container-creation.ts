@@ -35,11 +35,7 @@ import {
 	N8N_KEYCLOAK_CERT_PATH,
 } from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
-import {
-	setupObservabilityStack,
-	type ObservabilityStack,
-	type ScrapeTarget,
-} from './n8n-test-container-observability';
+import type { ObservabilityStack, ScrapeTarget } from './n8n-test-container-observability';
 import {
 	createElapsedLogger,
 	createSilentLogConsumer,
@@ -357,43 +353,51 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
-	// Set up observability stack if enabled (before n8n containers so we have scrape targets ready)
+	// Set up observability stack early to capture startup metrics
+	// VictoriaMetrics will retry failed scrapes until n8n containers are ready
 	if (observabilityEnabled && network) {
-		log('Setting up observability stack...');
+		log('Setting up observability stack (VictoriaLogs + VictoriaMetrics)...');
+		const { setupVictoriaLogs, setupVictoriaMetrics } = await import(
+			'./n8n-test-container-observability'
+		);
 
-		// Generate scrape targets for n8n containers (they'll use these hostnames)
+		// Pre-compute scrape targets (hostnames are deterministic)
 		const workerCount = queueConfig?.workers ?? 0;
 		const scrapeTargets: ScrapeTarget[] = [];
 
-		// Add main targets
+		// Add main targets (all grouped under 'n8n-main' job)
 		for (let i = 1; i <= mainCount; i++) {
 			const hostname =
 				mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n-main-1`;
 			scrapeTargets.push({
-				name: `n8n-main-${i}`,
+				job: 'n8n-main',
+				instance: `n8n-main-${i}`,
 				host: hostname,
 				port: 5678,
 			});
 		}
 
-		// Add worker targets
+		// Add worker targets (all grouped under 'n8n-worker' job)
 		for (let i = 1; i <= workerCount; i++) {
 			scrapeTargets.push({
-				name: `n8n-worker-${i}`,
+				job: 'n8n-worker',
+				instance: `n8n-worker-${i}`,
 				host: `${uniqueProjectName}-n8n-worker-${i}`,
 				port: 5678,
 			});
 		}
 
-		observabilityStack = await setupObservabilityStack({
-			projectName: uniqueProjectName,
-			network,
-			scrapeTargets,
-		});
+		// Start both in parallel
+		const [victoriaLogsResult, victoriaMetricsResult] = await Promise.all([
+			setupVictoriaLogs({ projectName: uniqueProjectName, network }),
+			setupVictoriaMetrics({ projectName: uniqueProjectName, network, scrapeTargets }),
+		]);
 
-		containers.push(observabilityStack.victoriaLogs.container);
-		containers.push(observabilityStack.victoriaMetrics.container);
-
+		containers.push(victoriaLogsResult.container, victoriaMetricsResult.container);
+		observabilityStack = {
+			victoriaLogs: victoriaLogsResult,
+			victoriaMetrics: victoriaMetricsResult,
+		};
 		log('Observability stack ready');
 	}
 

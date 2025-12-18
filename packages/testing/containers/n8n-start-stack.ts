@@ -47,6 +47,7 @@ ${colors.yellow}Options:${colors.reset}
   --task-runner     Enable external task runner container
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
+  --observability   Enable VictoriaObs stack (VictoriaLogs + VictoriaMetrics)
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -84,6 +85,9 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With OIDC (Keycloak) for SSO testing${colors.reset}
   npm run stack --postgres --oidc
 
+  ${colors.bright}# With observability stack (VictoriaLogs + VictoriaMetrics)${colors.reset}
+  npm run stack --observability
+
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
 
@@ -118,6 +122,7 @@ async function main() {
 			'task-runner': { type: 'boolean' },
 			'source-control': { type: 'boolean' },
 			oidc: { type: 'boolean' },
+			observability: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -139,6 +144,7 @@ async function main() {
 		taskRunner: values['task-runner'] ?? false,
 		sourceControl: values['source-control'] ?? false,
 		oidc: values.oidc ?? false,
+		observability: values.observability ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -235,6 +241,21 @@ async function main() {
 			log.info(`Email: ${colors.cyan}${KEYCLOAK_TEST_USER_EMAIL}${colors.reset}`);
 			log.info(`Password: ${colors.cyan}${KEYCLOAK_TEST_USER_PASSWORD}${colors.reset}`);
 		}
+
+		// Display observability configuration if enabled
+		if (stack.observability) {
+			console.log('');
+			log.header('Observability Stack (VictoriaObs)');
+			log.info(
+				`VictoriaLogs: ${colors.cyan}${stack.observability.victoriaLogs.queryEndpoint}${colors.reset}`,
+			);
+			log.info(
+				`VictoriaMetrics: ${colors.cyan}${stack.observability.victoriaMetrics.queryEndpoint}${colors.reset}`,
+			);
+			log.info(
+				`Syslog (for log streaming): ${colors.cyan}${stack.observability.victoriaLogs.syslog.host}:${stack.observability.victoriaLogs.syslog.port}${colors.reset}`,
+			);
+		}
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
 		process.exit(1);
@@ -290,6 +311,13 @@ function displayConfig(config: N8NConfig) {
 		}
 	} else {
 		log.info('OIDC: disabled');
+	}
+
+	// Display observability status
+	if (config.observability) {
+		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics)');
+	} else {
+		log.info('Observability: disabled');
 	}
 
 	if (config.resourceQuota) {
