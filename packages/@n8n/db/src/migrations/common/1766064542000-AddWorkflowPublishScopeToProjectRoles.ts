@@ -13,7 +13,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  *
  * Both system roles (managed by code) and custom roles (user-created) are updated.
  */
-export class AddWorkflowPublishScopeToProjectRoles1765892113000 implements ReversibleMigration {
+export class AddWorkflowPublishScopeToProjectRoles1766064542000 implements ReversibleMigration {
 	async up({ escape, runQuery, logger }: MigrationContext) {
 		const scopeTableName = escape.tableName('scope');
 		const scopeSlugColumn = escape.columnName('slug');

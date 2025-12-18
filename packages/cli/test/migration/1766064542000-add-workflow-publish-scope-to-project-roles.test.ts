@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddWorkflowPublishScopeToProjectRoles1765892113000';
+const MIGRATION_NAME = 'AddWorkflowPublishScopeToProjectRoles1766064542000';
 
 interface ScopeData {
 	slug: string;
