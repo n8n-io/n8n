@@ -44,34 +44,6 @@ export interface TracingStack {
 }
 
 /**
- * Get environment variables for configuring n8n log streaming to n8n-tracer
- */
-export function getLogStreamingTracerEnvironment(
-	hostname: string = N8N_TRACER_HOSTNAME,
-	port: number = N8N_TRACER_INGEST_PORT,
-): Record<string, string> {
-	return {
-		N8N_LOG_STREAMING_HTTP_HOST: hostname,
-		N8N_LOG_STREAMING_HTTP_PORT: String(port),
-		N8N_LOG_STREAMING_HTTP_PATH: '/ingest',
-	};
-}
-
-/**
- * Get log streaming destination config for n8n-tracer
- */
-export function getLogStreamingTracerConfig(
-	hostname: string = N8N_TRACER_HOSTNAME,
-	port: number = N8N_TRACER_INGEST_PORT,
-) {
-	return {
-		host: hostname,
-		port,
-		path: '/ingest',
-	};
-}
-
-/**
  * Setup Jaeger container for trace visualization
  *
  * Jaeger provides:
@@ -99,6 +71,8 @@ export async function setupJaeger({
 		.withExposedPorts(JAEGER_UI_PORT, JAEGER_OTLP_PORT)
 		.withEnvironment({
 			COLLECTOR_OTLP_ENABLED: 'true',
+			// Bind OTLP HTTP to all interfaces for container-to-container communication
+			COLLECTOR_OTLP_HTTP_HOST_PORT: '0.0.0.0:4318',
 		})
 		.withWaitStrategy(
 			Wait.forHttp('/', JAEGER_UI_PORT).forStatusCode(200).withStartupTimeout(60000),
@@ -193,5 +167,38 @@ export async function setupTracingStack({
 	return {
 		jaeger,
 		n8nTracer,
+	};
+}
+
+/**
+ * Webhook destination configuration for n8n-tracer.
+ * Use with api.createWebhookDestination() to enable tracing via log streaming.
+ */
+export interface TracerWebhookConfig {
+	url: string;
+	method: 'POST';
+	label: string;
+	subscribedEvents: string[];
+}
+
+/**
+ * Get webhook destination config for n8n-tracer.
+ *
+ * @example
+ * ```typescript
+ * await api.enableFeature('logStreaming');
+ * const config = getTracerWebhookConfig(tracingStack);
+ * const destination = await api.createWebhookDestination(config);
+ * ```
+ */
+export function getTracerWebhookConfig(
+	stack: TracingStack,
+	label = 'n8n-tracer',
+): TracerWebhookConfig {
+	return {
+		url: stack.n8nTracer.ingestUrl,
+		method: 'POST',
+		label,
+		subscribedEvents: ['*'],
 	};
 }

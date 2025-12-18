@@ -9,7 +9,7 @@
  * - @capability:observability tag to bring up VictoriaLogs
  */
 
-import { getLogStreamingSyslogConfig, ObservabilityHelper } from 'n8n-containers';
+import { SYSLOG_DEFAULTS, ObservabilityHelper } from 'n8n-containers';
 
 import { test, expect } from '../../../../fixtures/base';
 
@@ -33,18 +33,11 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		// Get observability stack from the container
 		const obsStack = n8nContainer.observability!;
 		const obs = new ObservabilityHelper(obsStack);
-		const syslogConfig = getLogStreamingSyslogConfig(
-			obsStack.victoriaLogs.syslog.host,
-			obsStack.victoriaLogs.syslog.port,
-		);
 
 		// Configure syslog destination pointing to VictoriaLogs
 		const destination = await api.createSyslogDestination({
-			host: syslogConfig.host,
-			port: syslogConfig.port,
-			protocol: syslogConfig.protocol,
-			facility: syslogConfig.facility,
-			app_name: syslogConfig.app_name,
+			...obsStack.victoriaLogs.syslog, // host, port
+			...SYSLOG_DEFAULTS, // protocol, facility, app_name
 			label: 'VictoriaLogs Test Destination',
 		});
 

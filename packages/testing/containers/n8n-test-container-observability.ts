@@ -63,40 +63,21 @@ export interface ScrapeTarget {
 	port: number;
 }
 
-/**
- * Get environment variables for configuring n8n log streaming to VictoriaLogs syslog
- */
-export function getLogStreamingSyslogEnvironment(
-	hostname: string = VICTORIA_LOGS_HOSTNAME,
-	port: number = VICTORIA_LOGS_SYSLOG_PORT,
-): Record<string, string> {
-	return {
-		N8N_LOG_STREAMING_SYSLOG_HOST: hostname,
-		N8N_LOG_STREAMING_SYSLOG_PORT: String(port),
-		N8N_LOG_STREAMING_SYSLOG_PROTOCOL: 'tcp',
-		N8N_LOG_STREAMING_SYSLOG_FACILITY: 'local0',
-		N8N_LOG_STREAMING_SYSLOG_APP_NAME: 'n8n',
-	};
-}
-
 // Syslog facility codes (RFC 5424)
 const SYSLOG_FACILITY_LOCAL0 = 16;
 
 /**
- * Get syslog configuration object for n8n log streaming destination
+ * Syslog configuration for n8n log streaming destination.
+ * Use with api.createSyslogDestination() when testing log streaming feature.
+ *
+ * Note: This is for testing the enterprise log streaming feature (structured events).
+ * Container stdout/stderr logs are collected automatically by Vector.
  */
-export function getLogStreamingSyslogConfig(
-	hostname: string = VICTORIA_LOGS_HOSTNAME,
-	port: number = VICTORIA_LOGS_SYSLOG_PORT,
-) {
-	return {
-		host: hostname,
-		port,
-		protocol: 'tcp' as const,
-		facility: SYSLOG_FACILITY_LOCAL0,
-		app_name: 'n8n',
-	};
-}
+export const SYSLOG_DEFAULTS = {
+	protocol: 'tcp' as const,
+	facility: SYSLOG_FACILITY_LOCAL0,
+	app_name: 'n8n',
+};
 
 /**
  * Setup VictoriaLogs container for log aggregation
@@ -367,18 +348,4 @@ export async function setupObservabilityStack({
 		victoriaMetrics,
 		vector,
 	};
-}
-
-/**
- * Get the LogsQL query URL for VictoriaLogs
- */
-export function getVictoriaLogsQueryUrl(result: VictoriaLogsSetupResult): string {
-	return `${result.queryEndpoint}/select/logsql/query`;
-}
-
-/**
- * Get the PromQL query URL for VictoriaMetrics
- */
-export function getVictoriaMetricsQueryUrl(result: VictoriaMetricsSetupResult): string {
-	return `${result.queryEndpoint}/api/v1/query`;
 }

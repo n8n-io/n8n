@@ -39,7 +39,7 @@
  *   pnpm playwright test -- --grep "Multi-main Observability"
  */
 
-import { getLogStreamingSyslogConfig, ObservabilityHelper } from 'n8n-containers';
+import { SYSLOG_DEFAULTS, ObservabilityHelper } from 'n8n-containers';
 
 import { test, expect } from '../../../fixtures/base';
 
@@ -117,22 +117,19 @@ test.describe('Multi-main Observability @capability:observability @capability:mu
 
 		const obsStack = n8nContainer.observability!;
 		const obs = new ObservabilityHelper(obsStack);
-		const syslogConfig = getLogStreamingSyslogConfig(
-			obsStack.victoriaLogs.syslog.host,
-			obsStack.victoriaLogs.syslog.port,
-		);
+		const { host, port } = obsStack.victoriaLogs.syslog;
 
 		// ========== STEP 2: Configure syslog destination ==========
 		// Create a syslog destination pointing to VictoriaLogs
 		const destination = await api.createSyslogDestination({
-			host: syslogConfig.host,
-			port: syslogConfig.port,
-			protocol: syslogConfig.protocol,
+			host,
+			port,
+			protocol: SYSLOG_DEFAULTS.protocol,
 			label: 'Multi-main VictoriaLogs',
 		});
 
 		console.log('Created syslog destination:', destination.id);
-		console.log(`  Target: ${syslogConfig.host}:${syslogConfig.port} (${syslogConfig.protocol})`);
+		console.log(`  Target: ${host}:${port} (${SYSLOG_DEFAULTS.protocol})`);
 
 		// ========== STEP 3: Send test message ==========
 		// The test message triggers n8n to send a "n8n.destination.test" event
