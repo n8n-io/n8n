@@ -115,11 +115,7 @@ export async function fetchExistingVersionIds(
 	}
 
 	try {
-		const versionsResponse = await getWorkflowVersionsByIds(
-			restApiContext,
-			workflowId,
-			versionIds,
-		);
+		const versionsResponse = await getWorkflowVersionsByIds(restApiContext, workflowId, versionIds);
 		return new Map(versionsResponse.versions.map((v) => [v.versionId, v.createdAt]));
 	} catch {
 		// Continue without enriching - all revertVersionIds will be removed
