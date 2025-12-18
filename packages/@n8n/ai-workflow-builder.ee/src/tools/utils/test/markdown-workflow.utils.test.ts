@@ -583,7 +583,7 @@ n1 --> n2["End"]
 						},
 						{
 							parameters: {
-								content: '## I\'m a Sticky',
+								content: "## I'm a Sticky",
 								height: 416,
 								width: 400,
 							},
