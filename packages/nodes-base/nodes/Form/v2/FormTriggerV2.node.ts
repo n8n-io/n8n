@@ -41,11 +41,6 @@ const descriptionV2: INodeTypeDescription = {
 	// and keep them aligned in both nodes
 	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
-	features: {
-		useDynamicAttributes: {
-			'@version': [{ _cnd: { gte: 2.5 } }],
-		},
-	},
 	defaults: {
 		name: 'On form submission',
 	},

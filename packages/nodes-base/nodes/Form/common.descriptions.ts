@@ -111,8 +111,7 @@ const formOptions: INodePropertyCollection[] = [
 						fieldType: ['html'],
 					},
 					show: {
-						'@version': [{ _cnd: { gte: 2.4 } }],
-						'@feature': [{ _cnd: { not: 'useDynamicAttributes' } }],
+						'@version': [2.4],
 					},
 				},
 			},
@@ -199,7 +198,7 @@ const formOptions: INodePropertyCollection[] = [
 						fieldType: ['html'],
 					},
 					show: {
-						'@feature': [{ _cnd: { eq: 'useDynamicAttributes' } }],
+						'@version': [{ _cnd: { gte: 2.5 } }],
 					},
 				},
 			},
@@ -561,7 +560,7 @@ export const formFields: INodeProperties = {
 	},
 	displayOptions: {
 		show: {
-			'@feature': [{ _cnd: { not: 'useDynamicAttributes' } }],
+			'@version': [{ _cnd: { lt: 2.5 } }],
 		},
 	},
 	options: formOptions,
@@ -581,7 +580,7 @@ export const formFieldsDynamic: INodeProperties = {
 	},
 	displayOptions: {
 		show: {
-			'@feature': [{ _cnd: { eq: 'useDynamicAttributes' } }],
+			'@version': [{ _cnd: { gte: 2.5 } }],
 		},
 	},
 	options: formOptions,
