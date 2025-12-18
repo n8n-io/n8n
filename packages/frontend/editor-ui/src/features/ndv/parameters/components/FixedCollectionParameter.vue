@@ -494,7 +494,6 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
-
 								<div
 									v-if="getPickerFields(property, index).length > 0 && !isReadOnly"
 									class="attribute-picker add-option"
@@ -553,8 +552,10 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
-					<!-- Attribute picker for non-required fields (single value) -->
-					<div v-if="getPickerFields(property).length > 0 && !isReadOnly" class="attribute-picker">
+					<div
+						v-if="getPickerFields(property).length > 0 && !isReadOnly"
+						class="attribute-picker add-option"
+					>
 						<N8nSelect
 							:placeholder="showRequiredOnlyButtonText"
 							size="small"

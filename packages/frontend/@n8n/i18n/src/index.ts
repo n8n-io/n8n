@@ -367,7 +367,7 @@ export class I18nClass {
 			},
 
 			/**
-			 * Text for a button to add non-required fields inside a `fixedCollection`
+			 * Text for a button to add non-required options inside a `fixedCollection`
 			 * param having `showRequiredOnly: true`.
 			 */
 			showRequiredOnlyButtonText({ name: parameterName, typeOptions }: INodeProperties) {
