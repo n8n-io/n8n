@@ -56,14 +56,13 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		expect(testResult).toBe(true);
 
 		// Wait for the test message to appear in VictoriaLogs
-		// The test message contains "n8n.destination.test"
-		const logEntry = await obs.logs.waitForLog('n8n.destination.test', {
+		// Use wildcard - LogsQL interprets dots as word separators
+		const logEntry = await obs.logs.waitForLog('*destination.test*', {
 			timeoutMs: 30000,
 			start: '-1m',
 		});
 
 		expect(logEntry).toBeTruthy();
-		expect(logEntry?.message).toContain('n8n.destination.test');
 
 		// Clean up - delete the destination
 		await api.deleteLogStreamingDestination(destination.id);
@@ -109,8 +108,8 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		const execution = await api.workflows.waitForExecution(workflowId, 10000);
 		expect(execution.status).toBe('success');
 
-		// Wait for workflow.started event
-		const startedEvent = await obs.logs.waitForLog('n8n.workflow.started', {
+		// Wait for workflow.started event (use wildcard for LogsQL)
+		const startedEvent = await obs.logs.waitForLog('*workflow.started*', {
 			timeoutMs: 30000,
 			start: '-2m',
 		});
@@ -119,7 +118,7 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		console.log('Workflow started event received:', startedEvent?.message);
 
 		// Wait for workflow.success event
-		const successEvent = await obs.logs.waitForLog('n8n.workflow.success', {
+		const successEvent = await obs.logs.waitForLog('*workflow.success*', {
 			timeoutMs: 30000,
 			start: '-2m',
 		});

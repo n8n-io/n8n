@@ -54,7 +54,6 @@ export {
 	ObservabilityHelper,
 	type LogEntry,
 	type LogQueryOptions,
-	type WaitForLogOptions,
 	type MetricResult,
 	type WaitForMetricOptions,
 } from './n8n-test-container-victoria-helpers';

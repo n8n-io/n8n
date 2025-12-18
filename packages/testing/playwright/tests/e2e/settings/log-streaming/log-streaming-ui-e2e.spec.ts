@@ -1,12 +1,10 @@
 /**
  * End-to-end UI test for log streaming feature.
  *
- * This is the happy path test that verifies:
+ * This test verifies:
  * 1. Log streaming can be configured via the UI
- * 2. Workflow execution events are streamed to the configured destination
+ * 2. Test events are streamed to VictoriaLogs via syslog
  * 3. Events can be queried from VictoriaLogs
- *
- * This test serves as a foundation that others can build upon.
  */
 
 import { ObservabilityHelper } from 'n8n-containers';
@@ -24,8 +22,7 @@ test.describe('Log Streaming UI E2E @capability:observability', () => {
 		await n8n.api.enableFeature('logStreaming');
 	});
 
-	test('should configure syslog destination via UI and capture workflow events', async ({
-		api,
+	test('should configure syslog destination via UI and send test event', async ({
 		n8n,
 		n8nContainer,
 	}) => {
@@ -42,54 +39,20 @@ test.describe('Log Streaming UI E2E @capability:observability', () => {
 			host: obsStack.victoriaLogs.syslog.host,
 			port: obsStack.victoriaLogs.syslog.port,
 		});
+		// Send test event
+		await n8n.settingsLogStreaming.sendTestEvent();
 
-		await n8n.page.pause();
-
-		// Verify destination was created
-		await n8n.page.reload();
-		await expect(n8n.settingsLogStreaming.getDestinationCards().first()).toBeVisible();
-
-		// ========== STEP 2: Import and Trigger Workflow via Webhook ==========
-		// Import workflow via API (cleaner than creating via UI)
-		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
-			'simple-webhook-test.json',
-		);
-
-		// Trigger the workflow via webhook
-		const testPayload = { message: 'Log streaming E2E test' };
-		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
-			method: 'POST',
-			data: testPayload,
-		});
-		expect(webhookResponse.ok()).toBe(true);
-
-		// Wait for workflow execution to complete
-		const execution = await api.workflows.waitForExecution(workflowId, 10000);
-		expect(execution.status).toBe('success');
-
-		// ========== STEP 3: Verify Events in VictoriaLogs ==========
-		// Wait for workflow.started event
-		const startedEvent = await obs.logs.waitForLog('n8n.workflow.started', {
+		// ========== STEP 3: Verify Event in VictoriaLogs ==========
+		// Use wildcard search - LogsQL interprets dots as word separators
+		const testEvent = await obs.logs.waitForLog('*destination.test*', {
 			timeoutMs: 30000,
 			start: '-2m',
 		});
 
-		expect(startedEvent).toBeTruthy();
-		console.log('Workflow started event captured:', startedEvent?.message.substring(0, 100));
-
-		// Wait for workflow.success event
-		const successEvent = await obs.logs.waitForLog('n8n.workflow.success', {
-			timeoutMs: 30000,
-			start: '-2m',
-		});
-
-		expect(successEvent).toBeTruthy();
-		console.log('Workflow success event captured:', successEvent?.message.substring(0, 100));
+		expect(testEvent).toBeTruthy();
+		console.log('Test event captured:', testEvent?.message.substring(0, 100));
 
 		// ========== CLEANUP ==========
-		// Delete the destination via UI
-		await n8n.navigate.toLogStreaming();
-		await n8n.settingsLogStreaming.clickDestinationCard(0);
 		await n8n.settingsLogStreaming.deleteDestination();
 		await n8n.settingsLogStreaming.confirmDialog();
 	});

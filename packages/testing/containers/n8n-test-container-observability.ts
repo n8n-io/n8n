@@ -74,6 +74,9 @@ export function getLogStreamingSyslogEnvironment(
 	};
 }
 
+// Syslog facility codes (RFC 5424)
+const SYSLOG_FACILITY_LOCAL0 = 16;
+
 /**
  * Get syslog configuration object for n8n log streaming destination
  */
@@ -85,7 +88,7 @@ export function getLogStreamingSyslogConfig(
 		host: hostname,
 		port,
 		protocol: 'tcp' as const,
-		facility: 'local0' as const,
+		facility: SYSLOG_FACILITY_LOCAL0,
 		app_name: 'n8n',
 	};
 }

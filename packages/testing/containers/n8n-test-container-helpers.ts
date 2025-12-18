@@ -59,7 +59,7 @@ export class ContainerTestHelpers {
 		this.containers = containers;
 		this.observability = options?.observability;
 		if (this.observability) {
-			this.victoriaLogs = new VictoriaLogsHelper(this.observability.victoriaLogs);
+			this.victoriaLogs = VictoriaLogsHelper.from(this.observability.victoriaLogs);
 		}
 	}
 
