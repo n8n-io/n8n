@@ -49,6 +49,7 @@ export class WorkflowStatusController {
 			readyToExecute: isReady,
 			credentials: status.map((s) => ({
 				credentialId: s.credentialId,
+				credentialName: s.credentialName,
 				credentialStatus: s.status,
 				credentialType: s.credentialType,
 				authorizationUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
