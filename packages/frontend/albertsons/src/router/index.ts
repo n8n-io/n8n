@@ -123,6 +123,20 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 
+	// Albertsons Agents
+	{
+		path: '/agents',
+		name: 'My Agents',
+		components: {
+			default: () => import('@src/views/AgentsView.vue'),
+
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+
 	// Albertsons templates
 	{
 		path: '/templates',
