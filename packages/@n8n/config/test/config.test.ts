@@ -252,6 +252,9 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 					dualStack: false,
+					slotsRefreshInterval: 5_000,
+					slotsRefreshTimeout: 1_000,
+					dnsResolveStrategy: 'LOOKUP',
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -326,6 +329,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
+			enableGitNodeAllConfigKeys: false,
 		},
 		executions: {
 			mode: 'regular',

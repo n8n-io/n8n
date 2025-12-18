@@ -2933,6 +2933,9 @@ importers:
       '@n8n/vm2':
         specifier: 3.9.25
         version: 3.9.25
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       alasql:
         specifier: 4.4.0
         version: 4.4.0(encoding@0.1.13)
@@ -8287,6 +8290,10 @@ packages:
     peerDependenciesMeta:
       '@vue/compiler-sfc':
         optional: true
+
+  '@thednp/dommatrix@2.0.12':
+    resolution: {integrity: sha512-eOshhlSShBXLfrMQqqhA450TppJXhKriaQdN43mmniOCMn9sD60QKF1Axsj7bKl339WH058LuGFS6H84njYH5w==}
+    engines: {node: '>=20', pnpm: '>=8.6.0'}
 
   '@tokenizer/token@0.3.0':
     resolution: {integrity: sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==}
@@ -25021,6 +25028,8 @@ snapshots:
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.13
 
+  '@thednp/dommatrix@2.0.12': {}
+
   '@tokenizer/token@0.3.0': {}
 
   '@tootallnate/once@1.1.2':
@@ -26681,6 +26690,14 @@ snapshots:
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.12.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -29473,6 +29490,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
+  follow-redirects@1.15.11(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
+
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -30175,7 +30196,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.1)
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -30185,7 +30206,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -34553,7 +34574,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 
