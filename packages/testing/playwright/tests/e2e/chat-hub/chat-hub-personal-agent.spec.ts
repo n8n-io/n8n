@@ -34,7 +34,7 @@ test.describe('Personal agent @capability:proxy', () => {
 		}
 	});
 
-	test('create personal agent and start conversation', async ({ n8n }) => {
+	test('create personal agent and start conversation @auth:owner', async ({ n8n }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await page.openNewChat();
@@ -67,7 +67,7 @@ test.describe('Personal agent @capability:proxy', () => {
 		await expect(page.getChatMessages().last()).toContainText('你好');
 	});
 
-	test('manage personal agents', async ({ n8n }) => {
+	test('manage personal agents @auth:admin', async ({ n8n }) => {
 		const agentsPage = new ChatHubPersonalAgentsPage(n8n.page);
 		const chatPage = new ChatHubChatPage(n8n.page);
 
