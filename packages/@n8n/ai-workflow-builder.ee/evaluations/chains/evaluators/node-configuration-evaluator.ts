@@ -68,28 +68,41 @@ If you see something that looks like a connection issue, IGNORE IT. Focus only o
 - Format: \`{{ $fromAI('parameter', 'description') }}\` is correct and expected
 - DO NOT penalize $fromAI in TOOL NODE parameters
 
-## CRITICAL: Model Selection Rules
+## ABSOLUTE RULE: Embedding Nodes MUST Use Embedding Models (NEVER A VIOLATION)
 
-**Model selection differences are NEVER critical or major violations. At most MINOR.**
+**THIS IS THE MOST IMPORTANT RULE IN THIS EVALUATOR. READ CAREFULLY.**
 
-### Embedding Models vs Chat Models
-Chat models and embedding models are COMPLETELY DIFFERENT:
-- **Chat models** (gpt-4, gpt-4o, gpt-4o-mini, claude-3, etc.): Generate text
-- **Embedding models** (text-embedding-3-small, text-embedding-ada-002, etc.): Convert text to vectors
+### The Technical Reality
+- **Embedding models** (text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002): Convert text to vectors
+- **Chat models** (gpt-4, gpt-4o, gpt-4o-mini, gpt-4.1-mini, claude-3, etc.): Generate text
+- **Chat models CANNOT generate embeddings. It is technically impossible.**
 
-**Embedding nodes MUST use embedding models. This is ALWAYS correct, even if user requested a chat model.**
+### The Rule
+**When an embedding node uses an embedding model, it is ALWAYS CORRECT - regardless of what the user requested.**
 
-If user says "use gpt-4o-mini for embeddings":
-- Using text-embedding-3-small is CORRECT ✓
-- This is NOT a violation - embedding models are required for embeddings
-- Chat models physically cannot generate embeddings
+If a user says "use gpt-4o-mini for embeddings" or "use gpt-4.1-mini for embeddings":
+- The user has made a technical error (requested an impossible configuration)
+- The workflow builder CORRECTLY uses an embedding model instead
+- This is the RIGHT behavior, NOT a violation
+- **DO NOT OUTPUT ANY VIOLATION FOR THIS SCENARIO**
 
-**NEVER output violations like:**
+### FORBIDDEN Violations - NEVER Output These
+You must NEVER output violations like:
 - ❌ "User requested gpt-4o-mini but workflow uses text-embedding-3-small"
+- ❌ "User explicitly requested embeddings using 'gpt-4.1-mini' but workflow uses 'text-embedding-3-small'"
+- ❌ "User's explicit specification was not followed" (when user specified a chat model for embeddings)
 - ❌ "Embedding node uses wrong model"
 - ❌ Any violation about embedding nodes not using chat models
 
-### General Model Selection
+### Examples of CORRECT Behavior (Not Violations)
+- User says "gpt-4o-mini for embeddings" → Workflow uses text-embedding-3-small ✓ PERFECT
+- User says "gpt-4.1-mini for embeddings" → Workflow uses text-embedding-3-small ✓ PERFECT
+- User mentions ANY chat model for embedding tasks → Workflow uses ANY embedding model ✓ PERFECT
+
+## General Model Selection Rules
+
+**Model selection differences are NEVER critical or major violations. At most MINOR.**
+
 Model choices are preferences, not requirements:
 - Same provider, different model = MINOR at most (gpt-4 vs gpt-4o-mini)
 - Different provider = MINOR at most (OpenAI vs Anthropic)

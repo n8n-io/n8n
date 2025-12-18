@@ -104,33 +104,40 @@ Vector Store (insert mode) ◄──[ai_document]── Document Loader ◄─�
 
 The main connection triggers the Vector Store insert operation. The Document Loader provides document processing capability via ai_document. These work together but the Document Loader does NOT sit in the main data path.
 
-## CRITICAL: Embedding Models vs Chat Models (NEVER FLAG AS ERRORS)
+## ABSOLUTE RULE: Embedding Nodes MUST Use Embedding Models (NEVER A VIOLATION)
 
-**This is one of the most common false positive errors. Read this section carefully.**
+**THIS IS THE MOST IMPORTANT RULE IN THIS EVALUATOR. READ CAREFULLY.**
 
-Chat models and embedding models are COMPLETELY DIFFERENT and NOT interchangeable:
-- **Chat models** (gpt-4, gpt-4o, gpt-4o-mini, gpt-3.5-turbo, claude-3, gemini-pro): Generate text responses
+### The Technical Reality
 - **Embedding models** (text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002): Convert text to vectors
+- **Chat models** (gpt-4, gpt-4o, gpt-4o-mini, gpt-4.1-mini, claude-3, gemini-pro): Generate text responses
+- **Chat models CANNOT generate embeddings. It is technically impossible.**
 
-**CRITICAL RULE: Chat models CANNOT generate embeddings. They are physically incapable of this task.**
+### The Rule
+**When an embedding node uses an embedding model, it is ALWAYS CORRECT - regardless of what the user requested.**
 
-When a user says "use gpt-4o-mini for embeddings", they have made a technical error. The workflow builder CORRECTLY:
-1. Recognizes the user wants embeddings
-2. Uses an actual embedding model (text-embedding-3-small, etc.)
-3. This is the RIGHT behavior, NOT a violation
+If a user says "use gpt-4o-mini for embeddings" or "use gpt-4.1-mini for embeddings":
+- The user has made a technical error (requested an impossible configuration)
+- The workflow builder CORRECTLY uses an embedding model instead
+- This is the RIGHT behavior, NOT a violation
+- **DO NOT OUTPUT ANY VIOLATION FOR THIS SCENARIO**
 
-**THE FOLLOWING ARE ALL CORRECT - NEVER FLAG AS VIOLATIONS:**
-- ❌ "User requested gpt-4o-mini but workflow uses text-embedding-3-small" - THIS IS CORRECT BEHAVIOR
-- ❌ "User's explicit specification was not followed" when user specified a chat model for embeddings - WRONG, the builder correctly used an embedding model
-- ❌ "The workflow does not use the model specified by the user" for embedding nodes using embedding models - CORRECT BEHAVIOR
-- ❌ Any violation about embedding nodes not using the chat model the user mentioned - ALWAYS WRONG
+### FORBIDDEN Violations - NEVER Output These
+You must NEVER output violations like:
+- ❌ "User requested gpt-4o-mini but workflow uses text-embedding-3-small"
+- ❌ "User explicitly requested embeddings using 'gpt-4.1-mini' but workflow uses 'text-embedding-3-small'"
+- ❌ "User's explicit specification was not followed" (when user specified a chat model for embeddings)
+- ❌ "The workflow does not use the model specified by the user" (for embedding nodes)
+- ❌ Any violation mentioning that an embedding node should use a chat model
 
-**VALID model substitution scenarios (NOT violations):**
-- User says "gpt-4o-mini for embeddings" → Workflow uses text-embedding-3-small ✓ CORRECT
-- User says "gpt-4 for vector store" → Workflow uses text-embedding-3-large ✓ CORRECT
-- User mentions any chat model for embedding tasks → Workflow uses any embedding model ✓ CORRECT
+### Why This Rule Exists
+This is like a user asking to "cut wood with a hammer" - using a saw instead is correct, not a violation. The workflow builder is HELPING the user by using the right tool for the job.
 
-**This is similar to a user asking to "cut wood with a hammer" - using a saw instead is correct, not a violation.**
+### Examples of CORRECT Behavior (Not Violations)
+- User says "gpt-4o-mini for embeddings" → Workflow uses text-embedding-3-small ✓ PERFECT
+- User says "gpt-4.1-mini for embeddings" → Workflow uses text-embedding-3-small ✓ PERFECT
+- User says "gpt-4 for vector store" → Workflow uses text-embedding-3-large ✓ PERFECT
+- User mentions ANY chat model for embedding tasks → Workflow uses ANY embedding model ✓ PERFECT
 
 ## Model Selection: ALWAYS Minor Severity at Most
 
