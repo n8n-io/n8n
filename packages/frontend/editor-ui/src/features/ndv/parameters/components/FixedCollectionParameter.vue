@@ -19,6 +19,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { storeToRefs } from 'pinia';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 import {
 	N8nButton,
@@ -29,6 +30,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 const locale = useI18n();
+const nodeHelpers = useNodeHelpers();
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -100,6 +102,35 @@ const parameterOptions = computed(() => {
 const sortable = computed(() => {
 	return !!props.parameter.typeOptions?.sortable;
 });
+
+// When showRequiredOnly is true, only required fields are shown initially,
+// with optional fields available via "Add Attribute" picker
+const showRequiredOnly = computed(() => {
+	return !!props.parameter.typeOptions?.showRequiredOnly;
+});
+
+// Get non-required fields that match displayOptions for a specific item
+const getPickerFields = (property: INodePropertyCollection, index?: number): INodeProperties[] => {
+	if (!showRequiredOnly.value) {
+		return [];
+	}
+
+	// Get path for displayParameter check
+	const itemPath = getPropertyPath(property.name, index);
+
+	return property.values.filter((field) => {
+		// Only include non-required fields
+		if (field.required === true) {
+			return false;
+		}
+		// Exclude notice types - they're just display messages, not input fields
+		if (field.type === 'notice') {
+			return false;
+		}
+		// Use the existing displayParameter helper from node-helpers to check visibility
+		return nodeHelpers.displayParameter(props.nodeValues, field, itemPath, activeNode.value);
+	});
+};
 
 watch(
 	() => props.values,
@@ -316,6 +347,29 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
+								<!-- Attribute picker for non-required fields -->
+								<div
+									v-if="getPickerFields(property, index).length > 0 && !isReadOnly"
+									class="attribute-picker add-option"
+								>
+									<N8nSelect
+										placeholder="Add Attribute"
+										size="small"
+										filterable
+										:model-value="null"
+									>
+										<N8nOption
+											v-for="field in getPickerFields(property, index)"
+											:key="field.name"
+											:label="field.displayName || field.name"
+											:value="field.name"
+										>
+											<div class="attribute-option">
+												<span>{{ field.displayName || field.name }}</span>
+											</div>
+										</N8nOption>
+									</N8nSelect>
+								</div>
 							</div>
 						</div>
 					</template>
@@ -344,6 +398,21 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
+					<!-- Attribute picker for non-required fields (single value) -->
+					<div v-if="getPickerFields(property).length > 0 && !isReadOnly" class="attribute-picker">
+						<N8nSelect placeholder="Add Attribute" size="small" filterable :model-value="null">
+							<N8nOption
+								v-for="field in getPickerFields(property)"
+								:key="field.name"
+								:label="field.displayName || field.name"
+								:value="field.name"
+							>
+								<div class="attribute-option">
+									<span>{{ field.displayName || field.name }}</span>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -386,6 +455,18 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 	.icon-button {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.attribute-picker {
+		margin-top: var(--spacing--xs);
+		margin-bottom: var(--spacing--xs);
+	}
+
+	.attribute-option {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
 	}
 
 	.controls {
