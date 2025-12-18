@@ -50,6 +50,7 @@ describe('useWorkflowHelpers', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.convertWorkflowTagsToIds = vi.fn(() => []);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
