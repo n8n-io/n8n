@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
 import {
+	createChatHubModuleSettings,
 	createMockAgent,
 	createMockConversationResponse,
 	createMockMessageDto,
@@ -52,6 +53,9 @@ vi.mock('./chat.api');
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: {},
+		moduleSettings: {
+			'chat-hub': createChatHubModuleSettings(),
+		},
 	}),
 }));
 

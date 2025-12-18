@@ -5,6 +5,7 @@ import type {
 	ChatHubMessageDto,
 	ChatHubConversationResponse,
 	EnrichedStructuredChunk,
+	ChatHubModuleSettings,
 } from '@n8n/api-types';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import type { ChatMessage } from '../chat.types';
@@ -132,5 +133,128 @@ export function createMockStreamChunk(
 			executionId: null,
 			...metadata,
 		},
+	};
+}
+
+export function createChatHubModuleSettings(
+	overrides: Partial<ChatHubModuleSettings> = {},
+): ChatHubModuleSettings {
+	return {
+		enabled: true,
+		providers: {
+			openai: {
+				provider: 'openai',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			anthropic: {
+				provider: 'anthropic',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			google: {
+				provider: 'google',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			azureOpenAi: {
+				provider: 'azureOpenAi',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			azureEntraId: {
+				provider: 'azureEntraId',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			ollama: {
+				provider: 'ollama',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			awsBedrock: {
+				provider: 'awsBedrock',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			vercelAiGateway: {
+				provider: 'vercelAiGateway',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			xAiGrok: {
+				provider: 'xAiGrok',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			groq: {
+				provider: 'groq',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			openRouter: {
+				provider: 'openRouter',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			deepSeek: {
+				provider: 'deepSeek',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			cohere: {
+				provider: 'cohere',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+			mistralCloud: {
+				provider: 'mistralCloud',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
+		},
+		...overrides,
 	};
 }
