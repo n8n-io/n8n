@@ -1,3 +1,13 @@
+## [2.0.3-exp.0](https://github.com/n8n-io/n8n/compare/n8n@2.0.3...n8n@2.0.3-exp.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* **ai-builder:** Connection validation respects node version and type ([#23349](https://github.com/n8n-io/n8n/issues/23349)) ([8861918](https://github.com/n8n-io/n8n/commit/886191875bf304f0258fc0e0fd409567ac08a262))
+* **ai-builder:** Updating stream recursion limit and removing tool node static parameter validation ([#23023](https://github.com/n8n-io/n8n/issues/23023)) ([7f72d49](https://github.com/n8n-io/n8n/commit/7f72d49489c56f572bd58aa12e1dbe0bb26de339))
+
+
+
 ## [2.0.3](https://github.com/n8n-io/n8n/compare/n8n@2.0.2...n8n@2.0.3) (2025-12-17)
 
 
