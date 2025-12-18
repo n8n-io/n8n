@@ -239,13 +239,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				wasReadOnly,
 			});
 			currentWriterId.value = null;
-
-			// If we were in read-only mode, refresh the canvas to exit read-only
-			if (wasReadOnly && refreshCanvasCallback) {
-				console.log('[Collaboration] 🔄 Refreshing canvas to exit read-only mode');
-				const currentWorkflow = workflowsStore.workflow;
-				refreshCanvasCallback(currentWorkflow);
-			}
 		}
 	}
 
@@ -294,12 +287,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 					wasReadOnly,
 				});
 
-				// If we were in read-only mode, refresh the canvas to exit read-only
-				if (wasReadOnly && refreshCanvasCallback) {
-					console.log('[Collaboration] 🔄 Refreshing canvas to exit read-only mode');
-					const currentWorkflow = workflowsStore.workflow;
-					refreshCanvasCallback(currentWorkflow);
-				}
 				return;
 			}
 
