@@ -134,4 +134,81 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 			expect(states).toEqual([true]); // Only got the start, not the stop
 		});
 	});
+
+	describe('Three-doc chain sync', () => {
+		// Topology: doc1 <-> doc2 <-> doc3 (hub-and-spoke via doc2)
+		let doc3: CRDTDoc;
+		let map3: CRDTMap<unknown>;
+		let transport2to3: MockTransport;
+		let transport3: MockTransport;
+		let sync2to3: SyncProvider;
+		let sync3: SyncProvider;
+
+		beforeEach(() => {
+			const provider = createCRDTProvider({ engine });
+			doc3 = provider.createDoc('doc-3');
+			map3 = doc3.getMap('data');
+
+			transport2to3 = new MockTransport();
+			transport3 = new MockTransport();
+			MockTransport.link(transport2to3, transport3);
+
+			// Doc2 acts as hub, syncing with both doc1 and doc3
+			sync2to3 = createSyncProvider(doc2, transport2to3);
+			sync3 = createSyncProvider(doc3, transport3);
+		});
+
+		afterEach(() => {
+			sync2to3.stop();
+			sync3.stop();
+			doc3.destroy();
+		});
+
+		it('should propagate changes through hub (doc1 -> doc2 -> doc3)', async () => {
+			// Start all sync connections
+			await sync1.start();
+			await sync2.start();
+			await sync2to3.start();
+			await sync3.start();
+
+			// Change in doc1
+			map1.set('origin', 'doc1');
+
+			// Should propagate: doc1 -> doc2 -> doc3
+			expect(map2.get('origin')).toBe('doc1');
+			expect(map3.get('origin')).toBe('doc1');
+		});
+
+		it('should propagate changes from leaf (doc3 -> doc2 -> doc1)', async () => {
+			await sync1.start();
+			await sync2.start();
+			await sync2to3.start();
+			await sync3.start();
+
+			// Change in doc3
+			map3.set('origin', 'doc3');
+
+			// Should propagate: doc3 -> doc2 -> doc1
+			expect(map2.get('origin')).toBe('doc3');
+			expect(map1.get('origin')).toBe('doc3');
+		});
+
+		it('should sync all docs to same state with concurrent changes', async () => {
+			await sync1.start();
+			await sync2.start();
+			await sync2to3.start();
+			await sync3.start();
+
+			// Concurrent changes from all three docs
+			map1.set('from1', 'value1');
+			map2.set('from2', 'value2');
+			map3.set('from3', 'value3');
+
+			// All should converge
+			const expected = { from1: 'value1', from2: 'value2', from3: 'value3' };
+			expect(map1.toJSON()).toEqual(expected);
+			expect(map2.toJSON()).toEqual(expected);
+			expect(map3.toJSON()).toEqual(expected);
+		});
+	});
 });

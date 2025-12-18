@@ -443,7 +443,18 @@ class AutomergeDocHolder {
 		const incomingDoc = Automerge.load<Record<string, unknown>>(update);
 		// Clone before merge to avoid mutation issues
 		this.doc = Automerge.merge(Automerge.clone(this.doc), incomingDoc);
-		this.notifyHandlers(beforeHeads);
+		const afterHeads = this.getHeads();
+
+		// Only notify if something actually changed
+		const headsChanged =
+			beforeHeads.length !== afterHeads.length ||
+			beforeHeads.some((head, index) => head !== afterHeads[index]);
+
+		if (headsChanged) {
+			this.notifyHandlers(beforeHeads);
+			// Also notify update handlers so changes propagate through chains
+			this.notifyUpdateHandlers();
+		}
 	}
 
 	destroy(): void {
