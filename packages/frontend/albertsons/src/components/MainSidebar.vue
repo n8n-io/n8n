@@ -16,6 +16,7 @@ const menuItems = ref([
 	{ label: 'Agent Library', key: 'library', path: '/agent-library', active: false },
 	{ label: 'Teams', key: 'teams', path: '/teams', active: false },
 	{ label: 'Settings', key: 'settings', path: '/settings', active: false },
+	{ label: 'Super Admin Console', key: 'superadmin', path: '/superadmin', active: false },
 ]);
 
 function navigate(item) {
