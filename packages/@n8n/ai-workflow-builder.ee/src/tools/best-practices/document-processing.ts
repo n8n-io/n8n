@@ -63,7 +63,7 @@ For high-volume processing:
 
 ### File Metadata
 Documents uploaded via a form trigger will have various bits of metadata available - filename, mimetype and size.
-These are accessible using an expression like {{ $json.documents[0].mimetype }} to access each of the documents details.
+These are accessible using an expression like {{ $json.documents[0].mimetype }} to access each of the document's details.
 Multiple files can be uploaded to a form which is the reason for the documents array.
 
 ## Text Extraction Strategy
@@ -179,7 +179,7 @@ if the workflow contains a form trigger node which receives a file, then a Switc
 Output: Extracted text is returned under the "text" key in JSON (e.g., access with {{ $json.text }})
 Pitfalls:
 - Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
-- If connecting to a document upload form (n8n-nodes-base.formTrigger) use a File field type and then connect it the the extract from file node using the field name.
+- If connecting to a document upload form (n8n-nodes-base.formTrigger) use a File field type and then connect it to the extract from file node using the field name.
 For example if creating a form trigger with field "Upload Document" then set the extract from file input binary field to "Upload_Document"
 
 **AWS Textract (n8n-nodes-base.awsTextract)**
