@@ -98,6 +98,7 @@ const MigrationReportView = async () =>
 
 const MigrationRuleReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
+const SuperadminConsoleView = async () => await import('@src/views/SuperadminConsole.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -116,6 +117,18 @@ export const routes: RouteRecordRaw[] = [
 		components: {
 			default: () => import('@src/views/DashboardView.vue'),
 
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	// Super Admin Console
+	{
+		path: '/superadmin',
+		name: 'SUPERADMIN_CONSOLE',
+		components: {
+			default: SuperadminConsoleView,
 			sidebar: MainSidebar,
 		},
 		meta: {
