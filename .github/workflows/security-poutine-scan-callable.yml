@@ -17,7 +17,7 @@ permissions:
 jobs:
   poutine_scan:
     name: Poutine Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
