@@ -411,7 +411,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTemplatesStore } from '../stores/templates.store';
