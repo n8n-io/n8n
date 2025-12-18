@@ -519,7 +519,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 												<N8nIcon
 													v-if="isOptionalFieldAdded(property.name, field.name, index)"
 													icon="check"
-													size="small"
+													size="medium"
 												/>
 											</div>
 										</N8nOption>
@@ -573,7 +573,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									<N8nIcon
 										v-if="isOptionalFieldAdded(property.name, field.name)"
 										icon="check"
-										size="small"
+										size="medium"
 									/>
 								</div>
 							</N8nOption>
@@ -628,7 +628,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 		margin-bottom: var(--spacing--xs);
 	}
 
-	.attribute-option {
+	:global(.attribute-option) {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
