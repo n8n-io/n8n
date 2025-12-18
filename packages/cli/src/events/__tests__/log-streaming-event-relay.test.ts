@@ -1359,7 +1359,6 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'User',
 					globalRole: 'global:owner',
 					executionIds: ['exec1', 'exec2'],
-					deleteBefore: undefined,
 				},
 			});
 		});
@@ -1387,7 +1386,6 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'Deleter',
 					globalRole: 'global:member',
 					executionIds: ['exec-single'],
-					deleteBefore: undefined,
 				},
 			});
 		});
@@ -1415,7 +1413,6 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'Deleter',
 					globalRole: 'global:owner',
 					executionIds: [],
-					deleteBefore: undefined,
 				},
 			});
 		});
