@@ -300,6 +300,294 @@ describe('DELETE /credentials/:id', () => {
 	});
 });
 
+describe('PATCH /credentials/:id', () => {
+	test('should update owned credential for owner', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			name: 'Updated Credential Name',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body;
+
+		expect(id).toBe(savedCredential.id);
+		expect(name).toBe(updatePayload.name);
+		expect(type).toBe(savedCredential.type);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+		expect(updatedCredential.type).toBe(savedCredential.type);
+	});
+
+	test('should update credential data for owner', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			data: {
+				accessToken: 'newAccessToken123456',
+				user: 'updatedUser',
+				server: 'updatedServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		// Data should be encrypted, so it shouldn't match the plain payload
+		expect(updatedCredential.data).not.toBe(updatePayload.data);
+		expect(updatedCredential.data).toBeDefined();
+	});
+
+	test('should update multiple fields at once', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			name: 'Completely Updated Credential',
+			data: {
+				accessToken: 'brandNewToken',
+				user: 'newUser',
+				server: 'newServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body;
+
+		expect(id).toBe(savedCredential.id);
+		expect(name).toBe(updatePayload.name);
+		expect(type).toBe(savedCredential.type);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+	});
+
+	test('should update owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		const updatePayload = {
+			name: 'Member Updated Credential',
+		};
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { name } = response.body;
+
+		expect(name).toBe(updatePayload.name);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+	});
+
+	test('should allow owner to update credential owned by member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		const updatePayload = {
+			name: 'Owner Updated Member Credential',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(updatePayload.name);
+	});
+
+	test('should not allow member to update non-owned credential', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			name: 'Unauthorized Update',
+		};
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(unchangedCredential.name).toBe(savedCredential.name);
+	});
+
+	test('should fail if credential not found', async () => {
+		const response = await authOwnerAgent.patch('/credentials/123').send({
+			name: 'Does not matter',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should fail with invalid credential type', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			type: 'invalidCredentialType',
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('not a known type');
+
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(unchangedCredential.type).toBe(savedCredential.type);
+	});
+
+	test('should fail when data does not match credential type schema', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Send data that doesn't match the slackApi credential schema
+		const updatePayload = {
+			data: {
+				invalidField: 'someValue',
+				anotherInvalidField: 123,
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('request.body.data');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(unchangedCredential.data).toBe(savedCredential.data);
+	});
+
+	test('should update credential type to another valid type', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			type: 'ftp',
+			data: {
+				host: 'localhost',
+				port: 21,
+				username: 'testuser',
+				password: 'testpass',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { type } = response.body;
+		expect(type).toBe('ftp');
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.type).toBe('ftp');
+	});
+
+	test('should preserve unchanged fields when updating', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const originalName = savedCredential.name;
+		const originalType = savedCredential.type;
+
+		const updatePayload = {
+			data: {
+				accessToken: 'onlyUpdatingData',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { name, type } = response.body;
+
+		expect(name).toBe(originalName);
+		expect(type).toBe(originalType);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.name).toBe(originalName);
+		expect(updatedCredential.type).toBe(originalType);
+	});
+
+	test('should update isGlobal and isResolvable fields', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const updatePayload = {
+			isGlobal: true,
+			isResolvable: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(updatedCredential.isGlobal).toBe(true);
+		expect(updatedCredential.isResolvable).toBe(true);
+	});
+});
+
 describe('GET /credentials/schema/:credentialType', () => {
 	test('should fail due to not found type', async () => {
 		const response = await authOwnerAgent.get('/credentials/schema/testing');

@@ -8,7 +8,12 @@ import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 
-import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
+import {
+	validCredentialsProperties,
+	validCredentialType,
+	validCredentialTypeForUpdate,
+	validCredentialsPropertiesForUpdate,
+} from './credentials.middleware';
 import {
 	createCredential,
 	encryptCredential,
@@ -18,6 +23,7 @@ import {
 	sanitizeCredentials,
 	saveCredential,
 	toJsonSchema,
+	updateCredential,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import { apiKeyHasScope, projectScope } from '../../shared/middlewares/global.middleware';
@@ -44,6 +50,31 @@ export = {
 			} catch ({ message, httpStatusCode }) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				return res.status(httpStatusCode ?? 500).json({ message });
+			}
+		},
+	],
+	updateCredential: [
+		validCredentialTypeForUpdate,
+		validCredentialsPropertiesForUpdate,
+		apiKeyHasScope('credential:update'),
+		projectScope('credential:update', 'credential'),
+		async (
+			req: CredentialRequest.Update,
+			res: express.Response,
+		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+			const { id: credentialId } = req.params;
+
+			try {
+				const updatedCredential = await updateCredential(credentialId, req.body);
+
+				if (!updatedCredential) {
+					return res.status(404).json({ message: 'Credential not found' });
+				}
+
+				return res.json(sanitizeCredentials(updatedCredential as CredentialsEntity));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				return res.status(500).json({ message });
 			}
 		},
 	],

@@ -10,6 +10,7 @@ import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
 	DisplayCondition,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeProperties,
 	INodePropertyOptions,
@@ -94,6 +95,61 @@ export async function saveCredential(
 	});
 
 	return result;
+}
+
+export async function updateCredential(
+	credentialId: string,
+	updateData: {
+		type?: string;
+		name?: string;
+		data?: ICredentialDataDecryptedObject;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
+	},
+): Promise<ICredentialsDb | null> {
+	const existingCredential = await getCredentials(credentialId);
+	if (!existingCredential) {
+		return null;
+	}
+
+	// Merge the update data with existing credential
+	const credentialData: Partial<CredentialsEntity> = {};
+
+	if (updateData.name !== undefined) {
+		credentialData.name = updateData.name;
+	}
+
+	if (updateData.type !== undefined) {
+		credentialData.type = updateData.type;
+	}
+
+	// If data is provided, encrypt it
+	if (updateData.data !== undefined) {
+		const newCredential = new CredentialsEntity();
+		Object.assign(newCredential, {
+			id: credentialId,
+			name: updateData.name ?? existingCredential.name,
+			type: updateData.type ?? existingCredential.type,
+			data: updateData.data,
+		});
+
+		const encryptedData = await encryptCredential(newCredential);
+		Object.assign(credentialData, encryptedData);
+	}
+
+	if (updateData.isGlobal !== undefined) {
+		credentialData.isGlobal = updateData.isGlobal;
+	}
+
+	if (updateData.isResolvable !== undefined) {
+		credentialData.isResolvable = updateData.isResolvable;
+	}
+
+	credentialData.updatedAt = new Date();
+
+	await Container.get(CredentialsRepository).update(credentialId, credentialData);
+
+	return await getCredentials(credentialId);
 }
 
 export async function removeCredential(

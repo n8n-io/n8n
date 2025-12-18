@@ -37,6 +37,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'execution:retry',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
 ];
@@ -63,6 +64,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'execution:retry',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
 ];
@@ -91,6 +93,7 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'execution:retry',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
 ];
