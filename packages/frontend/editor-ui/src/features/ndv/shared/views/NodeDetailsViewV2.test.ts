@@ -182,54 +182,6 @@ describe('NodeDetailsViewV2', () => {
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
 			removeEventListenerSpy.mockRestore();
 		});
-
-		test('should emit saveKeyboardShortcut when Ctrl+S is pressed', async () => {
-			const { getByTestId, emitted } = renderComponent({ activeNodeName: 'Manual Trigger' });
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeTruthy();
-			expect(emitted().saveKeyboardShortcut).toHaveLength(1);
-		});
-
-		test('should not emit saveKeyboardShortcut in readOnly mode', async () => {
-			const { getByTestId, emitted } = renderComponent({
-				activeNodeName: 'Manual Trigger',
-				readOnly: true,
-			});
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeFalsy();
-		});
-
-		test('should not emit saveKeyboardShortcut when Ctrl is not pressed', async () => {
-			const { getByTestId, emitted } = renderComponent({ activeNodeName: 'Manual Trigger' });
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeFalsy();
-		});
 	});
 
 	describe('lifecycle', () => {

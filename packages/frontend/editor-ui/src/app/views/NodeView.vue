@@ -754,41 +754,17 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 	toggleNodesPinned(ids, source);
 }
 
-async function onSaveWorkflow() {
-	const workflowIsSaved = !uiStore.stateIsDirty && !workflowsStore.isNewWorkflow;
-	const workflowIsArchived = workflowsStore.workflow.isArchived;
-
-	if (workflowIsSaved || workflowIsArchived) {
-		return;
-	}
-	const saved = await workflowSaving.saveCurrentWorkflow();
-	if (saved) {
-		canvasEventBus.emit('saved:workflow');
-	}
-}
-
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	canvasRef.value?.executeContextMenuAction(action, nodeIds);
 }
 
 function addWorkflowSavedEventBindings() {
 	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
-	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
 }
 
 function removeWorkflowSavedEventBindings() {
 	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
-	canvasEventBus.off('saved:workflow', onSaveFromWithinNDV);
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
-}
-
-async function onSaveFromWithinNDV() {
-	if (ndvStore.activeNodeName) {
-		toast.showMessage({
-			title: i18n.baseText('generic.workflowSaved'),
-			type: 'success',
-		});
-	}
 }
 
 async function onCreateWorkflow() {
@@ -840,29 +816,10 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
-		let shouldSaveAfterRename = false;
-
-		const handleKeyDown = (e: KeyboardEvent) => {
-			// Stop propagation for space key to prevent VueFlow from intercepting it
-			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
-			if (e.key === ' ') {
-				e.stopPropagation();
-			}
-			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-				e.preventDefault();
-				shouldSaveAfterRename = true;
-				nameInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-			}
-		};
-		nameInput?.addEventListener('keydown', handleKeyDown);
-
 		const promptResponse = await promptResponsePromise;
-
-		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
-			if (shouldSaveAfterRename) await onSaveWorkflow();
 		}
 	} catch (e) {}
 }
@@ -2091,7 +2048,6 @@ onBeforeUnmount(() => {
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
-			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
@@ -2188,7 +2144,6 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
 			<Suspense>
@@ -2201,7 +2156,6 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
 		</WorkflowCanvas>
@@ -2210,7 +2164,6 @@ onBeforeUnmount(() => {
 				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
 			"
 			:is-canvas-read-only="isCanvasReadOnly"
-			@save-keyboard-shortcut="onSaveWorkflow"
 			@context-menu-action="onContextMenuAction"
 		/>
 	</div>
