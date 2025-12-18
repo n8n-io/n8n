@@ -145,6 +145,24 @@ class YjsDoc implements CRDTDoc {
 		this.yDoc.transact(fn);
 	}
 
+	encodeState(): Uint8Array {
+		return Y.encodeStateAsUpdate(this.yDoc);
+	}
+
+	applyUpdate(update: Uint8Array): void {
+		Y.applyUpdate(this.yDoc, update);
+	}
+
+	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe {
+		const wrappedHandler = (update: Uint8Array) => {
+			handler(update);
+		};
+		this.yDoc.on('update', wrappedHandler);
+		return () => {
+			this.yDoc.off('update', wrappedHandler);
+		};
+	}
+
 	destroy(): void {
 		this.yDoc.destroy();
 		this.maps.clear();

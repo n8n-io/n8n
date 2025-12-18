@@ -31,6 +31,109 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 		doc.destroy();
 	});
 
+	describe('State Encoding', () => {
+		it('should encode empty doc as non-empty Uint8Array', () => {
+			const state = doc.encodeState();
+			expect(state).toBeInstanceOf(Uint8Array);
+			expect(state.length).toBeGreaterThan(0);
+		});
+
+		it('should encode doc with data as larger Uint8Array', () => {
+			const emptyState = doc.encodeState();
+
+			map.set('key', 'value');
+			map.set('nested', { a: 1, b: 2 });
+
+			const dataState = doc.encodeState();
+			expect(dataState).toBeInstanceOf(Uint8Array);
+			expect(dataState.length).toBeGreaterThan(emptyState.length);
+		});
+	});
+
+	describe('Apply Update', () => {
+		it('should apply update from another doc and merge data', () => {
+			// Create a second doc
+			const provider = createCRDTProvider({ engine });
+			const doc2 = provider.createDoc('test-2');
+			const map2 = doc2.getMap<unknown>('test-map');
+
+			// Add data to doc2
+			map2.set('fromDoc2', 'hello');
+
+			// Encode doc2's state and apply to doc1
+			const update = doc2.encodeState();
+			doc.applyUpdate(update);
+
+			// doc1 should now have doc2's data
+			expect(map.get('fromDoc2')).toBe('hello');
+
+			doc2.destroy();
+		});
+
+		it('should apply same update twice idempotently', () => {
+			const provider = createCRDTProvider({ engine });
+			const doc2 = provider.createDoc('test-2');
+			const map2 = doc2.getMap<unknown>('test-map');
+
+			map2.set('key', 'value');
+			const update = doc2.encodeState();
+
+			// Apply twice
+			doc.applyUpdate(update);
+			doc.applyUpdate(update);
+
+			// Should still have the same data, no duplicates or errors
+			expect(map.get('key')).toBe('value');
+			expect(map.toJSON()).toEqual({ key: 'value' });
+
+			doc2.destroy();
+		});
+	});
+
+	describe('onUpdate', () => {
+		it('should call handler when doc changes', () => {
+			const updates: Uint8Array[] = [];
+			doc.onUpdate((update) => updates.push(update));
+
+			map.set('key', 'value');
+
+			expect(updates).toHaveLength(1);
+			expect(updates[0]).toBeInstanceOf(Uint8Array);
+		});
+
+		it('should emit update that can be applied to another doc', () => {
+			const provider = createCRDTProvider({ engine });
+			const doc2 = provider.createDoc('test-2');
+			const map2 = doc2.getMap<unknown>('test-map');
+
+			// Subscribe to updates from doc1
+			doc.onUpdate((update) => {
+				doc2.applyUpdate(update);
+			});
+
+			// Make change in doc1
+			map.set('key', 'value');
+
+			// doc2 should have the data
+			expect(map2.get('key')).toBe('value');
+
+			doc2.destroy();
+		});
+
+		it('should stop calling handler after unsubscribe', () => {
+			const updates: Uint8Array[] = [];
+			const unsubscribe = doc.onUpdate((update) => updates.push(update));
+
+			map.set('key1', 'value1');
+			expect(updates).toHaveLength(1);
+
+			unsubscribe();
+
+			map.set('key2', 'value2');
+			expect(updates).toHaveLength(1); // No new updates
+		});
+	});
+
 	describe('Basic Operations', () => {
 		it('should set and get primitive values', () => {
 			map.set('string', 'hello');
