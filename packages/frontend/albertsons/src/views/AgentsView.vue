@@ -1,21 +1,32 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserAgentMappingsStore } from '@src/stores/userAgentMappings.store';
-
+import { Play, EllipsisVertical, Clock, ClockCheck, Pause, Search, Funnel } from 'lucide-vue-next';
+import dayjs from 'dayjs';
 const router = useRouter();
 const userAgentMappingsStore = useUserAgentMappingsStore();
 
 onMounted(async () => {
 	await userAgentMappingsStore.fetchUserAgentMappings();
 });
-
+const searchQuery = ref('');
 const userAgentMappingsData = computed(() => {
 	return userAgentMappingsStore.getUserAgentMappings();
 });
 
+const filteredUserAgentMappings = computed(() => {
+	return userAgentMappingsData.value.filter((item) =>
+		item?.workflow?.name?.toLowerCase().includes(searchQuery?.value?.toLowerCase()),
+	);
+});
+
 function goToNewWorkflow() {
 	router.push('/workflow/new');
+}
+
+function goToEditWorkflow(id) {
+	router.push(`/workflow/${id}`);
 }
 </script>
 
@@ -36,12 +47,12 @@ function goToNewWorkflow() {
 		<!-- HEADER : Search and Filter -->
 		<div class="search-bar">
 			<div class="search-input">
-				<span class="icon">🔍</span>
-				<input type="text" placeholder="Search agents" />
+				<Search size="14" color="gray" />
+				<input v-model="searchQuery" type="text" placeholder="Search agents" />
 			</div>
 
 			<button class="filter-btn">
-				<span class="icon">⏳</span>
+				<Funnel size="12" />
 				Filters
 			</button>
 		</div>
@@ -64,25 +75,45 @@ function goToNewWorkflow() {
 
 				<!-- Agent List : table body -->
 				<tbody>
-					<tr v-for="item in userAgentMappingsData" :key="item.id" class="workflow_entry">
-						<td>
-							<strong class="workflow_name">{{ item.workflow.name }}</strong
-							><br />
+					<tr v-for="item in filteredUserAgentMappings" :key="item.id" class="workflow_entry">
+						<td class="workflow_name">
+							{{ item.workflow.name }}
+							<br />
 							<small class="txt_secondary">{{ item.workflow.nodes.length }} nodes</small>
 						</td>
 						<td class="txt_secondary workflow_project">Inventory Management Automation</td>
 						<td>
-							<span :class="['status', 'Active']">✔️ Active</span>
+							<span
+								:class="['status', item?.workflow?.active ? 'active' : 'inactive']"
+								class="workflow_status"
+							>
+								<ClockCheck v-if="item?.workflow?.active" :size="11" />
+								<Pause v-else :size="11" />
+								{{ item?.workflow?.active ? 'Active' : 'Inactive' }}
+							</span>
 						</td>
-						<td class="txt_secondary">🕓 Schedule (Every 15 min)</td>
-						<td class="txt_secondary">Dec 13, 04:45 PM</td>
+						<td class="txt_secondary flex">
+							<Clock class="clock_icon" />
+							{{
+								item?.workflow?.nodes?.[0]?.type
+									?.split('.')
+									?.pop()
+									?.replace(/^\w/, (c) => c.toUpperCase()) || ''
+							}}
+						</td>
+						<td class="txt_secondary">
+							{{ dayjs(item?.last_execution?.startedAt).format('MMM DD, hh:mm A') }}
+						</td>
 						<td class="txt_secondary progress_bar">
 							<div class="progress">
-								<div class="bar" :style="{ width: item.rate + '%' }"></div>
+								<div class="bar" :style="{ width: item?.success_rate + '%' }"></div>
 							</div>
-							<span> 90% </span>
+							<span> {{ item?.success_rate }}%</span>
 						</td>
-						<td class="txt_secondary">▶️ ⠇</td>
+						<td class="txt_secondary">
+							<Play class="action_icons" />
+							<EllipsisVertical @click="goToEditWorkflow(item?.workflowId)" class="action_icons" />
+						</td>
 					</tr>
 				</tbody>
 			</table>
@@ -179,6 +210,7 @@ function goToNewWorkflow() {
 	border-radius: 8px;
 	padding: 7px 15px;
 	width: 280px;
+	font-size: 12px;
 }
 
 .search-input input {
@@ -194,7 +226,7 @@ function goToNewWorkflow() {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 7px 15px;
+	padding: 8px 15px;
 	border-radius: 8px;
 	cursor: pointer;
 	color: var(--color-text-primary);
@@ -202,8 +234,19 @@ function goToNewWorkflow() {
 	border: 1px solid var(--border-color--light);
 }
 
-.icon {
-	font-size: 14px;
+.action_icons {
+	height: 16px;
+	cursor: pointer;
+}
+
+.flex {
+	display: flex;
+	align-items: center;
+}
+
+.clock_icon {
+	height: 14px;
+	margin-right: 1px;
 }
 
 .card {
@@ -248,6 +291,12 @@ thead {
 	font-size: 14px;
 }
 
+.workflow_status {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
 .txt_secondary {
 	color: var(--color-text-secondary);
 }
@@ -258,16 +307,16 @@ thead {
 	font-size: 12px;
 }
 
-.Active {
+.active {
 	background: var(--color-light-green);
 	color: var(--color--success);
 	font-weight: 500;
 	font-size: 11px;
 }
 
-.Error {
-	background: #f0c9c5;
-	color: #b41e1e;
+.inactive {
+	background: var(--color-light-orange);
+	color: var(--color-warning-orange);
 }
 
 .progress_bar {

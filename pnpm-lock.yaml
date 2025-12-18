@@ -2661,6 +2661,9 @@ importers:
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
+      dayjs:
+        specifier: ^1.11.19
+        version: 1.11.19
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.13(typescript@5.9.2))
@@ -2691,6 +2694,9 @@ importers:
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
+      lucide-vue-next:
+        specifier: ^0.561.0
+        version: 0.561.0(vue@3.5.13(typescript@5.9.2))
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -11309,6 +11315,9 @@ packages:
   dayjs@1.11.10:
     resolution: {integrity: sha512-vjAczensTgRcqDERK0SR2XMwsF/tSvnvlv6VcF2GIhg6Sx4yOIt/irsr1RDJsKiIyBzJDpCoXiWWq28MqH2cnQ==}
 
+  dayjs@1.11.19:
+    resolution: {integrity: sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==}
+
   de-indent@1.0.2:
     resolution: {integrity: sha512-e/1zu3xH5MQryN2zdVaF0OrdNLUbvWxzMbi+iNA6Bky7l1RoP8a2fIbRocyHclXt/arDrrR6lL3TqFD9pMQTsg==}
 
@@ -14422,6 +14431,11 @@ packages:
   lru.min@1.1.2:
     resolution: {integrity: sha512-Nv9KddBcQSlQopmBHXSsZVY5xsdlZkdH/Iey0BlcBYggMd4two7cZnKOK9vmy3nY0O5RGH99z1PCeTpPqszUYg==}
     engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
+
+  lucide-vue-next@0.561.0:
+    resolution: {integrity: sha512-c5HUckO0qHklVSOf/0vaSR3pEb8fYImRDCRDLde56uqS9js0D/e3RAvq0/YFWjkmyOBKCb0/IdskdoHZQEkT5g==}
+    peerDependencies:
+      vue: '>=3.0.1'
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
@@ -28844,6 +28858,8 @@ snapshots:
 
   dayjs@1.11.10: {}
 
+  dayjs@1.11.19: {}
+
   de-indent@1.0.2: {}
 
   debug@2.6.9:
@@ -29260,7 +29276,7 @@ snapshots:
       '@types/lodash-es': 4.17.12
       '@vueuse/core': 9.13.0(vue@3.5.13(typescript@5.9.2))
       async-validator: 4.2.5
-      dayjs: 1.11.10
+      dayjs: 1.11.19
       escape-html: 1.0.3
       lodash: 4.17.21
       lodash-es: 4.17.21
@@ -32842,6 +32858,10 @@ snapshots:
   lru-cache@9.1.2: {}
 
   lru.min@1.1.2: {}
+
+  lucide-vue-next@0.561.0(vue@3.5.13(typescript@5.9.2)):
+    dependencies:
+      vue: 3.5.13(typescript@5.9.2)
 
   lunr@2.3.9: {}
 
