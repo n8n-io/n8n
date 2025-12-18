@@ -1,6 +1,53 @@
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 
+test.describe('Executions Filter', () => {
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('Test_workflow_4_executions_view.json');
+	});
+
+	test('should keep popover open when selecting from dropdown inside it', async ({ n8n }) => {
+		// Regression test: Element Plus dropdowns are teleported to body, causing
+		// Reka UI's DismissableLayer to detect clicks as "outside" and close the popover.
+		// This test verifies the popover stays open during and after dropdown selection.
+
+		// Create some executions first
+		await n8n.executionsComposer.createExecutions(2);
+
+		// Go to executions tab
+		await n8n.canvas.clickExecutionsTab();
+		await expect(n8n.executions.getExecutionItems().first()).toBeVisible();
+
+		// Open filter popover
+		await n8n.executions.openFilter();
+		const filterForm = n8n.executions.getFilterForm();
+		await expect(filterForm).toBeVisible();
+
+		// Click to open the status dropdown
+		await n8n.executions.getStatusSelect().click();
+
+		// Verify popover is still open while dropdown is open
+		await expect(filterForm).toBeVisible();
+
+		// Set up listener for the filtered executions request
+		const filterRequestPromise = n8n.page.waitForRequest(
+			(request) =>
+				request.url().includes('/rest/executions?filter=') && request.url().includes('success'),
+		);
+
+		// Select an option from the dropdown
+		await n8n.page.locator('.el-select-dropdown__item').filter({ hasText: 'Success' }).click();
+
+		// Verify the filter request was sent to the backend (confirms selection worked)
+		const filterRequest = await filterRequestPromise;
+		expect(filterRequest.url()).toContain('status');
+		expect(filterRequest.url()).toContain('success');
+
+		// KEY ASSERTION: Verify the popover did NOT close after selecting from dropdown
+		await expect(filterForm).toBeVisible();
+	});
+});
+
 const ERROR_MESSAGES = {
 	OUT_OF_MEMORY: 'Workflow did not finish, possible out-of-memory issue',
 } as const;
