@@ -21,6 +21,7 @@ export function getWorkflowActiveStatusFromWorkflowData(workflowData: IWorkflowB
  * iterating on sub-workflows without requiring them to be published.
  *
  */
-export function isManualOrChatExecution(executionMode: string): boolean {
+export function isManualOrChatExecution(executionMode?: string): boolean {
+	if (!executionMode) return false;
 	return ['manual', 'chat'].includes(executionMode);
 }
