@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import N8nIcon from '../N8nIcon';
 import type { IconSize } from '../../types/icon';
+import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 
 interface Props {

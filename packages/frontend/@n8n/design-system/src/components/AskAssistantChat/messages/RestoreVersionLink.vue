@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onClickOutside, useElementBounding } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 
-import IconTextButton from '../../IconTextButton';
 import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
 import { useI18n } from '../../../composables/useI18n';
+import IconTextButton from '../../IconTextButton';
 
 interface Props {
 	revertVersion: { id: string; createdAt: string };
@@ -24,7 +24,7 @@ const { t } = useI18n();
 
 // Restore version confirm dialog
 const showRestoreConfirm = ref(false);
-const restoreButtonRef = ref<InstanceType<typeof IconTextButton> | null>(null);
+const restoreButtonRef = ref<{ buttonRef: Ref<HTMLButtonElement | null> } | null>(null);
 const restoreConfirmRef = ref<HTMLElement | null>(null);
 
 // Close confirm dialog when clicking outside

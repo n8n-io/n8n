@@ -89,7 +89,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
 			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
 			<RestoreVersionLink
-				v-if="message.role === 'user' && message.revertVersion"
+				v-if="message.role === 'user' && message.revertVersion && message.id"
 				:revert-version="message.revertVersion"
 				:streaming="streaming"
 				:prune-time-hours="pruneTimeHours"

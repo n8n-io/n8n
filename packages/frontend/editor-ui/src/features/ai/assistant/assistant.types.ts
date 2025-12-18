@@ -247,6 +247,15 @@ export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequ
 	return 'type' in msg && msg.type === 'message' && 'text' in msg;
 }
 
+/** TextMessage with revertVersionId that can be transformed */
+export type TextMessageWithRevertVersionId = ChatRequest.TextMessage & { revertVersionId: string };
+
+export function hasRevertVersionId(
+	msg: ChatRequest.MessageResponse,
+): msg is TextMessageWithRevertVersionId {
+	return isTextMessage(msg) && typeof msg.revertVersionId === 'string';
+}
+
 export function isSummaryMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatRequest.SummaryMessage {

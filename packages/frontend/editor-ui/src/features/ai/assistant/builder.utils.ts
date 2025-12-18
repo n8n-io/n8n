@@ -1,4 +1,8 @@
-import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import {
+	hasRevertVersionId,
+	type ChatRequest,
+	type TextMessageWithRevertVersionId,
+} from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { usePostHog } from '@/app/stores/posthog.store';
 import {
@@ -92,12 +96,7 @@ export function shouldShowChat(routeName: string): boolean {
  * Only extracts from messages that have a string revertVersionId property.
  */
 export function extractRevertVersionIds(messages: ChatRequest.MessageResponse[]): string[] {
-	return messages
-		.filter(
-			(msg): msg is ChatRequest.TextMessage & { revertVersionId: string } =>
-				'revertVersionId' in msg && typeof msg.revertVersionId === 'string',
-		)
-		.map((msg) => msg.revertVersionId);
+	return messages.filter(hasRevertVersionId).map((msg) => msg.revertVersionId);
 }
 
 /**
@@ -124,6 +123,15 @@ export async function fetchExistingVersionIds(
 }
 
 /**
+ * Removes revertVersionId from a TextMessage, returning a valid TextMessage.
+ * Since revertVersionId is optional on TextMessage, the result is still a valid TextMessage.
+ */
+function removeRevertVersionId(msg: TextMessageWithRevertVersionId): ChatRequest.TextMessage {
+	const { revertVersionId: _, ...rest } = msg;
+	return rest;
+}
+
+/**
  * Enriches messages with revertVersion object containing both id and createdAt.
  * If version doesn't exist in the map, removes revertVersionId from the message.
  */
@@ -132,19 +140,20 @@ export function enrichMessagesWithRevertVersion(
 	versionMap: Map<string, string>,
 ): ChatRequest.MessageResponse[] {
 	return messages.map((msg) => {
-		if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
-			const createdAt = versionMap.get(msg.revertVersionId);
-			if (createdAt) {
-				// Transform revertVersionId into revertVersion object
-				return {
-					...msg,
-					revertVersion: { id: msg.revertVersionId, createdAt },
-				};
-			}
-			// Version doesn't exist, remove revertVersionId
-			const { revertVersionId: _, ...rest } = msg;
-			return rest as ChatRequest.MessageResponse;
+		if (!hasRevertVersionId(msg)) {
+			return msg;
 		}
-		return msg;
+
+		const createdAt = versionMap.get(msg.revertVersionId);
+		if (createdAt) {
+			// Transform revertVersionId into revertVersion object
+			return {
+				...msg,
+				revertVersion: { id: msg.revertVersionId, createdAt },
+			};
+		}
+
+		// Version doesn't exist, remove revertVersionId
+		return removeRevertVersionId(msg);
 	});
 }
