@@ -42,7 +42,10 @@ test.describe('Executions Filter', () => {
 		await expect(filterForm).toBeVisible();
 
 		// Verify the selection was actually applied in the UI
-		await expect(n8n.executions.getStatusSelect()).toContainText('Success');
+		// Element Plus select displays value in .el-select__selected-item or input placeholder
+		await expect(
+			n8n.executions.getStatusSelect().locator('.el-select__selected-item'),
+		).toContainText('Success');
 
 		// Verify the filter request was sent to the backend
 		const filterRequest = await filterRequestPromise;
