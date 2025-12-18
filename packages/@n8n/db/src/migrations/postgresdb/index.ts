@@ -128,6 +128,7 @@ import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/17
 import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459448000-AddResolvableFieldsToCredentials';
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
 import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddAgentIdForeignKeys';
+import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -261,4 +262,5 @@ export const postgresMigrations: Migration[] = [
 	AddIconToAgentTable1765788427674,
 	ConvertAgentIdToUuid1765804780000,
 	AddAgentIdForeignKeys1765886667897,
+	AddWorkflowVersionIdToExecutionData1765892199653,
 ];
