@@ -304,7 +304,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 					@select="optionSelected"
 				>
 					<template #trigger>
-						<N8nButton type="secondary" icon="plus" :label="placeholder" />
+						<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
 					</template>
 				</N8nDropdown>
 			</div>
@@ -366,7 +366,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 					@select="optionSelected"
 				>
 					<template #trigger>
-						<N8nButton type="secondary" icon="plus" :label="placeholder" />
+						<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
 					</template>
 				</N8nDropdown>
 			</div>
@@ -395,23 +395,8 @@ function valueChanged(parameterData: IUpdateInformation) {
 	margin-bottom: var(--spacing--xs);
 }
 
-// New UI: Custom styling for secondary button
 .collectionParameter .paramOptions {
 	margin-top: var(--spacing--xs);
-
-	:global(.button) {
-		--button--color--background: var(--color--background);
-		--button--color--background--hover: var(--color--background);
-		--button--color--background--active: var(--color--background);
-		--button--color--background--focus: var(--color--background);
-		--button--border-color: transparent;
-		--button--border-color--hover: transparent;
-		--button--border-color--active: transparent;
-		--button--border-color--focus: transparent;
-		--button--color--text--hover: var(--color--primary);
-		--button--color--text--active: var(--color--primary);
-		--button--color--text--focus: var(--color--primary);
-	}
 }
 
 .addDropdown {

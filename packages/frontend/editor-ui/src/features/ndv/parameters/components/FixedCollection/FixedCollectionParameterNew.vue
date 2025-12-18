@@ -419,12 +419,11 @@ const onAddButtonClick = () => {
 			<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 				<N8nButton
 					v-if="hasSingleOption"
-					type="secondary"
+					type="highlightFill"
 					icon="plus"
 					:data-test-id="`fixed-collection-add-top-level-button`"
 					:label="placeholder"
 					:disabled="isAddDisabled"
-					:class="$style.addButton"
 					@click="onAddButtonClick"
 				/>
 				<N8nDropdown
@@ -437,11 +436,10 @@ const onAddButtonClick = () => {
 				>
 					<template #trigger>
 						<N8nButton
-							type="secondary"
+							type="highlightFill"
 							icon="plus"
 							:label="placeholder"
 							:disabled="isAddDisabled"
-							:class="$style.addButton"
 						/>
 					</template>
 				</N8nDropdown>
@@ -508,11 +506,10 @@ const onAddButtonClick = () => {
 					<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 						<N8nButton
 							v-if="hasSingleOption"
-							type="secondary"
+							type="highlightFill"
 							icon="plus"
 							:data-test-id="`fixed-collection-add-nested-button`"
 							:label="placeholder"
-							:class="$style.addButton"
 							@click="onAddButtonClick"
 						/>
 						<N8nDropdown
@@ -523,12 +520,7 @@ const onAddButtonClick = () => {
 							@select="optionSelected"
 						>
 							<template #trigger>
-								<N8nButton
-									type="secondary"
-									icon="plus"
-									:label="placeholder"
-									:class="$style.addButton"
-								/>
+								<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
 							</template>
 						</N8nDropdown>
 					</div>
@@ -624,20 +616,6 @@ const onAddButtonClick = () => {
 
 .controls {
 	margin-top: var(--spacing--xs);
-}
-
-.addButton {
-	--button--color--background: var(--color--background);
-	--button--color--background--hover: var(--color--background);
-	--button--color--background--active: var(--color--background);
-	--button--color--background--focus: var(--color--background);
-	--button--border-color: transparent;
-	--button--border-color--hover: transparent;
-	--button--border-color--active: transparent;
-	--button--border-color--focus: transparent;
-	--button--color--text--hover: var(--color--primary);
-	--button--color--text--active: var(--color--primary);
-	--button--color--text--focus: var(--color--primary);
 }
 
 .dropdown {
