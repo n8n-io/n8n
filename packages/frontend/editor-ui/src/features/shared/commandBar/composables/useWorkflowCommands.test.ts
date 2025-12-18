@@ -1,27 +1,27 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
 import { useWorkflowCommands } from './useWorkflowCommands';
-import * as useCanvasOperations from '@/composables/useCanvasOperations';
-import { useTagsStore } from '@/stores/tags.store';
-import { useUIStore } from '@/stores/ui.store';
+import * as useCanvasOperations from '@/app/composables/useCanvasOperations';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { nodeViewEventBus } from '@/event-bus';
+import { nodeViewEventBus } from '@/app/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 
-vi.mock('@/composables/useCanvasOperations');
-vi.mock('@/composables/useWorkflowHelpers');
-vi.mock('@/composables/useTelemetry');
-vi.mock('@/composables/useWorkflowSaving');
-vi.mock('@/composables/useWorkflowActivate');
+vi.mock('@/app/composables/useCanvasOperations');
+vi.mock('@/app/composables/useWorkflowHelpers');
+vi.mock('@/app/composables/useTelemetry');
+vi.mock('@/app/composables/useWorkflowSaving');
+vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
-vi.mock('@/event-bus');
+vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.name}` })),
@@ -39,30 +39,23 @@ vi.mock('file-saver', () => ({
 	saveAs: vi.fn(),
 }));
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
 const getWorkflowDataToSaveMock = vi.fn();
-vi.mock('@/composables/useWorkflowHelpers', () => ({
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: () => ({
 		getWorkflowDataToSave: getWorkflowDataToSaveMock,
 	}),
 }));
 
 const saveCurrentWorkflowMock = vi.fn();
-vi.mock('@/composables/useWorkflowSaving', () => ({
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
 		saveCurrentWorkflow: saveCurrentWorkflowMock,
-	}),
-}));
-
-const updateWorkflowActivationMock = vi.fn();
-vi.mock('@/composables/useWorkflowActivate', () => ({
-	useWorkflowActivate: () => ({
-		updateWorkflowActivation: updateWorkflowActivationMock,
 	}),
 }));
 
@@ -95,7 +88,6 @@ describe('useWorkflowCommands', () => {
 
 		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
 		saveCurrentWorkflowMock.mockResolvedValue(true);
-		updateWorkflowActivationMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
 
@@ -296,47 +288,48 @@ describe('useWorkflowCommands', () => {
 		});
 	});
 
-	describe('activate/deactivate commands', () => {
-		it('should show activate command when workflow is inactive', () => {
-			mockWorkflowsStore.workflow.active = false;
-
+	describe('publish/unpublish commands', () => {
+		it('should show publish command when user has update permission and workflow is not archived', () => {
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
-			const deactivateCommand = commands.value.find((cmd) => cmd.id === 'deactivate-workflow');
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 
-			expect(activateCommand).toBeDefined();
-			expect(deactivateCommand).toBeUndefined();
+			expect(publishCommand).toBeDefined();
 		});
 
-		it('should show deactivate command when workflow is active', () => {
-			mockWorkflowsStore.workflow.active = true;
-
+		it('should show unpublish command when user has update permission and workflow is not archived', () => {
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
-			const deactivateCommand = commands.value.find((cmd) => cmd.id === 'deactivate-workflow');
+			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
-			expect(activateCommand).toBeUndefined();
-			expect(deactivateCommand).toBeDefined();
+			expect(unpublishCommand).toBeDefined();
 		});
 
-		it('should not show activate/deactivate commands when workflow is archived', () => {
+		it('should not show publish/unpublish commands when workflow is archived', () => {
 			mockWorkflowsStore.workflow.isArchived = true;
 
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
-			const deactivateCommand = commands.value.find((cmd) => cmd.id === 'deactivate-workflow');
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
+			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
 
-			expect(activateCommand).toBeUndefined();
-			expect(deactivateCommand).toBeUndefined();
+			expect(publishCommand).toBeUndefined();
+			expect(unpublishCommand).toBeUndefined();
 		});
 
-		it('should handle activate workflow', async () => {
+		it('should handle publish workflow', async () => {
 			const { commands } = useWorkflowCommands();
-			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
+			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
 
-			await activateCommand?.handler?.();
+			await publishCommand?.handler?.();
 
-			expect(updateWorkflowActivationMock).toHaveBeenCalledWith('workflow-123', true);
+			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('publishWorkflow');
+		});
+
+		it('should handle unpublish workflow', async () => {
+			const { commands } = useWorkflowCommands();
+			const unpublishCommand = commands.value.find((cmd) => cmd.id === 'unpublish-workflow');
+
+			await unpublishCommand?.handler?.();
+
+			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('unpublishWorkflow');
 		});
 	});
 

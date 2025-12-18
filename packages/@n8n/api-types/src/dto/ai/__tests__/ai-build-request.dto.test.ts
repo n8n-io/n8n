@@ -3,6 +3,7 @@ import { AiBuilderChatRequestDto } from '../ai-build-request.dto';
 describe('AiBuilderChatRequestDto', () => {
 	const validBasePayload = {
 		payload: {
+			id: '12345',
 			role: 'user' as const,
 			type: 'message' as const,
 			text: 'Build me a workflow',
@@ -12,7 +13,6 @@ describe('AiBuilderChatRequestDto', () => {
 					connections: {},
 				},
 			},
-			useDeprecatedCredentials: false,
 		},
 	};
 
@@ -306,6 +306,7 @@ describe('AiBuilderChatRequestDto', () => {
 			const invalidRequest = {
 				...validBasePayload,
 				payload: {
+					id: '12345',
 					role: 'user' as const,
 					type: 'message' as const,
 					workflowContext: validBasePayload.payload.workflowContext,
@@ -317,20 +318,20 @@ describe('AiBuilderChatRequestDto', () => {
 			expect(result.success).toBe(false);
 		});
 
-		it('should validate when useDeprecatedCredentials is explicitly set', () => {
-			const requestWithFlag = {
+		it('should fail when id is missing', () => {
+			const invalidRequest = {
+				...validBasePayload,
 				payload: {
-					...validBasePayload.payload,
-					useDeprecatedCredentials: true,
+					role: 'user' as const,
+					type: 'message' as const,
+					text: 'text',
+					workflowContext: validBasePayload.payload.workflowContext,
 				},
 			};
 
-			const result = AiBuilderChatRequestDto.safeParse(requestWithFlag);
+			const result = AiBuilderChatRequestDto.safeParse(invalidRequest);
 
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.payload.useDeprecatedCredentials).toBe(true);
-			}
+			expect(result.success).toBe(false);
 		});
 	});
 });

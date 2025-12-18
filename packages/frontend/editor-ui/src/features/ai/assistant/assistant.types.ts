@@ -1,4 +1,4 @@
-import type { VIEWS } from '@/constants';
+import type { VIEWS } from '@/app/constants';
 import type { IWorkflowDb, NodeAuthenticationOption, Schema } from '@/Interface';
 import type {
 	ExecutionError,
@@ -93,13 +93,20 @@ export namespace ChatRequest {
 		error?: ErrorContext['error'];
 	}
 
+	export interface BuilderFeatureFlags {
+		templateExamples?: boolean;
+		multiAgent?: boolean;
+	}
+
 	export interface UserChatMessage {
 		role: 'user';
 		type: 'message';
 		text: string;
+		id: string;
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
+		featureFlags?: BuilderFeatureFlags;
 	}
 
 	export interface UserContext {

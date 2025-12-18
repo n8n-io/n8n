@@ -5,7 +5,7 @@ import {
 	getPushPriorityByStatus,
 	notifyUserAboutPullWorkFolderOutcome,
 } from './sourceControl.utils';
-import type { useToast } from '@/composables/useToast';
+import type { useToast } from '@/app/composables/useToast';
 import type { Router } from 'vue-router';
 
 import { SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';

@@ -3,7 +3,7 @@ import LogsOverviewPanel from './LogsOverviewPanel.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import { h } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
@@ -13,7 +13,7 @@ import {
 	aiManualExecutionResponse,
 	aiManualWorkflow,
 } from '../__test__/data';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
 
@@ -124,7 +124,9 @@ describe('LogsOverviewPanel', () => {
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Execute step')[0]);
 		await waitFor(() =>
-			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
+			expect(spyRun).toHaveBeenCalledWith(
+				expect.objectContaining({ destinationNode: { nodeName: 'AI Agent', mode: 'inclusive' } }),
+			),
 		);
 	});
 });

@@ -2,24 +2,24 @@
 import LogsViewExecutionSummary from '@/features/execution/logs/components/LogsViewExecutionSummary.vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import LogsViewRunData from '@/features/execution/logs/components/LogsViewRunData.vue';
-import { useResizablePanel } from '@/composables/useResizablePanel';
+import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import {
 	type LatestNodeInfo,
 	type LogEntry,
 	type LogDetailsPanelState,
 } from '@/features/execution/logs/logs.types';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeName.vue';
 import { computed, useTemplateRef } from 'vue';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	getSubtreeTotalConsumedTokens,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';

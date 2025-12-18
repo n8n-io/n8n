@@ -16,6 +16,17 @@ import { apiRequest } from '../../../transport';
 import { messageOptions, metadataProperty, modelRLC } from '../descriptions';
 import { createRequest } from './helpers/responses';
 
+const jsonSchemaExample = `{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["message"]
+}`;
+
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
 	{
@@ -74,6 +85,8 @@ const properties: INodeProperties[] = [
 				options: [
 					{
 						displayName: 'Search Context Size',
+						description:
+							'High level guidance for the amount of context window space to use for the search',
 						name: 'searchContextSize',
 						type: 'options',
 						default: 'medium',
@@ -116,105 +129,6 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'MCP Servers',
-				name: 'mcpServers',
-				type: 'fixedCollection',
-				placeholder: 'Add MCP Server',
-				typeOptions: {
-					multipleValues: true,
-					sortable: true,
-				},
-				default: { mcpServerOptions: [{ serverLabel: '' }] },
-				options: [
-					{
-						displayName: 'MCP Server',
-						name: 'mcpServerOptions',
-						values: [
-							{
-								displayName: 'Server Label',
-								name: 'serverLabel',
-								type: 'string',
-								default: '',
-								description: 'A label to identify this MCP server',
-								placeholder: 'e.g. My Database Server',
-							},
-							{
-								displayName: 'Connection Type',
-								name: 'connectionType',
-								type: 'options',
-								default: 'url',
-								options: [
-									{ name: 'URL', value: 'url' },
-									{ name: 'Connector ID', value: 'connector_id' },
-								],
-								description: 'Choose how to connect to the MCP server',
-							},
-							{
-								displayName: 'Server URL',
-								name: 'serverUrl',
-								type: 'string',
-								default: '',
-								description: 'The URL of the MCP server',
-								placeholder: 'e.g. https://api.example.com/mcp',
-								displayOptions: {
-									show: {
-										connectionType: ['url'],
-									},
-								},
-							},
-							{
-								displayName: 'Connector ID',
-								name: 'connectorId',
-								type: 'string',
-								default: '',
-								description: 'The connector ID for the MCP server',
-								placeholder: 'e.g. connector_gmail',
-								displayOptions: {
-									show: {
-										connectionType: ['connector_id'],
-									},
-								},
-							},
-							{
-								displayName: 'Authorization',
-								name: 'authorization',
-								type: 'string',
-								default: '',
-								description: 'Authorization token or credentials for the MCP server',
-							},
-							{
-								displayName: 'Headers',
-								name: 'headers',
-								type: 'json',
-								default: '{}',
-								description: 'Additional headers to send with requests to the MCP server',
-								placeholder: '{"X-Custom-Header": "value"}',
-							},
-							{
-								displayName: 'Server Description',
-								name: 'serverDescription',
-								type: 'string',
-								default: '',
-								description: 'A description of what this MCP server provides',
-								placeholder: 'e.g. Database access for user management',
-								typeOptions: {
-									rows: 2,
-								},
-							},
-							{
-								displayName: 'Allowed Tools',
-								name: 'allowedTools',
-								type: 'string',
-								default: '',
-								description:
-									'Comma-separated list of tools to allow. If not provided, all tools will be allowed.',
-								placeholder: 'e.g. tool1,tool2',
-							},
-						],
-					},
-				],
-			},
-			{
 				displayName: 'File Search',
 				name: 'fileSearch',
 				type: 'collection',
@@ -223,6 +137,8 @@ const properties: INodeProperties[] = [
 					{
 						displayName: 'Vector Store IDs',
 						name: 'vectorStoreIds',
+						description:
+							'The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard.',
 						type: 'json',
 						default: '[]',
 						required: true,
@@ -247,7 +163,7 @@ const properties: INodeProperties[] = [
 				name: 'codeInterpreter',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to allow the model to execute code in a local environment',
+				description: 'Whether to allow the model to execute code in a sandboxed environment',
 			},
 		],
 	},
@@ -362,6 +278,8 @@ const properties: INodeProperties[] = [
 				displayName: 'Prompt',
 				name: 'promptConfig',
 				type: 'fixedCollection',
+				description:
+					'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts">Learn more</a>.',
 				default: { promptOptions: [{ promptId: '' }] },
 				options: [
 					{
@@ -483,10 +401,11 @@ const properties: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								default: 'text',
+								default: '',
 								options: [
 									{ name: 'Text', value: 'text' },
-									{ name: 'JSON Schema(recommended)', value: 'json_schema' },
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+									{ name: 'JSON Schema (recommended)', value: 'json_schema' },
 									{ name: 'JSON Object', value: 'json_object' },
 								],
 							},
@@ -505,7 +424,7 @@ const properties: INodeProperties[] = [
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
-								default: '',
+								default: 'my_schema',
 								description:
 									'The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.',
 								displayOptions: {
@@ -515,10 +434,22 @@ const properties: INodeProperties[] = [
 								},
 							},
 							{
+								displayName:
+									'All properties in the schema must be set to "required", when using "strict" mode.',
+								name: 'requiredNotice',
+								type: 'notice',
+								default: '',
+								displayOptions: {
+									show: {
+										strict: [true],
+									},
+								},
+							},
+							{
 								displayName: 'Schema',
 								name: 'schema',
 								type: 'json',
-								default: '',
+								default: jsonSchemaExample,
 								description: 'The schema of the response format',
 								displayOptions: {
 									show: {
@@ -543,7 +474,8 @@ const properties: INodeProperties[] = [
 								name: 'strict',
 								type: 'boolean',
 								default: false,
-								description: 'Whether to enforce the response format strictly',
+								description:
+									'Whether to require that the AI will always generate responses that match the provided JSON Schema',
 								displayOptions: {
 									show: {
 										type: ['json_schema'],
@@ -706,7 +638,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const hasFunctionCall = () => toolCalls.some((item) => item.type === 'function_call');
 
-	const answeredToolCalls = new Set<string>();
 	let currentIteration = 1;
 	// make sure there's actually a function call to answer
 	while (toolCalls.length && hasFunctionCall()) {
@@ -714,14 +645,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
+		// if there's conversation, we don't need to include function_call or reasoning items in the request
+		// if we include them, OpenAI will throw "Duplicate item with id" error
+		if (!body.conversation) {
+			body.input.push.apply(body.input, toolCalls);
+		}
+
 		for (const item of toolCalls) {
-			if (item.type === 'function_call' && answeredToolCalls.has(item.call_id)) {
-				continue;
-			}
-
-			// include function_call or reasoning items in the request
-			body.input.push(item);
-
 			if (item.type === 'function_call') {
 				const functionName = item.name;
 				const functionArgs = item.arguments;
@@ -745,8 +675,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					call_id: callId,
 					output: functionResponse,
 				});
-
-				answeredToolCalls.add(callId);
 			}
 		}
 

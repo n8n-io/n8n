@@ -1,5 +1,5 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import * as ndvStore from '@/features/ndv/ndv.store';
+import * as ndvStore from '@/features/ndv/shared/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
@@ -12,12 +12,12 @@ import {
 	stripExcessParens,
 	isAllowedInDotNotation,
 } from './utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-vi.mock('@/composables/useWorkflowHelpers', () => ({
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		getCurrentWorkflow: vi.fn(),
 	}),

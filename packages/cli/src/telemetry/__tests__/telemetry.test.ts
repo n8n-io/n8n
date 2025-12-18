@@ -47,7 +47,15 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock(), globalConfig);
+		telemetry = new Telemetry(
+			mock(),
+			postHog,
+			mock(),
+			instanceSettings,
+			mock(),
+			globalConfig,
+			mock(),
+		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});
@@ -373,6 +381,64 @@ describe('Telemetry', () => {
 					context: {
 						ip: '0.0.0.0', // RudderStack anonymized IP
 					},
+				}),
+			);
+		});
+
+		test('should include instance_id, version_cli, and user_id in track properties', () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234', custom_prop: 'value' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					properties: expect.objectContaining({
+						instance_id: instanceId,
+						user_id: '1234',
+						version_cli: expect.any(String),
+						custom_prop: 'value',
+					}),
+				}),
+			);
+		});
+
+		test('should format userId with user_id when provided', () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '5678' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: `${instanceId}#5678`,
+				}),
+			);
+		});
+
+		test('should format userId without user_id when not provided', () => {
+			const eventName = 'Test Event';
+
+			telemetry.track(eventName, {});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: instanceId,
+				}),
+			);
+		});
+
+		test('should set user_id to undefined when not provided in properties', () => {
+			const eventName = 'Test Event';
+
+			telemetry.track(eventName, {});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					properties: expect.objectContaining({
+						user_id: undefined,
+					}),
 				}),
 			);
 		});

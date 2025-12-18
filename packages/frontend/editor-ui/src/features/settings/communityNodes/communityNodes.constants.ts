@@ -1,4 +1,4 @@
-import { DOCS_DOMAIN } from '@/constants';
+import { DOCS_DOMAIN } from '@/app/constants';
 
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';

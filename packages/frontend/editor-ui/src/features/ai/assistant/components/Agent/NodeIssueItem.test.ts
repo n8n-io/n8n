@@ -7,9 +7,9 @@ import NodeIssueItem from './NodeIssueItem.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-vi.mock('@/components/NodeIcon.vue', () => ({
+vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
 		template: '<span />',
 	},
@@ -62,5 +62,24 @@ describe('NodeIssueItem', () => {
 
 		await fireEvent.click(getByLabelText('Edit Linear node'));
 		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Linear', 'other');
+	});
+
+	it('emits click event when item is clicked', async () => {
+		const nodeType = {
+			name: 'n8n-nodes-base.linear',
+			displayName: 'Linear',
+		} as INodeTypeDescription;
+		const { getByLabelText, emitted } = renderComponent({
+			pinia,
+			props: {
+				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
+				getNodeType: vi.fn(() => nodeType),
+				formatIssueMessage,
+			},
+		});
+
+		await fireEvent.click(getByLabelText('Edit Linear node'));
+
+		expect(emitted().click).toHaveLength(1);
 	});
 });

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import Card from '@/components/CollectionWorkflowCard.vue';
-import NodeList from '@/components/NodeList.vue';
+import Card from '@/app/components/CollectionWorkflowCard.vue';
+import NodeList from '@/app/components/NodeList.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ITemplatesCollection } from '@n8n/rest-api-client/api/templates';
 

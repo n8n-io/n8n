@@ -137,7 +137,7 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async pruneDependencies() {
-		await Container.get(CommunityPackagesService).executeNpmCommand('npm prune');
+		await Container.get(CommunityPackagesService).executeNpmCommand(['prune']);
 	}
 
 	async deleteCommunityNode(node: InstalledNodes) {

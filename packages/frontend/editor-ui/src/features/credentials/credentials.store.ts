@@ -9,14 +9,14 @@ import type {
 } from './credentials.types';
 import * as credentialsApi from './credentials.api';
 import * as credentialsEeApi from './credentials.ee.api';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { i18n } from '@n8n/i18n';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
+import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
-import { isEmpty, isPresent } from '@/utils/typesUtils';
+import { isEmpty, isPresent } from '@/app/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -27,10 +27,10 @@ import type {
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
-import * as aiApi from '@/api/ai';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -267,6 +267,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		projectId?: string,
 		includeScopes = true,
 		onlySharedWithMe = false,
+		includeGlobal = true,
 	): Promise<ICredentialsResponse[]> => {
 		const filter = {
 			projectId,
@@ -277,6 +278,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			isEmpty(filter) ? undefined : filter,
 			includeScopes,
 			onlySharedWithMe,
+			includeGlobal,
 		);
 		setCredentials(credentials);
 		return credentials;
@@ -326,6 +328,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			data: data.data ?? {},
 			projectId,
 			uiContext,
+			isGlobal: data.isGlobal,
+			isResolvable: data.isResolvable,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -400,6 +404,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const setCredentialSharedWith = async (payload: {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
+		isGlobal?: boolean;
 	}): Promise<ICredentialsResponse> => {
 		if (useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			await credentialsEeApi.setCredentialSharedWith(

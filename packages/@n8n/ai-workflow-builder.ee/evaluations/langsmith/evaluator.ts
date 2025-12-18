@@ -5,7 +5,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { evaluateWorkflow } from '../chains/workflow-evaluator.js';
-import { programmaticEvaluation } from '../programmatic/programmatic.js';
+import { programmaticEvaluation } from '../programmatic/programmatic-evaluation';
 import type { EvaluationInput, CategoryScore } from '../types/evaluation.js';
 import {
 	isSimpleWorkflow,
@@ -64,7 +64,7 @@ function extractUsageMetadata(usage: unknown): Partial<UsageMetadata> {
 	const usageFieldMap: Record<string, keyof UsageMetadata> = {
 		input_tokens: 'input_tokens',
 		output_tokens: 'output_tokens',
-		cache_create_input_tokens: 'cache_creation_input_tokens',
+		cache_creation_input_tokens: 'cache_creation_input_tokens',
 		cache_read_input_tokens: 'cache_read_input_tokens',
 	};
 
@@ -97,7 +97,8 @@ export function createLangsmithEvaluator(
 	llm: BaseChatModel,
 	parsedNodeTypes: INodeTypeDescription[],
 ): (rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]> {
-	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
+	// eslint-disable-next-line complexity
+	return async (rootRun: Run, example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		// Validate and extract outputs
 		const validation = validateRunOutputs(rootRun.outputs);
 		if (validation.error) {
@@ -110,10 +111,38 @@ export function createLangsmithEvaluator(
 			];
 		}
 
+		let referenceWorkflow: SimpleWorkflow | SimpleWorkflow[] | undefined = undefined;
+		let referenceWorkflows: SimpleWorkflow[] | undefined = undefined;
+		let preset: 'strict' | 'standard' | 'lenient' | undefined = undefined;
+		// Extract reference workflow and preset from example outputs if available
+		if (example?.outputs) {
+			const exampleOutputs = example.outputs as Record<string, unknown>;
+			if (Array.isArray(exampleOutputs.workflowJSON)) {
+				referenceWorkflows = [];
+				for (const workflow of exampleOutputs.workflowJSON) {
+					if (isSimpleWorkflow(workflow)) {
+						referenceWorkflows.push(workflow);
+					}
+				}
+			}
+			if (isSimpleWorkflow(exampleOutputs.workflowJSON)) {
+				referenceWorkflow = exampleOutputs.workflowJSON;
+			}
+			// Extract preset if available
+			if (
+				typeof exampleOutputs.preset === 'string' &&
+				['strict', 'standard', 'lenient'].includes(exampleOutputs.preset)
+			) {
+				preset = exampleOutputs.preset as 'strict' | 'standard' | 'lenient';
+			}
+		}
+
 		const evaluationInput: EvaluationInput = {
 			userPrompt: validation.prompt!,
 			generatedWorkflow: validation.workflow!,
-			referenceWorkflow: validation.referenceWorkflow,
+			referenceWorkflow,
+			referenceWorkflows,
+			preset,
 		};
 
 		try {
@@ -183,6 +212,37 @@ export function createLangsmithEvaluator(
 				}
 			}
 
+			// Add total prompt tokens for clarity (sum of all input token types)
+			const totalPromptTokens =
+				(validation.usage?.input_tokens ?? 0) +
+				(validation.usage?.cache_creation_input_tokens ?? 0) +
+				(validation.usage?.cache_read_input_tokens ?? 0);
+
+			if (totalPromptTokens > 0) {
+				results.push({
+					key: 'totalPromptTokens',
+					score: totalPromptTokens / 1000,
+					comment: 'Total prompt size (fresh + cached + cache creation)',
+				});
+			}
+
+			// Calculate and add cache hit rate if cache data is available
+			if (validation.usage?.cache_read_input_tokens !== undefined) {
+				const inputTokens = validation.usage.input_tokens ?? 0;
+				const cacheCreationTokens = validation.usage.cache_creation_input_tokens ?? 0;
+				const cacheReadTokens = validation.usage.cache_read_input_tokens ?? 0;
+
+				const totalInputTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+				const cacheHitRate = totalInputTokens > 0 ? cacheReadTokens / totalInputTokens : 0;
+
+				// Store as percentage (0-1 scale)
+				results.push({
+					key: 'cacheHitRate',
+					score: cacheHitRate,
+					comment: `${(cacheHitRate * 100).toFixed(1)}% of input tokens served from cache`,
+				});
+			}
+
 			// Add structural similarity if applicable
 			if (validation.referenceWorkflow && evaluationResult.structuralSimilarity.applicable) {
 				results.push(
@@ -207,6 +267,11 @@ export function createLangsmithEvaluator(
 			results.push(categoryToResult('programmatic.agentPrompt', programmaticResult.agentPrompt));
 			results.push(categoryToResult('programmatic.tools', programmaticResult.tools));
 			results.push(categoryToResult('programmatic.fromAi', programmaticResult.fromAi));
+
+			// Add workflow similarity if available
+			if (programmaticResult.similarity !== null && programmaticResult.similarity !== undefined) {
+				results.push(categoryToResult('programmatic.similarity', programmaticResult.similarity));
+			}
 
 			return results;
 		} catch (error) {

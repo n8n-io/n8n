@@ -9,6 +9,14 @@ export class WorkflowSharingModal extends BasePage {
 		await this.getModal().waitFor({ state: 'visible', timeout: 5000 });
 	}
 
+	getUsersSelect() {
+		return this.page.getByTestId('project-sharing-select').filter({ visible: true });
+	}
+
+	getVisibleDropdown() {
+		return this.page.locator('.el-select-dropdown:visible');
+	}
+
 	async addUser(email: string) {
 		await this.clickByTestId('project-sharing-select');
 		await this.page
@@ -19,6 +27,7 @@ export class WorkflowSharingModal extends BasePage {
 
 	async save() {
 		await this.clickByTestId('workflow-sharing-modal-save-button');
+		await this.getModal().waitFor({ state: 'hidden' });
 	}
 
 	async close() {

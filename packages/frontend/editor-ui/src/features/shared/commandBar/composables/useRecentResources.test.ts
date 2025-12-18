@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useRecentResources } from './useRecentResources';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/constants';
+import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/app/constants';
 
 const recentWorkflowsRef = ref<Array<{ id: string; openedAt: number }>>([]);
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -28,7 +28,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const mockSetNodeActive = vi.fn();
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		setNodeActive: mockSetNodeActive,
 	}),
@@ -308,7 +308,7 @@ describe('useRecentResources', () => {
 			expect(nodeItems).toHaveLength(2);
 			// node-2 is most recent since it was tracked last
 			expect(nodeItems[0].id).toBe('recent-node-workflow-1-node-2');
-			expect(nodeItems[0].title).toBe('Test Node 2');
+			expect(nodeItems[0].title).toBe('generic.openResource');
 			expect(nodeItems[1].id).toBe('recent-node-workflow-1-node-1');
 			expect(nodeItems[0].section).toBe('commandBar.sections.recent');
 		});
@@ -374,9 +374,9 @@ describe('useRecentResources', () => {
 
 			expect(workflowItems).toHaveLength(2);
 			expect(workflowItems[0].id).toBe('recent-workflow-workflow-2');
-			expect(workflowItems[0].title).toBe('Workflow 2');
+			expect(workflowItems[0].title).toBe('generic.openResource');
 			expect(workflowItems[1].id).toBe('recent-workflow-workflow-1');
-			expect(workflowItems[1].title).toBe('Workflow 1');
+			expect(workflowItems[1].title).toBe('generic.openResource');
 		});
 
 		it('should limit workflow items to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3)', () => {
@@ -437,7 +437,7 @@ describe('useRecentResources', () => {
 			const items = commands.value;
 			const workflowItem = items.find((item) => item.id === 'recent-workflow-workflow-unnamed');
 
-			expect(workflowItem?.title).toBe('commandBar.workflows.unnamed');
+			expect(workflowItem?.title).toBe('generic.openResource');
 		});
 
 		it('should navigate using window.location.href when workflow item handler is executed', () => {

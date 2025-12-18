@@ -7,7 +7,7 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '../../../canvas.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);

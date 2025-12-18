@@ -1,15 +1,15 @@
 import dagre from '@dagrejs/dagre';
 
 import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
-import { STICKY_NODE_TYPE } from '@/constants';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	CanvasNodeRenderType,
 	type BoundingBox,
 	type CanvasConnection,
 	type CanvasNodeData,
 } from '../canvas.types';
-import { isPresent } from '@/utils/typesUtils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/utils/nodeViewUtils';
+import { isPresent } from '@/app/utils/typesUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import type { ComputedRef } from 'vue';
 
 export type CanvasLayoutTarget = 'selection' | 'all';

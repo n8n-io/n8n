@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CONFIRM_PASSWORD_MODAL_KEY } from '@/constants';
+import { CONFIRM_PASSWORD_MODAL_KEY } from '@/app/constants';
 import { confirmPasswordEventBus } from '../auth.eventBus';
 import { STORES } from '@n8n/stores';
 

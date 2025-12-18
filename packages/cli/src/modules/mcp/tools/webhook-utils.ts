@@ -1,11 +1,18 @@
 import type { User } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import {
+	WEBHOOK_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	type INode,
+} from 'n8n-workflow';
 
 import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
+import type { MCPTriggersMap } from '../mcp.types';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -39,6 +46,111 @@ export const buildWebhookPath = (segment: string, pathParam: string) => {
 	return `${basePath}${pathParam}`;
 };
 
+export const getTriggerDetails = async (
+	user: User,
+	supportedTriggers: INode[],
+	baseUrl: string,
+	credentialsService: CredentialsService,
+	endpoints: WebhookEndpoints,
+): Promise<string> => {
+	if (supportedTriggers.length === 0) {
+		return 'This workflow does not have a trigger node that can be executed via MCP.';
+	}
+
+	// Organize triggers by their node type
+	const triggersByType: MCPTriggersMap = {
+		[SCHEDULE_TRIGGER_NODE_TYPE]: [],
+		[WEBHOOK_NODE_TYPE]: [],
+		[FORM_TRIGGER_NODE_TYPE]: [],
+		[CHAT_TRIGGER_NODE_TYPE]: [],
+	};
+
+	// Group triggers by type
+	for (const trigger of supportedTriggers) {
+		if (trigger.type in triggersByType) {
+			triggersByType[trigger.type as keyof MCPTriggersMap].push(trigger);
+		}
+	}
+
+	// Build response based on trigger types present
+	const responses: string[] = ['This workflow has the following trigger(s):\n'];
+
+	// Handle webhook triggers
+	if (triggersByType[WEBHOOK_NODE_TYPE].length > 0) {
+		const webhookDetails = await getWebhookDetails(
+			user,
+			triggersByType[WEBHOOK_NODE_TYPE],
+			baseUrl,
+			credentialsService,
+			endpoints,
+		);
+		responses.push(webhookDetails);
+	}
+
+	// Handle chat triggers
+	if (triggersByType[CHAT_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(getChatTriggerDetails(triggersByType[CHAT_TRIGGER_NODE_TYPE]));
+	}
+
+	// Handle schedule triggers
+	if (triggersByType[SCHEDULE_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(getScheduleTriggerDetails(triggersByType[SCHEDULE_TRIGGER_NODE_TYPE]));
+	}
+
+	// Handle form triggers
+	if (triggersByType[FORM_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(getFormTriggerDetails(triggersByType[FORM_TRIGGER_NODE_TYPE]));
+	}
+
+	return responses.join('\n\n');
+};
+
+const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
+	const header = 'Schedule trigger(s):\n\n';
+	const footer =
+		'\n\nScheduled workflows can be executed directly through MCP clients and do not require external inputs.';
+	const triggers = scheduleTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
+};
+
+const getFormTriggerDetails = (formTriggers: INode[]): string => {
+	const header = 'Form trigger(s):\n\n';
+	const footer =
+		'\n\nUse the following input format when directly executing this workflow using any of the form triggers: { inputs { formData: Array<{ FIELD_NAME: VALUE }> } }';
+	const triggers = formTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				\t - Form fields: ${JSON.stringify(node.parameters.formFields ?? 'N/A')}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
+};
+
+const getChatTriggerDetails = (chatTriggers: INode[]): string => {
+	const header = 'Chat trigger(s):\n\n';
+	const footer =
+		'\n\nUse the following input format when directly executing this workflow using any of the chat triggers: { inputs { chatInput: <CHAT_MESSAGE_HERE> } }';
+	const triggers = chatTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
+};
+
 /**
  * Creates a detailed textual description of the webhook triggers in a workflow, including URLs, methods, authentication, and response modes.
  * This helps MCP clients understand how craft a request to trigger the workflow.
@@ -51,10 +163,6 @@ export const getWebhookDetails = async (
 	credentialsService: CredentialsService,
 	endpoints: WebhookEndpoints,
 ): Promise<string> => {
-	if (webhookNodes.length === 0) {
-		return 'This workflow does not have a trigger node that can be executed via MCP.';
-	}
-
 	const nodeDetails = await Promise.all(
 		webhookNodes.map(
 			async (node) =>
@@ -88,7 +196,7 @@ const collectWebhookNodeDetails = async (
 };
 
 const formatWebhookDetails = (details: WebhookNodeDetails[]): string => {
-	const header = 'This workflow is triggered by the following webhook(s):\n\n';
+	const header = 'Webhook trigger(s):\n\n';
 	const triggers = details
 		.map((detail, index) => formatTriggerDescription(detail, index))
 		.join('\n\n');

@@ -36,6 +36,15 @@ const maintainabilityScoreSchema = categoryScoreSchema.extend({
 	modularity: z.number().min(0).max(1).describe('Score for reusable and modular components'),
 });
 
+const bestPracticesScoreSchema = categoryScoreSchema.extend({
+	techniques: z
+		.array(z.string())
+		.describe(
+			'Workflow techniques identified for this evaluation (e.g., chatbot, content-generation)',
+		)
+		.optional(),
+});
+
 // Main evaluation result schema
 export const evaluationResultSchema = z.object({
 	overallScore: z
@@ -51,6 +60,7 @@ export const evaluationResultSchema = z.object({
 	efficiency: efficiencyScoreSchema,
 	dataFlow: categoryScoreSchema,
 	maintainability: maintainabilityScoreSchema,
+	bestPractices: bestPracticesScoreSchema,
 	summary: z.string().describe('2-3 sentences summarizing main strengths and weaknesses'),
 	criticalIssues: z
 		.array(z.string())
@@ -63,6 +73,7 @@ export type Violation = z.infer<typeof violationSchema>;
 export type CategoryScore = z.infer<typeof categoryScoreSchema>;
 export type EfficiencyScore = z.infer<typeof efficiencyScoreSchema>;
 export type MaintainabilityScore = z.infer<typeof maintainabilityScoreSchema>;
+export type BestPracticesScore = z.infer<typeof bestPracticesScoreSchema>;
 export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
 
 // Test case schema for evaluation
@@ -71,6 +82,7 @@ export const testCaseSchema = z.object({
 	name: z.string(),
 	prompt: z.string(),
 	referenceWorkflow: z.custom<SimpleWorkflow>().optional(),
+	referenceWorkflows: z.array(z.custom<SimpleWorkflow>()).optional(),
 });
 
 export type TestCase = z.infer<typeof testCaseSchema>;
@@ -80,6 +92,8 @@ export const evaluationInputSchema = z.object({
 	userPrompt: z.string(),
 	generatedWorkflow: z.custom<SimpleWorkflow>(),
 	referenceWorkflow: z.custom<SimpleWorkflow>().optional(),
+	referenceWorkflows: z.array(z.custom<SimpleWorkflow>()).optional(),
+	preset: z.enum(['strict', 'standard', 'lenient']).optional(),
 });
 
 export type EvaluationInput = z.infer<typeof evaluationInputSchema>;

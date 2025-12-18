@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import CopyInput from '@/components/CopyInput.vue';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useLoadingService } from '@/composables/useLoadingService';
-import { useMessage } from '@/composables/useMessage';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM } from '@/constants';
+import CopyInput from '@/app/components/CopyInput.vue';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLoadingService } from '@/app/composables/useLoadingService';
+import { useMessage } from '@/app/composables/useMessage';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { SshKeyTypes, SourceControlPreferences } from '../sourceControl.types';
-import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { TupleToUnion } from '@/app/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';

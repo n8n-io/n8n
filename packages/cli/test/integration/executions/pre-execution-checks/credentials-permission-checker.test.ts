@@ -35,6 +35,7 @@ const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<IWo
 		connections: {},
 		nodeTypes: mockNodeTypes,
 		nodes,
+		versionId: uuid(),
 	};
 
 	const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
@@ -96,7 +97,7 @@ describe('check()', () => {
 			{
 				id: uuid(),
 				name: 'Start',
-				type: 'n8n-nodes-base.start',
+				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 				parameters: {},
 				position: [0, 0],

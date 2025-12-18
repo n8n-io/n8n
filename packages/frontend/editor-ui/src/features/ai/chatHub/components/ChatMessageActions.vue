@@ -1,40 +1,50 @@
 <script setup lang="ts">
-import type { ChatHubMessageType, ChatMessageId } from '@n8n/api-types';
-import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { VIEWS } from '@/app/constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
+import type { ChatMessageId } from '@n8n/api-types';
+import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 const i18n = useI18n();
+const router = useRouter();
 
-const { type, justCopied, messageId, alternatives, isSpeaking, isSpeechSynthesisAvailable } =
-	defineProps<{
-		type: ChatHubMessageType;
-		justCopied: boolean;
-		messageId: ChatMessageId;
-		alternatives: ChatMessageId[];
-		isSpeechSynthesisAvailable: boolean;
-		isSpeaking: boolean;
-	}>();
+const { message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
+	message: ChatMessage;
+	alternatives: ChatMessageId[];
+	isSpeechSynthesisAvailable: boolean;
+	isSpeaking: boolean;
+}>();
 
 const emit = defineEmits<{
-	copy: [];
 	edit: [];
 	regenerate: [];
 	switchAlternative: [messageId: ChatMessageId];
 	readAloud: [];
 }>();
 
-const copyTooltip = computed(() => {
-	return justCopied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy');
-});
-
 const currentAlternativeIndex = computed(() => {
-	return alternatives.findIndex((id) => id === messageId);
+	return alternatives.findIndex((id) => id === message.id);
 });
 
-function handleCopy() {
-	emit('copy');
-}
+const showExecutionUrl = computed(() => {
+	return hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } });
+});
+
+const executionUrl = computed(() => {
+	if (!showExecutionUrl.value) return undefined;
+
+	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+		return router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { name: message.workflowId, executionId: message.executionId },
+		}).href;
+	}
+	return undefined;
+});
 
 function handleEdit() {
 	emit('edit');
@@ -51,18 +61,9 @@ function handleReadAloud() {
 
 <template>
 	<div :class="$style.actions">
-		<N8nTooltip placement="bottom" :show-after="300">
-			<N8nIconButton
-				:icon="justCopied ? 'check' : 'copy'"
-				type="tertiary"
-				size="medium"
-				text
-				@click="handleCopy"
-			/>
-			<template #content>{{ copyTooltip }}</template>
-		</N8nTooltip>
+		<CopyButton :content="message.content" />
 		<N8nTooltip
-			v-if="isSpeechSynthesisAvailable && type === 'ai'"
+			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"
 			:show-after="300"
 		>
@@ -73,13 +74,17 @@ function handleReadAloud() {
 				text
 				@click="handleReadAloud"
 			/>
-			<template #content>{{ isSpeaking ? 'Stop reading' : 'Read aloud' }}</template>
+			<template #content>{{
+				isSpeaking
+					? i18n.baseText('chatHub.message.actions.stopReading')
+					: i18n.baseText('chatHub.message.actions.readAloud')
+			}}</template>
 		</N8nTooltip>
-		<N8nTooltip placement="bottom" :show-after="300">
+		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
-			<template #content>Edit</template>
+			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="type === 'ai'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="refresh-cw"
 				type="tertiary"
@@ -87,7 +92,16 @@ function handleReadAloud() {
 				text
 				@click="handleRegenerate"
 			/>
-			<template #content>Regenerate</template>
+			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
+		</N8nTooltip>
+		<N8nTooltip v-if="executionUrl" placement="bottom" :show-after="300">
+			<N8nIconButton icon="info" type="tertiary" size="medium" text />
+			<template #content>
+				{{ i18n.baseText('chatHub.message.actions.executionId') }}:
+				<N8nLink :to="executionUrl" :new-window="true">
+					{{ message.executionId }}
+				</N8nLink>
+			</template>
 		</N8nTooltip>
 		<template v-if="alternatives.length > 1">
 			<N8nIconButton

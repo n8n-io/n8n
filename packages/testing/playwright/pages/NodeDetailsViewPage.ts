@@ -42,8 +42,12 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
 	}
 
+	getCredentialSelectInput() {
+		return this.getNodeCredentialsSelect().locator('input');
+	}
+
 	async clickBackToCanvasButton() {
-		await this.clickByTestId('back-to-canvas');
+		await this.clickByTestId('ndv-close-button');
 	}
 
 	getParameterByLabel(labelName: string) {
@@ -222,7 +226,8 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getVisiblePoppers() {
-		return this.page.locator('.el-popper:visible');
+		// Match Reka UI popovers (data-side is unique to Reka UI positioned content)
+		return this.page.locator('[data-state="open"][data-side]');
 	}
 
 	async clearExpressionEditor(parameterName?: string) {
@@ -280,7 +285,8 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getVisiblePopper() {
-		return this.page.locator('.el-popper:visible');
+		// Match both Element+ poppers (.el-popper:visible) and Reka UI poppers ([data-state="open"])
+		return this.page.locator('.el-popper:visible, [data-state="open"][role="dialog"]');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
@@ -622,6 +628,12 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.fill(value);
 	}
 
+	/** Waits for parameter input debounce (100ms) to flush. */
+	async waitForDebounce(): Promise<void> {
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(150);
+	}
+
 	async clickGetBackToCanvas(): Promise<void> {
 		await this.clickBackToCanvasButton();
 	}
@@ -753,7 +765,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+		return this.page.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {

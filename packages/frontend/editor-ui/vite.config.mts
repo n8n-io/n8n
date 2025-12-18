@@ -71,7 +71,7 @@ const alias = [
 	{
 		// For sanitize-html
 		find: 'source-map-js',
-		replacement: resolve(__dirname, 'src/source-map-js-shim'),
+		replacement: resolve(__dirname, 'vite/source-map-js-shim'),
 	},
 ];
 
@@ -125,11 +125,13 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
-	legacy({
-		modernTargets: browsers,
-		modernPolyfills: true,
-		renderLegacyChunks: false,
-	}),
+	...(release
+		? [
+				legacy({
+					modernTargets: browsers,
+				}),
+			]
+		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
@@ -202,7 +204,7 @@ export default mergeConfig(
 				scss: {
 					additionalData: [
 						'',
-						'@use "@/n8n-theme-variables.scss" as *;',
+						'@use "@/app/css/_variables.scss" as *;',
 						'@use "@n8n/design-system/css/mixins" as mixins;',
 					].join('\n'),
 				},

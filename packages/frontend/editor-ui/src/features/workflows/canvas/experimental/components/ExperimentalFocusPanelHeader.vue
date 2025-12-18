@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { type INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { type INodeProperties } from 'n8n-workflow';
 import { computed } from 'vue';

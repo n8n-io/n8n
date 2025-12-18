@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import Modal from '@/components/Modal.vue';
-import { useUIStore } from '@/stores/ui.store';
+import Modal from '@/app/components/Modal.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
@@ -47,15 +47,10 @@ const closeModal = () => {
 					<br />
 					<I18nT
 						v-if="props.data.isWorkflowActivated"
-						keypath="workflowHistory.action.restore.modal.text"
+						keypath="workflowHistory.action.restore.modal.publishedNote"
 						tag="span"
 						scope="global"
 					>
-						<template #buttonText>
-							&ldquo;{{
-								i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore')
-							}}&rdquo;
-						</template>
 					</I18nT>
 				</N8nText>
 			</div>

@@ -2,14 +2,14 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 import AuthView from './AuthView.vue';
 

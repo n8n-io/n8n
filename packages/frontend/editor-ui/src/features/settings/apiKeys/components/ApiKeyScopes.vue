@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue';
 
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
 import { ElCheckbox, ElOption, ElOptionGroup, ElSelect } from 'element-plus';

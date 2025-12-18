@@ -14,30 +14,26 @@ import {
 import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
-import { usePostHog } from '@/stores/posthog.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from '@/stores/posthog.store.test';
-import {
-	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
-	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
-	DEFAULT_NEW_WORKFLOW_NAME,
-} from '@/constants';
+import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { reactive } from 'vue';
-import * as chatAPI from '@/api/ai';
-import * as telemetryModule from '@/composables/useTelemetry';
+import * as chatAPI from '@/features/ai/assistant/assistant.api';
+import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
-} from '@/composables/useWorkflowState';
-import type { Telemetry } from '@/plugins/telemetry';
+} from '@/app/composables/useWorkflowState';
+import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
@@ -51,15 +47,15 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 // Mock useToast
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 	}),
 }));
 
 // Mock to inject workflowState
-vi.mock('@/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowState');
+vi.mock('@/app/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/app/composables/useWorkflowState');
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(),
@@ -434,6 +430,20 @@ describe('AI Builder store', () => {
 		builderStore.resetBuilderChat();
 		expect(builderStore.chatMessages).toEqual([]);
 		expect(builderStore.builderThinkingMessage).toBeUndefined();
+
+		// Verify last_user_message_id is reset (tracked via trackWorkflowBuilderJourney)
+		track.mockClear();
+		builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
+		expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+			workflow_id: 'test-workflow-id',
+			session_id: expect.any(String),
+			event_type: 'user_clicked_todo',
+		});
+		// Should NOT have last_user_message_id after reset
+		expect(track).not.toHaveBeenCalledWith(
+			'Workflow builder journey',
+			expect.objectContaining({ last_user_message_id: expect.any(String) }),
+		);
 	});
 
 	describe('isAIBuilderEnabled computed property', () => {
@@ -442,70 +452,16 @@ describe('AI Builder store', () => {
 			const settingsStore = useSettingsStore();
 
 			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
 
 			expect(builderStore.isAIBuilderEnabled).toBe(false);
 		});
 
-		it('should return true when license has aiBuilder and release experiment is set to variant', () => {
+		it('should return true when license has aiBuilder feature', () => {
 			const builderStore = useBuilderStore();
 			const settingsStore = useSettingsStore();
 
 			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control; // deprecated should be control
-			});
-			expect(builderStore.isAIBuilderEnabled).toBe(true);
-		});
 
-		it('should return true when license has aiBuilder and release experiment is control but deprecated experiment is variant', () => {
-			const builderStore = useBuilderStore();
-			const settingsStore = useSettingsStore();
-
-			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-			});
-			expect(builderStore.isAIBuilderEnabled).toBe(true);
-		});
-
-		it('should return false when license has aiBuilder but both experiments are set to control', () => {
-			const builderStore = useBuilderStore();
-			const settingsStore = useSettingsStore();
-
-			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
-			expect(builderStore.isAIBuilderEnabled).toBe(false);
-		});
-
-		it('should prioritize release experiment over deprecated experiment when license has aiBuilder', () => {
-			const builderStore = useBuilderStore();
-			const settingsStore = useSettingsStore();
-
-			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				// Even if deprecated is control, release variant should win
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
 			expect(builderStore.isAIBuilderEnabled).toBe(true);
 		});
 	});
@@ -664,7 +620,7 @@ describe('AI Builder store', () => {
 			expect(builderStore.streamingAbortController).toBeInstanceOf(AbortController);
 		});
 
-		it('should call abort on existing controller when stopStreaming is called', () => {
+		it('should call abort on existing controller when abortStreaming is called', () => {
 			const builderStore = useBuilderStore();
 
 			// First start a request to create an abort controller
@@ -678,8 +634,8 @@ describe('AI Builder store', () => {
 			// Spy on the abort method
 			const abortSpy = vi.spyOn(controller!, 'abort');
 
-			// Call stopStreaming
-			builderStore.stopStreaming();
+			// Call abortStreaming
+			builderStore.abortStreaming();
 
 			// Verify abort was called
 			expect(abortSpy).toHaveBeenCalled();
@@ -705,9 +661,9 @@ describe('AI Builder store', () => {
 			expect(builderStore.chatMessages[0].role).toBe('user');
 			expect(builderStore.chatMessages[1].role).toBe('assistant');
 			expect(builderStore.chatMessages[1].type).toBe('text');
-			expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
-				'aiAssistant.builder.streamAbortedMessage',
-			);
+			const abortedMessage = builderStore.chatMessages[1] as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage.content).toBe('aiAssistant.builder.streamAbortedMessage');
+			expect(abortedMessage.aborted).toBe(true);
 
 			// Verify streaming state was reset
 			expect(builderStore.streaming).toBe(false);
@@ -756,7 +712,7 @@ describe('AI Builder store', () => {
 			expect(builderStore.streamingAbortController).toBe(firstController);
 
 			// Now properly stop streaming first
-			builderStore.stopStreaming();
+			builderStore.abortStreaming();
 
 			// Verify abort was called and controller was cleared
 			expect(abortSpy).toHaveBeenCalled();
@@ -787,8 +743,6 @@ describe('AI Builder store', () => {
 			// Verify the API was called with correct parameters
 			expect(apiSpy).toHaveBeenCalled();
 			const callArgs = apiSpy.mock.calls[0];
-			expect(callArgs).toHaveLength(7); // Should have 7 arguments
-
 			const signal = callArgs[5]; // The 6th argument is the abort signal
 			expect(signal).toBeDefined();
 			expect(signal).toBeInstanceOf(AbortSignal);
@@ -834,9 +788,9 @@ describe('AI Builder store', () => {
 			const assistantMessages = builderStore.chatMessages.filter((msg) => msg.role === 'assistant');
 			expect(assistantMessages).toHaveLength(1);
 			expect(assistantMessages[0].type).toBe('text');
-			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe(
-				'aiAssistant.builder.streamAbortedMessage',
-			);
+			const abortedMessage = assistantMessages[0] as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage.content).toBe('aiAssistant.builder.streamAbortedMessage');
+			expect(abortedMessage.aborted).toBe(true);
 		});
 	});
 
@@ -911,7 +865,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -948,7 +902,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -982,7 +936,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -1015,7 +969,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -1049,7 +1003,7 @@ describe('AI Builder store', () => {
 					{
 						id: 'node1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [250, 300],
 						parameters: {},
 					},
@@ -1229,89 +1183,319 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	describe('useDeprecatedCredentials logic in sendChatMessage', () => {
-		it('should set useDeprecatedCredentials to true when release experiment is control and deprecated experiment is variant', () => {
+	describe('applyWorkflowUpdate with pinned data preservation', () => {
+		it('should preserve pinned data for nodes with matching names', () => {
 			const builderStore = useBuilderStore();
 
-			// Mock posthog to return control for release and variant for deprecated
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
+			// Set up initial workflow with nodes that have pinned data
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			};
+			const node2 = {
+				id: 'node2-id',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				position: [0, 0] as [number, number],
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1, node2];
+			workflowsStore.workflow.nodes = [node1, node2];
+
+			// Mock pinned data for these nodes
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+			const pinnedData2 = [{ json: { data: 'test2' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					if (nodeName === 'Set') return pinnedData2;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with the same node names but different IDs
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
 			});
 
-			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
 
-			builderStore.sendChatMessage({ text: 'test message' });
+			// Verify the update was successful
+			expect(result.success).toBe(true);
 
-			// Verify chatWithBuilder was called with useDeprecatedCredentials = true
-			expect(apiSpy).toHaveBeenCalledWith(
-				expect.anything(), // rootStore.restApiContext
-				expect.anything(), // payload
-				expect.anything(), // onMessage callback
-				expect.anything(), // onDone callback
-				expect.anything(), // onError callback
-				expect.anything(), // abort signal
-				true, // useDeprecatedCredentials
-			);
+			// Verify pinned data was preserved for nodes with matching names
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+				Set: pinnedData2,
+			});
 		});
 
-		it('should set useDeprecatedCredentials to false when release experiment is variant', () => {
+		it('should preserve pinned data only for nodes that still exist', () => {
 			const builderStore = useBuilderStore();
 
-			// Mock posthog to return variant for release (regardless of deprecated)
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
+			// Set up initial workflow with three nodes
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+			const node2 = {
+				id: 'node2-id',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [450, 300] as [number, number],
+				parameters: {},
+			};
+			const node3 = {
+				id: 'node3-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [650, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1, node2, node3];
+			workflowsStore.workflow.nodes = [node1, node2, node3];
+
+			// Mock pinned data for all three nodes
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+			const pinnedData2 = [{ json: { data: 'test2' } }];
+			const pinnedData3 = [{ json: { data: 'test3' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					if (nodeName === 'Set') return pinnedData2;
+					if (nodeName === 'Code') return pinnedData3;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with only two of the three nodes
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [250, 300] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
 			});
 
-			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
 
-			builderStore.sendChatMessage({ text: 'test message' });
+			// Verify the update was successful
+			expect(result.success).toBe(true);
 
-			// Verify chatWithBuilder was called with useDeprecatedCredentials = false
-			expect(apiSpy).toHaveBeenCalledWith(
-				expect.anything(), // rootStore.restApiContext
-				expect.anything(), // payload
-				expect.anything(), // onMessage callback
-				expect.anything(), // onDone callback
-				expect.anything(), // onError callback
-				expect.anything(), // abort signal
-				false, // useDeprecatedCredentials
-			);
+			// Verify only pinned data for existing nodes was preserved
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+				Set: pinnedData2,
+			});
+
+			// Code node's pinned data should not be included
+			expect(result.workflowData?.pinData).not.toHaveProperty('Code');
 		});
 
-		it('should set useDeprecatedCredentials to false when both experiments are control', () => {
+		it('should not add pinData property if no pinned data exists', () => {
 			const builderStore = useBuilderStore();
 
-			// Mock posthog to return control for both experiments
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			// Set up initial workflow without pinned data
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock no pinned data
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(vi.fn(() => undefined));
+
+			// Create workflow update
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
 			});
 
-			// Mock the API to capture the arguments
-			apiSpy.mockImplementationOnce(() => {});
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
 
-			builderStore.sendChatMessage({ text: 'test message' });
+			// Verify the update was successful
+			expect(result.success).toBe(true);
 
-			// Verify chatWithBuilder was called with useDeprecatedCredentials = false
-			expect(apiSpy).toHaveBeenCalledWith(
-				expect.anything(), // rootStore.restApiContext
-				expect.anything(), // payload
-				expect.anything(), // onMessage callback
-				expect.anything(), // onDone callback
-				expect.anything(), // onError callback
-				expect.anything(), // abort signal
-				false, // useDeprecatedCredentials
+			// Verify pinData property is not added
+			expect(result.workflowData?.pinData).toBeUndefined();
+		});
+
+		it('should handle nodes with renamed names correctly', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock pinned data
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					return undefined;
+				}),
 			);
+
+			// Create workflow update with renamed node
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request1',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was not preserved since the name changed
+			expect(result.workflowData?.pinData).toBeUndefined();
+		});
+
+		it('should preserve pinned data when adding new nodes', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with one node
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock pinned data for the existing node
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with existing node plus a new node
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was preserved only for the existing node
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+			});
+
+			// New node should not have pinned data
+			expect(result.workflowData?.pinData).not.toHaveProperty('Set');
 		});
 	});
 
@@ -1462,16 +1646,12 @@ describe('AI Builder store', () => {
 			mockGetBuilderCredits.mockClear();
 		});
 
-		it('should fetch and update credits when release experiment is variant', async () => {
+		it('should fetch and update credits when AI builder is enabled', async () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return variant for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
+			// Mock AI builder as enabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 
 			// Mock API response
 			mockGetBuilderCredits.mockResolvedValueOnce({
@@ -1486,16 +1666,12 @@ describe('AI Builder store', () => {
 			expect(builderStore.creditsRemaining).toBe(150);
 		});
 
-		it('should not fetch credits when release experiment is not variant', async () => {
+		it('should not fetch credits when AI builder is not enabled', async () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return control for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
-			});
+			// Mock AI builder as disabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(false);
 
 			await builderStore.fetchBuilderCredits();
 
@@ -1506,14 +1682,10 @@ describe('AI Builder store', () => {
 
 		it('should handle API errors gracefully', async () => {
 			const builderStore = useBuilderStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return variant for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
+			// Mock AI builder as enabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 
 			// Mock API to throw error
 			mockGetBuilderCredits.mockRejectedValueOnce(new Error('API error'));
@@ -1529,14 +1701,10 @@ describe('AI Builder store', () => {
 		it('should call fetchBuilderCredits when opening chat', async () => {
 			const builderStore = useBuilderStore();
 			const chatPanelStore = useChatPanelStore();
+			const settingsStore = useSettingsStore();
 
-			// Mock posthog to return variant for release experiment
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
-				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
-					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
-				}
-				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
-			});
+			// Mock AI builder as enabled
+			vi.spyOn(settingsStore, 'isAiBuilderEnabled', 'get').mockReturnValue(true);
 
 			// Mock API response
 			mockGetBuilderCredits.mockResolvedValueOnce({
@@ -1552,6 +1720,687 @@ describe('AI Builder store', () => {
 			expect(mockGetBuilderCredits).toHaveBeenCalled();
 			expect(builderStore.creditsQuota).toBe(100);
 			expect(builderStore.creditsRemaining).toBe(80);
+		});
+	});
+
+	describe('trackWorkflowBuilderJourney', () => {
+		it('tracks event with workflow_id, session_id, and event_type (without last_user_message_id when no message sent)', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+			});
+		});
+
+		it('includes last_user_message_id after user sends a message', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.sendChatMessage({ text: 'test' });
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			track.mockClear();
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo');
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+				last_user_message_id: expect.any(String),
+			});
+		});
+
+		it('includes event_properties when provided', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+				node_type: 'n8n-nodes-base.httpRequest',
+				type: 'parameters',
+			});
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+				event_properties: {
+					node_type: 'n8n-nodes-base.httpRequest',
+					type: 'parameters',
+				},
+			});
+		});
+
+		it('omits event_properties when empty object provided', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {});
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'field_focus_placeholder_in_ndv',
+			});
+		});
+
+		it('omits event_properties when not provided', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.trackWorkflowBuilderJourney('no_placeholder_values_left');
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'no_placeholder_values_left',
+			});
+		});
+
+		it('includes both event_properties and last_user_message_id when both are present', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.sendChatMessage({ text: 'test' });
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			track.mockClear();
+			builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+				node_type: 'n8n-nodes-base.httpRequest',
+				type: 'parameters',
+			});
+
+			expect(track).toHaveBeenCalledWith('Workflow builder journey', {
+				workflow_id: 'test-workflow-id',
+				session_id: expect.any(String),
+				event_type: 'user_clicked_todo',
+				event_properties: {
+					node_type: 'n8n-nodes-base.httpRequest',
+					type: 'parameters',
+				},
+				last_user_message_id: expect.any(String),
+			});
+		});
+	});
+
+	describe('abortStreaming telemetry', () => {
+		it('tracks end of response with aborted flag when aborting', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					aborted: true,
+					user_message_id: expect.any(String),
+					workflow_id: 'test-workflow-id',
+				}),
+			);
+		});
+
+		it('includes workflow modifications in abort telemetry', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					tools_called: expect.any(Array),
+					start_workflow_json: expect.any(String),
+					end_workflow_json: expect.any(String),
+					workflow_modified: false,
+				}),
+			);
+		});
+
+		it('includes todos count in abort telemetry', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					credentials_todo_count: expect.any(Number),
+					placeholders_todo_count: expect.any(Number),
+					todos: expect.any(Array),
+				}),
+			);
+		});
+
+		it('does not track telemetry if no streaming message in progress', () => {
+			const builderStore = useBuilderStore();
+
+			// Don't start any streaming
+			track.mockClear();
+
+			builderStore.abortStreaming();
+
+			expect(track).not.toHaveBeenCalledWith('End of response from builder', expect.anything());
+		});
+	});
+
+	describe('workflowTodos', () => {
+		it('returns empty array when no validation issues exist', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toEqual([]);
+		});
+
+		it('includes credential validation issues', () => {
+			workflowsStore.workflowValidationIssues = [
+				{ node: 'HTTP Request', type: 'credentials', value: 'Missing credentials' },
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toContainEqual(
+				expect.objectContaining({ type: 'credentials' }),
+			);
+		});
+
+		it('includes placeholder issues from node parameters', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toContainEqual(
+				expect.objectContaining({ type: 'parameters', node: 'HTTP Request' }),
+			);
+		});
+
+		it('combines credential and placeholder issues', () => {
+			workflowsStore.workflowValidationIssues = [
+				{ node: 'HTTP Request', type: 'credentials', value: 'Missing credentials' },
+			];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos.length).toBeGreaterThanOrEqual(2);
+			expect(builderStore.workflowTodos).toContainEqual(
+				expect.objectContaining({ type: 'credentials' }),
+			);
+			expect(builderStore.workflowTodos).toContainEqual(
+				expect.objectContaining({ type: 'parameters' }),
+			);
+		});
+	});
+
+	describe('placeholderIssues', () => {
+		it('returns empty array when nodes have no parameters', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toEqual([]);
+		});
+
+		it('returns empty array when node has undefined parameters', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toEqual([]);
+		});
+
+		it('detects placeholders in nested object parameters', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						options: {
+							headers: {
+								authorization: '<__PLACEHOLDER_VALUE__Enter API Key__>',
+							},
+						},
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			expect(placeholderIssues).toHaveLength(1);
+			expect(placeholderIssues[0]).toMatchObject({
+				node: 'HTTP Request',
+				type: 'parameters',
+			});
+		});
+
+		it('detects placeholders in array parameters', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						headers: [
+							{ name: 'Content-Type', value: 'application/json' },
+							{ name: 'Authorization', value: '<__PLACEHOLDER_VALUE__Enter Token__>' },
+						],
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			expect(placeholderIssues).toHaveLength(1);
+			expect(placeholderIssues[0]).toMatchObject({
+				node: 'HTTP Request',
+				type: 'parameters',
+			});
+		});
+
+		it('detects multiple placeholders in the same node', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
+						body: '<__PLACEHOLDER_VALUE__Enter Body__>',
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			expect(placeholderIssues).toHaveLength(2);
+		});
+
+		it('detects placeholders across multiple nodes', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
+					},
+				},
+				{
+					id: 'node-2',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {
+						channel: '<__PLACEHOLDER_VALUE__Enter Channel__>',
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			expect(placeholderIssues).toHaveLength(2);
+			expect(placeholderIssues).toContainEqual(expect.objectContaining({ node: 'HTTP Request' }));
+			expect(placeholderIssues).toContainEqual(expect.objectContaining({ node: 'Slack' }));
+		});
+
+		it('deduplicates identical placeholder issues (same node, path, and label)', () => {
+			workflowsStore.workflowValidationIssues = [];
+			// Simulate a scenario where the same placeholder appears twice
+			// (which shouldn't happen in practice but tests the deduplication)
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			// Should only have 1 issue, not duplicates
+			expect(placeholderIssues).toHaveLength(1);
+		});
+
+		it('skips placeholder when existing parameter issue already has the same message', () => {
+			const placeholderLabel = 'Enter URL';
+			// The message format from the store uses i18n which is mocked to return the key
+			const expectedMessage = 'aiAssistant.builder.executeMessage.fillParameter';
+
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: `<__PLACEHOLDER_VALUE__${placeholderLabel}__>`,
+					},
+					issues: {
+						parameters: {
+							url: [expectedMessage],
+						},
+					},
+				},
+			];
+			workflowsStore.workflowValidationIssues = [];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			// Should be skipped because the message already exists
+			expect(placeholderIssues).toHaveLength(0);
+		});
+
+		it('does not skip placeholder when existing parameter issue has different message', () => {
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE__Enter URL__>',
+					},
+					issues: {
+						parameters: {
+							url: ['Some other validation error'],
+						},
+					},
+				},
+			];
+			workflowsStore.workflowValidationIssues = [];
+
+			const builderStore = useBuilderStore();
+			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
+			// Should still create the placeholder issue
+			expect(placeholderIssues).toHaveLength(1);
+		});
+
+		it('ignores non-string parameter values', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						timeout: 5000,
+						enabled: true,
+						config: null,
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toEqual([]);
+		});
+
+		it('ignores strings that do not match placeholder format', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: 'https://example.com',
+						body: 'regular string',
+						partial: '<__PLACEHOLDER_VALUE__missing end',
+						wrongPrefix: 'PLACEHOLDER__test__>',
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toEqual([]);
+		});
+
+		it('ignores placeholder with empty label', () => {
+			workflowsStore.workflowValidationIssues = [];
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						url: '<__PLACEHOLDER_VALUE____>', // empty label
+						body: '<__PLACEHOLDER_VALUE__   __>', // whitespace-only label
+					},
+				},
+			];
+
+			const builderStore = useBuilderStore();
+			expect(builderStore.workflowTodos).toEqual([]);
+		});
+
+		it('filters out non-credential and non-parameter validation issues', () => {
+			workflowsStore.workflowValidationIssues = [
+				{ node: 'HTTP Request', type: 'credentials', value: 'Missing credentials' },
+				{ node: 'HTTP Request', type: 'parameters', value: 'Missing parameter' },
+				{ node: 'HTTP Request', type: 'execution', value: 'Execution error' },
+				{ node: 'HTTP Request', type: 'unknown' as 'parameters', value: 'Unknown issue' },
+			];
+			workflowsStore.workflow.nodes = [];
+
+			const builderStore = useBuilderStore();
+			// Should only include credentials and parameters types
+			expect(builderStore.workflowTodos).toHaveLength(2);
+			expect(builderStore.workflowTodos).toContainEqual(
+				expect.objectContaining({ type: 'credentials' }),
+			);
+			expect(builderStore.workflowTodos).toContainEqual(
+				expect.objectContaining({ type: 'parameters' }),
+			);
+		});
+	});
+
+	describe('manual execution stats telemetry', () => {
+		it('should include success count in telemetry when sending message', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.sendChatMessage({ text: 'test' });
+
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 1,
+					manual_exec_error_count_since_prev_msg: 0,
+				}),
+			);
+		});
+
+		it('should include error count in telemetry when sending message', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+
+			builderStore.incrementManualExecutionStats('error');
+			builderStore.sendChatMessage({ text: 'test' });
+
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 0,
+					manual_exec_error_count_since_prev_msg: 1,
+				}),
+			);
+		});
+
+		it('should include multiple incremented counts in telemetry', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('error');
+			builderStore.sendChatMessage({ text: 'test' });
+
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 2,
+					manual_exec_error_count_since_prev_msg: 1,
+				}),
+			);
+		});
+
+		it('should reset stats after sending message', async () => {
+			const builderStore = useBuilderStore();
+
+			// First message with some stats
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.incrementManualExecutionStats('success');
+			builderStore.incrementManualExecutionStats('error');
+			builderStore.sendChatMessage({ text: 'first message' });
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			// Verify first message had the stats
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 1,
+					manual_exec_error_count_since_prev_msg: 1,
+				}),
+			);
+
+			track.mockClear();
+
+			// Second message should have reset stats (zero counts)
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				onMessage({
+					messages: [{ type: 'message', role: 'assistant', text: 'Hello again!' }],
+					sessionId: 'test-session',
+				});
+				onDone();
+			});
+
+			builderStore.sendChatMessage({ text: 'second message' });
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 0,
+					manual_exec_error_count_since_prev_msg: 0,
+				}),
+			);
+		});
+
+		it('should include zero counts when no manual executions occurred', () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+
+			builderStore.sendChatMessage({ text: 'test' });
+
+			expect(track).toHaveBeenCalledWith(
+				'User submitted builder message',
+				expect.objectContaining({
+					manual_exec_success_count_since_prev_msg: 0,
+					manual_exec_error_count_since_prev_msg: 0,
+				}),
+			);
 		});
 	});
 });

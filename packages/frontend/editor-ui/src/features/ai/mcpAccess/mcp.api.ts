@@ -1,7 +1,11 @@
-import type { ApiKey } from '@n8n/api-types';
-import type { IWorkflowSettings } from '@/Interface';
+import type {
+	ApiKey,
+	ListOAuthClientsResponseDto,
+	DeleteOAuthClientResponseDto,
+} from '@n8n/api-types';
+import type { IWorkflowSettings, WorkflowListItem } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
 export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
@@ -41,4 +45,40 @@ export async function toggleWorkflowMcpAccessApi(
 			availableInMCP,
 		},
 	);
+}
+
+export async function fetchOAuthClients(
+	context: IRestApiContext,
+): Promise<ListOAuthClientsResponseDto> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients');
+}
+
+export async function deleteOAuthClient(
+	context: IRestApiContext,
+	clientId: string,
+): Promise<DeleteOAuthClientResponseDto> {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
+	);
+}
+
+export async function fetchMcpEligibleWorkflows(
+	context: IRestApiContext,
+	options?: { take?: number; skip?: number; query?: string },
+): Promise<{ count: number; data: WorkflowListItem[] }> {
+	const params: Record<string, string | number> = {};
+
+	if (options?.take !== undefined) {
+		params.take = options.take;
+	}
+	if (options?.skip !== undefined) {
+		params.skip = options.skip;
+	}
+	if (options?.query) {
+		params.filter = JSON.stringify({ query: options.query });
+	}
+
+	return await getFullApiResponse<WorkflowListItem[]>(context, 'GET', '/mcp/workflows', params);
 }

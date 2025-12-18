@@ -1,11 +1,11 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import * as externalSecretsApi from '@n8n/rest-api-client';
 import { connectProvider } from '@n8n/rest-api-client';
-import { useRBACStore } from '@/stores/rbac.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import type { ExternalSecretsProvider } from '@n8n/api-types';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {

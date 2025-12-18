@@ -87,21 +87,27 @@ export function useDataTableNavigationCommands(options: {
 		return dataTable.project?.name ?? '';
 	};
 
-	const createDataTableCommand = (dataTable: DataTable): CommandBarItem => {
+	const createDataTableCommand = (dataTable: DataTable, isRoot: boolean): CommandBarItem => {
 		// Add data table name to keywords since we're using a custom component for the title
 		const keywords = [dataTable.name];
+
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: dataTable.name } })
+			: dataTable.name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.dataTables')
+			: i18n.baseText('commandBar.dataTables.open');
 
 		return {
 			id: dataTable.id,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
-					title: dataTable.name,
+					title,
 					suffix: getDataTableProjectSuffix(dataTable),
-					actionText: i18n.baseText('generic.open'),
 				},
 			},
-			section: i18n.baseText('commandBar.sections.dataTables'),
+			section,
 			keywords,
 			handler: () => {
 				void router.push({
@@ -116,14 +122,14 @@ export function useDataTableNavigationCommands(options: {
 	};
 
 	const openDataTableCommands = computed<CommandBarItem[]>(() => {
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, false));
 	});
 
 	const rootDataTableItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.length <= 2 || !dataTableStore.canViewDataTables) {
 			return [];
 		}
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, true));
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -155,25 +161,33 @@ export function useDataTableNavigationCommands(options: {
 
 		return [
 			...(hasCreatePermission ? [newDataTableCommand] : []),
-			{
-				id: ITEM_ID.OPEN_DATA_TABLE,
-				title: i18n.baseText('commandBar.dataTables.open'),
-				section: i18n.baseText('commandBar.sections.dataTables'),
-				placeholder: i18n.baseText('commandBar.dataTables.searchPlaceholder'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'table',
-						color: 'text-light',
-					},
-				},
-				children: openDataTableCommands.value,
-			},
+			...(dataTableStore.canViewDataTables
+				? [
+						{
+							id: ITEM_ID.OPEN_DATA_TABLE,
+							title: i18n.baseText('commandBar.dataTables.open'),
+							section: i18n.baseText('commandBar.sections.dataTables'),
+							placeholder: i18n.baseText('commandBar.dataTables.searchPlaceholder'),
+							icon: {
+								component: N8nIcon,
+								props: {
+									icon: 'table',
+									color: 'text-light',
+								},
+							},
+							children: openDataTableCommands.value,
+						},
+					]
+				: []),
 			...rootDataTableItems.value,
 		];
 	});
 
 	function onCommandBarChange(query: string) {
+		if (!dataTableStore.canViewDataTables) {
+			return;
+		}
+
 		const trimmed = query.trim();
 		const isInDataTableParent = activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE;
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;

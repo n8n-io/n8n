@@ -87,6 +87,12 @@ export namespace BrokerMessage {
 			error: unknown;
 		}
 
+		export interface RequestExpired {
+			type: 'broker:requestexpired';
+			requestId: string;
+			reason: 'timeout';
+		}
+
 		export interface TaskDataRequest {
 			type: 'broker:taskdatarequest';
 			taskId: string;
@@ -109,7 +115,14 @@ export namespace BrokerMessage {
 			params: unknown[];
 		}
 
-		export type All = TaskReady | TaskDone | TaskError | TaskDataRequest | NodeTypesRequest | RPC;
+		export type All =
+			| TaskReady
+			| TaskDone
+			| TaskError
+			| RequestExpired
+			| TaskDataRequest
+			| NodeTypesRequest
+			| RPC;
 	}
 }
 

@@ -3,7 +3,7 @@ import type {
 	DataTableColumnType,
 } from '@/features/core/dataTable/dataTable.types';
 import { isAGGridCellType } from '@/features/core/dataTable/typeGuards';
-import { DATA_TYPE_ICON_MAP } from '@/constants';
+import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 
 export const useDataTableTypes = () => {
 	const getIconForType = (type: DataTableColumnType) => DATA_TYPE_ICON_MAP[type];

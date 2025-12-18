@@ -1,4 +1,4 @@
-import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
+import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/app/constants';
 import { computed, ref } from 'vue';
 import type {
 	CanvasInjectionData,

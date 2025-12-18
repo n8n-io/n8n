@@ -1,9 +1,9 @@
 import type { ExecutionSummary, RelatedExecution } from 'n8n-workflow';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { IRunDataDisplayMode } from '@/Interface';
 
 export interface IExecutionUIData {

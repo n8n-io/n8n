@@ -2,17 +2,17 @@
 import { useBuilderStore } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, watch, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
-import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
-import { nodeViewEventBus } from '@/event-bus';
+import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import shuffle from 'lodash/shuffle';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
@@ -33,8 +33,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
-const trackedTools = ref(new Set<string>());
-const workflowUpdated = ref<{ start: string; end: string } | undefined>();
+const shouldTidyUp = ref(false);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
 const user = computed(() => ({
@@ -61,16 +60,19 @@ const showExecuteMessage = computed(() => {
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
-	// Check if there's an error message after the last workflow update
-	const hasErrorAfterUpdate = builderStore.chatMessages
-		.slice(builderUpdatedWorkflowMessageIndex + 1)
-		.some((msg) => msg.type === 'error');
+	// Check if there's an error message or task aborted message after the last workflow update
+	const messagesAfterUpdate = builderStore.chatMessages.slice(
+		builderUpdatedWorkflowMessageIndex + 1,
+	);
+	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
+	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
-		!hasErrorAfterUpdate
+		!hasErrorAfterUpdate &&
+		!hasTaskAbortedAfterUpdate
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
@@ -90,6 +92,9 @@ async function onUserMessage(content: string) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
 
+	// Reset tidy up flag for each new message exchange
+	shouldTidyUp.value = false;
+
 	// If the workflow is empty, set the initial generation flag
 	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
@@ -99,8 +104,7 @@ async function onUserMessage(content: string) {
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
-	trackedTools.value.clear();
-	workflowUpdated.value = undefined;
+	shouldTidyUp.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -117,33 +121,6 @@ function onFeedback(feedback: RatingFeedback) {
 			workflow_id: workflowsStore.workflowId,
 			session_id: builderStore.trackingSessionId,
 		});
-	}
-}
-
-function dedupeToolNames(toolNames: string[]): string[] {
-	return [...new Set(toolNames)];
-}
-
-function trackWorkflowModifications() {
-	if (workflowUpdated.value) {
-		// Track tool usage for telemetry
-		const newToolMessages = builderStore.toolMessages.filter(
-			(toolMsg) =>
-				toolMsg.status !== 'running' &&
-				toolMsg.toolCallId &&
-				!trackedTools.value.has(toolMsg.toolCallId),
-		);
-
-		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-		telemetry.track('Workflow modified by builder', {
-			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
-			session_id: builderStore.trackingSessionId,
-			start_workflow_json: workflowUpdated.value.start,
-			end_workflow_json: workflowUpdated.value.end,
-			workflow_id: workflowsStore.workflowId,
-		});
-
-		workflowUpdated.value = undefined;
 	}
 }
 
@@ -209,24 +186,21 @@ watch(
 				if (msg.id && isWorkflowUpdatedMessage(msg)) {
 					processedWorkflowUpdates.value.add(msg.id);
 
-					const originalWorkflowJson =
-						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
+						// Only tidy up if new nodes are added per user message
+						const hasNewNodes = Boolean(result.newNodeIds && result.newNodeIds.length > 0);
+						shouldTidyUp.value = shouldTidyUp.value || hasNewNodes;
+
 						// Import the updated workflow
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
-							tidyUp: true,
+							tidyUp: shouldTidyUp.value,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,
 						});
-
-						workflowUpdated.value = {
-							start: originalWorkflowJson,
-							end: msg.codeSnippet,
-						};
 					}
 				}
 			});
@@ -239,10 +213,6 @@ watch(
 watch(
 	() => builderStore.streaming,
 	async (isStreaming) => {
-		if (!isStreaming) {
-			trackWorkflowModifications();
-		}
-
 		if (
 			builderStore.initialGeneration &&
 			!isStreaming &&
@@ -251,12 +221,7 @@ watch(
 			// Check if the generation completed successfully (no error or cancellation)
 			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
 			const successful =
-				lastMessage &&
-				lastMessage.type !== 'error' &&
-				!(
-					lastMessage.type === 'text' &&
-					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
-				);
+				lastMessage && lastMessage.type !== 'error' && !isTaskAbortedMessage(lastMessage);
 
 			builderStore.initialGeneration = false;
 
@@ -300,7 +265,7 @@ defineExpose({
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
-			@stop="builderStore.stopStreaming"
+			@stop="builderStore.abortStreaming"
 		>
 			<template #header>
 				<slot name="header" />

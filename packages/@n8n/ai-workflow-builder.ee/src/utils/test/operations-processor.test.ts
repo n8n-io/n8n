@@ -592,7 +592,12 @@ describe('operations-processor', () => {
 			workflowOperations,
 			messages: [],
 			workflowContext: {},
+			workflowValidation: null,
+			validationHistory: [],
+			techniqueCategories: [],
 			previousSummary: 'EMPTY',
+			nodeConfigurations: {},
+			templateIds: [],
 		});
 
 		it('should process operations and clear them', () => {

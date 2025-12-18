@@ -1,25 +1,26 @@
 <script setup lang="ts">
 import Node from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
-import Modal from '@/components/Modal.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import Modal from '@/app/components/Modal.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue';
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
-import { NodeDiffStatus, useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
+import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import type { IWorkflowDb } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { SourceControlledFileStatus } from '@n8n/api-types';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import { NodeDiffStatus, type IWorkflowSettings } from 'n8n-workflow';
 import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
@@ -36,7 +37,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 const props = defineProps<{
-	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
+	data: {
+		eventBus: EventBus;
+		workflowId: string;
+		direction: 'push' | 'pull';
+		workflowStatus?: SourceControlledFileStatus;
+	};
 }>();
 
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
@@ -62,6 +68,11 @@ const isClosed = ref(false);
 
 const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
+		if (props.data.direction === 'push' && props.data.workflowStatus === 'created') {
+			// a new workflow that has yet to be pushed cannot be on remote.
+			return { workflow: undefined, remote: true };
+		}
+
 		try {
 			const { workflowId } = props.data;
 			const { content: workflow } = await sourceControlStore.getRemoteWorkflow(workflowId);
@@ -857,19 +868,23 @@ const modifiers = [
 }
 
 .deleted {
-	--canvas-node--background: var(--diff--color--deleted--faint);
+	--canvas-node--color--background: var(--diff--color--deleted--faint);
 	--canvas-node--border-color: var(--diff--color--deleted);
 	--sticky--color--background: var(--diff--color--deleted--faint);
 	--sticky--border-color: var(--diff--color--deleted);
+
+	:global(> div) {
+		--canvas-node--border-width: 2px;
+	}
+
 	&::before {
 		content: 'D';
 		background-color: var(--diff--color--deleted);
 	}
-	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff--color--deleted);
-	}
+	:global(.canvas-node-handle-main-output .source),
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--diff--color--deleted);
+		border: none;
 	}
 
 	/* Ensure disabled nodes still show diff border color */
@@ -879,19 +894,24 @@ const modifiers = [
 }
 .added {
 	--canvas-node--border-color: var(--diff--color--new);
-	--canvas-node--background: var(--diff--color--new--faint);
+	--canvas-node--color--background: var(--diff--color--new--faint);
 	--sticky--color--background: var(--diff--color--new--faint);
 	--sticky--border-color: var(--diff--color--new);
 	position: relative;
+
+	:global(> div) {
+		--canvas-node--border-width: 2px;
+	}
+
 	&::before {
 		content: 'N';
 		background-color: var(--diff--color--new);
 	}
-	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff--color--new);
-	}
+
+	:global(.canvas-node-handle-main-output .source),
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--diff--color--new);
+		border: none;
 	}
 
 	/* Ensure disabled nodes still show diff border color */
@@ -905,27 +925,32 @@ const modifiers = [
 	pointer-events: none;
 	cursor: default;
 	--sticky--color--background: rgba(126, 129, 134, 0.2);
-	--canvas-node-icon-color: var(--color--foreground--shade-2);
+	--canvas-node--icon-color: var(--color--foreground--shade-2);
 	--sticky--border-color: var(--color--foreground--shade-2);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
 	}
 }
 .modified {
+	--canvas-node--border-width: 2px;
 	--canvas-node--border-color: var(--diff--color--modified);
-	--canvas-node--background: var(--diff--color--modified--faint);
+	--canvas-node--color--background: var(--diff--color--modified--faint);
 	--sticky--color--background: var(--diff--color--modified--faint);
 	--sticky--border-color: var(--diff--color--modified);
 	position: relative;
+
+	:global(> div) {
+		--canvas-node--border-width: 2px;
+	}
+
 	&::before {
 		content: 'M';
 		background-color: var(--diff--color--modified);
 	}
-	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff--color--modified);
-	}
+	:global(.canvas-node-handle-main-output .source),
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--diff--color--modified);
+		border: none;
 	}
 
 	/* Ensure disabled nodes still show diff border color */
@@ -935,12 +960,12 @@ const modifiers = [
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--diff--color--deleted);
-	--edge-highlight-color: var(--diff--color--deleted--light);
+	--canvas-edge--color: var(--diff--color--deleted);
+	--edge--color--highlight: var(--diff--color--deleted--light);
 }
 .edge-added {
-	--canvas-edge-color: var(--diff--color--new);
-	--edge-highlight-color: var(--diff--color--new--light);
+	--canvas-edge--color: var(--diff--color--new);
+	--edge--color--highlight: var(--diff--color--new--light);
 }
 .edge-equal {
 	opacity: 0.5;
@@ -999,6 +1024,7 @@ const modifiers = [
 	flex: 1;
 	position: relative;
 	border-top: 1px solid var(--color--foreground);
+	background: var(--canvas--color--background);
 }
 
 .emptyWorkflow {

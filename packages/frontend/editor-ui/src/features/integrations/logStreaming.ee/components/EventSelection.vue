@@ -137,7 +137,7 @@ function groupLabelInfo(t: string): string | undefined {
 	align-items: center;
 	justify-content: left;
 	margin: 10px;
-	color: var(--el-color-primary);
+	color: var(--color--primary);
 }
 
 .eventListItemDisabled > {

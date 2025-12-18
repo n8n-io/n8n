@@ -49,7 +49,7 @@ const $style = useCssModule();
 	align-items: center;
 	gap: var(--spacing--2xs);
 	border-radius: 22px;
-	border: 1px solid var(--p--color--gray-740);
+	border: 1px solid var(--color--neutral-850);
 	background: rgba(65, 66, 68, 0.92);
 	cursor: default;
 
