@@ -11,8 +11,8 @@ import {
 	createNode,
 } from '../../../test/test-utils';
 import type { WorkflowMetadata } from '../../types/tools';
-import type { FetchWorkflowsResult } from '../web/templates';
 import { createGetWorkflowExamplesTool } from '../get-workflow-examples.tool';
+import type { FetchWorkflowsResult } from '../web/templates';
 import * as templates from '../web/templates';
 
 // Mock LangGraph dependencies
