@@ -254,7 +254,16 @@
                     "name": {
                         "type": "string"
                     },
+                    "sizes": {
+                        "type": "string"
+                    },
                     "src": {
+                        "type": "string"
+                    },
+                    "srcset": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
                         "type": "string"
                     }
                 }
@@ -391,5 +400,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
