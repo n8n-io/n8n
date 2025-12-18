@@ -144,24 +144,9 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				}
 				const deduplicatedResults = Array.from(uniqueWorkflows.values());
 
-				// Process workflows to get mermaid diagrams and collect node configurations in one pass
+				// Process workflows to get mermaid diagrams
 				const processedResults = processWorkflowExamples(deduplicatedResults, {
 					includeNodeParameters: false,
-				});
-
-				// Get the accumulated node configurations from the last result (all results share the same map)
-				const nodeConfigurations =
-					processedResults.length > 0
-						? processedResults[processedResults.length - 1].nodeConfigurations
-						: {};
-
-				// Debug: Log the collected configurations
-				logger?.debug('Collected node configurations from workflow examples', {
-					nodeTypeCount: Object.keys(nodeConfigurations).length,
-					nodeTypes: Object.keys(nodeConfigurations),
-					configCounts: Object.fromEntries(
-						Object.entries(nodeConfigurations).map(([type, configs]) => [type, configs.length]),
-					),
 				});
 
 				// Build output with formatted results
@@ -173,7 +158,6 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				const output: GetWorkflowExamplesOutput = {
 					examples: formattedResults,
 					totalResults: deduplicatedResults.length,
-					nodeConfigurations,
 				};
 
 				// Build response message and report
@@ -184,17 +168,15 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				const uniqueTemplateIds = [...new Set(allTemplateIds)];
 
 				// Debug: Log what we're caching
-				logger?.debug('Caching workflow examples in state', {
-					workflowCount: deduplicatedResults.length,
-					workflowNames: deduplicatedResults.map((w) => w.name),
-					nodeConfigCount: Object.keys(nodeConfigurations).length,
+				logger?.debug('Caching workflow templates in state', {
+					templateCount: deduplicatedResults.length,
+					templateNames: deduplicatedResults.map((w) => w.name),
 				});
 
-				// Return success response with workflows, node configurations, and template IDs stored in state
+				// Return success response with templates and template IDs stored in state
 				return createSuccessResponse(config, responseMessage, {
-					nodeConfigurations,
 					templateIds: uniqueTemplateIds,
-					cachedWorkflows: deduplicatedResults,
+					cachedTemplates: deduplicatedResults,
 				});
 			} catch (error) {
 				// Handle validation or unexpected errors

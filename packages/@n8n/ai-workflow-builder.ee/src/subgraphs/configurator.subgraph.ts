@@ -20,7 +20,6 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
-import type { NodeConfigurationsMap } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
@@ -29,7 +28,6 @@ import {
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
-import { nodeConfigurationsReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
@@ -84,12 +82,6 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 			return [...(x ?? []), ...y];
 		},
 		default: () => [],
-	}),
-
-	// Input: Node configurations from discovery (passed from parent)
-	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: nodeConfigurationsReducer,
-		default: () => ({}),
 	}),
 });
 
@@ -223,7 +215,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			instanceUrl: this.instanceUrl,
 			userRequest,
 			discoveryContext: parentState.discoveryContext,
-			nodeConfigurations: parentState.nodeConfigurations,
 			messages: [contextMessage],
 		};
 	}

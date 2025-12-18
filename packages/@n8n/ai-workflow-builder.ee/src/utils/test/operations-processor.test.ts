@@ -596,9 +596,8 @@ describe('operations-processor', () => {
 			validationHistory: [],
 			techniqueCategories: [],
 			previousSummary: 'EMPTY',
-			nodeConfigurations: {},
 			templateIds: [],
-			cachedWorkflows: [],
+			cachedTemplates: [],
 		});
 
 		it('should process operations and clear them', () => {

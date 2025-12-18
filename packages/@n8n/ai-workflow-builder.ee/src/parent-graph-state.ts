@@ -3,13 +3,9 @@ import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
-import type { NodeConfigurationsMap, WorkflowMetadata } from './types/tools';
+import type { WorkflowMetadata } from './types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
-import {
-	appendArrayReducer,
-	cachedWorkflowsReducer,
-	nodeConfigurationsReducer,
-} from './utils/state-reducers';
+import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -72,17 +68,10 @@ export const ParentGraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Node configurations collected from workflow examples
-	// Used to provide example parameter configurations when calling tools
-	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: nodeConfigurationsReducer,
-		default: () => ({}),
-	}),
-
 	// Cached workflow templates from template API
 	// Shared across subgraphs to reduce API calls
-	cachedWorkflows: Annotation<WorkflowMetadata[]>({
-		reducer: cachedWorkflowsReducer,
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
 });

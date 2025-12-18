@@ -13,8 +13,8 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getWorkflowState } from './helpers/state';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
-import type { NodeDetailsOutput } from '../types/tools';
-import { collectNodeConfigurationsFromWorkflows } from './utils/node-configuration.utils';
+import type { NodeDetailsOutput, WorkflowMetadata } from '../types/tools';
+import { getNodeConfigurationsFromTemplates } from './utils/node-configuration.utils';
 import { fetchWorkflowsFromTemplates } from './web/templates';
 
 /** Maximum number of example configurations to include */
@@ -164,7 +164,7 @@ export const NODE_DETAILS_TOOL: BuilderToolBase = {
 
 /**
  * Get example configurations for a node type.
- * First checks the cached state, then fetches from templates API if none found.
+ * First checks the cached templates, then fetches from templates API if none found.
  */
 async function getNodeExamples(
 	nodeName: string,
@@ -173,43 +173,27 @@ async function getNodeExamples(
 	onProgress?: (message: string) => void,
 ): Promise<{
 	examples: NodeConfigurationEntry[];
-	newConfigurations?: Record<string, NodeConfigurationEntry[]>;
+	newTemplates?: WorkflowMetadata[];
 }> {
-	// First, try to get examples from cached state
+	// First, try to get examples from cached templates
 	try {
 		const state = getWorkflowState();
-		const allNodeConfigs = state?.nodeConfigurations?.[nodeName] ?? [];
-		const filteredConfigs = allNodeConfigs.filter((config) => config.version === nodeVersion);
+		const cachedTemplates = state?.cachedTemplates ?? [];
+
+		// Extract configurations directly from cached templates
+		const filteredConfigs = getNodeConfigurationsFromTemplates(
+			cachedTemplates,
+			nodeName,
+			nodeVersion,
+		);
 
 		if (filteredConfigs.length > 0) {
-			logger?.debug('Found cached node configurations', {
+			logger?.debug('Found node configurations in cached templates', {
 				nodeName,
 				nodeVersion,
 				count: filteredConfigs.length,
 			});
 			return { examples: filteredConfigs };
-		}
-
-		// Check if cached workflows contain this node type (but configs weren't extracted yet)
-		const cachedWorkflows = state?.cachedWorkflows ?? [];
-		const relevantWorkflows = cachedWorkflows.filter((wf) =>
-			wf.workflow.nodes.some((n) => n.type === nodeName),
-		);
-
-		if (relevantWorkflows.length > 0) {
-			const extractedConfigs = collectNodeConfigurationsFromWorkflows(relevantWorkflows);
-			const nodeConfigs = (extractedConfigs[nodeName] ?? []).filter(
-				(config) => config.version === nodeVersion,
-			);
-
-			if (nodeConfigs.length > 0) {
-				logger?.debug('Extracted configurations from cached workflows', {
-					nodeName,
-					nodeVersion,
-					count: nodeConfigs.length,
-				});
-				return { examples: nodeConfigs, newConfigurations: extractedConfigs };
-			}
 		}
 	} catch {
 		// State may not be available in test environments
@@ -225,9 +209,10 @@ async function getNodeExamples(
 		);
 
 		if (result.workflows.length > 0) {
-			const fetchedConfigs = collectNodeConfigurationsFromWorkflows(result.workflows);
-			const nodeConfigs = (fetchedConfigs[nodeName] ?? []).filter(
-				(config) => config.version === nodeVersion,
+			const nodeConfigs = getNodeConfigurationsFromTemplates(
+				result.workflows,
+				nodeName,
+				nodeVersion,
 			);
 
 			logger?.debug('Fetched node configurations from templates API', {
@@ -237,7 +222,7 @@ async function getNodeExamples(
 				workflowCount: result.workflows.length,
 			});
 
-			return { examples: nodeConfigs, newConfigurations: fetchedConfigs };
+			return { examples: nodeConfigs, newTemplates: result.workflows };
 		}
 	} catch (error) {
 		logger?.warn('Failed to fetch node examples from templates', { nodeName, error });
@@ -282,7 +267,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[], logger?
 				const details = extractNodeDetails(nodeType);
 
 				// Get example configurations (from cache or fetch from templates)
-				const { examples, newConfigurations } = await getNodeExamples(
+				const { examples, newTemplates } = await getNodeExamples(
 					nodeName,
 					nodeVersion,
 					logger,
@@ -300,10 +285,8 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[], logger?
 				};
 				reporter.complete(output);
 
-				// Return success response with state updates if we fetched new configurations
-				const stateUpdates = newConfigurations
-					? { nodeConfigurations: newConfigurations }
-					: undefined;
+				// Return success response with state updates if we fetched new templates
+				const stateUpdates = newTemplates ? { cachedTemplates: newTemplates } : undefined;
 
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {

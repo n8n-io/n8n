@@ -188,7 +188,6 @@ export interface GetWorkflowExamplesOutput {
 		workflow: string;
 	}>;
 	totalResults: number;
-	nodeConfigurations: NodeConfigurationsMap;
 }
 
 /**

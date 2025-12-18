@@ -71,6 +71,37 @@ export function collectNodeConfigurationsFromWorkflows(
 }
 
 /**
+ * Get node configurations from cached templates on demand.
+ * Filters templates containing the node type and extracts matching configurations.
+ *
+ * @param templates - The cached workflow templates to extract from
+ * @param nodeType - The node type to filter by (e.g., 'n8n-nodes-base.telegram')
+ * @param nodeVersion - Optional version to filter by
+ * @returns Array of matching node configuration entries
+ */
+export function getNodeConfigurationsFromTemplates(
+	templates: WorkflowMetadata[],
+	nodeType: string,
+	nodeVersion?: number,
+): NodeConfigurationEntry[] {
+	const configurations: NodeConfigurationEntry[] = [];
+
+	for (const template of templates) {
+		for (const node of template.workflow.nodes) {
+			if (node.type !== nodeType) continue;
+			if (nodeVersion !== undefined && node.typeVersion !== nodeVersion) continue;
+
+			const config = collectSingleNodeConfiguration(node);
+			if (config) {
+				configurations.push(config);
+			}
+		}
+	}
+
+	return configurations;
+}
+
+/**
  * Format node configuration examples as markdown with token limit
  * Follows the same pattern as node-details.tool.ts for consistency
  */

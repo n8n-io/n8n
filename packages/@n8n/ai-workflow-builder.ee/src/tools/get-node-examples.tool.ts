@@ -2,7 +2,7 @@ import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
-import type { NodeConfigurationsMap, WorkflowMetadata } from '@/types';
+import type { WorkflowMetadata } from '@/types';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
@@ -15,9 +15,10 @@ import {
 } from './helpers';
 import { mermaidStringify } from './utils/markdown-workflow.utils';
 import {
-	collectNodeConfigurationsFromWorkflows,
 	formatNodeConfigurationExamples,
+	getNodeConfigurationsFromTemplates,
 } from './utils/node-configuration.utils';
+import type { NodeConfigurationEntry } from '../types/tools';
 import { fetchWorkflowsFromTemplates } from './web/templates';
 
 /**
@@ -74,69 +75,41 @@ Returns mermaid diagrams from community workflows containing this node.`,
 	},
 };
 
-/** Entry type for node configurations */
-type NodeConfigurationEntry = NodeConfigurationsMap[string][number];
-
 /** Result from workflow retrieval */
 interface WorkflowRetrievalResult {
 	workflows: WorkflowMetadata[];
-	configurations: NodeConfigurationsMap;
 	nodeConfigs: NodeConfigurationEntry[];
-	newWorkflows: WorkflowMetadata[];
+	newTemplates: WorkflowMetadata[];
 }
 
 /**
  * Single retrieval function for getting workflows containing a specific node type.
- * Checks cache first, then fetches from API if needed.
+ * Checks cached templates first, then fetches from API if needed.
  */
 async function getWorkflowsForNodeType(
 	nodeType: string,
 	logger?: Logger,
 	onProgress?: (message: string) => void,
 ): Promise<WorkflowRetrievalResult> {
-	// Get cached state
-	let cachedWorkflows: WorkflowMetadata[] = [];
-	let configurations: NodeConfigurationsMap = {};
+	// Get cached templates from state
+	let cachedTemplates: WorkflowMetadata[] = [];
 
 	try {
 		const state = getWorkflowState();
-		cachedWorkflows = state?.cachedWorkflows ?? [];
-		configurations = state?.nodeConfigurations ?? {};
+		cachedTemplates = state?.cachedTemplates ?? [];
 	} catch {
 		// State may not be available in some contexts
 	}
 
-	// Check if we already have configs for this node type
-	const existingConfigs = configurations[nodeType] ?? [];
-	if (existingConfigs.length > 0) {
-		const relevantWorkflows = cachedWorkflows.filter((wf) =>
-			wf.workflow.nodes.some((n) => n.type === nodeType),
-		);
-
-		logger?.debug('Found existing node configurations in state', {
-			nodeType,
-			configCount: existingConfigs.length,
-			workflowCount: relevantWorkflows.length,
-		});
-
-		return {
-			workflows: relevantWorkflows,
-			configurations,
-			nodeConfigs: existingConfigs,
-			newWorkflows: [],
-		};
-	}
-
-	// Check if cached workflows contain this node type
-	const relevantWorkflows = cachedWorkflows.filter((wf) =>
+	// Check if cached templates contain this node type
+	const relevantWorkflows = cachedTemplates.filter((wf) =>
 		wf.workflow.nodes.some((n) => n.type === nodeType),
 	);
 
 	if (relevantWorkflows.length > 0) {
-		const extractedConfigs = collectNodeConfigurationsFromWorkflows(relevantWorkflows);
-		const nodeConfigs = extractedConfigs[nodeType] ?? [];
+		const nodeConfigs = getNodeConfigurationsFromTemplates(relevantWorkflows, nodeType);
 
-		logger?.debug('Extracted configurations from cached workflows', {
+		logger?.debug('Found node configurations in cached templates', {
 			nodeType,
 			configCount: nodeConfigs.length,
 			workflowCount: relevantWorkflows.length,
@@ -144,9 +117,8 @@ async function getWorkflowsForNodeType(
 
 		return {
 			workflows: relevantWorkflows,
-			configurations: extractedConfigs,
 			nodeConfigs,
-			newWorkflows: [],
+			newTemplates: [],
 		};
 	}
 
@@ -160,8 +132,7 @@ async function getWorkflowsForNodeType(
 		);
 
 		if (result.workflows.length > 0) {
-			const fetchedConfigs = collectNodeConfigurationsFromWorkflows(result.workflows);
-			const nodeConfigs = fetchedConfigs[nodeType] ?? [];
+			const nodeConfigs = getNodeConfigurationsFromTemplates(result.workflows, nodeType);
 
 			logger?.debug('Fetched workflows from templates API', {
 				nodeType,
@@ -171,9 +142,8 @@ async function getWorkflowsForNodeType(
 
 			return {
 				workflows: result.workflows,
-				configurations: fetchedConfigs,
 				nodeConfigs,
-				newWorkflows: result.workflows,
+				newTemplates: result.workflows,
 			};
 		}
 	} catch (error) {
@@ -182,9 +152,8 @@ async function getWorkflowsForNodeType(
 
 	return {
 		workflows: [],
-		configurations: {},
 		nodeConfigs: [],
-		newWorkflows: [],
+		newTemplates: [],
 	};
 }
 
@@ -284,13 +253,10 @@ export function createGetNodeExamplesTool({ exampleType, logger }: CreateNodeExa
 
 				reporter.complete({ nodeType, totalFound, message });
 
-				// Build state updates
+				// Build state updates - only add new templates if fetched from API
 				const stateUpdates: Record<string, unknown> = {};
-				if (exampleType === 'configuration') {
-					stateUpdates.nodeConfigurations = result.configurations;
-				}
-				if (result.newWorkflows.length > 0) {
-					stateUpdates.cachedWorkflows = result.newWorkflows;
+				if (result.newTemplates.length > 0) {
+					stateUpdates.cachedTemplates = result.newTemplates;
 				}
 
 				return createSuccessResponse(

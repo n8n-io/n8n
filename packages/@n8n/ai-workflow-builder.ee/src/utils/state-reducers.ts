@@ -1,4 +1,4 @@
-import type { NodeConfigurationsMap, WorkflowMetadata } from '../types/tools';
+import type { WorkflowMetadata } from '../types/tools';
 
 /**
  * Reducer for appending arrays with null/empty check.
@@ -10,9 +10,9 @@ export function appendArrayReducer<T>(current: T[], update: T[] | undefined | nu
 
 /**
  * Reducer for caching workflow templates, deduplicating by name.
- * Merges new workflows with existing ones, avoiding duplicates.
+ * Merges new templates with existing ones, avoiding duplicates.
  */
-export function cachedWorkflowsReducer(
+export function cachedTemplatesReducer(
 	current: WorkflowMetadata[],
 	update: WorkflowMetadata[] | undefined | null,
 ): WorkflowMetadata[] {
@@ -20,10 +20,10 @@ export function cachedWorkflowsReducer(
 		return current;
 	}
 
-	// Build a map of existing workflows by name for fast lookup
+	// Build a map of existing templates by name for fast lookup
 	const existingByName = new Map(current.map((wf) => [wf.name, wf]));
 
-	// Add new workflows that don't already exist
+	// Add new templates that don't already exist
 	for (const workflow of update) {
 		if (!existingByName.has(workflow.name)) {
 			existingByName.set(workflow.name, workflow);
@@ -31,36 +31,4 @@ export function cachedWorkflowsReducer(
 	}
 
 	return Array.from(existingByName.values());
-}
-
-/**
- * Merge node configurations by type, appending new configs to existing ones.
- * Used as a standalone utility function for merging node configurations outside of reducers.
- */
-export function mergeNodeConfigurations(
-	target: NodeConfigurationsMap,
-	source: NodeConfigurationsMap,
-): void {
-	for (const [nodeType, configs] of Object.entries(source)) {
-		if (!target[nodeType]) {
-			target[nodeType] = [];
-		}
-		target[nodeType].push(...configs);
-	}
-}
-
-/**
- * Reducer for merging node configurations by type.
- * Appends new configurations to existing ones for each node type.
- */
-export function nodeConfigurationsReducer(
-	current: NodeConfigurationsMap,
-	update: NodeConfigurationsMap | undefined | null,
-): NodeConfigurationsMap {
-	if (!update || Object.keys(update).length === 0) {
-		return current;
-	}
-	const merged = { ...current };
-	mergeNodeConfigurations(merged, update);
-	return merged;
 }
