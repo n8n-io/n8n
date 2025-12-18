@@ -1988,7 +1988,6 @@ onMounted(() => {
 
 				// A delay here makes opening the NDV a bit less jarring
 				setTimeout(() => {
-					console.log(routeNodeId.value);
 					if (routeNodeId.value) {
 						updateNodeRoute(routeNodeId.value);
 					}
