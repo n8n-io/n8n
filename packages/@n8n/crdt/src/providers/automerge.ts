@@ -193,12 +193,15 @@ class AutomergeNestedMap<T = unknown> implements CRDTMap<T> {
 	}
 }
 
+type UpdateHandler = (update: Uint8Array) => void;
+
 /**
  * Holds the Automerge document and manages change handlers.
  */
 class AutomergeDocHolder {
 	private doc: AutomergeDoc;
 	private changeHandlers: Map<string, Set<ChangeHandler>> = new Map();
+	private updateHandlers: Set<UpdateHandler> = new Set();
 	private inTransaction = false;
 	private transactionBeforeHeads: Automerge.Heads | null = null;
 
@@ -220,6 +223,7 @@ class AutomergeDocHolder {
 
 		if (!this.inTransaction && beforeHeads) {
 			this.notifyHandlers(beforeHeads);
+			this.notifyUpdateHandlers();
 		}
 	}
 
@@ -232,8 +236,25 @@ class AutomergeDocHolder {
 		this.inTransaction = false;
 		if (this.transactionBeforeHeads) {
 			this.notifyHandlers(this.transactionBeforeHeads);
+			this.notifyUpdateHandlers();
 			this.transactionBeforeHeads = null;
 		}
+	}
+
+	private notifyUpdateHandlers(): void {
+		if (this.updateHandlers.size === 0) return;
+		const update = Automerge.save(this.doc);
+		for (const handler of this.updateHandlers) {
+			handler(update);
+		}
+	}
+
+	addUpdateHandler(handler: UpdateHandler): void {
+		this.updateHandlers.add(handler);
+	}
+
+	removeUpdateHandler(handler: UpdateHandler): void {
+		this.updateHandlers.delete(handler);
 	}
 
 	private notifyHandlers(beforeHeads: Automerge.Heads): void {
@@ -417,6 +438,14 @@ class AutomergeDocHolder {
 		}
 	}
 
+	applyUpdate(update: Uint8Array): void {
+		const beforeHeads = this.getHeads();
+		const incomingDoc = Automerge.load<Record<string, unknown>>(update);
+		// Clone before merge to avoid mutation issues
+		this.doc = Automerge.merge(Automerge.clone(this.doc), incomingDoc);
+		this.notifyHandlers(beforeHeads);
+	}
+
 	destroy(): void {
 		this.changeHandlers.clear();
 	}
@@ -449,6 +478,21 @@ class AutomergeDocImpl implements CRDTDoc {
 		} finally {
 			this.docHolder.endTransaction();
 		}
+	}
+
+	encodeState(): Uint8Array {
+		return Automerge.save(this.docHolder.getDoc());
+	}
+
+	applyUpdate(update: Uint8Array): void {
+		this.docHolder.applyUpdate(update);
+	}
+
+	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe {
+		this.docHolder.addUpdateHandler(handler);
+		return () => {
+			this.docHolder.removeUpdateHandler(handler);
+		};
 	}
 
 	destroy(): void {

@@ -64,6 +64,12 @@ export interface CRDTDoc {
 	getMap<T = unknown>(name: string): CRDTMap<T>;
 	/** Execute changes in a transaction (batched, atomic) */
 	transact(fn: () => void): void;
+	/** Encode the full document state as a binary update */
+	encodeState(): Uint8Array;
+	/** Apply an update (or full state) from another document */
+	applyUpdate(update: Uint8Array): void;
+	/** Subscribe to outgoing updates (for sending to peers) */
+	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe;
 	/** Clean up resources */
 	destroy(): void;
 }
