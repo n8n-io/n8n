@@ -116,7 +116,7 @@ describe('ExecutionRepository', () => {
 				executionId,
 				workflowData: { id: workflow.id, connections: {}, nodes: [], name: workflow.name },
 				data: stringify(v0Data),
-			} as unknown as Partial<ExecutionData>);
+			});
 
 			// Read the execution back
 			const execution = await executionRepo.findSingleExecution(executionId, {
