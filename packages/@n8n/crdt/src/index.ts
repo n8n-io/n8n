@@ -26,6 +26,7 @@ export { MockTransport } from './transports';
 
 // Sync
 export type { SyncProvider, CreateSyncProvider } from './sync';
+export { BaseSyncProvider, createSyncProvider } from './sync';
 
 /**
  * Creates a CRDT provider based on the given configuration.
