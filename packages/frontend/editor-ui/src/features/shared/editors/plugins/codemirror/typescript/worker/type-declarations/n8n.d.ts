@@ -79,6 +79,58 @@ declare global {
 	const $runIndex: number;
 	const $now: DateTime;
 	const $today: DateTime;
+	type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+
+	interface IHttpRequestOptions {
+		url: string;
+		baseURL?: string;
+		headers?: Record<string, any>;
+		method?: IHttpRequestMethods;
+		body?: any;
+		qs?: Record<string, any>;
+		arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
+		auth?: {
+			username: string;
+			password: string;
+			sendImmediately?: boolean;
+		};
+		disableFollowRedirect?: boolean;
+		encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
+		skipSslCertificateValidation?: boolean;
+		returnFullResponse?: boolean;
+		ignoreHttpStatusErrors?: boolean;
+		proxy?: {
+			host: string;
+			port: number;
+			auth?: {
+				username: string;
+				password: string;
+			};
+			protocol?: string;
+		};
+		timeout?: number;
+		json?: boolean;
+	}
+
+	interface IN8nHttpFullResponse {
+		body: any;
+		headers: Record<string, any>;
+		statusCode: number;
+		statusMessage?: string;
+	}
+
+	const helpers: {
+		assertBinaryData: (itemIndex: number, propertyName: string | N8nBinary) => N8nBinary;
+		getBinaryDataBuffer: (itemIndex: number, propertyName: string | N8nBinary) => Promise<Buffer>;
+		prepareBinaryData: (
+			binaryData: Buffer,
+			fileName?: string,
+			mimeType?: string,
+		) => Promise<N8nBinary>;
+		setBinaryDataBuffer: (metadata: N8nBinary, buffer: Buffer) => Promise<N8nBinary>;
+		binaryToString: (body: Buffer, encoding?: string) => Promise<string>;
+		httpRequest: (opts: IHttpRequestOptions) => Promise<IN8nHttpFullResponse | any>;
+	};
 
 	const $parameter: N8nInput['params'];
 	const $vars: N8nVars;
