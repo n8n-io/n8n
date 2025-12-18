@@ -5,7 +5,7 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_PUBLISH_MODAL_KEY, AutoSaveState } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -14,6 +14,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
+import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import {
 	getLastPublishedVersion,
 	generateVersionName,
@@ -39,7 +40,10 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
 const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+const autosaveStore = useWorkflowAutosaveStore();
+const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
+
 const autoSaveForPublish = ref(false);
 
 const isWorkflowSaving = computed(() => {
@@ -48,14 +52,50 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
+/**
+ * Cancel autosave if scheduled or wait for it to finish if in progress
+ * Save immediately if autosave idle or cancelled
+ */
+const saveBeforePublish = async () => {
+	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
+		console.log('[Publish] ⏳ Waiting for in-progress autosave to complete');
+		autoSaveForPublish.value = true;
+		try {
+			await autosaveStore.pendingAutoSave;
+			console.log('[Publish] ✅ Autosave completed');
+		} finally {
+			autoSaveForPublish.value = false;
+		}
+	} else if (autosaveStore.autoSaveState === AutoSaveState.Scheduled) {
+		console.log('[Publish] ⏹️ Cancelling scheduled autosave');
+		cancelAutoSave();
+	}
+
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		console.log('[Publish] ⏳ Saving unsaved changes before publish');
+		autoSaveForPublish.value = true;
+		try {
+			const saved = await saveCurrentWorkflow({}, true);
+			if (!saved) {
+				console.log('[Publish] ❌ Save failed');
+				throw new Error('Failed to save workflow before publish');
+			}
+			console.log('[Publish] ✅ Save completed');
+		} finally {
+			autoSaveForPublish.value = false;
+		}
+	} else {
+		console.log('[Publish] No unsaved changes, skipping save');
+	}
+};
+
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		autoSaveForPublish.value = true;
-		const saved = await saveCurrentWorkflow({}, true);
-		autoSaveForPublish.value = false;
-		if (!saved) {
-			// If save failed, don't open the modal
+		try {
+			await saveBeforePublish();
+		} catch (error) {
+			console.error('[Publish] ❌ Error saving workflow before publish:', error);
 			return;
 		}
 	}
