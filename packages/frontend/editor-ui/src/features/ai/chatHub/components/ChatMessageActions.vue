@@ -61,7 +61,7 @@ function handleReadAloud() {
 
 <template>
 	<div :class="$style.actions">
-		<CopyButton :content="message.content" />
+		<CopyButton :content="message.content" data-test-id="chat-message-copy" />
 		<N8nTooltip
 			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"
@@ -81,7 +81,14 @@ function handleReadAloud() {
 			}}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
-			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
+			<N8nIconButton
+				icon="pen"
+				type="tertiary"
+				size="medium"
+				text
+				data-test-id="chat-message-edit"
+				@click="handleEdit"
+			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
@@ -90,12 +97,19 @@ function handleReadAloud() {
 				type="tertiary"
 				size="medium"
 				text
+				data-test-id="chat-message-regenerate"
 				@click="handleRegenerate"
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="executionUrl" placement="bottom" :show-after="300">
-			<N8nIconButton icon="info" type="tertiary" size="medium" text />
+			<N8nIconButton
+				icon="info"
+				type="tertiary"
+				size="medium"
+				text
+				data-test-id="chat-message-info"
+			/>
 			<template #content>
 				{{ i18n.baseText('chatHub.message.actions.executionId') }}:
 				<N8nLink :to="executionUrl" :new-window="true">
@@ -110,6 +124,7 @@ function handleReadAloud() {
 				size="medium"
 				text
 				:disabled="currentAlternativeIndex === 0"
+				data-test-id="chat-message-prev-alternative"
 				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex - 1])"
 			/>
 			<N8nText size="medium" color="text-base">
@@ -121,6 +136,7 @@ function handleReadAloud() {
 				size="medium"
 				text
 				:disabled="currentAlternativeIndex === alternatives.length - 1"
+				data-test-id="chat-message-next-alternative"
 				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex + 1])"
 			/>
 		</template>
