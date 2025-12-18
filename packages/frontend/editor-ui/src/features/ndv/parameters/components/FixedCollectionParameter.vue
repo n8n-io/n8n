@@ -105,9 +105,17 @@ const sortable = computed(() => {
 });
 
 // When showRequiredOnly is true, only required fields are shown initially,
-// with optional fields available via "Add Attribute" picker
+// with optional fields available via picker
 const showRequiredOnly = computed(() => {
 	return !!props.parameter.typeOptions?.showRequiredOnly;
+});
+
+// Configurable placeholder for the optional fields picker (follows multipleValueButtonText pattern)
+const showRequiredOnlyButtonText = computed(() => {
+	if (!props.parameter.typeOptions?.showRequiredOnlyButtonText) {
+		return locale.baseText('fixedCollectionParameter.addOption');
+	}
+	return locale.nodeText(activeNode.value?.type).showRequiredOnlyButtonText(props.parameter);
 });
 
 // Track which optional fields have been added by the user for each item
@@ -492,7 +500,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									class="attribute-picker add-option"
 								>
 									<N8nSelect
-										placeholder="Add Attribute"
+										:placeholder="showRequiredOnlyButtonText"
 										size="small"
 										filterable
 										:model-value="null"
@@ -548,7 +556,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					<!-- Attribute picker for non-required fields (single value) -->
 					<div v-if="getPickerFields(property).length > 0 && !isReadOnly" class="attribute-picker">
 						<N8nSelect
-							placeholder="Add Attribute"
+							:placeholder="showRequiredOnlyButtonText"
 							size="small"
 							filterable
 							:model-value="null"

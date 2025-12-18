@@ -561,6 +561,7 @@ export const formFieldsDynamic: INodeProperties = {
 		multipleValues: true,
 		sortable: true,
 		showRequiredOnly: true,
+		showRequiredOnlyButtonText: 'Add Attributes',
 	},
 	displayOptions: {
 		show: {

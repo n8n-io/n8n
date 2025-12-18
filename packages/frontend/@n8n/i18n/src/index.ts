@@ -366,6 +366,17 @@ export class I18nClass {
 				});
 			},
 
+			/**
+			 * Text for a button to add non-required fields inside a `fixedCollection`
+			 * param having `showRequiredOnly: true`.
+			 */
+			showRequiredOnlyButtonText({ name: parameterName, typeOptions }: INodeProperties) {
+				return context.dynamicRender({
+					key: `${initialKey}.${parameterName}.showRequiredOnlyButtonText`,
+					fallback: typeOptions?.showRequiredOnlyButtonText,
+				});
+			},
+
 			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
 				return context.dynamicRender({
 					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
