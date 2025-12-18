@@ -1,9 +1,10 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { ExecutionData } from '@n8n/db';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { stringify } from 'flatted';
+import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
@@ -115,7 +116,7 @@ describe('ExecutionRepository', () => {
 				executionId,
 				workflowData: { id: workflow.id, connections: {}, nodes: [], name: workflow.name },
 				data: stringify(v0Data),
-			});
+			} as unknown as Partial<ExecutionData>);
 
 			// Read the execution back
 			const execution = await executionRepo.findSingleExecution(executionId, {
