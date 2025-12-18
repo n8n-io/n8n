@@ -1,24 +1,59 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref, h } from 'vue';
 import { useRouter } from 'vue-router';
-import { albertsonsRestApiRequest } from '@src/utils/albertsonsRestApiRequest';
-
+import { useUserAgentMappingsStore } from '@src/stores/userAgentMappings.store';
+import { NDropdown, NIcon } from 'naive-ui';
+import {
+	Play,
+	EllipsisVertical,
+	Clock,
+	ClockCheck,
+	Pause,
+	Search,
+	Funnel,
+	Edit,
+} from 'lucide-vue-next';
+import dayjs from 'dayjs';
 const router = useRouter();
-const userAgentMappingsData = ref([]);
+const userAgentMappingsStore = useUserAgentMappingsStore();
 
-async function loadUserAgentMappingsData() {
-	const result = await albertsonsRestApiRequest('GET', `/v1/userAgentMappings/all`);
-	userAgentMappingsData.value = result;
-	console.log('agents', userAgentMappingsData.value);
+function renderIcon(icon) {
+	return () => {
+		return h(NIcon, null, {
+			default: () => h(icon),
+		});
+	};
 }
+
+const options = [
+	{
+		label: 'Edit Workflow',
+		key: 'edit',
+		icon: renderIcon(Edit),
+	},
+];
+
+onMounted(async () => {
+	await userAgentMappingsStore.fetchUserAgentMappings();
+});
+const searchQuery = ref('');
+const userAgentMappingsData = computed(() => {
+	return userAgentMappingsStore.getUserAgentMappings();
+});
+
+const filteredUserAgentMappings = computed(() => {
+	return userAgentMappingsData.value.filter((item) =>
+		item?.workflow?.name?.toLowerCase().includes(searchQuery?.value?.toLowerCase()),
+	);
+});
 
 function goToNewWorkflow() {
 	router.push('/workflow/new');
 }
 
-onMounted(() => {
-	loadUserAgentMappingsData();
-});
+function goToEditWorkflow(id) {
+	router.push(`/workflow/${id}`);
+}
 </script>
 
 <template>
@@ -38,149 +73,89 @@ onMounted(() => {
 		<!-- HEADER : Search and Filter -->
 		<div class="search-bar">
 			<div class="search-input">
-				<span class="icon">🔍</span>
-				<input type="text" placeholder="Search workflows" />
+				<Search size="14" color="gray" />
+				<input v-model="searchQuery" type="text" placeholder="Search agents" />
 			</div>
 
-			<button class="filter-btn">
-				<span class="icon">⏳</span>
+			<!-- <button class="filter-btn">
+				<Funnel size="12" />
 				Filters
-			</button>
+			</button> -->
 		</div>
 
 		<!-- Agent List -->
 		<div class="card">
-			<table>
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Project</th>
-						<th>Status</th>
-						<th>Trigger</th>
-						<th>Last Run</th>
-						<th>Success Rate</th>
-					</tr>
-				</thead>
+			<div class="table-wrapper">
+				<table>
+					<!-- Agent List : table header -->
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Project</th>
+							<th>Status</th>
+							<th>Trigger</th>
+							<th>Last Run</th>
+							<th>Success Rate</th>
+							<th></th>
+						</tr>
+					</thead>
 
-				<tbody>
-					<tr v-for="item in userAgentMappingsData" :key="item.id">
-						<td>
-							<strong>{{ item.workflow.name }}</strong
-							><br />
-							<small>{{ item.workflow.nodes.length }} nodes</small>
-						</td>
-						<td>Inventory Management Automation</td>
-						<td>
-							<span :class="['status', 'Active']">Active</span>
-						</td>
-						<td>Every 15 min</td>
-						<td>ec 13, 04:45 PM</td>
-						<td>
-							<div class="progress">
-								<div class="bar" :style="{ width: item.rate + '%' }"></div>
-							</div>
-							90%
-						</td>
-					</tr>
-				</tbody>
-			</table>
+					<!-- Agent List : table body -->
+					<tbody>
+						<tr v-for="item in filteredUserAgentMappings" :key="item.id" class="workflow_entry">
+							<td class="workflow_name">
+								{{ item.workflow.name }}
+								<br />
+								<small class="txt_secondary">{{ item.workflow.nodes.length }} nodes</small>
+							</td>
+							<td class="txt_secondary workflow_project">Inventory Management Automation</td>
+							<td>
+								<span
+									:class="['status', item?.workflow?.active ? 'active' : 'inactive']"
+									class="workflow_status"
+								>
+									<ClockCheck v-if="item?.workflow?.active" :size="11" />
+									<Pause v-else :size="11" />
+									{{ item?.workflow?.active ? 'Active' : 'Inactive' }}
+								</span>
+							</td>
+							<td class="txt_secondary flex">
+								<Clock class="clock_icon" />
+								{{
+									item?.workflow?.nodes?.[0]?.type
+										?.split('.')
+										?.pop()
+										?.replace(/^\w/, (c) => c.toUpperCase()) || ''
+								}}
+							</td>
+							<td class="txt_secondary">
+								{{ dayjs(item?.last_execution?.startedAt).format('MMM DD, hh:mm A') }}
+							</td>
+							<td class="txt_secondary progress_bar">
+								<div class="progress">
+									<div class="bar" :style="{ width: item?.success_rate + '%' }"></div>
+								</div>
+								<span> {{ item?.success_rate }}%</span>
+							</td>
+							<td class="txt_secondary">
+								<Play class="action_icons" />
+								<n-dropdown
+									trigger="hover"
+									:options="options"
+									@select="goToEditWorkflow(item?.workflowId)"
+								>
+									<EllipsisVertical class="action_icons" />
+								</n-dropdown>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style scoped>
-.search-bar {
-	display: flex;
-	gap: 12px;
-	align-items: center;
-}
-
-.search-input {
-	display: flex;
-	align-items: center;
-	border: 1px solid skyblue;
-	border-radius: 8px;
-	padding: 8px 12px;
-	width: 280px;
-}
-
-.search-input input {
-	background: transparent;
-	border: none;
-	outline: none;
-	margin-left: 8px;
-	width: 100%;
-}
-
-.filter-btn {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 8px 14px;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	background: white;
-	cursor: pointer;
-}
-
-.icon {
-	font-size: 14px;
-}
-
-.card {
-	background: var(--color--background);
-	padding: 16px;
-	border-radius: 10px;
-	border: 0.6px solid skyblue;
-	margin: 10px 0;
-}
-
-table {
-	width: 100%;
-	border-collapse: collapse;
-}
-
-th,
-td {
-	padding: 12px;
-	text-align: left;
-}
-
-thead {
-	background: var(--color--background);
-	border-bottom: 0.3px solid skyblue;
-	padding: 10px 0;
-}
-
-.status {
-	padding: 4px 10px;
-	border-radius: 12px;
-	font-size: 12px;
-}
-
-.Active {
-	background: #c4efd3;
-	color: #0f2f11;
-}
-
-.Error {
-	background: #f0c9c5;
-	color: #b41e1e;
-}
-
-.progress {
-	height: 6px;
-	background: #eee;
-	border-radius: 5px;
-	margin-bottom: 4px;
-}
-
-.bar {
-	height: 6px;
-	background: #2ecc71;
-	border-radius: 5px;
-}
-
 .dashboard {
 	padding: 24px;
 	width: 100%;
@@ -195,58 +170,15 @@ thead {
 	margin-bottom: 24px;
 }
 
-.logo {
-	width: 36px;
-	height: 36px;
-}
-
 .header-text h1 {
 	font-size: 20px;
 	font-weight: 600;
-	color: var(--color--text--shade-1);
+	color: var(--color-text-primary);
 }
 
 .subtitle {
 	font-size: 13px;
-	color: var(--color--text--tint-1);
-}
-
-/* METRICS */
-.metrics {
-	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: 16px;
-	margin-bottom: 24px;
-}
-
-.metric-card {
-	background: var(--color--background--light-3);
-	border: 1px solid var(--border-color--light);
-	border-radius: var(--radius--lg);
-	padding: 16px;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.metric-card.highlight {
-	border-left: 4px solid var(--color--primary);
-}
-
-.metric-value {
-	font-size: 22px;
-	font-weight: 700;
-	color: var(--color--text--shade-1);
-}
-
-.metric-label {
-	font-size: 13px;
-	color: var(--color--text--tint-1);
-}
-
-.metric-sub {
-	font-size: 12px;
-	color: var(--color--text--tint-1);
+	color: var(--color-text-secondary);
 }
 
 .success {
@@ -257,6 +189,16 @@ thead {
 	color: var(--color--danger);
 }
 
+.primary {
+	background: var(--color-primary-blue);
+	color: var(--button--color--text--primary);
+	border-radius: var(--radius);
+	padding: 10px 18px;
+	border: none;
+	font-weight: 600;
+	cursor: pointer;
+}
+
 /* PRIMARY ACTION */
 .primary-actions {
 	margin-bottom: 24px;
@@ -265,92 +207,6 @@ thead {
 	display: flex;
 	gap: 16px;
 	margin-bottom: 16px;
-}
-
-.primary {
-	background: var(--button--color--background--primary);
-	color: var(--button--color--text--primary);
-	border-radius: var(--radius);
-	padding: 10px 18px;
-	border: none;
-	font-weight: 600;
-}
-
-/* SECTION */
-.section {
-	background: var(--color--background--light-3);
-	border: 1px solid var(--border-color--light);
-	border-radius: var(--radius--lg);
-	padding: 16px;
-}
-
-.section-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 12px;
-}
-
-.section-header h2 {
-	font-size: 16px;
-	font-weight: 600;
-}
-
-.secondary {
-	background: var(--button--color--background--secondary);
-	color: var(--button--color--text--secondary);
-	border-radius: var(--radius);
-	padding: 6px 12px;
-	border: var(--border);
-}
-
-/* WORKFLOW LIST */
-.list {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.workflow {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 12px;
-	border-radius: var(--radius);
-	border: 1px solid var(--border-color--light);
-	background: var(--color--background--light-2);
-	cursor: pointer;
-	font-size: 12px;
-	font-weight: 500;
-	white-space: nowrap;
-	margin-left: 10px;
-}
-
-.publish-btn:disabled {
-	border-color: #ccc;
-	background: #f3f4f6;
-	color: #999;
-	cursor: default;
-}
-
-.workflow:hover {
-	background: var(--color--background--light-1);
-}
-
-.workflow h3 {
-	margin: 0;
-	font-size: 14px;
-}
-
-.workflow p {
-	margin: 0;
-	font-size: 12px;
-	color: var(--color--text--tint-1);
-}
-
-.status {
-	font-size: 12px;
-	font-weight: 600;
 }
 
 /* STATE */
@@ -372,5 +228,153 @@ thead {
 	.metrics {
 		grid-template-columns: 1fr;
 	}
+}
+
+.search-bar {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+}
+
+.search-input {
+	background-color: var(--color--background--light-1);
+	border: 1px solid var(--border-color--light);
+	display: flex;
+	align-items: center;
+	border-radius: 8px;
+	padding: 7px 15px;
+	width: 280px;
+	font-size: 12px;
+}
+
+.search-input input {
+	background: transparent;
+	border: none;
+	outline: none;
+	margin-left: 8px;
+	width: 100%;
+}
+
+.filter-btn {
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 15px;
+	border-radius: 8px;
+	cursor: pointer;
+	color: var(--color-text-primary);
+	background-color: var(--color--background--light-1);
+	border: 1px solid var(--border-color--light);
+}
+
+.action_icons {
+	height: 16px;
+	cursor: pointer;
+}
+
+.flex {
+	display: flex;
+	align-items: center;
+}
+
+.clock_icon {
+	height: 14px;
+	margin-right: 1px;
+}
+
+.card {
+	border: 1px solid var(--border-color--light);
+	background-color: var(--color--background--light-1);
+	border-radius: 8px;
+	margin: 10px 0;
+}
+
+.card .table-wrapper {
+	overflow-x: auto;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	min-width: 600px;
+}
+
+th {
+	text-transform: uppercase;
+	font-weight: 500;
+	color: var(--color-text-secondary);
+	border-bottom: 1px solid var(--border-color--light);
+}
+
+th,
+td {
+	font-size: 12px;
+	padding: 20px;
+	text-align: left;
+	font-weight: 500;
+	min-width: 150px;
+}
+
+thead {
+	background: var(--color--background);
+	border-bottom: 1px solid var(--color-border-base);
+	padding: 10px 8px;
+}
+
+.workflow_entry {
+	border-bottom: 1px solid var(--border-color--light);
+}
+
+.workflow_name .workflow_project {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.workflow_status {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.txt_secondary {
+	color: var(--color-text-secondary);
+}
+
+.status {
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+}
+
+.active {
+	background: var(--color-light-green);
+	color: var(--color--success);
+	font-weight: 500;
+	font-size: 11px;
+}
+
+.inactive {
+	background: var(--color-light-orange);
+	color: var(--color-warning-orange);
+}
+
+.progress_bar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.progress {
+	height: 6px;
+	background: #eee;
+	border-radius: 5px;
+	width: 3rem;
+}
+
+.bar {
+	height: 6px;
+	background: var(--color--success);
+	border-radius: 8px;
 }
 </style>
