@@ -74,6 +74,7 @@
     "lucide-vue-next": "^0.561.0",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
+    "naive-ui": "^2.43.2",
     "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",

@@ -1,11 +1,37 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, h } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserAgentMappingsStore } from '@src/stores/userAgentMappings.store';
-import { Play, EllipsisVertical, Clock, ClockCheck, Pause, Search, Funnel } from 'lucide-vue-next';
+import { NDropdown, NIcon } from 'naive-ui';
+import {
+	Play,
+	EllipsisVertical,
+	Clock,
+	ClockCheck,
+	Pause,
+	Search,
+	Funnel,
+	Edit,
+} from 'lucide-vue-next';
 import dayjs from 'dayjs';
 const router = useRouter();
 const userAgentMappingsStore = useUserAgentMappingsStore();
+
+function renderIcon(icon) {
+	return () => {
+		return h(NIcon, null, {
+			default: () => h(icon),
+		});
+	};
+}
+
+const options = [
+	{
+		label: 'Edit Workflow',
+		key: 'edit',
+		icon: renderIcon(Edit),
+	},
+];
 
 onMounted(async () => {
 	await userAgentMappingsStore.fetchUserAgentMappings();
@@ -51,72 +77,80 @@ function goToEditWorkflow(id) {
 				<input v-model="searchQuery" type="text" placeholder="Search agents" />
 			</div>
 
-			<button class="filter-btn">
+			<!-- <button class="filter-btn">
 				<Funnel size="12" />
 				Filters
-			</button>
+			</button> -->
 		</div>
 
 		<!-- Agent List -->
 		<div class="card">
-			<table>
-				<!-- Agent List : table header -->
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Project</th>
-						<th>Status</th>
-						<th>Trigger</th>
-						<th>Last Run</th>
-						<th>Success Rate</th>
-						<th></th>
-					</tr>
-				</thead>
+			<div class="table-wrapper">
+				<table>
+					<!-- Agent List : table header -->
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Project</th>
+							<th>Status</th>
+							<th>Trigger</th>
+							<th>Last Run</th>
+							<th>Success Rate</th>
+							<th></th>
+						</tr>
+					</thead>
 
-				<!-- Agent List : table body -->
-				<tbody>
-					<tr v-for="item in filteredUserAgentMappings" :key="item.id" class="workflow_entry">
-						<td class="workflow_name">
-							{{ item.workflow.name }}
-							<br />
-							<small class="txt_secondary">{{ item.workflow.nodes.length }} nodes</small>
-						</td>
-						<td class="txt_secondary workflow_project">Inventory Management Automation</td>
-						<td>
-							<span
-								:class="['status', item?.workflow?.active ? 'active' : 'inactive']"
-								class="workflow_status"
-							>
-								<ClockCheck v-if="item?.workflow?.active" :size="11" />
-								<Pause v-else :size="11" />
-								{{ item?.workflow?.active ? 'Active' : 'Inactive' }}
-							</span>
-						</td>
-						<td class="txt_secondary flex">
-							<Clock class="clock_icon" />
-							{{
-								item?.workflow?.nodes?.[0]?.type
-									?.split('.')
-									?.pop()
-									?.replace(/^\w/, (c) => c.toUpperCase()) || ''
-							}}
-						</td>
-						<td class="txt_secondary">
-							{{ dayjs(item?.last_execution?.startedAt).format('MMM DD, hh:mm A') }}
-						</td>
-						<td class="txt_secondary progress_bar">
-							<div class="progress">
-								<div class="bar" :style="{ width: item?.success_rate + '%' }"></div>
-							</div>
-							<span> {{ item?.success_rate }}%</span>
-						</td>
-						<td class="txt_secondary">
-							<Play class="action_icons" />
-							<EllipsisVertical @click="goToEditWorkflow(item?.workflowId)" class="action_icons" />
-						</td>
-					</tr>
-				</tbody>
-			</table>
+					<!-- Agent List : table body -->
+					<tbody>
+						<tr v-for="item in filteredUserAgentMappings" :key="item.id" class="workflow_entry">
+							<td class="workflow_name">
+								{{ item.workflow.name }}
+								<br />
+								<small class="txt_secondary">{{ item.workflow.nodes.length }} nodes</small>
+							</td>
+							<td class="txt_secondary workflow_project">Inventory Management Automation</td>
+							<td>
+								<span
+									:class="['status', item?.workflow?.active ? 'active' : 'inactive']"
+									class="workflow_status"
+								>
+									<ClockCheck v-if="item?.workflow?.active" :size="11" />
+									<Pause v-else :size="11" />
+									{{ item?.workflow?.active ? 'Active' : 'Inactive' }}
+								</span>
+							</td>
+							<td class="txt_secondary flex">
+								<Clock class="clock_icon" />
+								{{
+									item?.workflow?.nodes?.[0]?.type
+										?.split('.')
+										?.pop()
+										?.replace(/^\w/, (c) => c.toUpperCase()) || ''
+								}}
+							</td>
+							<td class="txt_secondary">
+								{{ dayjs(item?.last_execution?.startedAt).format('MMM DD, hh:mm A') }}
+							</td>
+							<td class="txt_secondary progress_bar">
+								<div class="progress">
+									<div class="bar" :style="{ width: item?.success_rate + '%' }"></div>
+								</div>
+								<span> {{ item?.success_rate }}%</span>
+							</td>
+							<td class="txt_secondary">
+								<Play class="action_icons" />
+								<n-dropdown
+									trigger="hover"
+									:options="options"
+									@select="goToEditWorkflow(item?.workflowId)"
+								>
+									<EllipsisVertical class="action_icons" />
+								</n-dropdown>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 </template>
@@ -256,9 +290,14 @@ function goToEditWorkflow(id) {
 	margin: 10px 0;
 }
 
+.card .table-wrapper {
+	overflow-x: auto;
+}
+
 table {
 	width: 100%;
 	border-collapse: collapse;
+	min-width: 600px;
 }
 
 th {
@@ -274,6 +313,7 @@ td {
 	padding: 20px;
 	text-align: left;
 	font-weight: 500;
+	min-width: 150px;
 }
 
 thead {
