@@ -60,3 +60,15 @@ export {
 
 // Export Vector setup result type for observability stack
 export { type VectorSetupResult } from './n8n-test-container-observability';
+
+// Tracing stack for workflow execution visualization
+export {
+	setupJaeger,
+	setupN8nTracer,
+	setupTracingStack,
+	getLogStreamingTracerEnvironment,
+	getLogStreamingTracerConfig,
+	type JaegerSetupResult,
+	type N8nTracerSetupResult,
+	type TracingStack,
+} from './n8n-test-container-tracing';

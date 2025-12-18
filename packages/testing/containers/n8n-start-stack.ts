@@ -48,6 +48,7 @@ ${colors.yellow}Options:${colors.reset}
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
+  --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -88,6 +89,9 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With observability stack (logs + metrics persist even after terminal closes)${colors.reset}
   npm run stack --observability
 
+  ${colors.bright}# With tracing stack (Jaeger UI for workflow execution visualization)${colors.reset}
+  npm run stack --queue --tracing
+
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
 
@@ -123,6 +127,7 @@ async function main() {
 			'source-control': { type: 'boolean' },
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
+			tracing: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -145,6 +150,7 @@ async function main() {
 		sourceControl: values['source-control'] ?? false,
 		oidc: values.oidc ?? false,
 		observability: values.observability ?? false,
+		tracing: values.tracing ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -260,6 +266,17 @@ async function main() {
 			}
 		}
 
+		// Display tracing configuration if enabled
+		if (stack.tracing) {
+			console.log('');
+			log.header('Tracing Stack (n8n-tracer + Jaeger)');
+			log.info(`Jaeger UI: ${colors.cyan}${stack.tracing.jaeger.uiUrl}${colors.reset}`);
+			log.info(
+				`n8n-tracer ingest: ${colors.cyan}${stack.tracing.n8nTracer.ingestUrl}${colors.reset}`,
+			);
+			log.info('Configure log streaming destination to send events to n8n-tracer');
+		}
+
 		console.log('');
 		if (stack.observability?.vector) {
 			log.info('Logs are collected by Vector - you can close this terminal');
@@ -341,6 +358,13 @@ function displayConfig(config: N8NConfig) {
 		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics + Vector)');
 	} else {
 		log.info('Observability: disabled');
+	}
+
+	// Display tracing status
+	if (config.tracing) {
+		log.info('Tracing: enabled (n8n-tracer + Jaeger)');
+	} else {
+		log.info('Tracing: disabled');
 	}
 
 	if (config.resourceQuota) {

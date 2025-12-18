@@ -36,6 +36,7 @@ import {
 } from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import type { ObservabilityStack, ScrapeTarget } from './n8n-test-container-observability';
+import type { TracingStack } from './n8n-test-container-tracing';
 import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
@@ -103,6 +104,8 @@ export interface N8NConfig {
 	oidc?: boolean;
 	/** Enable VictoriaObs stack for test observability (VictoriaLogs + VictoriaMetrics) */
 	observability?: boolean;
+	/** Enable tracing stack for workflow execution visualization (n8n-tracer + Jaeger) */
+	tracing?: boolean;
 }
 
 export interface N8NStack {
@@ -118,6 +121,8 @@ export interface N8NStack {
 	};
 	/** Observability stack when observability is enabled */
 	observability?: ObservabilityStack;
+	/** Tracing stack when tracing is enabled */
+	tracing?: TracingStack;
 }
 
 /**
@@ -157,6 +162,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		email = false,
 		oidc = false,
 		observability = false,
+		tracing = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
@@ -164,6 +170,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const emailEnabled = !!email;
 	const oidcEnabled = !!oidc;
 	const observabilityEnabled = !!observability;
+	const tracingEnabled = !!tracing;
 	// OIDC requires PostgreSQL for SSO support
 	const usePostgres = postgres || !!queueConfig || oidcEnabled;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -182,7 +189,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		sourceControlEnabled ||
 		emailEnabled ||
 		oidcEnabled ||
-		observabilityEnabled;
+		observabilityEnabled ||
+		tracingEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -311,6 +319,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	// Track observability stack for later return
 	let observabilityStack: ObservabilityStack | undefined;
+	// Track tracing stack for later return
+	let tracingStack: TracingStack | undefined;
 
 	let earlyAllocatedPort: number | undefined;
 	let earlyAllocatedLoadBalancerPort: number | undefined;
@@ -398,6 +408,24 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			containers.push(observabilityStack.vector.container);
 		}
 		log('Observability stack ready (logs collected by Vector)');
+	}
+
+	// Set up tracing stack for workflow execution visualization
+	if (tracingEnabled && network) {
+		log('Setting up tracing stack (n8n-tracer + Jaeger)...');
+		const { setupTracingStack } = await import('./n8n-test-container-tracing');
+
+		// Always use 'scaling' mode for container testing (HTTP ingest via log streaming)
+		// 'regular' mode watches local log files which doesn't apply to containers
+		// In scaling mode, queue tests show full job lifecycle, single instance shows workflow lifecycle
+		tracingStack = await setupTracingStack({
+			projectName: uniqueProjectName,
+			network,
+			deploymentMode: 'scaling',
+		});
+
+		containers.push(tracingStack.jaeger.container, tracingStack.n8nTracer.container);
+		log('Tracing stack ready');
 	}
 
 	let baseUrl: string;
@@ -518,6 +546,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 		}),
 		...(observabilityStack && { observability: observabilityStack }),
+		...(tracingStack && { tracing: tracingStack }),
 	};
 }
 

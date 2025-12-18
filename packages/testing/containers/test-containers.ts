@@ -31,4 +31,7 @@ export const TEST_CONTAINER_IMAGES = {
 	victoriaMetrics: 'victoriametrics/victoria-metrics:v1.115.0',
 	// Log collector for container logs
 	vector: 'timberio/vector:0.52.0-alpine',
+	// Tracing stack for workflow execution visualization
+	n8nTracer: 'ghcr.io/ivov/n8n-tracer:0.1.0',
+	jaeger: 'jaegertracing/all-in-one:latest',
 } as const;
