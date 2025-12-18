@@ -113,12 +113,14 @@ describe('WorkflowStatusController', () => {
 				{
 					credentialId: 'cred-1',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'configured',
 					credentialType: 'oauth2Api',
 				},
 				{
 					credentialId: 'cred-2',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'configured',
 					credentialType: 'httpBasicAuth',
 				},
@@ -142,12 +144,14 @@ describe('WorkflowStatusController', () => {
 				{
 					credentialId: 'cred-1',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'configured',
 					credentialType: 'oauth2Api',
 				},
 				{
 					credentialId: 'cred-2',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'missing',
 					credentialType: 'httpBasicAuth',
 				},
@@ -171,6 +175,7 @@ describe('WorkflowStatusController', () => {
 				{
 					credentialId: 'cred-1',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'configured',
 					credentialType: 'oauth2Api',
 				},
@@ -194,6 +199,7 @@ describe('WorkflowStatusController', () => {
 				{
 					credentialId: 'cred-1',
 					resolverId: 'resolver/with/special chars',
+					credentialName: 'My OAuth2 Credential',
 					status: 'configured',
 					credentialType: 'oauth2Api',
 				},
@@ -217,6 +223,7 @@ describe('WorkflowStatusController', () => {
 				{
 					credentialId: 'cred-1',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'configured',
 					credentialType: 'oauth2Api',
 				},
@@ -241,6 +248,7 @@ describe('WorkflowStatusController', () => {
 				{
 					credentialId: 'cred-1',
 					resolverId: 'resolver-1',
+					credentialName: 'My OAuth2 Credential',
 					status: 'missing',
 					credentialType: 'oauth2Api',
 				},
@@ -255,6 +263,7 @@ describe('WorkflowStatusController', () => {
 					{
 						credentialId: 'cred-1',
 						credentialStatus: 'missing',
+						credentialName: 'My OAuth2 Credential',
 						credentialType: 'oauth2Api',
 						authorizationUrl:
 							'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver-1',
