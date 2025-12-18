@@ -7,6 +7,7 @@ import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers'
 
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
+import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { ProxyServer } from '../services/proxy-server';
@@ -60,12 +61,13 @@ interface ContainerConfig {
  * Provides tag-driven authentication and database management.
  */
 export const test = base.extend<
-	TestFixtures & CurrentsFixtures,
+	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures,
 	WorkerFixtures & CurrentsWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
+	...observabilityFixtures,
 
 	// Add a container capability to the test e.g proxy server, task runner, etc
 	addContainerCapability: [
