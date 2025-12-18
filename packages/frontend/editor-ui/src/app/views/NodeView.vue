@@ -1885,17 +1885,7 @@ watch(
 	() => uiStore.stateIsDirty,
 	(isDirty) => {
 		if (isDirty) {
-			if (collaborationStore.isCurrentUserWriter) {
-				collaborationStore.recordActivity();
-			}
-
-			// Try to request write access if no one is writing
-			if (!collaborationStore.isCurrentUserWriter && !collaborationStore.isAnyoneWriting) {
-				console.log(
-					'[NodeView] Auto-requesting write access because state is dirty and no one is writing',
-				);
-				collaborationStore.requestWriteAccess();
-			}
+			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only
 			if (!collaborationStore.shouldBeReadOnly) {
