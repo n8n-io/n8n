@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, fireEvent } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 
 import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
 import { VIEWS } from '@/app/constants';

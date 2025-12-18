@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { waitFor, fireEvent } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import NodeDetailsViewV2 from '@/features/ndv/shared/views/NodeDetailsViewV2.vue';
