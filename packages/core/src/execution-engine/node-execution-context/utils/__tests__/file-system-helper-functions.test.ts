@@ -24,6 +24,8 @@ const originalProcessEnv = { ...process.env };
 
 let instanceSettings: InstanceSettings;
 let securityConfig: SecurityConfig;
+let originalBlockedFilePatterns: string;
+
 beforeEach(() => {
 	process.env = { ...originalProcessEnv };
 
@@ -36,6 +38,11 @@ beforeEach(() => {
 	instanceSettings = Container.get(InstanceSettings);
 	securityConfig = Container.get(SecurityConfig);
 	securityConfig.restrictFileAccessTo = '';
+	originalBlockedFilePatterns = securityConfig.blockFilePatterns;
+});
+
+afterEach(() => {
+	securityConfig.blockFilePatterns = originalBlockedFilePatterns;
 });
 
 describe('isFilePathBlocked', () => {
@@ -184,6 +191,43 @@ describe('isFilePathBlocked', () => {
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
+	});
+
+	['.git', '/.git', '/tmp/.git', '/tmp/.git/config'].forEach((path) => {
+		it(`should per default block access to ${path}`, async () => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
+		});
+	});
+
+	it('should allow access when pattern matching is disabled', async () => {
+		securityConfig.blockFilePatterns = '';
+		expect(isFilePathBlocked(await resolvePath("'/tmp/.git'"))).toBe(false);
+	});
+
+	describe('when multiple file patterns are configured', () => {
+		beforeEach(() => {
+			securityConfig.blockFilePatterns = 'hello; \\/there$; ^where';
+		});
+
+		[
+			'hello',
+			'xhellox',
+			'subpath/hello/',
+			'/there',
+			'/subpath/there',
+			'where',
+			'where-is/it',
+		].forEach((path) => {
+			it(`should block access to ${path}`, async () => {
+				expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
+			});
+		});
+
+		['/there/is', '/where'].forEach((path) => {
+			it(`should not block access to ${path}`, async () => {
+				expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
+			});
+		});
 	});
 });
 
