@@ -30,15 +30,15 @@ export abstract class TranslationSupplier {
 	async translate(request: TranslationRequest): Promise<TranslationResponse> {
 		const condition = this.retryEnabled ? this.retryMaxAttempts : 1;
 		for (let i = 0; i < condition; i++) {
+			const runIndex = this.supplyData.addInputData(this.connection, [[{ json: request }]]);
 			try {
 				if (i > 0) await this.waitTillNextRetryAttempt(i);
-				this.supplyData.addInputData(this.connection, [[{ json: request }]], i);
 				const response = await this.executeTranslation(request);
-				this.supplyData.addOutputData(this.connection, i, [[{ json: response }]]);
+				this.supplyData.addOutputData(this.connection, runIndex.index, [[{ json: response }]]);
 				return response;
 			} catch (error) {
 				const nodeError = new NodeOperationError(this.supplyData.getNode(), error as Error);
-				this.supplyData.addOutputData(this.connection, i, nodeError as ExecutionError);
+				this.supplyData.addOutputData(this.connection, runIndex.index, nodeError as ExecutionError);
 			}
 		}
 

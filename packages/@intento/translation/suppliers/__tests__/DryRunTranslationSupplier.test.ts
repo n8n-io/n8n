@@ -31,7 +31,7 @@ describe('DryRunTranslationSupplier', () => {
 
 		mockSupplyData = {
 			getNode: jest.fn().mockReturnValue(mockNode),
-			addInputData: jest.fn(),
+			addInputData: jest.fn().mockReturnValue({ index: 0 }),
 			addOutputData: jest.fn(),
 		} as unknown as jest.Mocked<ISupplyDataFunctions>;
 	});

@@ -41,6 +41,7 @@ describe('DryRunProviderV1', () => {
 				},
 			}),
 		);
+		mockSupplyDataFunctions.addInputData.mockReturnValue({ index: 0 });
 	});
 
 	describe('Node Description', () => {

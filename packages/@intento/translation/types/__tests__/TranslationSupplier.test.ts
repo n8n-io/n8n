@@ -1,8 +1,9 @@
-import { TranslationSupplier } from '../TranslationSupplier';
+import { NodeOperationError } from 'n8n-workflow';
+import type { ISupplyDataFunctions, NodeConnectionType } from 'n8n-workflow';
+
 import type { TranslationRequest } from '../TranslationRequest';
 import type { TranslationResponse } from '../TranslationResponse';
-import { NodeOperationError, ExecutionError } from 'n8n-workflow';
-import type { ISupplyDataFunctions, NodeConnectionType } from 'n8n-workflow';
+import { TranslationSupplier } from '../TranslationSupplier';
 
 // Mock implementation for testing
 class TestTranslationSupplier extends TranslationSupplier {
@@ -66,7 +67,7 @@ describe('TranslationSupplier', () => {
 
 		mockSupplyData = {
 			getNode: jest.fn().mockReturnValue(mockNode),
-			addInputData: jest.fn(),
+			addInputData: jest.fn().mockReturnValue({ index: 0 }),
 			addOutputData: jest.fn(),
 		} as unknown as jest.Mocked<ISupplyDataFunctions>;
 	});
@@ -118,7 +119,6 @@ describe('TranslationSupplier', () => {
 				expect.arrayContaining([
 					expect.arrayContaining([expect.objectContaining({ json: request })]),
 				]),
-				0,
 			);
 		});
 

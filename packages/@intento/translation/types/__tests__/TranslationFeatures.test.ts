@@ -43,7 +43,8 @@ describe('TranslationFeatures', () => {
 
 		it('should reject invalid delay type values', () => {
 			const delayType = TranslationFeatures.DELAY.find((p) => p.name === 'delayType');
-			const validOptions = delayType?.options?.map((o) => o.value) ?? [];
+			const validOptions =
+				delayType?.options?.filter((o) => 'value' in o).map((o) => o.value) ?? [];
 
 			expect(validOptions).toContain('fixed');
 			expect(validOptions).toContain('random');
@@ -120,7 +121,7 @@ describe('TranslationFeatures', () => {
 			const mockedResult = TranslationFeatures.MOCKED_TRANSLATION.find(
 				(p) => p.name === 'mockedTranslationResult',
 			);
-			const modes = mockedResult?.options?.map((o) => o.value) ?? [];
+			const modes = mockedResult?.options?.filter((o) => 'value' in o).map((o) => o.value) ?? [];
 
 			expect(modes).toContain('pass');
 			expect(modes).toContain('overwrite');
