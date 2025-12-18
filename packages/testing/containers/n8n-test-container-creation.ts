@@ -36,11 +36,7 @@ import {
 } from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import type { ObservabilityStack, ScrapeTarget } from './n8n-test-container-observability';
-import {
-	createElapsedLogger,
-	createSilentLogConsumer,
-	createVictoriaLogsForwarder,
-} from './n8n-test-container-utils';
+import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // --- Constants ---
@@ -355,11 +351,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	// Set up observability stack early to capture startup metrics
 	// VictoriaMetrics will retry failed scrapes until n8n containers are ready
+	// Vector collects container logs independently (persists even when process exits)
 	if (observabilityEnabled && network) {
-		log('Setting up observability stack (VictoriaLogs + VictoriaMetrics)...');
-		const { setupVictoriaLogs, setupVictoriaMetrics } = await import(
-			'./n8n-test-container-observability'
-		);
+		log('Setting up observability stack (VictoriaLogs + VictoriaMetrics + Vector)...');
+		const { setupObservabilityStack } = await import('./n8n-test-container-observability');
 
 		// Pre-compute scrape targets (hostnames are deterministic)
 		const workerCount = queueConfig?.workers ?? 0;
@@ -387,18 +382,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			});
 		}
 
-		// Start both in parallel
-		const [victoriaLogsResult, victoriaMetricsResult] = await Promise.all([
-			setupVictoriaLogs({ projectName: uniqueProjectName, network }),
-			setupVictoriaMetrics({ projectName: uniqueProjectName, network, scrapeTargets }),
-		]);
+		// Start full observability stack (VictoriaLogs, VictoriaMetrics, Vector)
+		observabilityStack = await setupObservabilityStack({
+			projectName: uniqueProjectName,
+			network,
+			scrapeTargets,
+		});
 
-		containers.push(victoriaLogsResult.container, victoriaMetricsResult.container);
-		observabilityStack = {
-			victoriaLogs: victoriaLogsResult,
-			victoriaMetrics: victoriaMetricsResult,
-		};
-		log('Observability stack ready');
+		containers.push(
+			observabilityStack.victoriaLogs.container,
+			observabilityStack.victoriaMetrics.container,
+		);
+		if (observabilityStack.vector) {
+			containers.push(observabilityStack.vector.container);
+		}
+		log('Observability stack ready (logs collected by Vector)');
 	}
 
 	let baseUrl: string;
@@ -433,7 +431,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			network,
 			resourceQuota,
 			keycloakCertPem,
-			victoriaLogsEndpoint: observabilityStack?.victoriaLogs.queryEndpoint,
 		});
 		containers.push(...instances);
 		log('All n8n instances started');
@@ -461,7 +458,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			directPort: assignedPort,
 			resourceQuota,
 			keycloakCertPem,
-			victoriaLogsEndpoint: observabilityStack?.victoriaLogs.queryEndpoint,
 		});
 		containers.push(...instances);
 	}
@@ -578,8 +574,6 @@ interface CreateInstancesOptions {
 		cpu?: number; // in cores
 	};
 	keycloakCertPem?: string;
-	/** VictoriaLogs query endpoint for log forwarding (when observability is enabled) */
-	victoriaLogsEndpoint?: string;
 }
 
 async function createN8NInstances({
@@ -592,7 +586,6 @@ async function createN8NInstances({
 	directPort,
 	resourceQuota,
 	keycloakCertPem,
-	victoriaLogsEndpoint,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 	const log = createElapsedLogger('n8n-instances');
@@ -613,7 +606,6 @@ async function createN8NInstances({
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
 			keycloakCertPem,
-			victoriaLogsEndpoint,
 		});
 		instances.push(container);
 		log(`Main ${i}/${mainCount} ready`);
@@ -632,7 +624,6 @@ async function createN8NInstances({
 			instanceNumber: i,
 			resourceQuota,
 			keycloakCertPem,
-			victoriaLogsEndpoint,
 		});
 		instances.push(container);
 		log(`Worker ${i}/${workerCount} ready`);
@@ -655,8 +646,6 @@ interface CreateContainerOptions {
 		cpu?: number; // in cores
 	};
 	keycloakCertPem?: string;
-	/** VictoriaLogs query endpoint for log forwarding (when observability is enabled) */
-	victoriaLogsEndpoint?: string;
 }
 
 async function createN8NContainer({
@@ -670,22 +659,11 @@ async function createN8NContainer({
 	directPort,
 	resourceQuota,
 	keycloakCertPem,
-	victoriaLogsEndpoint,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
 	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
 
-	// Use VictoriaLogs forwarder when observability is enabled, otherwise use silent consumer
-	const { consumer, throwWithLogs } = victoriaLogsEndpoint
-		? createVictoriaLogsForwarder({
-				endpoint: victoriaLogsEndpoint,
-				containerName: name,
-				labels: {
-					project: uniqueProjectName,
-					role: isWorker ? 'worker' : 'main',
-					instance: String(instanceNumber),
-				},
-			})
-		: createSilentLogConsumer();
+	// Use silent log consumer - Vector handles log collection when observability is enabled
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);
 

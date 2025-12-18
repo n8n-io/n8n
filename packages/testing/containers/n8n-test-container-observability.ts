@@ -42,9 +42,14 @@ export interface VictoriaMetricsSetupResult {
 	internalEndpoint: string;
 }
 
+export interface VectorSetupResult {
+	container: StartedTestContainer;
+}
+
 export interface ObservabilityStack {
 	victoriaLogs: VictoriaLogsSetupResult;
 	victoriaMetrics: VictoriaMetricsSetupResult;
+	vector?: VectorSetupResult;
 }
 
 export interface ScrapeTarget {
@@ -245,7 +250,95 @@ export async function setupVictoriaMetrics({
 }
 
 /**
- * Setup complete observability stack with VictoriaLogs and VictoriaMetrics
+ * Generate Vector configuration for Docker log collection
+ */
+function generateVectorConfig(projectName: string, victoriaLogsEndpoint: string): string {
+	return `
+# Disable healthcheck to allow Vector to start while Docker socket becomes available
+# See: https://github.com/vectordotdev/vector/issues/23585
+[healthchecks]
+enabled = false
+
+[sources.docker_logs]
+type = "docker_logs"
+include_labels = ["com.docker.compose.project=${projectName}"]
+
+[transforms.format_for_victorialogs]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+# VictoriaLogs expects _msg and _time fields
+._msg = .message
+._time = .timestamp
+.project = "${projectName}"
+.service = .label."com.docker.compose.service" || "unknown"
+.container = .container_name || "unknown"
+# Remove fields that VictoriaLogs doesn't need
+del(.message)
+del(.timestamp)
+del(.label)
+del(.source_type)
+del(.stream)
+'''
+
+[sinks.victoria_logs]
+type = "http"
+inputs = ["format_for_victorialogs"]
+uri = "${victoriaLogsEndpoint}/insert/jsonline"
+method = "post"
+framing.method = "newline_delimited"
+encoding.codec = "json"
+`;
+}
+
+/**
+ * Setup Vector container for Docker log collection
+ *
+ * Vector collects logs from all containers with matching project label
+ * and forwards them to VictoriaLogs via HTTP.
+ */
+export async function setupVector({
+	projectName,
+	network,
+	victoriaLogsEndpoint,
+}: {
+	projectName: string;
+	network: StartedNetwork;
+	victoriaLogsEndpoint: string;
+}): Promise<VectorSetupResult> {
+	const vectorConfig = generateVectorConfig(projectName, victoriaLogsEndpoint);
+
+	const container = await new GenericContainer(TEST_CONTAINER_IMAGES.vector)
+		.withName(`${projectName}-vector`)
+		.withNetwork(network)
+		.withNetworkAliases('vector')
+		.withLabels({
+			'com.docker.compose.project': projectName,
+			'com.docker.compose.service': 'vector',
+		})
+		.withBindMounts([
+			{
+				source: '/var/run/docker.sock',
+				target: '/var/run/docker.sock',
+				mode: 'ro',
+			},
+		])
+		.withCopyContentToContainer([
+			{
+				content: vectorConfig,
+				target: '/etc/vector/vector.toml',
+			},
+		])
+		.withCommand(['--config', '/etc/vector/vector.toml'])
+		.withWaitStrategy(Wait.forLogMessage(/Vector has started/, 1).withStartupTimeout(60000))
+		.withReuse()
+		.start();
+
+	return { container };
+}
+
+/**
+ * Setup complete observability stack with VictoriaLogs, VictoriaMetrics, and Vector
  */
 export async function setupObservabilityStack({
 	projectName,
@@ -256,15 +349,23 @@ export async function setupObservabilityStack({
 	network: StartedNetwork;
 	scrapeTargets?: ScrapeTarget[];
 }): Promise<ObservabilityStack> {
-	// Start both containers in parallel
+	// Start VictoriaLogs and VictoriaMetrics in parallel
 	const [victoriaLogs, victoriaMetrics] = await Promise.all([
 		setupVictoriaLogs({ projectName, network }),
 		setupVictoriaMetrics({ projectName, network, scrapeTargets }),
 	]);
 
+	// Start Vector after VictoriaLogs is ready (needs the endpoint)
+	const vector = await setupVector({
+		projectName,
+		network,
+		victoriaLogsEndpoint: victoriaLogs.internalEndpoint,
+	});
+
 	return {
 		victoriaLogs,
 		victoriaMetrics,
+		vector,
 	};
 }
 

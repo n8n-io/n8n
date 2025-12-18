@@ -47,7 +47,7 @@ ${colors.yellow}Options:${colors.reset}
   --task-runner     Enable external task runner container
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
-  --observability   Enable VictoriaObs stack (VictoriaLogs + VictoriaMetrics)
+  --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -85,7 +85,7 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With OIDC (Keycloak) for SSO testing${colors.reset}
   npm run stack --postgres --oidc
 
-  ${colors.bright}# With observability stack (VictoriaLogs + VictoriaMetrics)${colors.reset}
+  ${colors.bright}# With observability stack (logs + metrics persist even after terminal closes)${colors.reset}
   npm run stack --observability
 
   ${colors.bright}# Custom scaling${colors.reset}
@@ -247,15 +247,38 @@ async function main() {
 			console.log('');
 			log.header('Observability Stack (VictoriaObs)');
 			log.info(
-				`VictoriaLogs: ${colors.cyan}${stack.observability.victoriaLogs.queryEndpoint}${colors.reset}`,
+				`VictoriaLogs UI: ${colors.cyan}${stack.observability.victoriaLogs.queryEndpoint}/select/vmui${colors.reset}`,
 			);
 			log.info(
-				`VictoriaMetrics: ${colors.cyan}${stack.observability.victoriaMetrics.queryEndpoint}${colors.reset}`,
+				`VictoriaMetrics UI: ${colors.cyan}${stack.observability.victoriaMetrics.queryEndpoint}/vmui${colors.reset}`,
 			);
 			log.info(
-				`Syslog (for log streaming): ${colors.cyan}${stack.observability.victoriaLogs.syslog.host}:${stack.observability.victoriaLogs.syslog.port}${colors.reset}`,
+				`Syslog endpoint: ${colors.cyan}${stack.observability.victoriaLogs.syslog.host}:${stack.observability.victoriaLogs.syslog.port}${colors.reset}`,
 			);
+			if (stack.observability.vector) {
+				log.success('Container logs collected by Vector (runs in background)');
+			}
 		}
+
+		console.log('');
+		if (stack.observability?.vector) {
+			log.info('Logs are collected by Vector - you can close this terminal');
+			log.info('Containers will keep running (use docker to stop them)');
+		}
+		log.info('Press Ctrl+C to stop all containers');
+		console.log('');
+
+		// Keep process running for graceful shutdown
+		await new Promise<void>((resolve) => {
+			process.on('SIGINT', () => {
+				console.log('');
+				log.info('Stopping containers...');
+				void stack.stop().then(() => {
+					log.success('All containers stopped');
+					resolve();
+				});
+			});
+		});
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
 		process.exit(1);
@@ -315,7 +338,7 @@ function displayConfig(config: N8NConfig) {
 
 	// Display observability status
 	if (config.observability) {
-		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics)');
+		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics + Vector)');
 	} else {
 		log.info('Observability: disabled');
 	}

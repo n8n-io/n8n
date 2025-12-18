@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "stack": "tsx ./n8n-start-stack.ts",
     "stack:help": "tsx ./n8n-start-stack.ts --help",

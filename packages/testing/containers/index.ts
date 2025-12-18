@@ -58,9 +58,5 @@ export {
 	type WaitForMetricOptions,
 } from './n8n-test-container-victoria-helpers';
 
-// Container log utilities
-export {
-	createVictoriaLogsForwarder,
-	type VictoriaLogsForwarderOptions,
-	type VictoriaLogsForwarderResult,
-} from './n8n-test-container-utils';
+// Export Vector setup result type for observability stack
+export { type VectorSetupResult } from './n8n-test-container-observability';

@@ -29,4 +29,6 @@ export const TEST_CONTAINER_IMAGES = {
 	// VictoriaObs stack for test observability
 	victoriaLogs: 'victoriametrics/victoria-logs:v1.21.0-victorialogs',
 	victoriaMetrics: 'victoriametrics/victoria-metrics:v1.115.0',
+	// Log collector for container logs
+	vector: 'timberio/vector:0.52.0-alpine',
 } as const;

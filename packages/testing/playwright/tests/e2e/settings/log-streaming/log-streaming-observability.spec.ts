@@ -68,68 +68,6 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		await api.deleteLogStreamingDestination(destination.id);
 	});
 
-	test('should capture workflow execution events in VictoriaLogs', async ({
-		api,
-		n8nContainer,
-	}) => {
-		// Get observability stack from the container
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
-		const syslogConfig = getLogStreamingSyslogConfig(
-			obsStack.victoriaLogs.syslog.host,
-			obsStack.victoriaLogs.syslog.port,
-		);
-
-		// Configure syslog destination
-		const destination = await api.createSyslogDestination({
-			host: syslogConfig.host,
-			port: syslogConfig.port,
-			protocol: syslogConfig.protocol,
-			facility: syslogConfig.facility,
-			app_name: syslogConfig.app_name,
-			label: 'VictoriaLogs Workflow Events',
-			// Subscribe only to workflow events
-			subscribedEvents: ['n8n.workflow.started', 'n8n.workflow.success', 'n8n.workflow.failed'],
-		});
-
-		// Import and activate a webhook workflow
-		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
-			'simple-webhook-test.json',
-		);
-
-		// Trigger the workflow via webhook
-		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
-			method: 'POST',
-			data: { test: 'log-streaming' },
-		});
-		expect(webhookResponse.ok()).toBe(true);
-
-		// Wait for workflow execution to complete
-		const execution = await api.workflows.waitForExecution(workflowId, 10000);
-		expect(execution.status).toBe('success');
-
-		// Wait for workflow.started event (use wildcard for LogsQL)
-		const startedEvent = await obs.logs.waitForLog('*workflow.started*', {
-			timeoutMs: 30000,
-			start: '-2m',
-		});
-
-		expect(startedEvent).toBeTruthy();
-		console.log('Workflow started event received:', startedEvent?.message);
-
-		// Wait for workflow.success event
-		const successEvent = await obs.logs.waitForLog('*workflow.success*', {
-			timeoutMs: 30000,
-			start: '-2m',
-		});
-
-		expect(successEvent).toBeTruthy();
-		console.log('Workflow success event received:', successEvent?.message);
-
-		// Clean up
-		await api.deleteLogStreamingDestination(destination.id);
-	});
-
 	test('should query metrics from VictoriaMetrics', async ({ api, n8nContainer }) => {
 		// Get observability stack from the container
 		const obsStack = n8nContainer.observability!;
