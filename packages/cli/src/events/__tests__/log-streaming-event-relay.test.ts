@@ -1135,7 +1135,6 @@ describe('LogStreamingEventRelay', () => {
 				},
 				variableId: 'var456',
 				variableKey: 'MY_DELETED_VARIABLE',
-				projectId: undefined,
 			};
 
 			eventService.emit('variable-deleted', event);
@@ -1150,7 +1149,6 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					variableId: 'var456',
 					variableKey: 'MY_DELETED_VARIABLE',
-					projectId: undefined,
 				},
 			});
 		});
