@@ -24,6 +24,9 @@ export { AutomergeProvider } from './providers/automerge';
 export type { SyncTransport } from './transports';
 export { MockTransport } from './transports';
 
+// Sync
+export type { SyncProvider, CreateSyncProvider } from './sync';
+
 /**
  * Creates a CRDT provider based on the given configuration.
  * @param config - Configuration specifying which CRDT engine to use
