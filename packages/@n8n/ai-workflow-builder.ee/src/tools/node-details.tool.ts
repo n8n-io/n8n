@@ -122,7 +122,7 @@ function formatNodeDetails(
 			(acc, config) => {
 				const exampleStr = JSON.stringify(config.parameters, null, 2);
 				if (acc.chars + exampleStr.length <= MAX_NODE_EXAMPLE_CHARS) {
-					acc.parts.push(`<example version="${config.version}">\n${exampleStr}\n</example>`);
+					acc.parts.push(`<example>\n${exampleStr}\n</example>`);
 					acc.chars += exampleStr.length;
 				}
 				return acc;
@@ -196,7 +196,7 @@ async function getNodeExamples(
 			return { examples: filteredConfigs };
 		}
 	} catch {
-		// State may not be available in test environments
+		// State may not be available in some environments
 	}
 
 	// No cached data, fetch from templates API
