@@ -557,6 +557,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			agent,
 		};
 
+		telemetry.track('User sent chat hub message', {
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+		});
+
 		await promisifyStreamingApi(sendMessageApi)(
 			rootStore.restApiContext,
 			{
@@ -575,12 +581,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
-
-		telemetry.track('User sent chat hub message', {
-			...flattenModel(agent.model),
-			is_custom: agent.model.provider === 'custom-agent',
-			chat_session_id: sessionId,
-		});
 	}
 
 	async function editMessage(
@@ -619,6 +619,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			attachments: [],
 		};
 
+		telemetry.track('User edited chat hub message', {
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+			chat_message_id: editId,
+		});
+
 		await promisifyStreamingApi(editMessageApi)(
 			rootStore.restApiContext,
 			{ sessionId, editId, payload },
@@ -626,13 +633,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
-
-		telemetry.track('User edited chat hub message', {
-			...flattenModel(agent.model),
-			is_custom: agent.model.provider === 'custom-agent',
-			chat_session_id: sessionId,
-			chat_message_id: editId,
-		});
 	}
 
 	async function regenerateMessage(
@@ -665,6 +665,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			attachments: [],
 		};
 
+		telemetry.track('User regenerated chat hub message', {
+			...flattenModel(agent.model),
+			is_custom: agent.model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+			chat_message_id: retryId,
+		});
+
 		await promisifyStreamingApi(regenerateMessageApi)(
 			rootStore.restApiContext,
 			{ sessionId, retryId, payload },
@@ -672,13 +679,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
-
-		telemetry.track('User regenerated chat hub message', {
-			...flattenModel(agent.model),
-			is_custom: agent.model.provider === 'custom-agent',
-			chat_session_id: sessionId,
-			chat_message_id: retryId,
-		});
 	}
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {
