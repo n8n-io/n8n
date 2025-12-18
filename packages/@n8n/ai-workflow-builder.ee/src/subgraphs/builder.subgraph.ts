@@ -8,7 +8,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
 import { buildBuilderPrompt } from '@/prompts/agents/builder.prompt';
-import type { ChatPayload } from '@/workflow-builder-agent';
+import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
@@ -84,6 +84,7 @@ export interface BuilderSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
 	logger?: Logger;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export class BuilderSubgraph extends BaseSubgraph<
@@ -95,15 +96,22 @@ export class BuilderSubgraph extends BaseSubgraph<
 	description = 'Constructs workflow structure: creating nodes and connections';
 
 	create(config: BuilderSubgraphConfig) {
-		// Create tools
-		const tools = [
+		// Check if template examples are enabled
+		const includeExamples = config.featureFlags?.templateExamples === true;
+
+		// Create base tools
+		const baseTools = [
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
-			createGetNodeConnectionExamplesTool(config.logger),
 		];
+
+		// Conditionally add node connection examples tool if feature flag is enabled
+		const tools = includeExamples
+			? [...baseTools, createGetNodeConnectionExamplesTool(config.logger)]
+			: baseTools;
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
 		const systemPrompt = ChatPromptTemplate.fromMessages([
