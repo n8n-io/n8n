@@ -89,7 +89,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function requestWriteAccess() {
-		if (isAnyoneWriting.value && !isCurrentUserWriter.value) {
+		if (shouldBeReadOnly.value) {
 			console.log('[Collaboration] ❌ Write access denied - another user is writing', {
 				currentWriter: currentWriterId.value,
 				requestingUser: usersStore.currentUserId,
