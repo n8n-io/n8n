@@ -41,7 +41,7 @@ test.describe('Personal agent @capability:proxy', () => {
 
 		await page.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-		await n8n.page.getByRole('menuitem').getByText('Personal agents').hover();
+		await n8n.page.getByRole('menuitem').getByText('Personal agents').hover({ force: true });
 		await n8n.page.locator('.el-sub-menu.is-opened').getByText('New Agent').click();
 
 		await page.personalAgentModal.getNameField().fill('e2e agent');
@@ -50,7 +50,10 @@ test.describe('Personal agent @capability:proxy', () => {
 
 		await page.personalAgentModal.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-		await n8n.page.getByRole('menuitem').getByText('Anthropic', { exact: true }).hover();
+		await n8n.page
+			.getByRole('menuitem')
+			.getByText('Anthropic', { exact: true })
+			.hover({ force: true });
 		await n8n.page.locator('.el-sub-menu.is-opened').getByText('Claude Opus 4.5').click();
 
 		await page.personalAgentModal.getSaveButton().click();
@@ -75,10 +78,16 @@ test.describe('Personal agent @capability:proxy', () => {
 		await agentsPage.personalAgentModal.getNameField().fill('e2e agent');
 		await agentsPage.personalAgentModal.getDescriptionField().fill('just for testing');
 		await agentsPage.personalAgentModal.getSystemPromptField().fill('reply in Chinese');
+		await expect(agentsPage.personalAgentModal.getSystemPromptField()).toHaveValue(
+			'reply in Chinese',
+		);
 
 		await agentsPage.personalAgentModal.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-		await n8n.page.getByRole('menuitem').getByText('Anthropic', { exact: true }).hover();
+		await n8n.page
+			.getByRole('menuitem')
+			.getByText('Anthropic', { exact: true })
+			.hover({ force: true });
 		await n8n.page.locator('.el-sub-menu.is-opened').getByText('Claude Opus 4.5').click();
 
 		await agentsPage.personalAgentModal.getSaveButton().click();
@@ -96,6 +105,9 @@ test.describe('Personal agent @capability:proxy', () => {
 		await chatPage.sidebar.getPersonalAgentButton().click();
 		await agentsPage.getEditButtonAt(0).click();
 		await agentsPage.personalAgentModal.getSystemPromptField().fill('reply in Japanese');
+		await expect(agentsPage.personalAgentModal.getSystemPromptField()).toHaveValue(
+			'reply in Japanese',
+		);
 		await agentsPage.personalAgentModal.getSaveButton().click();
 		await expect(agentsPage.personalAgentModal.getRoot()).not.toBeInViewport(); // wait for modal to close
 

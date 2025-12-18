@@ -1,4 +1,7 @@
-import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
+import {
+	INSTANCE_MEMBER_CREDENTIALS,
+	INSTANCE_OWNER_CREDENTIALS,
+} from '../../../config/test-users';
 import { test, expect } from '../../../fixtures/base';
 import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 import { CredentialModal } from '../../../pages/components/CredentialModal';
@@ -59,7 +62,8 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.sidebar.getConversations().first()).toHaveAccessibleName(/greeting/i); // verify auto-generated title
 	});
 
-	test('new chat without pre-configured credentials', async ({ n8n }) => {
+	// Test with a different user to avoid race condition on credentials
+	test('new chat without pre-configured credentials @auth:member', async ({ n8n }) => {
 		const page = new ChatHubChatPage(n8n.page);
 		const credModal = new CredentialModal(n8n.page.getByTestId('editCredential-modal'));
 
@@ -68,12 +72,12 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await page.openNewChat();
 
 		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
+			`Hello, ${INSTANCE_MEMBER_CREDENTIALS[0].firstName}!`,
 		);
 
 		await page.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-		await n8n.page.getByText('Anthropic').hover();
+		await n8n.page.getByText('Anthropic').hover({ force: true });
 		await n8n.page.locator('.el-sub-menu.is-opened').getByText('Configure credentials').click();
 
 		await credModal.fillField('apiKey', anthropicApiKey);
