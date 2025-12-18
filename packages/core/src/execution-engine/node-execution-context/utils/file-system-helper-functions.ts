@@ -54,7 +54,13 @@ function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 		.split(';')
 		.map((pattern) => pattern.trim())
 		.filter((pattern) => pattern)
-		.some((pattern) => new RegExp(pattern, 'mi').test(resolvedFilePath));
+		.some((pattern) => {
+			try {
+				return new RegExp(pattern, 'mi').test(resolvedFilePath);
+			} catch {
+				return true;
+			}
+		});
 }
 
 function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {

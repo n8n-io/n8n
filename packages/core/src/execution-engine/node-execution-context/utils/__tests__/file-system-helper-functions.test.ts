@@ -204,6 +204,11 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath('/tmp/.git'))).toBe(false);
 	});
 
+	it('should block all access when using invalid pattern', async () => {
+		securityConfig.blockFilePatterns = '(';
+		expect(isFilePathBlocked(await resolvePath('/tmp/xo'))).toBe(true);
+	});
+
 	describe('when multiple file patterns are configured', () => {
 		beforeEach(() => {
 			securityConfig.blockFilePatterns = 'hello; \\/there$; ^where';
