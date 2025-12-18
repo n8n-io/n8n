@@ -31,10 +31,11 @@ export interface DeepChangeEvent {
 
 /**
  * CRDT Map data structure - a key-value store with deep change observation.
+ * When getting a nested object, returns a CRDTMap wrapper for that object.
  */
 export interface CRDTMap<T = unknown> {
-	/** Get value by key */
-	get(key: string): T | undefined;
+	/** Get value by key. Returns CRDTMap for nested objects, primitive value otherwise. */
+	get(key: string): T | CRDTMap<unknown> | undefined;
 	/** Set value for key */
 	set(key: string, value: T): void;
 	/** Delete key */
