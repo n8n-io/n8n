@@ -194,7 +194,7 @@ describe('TextMessage', () => {
 			});
 
 			// When streaming, the restore button should be disabled
-			const button = wrapper.container.querySelector('[class*="restoreButton"][class*="disabled"]');
+			const button = wrapper.container.querySelector('[class*="restoreWrapper"] button[disabled]');
 			expect(button).toBeTruthy();
 		});
 
@@ -214,7 +214,7 @@ describe('TextMessage', () => {
 			});
 
 			// Click to open the confirm dialog
-			const restoreButton = wrapper.container.querySelector('[class*="restoreButton"]');
+			const restoreButton = wrapper.container.querySelector('[class*="restoreWrapper"] button');
 			expect(restoreButton).toBeTruthy();
 			await fireEvent.click(restoreButton!);
 			await nextTick();
@@ -239,7 +239,7 @@ describe('TextMessage', () => {
 			});
 
 			// Open the confirm dialog
-			const restoreButton = wrapper.container.querySelector('[class*="restoreButton"]');
+			const restoreButton = wrapper.container.querySelector('[class*="restoreWrapper"] button');
 			await fireEvent.click(restoreButton!);
 			await nextTick();
 
@@ -267,7 +267,7 @@ describe('TextMessage', () => {
 			});
 
 			// Open the confirm dialog
-			const restoreButton = wrapper.container.querySelector('[class*="restoreButton"]');
+			const restoreButton = wrapper.container.querySelector('[class*="restoreWrapper"] button');
 			await fireEvent.click(restoreButton!);
 			await nextTick();
 
@@ -294,7 +294,7 @@ describe('TextMessage', () => {
 			});
 
 			// Open the confirm dialog
-			const restoreButton = wrapper.container.querySelector('[class*="restoreButton"]');
+			const restoreButton = wrapper.container.querySelector('[class*="restoreWrapper"] button');
 			await fireEvent.click(restoreButton!);
 			await nextTick();
 
