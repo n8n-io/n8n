@@ -59,8 +59,7 @@ export class LicenseController {
 	@GlobalScope('license:manage')
 	async activateLicense(req: LicenseRequest.Activate) {
 		const { activationKey, eulaUri } = req.body;
-		const userEmail = req.user.email;
-		await this.licenseService.activateLicense(activationKey, eulaUri, userEmail);
+		await this.licenseService.activateLicense(activationKey, eulaUri, req.user.email);
 		return await this.getTokenAndData();
 	}
 

@@ -111,7 +111,11 @@ export class LicenseService {
 
 	async activateLicense(activationKey: string, eulaUri?: string, userEmail?: string) {
 		try {
-			await this.license.activate(activationKey, eulaUri, userEmail);
+			if (eulaUri && userEmail) {
+				await this.license.activate(activationKey, eulaUri, userEmail);
+			} else {
+				await this.license.activate(activationKey);
+			}
 		} catch (e) {
 			// Check if this is a EULA_REQUIRED error from license server
 			if (this.isEulaRequiredError(e)) {
