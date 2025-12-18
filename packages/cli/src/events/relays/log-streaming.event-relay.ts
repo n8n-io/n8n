@@ -29,6 +29,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
+			'workflow-executed': (event) => this.workflowExecuted(event),
 			'node-pre-execute': (event) => this.nodePreExecute(event),
 			'node-post-execute': (event) => this.nodePostExecute(event),
 			'user-deleted': (event) => this.userDeleted(event),
@@ -57,7 +58,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
-			'workflow-executed': (event) => this.workflowExecuted(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -242,6 +242,20 @@ export class LogStreamingEventRelay extends EventRelay {
 				},
 			});
 		}
+	}
+
+	@Redactable()
+	private workflowExecuted({
+		user,
+		workflowId,
+		workflowName,
+		executionId,
+		executionMode,
+	}: RelayEventMap['workflow-executed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.workflow.executed',
+			payload: { ...user, workflowId, workflowName, executionId, executionMode },
+		});
 	}
 
 	// #endregion
@@ -549,20 +563,6 @@ export class LogStreamingEventRelay extends EventRelay {
 				executionIds,
 				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
 			},
-		});
-	}
-
-	@Redactable()
-	private workflowExecuted({
-		user,
-		workflowId,
-		workflowName,
-		executionId,
-		executionMode,
-	}: RelayEventMap['workflow-executed']) {
-		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.user.workflow.executed',
-			payload: { ...user, workflowId, workflowName, executionId, executionMode },
 		});
 	}
 
