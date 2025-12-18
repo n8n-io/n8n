@@ -1,7 +1,17 @@
 import * as Y from 'yjs';
 
 import type { CRDTDoc, CRDTMap, CRDTProvider, DeepChangeEvent, Unsubscribe } from '../types';
-import { CRDTEngine } from '../types';
+import { ChangeAction, CRDTEngine } from '../types';
+
+/**
+ * Convert a value to JSON if it's a Yjs type, otherwise return as-is.
+ */
+function toJSONValue(value: unknown): unknown {
+	if (value instanceof Y.Map || value instanceof Y.Array || value instanceof Y.Text) {
+		return value.toJSON();
+	}
+	return value;
+}
 
 /**
  * Yjs implementation of CRDTMap.
@@ -41,9 +51,33 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 		return this.yMap.toJSON() as Record<string, T>;
 	}
 
-	onDeepChange(_handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
-		// Stub - will be implemented in Step 0.4
-		return () => {};
+	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
+		const observer = (events: Y.YEvent<Y.Map<unknown>>[]) => {
+			const changes: DeepChangeEvent[] = events
+				.filter((e): e is Y.YMapEvent<unknown> => e instanceof Y.YMapEvent)
+				.flatMap((event) =>
+					Array.from(event.changes.keys, ([key, change]) => ({
+						path: [...event.path, key],
+						action: change.action,
+						...(change.action !== ChangeAction.Delete && {
+							value: toJSONValue(event.target.get(key)),
+						}),
+						...(change.action !== ChangeAction.Add && {
+							oldValue: toJSONValue(change.oldValue),
+						}),
+					})),
+				);
+
+			if (changes.length > 0) {
+				handler(changes);
+			}
+		};
+
+		this.yMap.observeDeep(observer);
+
+		return () => {
+			this.yMap.unobserveDeep(observer);
+		};
 	}
 }
 
