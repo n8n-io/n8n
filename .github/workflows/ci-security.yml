@@ -12,7 +12,7 @@ on:
 jobs:
   poutine-scan:
     name: Poutine Security Scan
-    uses: ./.github/workflows/security-poutine-scan-callable.yml
+    uses: ./.github/workflows/sec-poutine-reusable.yml
     with:
       ref: ${{ inputs.ref }}
     secrets: inherit

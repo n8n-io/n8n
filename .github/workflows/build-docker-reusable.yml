@@ -262,7 +262,7 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'nightly' ||
        needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    uses: ./.github/workflows/sec-trivy-reusable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
     secrets: inherit
@@ -275,7 +275,7 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'nightly' ||
        needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    uses: ./.github/workflows/sec-trivy-reusable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
     secrets: inherit

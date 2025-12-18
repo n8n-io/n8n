@@ -29,7 +29,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-pull
       shards: ${{ inputs.shards }}

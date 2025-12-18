@@ -14,7 +14,7 @@ on:
 jobs:
   run_workflow_tests:
     name: Run Workflow Tests
-    uses: ./.github/workflows/test-workflows-callable.yml
+    uses: ./.github/workflows/util-test-workflows-reusable.yml
     with:
       git_ref: ${{ github.event_name == 'schedule' && 'master' || github.event.inputs.git_ref_to_test }}
     secrets: inherit

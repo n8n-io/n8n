@@ -99,7 +99,7 @@ jobs:
   unit-test:
     name: Unit tests
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/units-tests-reusable.yml
+    uses: ./.github/workflows/ci-unit-tests-reusable.yml
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -125,7 +125,7 @@ jobs:
   lint:
     name: Lint
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/linting-reusable.yml
+    uses: ./.github/workflows/ci-linting-reusable.yml
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -134,7 +134,7 @@ jobs:
     name: E2E Tests
     needs: install-and-build
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/playwright-test-ci.yml
+    uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit

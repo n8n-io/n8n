@@ -66,7 +66,7 @@ jobs:
   unit-tests:
     name: Unit tests
     needs: install-and-build
-    uses: ./.github/workflows/units-tests-reusable.yml
+    uses: ./.github/workflows/ci-unit-tests-reusable.yml
     with:
       ref: ${{ inputs.ref }}
       collectCoverage: true
@@ -76,7 +76,7 @@ jobs:
   lint:
     name: Lint
     needs: install-and-build
-    uses: ./.github/workflows/linting-reusable.yml
+    uses: ./.github/workflows/ci-linting-reusable.yml
     with:
       ref: ${{ inputs.ref }}
 

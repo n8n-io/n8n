@@ -104,7 +104,7 @@ jobs:
       needs.handle_comment_command.result != 'skipped' &&
       needs.handle_comment_command.outputs.permission_granted == 'true' &&
       needs.handle_comment_command.outputs.git_ref != ''
-    uses: ./.github/workflows/test-workflows-callable.yml
+    uses: ./.github/workflows/util-test-workflows-reusable.yml
     with:
       git_ref: ${{ needs.handle_comment_command.outputs.git_ref }}
     secrets: inherit
