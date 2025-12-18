@@ -49,6 +49,7 @@ vi.mock('@n8n/i18n', () => ({
 
 // Mock workflowHistory API
 vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/workflowHistory')>();
 	return {
 		...actual,
@@ -227,7 +228,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Hi' });
+		await builderStore.sendChatMessage({ text: 'Hi' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1]).toMatchObject({
@@ -255,7 +256,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Create workflow' });
+		await builderStore.sendChatMessage({ text: 'Create workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[1]).toMatchObject({
 			type: 'workflow-updated',
@@ -282,7 +283,7 @@ describe('AI Builder store', () => {
 			onDoneCallback = onDone;
 		});
 
-		builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
+		await builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
 
 		// Initially shows "aiAssistant.thinkingSteps.thinking" from prepareForStreaming
 		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
@@ -398,7 +399,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Add a node' });
+		await builderStore.sendChatMessage({ text: 'Add a node' });
 
 		// Should show "aiAssistant.thinkingSteps.thinking" when tool completes
 		await vi.waitFor(() =>
@@ -434,7 +435,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Hi' });
+		await builderStore.sendChatMessage({ text: 'Hi' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		builderStore.resetBuilderChat();
@@ -494,7 +495,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		expect(apiSpy).toHaveBeenCalled();
@@ -537,11 +538,11 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		// Send a follow-up message
-		builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
+		await builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(4));
 
 		const thirdMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
@@ -562,7 +563,7 @@ describe('AI Builder store', () => {
 			onError(new Error('An API error occurred'));
 		});
 
-		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].type).toBe('error');
@@ -602,7 +603,7 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Abort functionality', () => {
-		it('should create and manage abort controller', () => {
+		it('should create and manage abort controller', async () => {
 			const builderStore = useBuilderStore();
 
 			// Initially no abort controller (might be undefined or null)
@@ -625,17 +626,17 @@ describe('AI Builder store', () => {
 				}, 0);
 			});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 			expect(builderStore.streamingAbortController).not.toBeNull();
 			expect(builderStore.streamingAbortController).toBeInstanceOf(AbortController);
 		});
 
-		it('should call abort on existing controller when abortStreaming is called', () => {
+		it('should call abort on existing controller when abortStreaming is called', async () => {
 			const builderStore = useBuilderStore();
 
 			// First start a request to create an abort controller
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			// Verify controller was created
 			const controller = builderStore.streamingAbortController;
@@ -664,7 +665,7 @@ describe('AI Builder store', () => {
 				onError(abortError);
 			});
 
-			builderStore.sendChatMessage({ text: 'test message' });
+			await builderStore.sendChatMessage({ text: 'test message' });
 			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 			// Should have user message and aborted message
@@ -680,7 +681,7 @@ describe('AI Builder store', () => {
 			expect(builderStore.builderThinkingMessage).toBeUndefined();
 		});
 
-		it('should abort previous request when sending new message', () => {
+		it('should abort previous request when sending new message', async () => {
 			const builderStore = useBuilderStore();
 
 			// The current implementation prevents sending a new message while streaming
@@ -703,7 +704,7 @@ describe('AI Builder store', () => {
 			});
 
 			// Start first request
-			builderStore.sendChatMessage({ text: 'first message' });
+			await builderStore.sendChatMessage({ text: 'first message' });
 
 			// Verify streaming is active and controller was created
 			expect(builderStore.streaming).toBe(true);
@@ -715,7 +716,7 @@ describe('AI Builder store', () => {
 			const abortSpy = vi.spyOn(firstController!, 'abort');
 
 			// Try to send second message while streaming - it should be ignored
-			builderStore.sendChatMessage({ text: 'second message ignored' });
+			await builderStore.sendChatMessage({ text: 'second message ignored' });
 
 			// Verify the abort was NOT called and controller is the same
 			expect(abortSpy).not.toHaveBeenCalled();
@@ -733,7 +734,7 @@ describe('AI Builder store', () => {
 			apiSpy.mockImplementationOnce(() => {});
 
 			// Now we can send a new message
-			builderStore.sendChatMessage({ text: 'second message' });
+			await builderStore.sendChatMessage({ text: 'second message' });
 
 			// New controller should be created
 			const secondController = builderStore.streamingAbortController;
@@ -742,13 +743,13 @@ describe('AI Builder store', () => {
 			expect(secondController).toBeInstanceOf(AbortController);
 		});
 
-		it('should pass abort signal to API call', () => {
+		it('should pass abort signal to API call', async () => {
 			const builderStore = useBuilderStore();
 
 			// Mock the API to prevent actual network calls
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			// Verify the API was called with correct parameters
 			expect(apiSpy).toHaveBeenCalled();
@@ -783,7 +784,7 @@ describe('AI Builder store', () => {
 			// Clear messages before test
 			builderStore.chatMessages.length = 0;
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			// Wait for the error to be processed
 			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBeGreaterThan(1));
@@ -805,7 +806,7 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Rating logic integration', () => {
-		it('should clear ratings from existing messages when preparing for streaming', () => {
+		it('should clear ratings from existing messages when preparing for streaming', async () => {
 			const builderStore = useBuilderStore();
 
 			// Setup initial messages with ratings
@@ -834,7 +835,7 @@ describe('AI Builder store', () => {
 			apiSpy.mockImplementationOnce(() => {});
 
 			// Send new message which calls prepareForStreaming
-			builderStore.sendChatMessage({ text: 'New message' });
+			await builderStore.sendChatMessage({ text: 'New message' });
 
 			// Verify that existing messages no longer have rating properties
 			expect(builderStore.chatMessages).toHaveLength(3); // 2 existing + 1 new user message
@@ -1757,7 +1758,7 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
 			track.mockClear();
@@ -1825,7 +1826,7 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
 			track.mockClear();
@@ -1848,11 +1849,11 @@ describe('AI Builder store', () => {
 	});
 
 	describe('abortStreaming telemetry', () => {
-		it('tracks end of response with aborted flag when aborting', () => {
+		it('tracks end of response with aborted flag when aborting', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			track.mockClear();
 			builderStore.abortStreaming();
@@ -1867,11 +1868,11 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('includes workflow modifications in abort telemetry', () => {
+		it('includes workflow modifications in abort telemetry', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			track.mockClear();
 			builderStore.abortStreaming();
@@ -1886,11 +1887,11 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('includes todos count in abort telemetry', () => {
+		it('includes todos count in abort telemetry', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			track.mockClear();
 			builderStore.abortStreaming();
@@ -2292,13 +2293,13 @@ describe('AI Builder store', () => {
 	});
 
 	describe('manual execution stats telemetry', () => {
-		it('should include success count in telemetry when sending message', () => {
+		it('should include success count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('success');
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2309,13 +2310,13 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('should include error count in telemetry when sending message', () => {
+		it('should include error count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('error');
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2326,7 +2327,7 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('should include multiple incremented counts in telemetry', () => {
+		it('should include multiple incremented counts in telemetry', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
@@ -2334,7 +2335,7 @@ describe('AI Builder store', () => {
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2359,7 +2360,7 @@ describe('AI Builder store', () => {
 
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
-			builderStore.sendChatMessage({ text: 'first message' });
+			await builderStore.sendChatMessage({ text: 'first message' });
 
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
@@ -2383,7 +2384,7 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.sendChatMessage({ text: 'second message' });
+			await builderStore.sendChatMessage({ text: 'second message' });
 
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
@@ -2396,12 +2397,12 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('should include zero counts when no manual executions occurred', () => {
+		it('should include zero counts when no manual executions occurred', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
