@@ -33,8 +33,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		expect(isWorkflowsTabSelected).toBe(true);
 
 		// check selected workflow
-		const workflowInModal = n8n.sourceControlPushModal.getFileInModal('Test Workflow');
-		await expect(workflowInModal).toBeVisible();
+		await expect(n8n.sourceControlPushModal.getFileInModal('Test Workflow')).toBeVisible();
 		const workflowCheckbox = n8n.sourceControlPushModal.getFileCheckboxByName('Test Workflow');
 		await expect(workflowCheckbox).toBeChecked();
 
