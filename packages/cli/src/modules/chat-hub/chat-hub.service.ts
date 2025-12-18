@@ -57,6 +57,7 @@ import {
 	PROVIDER_NODE_TYPE_MAP,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
+import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
@@ -75,7 +76,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { ChatHubModelsService } from './chat-hub.models.service';
 
 @Service()
 export class ChatHubService {
@@ -1272,6 +1272,7 @@ export class ChatHubService {
 				id: sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
+				lastMessageAt: new Date(),
 				agentName,
 				tools,
 				credentialId,
@@ -1316,6 +1317,16 @@ export class ChatHubService {
 	}
 
 	/**
+	 * Ensures conversation exists and belongs to the user, throws otherwise
+	 * */
+	async ensureConversation(userId: string, sessionId: string): Promise<void> {
+		const sessionExists = await this.sessionRepository.existsById(sessionId, userId);
+		if (!sessionExists) {
+			throw new NotFoundError('Chat session not found');
+		}
+	}
+
+	/**
 	 * Get a single conversation with messages and ready to render timeline of latest messages
 	 * */
 	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
@@ -1324,7 +1335,7 @@ export class ChatHubService {
 			throw new NotFoundError('Chat session not found');
 		}
 
-		const messages = await this.messageRepository.getManyBySessionId(sessionId);
+		const messages = session.messages ?? [];
 
 		return {
 			session: this.convertSessionEntityToDto(session),
@@ -1399,9 +1410,8 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		updates: ChatHubUpdateConversationRequest,
 	) {
-		const session = await this.sessionRepository.getOneById(sessionId, user.id);
-
-		if (!session) {
+		const sessionExists = await this.sessionRepository.existsById(sessionId, user.id);
+		if (!sessionExists) {
 			throw new NotFoundError('Session not found');
 		}
 
@@ -1440,14 +1450,15 @@ export class ChatHubService {
 	 * Deletes a session
 	 */
 	async deleteSession(userId: string, sessionId: ChatSessionId) {
-		const session = await this.sessionRepository.getOneById(sessionId, userId);
+		await this.messageRepository.manager.transaction(async (trx) => {
+			const sessionExists = await this.sessionRepository.existsById(sessionId, userId, trx);
+			if (!sessionExists) {
+				throw new NotFoundError('Session not found');
+			}
 
-		if (!session) {
-			throw new NotFoundError('Session not found');
-		}
-
-		await this.chatHubAttachmentService.deleteAllBySessionId(sessionId);
-		await this.sessionRepository.deleteChatHubSession(sessionId);
+			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
+			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
+		});
 	}
 
 	private async ensureValidModel(user: User, model: ChatHubConversationModel) {

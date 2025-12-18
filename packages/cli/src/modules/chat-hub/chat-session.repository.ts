@@ -83,8 +83,7 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 			.leftJoinAndSelect('shared.project', 'project')
 			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
 			.where('session.ownerId = :userId', { userId })
-			.addSelect("COALESCE(session.lastMessageAt, '1970-01-01')", 'sortdate')
-			.orderBy('sortdate', 'DESC')
+			.orderBy('session.lastMessageAt', 'DESC')
 			.addOrderBy('session.id', 'ASC');
 
 		if (cursor) {
@@ -108,6 +107,17 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		queryBuilder.take(limit);
 
 		return await queryBuilder.getMany();
+	}
+
+	async existsById(id: string, userId: string, trx?: EntityManager): Promise<boolean> {
+		return await withTransaction(
+			this.manager,
+			trx,
+			async (em) => {
+				return await em.exists(ChatHubSession, { where: { id, ownerId: userId } });
+			},
+			false,
+		);
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
