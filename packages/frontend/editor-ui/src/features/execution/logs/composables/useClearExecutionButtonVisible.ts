@@ -1,4 +1,3 @@
-import { START_NODE_TYPE } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
@@ -18,7 +17,7 @@ export function useClearExecutionButtonVisible() {
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 	const allTriggerNodesDisabled = computed(() =>
 		editableWorkflow.value.nodes
-			.filter((node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type))
+			.filter((node) => nodeTypesStore.isTriggerNode(node.type))
 			.every((node) => node.disabled),
 	);
 
