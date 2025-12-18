@@ -104,13 +104,10 @@ const sortable = computed(() => {
 	return !!props.parameter.typeOptions?.sortable;
 });
 
-// When showRequiredOnly is true, only required fields are shown initially,
-// with optional fields available via picker
 const showRequiredOnly = computed(() => {
 	return !!props.parameter.typeOptions?.showRequiredOnly;
 });
 
-// Configurable placeholder for the optional fields picker (follows multipleValueButtonText pattern)
 const showRequiredOnlyButtonText = computed(() => {
 	if (!props.parameter.typeOptions?.showRequiredOnlyButtonText) {
 		return locale.baseText('fixedCollectionParameter.addOption');
@@ -118,16 +115,12 @@ const showRequiredOnlyButtonText = computed(() => {
 	return locale.nodeText(activeNode.value?.type).showRequiredOnlyButtonText(props.parameter);
 });
 
-// Track which optional fields have been added by the user for each item
-// Key format: "propertyName" or "propertyName-index" for multipleValues
 const addedOptionalFields = ref(new Map<string, Set<string>>());
 
-// Generate a unique key for tracking added fields per item
 const getOptionalFieldsKey = (propertyName: string, index?: number): string => {
 	return index !== undefined ? `${propertyName}-${index}` : propertyName;
 };
 
-// Check if a field has a non-empty/non-default value (meaning it should be shown on load)
 const hasNonDefaultValue = (
 	fieldDef: INodeProperties,
 	itemValues: INodeParameters | undefined,
@@ -140,7 +133,6 @@ const hasNonDefaultValue = (
 	return true;
 };
 
-// Initialize addedOptionalFields from existing nodeValues
 const initializeAddedFieldsFromValues = () => {
 	if (!showRequiredOnly.value) return;
 	if (!isINodePropertyCollectionList(props.parameter.options)) return;
@@ -192,13 +184,11 @@ const initializeAddedFieldsFromValues = () => {
 	}
 };
 
-// Check if an optional field is currently added/shown
 const isOptionalFieldAdded = (propertyName: string, fieldName: string, index?: number): boolean => {
 	const key = getOptionalFieldsKey(propertyName, index);
 	return addedOptionalFields.value.get(key)?.has(fieldName) ?? false;
 };
 
-// Get fields to pass to ParameterInputList (required + added optional fields)
 const getVisibleFields = (property: INodePropertyCollection, index?: number): INodeProperties[] => {
 	if (!showRequiredOnly.value) {
 		return property.values;
@@ -212,18 +202,17 @@ const getVisibleFields = (property: INodePropertyCollection, index?: number): IN
 		if (field.required === true) {
 			return true;
 		}
+
 		// Show optional fields only if explicitly added
 		return addedFields?.has(field.name) ?? false;
 	});
 };
 
-// Get optional fields available in the picker (all non-required that match displayOptions)
 const getPickerFields = (property: INodePropertyCollection, index?: number): INodeProperties[] => {
 	if (!showRequiredOnly.value) {
 		return [];
 	}
 
-	// Get path for displayParameter check
 	const itemPath = getPropertyPath(property.name, index);
 
 	return property.values.filter((field) => {
@@ -231,16 +220,17 @@ const getPickerFields = (property: INodePropertyCollection, index?: number): INo
 		if (field.required === true) {
 			return false;
 		}
+
 		// Exclude notice types - they're just display messages, not input fields
 		if (field.type === 'notice') {
 			return false;
 		}
+
 		// Use the existing displayParameter helper from node-helpers to check visibility
 		return nodeHelpers.displayParameter(props.nodeValues, field, itemPath, activeNode.value);
 	});
 };
 
-// Toggle an optional field on/off
 const toggleOptionalField = (
 	property: INodePropertyCollection,
 	fieldName: string,
@@ -263,6 +253,7 @@ const toggleOptionalField = (
 		// Remove the field - clear its value
 		fieldSet.delete(fieldName);
 		const path = getPropertyPath(property.name, index) + `.${fieldName}`;
+
 		emit('valueChanged', {
 			name: path,
 			value: undefined,
@@ -271,6 +262,7 @@ const toggleOptionalField = (
 		// Add the field - set default value
 		fieldSet.add(fieldName);
 		const path = getPropertyPath(property.name, index) + `.${fieldName}`;
+
 		emit('valueChanged', {
 			name: path,
 			value: deepCopy(fieldDef.default),
