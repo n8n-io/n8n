@@ -5,7 +5,6 @@ import { Service } from '@n8n/di';
 import capitalize from 'lodash/capitalize';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
-import config from '@/config';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
@@ -58,7 +57,7 @@ export class ConcurrencyControlService {
 
 		if (
 			Array.from(this.limits.values()).every((limit) => limit === -1) ||
-			config.getEnv('executions.mode') === 'queue'
+			this.globalConfig.executions.mode === 'queue'
 		) {
 			this.isEnabled = false;
 			return;
@@ -207,7 +206,9 @@ export class ConcurrencyControlService {
 			return undefined;
 		}
 
-		if (mode === 'webhook' || mode === 'trigger') return this.queues.get('production');
+		if (mode === 'webhook' || mode === 'trigger' || mode === 'chat') {
+			return this.queues.get('production');
+		}
 
 		if (mode === 'evaluation') return this.queues.get('evaluation');
 

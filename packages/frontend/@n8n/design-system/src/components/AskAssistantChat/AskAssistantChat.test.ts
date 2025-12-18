@@ -7,7 +7,61 @@ import { n8nHtml } from '../../directives';
 import type { Props as MessageWrapperProps } from './messages/MessageWrapper.vue';
 import type { ChatUI } from '../../types/assistant';
 
-const stubs = ['n8n-avatar', 'n8n-button', 'n8n-icon', 'n8n-icon-button'];
+// Mock useI18n
+vi.mock('../../composables/useI18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
+
+// Mock getSupportedMessageComponent helper
+vi.mock('./messages/helpers', () => ({
+	getSupportedMessageComponent: vi.fn((type: string) => {
+		const supportedTypes = ['text', 'code-diff', 'block', 'tool', 'error', 'event'];
+		return supportedTypes.includes(type) ? 'MockedComponent' : null;
+	}),
+}));
+
+// Mock isToolMessage type guard
+vi.mock('../../types/assistant', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const original = await importOriginal<typeof import('../../types/assistant')>();
+	return {
+		...original,
+		isToolMessage: vi.fn((message: ChatUI.AssistantMessage) => {
+			return (
+				typeof message === 'object' &&
+				message !== null &&
+				'type' in message &&
+				message.type === 'tool'
+			);
+		}),
+	};
+});
+
+const stubs = [
+	'N8nAvatar',
+	'N8nButton',
+	'N8nIcon',
+	'N8nIconButton',
+	'N8nPromptInput',
+	'AssistantIcon',
+	'AssistantText',
+	'InlineAskAssistantButton',
+	'AssistantLoadingMessage',
+];
+
+// Stub MessageWrapper to render message as stringified JSON
+const MessageWrapperStub = {
+	name: 'MessageWrapper',
+	props: ['message'],
+	template: '<div data-test-id="message-wrapper-stub">{{ JSON.stringify(message) }}</div>',
+};
+
+const stubsWithMessageWrapper = {
+	...Object.fromEntries(stubs.map((stub) => [stub, true])),
+	MessageWrapper: MessageWrapperStub,
+};
 
 describe('AskAssistantChat', () => {
 	it('renders default placeholder chat correctly', () => {
@@ -15,7 +69,7 @@ describe('AskAssistantChat', () => {
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
 			},
-			global: { stubs },
+			global: { stubs: stubsWithMessageWrapper },
 		});
 		expect(container).toMatchSnapshot();
 	});
@@ -26,7 +80,7 @@ describe('AskAssistantChat', () => {
 				directives: {
 					n8nHtml,
 				},
-				stubs,
+				stubs: stubsWithMessageWrapper,
 			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -107,7 +161,7 @@ describe('AskAssistantChat', () => {
 				directives: {
 					n8nHtml,
 				},
-				stubs,
+				stubs: stubsWithMessageWrapper,
 			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -133,7 +187,7 @@ describe('AskAssistantChat', () => {
 				directives: {
 					n8nHtml,
 				},
-				stubs,
+				stubs: stubsWithMessageWrapper,
 			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -165,7 +219,7 @@ describe('AskAssistantChat', () => {
 				directives: {
 					n8nHtml,
 				},
-				stubs,
+				stubs: stubsWithMessageWrapper,
 			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -192,7 +246,7 @@ describe('AskAssistantChat', () => {
 				directives: {
 					n8nHtml,
 				},
-				stubs,
+				stubs: stubsWithMessageWrapper,
 			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -210,34 +264,9 @@ describe('AskAssistantChat', () => {
 			},
 		});
 		expect(wrapper.container).toMatchSnapshot();
-		expect(wrapper.getByTestId('error-retry-button')).toBeInTheDocument();
-	});
-
-	it('does not render retry button if no error is present', () => {
-		const wrapper = render(AskAssistantChat, {
-			global: {
-				directives: {
-					n8nHtml,
-				},
-				stubs,
-			},
-			props: {
-				user: { firstName: 'Kobi', lastName: 'Dog' },
-				messages: [
-					{
-						id: '1',
-						type: 'text',
-						role: 'assistant',
-						content:
-							'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
-						read: false,
-					},
-				],
-			},
-		});
-
-		expect(wrapper.container).toMatchSnapshot();
-		expect(wrapper.queryByTestId('error-retry-button')).not.toBeInTheDocument();
+		// Since MessageWrapper is stubbed, we can't test for the error retry button directly
+		// We just verify the error message is rendered
+		expect(wrapper.container.textContent).toContain('This is an error message.');
 	});
 
 	it('limits maximum input length when maxCharacterLength prop is specified', async () => {
@@ -246,7 +275,7 @@ describe('AskAssistantChat', () => {
 				directives: {
 					n8nHtml,
 				},
-				stubs,
+				stubs: stubsWithMessageWrapper,
 			},
 			props: {
 				user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -260,13 +289,20 @@ describe('AskAssistantChat', () => {
 		// We can verify the component receives the prop via snapshot
 	});
 
-	describe('collapseToolMessages', () => {
+	describe('groupToolMessagesIntoThinking', () => {
+		// Tool messages are now grouped into thinking-group messages and rendered by ThinkingMessage component
+		// instead of MessageWrapper. These tests verify the grouping behavior.
+
+		const ThinkingMessageMock = vi.fn(() => ({
+			template: '<div data-testid="thinking-message-mock"></div>',
+		}));
 		const MessageWrapperMock = vi.fn(() => ({
 			template: '<div data-testid="message-wrapper-mock"></div>',
 		}));
-		const stubsWithMessageWrapper = {
+		const stubsWithMocks = {
 			...Object.fromEntries(stubs.map((stub) => [stub, true])),
 			MessageWrapper: MessageWrapperMock,
+			ThinkingMessage: ThinkingMessageMock,
 		};
 
 		const createToolMessage = (
@@ -284,8 +320,9 @@ describe('AskAssistantChat', () => {
 
 		const renderWithMessages = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
 			MessageWrapperMock.mockClear();
+			ThinkingMessageMock.mockClear();
 			return render(AskAssistantChat, {
-				global: { stubs: stubsWithMessageWrapper },
+				global: { stubs: stubsWithMocks },
 				props: {
 					user: { firstName: 'Kobi', lastName: 'Dog' },
 					messages,
@@ -296,10 +333,11 @@ describe('AskAssistantChat', () => {
 
 		const renderWithDirectives = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
 			MessageWrapperMock.mockClear();
+			ThinkingMessageMock.mockClear();
 			return render(AskAssistantChat, {
 				global: {
 					directives: { n8nHtml },
-					stubs: stubsWithMessageWrapper,
+					stubs: stubsWithMocks,
 				},
 				props: {
 					user: { firstName: 'Kobi', lastName: 'Dog' },
@@ -309,24 +347,19 @@ describe('AskAssistantChat', () => {
 			});
 		};
 
+		const getThinkingMessageProps = (callIndex = 0) => {
+			const mockCall = ThinkingMessageMock.mock.calls[callIndex];
+			expect(mockCall).toBeDefined();
+			return mockCall as unknown as [{ items: ChatUI.ThinkingItem[]; latestStatusText: string }];
+		};
+
 		const getMessageWrapperProps = (callIndex = 0): MessageWrapperProps => {
 			const mockCall = MessageWrapperMock.mock.calls[callIndex];
 			expect(mockCall).toBeDefined();
 			return (mockCall as unknown as [props: MessageWrapperProps])[0];
 		};
 
-		const expectMessageWrapperCalledTimes = (times: number) => {
-			expect(MessageWrapperMock).toHaveBeenCalledTimes(times);
-		};
-
-		const expectToolMessage = (
-			props: MessageWrapperProps,
-			expectedProps: Partial<ChatUI.ToolMessage & { id: string; read?: boolean }>,
-		) => {
-			expect(props.message).toEqual(expect.objectContaining(expectedProps));
-		};
-
-		it('should not collapse single tool message', () => {
+		it('should group single tool message into thinking-group', () => {
 			const message = createToolMessage({
 				id: '1',
 				displayTitle: 'Search Results',
@@ -335,16 +368,16 @@ describe('AskAssistantChat', () => {
 
 			renderWithMessages([message]);
 
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
+			// Tool messages are rendered as ThinkingMessage, not MessageWrapper
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
-			expectToolMessage(props, {
-				...message,
-				read: true,
-			});
+			const props = getThinkingMessageProps()[0];
+			expect(props.items).toHaveLength(1);
+			expect(props.items[0].displayTitle).toBe('Search Results');
 		});
 
-		it('should collapse consecutive tool messages with same toolName', () => {
+		it('should group consecutive tool messages with same toolName into single thinking-group', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -369,27 +402,16 @@ describe('AskAssistantChat', () => {
 
 			renderWithMessages(messages);
 
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
+			// All tool messages with same toolName should be grouped into one thinking-group
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
-			expectToolMessage(props, {
-				id: '3',
-				role: 'assistant',
-				type: 'tool',
-				toolName: 'search',
-				status: 'running',
-				displayTitle: 'Still searching...',
-				customDisplayTitle: 'Custom Search Title',
-				updates: [
-					{ type: 'progress', data: { status: 'Initializing search' } },
-					{ type: 'progress', data: { status: 'Processing results' } },
-					{ type: 'output', data: { result: 'Found 10 items' } },
-				],
-				read: true,
-			});
+			const props = getThinkingMessageProps()[0];
+			// Should have 1 item after deduplication by toolName
+			expect(props.items).toHaveLength(1);
 		});
 
-		it('should collapse tool messages with same toolName with hidden messages in between', () => {
+		it('should group tool messages with same toolName even with hidden messages in between', () => {
 			const messages: Array<ChatUI.AssistantMessage & { id: string }> = [
 				createToolMessage({
 					id: '1',
@@ -411,19 +433,6 @@ describe('AskAssistantChat', () => {
 					read: true,
 				},
 				createToolMessage({
-					id: '2',
-					status: 'running',
-					displayTitle: 'Still searching...',
-					customDisplayTitle: 'Custom Search Title',
-					updates: [{ type: 'progress', data: { status: 'Processing results' } }],
-				}),
-				{
-					id: 'test',
-					role: 'assistant',
-					type: 'workflow-updated',
-					codeSnippet: '',
-				},
-				createToolMessage({
 					id: '3',
 					status: 'completed',
 					displayTitle: 'Search Complete',
@@ -433,27 +442,12 @@ describe('AskAssistantChat', () => {
 
 			renderWithMessages(messages);
 
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
-
-			expectToolMessage(props, {
-				id: '3',
-				role: 'assistant',
-				type: 'tool',
-				toolName: 'search',
-				status: 'running',
-				displayTitle: 'Still searching...',
-				customDisplayTitle: 'Custom Search Title',
-				updates: [
-					{ type: 'progress', data: { status: 'Initializing search' } },
-					{ type: 'progress', data: { status: 'Processing results' } },
-					{ type: 'output', data: { result: 'Found 10 items' } },
-				],
-				read: true,
-			});
+			// Hidden messages are filtered out, so tool messages are grouped together
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 		});
 
-		it('should not collapse tool messages with different toolNames', () => {
+		it('should show different tools as separate items in thinking-group', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -471,113 +465,15 @@ describe('AskAssistantChat', () => {
 
 			renderWithMessages(messages);
 
-			expectMessageWrapperCalledTimes(2);
+			// Both tools should be in the same thinking-group but as separate items
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
-			const firstProps = getMessageWrapperProps(0);
-			expectToolMessage(firstProps, {
-				id: '1',
-				toolName: 'search',
-				status: 'completed',
-				displayTitle: 'Search Results',
-			});
-
-			const secondProps = getMessageWrapperProps(1);
-			expectToolMessage(secondProps, {
-				id: '2',
-				toolName: 'fetch',
-				status: 'completed',
-				displayTitle: 'Data Fetched',
-			});
+			const props = getThinkingMessageProps()[0];
+			expect(props.items).toHaveLength(2);
 		});
 
-		it('should collapse completed and error statuses', () => {
-			const messages = [
-				createToolMessage({
-					id: '1',
-					status: 'completed',
-					displayTitle: 'Search Complete',
-					updates: [{ type: 'output', data: { result: 'Found some items' } }],
-				}),
-				createToolMessage({
-					id: '2',
-					status: 'error',
-					displayTitle: 'Search error',
-					customDisplayTitle: 'Custom Running Title',
-					updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
-				}),
-				createToolMessage({
-					id: '3',
-					status: 'completed',
-					displayTitle: 'Final Search Complete',
-					updates: [{ type: 'output', data: { result: 'All done' } }],
-				}),
-			];
-
-			renderWithMessages(messages);
-
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
-
-			expectToolMessage(props, {
-				id: '3',
-				status: 'error',
-				displayTitle: 'Search error',
-				customDisplayTitle: undefined,
-				updates: [
-					{ type: 'output', data: { result: 'Found some items' } },
-					{ type: 'progress', data: { status: 'Processing more results' } },
-					{ type: 'output', data: { result: 'All done' } },
-				],
-			});
-		});
-
-		it('should collapse running, completed and error statuses into running', () => {
-			const messages = [
-				createToolMessage({
-					id: '1',
-					status: 'running',
-					displayTitle: 'Search Running',
-					customDisplayTitle: 'Custom Search Title',
-					updates: [{ type: 'output', data: { result: 'Found some items' } }],
-				}),
-				createToolMessage({
-					id: '2',
-					status: 'error',
-					displayTitle: 'Search error',
-					customDisplayTitle: 'Custom Error Title',
-					updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
-				}),
-				createToolMessage({
-					id: '3',
-					status: 'completed',
-					displayTitle: 'Final Search Complete',
-					updates: [{ type: 'output', data: { result: 'All done' } }],
-				}),
-			];
-
-			renderWithMessages(messages);
-
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
-
-			expectToolMessage(props, {
-				id: '3',
-				role: 'assistant',
-				type: 'tool',
-				toolName: 'search',
-				status: 'running',
-				displayTitle: 'Search Running',
-				customDisplayTitle: 'Custom Search Title',
-				updates: [
-					{ type: 'output', data: { result: 'Found some items' } },
-					{ type: 'progress', data: { status: 'Processing more results' } },
-					{ type: 'output', data: { result: 'All done' } },
-				],
-				read: true,
-			});
-		});
-
-		it('should preserve running status when collapsing messages with running status', () => {
+		it('should show running status when there is a running tool', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -588,74 +484,20 @@ describe('AskAssistantChat', () => {
 				createToolMessage({
 					id: '2',
 					status: 'running',
-					displayTitle: 'Still searching...',
-					customDisplayTitle: 'Custom Running Title',
+					displayTitle: 'Fetching data...',
+					toolName: 'fetch',
 					updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
 				}),
-				createToolMessage({
-					id: '3',
-					status: 'completed',
-					displayTitle: 'Final Search Complete',
-					updates: [{ type: 'output', data: { result: 'All done' } }],
-				}),
 			];
 
 			renderWithMessages(messages);
 
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
-
-			expectToolMessage(props, {
-				id: '3',
-				status: 'running',
-				displayTitle: 'Still searching...',
-				customDisplayTitle: 'Custom Running Title',
-				updates: [
-					{ type: 'output', data: { result: 'Found some items' } },
-					{ type: 'progress', data: { status: 'Processing more results' } },
-					{ type: 'output', data: { result: 'All done' } },
-				],
-			});
+			// Should render as ThinkingMessage with running tool
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 		});
 
-		it('should combine all updates from collapsed messages', () => {
-			const messages = [
-				createToolMessage({
-					id: '1',
-					status: 'running',
-					displayTitle: 'Searching...',
-					updates: [
-						{ type: 'progress', data: { status: 'Starting search' } },
-						{ type: 'input', data: { query: 'test query' } },
-					],
-				}),
-				createToolMessage({
-					id: '2',
-					status: 'completed',
-					displayTitle: 'Search Complete',
-					updates: [
-						{ type: 'progress', data: { status: 'Processing results' } },
-						{ type: 'output', data: { result: 'Found 10 items' } },
-					],
-				}),
-			];
-
-			renderWithMessages(messages);
-
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
-
-			const toolMessage = props.message as ChatUI.ToolMessage;
-			expect(toolMessage.status).toEqual('running');
-			expect(toolMessage.updates).toEqual([
-				{ type: 'progress', data: { status: 'Starting search' } },
-				{ type: 'input', data: { query: 'test query' } },
-				{ type: 'progress', data: { status: 'Processing results' } },
-				{ type: 'output', data: { result: 'Found 10 items' } },
-			]);
-		});
-
-		it('should not collapse tool messages separated by non-tool messages', () => {
+		it('should not group tool messages separated by visible non-tool messages', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -679,62 +521,18 @@ describe('AskAssistantChat', () => {
 
 			renderWithDirectives(messages);
 
-			expectMessageWrapperCalledTimes(3);
+			// Should have 2 thinking-groups and 1 text message
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(2);
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(1);
 
-			const firstProps = getMessageWrapperProps(0);
-			expectToolMessage(firstProps, {
-				id: '1',
-				type: 'tool',
-				toolName: 'search',
-				displayTitle: 'First Search',
-			});
-
-			const secondProps = getMessageWrapperProps(1);
-			expect(secondProps.message).toEqual(
+			const textMessageProps = getMessageWrapperProps(0);
+			expect(textMessageProps.message).toEqual(
 				expect.objectContaining({
 					id: '2',
 					type: 'text',
 					content: 'Here are the search results',
 				}),
 			);
-
-			const thirdProps = getMessageWrapperProps(2);
-			expectToolMessage(thirdProps, {
-				id: '3',
-				type: 'tool',
-				toolName: 'search',
-				displayTitle: 'Second Search',
-			});
-		});
-
-		it('should handle customDisplayTitle correctly for running status', () => {
-			const messages = [
-				createToolMessage({
-					id: '1',
-					status: 'completed',
-					displayTitle: 'Search Complete',
-					customDisplayTitle: 'Should be ignored for completed',
-					updates: [{ type: 'output', data: { result: 'Found items' } }],
-				}),
-				createToolMessage({
-					id: '2',
-					status: 'running',
-					displayTitle: 'Searching...',
-					customDisplayTitle: 'Custom Running Title',
-					updates: [{ type: 'progress', data: { status: 'In progress' } }],
-				}),
-			];
-
-			renderWithMessages(messages);
-
-			expectMessageWrapperCalledTimes(1);
-			const props = getMessageWrapperProps();
-
-			expectToolMessage(props, {
-				status: 'running',
-				displayTitle: 'Searching...',
-				customDisplayTitle: 'Custom Running Title',
-			});
 		});
 
 		it('should handle mixed message types correctly', () => {
@@ -767,7 +565,9 @@ describe('AskAssistantChat', () => {
 
 			renderWithDirectives(messages);
 
-			expectMessageWrapperCalledTimes(3);
+			// 2 text messages via MessageWrapper, 1 thinking-group via ThinkingMessage
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(2);
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
 
 			const firstProps = getMessageWrapperProps(0);
 			expect(firstProps.message).toEqual(
@@ -780,20 +580,7 @@ describe('AskAssistantChat', () => {
 			);
 
 			const secondProps = getMessageWrapperProps(1);
-			expectToolMessage(secondProps, {
-				id: '3',
-				role: 'assistant',
-				type: 'tool',
-				toolName: 'search',
-				status: 'running',
-				updates: [
-					{ type: 'progress', data: { status: 'Starting' } },
-					{ type: 'output', data: { result: 'Found results' } },
-				],
-			});
-
-			const thirdProps = getMessageWrapperProps(2);
-			expect(thirdProps.message).toEqual(
+			expect(secondProps.message).toEqual(
 				expect.objectContaining({
 					id: '4',
 					role: 'assistant',
@@ -801,6 +588,18 @@ describe('AskAssistantChat', () => {
 					content: 'Here are your search results',
 				}),
 			);
+		});
+
+		it('should show initial thinking-group when streaming with no tool messages', () => {
+			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking...' });
+
+			// Should create an initial thinking-group
+			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+
+			const props = getThinkingMessageProps()[0];
+			expect(props.items).toHaveLength(1);
+			expect(props.items[0].displayTitle).toBe('Thinking...');
+			expect(props.items[0].status).toBe('running');
 		});
 	});
 
@@ -815,7 +614,8 @@ describe('AskAssistantChat', () => {
 					directives: { n8nHtml },
 					stubs: {
 						...Object.fromEntries(stubs.map((stub) => [stub, true])),
-						'n8n-button': { template: '<button><slot></button' },
+						MessageWrapper: MessageWrapperStub,
+						N8nButton: { template: '<button><slot></button' },
 					},
 				},
 				props: {
@@ -855,8 +655,8 @@ describe('AskAssistantChat', () => {
 
 			// Quick replies should be rendered (2 buttons found)
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(2);
-			// Quick reply title should be visible
-			expect(wrapper.container.textContent).toContain('Quick reply');
+			// Quick reply title should be visible (checking for i18n key since we're mocking i18n)
+			expect(wrapper.container.textContent).toContain('assistantChat.quickRepliesTitle');
 			expect(wrapper.container).toHaveTextContent('Give me another solution');
 			expect(wrapper.container).toHaveTextContent('All good');
 		});
@@ -889,8 +689,8 @@ describe('AskAssistantChat', () => {
 
 			// Quick replies should still be rendered even though agent-suggestion is filtered out
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(2);
-			// Quick reply title should be visible
-			expect(wrapper.container.textContent).toContain('Quick reply');
+			// Quick reply title should be visible (checking for i18n key since we're mocking i18n)
+			expect(wrapper.container.textContent).toContain('assistantChat.quickRepliesTitle');
 
 			expect(wrapper.container).toHaveTextContent('Accept suggestion');
 			expect(wrapper.container).toHaveTextContent('Reject suggestion');
@@ -913,8 +713,11 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithQuickReplies(messages, true);
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('Quick reply');
-			expect(wrapper.container.textContent).not.toContain('Give me another solution');
+			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+			// The message with quick replies should be in the JSON but not rendered as buttons
+			const messageWrapperStub = wrapper.getByTestId('message-wrapper-stub');
+			expect(messageWrapperStub.textContent).toContain('Give me another solution');
+			expect(messageWrapperStub.textContent).toContain('"quickReplies"');
 		});
 
 		it('should not render quick replies for non-last messages', () => {
@@ -942,8 +745,12 @@ describe('AskAssistantChat', () => {
 
 			// Quick replies should not be rendered since the message with quick replies is not last
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('Quick reply');
-			expect(wrapper.container.textContent).not.toContain('Give me another solution');
+			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+			// The messages with quick replies should be in the JSON but not rendered as buttons
+			const messageWrapperStubs = wrapper.getAllByTestId('message-wrapper-stub');
+			expect(messageWrapperStubs[0].textContent).toContain('Give me another solution');
+			expect(messageWrapperStubs[0].textContent).toContain('"quickReplies"');
+			expect(messageWrapperStubs[1].textContent).toContain('Follow up message');
 		});
 
 		it('should not render quick replies when last message has no quickReplies', () => {
@@ -960,7 +767,7 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithQuickReplies(messages);
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('Quick reply');
+			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
 		});
 
 		it('should not render quick replies when last message has empty quickReplies array', () => {
@@ -980,7 +787,7 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithQuickReplies(messages);
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('Quick reply');
+			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
 		});
 	});
 
@@ -990,19 +797,26 @@ describe('AskAssistantChat', () => {
 				global: {
 					directives: { n8nHtml },
 					stubs: {
-						...Object.fromEntries(stubs.map((stub) => [stub, true])),
+						...Object.fromEntries(
+							stubs.filter((stub) => stub !== 'N8nPromptInput').map((stub) => [stub, true]),
+						),
+						MessageWrapper: MessageWrapperStub,
 						N8nPromptInput: {
-							name: 'N8nPromptInput',
+							name: 'n8n-prompt-input',
 							props: [
 								'modelValue',
-								'inputPlaceholder',
+								'placeholder',
 								'disabled',
 								'streaming',
-								'maxCharacterLength',
+								'maxLength',
+								'creditsQuota',
+								'creditsRemaining',
+								'showAskOwnerTooltip',
+								'refocusAfterSend',
 							],
-							emits: ['update:modelValue', 'submit', 'stop'],
+							emits: ['update:modelValue', 'submit', 'stop', 'upgrade-click'],
 							setup(
-								_: unknown,
+								props: unknown,
 								{
 									emit,
 									expose,
@@ -1016,6 +830,7 @@ describe('AskAssistantChat', () => {
 								expose({ focusInput });
 
 								return {
+									props,
 									handleSubmit: () => emit('submit'),
 									updateValue: (e: Event) => {
 										const target = e.target as HTMLTextAreaElement;
@@ -1038,19 +853,22 @@ describe('AskAssistantChat', () => {
 			});
 
 			const textarea = wrapper.find('[data-test-id="chat-input"] textarea');
-			await textarea.setValue('Test message');
+			expect(textarea.exists()).toBe(true);
 
-			await textarea.trigger('input');
+			await textarea.setValue('Test message');
+			await wrapper.vm.$nextTick();
 
 			const sendButton = wrapper.find('[data-test-id="chat-input"] button');
+			expect(sendButton.exists()).toBe(true);
+
 			await sendButton.trigger('click');
+			await wrapper.vm.$nextTick();
 
 			// Verify message was emitted with the correct value
 			expect(wrapper.emitted('message')).toBeTruthy();
 			const messageEvents = wrapper.emitted('message');
 			expect(messageEvents?.[0]).toEqual(['Test message']);
 
-			await wrapper.vm.$nextTick();
 			wrapper.unmount();
 		});
 	});

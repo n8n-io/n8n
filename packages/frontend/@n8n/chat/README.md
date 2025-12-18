@@ -214,10 +214,10 @@ The Chat window is entirely customizable using CSS variables.
 
 ```css
 :root {
-	--chat--color-primary: #e74266;
-	--chat--color-primary-shade-50: #db4061;
-	--chat--color-primary-shade-100: #cf3c5c;
-	--chat--color-secondary: #20b69e;
+	--chat--color--primary: #e74266;
+	--chat--color--primary-shade-50: #db4061;
+	--chat--color--primary--shade-100: #cf3c5c;
+	--chat--color--secondary: #20b69e;
 	--chat--color-secondary-shade-50: #1ca08a;
 	--chat--color-white: #ffffff;
 	--chat--color-light: #f2f4f8;
@@ -257,14 +257,14 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--message--bot--background: var(--chat--color-white);
 	--chat--message--bot--color: var(--chat--color-dark);
 	--chat--message--bot--border: none;
-	--chat--message--user--background: var(--chat--color-secondary);
+	--chat--message--user--background: var(--chat--color--secondary);
 	--chat--message--user--color: var(--chat--color-white);
 	--chat--message--user--border: none;
 	--chat--message--pre--background: rgba(0, 0, 0, 0.05);
 
-	--chat--toggle--background: var(--chat--color-primary);
-	--chat--toggle--hover--background: var(--chat--color-primary-shade-50);
-	--chat--toggle--active--background: var(--chat--color-primary-shade-100);
+	--chat--toggle--background: var(--chat--color--primary);
+	--chat--toggle--hover--background: var(--chat--color--primary-shade-50);
+	--chat--toggle--active--background: var(--chat--color--primary--shade-100);
 	--chat--toggle--color: var(--chat--color-white);
 	--chat--toggle--size: 64px;
 }

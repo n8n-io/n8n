@@ -176,12 +176,38 @@ describe('SourceControlGitService', () => {
 			await sourceControlGitService.setGitCommand();
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
-			const expectedCredentialScript = `!f() { echo "username=${credentials.username}"; echo "password=${credentials.password}"; }; f`;
+			const expectedCredentialScript = `!f() { echo username='${credentials.username}'; echo password='${credentials.password}'; }; f`;
 			expect(simpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
 					binary: 'git',
 					maxConcurrentProcesses: 6,
 					trimmed: false,
+					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+				}),
+			);
+		});
+
+		it('should escape https credentials to prevent command injection', async () => {
+			// simulate credentials that would try to inject an rm -rf command by breaking out of the echo command with single quotes inside them
+			const credentials = { username: "user'; rm -rf /", password: "pass'; rm -rf /" };
+
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				connectionType: 'https',
+				repositoryUrl: 'https://github.com/user/repo.git',
+			} as never);
+			mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+				credentials,
+			);
+			// Clear previous calls to simpleGit
+			(simpleGit as jest.Mock).mockClear();
+
+			await sourceControlGitService.setGitCommand();
+
+			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+			const expectedCredentialScript =
+				"!f() { echo username='user'\"'\"'; rm -rf /'; echo password='pass'\"'\"'; rm -rf /'; }; f";
+			expect(simpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
 					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
 				}),
 			);

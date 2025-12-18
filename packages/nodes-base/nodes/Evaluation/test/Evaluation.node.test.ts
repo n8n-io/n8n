@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import {
-	type IDataStoreProjectService,
+	type IDataTableProjectService,
 	NodeOperationError,
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
@@ -15,14 +15,14 @@ describe('Test Evaluation', () => {
 	const sheetName = 'Sheet5';
 	const spreadsheetId = '1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA';
 
-	const mockDataTable = mock<IDataStoreProjectService>({
+	const mockDataTable = mock<IDataTableProjectService>({
 		getColumns: jest.fn(),
 		addColumn: jest.fn(),
-		updateRow: jest.fn(),
+		updateRows: jest.fn(),
 	});
 
 	const mockExecuteFunctions = mock<IExecuteFunctions>({
-		helpers: { getDataStoreProxy: jest.fn().mockResolvedValue(mockDataTable) },
+		helpers: { getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable) },
 	});
 
 	beforeEach(() => {
@@ -69,7 +69,7 @@ describe('Test Evaluation', () => {
 
 				expect(mockDataTable.getColumns).not.toHaveBeenCalled();
 				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-				expect(mockDataTable.updateRow).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).not.toHaveBeenCalled();
 			});
 
 			test('should return empty when there is no parent evaluation trigger', async () => {
@@ -92,7 +92,7 @@ describe('Test Evaluation', () => {
 
 				expect(mockDataTable.getColumns).not.toHaveBeenCalled();
 				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-				expect(mockDataTable.updateRow).not.toHaveBeenCalled();
+				expect(mockDataTable.updateRows).not.toHaveBeenCalled();
 			});
 
 			test('should update rows and return input data with existing columns', async () => {
@@ -129,7 +129,7 @@ describe('Test Evaluation', () => {
 
 				expect(mockDataTable.getColumns).toHaveBeenCalled();
 				expect(mockDataTable.addColumn).not.toHaveBeenCalled();
-				expect(mockDataTable.updateRow).toHaveBeenCalledWith({
+				expect(mockDataTable.updateRows).toHaveBeenCalledWith({
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 23 }],
@@ -178,7 +178,7 @@ describe('Test Evaluation', () => {
 					name: 'bar',
 					type: 'string',
 				});
-				expect(mockDataTable.updateRow).toHaveBeenCalledWith({
+				expect(mockDataTable.updateRows).toHaveBeenCalledWith({
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 23 }],

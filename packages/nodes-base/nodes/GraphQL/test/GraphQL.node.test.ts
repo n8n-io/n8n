@@ -65,7 +65,7 @@ describe('GraphQL Node', () => {
 												],
 												credentialDocumentation: [
 													{
-														url: 'https://docs.n8n.io/integrations/builtin/credentials/activeCampaign/',
+														url: 'https://docs.n8n.io/integrations/builtin/credentials/activecampaign/',
 													},
 												],
 											},

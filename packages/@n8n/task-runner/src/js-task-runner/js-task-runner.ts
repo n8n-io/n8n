@@ -138,7 +138,17 @@ export class JsTaskRunner extends TaskRunner {
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of allowedExternalModules) {
-				require(module);
+				try {
+					require(module);
+				} catch (error) {
+					if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') {
+						console.error(
+							`Allowlisted module '${module}' is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
+						);
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 
@@ -211,9 +221,19 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private getNativeVariables() {
+		const { mode } = this;
 		return {
 			// Exposed Node.js globals
-			Buffer,
+			Buffer: new Proxy(Buffer, {
+				get(target, prop) {
+					if (mode === 'insecure') return target[prop as keyof typeof Buffer];
+					if (prop === 'allocUnsafe' || prop === 'allocUnsafeSlow') {
+						// eslint-disable-next-line @typescript-eslint/unbound-method
+						return Buffer.alloc;
+					}
+					return target[prop as keyof typeof Buffer];
+				},
+			}),
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -357,12 +377,7 @@ export class JsTaskRunner extends TaskRunner {
 				}
 
 				if (result) {
-					let jsonData;
-					if (isObject(result) && 'json' in result) {
-						jsonData = result.json;
-					} else {
-						jsonData = result;
-					}
+					const jsonData = this.extractJsonData(result);
 
 					returnData.push(
 						result.binary
@@ -428,6 +443,19 @@ export class JsTaskRunner extends TaskRunner {
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
+	}
+
+	private extractJsonData(result: INodeExecutionData) {
+		if (!isObject(result)) return result;
+
+		if ('json' in result) return result.json;
+
+		if ('binary' in result) {
+			// Pick only json property to prevent metadata duplication
+			return (result as INodeExecutionData).json ?? {};
+		}
+
+		return result;
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {

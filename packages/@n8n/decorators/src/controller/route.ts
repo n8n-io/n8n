@@ -14,6 +14,8 @@ interface RouteOptions {
 	allowSkipMFA?: boolean;
 	/** When these options are set, calls to this endpoint are rate limited using the options */
 	rateLimit?: boolean | RateLimit;
+	/** When this flag is set to true, the endpoint is protected by API key */
+	apiKeyAuth?: boolean;
 }
 
 const RouteFactory =
@@ -31,6 +33,7 @@ const RouteFactory =
 		routeMetadata.skipAuth = options.skipAuth ?? false;
 		routeMetadata.allowSkipPreviewAuth = options.allowSkipPreviewAuth ?? false;
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
+		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
 		routeMetadata.rateLimit = options.rateLimit;
 	};
 
@@ -39,3 +42,5 @@ export const Post = RouteFactory('post');
 export const Put = RouteFactory('put');
 export const Patch = RouteFactory('patch');
 export const Delete = RouteFactory('delete');
+export const Head = RouteFactory('head');
+export const Options = RouteFactory('options');

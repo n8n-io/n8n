@@ -10,3 +10,4 @@ export * as testModules from './test-modules';
 export * from './db/workflows';
 export * from './db/projects';
 export * from './mocking';
+export * from './migration-test-helpers';

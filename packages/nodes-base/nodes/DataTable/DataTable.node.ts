@@ -17,16 +17,13 @@ export class DataTable implements INodeType {
 		icon: 'fa:table',
 		iconColor: 'orange-red',
 		group: ['input', 'transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["action"]}}',
 		description: 'Permanently save data across workflow executions in a table',
 		defaults: {
 			name: 'Data table',
 		},
 		usableAsTool: true,
-		// We have custom logic in the frontend to ignore `hidden` for this
-		// particular node type if the data-table module is enabled
-		hidden: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		hints: [

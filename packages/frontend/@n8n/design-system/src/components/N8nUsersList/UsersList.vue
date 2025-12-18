@@ -119,7 +119,7 @@ const onUserAction = (user: UserType, action: string) =>
 <style lang="scss" module>
 .itemContainer {
 	display: flex;
-	padding: var(--spacing-2xs) 0 vaR(--spacing-2xs) 0;
+	padding: var(--spacing--2xs) 0 vaR(--spacing--2xs) 0;
 
 	> *:first-child {
 		flex-grow: 1;
@@ -128,7 +128,7 @@ const onUserAction = (user: UserType, action: string) =>
 
 .itemWithBorder {
 	composes: itemContainer;
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .badgeContainer {
@@ -136,7 +136,7 @@ const onUserAction = (user: UserType, action: string) =>
 	align-items: center;
 
 	> * {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>

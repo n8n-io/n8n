@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not } from '@n8n/typeorm';
+
+import type { IExecutionResponse } from 'entities/types-db';
 
 import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -9,7 +12,6 @@ const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
 /**
  * TODO: add tests for all the other methods
- * TODO: getExecutionsForPublicApi -> add test cases for the `includeData` toggle
  */
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -37,7 +39,6 @@ describe('ExecutionRepository', () => {
 			where: {},
 			order: { id: 'DESC' },
 			take: defaultLimit,
-			relations: ['executionData'],
 		};
 
 		test('should get executions matching all filter parameters', async () => {
@@ -164,6 +165,54 @@ describe('ExecutionRepository', () => {
 					expect(result[0].id).toEqual(mockEntities[0].id);
 				},
 			);
+		});
+
+		describe('with includeData parameter', () => {
+			test('should not fetch executionData and metadata relations when includeData is false', async () => {
+				const params = {
+					limit: defaultLimit,
+					includeData: false,
+				};
+				const mockEntities = [{ id: '1' }, { id: '2' }];
+
+				entityManager.find.mockResolvedValueOnce(mockEntities);
+				const result = await executionRepository.getExecutionsForPublicApi(params);
+
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+					...defaultQuery,
+					where: {},
+				});
+				expect(result.length).toBe(mockEntities.length);
+			});
+
+			test('should fetch executionData and metadata relations when includeData is true', async () => {
+				const params = {
+					limit: defaultLimit,
+					includeData: true,
+				};
+				const mockEntities = [
+					{
+						id: '1',
+						executionData: { data: '[]' },
+						metadata: [],
+					},
+					{
+						id: '2',
+						executionData: { data: '[]' },
+						metadata: [],
+					},
+				];
+
+				entityManager.find.mockResolvedValueOnce(mockEntities);
+				const result = await executionRepository.getExecutionsForPublicApi(params);
+
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+					...defaultQuery,
+					where: {},
+					relations: ['executionData', 'metadata'],
+				});
+				expect(result.length).toBe(mockEntities.length);
+			});
 		});
 	});
 
@@ -317,6 +366,44 @@ describe('ExecutionRepository', () => {
 				.map((_, i) => i.toString());
 			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
 			expect(entityManager.update).toBeCalledTimes(2);
+		});
+	});
+
+	describe('stopDuringRun', () => {
+		test('should update execution with ManualExecutionCancelledError', async () => {
+			const mockExecution = {
+				id: '123',
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			} as unknown;
+
+			const updateSpy = jest.spyOn(executionRepository, 'updateExistingExecution');
+
+			const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
+
+			// Verify updateExistingExecution was called with the execution
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({
+					status: 'canceled',
+					stoppedAt: expect.any(Date),
+					waitTill: null,
+					data: expect.objectContaining({
+						resultData: expect.objectContaining({
+							error: expect.objectContaining({
+								message: 'The execution was cancelled manually',
+							}),
+						}),
+					}),
+				}),
+			);
+
+			// Verify the execution was marked as canceled
+			expect(result.status).toBe('canceled');
+			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
 		});
 	});
 });

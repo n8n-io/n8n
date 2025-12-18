@@ -15,6 +15,7 @@ export interface Props {
 	};
 	streaming?: boolean;
 	isLastMessage?: boolean;
+	color?: string;
 }
 
 const props = defineProps<Props>();
@@ -40,6 +41,7 @@ const messageComponent = computed<Component | null>(() => {
 			:user="user"
 			:streaming="streaming"
 			:is-last-message="isLastMessage"
+			:color="color"
 			@code-replace="emit('codeReplace')"
 			@code-undo="emit('codeUndo')"
 			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"

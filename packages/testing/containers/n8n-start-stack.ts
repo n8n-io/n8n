@@ -1,9 +1,16 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
+import {
+	KEYCLOAK_TEST_CLIENT_ID,
+	KEYCLOAK_TEST_CLIENT_SECRET,
+	KEYCLOAK_TEST_USER_EMAIL,
+	KEYCLOAK_TEST_USER_PASSWORD,
+} from './n8n-test-container-keycloak';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 
 // ANSI colors for terminal output
@@ -38,6 +45,8 @@ ${colors.yellow}Options:${colors.reset}
   --postgres        Use PostgreSQL instead of SQLite
   --queue           Enable queue mode (requires PostgreSQL)
   --task-runner     Enable external task runner container
+  --source-control  Enable source control (Git) container for testing
+  --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -68,6 +77,12 @@ ${colors.yellow}Examples:${colors.reset}
 
   ${colors.bright}# With external task runner${colors.reset}
   npm run stack --postgres --task-runner
+
+  ${colors.bright}# With source control (Git) testing${colors.reset}
+  npm run stack --postgres --source-control
+
+  ${colors.bright}# With OIDC (Keycloak) for SSO testing${colors.reset}
+  npm run stack --postgres --oidc
 
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
@@ -101,6 +116,8 @@ async function main() {
 			postgres: { type: 'boolean' },
 			queue: { type: 'boolean' },
 			'task-runner': { type: 'boolean' },
+			'source-control': { type: 'boolean' },
+			oidc: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -120,6 +137,8 @@ async function main() {
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
 		taskRunner: values['task-runner'] ?? false,
+		sourceControl: values['source-control'] ?? false,
+		oidc: values.oidc ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -203,6 +222,19 @@ async function main() {
 		log.success('All containers started successfully!');
 		console.log('');
 		log.info(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
+
+		// Display OIDC configuration if enabled
+		if (stack.oidc) {
+			console.log('');
+			log.header('OIDC Configuration (Keycloak)');
+			log.info(`Discovery URL: ${colors.cyan}${stack.oidc.discoveryUrl}${colors.reset}`);
+			log.info(`Client ID: ${colors.cyan}${KEYCLOAK_TEST_CLIENT_ID}${colors.reset}`);
+			log.info(`Client Secret: ${colors.cyan}${KEYCLOAK_TEST_CLIENT_SECRET}${colors.reset}`);
+			console.log('');
+			log.header('Test User Credentials');
+			log.info(`Email: ${colors.cyan}${KEYCLOAK_TEST_USER_EMAIL}${colors.reset}`);
+			log.info(`Password: ${colors.cyan}${KEYCLOAK_TEST_USER_PASSWORD}${colors.reset}`);
+		}
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
 		process.exit(1);
@@ -210,12 +242,12 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
+	const dockerImage = getDockerImageFromEnv();
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	const usePostgres = config.postgres || config.queueMode;
+	const usePostgres = config.postgres || config.queueMode || config.oidc;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
 	if (config.queueMode) {
@@ -239,6 +271,25 @@ function displayConfig(config: N8NConfig) {
 		}
 	} else {
 		log.info('Task runner: disabled');
+	}
+
+	// Display source control status
+	if (config.sourceControl) {
+		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
+		log.info('  Admin: giteaadmin / giteapassword');
+		log.info('  Repository: n8n-test-repo');
+	} else {
+		log.info('Source Control: disabled');
+	}
+
+	// Display OIDC status
+	if (config.oidc) {
+		log.info('OIDC: enabled (Keycloak)');
+		if (!config.postgres && !config.queueMode) {
+			log.info('(PostgreSQL automatically enabled for OIDC)');
+		}
+	} else {
+		log.info('OIDC: disabled');
 	}
 
 	if (config.resourceQuota) {

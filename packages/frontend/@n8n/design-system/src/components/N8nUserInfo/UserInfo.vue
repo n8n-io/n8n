@@ -71,7 +71,7 @@ const classes = computed(
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-text-light);
+	color: var(--color--text--tint-1);
 }
 
 .infoContainer {
@@ -79,18 +79,18 @@ const classes = computed(
 	display: inline-flex;
 	flex-direction: column;
 	justify-content: center;
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 
 .pendingUser {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 
 .pendingBadge {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 
 .disabled {

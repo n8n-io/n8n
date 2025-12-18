@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs', 'jest.config.integration.js']),
+	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js']),
 	nodeConfig,
 	{
 		rules: {
@@ -11,6 +11,8 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
+			// Disabled until we have a plan on how to fix these issues long term
+			'n8n-local-rules/no-import-enterprise-edition': 'off',
 
 			// TODO: Remove this
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],

@@ -31,12 +31,12 @@ export type IMenuItem = {
 	 */
 	activateOnRouteNames?: string[];
 	activateOnRoutePaths?: string[];
-
 	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;
 	notification?: boolean;
 	size?: 'medium' | 'small';
+	beta?: boolean;
 };
 
 export interface ICustomMenuItem {

@@ -297,6 +297,156 @@ describe('AddNodeTool', () => {
 			const addedNode = content.update.workflowOperations?.[0]?.nodes?.[0];
 			expect(addedNode?.position?.[1]).toBeGreaterThan(100);
 		});
+
+		it('should add the correct node version when multiple versions exist', async () => {
+			// Create multiple versions of the same node type
+			const httpRequestV1 = {
+				...nodeTypes.httpRequest,
+				version: 1,
+				displayName: 'HTTP Request V1',
+			};
+			const httpRequestV2 = {
+				...nodeTypes.httpRequest,
+				version: 2,
+				displayName: 'HTTP Request V2',
+			};
+			const httpRequestV3 = {
+				...nodeTypes.httpRequest,
+				version: 3,
+				displayName: 'HTTP Request V3',
+			};
+
+			const toolWithMultipleVersions = createAddNodeTool([
+				httpRequestV1,
+				httpRequestV2,
+				httpRequestV3,
+				nodeTypes.code,
+			]).tool;
+
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-10');
+
+			// Request version 2 specifically
+			const result = await toolWithMultipleVersions.invoke(
+				buildAddNodeInput({
+					nodeType: 'n8n-nodes-base.httpRequest',
+					nodeVersion: 2,
+					name: 'HTTP Request V2',
+					connectionParametersReasoning: 'Need version 2 for specific features',
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectNodeAdded(content, {
+				name: 'HTTP Request V2',
+				type: 'n8n-nodes-base.httpRequest',
+			});
+
+			const addedNode = content.update.workflowOperations?.[0]?.nodes?.[0];
+			expect(addedNode?.typeVersion).toBe(2);
+			expectToolSuccess(content, 'Successfully added "HTTP Request V2"');
+		});
+
+		it('should fail when requesting a non-existent node version', async () => {
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-11');
+
+			const result = await addNodeTool.invoke(
+				buildAddNodeInput({
+					nodeType: 'n8n-nodes-base.code',
+					nodeVersion: 99, // Non-existent version
+					name: 'Code V99',
+					connectionParametersReasoning: 'Requesting non-existent version',
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			expectToolError(content, 'Error: Node type "n8n-nodes-base.code" not found');
+		});
+
+		it('should add correct version from array version node type', async () => {
+			// Create a node type that supports multiple versions in an array
+			const multiVersionNode = {
+				...nodeTypes.code,
+				name: 'n8n-nodes-base.multiVersionCode',
+				displayName: 'Multi Version Code',
+				version: [1, 2, 3],
+				properties: [
+					{
+						displayName: 'Code',
+						name: 'code',
+						type: 'string',
+						default: '',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const toolWithArrayVersion = createAddNodeTool([
+				multiVersionNode,
+				nodeTypes.httpRequest,
+			]).tool;
+
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-12');
+
+			// Request version 2 from the array [1, 2, 3]
+			const result = await toolWithArrayVersion.invoke(
+				buildAddNodeInput({
+					nodeType: 'n8n-nodes-base.multiVersionCode',
+					nodeVersion: 2,
+					name: 'Multi Version Code V2',
+					connectionParametersReasoning: 'Need version 2 from array versions',
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectNodeAdded(content, {
+				name: 'Multi Version Code V2',
+				type: 'n8n-nodes-base.multiVersionCode',
+			});
+
+			const addedNode = content.update.workflowOperations?.[0]?.nodes?.[0];
+			expect(addedNode?.typeVersion).toBe(2);
+			expectToolSuccess(content, 'Successfully added "Multi Version Code V2"');
+		});
+
+		it('should fail when requesting version not in array version node type', async () => {
+			// Create a node type that supports versions [1, 2, 3]
+			const multiVersionNode = {
+				...nodeTypes.code,
+				name: 'n8n-nodes-base.multiVersionCode',
+				displayName: 'Multi Version Code',
+				version: [1, 2, 3],
+			} as INodeTypeDescription;
+
+			const toolWithArrayVersion = createAddNodeTool([multiVersionNode]).tool;
+
+			setupWorkflowState(mockGetCurrentTaskInput);
+
+			const mockConfig = createToolConfig('add_nodes', 'test-call-13');
+
+			// Request version 4 which is not in the array [1, 2, 3]
+			const result = await toolWithArrayVersion.invoke(
+				buildAddNodeInput({
+					nodeType: 'n8n-nodes-base.multiVersionCode',
+					nodeVersion: 4,
+					name: 'Multi Version Code V4',
+					connectionParametersReasoning: 'Requesting version not in array',
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			expectToolError(content, 'Error: Node type "n8n-nodes-base.multiVersionCode" not found');
+		});
 	});
 
 	describe('getCustomDisplayTitle', () => {
