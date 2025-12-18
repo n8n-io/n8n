@@ -13,6 +13,7 @@ import {
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -78,6 +79,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const collaborationStore = useCollaborationStore();
 const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
@@ -186,6 +188,10 @@ async function onSaveButtonClick() {
 }
 
 function onTagsEditEnable() {
+	if (props.readOnly || props.isArchived) {
+		return;
+	}
+
 	appliedTagIds.value = (props.tags ?? []) as string[];
 	isTagsEditEnabled.value = true;
 
@@ -207,6 +213,19 @@ async function onTagsBlur() {
 	if (tagsSaving.value) {
 		return;
 	}
+
+	if (props.readOnly || props.isArchived) {
+		isTagsEditEnabled.value = false;
+		return;
+	}
+
+	// Request write access if we don't have it, otherwise record activity
+	if (!collaborationStore.isCurrentUserWriter) {
+		collaborationStore.requestWriteAccess();
+	} else {
+		collaborationStore.recordActivity();
+	}
+
 	tagsSaving.value = true;
 
 	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
