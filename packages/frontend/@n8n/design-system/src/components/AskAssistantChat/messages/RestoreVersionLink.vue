@@ -2,9 +2,9 @@
 import { onClickOutside, useElementBounding } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
+import IconTextButton from '../../IconTextButton';
 import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
 import { useI18n } from '../../../composables/useI18n';
-import N8nIcon from '../../N8nIcon';
 
 interface Props {
 	revertVersion: { id: string; createdAt: string };
@@ -24,7 +24,7 @@ const { t } = useI18n();
 
 // Restore version confirm dialog
 const showRestoreConfirm = ref(false);
-const restoreButtonRef = ref<HTMLElement | null>(null);
+const restoreButtonRef = ref<InstanceType<typeof IconTextButton> | null>(null);
 const restoreConfirmRef = ref<HTMLElement | null>(null);
 
 // Close confirm dialog when clicking outside
@@ -47,9 +47,10 @@ const formattedDate = computed(() => {
 });
 
 // Calculate modal position based on button location
+const buttonElement = computed(() => restoreButtonRef.value?.buttonRef ?? null);
+const restoreButtonBounding = useElementBounding(buttonElement);
+
 const modalStyle = computed(() => {
-	// Get restore button bounding rect for positioning the teleported modal
-	const restoreButtonBounding = useElementBounding(restoreButtonRef);
 	if (!showRestoreConfirm.value) return {};
 
 	// Position modal below the button, aligned to the right
@@ -84,16 +85,15 @@ function handleShowVersion(versionId: string) {
 	<div :class="$style.restoreWrapper">
 		<div :class="$style.restoreContainer">
 			<div :class="$style.restoreLine"></div>
-			<button
+			<IconTextButton
 				ref="restoreButtonRef"
-				:class="[$style.restoreButton, { [$style.disabled]: streaming, [$style.active]: showRestoreConfirm }]"
-				type="button"
+				icon="undo-2"
 				:disabled="streaming"
+				:active="showRestoreConfirm"
 				@click="handleRestoreClick"
 			>
-				<N8nIcon icon="undo-2" size="medium" />
 				{{ t('aiAssistant.textMessage.restoreVersion') }} · {{ formattedDate }}
-			</button>
+			</IconTextButton>
 			<div :class="$style.restoreLine"></div>
 		</div>
 		<!-- Teleport modal to body to escape the messages container stacking context -->
@@ -132,41 +132,5 @@ function handleShowVersion(versionId: string) {
 	flex: 1;
 	height: 1px;
 	background-color: var(--color--text--tint-1);
-}
-
-.restoreButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	background: none;
-	border: none;
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	cursor: pointer;
-	white-space: nowrap;
-	transition:
-		background-color 0.15s ease,
-		color 0.15s ease;
-	font-weight: var(--font-weight--medium);
-
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-	}
-
-	&:active,
-	&.active {
-		background-color: var(--color--foreground);
-	}
-
-	&.disabled {
-		cursor: not-allowed;
-
-		&:hover,
-		&:active {
-			background-color: transparent;
-		}
-	}
 }
 </style>
