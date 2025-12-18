@@ -934,7 +934,8 @@ UserMessageWithRestoreVersion.args = {
 			id: 'user-1',
 			type: 'text',
 			role: 'user',
-			content: 'Add an HTTP Request node to fetch data from the API and then transform the response using a Code node.',
+			content:
+				'Add an HTTP Request node to fetch data from the API and then transform the response using a Code node.',
 			revertVersion: {
 				id: 'version-abc123',
 				createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
@@ -945,7 +946,8 @@ UserMessageWithRestoreVersion.args = {
 			id: 'assistant-2',
 			type: 'text',
 			role: 'assistant',
-			content: 'I added the HTTP Request node and configured the Code node to transform the response. The workflow is ready to test!',
+			content:
+				'I added the HTTP Request node and configured the Code node to transform the response. The workflow is ready to test!',
 			read: true,
 		},
 	]),
@@ -1010,7 +1012,8 @@ MultipleRestoreVersionMessages.args = {
 			id: 'assistant-3',
 			type: 'text',
 			role: 'assistant',
-			content: 'Error handling is now in place. Any workflow errors will be caught and can be processed.',
+			content:
+				'Error handling is now in place. Any workflow errors will be caught and can be processed.',
 			read: true,
 		},
 	]),
