@@ -492,7 +492,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -526,7 +526,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'existing',
 							name: 'Existing',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -565,7 +565,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'existing',
 							name: 'Existing',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -619,7 +619,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -671,7 +671,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -774,7 +774,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'existing',
 							name: 'Existing',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -817,7 +817,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'new-node',
 							name: 'New Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -901,7 +901,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -950,7 +950,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -999,7 +999,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1051,7 +1051,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1126,7 +1126,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1167,7 +1167,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1208,7 +1208,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1293,7 +1293,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1341,7 +1341,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'new-node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: {},
@@ -1459,7 +1459,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: {},
@@ -1472,7 +1472,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: { updated: true },
@@ -1571,7 +1571,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: {},
@@ -1629,7 +1629,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: { updated: true },

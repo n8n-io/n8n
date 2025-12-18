@@ -2,7 +2,7 @@
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
+import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
@@ -25,6 +25,7 @@ const {
 	isStreaming,
 	minHeight,
 	cachedAgentDisplayName,
+	cachedAgentIcon,
 	containerWidth,
 } = defineProps<{
 	message: ChatMessage;
@@ -32,6 +33,7 @@ const {
 	isEditing: boolean;
 	isStreaming: boolean;
 	cachedAgentDisplayName: string | null;
+	cachedAgentIcon: AgentIconOrEmoji | null;
 	/**
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
@@ -72,7 +74,7 @@ const agent = computed<ChatModelDto | null>(() => {
 		return null;
 	}
 
-	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
+	return chatStore.getAgent(model, { name: cachedAgentDisplayName, icon: cachedAgentIcon });
 });
 
 const attachments = computed(() =>
@@ -202,8 +204,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
-			<N8nIcon v-else icon="sparkles" width="20" height="20" />
+			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">

@@ -341,7 +341,7 @@ describe('OauthService', () => {
 			};
 			jest.setSystemTime(new Date(timestamp));
 
-			const [csrfSecret, encodedState] = service.createCsrfState(data);
+			const [csrfSecret, encodedState, base64State] = service.createCsrfState(data);
 
 			expect(typeof csrfSecret).toBe('string');
 			expect(csrfSecret.length).toBeGreaterThan(0);
@@ -352,6 +352,14 @@ describe('OauthService', () => {
 			expect(decoded.userId).toBe('user-id');
 			expect(decoded.token).toBeDefined();
 			expect(decoded.createdAt).toBe(timestamp);
+
+			// Verify base64State is a valid base64 string that decodes to the same state
+			expect(typeof base64State).toBe('string');
+			const base64Decoded = JSON.parse(Buffer.from(base64State, 'base64').toString());
+			expect(base64Decoded.cid).toBe('credential-id');
+			expect(base64Decoded.userId).toBe('user-id');
+			expect(base64Decoded.token).toBe(decoded.token);
+			expect(base64Decoded.createdAt).toBe(timestamp);
 		});
 
 		it('should include additional data in state', () => {
@@ -362,11 +370,15 @@ describe('OauthService', () => {
 			};
 			jest.setSystemTime(new Date(timestamp));
 
-			const [, encodedState] = service.createCsrfState(data);
+			const [, encodedState, base64State] = service.createCsrfState(data);
 
 			expect(cipher.encrypt).toHaveBeenCalled();
 			const decoded = JSON.parse(cipher.decrypt(encodedState));
 			expect(decoded.customField).toBe('custom-value');
+
+			// Verify base64State includes the same custom field
+			const base64Decoded = JSON.parse(Buffer.from(base64State, 'base64').toString());
+			expect(base64Decoded.customField).toBe('custom-value');
 		});
 	});
 
@@ -1086,7 +1098,11 @@ describe('OauthService', () => {
 			expect(callArgs[1]).toHaveProperty('csrfSecret');
 			expect(typeof callArgs[1].csrfSecret).toBe('string');
 			expect(callArgs[2] || []).toEqual([]);
-			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.authenticate', expect.any(Array));
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.authenticate', [
+				expect.objectContaining({
+					state: expect.any(String), // base64State
+				}),
+			]);
 		});
 
 		it('should generate auth URI with PKCE flow', async () => {
@@ -1417,7 +1433,9 @@ describe('OauthService', () => {
 
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-			jest.spyOn(service, 'createCsrfState').mockReturnValue(['csrf-secret', 'encoded-state']);
+			jest
+				.spyOn(service, 'createCsrfState')
+				.mockReturnValue(['csrf-secret', 'encoded-state', 'base64-state']);
 
 			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,

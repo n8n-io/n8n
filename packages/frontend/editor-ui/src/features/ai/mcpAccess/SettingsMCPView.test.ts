@@ -8,7 +8,10 @@ import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
+import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -37,6 +40,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let uiStore: MockedStore<typeof useUIStore>;
 
 const createComponent = createComponentRenderer(SettingsMCPView, {
 	global: {
@@ -80,6 +84,7 @@ describe('SettingsMCPView', () => {
 		mcpStore = mockedStore(useMCPStore);
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
+		uiStore = mockedStore(useUIStore);
 
 		settingsStore.settings = {
 			enterprise: {},
@@ -336,6 +341,88 @@ describe('SettingsMCPView', () => {
 				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
 			});
 			expect(mcpStore.fetchWorkflowsAvailableForMCP).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Connect Workflows button', () => {
+		beforeEach(() => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+				},
+			};
+		});
+
+		it('should not show Connect Workflows button when there are no workflows', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(queryByTestId('mcp-connect-workflows-header-button')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should show Connect Workflows button when there are workflows', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
+				createWorkflow({ id: '1', name: 'Workflow 1' }),
+				createWorkflow({ id: '2', name: 'Workflow 2' }),
+			]);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-workflows-header-button')).toBeVisible();
+			});
+		});
+
+		it('should not show Connect Workflows button when on OAuth tab', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
+				createWorkflow({ id: '1', name: 'Workflow 1' }),
+			]);
+			mcpStore.getAllOAuthClients.mockResolvedValue([]);
+
+			const { queryByTestId, getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			// Initially button should be visible on workflows tab
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-workflows-header-button')).toBeVisible();
+			});
+
+			// Switch to OAuth tab
+			await clickTab(container, 'tab-oauth');
+
+			await waitFor(() => {
+				expect(queryByTestId('mcp-connect-workflows-header-button')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should open Connect Workflows modal when button is clicked', async () => {
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
+				createWorkflow({ id: '1', name: 'Workflow 1' }),
+			]);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-workflows-header-button')).toBeVisible();
+			});
+
+			const connectButton = getByTestId('mcp-connect-workflows-header-button');
+			await userEvent.click(connectButton);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+					data: expect.objectContaining({
+						onEnableMcpAccess: expect.any(Function),
+					}),
+				}),
+			);
 		});
 	});
 });

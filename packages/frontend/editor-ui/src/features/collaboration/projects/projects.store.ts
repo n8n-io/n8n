@@ -19,6 +19,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { hasRole } from '@/app/utils/rbac/checks';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -77,6 +78,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
+	);
+	const canViewProjects = computed(
+		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
 
 	const projectNavActiveId = computed<string | string[] | null>({
@@ -310,6 +314,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		teamProjectsLimit,
 		hasUnlimitedProjects,
 		canCreateProjects,
+		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
 		projectNavActiveId,
