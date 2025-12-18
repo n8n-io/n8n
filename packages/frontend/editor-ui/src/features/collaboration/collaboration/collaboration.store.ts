@@ -81,6 +81,13 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	});
 
 	// Write-lock methods
+	function recordActivity() {
+		if (!isCurrentUserWriter.value) {
+			return;
+		}
+		lastActivityTime.value = Date.now();
+	}
+
 	function requestWriteAccess() {
 		if (isAnyoneWriting.value && !isCurrentUserWriter.value) {
 			console.log('[Collaboration] ❌ Write access denied - another user is writing', {
@@ -90,7 +97,11 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return false;
 		}
 
-		lastActivityTime.value = Date.now();
+		recordActivity();
+
+		if (isCurrentUserWriter.value) {
+			return true;
+		}
 
 		console.log('[Collaboration] 🔓 Requesting write access', {
 			userId: usersStore.currentUserId,
@@ -128,13 +139,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				error,
 			);
 		}
-	}
-
-	function recordActivity() {
-		if (!isCurrentUserWriter.value) {
-			return;
-		}
-		lastActivityTime.value = Date.now();
 	}
 
 	function checkInactivity() {

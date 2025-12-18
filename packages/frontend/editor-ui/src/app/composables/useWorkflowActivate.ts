@@ -165,10 +165,7 @@ export function useWorkflowActivate() {
 	) => {
 		updatingWorkflowActivation.value = true;
 
-		// Request write access if not already acquired
-		if (!collaborationStore.isCurrentUserWriter) {
-			collaborationStore.requestWriteAccess();
-		}
+		collaborationStore.requestWriteAccess();
 
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		const hadPublishedVersion = !!workflow.activeVersion;
@@ -233,10 +230,7 @@ export function useWorkflowActivate() {
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {
 		updatingWorkflowActivation.value = true;
 
-		// Request write access if not already acquired
-		if (!collaborationStore.isCurrentUserWriter) {
-			collaborationStore.requestWriteAccess();
-		}
+		collaborationStore.requestWriteAccess();
 
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		const wasPublished = !!workflow.activeVersion;
