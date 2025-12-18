@@ -14,6 +14,7 @@ const CONTAINER_ONLY_TAGS = [
 	'source-control',
 	'email',
 	'oidc',
+	'observability',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 

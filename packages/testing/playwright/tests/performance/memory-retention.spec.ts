@@ -1,6 +1,8 @@
+import { ObservabilityHelper } from 'n8n-containers';
+
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { attachMetric, pollMemoryMetric } from '../../utils/performance-helper';
+import { attachMetric } from '../../utils/performance-helper';
 
 test.use({
 	addContainerCapability: {
@@ -8,13 +10,12 @@ test.use({
 			memory: 0.75,
 			cpu: 0.5,
 		},
+		observability: true,
 	},
 });
-test.describe('Memory Leak Detection', () => {
-	const CONTAINER_STABILIZATION_TIME = 20000;
-	const BASELINE_POLL_DURATION = 10000;
-	const FINAL_POLL_DURATION = 30000;
 
+test.describe('Memory Leak Detection @capability:observability', () => {
+	const CONTAINER_STABILIZATION_TIME = 20000;
 	const MAX_MEMORY_RETENTION_PERCENT = 10;
 
 	/**
@@ -38,12 +39,21 @@ test.describe('Memory Leak Detection', () => {
 	}
 
 	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
+		const obs = new ObservabilityHelper(n8nContainer.observability!);
+
 		// Let container stabilize
 		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
 
-		// Get baseline memory (average over 10 seconds for accuracy)
-		const baselineMemoryMB =
-			(await pollMemoryMetric(n8nContainer.baseUrl, BASELINE_POLL_DURATION, 1000)) / 1024 / 1024;
+		// Get baseline heap usage (V8 heap is better for leak detection than RSS)
+		// RSS can stay high after GC due to OS memory management
+		const baselineResult = await obs.metrics.query(
+			'avg_over_time(n8n_nodejs_heap_size_used_bytes[10s]) / 1024 / 1024',
+		);
+		expect(
+			baselineResult.length,
+			'Expected baseline metrics result to have at least one value',
+		).toBeGreaterThan(0);
+		const baselineMemoryMB = baselineResult[0].value;
 
 		// Perform the memory-consuming action
 		await performMemoryAction(n8n);
@@ -52,9 +62,15 @@ test.describe('Memory Leak Detection', () => {
 		// Give time for garbage collection
 		await new Promise((resolve) => setTimeout(resolve, 5000));
 
-		// Measure final memory (average over 30 seconds for stability)
-		const finalMemoryMB =
-			(await pollMemoryMetric(n8nContainer.baseUrl, FINAL_POLL_DURATION, 1000)) / 1024 / 1024;
+		// Measure final heap usage
+		const finalResult = await obs.metrics.query(
+			'avg_over_time(n8n_nodejs_heap_size_used_bytes[30s]) / 1024 / 1024',
+		);
+		expect(
+			finalResult.length,
+			'Expected final metrics result to have at least one value',
+		).toBeGreaterThan(0);
+		const finalMemoryMB = finalResult[0].value;
 
 		// Calculate retention percentage - How much memory is retained after the action
 		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;

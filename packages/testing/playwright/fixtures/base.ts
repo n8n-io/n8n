@@ -46,6 +46,8 @@ interface ContainerConfig {
 	email?: boolean;
 	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
 	oidc?: boolean;
+	/** Enable observability stack (VictoriaLogs + VictoriaMetrics) for log streaming and metrics testing. */
+	observability?: boolean;
 	resourceQuota?: {
 		memory?: number; // in GB
 		cpu?: number; // in cores
@@ -170,6 +172,7 @@ export const test = base.extend<
 	],
 
 	// Create container test helpers for the n8n container.
+	// When observability is enabled, uses VictoriaLogs for simpler/faster log queries.
 	chaos: [
 		async ({ n8nContainer }, use) => {
 			if (getBackendUrl()) {
@@ -177,7 +180,9 @@ export const test = base.extend<
 					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
 				);
 			}
-			const helpers = new ContainerTestHelpers(n8nContainer.containers);
+			const helpers = new ContainerTestHelpers(n8nContainer.containers, {
+				observability: n8nContainer.observability,
+			});
 			await use(helpers);
 		},
 		{ scope: 'worker' },

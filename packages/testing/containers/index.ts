@@ -31,3 +31,37 @@ export {
 	KEYCLOAK_TEST_USER_FIRSTNAME,
 	KEYCLOAK_TEST_USER_LASTNAME,
 } from './n8n-test-container-keycloak';
+
+// VictoriaObs stack for test observability
+export {
+	setupVictoriaLogs,
+	setupVictoriaMetrics,
+	setupObservabilityStack,
+	getLogStreamingSyslogEnvironment,
+	getLogStreamingSyslogConfig,
+	getVictoriaLogsQueryUrl,
+	getVictoriaMetricsQueryUrl,
+	type VictoriaLogsSetupResult,
+	type VictoriaMetricsSetupResult,
+	type ObservabilityStack,
+	type ScrapeTarget,
+} from './n8n-test-container-observability';
+
+// VictoriaObs query helpers
+export {
+	VictoriaLogsHelper,
+	VictoriaMetricsHelper,
+	ObservabilityHelper,
+	type LogEntry,
+	type LogQueryOptions,
+	type WaitForLogOptions,
+	type MetricResult,
+	type WaitForMetricOptions,
+} from './n8n-test-container-victoria-helpers';
+
+// Container log utilities
+export {
+	createVictoriaLogsForwarder,
+	type VictoriaLogsForwarderOptions,
+	type VictoriaLogsForwarderResult,
+} from './n8n-test-container-utils';

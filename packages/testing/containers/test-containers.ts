@@ -26,4 +26,7 @@ export const TEST_CONTAINER_IMAGES = {
 	mockserver: 'mockserver/mockserver:5.15.0',
 	gitea: 'gitea/gitea:1.25.1',
 	keycloak: 'keycloak/keycloak:26.4',
+	// VictoriaObs stack for test observability
+	victoriaLogs: 'victoriametrics/victoria-logs:v1.21.0-victorialogs',
+	victoriaMetrics: 'victoriametrics/victoria-metrics:v1.115.0',
 } as const;
