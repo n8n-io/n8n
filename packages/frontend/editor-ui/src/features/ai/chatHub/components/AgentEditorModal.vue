@@ -15,14 +15,7 @@ import {
 	type ChatHubProvider,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nHeading,
-	N8nIconPicker,
-	N8nInput,
-	N8nInputLabel,
-	N8nSpinner,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -279,6 +272,7 @@ function onSelectTools() {
 		:event-bus="modalBus"
 		width="600px"
 		:center="true"
+		:loading="isLoadingAgent"
 		max-width="90%"
 		min-height="400px"
 	>
@@ -391,7 +385,6 @@ function onSelectTools() {
 						</div>
 					</N8nInputLabel>
 				</div>
-				<N8nSpinner v-if="isLoadingAgent" :class="$style.spinner" size="xlarge" />
 			</div>
 		</template>
 		<template #footer>
@@ -408,13 +401,6 @@ function onSelectTools() {
 </template>
 
 <style lang="scss" module>
-.spinner {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-}
-
 .header {
 	display: flex;
 	align-items: center;

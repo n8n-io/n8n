@@ -78,9 +78,6 @@ test.describe('Personal agent @capability:proxy', () => {
 		await agentsPage.personalAgentModal.getNameField().fill('e2e agent');
 		await agentsPage.personalAgentModal.getDescriptionField().fill('just for testing');
 		await agentsPage.personalAgentModal.getSystemPromptField().fill('reply in Chinese');
-		await expect(agentsPage.personalAgentModal.getSystemPromptField()).toHaveValue(
-			'reply in Chinese',
-		);
 
 		await agentsPage.personalAgentModal.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
@@ -104,10 +101,10 @@ test.describe('Personal agent @capability:proxy', () => {
 		// STEP: update instructions for the agent
 		await chatPage.sidebar.getPersonalAgentButton().click();
 		await agentsPage.getEditButtonAt(0).click();
-		await agentsPage.personalAgentModal.getSystemPromptField().fill('reply in Japanese');
 		await expect(agentsPage.personalAgentModal.getSystemPromptField()).toHaveValue(
-			'reply in Japanese',
+			'reply in Chinese',
 		);
+		await agentsPage.personalAgentModal.getSystemPromptField().fill('reply in Japanese');
 		await agentsPage.personalAgentModal.getSaveButton().click();
 		await expect(agentsPage.personalAgentModal.getRoot()).not.toBeInViewport(); // wait for modal to close
 

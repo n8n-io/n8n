@@ -26,10 +26,6 @@ export class ChatHubChatPage extends BasePage {
 		return this.page.getByTestId('chat-model-selector');
 	}
 
-	getTypingIndicator(): Locator {
-		return this.page.getByTestId('chat-typing-indicator');
-	}
-
 	getChatInput(): Locator {
 		return this.page.locator('form').getByRole('textbox');
 	}
