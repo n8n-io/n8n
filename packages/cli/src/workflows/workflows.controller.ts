@@ -540,6 +540,8 @@ export class WorkflowsController {
 
 		const checksum = await calculateWorkflowChecksum(workflow);
 
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+
 		return { ...workflow, checksum };
 	}
 
@@ -564,6 +566,8 @@ export class WorkflowsController {
 		}
 
 		const checksum = await calculateWorkflowChecksum(workflow);
+
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
 
 		return { ...workflow, checksum };
 	}
