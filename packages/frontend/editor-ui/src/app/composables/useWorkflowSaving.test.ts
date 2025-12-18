@@ -1,6 +1,7 @@
 import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
+import type { WorkflowState } from './useWorkflowState';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -120,7 +121,10 @@ describe('useWorkflowSaving', () => {
 			});
 
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
-			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
@@ -140,6 +144,11 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
+			const mockWorkflowState: Partial<WorkflowState> = {
+				setWorkflowTagIds: vi.fn(),
+				setWorkflowName: vi.fn(),
+			};
+
 			const resolveSpy = vi.fn();
 			const resolveMarker = Symbol();
 			resolveSpy.mockReturnValue(resolveMarker);
@@ -150,6 +159,7 @@ describe('useWorkflowSaving', () => {
 
 			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({
 				router: mockRouter as never,
+				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
@@ -514,6 +524,84 @@ describe('useWorkflowSaving', () => {
 				expect.objectContaining({ id: 'w3', active: true, autosaved: false }),
 				false,
 			);
+		});
+
+		it('should convert tags from ITag[] to string[]', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w4',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+				tags: ['tag1', 'tag2'],
+			});
+
+			const workflowResponse = {
+				...workflow,
+				tags: [
+					{ id: 'tag1', name: 'Tag 1' },
+					{ id: 'tag2', name: 'Tag 2' },
+				],
+				checksum: 'test-checksum',
+			};
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
+
+			workflowsStore.setWorkflow(workflow);
+
+			// Create a mock workflowState with spy functions
+			const setWorkflowTagIdsSpy = vi.fn();
+			const mockWorkflowState: Partial<WorkflowState> = {
+				setWorkflowTagIds: setWorkflowTagIdsSpy,
+				setWorkflowName: vi.fn(),
+			};
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+				workflowState: mockWorkflowState as WorkflowState,
+			});
+
+			await saveCurrentWorkflow({ id: 'w4' }, true, false, true);
+
+			// Verify that setWorkflowTagIds was called with string array, not objects
+			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith(['tag1', 'tag2']);
+		});
+
+		it('should convert tags from ITag[] to string[] when tags param is provided', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w5',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+				tags: ['tag1', 'tag2'],
+			});
+
+			const workflowResponse = {
+				...workflow,
+				tags: [
+					{ id: 'tag1', name: 'Tag 1' },
+					{ id: 'tag2', name: 'Tag 2' },
+				],
+				checksum: 'test-checksum',
+			};
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const setWorkflowTagIdsSpy = vi.fn();
+			const mockWorkflowState: Partial<WorkflowState> = {
+				setWorkflowTagIds: setWorkflowTagIdsSpy,
+				setWorkflowName: vi.fn(),
+			};
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+				workflowState: mockWorkflowState as WorkflowState,
+			});
+
+			await saveCurrentWorkflow({ id: 'w5', tags: ['tag1', 'tag2'] }, true, false, false);
+
+			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith(['tag1', 'tag2']);
 		});
 	});
 });
