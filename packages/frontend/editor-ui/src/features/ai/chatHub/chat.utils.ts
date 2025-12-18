@@ -9,6 +9,8 @@ import {
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
+	type AgentIconOrEmoji,
+	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -20,16 +22,7 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import { v4 as uuidv4 } from 'uuid';
-
-export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
-	for (const provider of chatHubProviderSchema.options) {
-		if (response[provider].models.length > 0) {
-			return response[provider].models[0];
-		}
-	}
-
-	return undefined;
-}
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -109,6 +102,10 @@ export function getAgentRoute(model: ChatHubConversationModel) {
 
 	return {
 		name: CHAT_VIEW,
+		query: {
+			provider: model.provider,
+			model: model.model,
+		},
 	};
 }
 
@@ -170,11 +167,6 @@ export function filterAndSortAgents(
 	if (filter.search.trim()) {
 		const query = filter.search.toLowerCase();
 		filtered = filtered.filter((model) => model.name.toLowerCase().includes(query));
-	}
-
-	// Apply provider filter
-	if (filter.provider !== '') {
-		filtered = filtered.filter((model) => model.model.provider === filter.provider);
 	}
 
 	// Apply sorting
@@ -255,8 +247,8 @@ export function createAiMessageFromStreamingState(
 		responses: [],
 		alternatives: [],
 		attachments: [],
-		...(streaming?.model
-			? flattenModel(streaming.model)
+		...(streaming?.agent
+			? flattenModel(streaming.agent.model)
 			: {
 					provider: null,
 					model: null,
@@ -334,6 +326,36 @@ export function isLlmProviderModel(
 	return isLlmProvider(model?.provider);
 }
 
+export function findOneFromModelsResponse(
+	response: ChatModelsResponse,
+	providerSettings: Record<ChatHubLLMProvider, ChatProviderSettingsDto>,
+): ChatModelDto | undefined {
+	for (const provider of chatHubProviderSchema.options) {
+		const settings: ChatProviderSettingsDto | undefined = isLlmProvider(provider)
+			? providerSettings[provider]
+			: undefined;
+
+		if (!settings?.enabled) {
+			continue;
+		}
+
+		const availableModels = response[provider].models.filter((providerModel) => {
+			const { model } = providerModel;
+			if (isLlmProviderModel(model) && settings.allowedModels.length > 0) {
+				return settings.allowedModels.some((allowed) => allowed.model === model.model);
+			}
+
+			return true;
+		});
+
+		if (availableModels.length > 0) {
+			return availableModels[0];
+		}
+	}
+
+	return undefined;
+}
+
 export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
@@ -341,11 +363,12 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		ownerId: '',
 		lastMessageAt: new Date().toISOString(),
 		credentialId: null,
-		agentName: streaming.agentName,
+		agentName: streaming.agent.name,
+		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		tools: streaming.tools,
-		...flattenModel(streaming.model),
+		...flattenModel(streaming.agent.model),
 	};
 }
 
@@ -371,3 +394,13 @@ export function createMimeTypes(modalities: ChatHubInputModality[]): string {
 
 	return mimeTypes.join(',');
 }
+
+export const personalAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'message-square' satisfies IconName,
+};
+
+export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'bot' satisfies IconName,
+};

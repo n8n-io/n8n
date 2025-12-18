@@ -44,6 +44,8 @@ interface ContainerConfig {
 	taskRunner?: boolean;
 	sourceControl?: boolean;
 	email?: boolean;
+	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
+	oidc?: boolean;
 	resourceQuota?: {
 		memory?: number; // in GB
 		cpu?: number; // in cores
@@ -112,10 +114,6 @@ export const test = base.extend<
 
 			const container = await createN8NStack(containerConfig);
 			const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-
-			console.log(
-				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,
-			);
 
 			console.log(
 				`[${new Date().toISOString()}] Container created in ${duration}s - URL: ${container.baseUrl}`,

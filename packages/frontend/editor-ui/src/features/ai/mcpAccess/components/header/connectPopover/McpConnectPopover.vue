@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { ref, watch } from 'vue';
-import { N8nButton, N8nPopoverReka, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nPopover, N8nRadioButtons } from '@n8n/design-system';
 import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
 import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -18,8 +18,6 @@ const props = defineProps<{
 	disabled?: boolean;
 }>();
 
-const popoverOpen = ref(false);
-
 const TABS = {
 	ACCESS_TOKEN: 'accessToken',
 	OAUTH: 'oauth',
@@ -35,8 +33,10 @@ const serverUrl = ref(`${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
 const activeTab = ref(tabItems.value[0].value);
 
 const handlePopoverOpenChange = (isOpen: boolean) => {
-	popoverOpen.value = isOpen;
-	if (!isOpen) {
+	if (isOpen) {
+		mcpStore.openConnectPopover();
+	} else {
+		mcpStore.closeConnectPopover();
 		mcpStore.resetCurrentUserMCPKey();
 	}
 };
@@ -69,7 +69,7 @@ watch(
 	() => props.disabled,
 	(newValue) => {
 		if (!newValue) {
-			popoverOpen.value = true;
+			mcpStore.openConnectPopover();
 		}
 	},
 );
@@ -77,10 +77,9 @@ watch(
 
 <template>
 	<div>
-		<N8nPopoverReka
-			:id="'mcp-connect-popover'"
-			:open="popoverOpen"
-			:popper-options="{ strategy: 'fixed' }"
+		<N8nPopover
+			id="mcp-connect-popover"
+			:open="mcpStore.connectPopoverOpen"
 			:content-class="$style.popper"
 			:show-arrow="false"
 			:width="`${MCP_CONNECT_POPOVER_WIDTH}px`"
@@ -92,7 +91,7 @@ watch(
 					type="tertiary"
 					:disabled="disabled"
 				>
-					{{ i18n.baseText('generic.connect') }}
+					{{ i18n.baseText('settings.mcp.connectPopover.triggerLabel') }}
 				</N8nButton>
 			</template>
 			<template #content>
@@ -119,7 +118,7 @@ watch(
 					</main>
 				</div>
 			</template>
-		</N8nPopoverReka>
+		</N8nPopover>
 	</div>
 </template>
 

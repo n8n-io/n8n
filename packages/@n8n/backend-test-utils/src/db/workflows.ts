@@ -157,7 +157,7 @@ export async function createWorkflowWithTrigger(
 					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -240,11 +240,14 @@ export const getWorkflowById = async (id: string) =>
  * Create a workflow history record for a workflow
  * @param workflow workflow to create history for
  * @param user user who created the version (optional)
+ * @param withPublishHistory publish history to create (optional)
+ * @param autosaved whether this is an autosave (optional)
  */
 export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
 	withPublishHistory?: Partial<WorkflowPublishHistory>,
+	autosaved = false,
 ): Promise<void> {
 	const authors =
 		userOrProject instanceof User
@@ -259,6 +262,7 @@ export async function createWorkflowHistory(
 		nodes: workflow.nodes,
 		connections: workflow.connections,
 		authors,
+		autosaved,
 	});
 
 	if (withPublishHistory) {
@@ -307,5 +311,6 @@ export async function createActiveWorkflow(
 	await setActiveVersion(workflow.id, workflow.versionId);
 
 	workflow.activeVersionId = workflow.versionId;
+
 	return workflow;
 }

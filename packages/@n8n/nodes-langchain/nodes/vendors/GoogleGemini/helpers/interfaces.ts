@@ -105,6 +105,17 @@ export interface VeoResponse {
 }
 
 /**
+ * File Search operation interface for long-running upload operations
+ * Based on: https://ai.google.dev/api/file-search/file-search-stores#method:-media.uploadtofilesearchstore
+ */
+export interface FileSearchOperation {
+	name: string;
+	done: boolean;
+	error?: { message: string };
+	response?: IDataObject;
+}
+
+/**
  * User configuration for built-in tools in the node parameters
  */
 export interface BuiltInTools {

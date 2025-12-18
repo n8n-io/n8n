@@ -155,7 +155,7 @@ export class CanvasPage extends BasePage {
 			await this.nodeCreatorSubItem(options.trigger).click();
 		}
 		if (options?.closeNDV) {
-			await this.page.getByTestId('back-to-canvas').click();
+			await this.page.getByTestId('ndv-close-button').click();
 		}
 	}
 
@@ -963,6 +963,14 @@ export class CanvasPage extends BasePage {
 
 	getCanvasHandlePlus(): Locator {
 		return this.page.getByTestId('canvas-handle-plus');
+	}
+
+	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus-wrapper"]`,
+			)
+			.first();
 	}
 
 	stopExecutionWaitingForWebhookButton(): Locator {
