@@ -150,6 +150,19 @@ export class VariablesService {
 			throw new ForbiddenError('You are not allowed to delete this variable');
 		}
 
+		this.eventService.emit('variable-deleted', {
+			user: {
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+			variableId: id,
+			variableKey: existingVariable?.key ?? '',
+			projectId: existingVariable?.project?.id,
+		});
+
 		await this.delete(id);
 	}
 
@@ -227,6 +240,15 @@ export class VariablesService {
 			{ transaction: false },
 		);
 		this.eventService.emit('variable-created', {
+			user: {
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+			variableId: saveResult.id,
+			variableKey: saveResult.key,
 			projectId: variable.projectId,
 		});
 		await this.updateCache();
@@ -284,6 +306,15 @@ export class VariablesService {
 				: {}),
 		});
 		this.eventService.emit('variable-updated', {
+			user: {
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+			variableId: id,
+			variableKey: variable.key ?? existingVariable.key,
 			projectId: newProjectId,
 		});
 		await this.updateCache();
