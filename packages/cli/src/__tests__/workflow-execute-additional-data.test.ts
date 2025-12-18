@@ -34,7 +34,8 @@ import {
 	executeWorkflow,
 	getBase,
 	getRunData,
-	getWorkflowData,
+	getDraftWorkflowData,
+	getPublishedWorkflowData,
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
@@ -325,7 +326,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 	});
 
-	describe('getWorkflowData', () => {
+	describe('getPublishedWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
 		});
@@ -374,7 +375,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			const result = await getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+			const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
 			expect(result.nodes).toEqual(activeVersionNodes);
 			expect(result.connections).toEqual(activeVersionConnections);
@@ -409,9 +410,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			await expect(getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id')).rejects.toThrow(
-				'Workflow is not active and cannot be executed.',
-			);
+			await expect(
+				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
+			).rejects.toThrow('Workflow is not active and cannot be executed.');
 		});
 
 		it('should load activeVersion relation when tags are disabled', async () => {
@@ -432,7 +433,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			await getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+			await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
@@ -445,9 +446,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 		it('should throw error when workflow does not exist', async () => {
 			workflowRepository.get.mockResolvedValue(null);
 
-			await expect(getWorkflowData({ id: 'non-existent' }, 'parent-workflow-id')).rejects.toThrow(
-				'Workflow does not exist',
-			);
+			await expect(
+				getPublishedWorkflowData({ id: 'non-existent' }, 'parent-workflow-id'),
+			).rejects.toThrow('Workflow does not exist');
 		});
 
 		it('should use provided workflow code when id is not provided', async () => {
@@ -468,7 +469,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				connections: {},
 			});
 
-			const result = await getWorkflowData({ code: workflowCode }, 'parent-workflow-id');
+			const result = await getPublishedWorkflowData({ code: workflowCode }, 'parent-workflow-id');
 
 			expect(result).toEqual(workflowCode);
 			expect(workflowRepository.get).not.toHaveBeenCalled();
@@ -485,7 +486,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 			const parentSettings = { executionOrder: 'v1' as const };
 
-			const result = await getWorkflowData(
+			const result = await getPublishedWorkflowData(
 				{ code: workflowCode },
 				'parent-workflow-id',
 				parentSettings,
@@ -493,8 +494,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(result.settings).toEqual(parentSettings);
 		});
+	});
 
-		it('should use draft version when useDraftVersion is true', async () => {
+	describe('getDraftWorkflowData', () => {
+		beforeEach(() => {
+			workflowRepository.get.mockClear();
+		});
+
+		it('should use draft version', async () => {
 			const activeVersionNodes: INode[] = [
 				mock<INode>({
 					id: 'active-node',
@@ -538,79 +545,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			const result = await getWorkflowData(
-				{ id: 'workflow-123' },
-				'parent-workflow-id',
-				undefined,
-				{
-					useDraftVersion: true,
-				},
-			);
+			const result = await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
 			// Should use draft nodes/connections, not active version
 			expect(result.nodes).toEqual(draftNodes);
 			expect(result.connections).toEqual(draftConnections);
 		});
 
-		it('should use active version when useDraftVersion is false', async () => {
-			const activeVersionNodes: INode[] = [
-				mock<INode>({
-					id: 'active-node',
-					type: 'n8n-nodes-base.set',
-					name: 'Active Node',
-					typeVersion: 1,
-					parameters: {},
-					position: [250, 300],
-				}),
-			];
-			const activeVersionConnections = { 'Active Node': {} };
-			const draftNodes: INode[] = [
-				mock<INode>({
-					id: 'draft-node',
-					type: 'n8n-nodes-base.set',
-					name: 'Draft Node',
-					typeVersion: 1,
-					parameters: {},
-					position: [250, 300],
-				}),
-			];
-			const draftConnections = { 'Draft Node': {} };
-
-			workflowRepository.get.mockResolvedValue(
-				mock<WorkflowEntity>({
-					id: 'workflow-123',
-					name: 'Test Workflow',
-					active: true,
-					activeVersionId: 'version-456',
-					nodes: draftNodes,
-					connections: draftConnections,
-					activeVersion: mock({
-						versionId: 'version-456',
-						workflowId: 'workflow-123',
-						nodes: activeVersionNodes,
-						connections: activeVersionConnections,
-						authors: 'user1',
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					}),
-				}),
-			);
-
-			const result = await getWorkflowData(
-				{ id: 'workflow-123' },
-				'parent-workflow-id',
-				undefined,
-				{
-					useDraftVersion: false,
-				},
-			);
-
-			// Should use active version nodes/connections
-			expect(result.nodes).toEqual(activeVersionNodes);
-			expect(result.connections).toEqual(activeVersionConnections);
-		});
-
-		it('should allow draft workflow without active version when useDraftVersion is true', async () => {
+		it('should allow draft workflow without active version', async () => {
 			const draftNodes: INode[] = [
 				mock<INode>({
 					id: 'draft-node',
@@ -635,14 +577,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			const result = await getWorkflowData(
-				{ id: 'workflow-123' },
-				'parent-workflow-id',
-				undefined,
-				{
-					useDraftVersion: true,
-				},
-			);
+			const result = await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
 			// Should use draft nodes/connections even without active version
 			expect(result.nodes).toEqual(draftNodes);

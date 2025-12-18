@@ -94,29 +94,20 @@ export function getRunData(
 }
 
 /**
- * Loads workflow data for sub-workflow execution.
- *
- * When `useDraftVersion` is true (manual/chat executions):
- * - Always uses the draft version (nodes/connections from WorkflowEntity)
- * - This allows iterating on sub-workflows without requiring them to be published
- *
- * When `useDraftVersion` is false (production executions):
- * - Requires the workflow to have an active (published) version
- * - Uses nodes/connections from the activeVersion in WorkflowHistory
+ * Fetches workflow from database or returns provided code.
+ * Shared helper for getDraftWorkflowData and getPublishedWorkflowData.
  */
-export async function getWorkflowData(
+async function fetchWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
-	options?: { useDraftVersion?: boolean },
-): Promise<IWorkflowBase> {
+) {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new UnexpectedError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
 
-	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
 		const baseRelations = ['activeVersion'];
 		const relations = Container.get(GlobalConfig).tags.disabled
@@ -134,34 +125,70 @@ export async function getWorkflowData(
 			});
 		}
 
-		if (options?.useDraftVersion) {
-			// For manual/chat executions: use draft version (nodes/connections from entity)
-			// This allows iterating on sub-workflows without publishing
-			workflowData = workflowFromDb;
-		} else if (workflowFromDb.activeVersion) {
-			// For production executions: use published version
-			workflowData = {
-				...workflowFromDb,
-				nodes: workflowFromDb.activeVersion.nodes,
-				connections: workflowFromDb.activeVersion.connections,
-			};
-		} else {
-			// No active version and drafts not allowed
-			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id },
-			});
-		}
+		return workflowFromDb;
 	} else {
-		workflowData = workflowInfo.code ?? null;
+		const workflowData = workflowInfo.code;
 		if (workflowData) {
 			if (!workflowData.id) {
 				workflowData.id = parentWorkflowId;
 			}
 			workflowData.settings ??= parentWorkflowSettings;
 		}
+		return workflowData;
+	}
+}
+
+/**
+ * Loads draft workflow data for sub-workflow execution.
+ * Used for manual/chat executions to allow iterating on sub-workflows without publishing.
+ * Always uses the draft version (nodes/connections from WorkflowEntity).
+ */
+export async function getDraftWorkflowData(
+	workflowInfo: IExecuteWorkflowInfo,
+	parentWorkflowId: string,
+	parentWorkflowSettings?: IWorkflowSettings,
+): Promise<IWorkflowBase> {
+	const workflowData = await fetchWorkflowData(
+		workflowInfo,
+		parentWorkflowId,
+		parentWorkflowSettings,
+	);
+	return workflowData!;
+}
+
+/**
+ * Loads published workflow data for sub-workflow execution.
+ * Used for production executions - requires the workflow to have an active (published) version.
+ * Uses nodes/connections from the activeVersion in WorkflowHistory.
+ */
+export async function getPublishedWorkflowData(
+	workflowInfo: IExecuteWorkflowInfo,
+	parentWorkflowId: string,
+	parentWorkflowSettings?: IWorkflowSettings,
+): Promise<IWorkflowBase> {
+	const workflowData = await fetchWorkflowData(
+		workflowInfo,
+		parentWorkflowId,
+		parentWorkflowSettings,
+	);
+
+	// If workflow was provided as code, return as-is
+	if (workflowInfo.code !== undefined) {
+		return workflowData!;
 	}
 
-	return workflowData!;
+	// For workflows from database, ensure active version exists and use it
+	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
+		return {
+			...workflowData,
+			nodes: workflowData.activeVersion.nodes,
+			connections: workflowData.activeVersion.connections,
+		};
+	}
+
+	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+		extra: { workflowId: workflowInfo.id },
+	});
 }
 
 /**
@@ -179,11 +206,20 @@ export async function executeWorkflow(
 	const useDraftVersion = options.executionMode
 		? isManualOrChatExecution(options.executionMode)
 		: false;
+
 	const workflowData =
 		options.loadedWorkflowData ??
-		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings, {
-			useDraftVersion,
-		}));
+		(useDraftVersion
+			? await getDraftWorkflowData(
+					workflowInfo,
+					options.parentWorkflowId,
+					options.parentWorkflowSettings,
+				)
+			: await getPublishedWorkflowData(
+					workflowInfo,
+					options.parentWorkflowId,
+					options.parentWorkflowSettings,
+				));
 
 	const runData =
 		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
