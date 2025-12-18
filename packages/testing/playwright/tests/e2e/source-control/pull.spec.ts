@@ -97,7 +97,7 @@ test.describe('Pull resources from Git @capability:source-control', () => {
 		// disconnect
 		await n8n.api.sourceControl.disconnect();
 
-		// modify workflow name
+		// modify workflow
 		await n8n.navigate.toWorkflow(workflow.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.saveWorkflow();
