@@ -23,6 +23,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 import {
 	N8nButton,
+	N8nIcon,
 	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
@@ -109,7 +110,106 @@ const showRequiredOnly = computed(() => {
 	return !!props.parameter.typeOptions?.showRequiredOnly;
 });
 
-// Get non-required fields that match displayOptions for a specific item
+// Track which optional fields have been added by the user for each item
+// Key format: "propertyName" or "propertyName-index" for multipleValues
+const addedOptionalFields = ref(new Map<string, Set<string>>());
+
+// Generate a unique key for tracking added fields per item
+const getOptionalFieldsKey = (propertyName: string, index?: number): string => {
+	return index !== undefined ? `${propertyName}-${index}` : propertyName;
+};
+
+// Check if a field has a non-empty/non-default value (meaning it should be shown on load)
+const hasNonDefaultValue = (
+	fieldDef: INodeProperties,
+	itemValues: INodeParameters | undefined,
+): boolean => {
+	if (!itemValues) return false;
+	const value = itemValues[fieldDef.name];
+	if (value === undefined || value === null) return false;
+	if (value === fieldDef.default) return false;
+	if (typeof value === 'string' && value === '') return false;
+	return true;
+};
+
+// Initialize addedOptionalFields from existing nodeValues
+const initializeAddedFieldsFromValues = () => {
+	if (!showRequiredOnly.value) return;
+	if (!isINodePropertyCollectionList(props.parameter.options)) return;
+
+	addedOptionalFields.value.clear();
+
+	for (const option of props.parameter.options) {
+		const optionPath = `${props.path}.${option.name}`;
+		const optionValues = get(props.nodeValues, optionPath) as
+			| INodeParameters[]
+			| INodeParameters
+			| undefined;
+
+		if (!optionValues) continue;
+
+		const optionalFieldDefs = option.values.filter(
+			(f) => f.required !== true && f.type !== 'notice',
+		);
+
+		if (multipleValues.value && Array.isArray(optionValues)) {
+			optionValues.forEach((itemValues, index) => {
+				const key = getOptionalFieldsKey(option.name, index);
+				const addedFields = new Set<string>();
+
+				for (const fieldDef of optionalFieldDefs) {
+					if (hasNonDefaultValue(fieldDef, itemValues)) {
+						addedFields.add(fieldDef.name);
+					}
+				}
+
+				if (addedFields.size > 0) {
+					addedOptionalFields.value.set(key, addedFields);
+				}
+			});
+		} else if (typeof optionValues === 'object' && !Array.isArray(optionValues)) {
+			const key = getOptionalFieldsKey(option.name);
+			const addedFields = new Set<string>();
+
+			for (const fieldDef of optionalFieldDefs) {
+				if (hasNonDefaultValue(fieldDef, optionValues)) {
+					addedFields.add(fieldDef.name);
+				}
+			}
+
+			if (addedFields.size > 0) {
+				addedOptionalFields.value.set(key, addedFields);
+			}
+		}
+	}
+};
+
+// Check if an optional field is currently added/shown
+const isOptionalFieldAdded = (propertyName: string, fieldName: string, index?: number): boolean => {
+	const key = getOptionalFieldsKey(propertyName, index);
+	return addedOptionalFields.value.get(key)?.has(fieldName) ?? false;
+};
+
+// Get fields to pass to ParameterInputList (required + added optional fields)
+const getVisibleFields = (property: INodePropertyCollection, index?: number): INodeProperties[] => {
+	if (!showRequiredOnly.value) {
+		return property.values;
+	}
+
+	const key = getOptionalFieldsKey(property.name, index);
+	const addedFields = addedOptionalFields.value.get(key);
+
+	return property.values.filter((field) => {
+		// Always show required fields
+		if (field.required === true) {
+			return true;
+		}
+		// Show optional fields only if explicitly added
+		return addedFields?.has(field.name) ?? false;
+	});
+};
+
+// Get optional fields available in the picker (all non-required that match displayOptions)
 const getPickerFields = (property: INodePropertyCollection, index?: number): INodeProperties[] => {
 	if (!showRequiredOnly.value) {
 		return [];
@@ -132,6 +232,44 @@ const getPickerFields = (property: INodePropertyCollection, index?: number): INo
 	});
 };
 
+// Toggle an optional field on/off
+const toggleOptionalField = (
+	property: INodePropertyCollection,
+	fieldName: string,
+	index?: number,
+) => {
+	const key = getOptionalFieldsKey(property.name, index);
+	let fieldSet = addedOptionalFields.value.get(key);
+
+	if (!fieldSet) {
+		fieldSet = new Set();
+		addedOptionalFields.value.set(key, fieldSet);
+	}
+
+	const fieldDef = property.values.find((f) => f.name === fieldName);
+	if (!fieldDef) return;
+
+	const isCurrentlyAdded = fieldSet.has(fieldName);
+
+	if (isCurrentlyAdded) {
+		// Remove the field - clear its value
+		fieldSet.delete(fieldName);
+		const path = getPropertyPath(property.name, index) + `.${fieldName}`;
+		emit('valueChanged', {
+			name: path,
+			value: undefined,
+		});
+	} else {
+		// Add the field - set default value
+		fieldSet.add(fieldName);
+		const path = getPropertyPath(property.name, index) + `.${fieldName}`;
+		emit('valueChanged', {
+			name: path,
+			value: deepCopy(fieldDef.default),
+		});
+	}
+};
+
 watch(
 	() => props.values,
 	(newValues: Record<string, INodeParameters[]>) => {
@@ -142,6 +280,7 @@ watch(
 
 onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
+	initializeAddedFieldsFromValues();
 });
 
 const deleteOption = (optionName: string, index?: number) => {
@@ -338,7 +477,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 								</div>
 								<Suspense>
 									<ParameterInputList
-										:parameters="property.values"
+										:parameters="getVisibleFields(property, index)"
 										:node-values="nodeValues"
 										:path="getPropertyPath(property.name, index)"
 										:hide-delete="true"
@@ -347,7 +486,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
-								<!-- Attribute picker for non-required fields -->
+
 								<div
 									v-if="getPickerFields(property, index).length > 0 && !isReadOnly"
 									class="attribute-picker add-option"
@@ -357,6 +496,9 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										size="small"
 										filterable
 										:model-value="null"
+										@update:model-value="
+											(fieldName: string) => toggleOptionalField(property, fieldName, index)
+										"
 									>
 										<N8nOption
 											v-for="field in getPickerFields(property, index)"
@@ -366,6 +508,11 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										>
 											<div class="attribute-option">
 												<span>{{ field.displayName || field.name }}</span>
+												<N8nIcon
+													v-if="isOptionalFieldAdded(property.name, field.name, index)"
+													icon="check"
+													size="small"
+												/>
 											</div>
 										</N8nOption>
 									</N8nSelect>
@@ -389,7 +536,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						></N8nIconButton>
 					</div>
 					<ParameterInputList
-						:parameters="property.values"
+						:parameters="getVisibleFields(property)"
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="isReadOnly"
@@ -400,7 +547,13 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					/>
 					<!-- Attribute picker for non-required fields (single value) -->
 					<div v-if="getPickerFields(property).length > 0 && !isReadOnly" class="attribute-picker">
-						<N8nSelect placeholder="Add Attribute" size="small" filterable :model-value="null">
+						<N8nSelect
+							placeholder="Add Attribute"
+							size="small"
+							filterable
+							:model-value="null"
+							@update:model-value="(fieldName: string) => toggleOptionalField(property, fieldName)"
+						>
 							<N8nOption
 								v-for="field in getPickerFields(property)"
 								:key="field.name"
@@ -409,6 +562,11 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 							>
 								<div class="attribute-option">
 									<span>{{ field.displayName || field.name }}</span>
+									<N8nIcon
+										v-if="isOptionalFieldAdded(property.name, field.name)"
+										icon="check"
+										size="small"
+									/>
 								</div>
 							</N8nOption>
 						</N8nSelect>
