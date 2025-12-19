@@ -82,10 +82,16 @@ jobs:
     needs: validate-inputs
     timeout-minutes: 5
     steps:
-      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Login to DockerHub
+        uses: ./.github/actions/docker-registry-login
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          login-ghcr: false
+          login-dockerhub: true
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Tag stable/latest Docker image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
@@ -109,11 +115,11 @@ jobs:
     needs: validate-inputs
     timeout-minutes: 5
     steps:
-      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Login to GitHub Container Registry
+        uses: ./.github/actions/docker-registry-login
 
       - name: Tag stable/latest GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
