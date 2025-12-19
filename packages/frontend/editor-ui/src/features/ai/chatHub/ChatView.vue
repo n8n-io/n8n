@@ -204,7 +204,7 @@ const customAgentId = computed(() =>
 		? selectedModel.value.model.agentId
 		: undefined,
 );
-const customAgent = useCustomAgent(customAgentId);
+const { customAgent } = useCustomAgent(customAgentId);
 
 const selectedTools = computed<INode[]>(() => {
 	if (customAgent.value) {

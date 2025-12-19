@@ -46,7 +46,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 
 const modalBus = ref(createEventBus());
-const customAgent = useCustomAgent(props.data.agentId);
+const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
 const name = ref('');
 const description = ref('');
@@ -72,7 +72,7 @@ const selectedAgent = computed(
 );
 
 const isEditMode = computed(() => !!props.data.agentId);
-const isLoadingAgent = computed(() => isEditMode.value && !customAgent.value);
+const isLoadingAgent = computed(() => isEditMode.value && isLoadingCustomAgent.value);
 const title = computed(() =>
 	isEditMode.value
 		? i18n.baseText('chatHub.agent.editor.title.edit')
@@ -308,7 +308,6 @@ function onSelectTools() {
 							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 							:maxlength="128"
 							:class="$style.agentNameInput"
-							:disabled="isLoadingAgent"
 						/>
 					</div>
 				</N8nInputLabel>
@@ -325,7 +324,6 @@ function onSelectTools() {
 						:maxlength="512"
 						:rows="3"
 						:class="$style.input"
-						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -341,7 +339,6 @@ function onSelectTools() {
 						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
 						:rows="6"
 						:class="$style.input"
-						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -356,7 +353,6 @@ function onSelectTools() {
 							:selected-agent="selectedAgent"
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
-							:disabled="isLoadingAgent"
 							:agents="agents"
 							:is-loading="isLoadingAgents"
 							warn-missing-credentials
@@ -373,9 +369,9 @@ function onSelectTools() {
 					>
 						<div>
 							<ToolsSelector
-								:disabled="isLoadingAgent || !canSelectTools"
+								:disabled="!canSelectTools"
 								:disabled-tooltip="
-									isLoadingAgent || canSelectTools
+									canSelectTools
 										? undefined
 										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
 								"
