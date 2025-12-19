@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddChatMessageIndices1766068346315 implements ReversibleMigration {
-	async up({ schemaBuilder: { addNotNull }, runQuery, escape, tablePrefix }: MigrationContext) {
+	async up({ schemaBuilder: { addNotNull }, runQuery, escape }: MigrationContext) {
 		const sessionsTable = escape.tableName('chat_hub_sessions');
 		const idColumn = escape.columnName('id');
 		const createdAtColumn = escape.columnName('createdAt');
@@ -23,26 +23,23 @@ export class AddChatMessageIndices1766068346315 implements ReversibleMigration {
 		// Index intended for faster sessionRepository.getManyByUserId queries
 		await runQuery(
 			'CREATE INDEX IF NOT EXISTS ' +
-				escape.tableName(`idx_${tablePrefix}chat_hub_sessions_owner_lastmsg_id`) +
+				escape.indexName('chat_hub_sessions_owner_lastmsg_id') +
 				` ON ${sessionsTable}(${ownerIdColumn}, ${lastMessageAtColumn} DESC, ${idColumn})`,
 		);
 
 		// Index intended for faster sessionRepository.getOneByIdAndUserId queries and joins
 		await runQuery(
 			'CREATE INDEX IF NOT EXISTS ' +
-				escape.tableName(`idx_${tablePrefix}chat_hub_messages_sessionId`) +
+				escape.indexName('chat_hub_messages_sessionId') +
 				` ON ${messagesTable}(${sessionIdColumn})`,
 		);
 	}
 
-	async down({ schemaBuilder: { dropNotNull }, runQuery, escape, tablePrefix }: MigrationContext) {
+	async down({ schemaBuilder: { dropNotNull }, runQuery, escape }: MigrationContext) {
 		await runQuery(
-			'DROP INDEX IF EXISTS ' +
-				escape.tableName(`idx_${tablePrefix}chat_hub_sessions_owner_lastmsg_id`),
+			'DROP INDEX IF EXISTS ' + escape.indexName('chat_hub_sessions_owner_lastmsg_id'),
 		);
-		await runQuery(
-			'DROP INDEX IF EXISTS ' + escape.tableName(`idx_${tablePrefix}chat_hub_messages_sessionId`),
-		);
+		await runQuery('DROP INDEX IF EXISTS ' + escape.indexName('chat_hub_messages_sessionId'));
 
 		await dropNotNull('chat_hub_sessions', 'lastMessageAt');
 	}
