@@ -304,4 +304,263 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 			expect(map1.get('key')).toBe(map2.get('key'));
 		});
 	});
+
+	describe('Large deeply nested data', () => {
+		// Helper to create a deeply nested object
+		function createNestedObject(depth: number, breadth: number): Record<string, unknown> {
+			if (depth === 0) {
+				return { value: `leaf-${Math.random().toString(36).slice(2, 8)}` };
+			}
+			const result: Record<string, unknown> = {};
+			for (let i = 0; i < breadth; i++) {
+				result[`child${i}`] = createNestedObject(depth - 1, breadth);
+			}
+			return result;
+		}
+
+		// Helper to create a workflow-like structure using maps (nodes keyed by id)
+		function createWorkflowData(nodeCount: number): Record<string, unknown> {
+			const nodes: Record<string, unknown> = {};
+			const connections: Record<string, unknown> = {};
+
+			for (let i = 0; i < nodeCount; i++) {
+				const nodeId = `node-${i}`;
+				nodes[nodeId] = {
+					id: nodeId,
+					name: `Node ${i}`,
+					type: i % 3 === 0 ? 'trigger' : i % 3 === 1 ? 'action' : 'transform',
+					position: { x: i * 200, y: Math.floor(i / 5) * 150 },
+					parameters: {
+						setting1: `value-${i}`,
+						setting2: i * 10,
+						nested: {
+							deep: {
+								config: { enabled: i % 2 === 0, threshold: i * 0.1 },
+							},
+						},
+					},
+					credentials: i % 2 === 0 ? { apiKey: `key-${i}` } : null,
+				};
+
+				if (i > 0) {
+					connections[`node-${i - 1}`] = {
+						main: { target: nodeId, type: 'main', index: 0 },
+					};
+				}
+			}
+
+			return {
+				name: 'Test Workflow',
+				active: true,
+				nodes,
+				connections,
+				settings: {
+					executionOrder: 'v1',
+					saveExecutionProgress: true,
+					callerPolicy: 'workflowsFromSameOwner',
+				},
+			};
+		}
+
+		it('should sync deeply nested object (depth=5, breadth=3)', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const deepData = createNestedObject(5, 3); // 3^5 = 243 leaf nodes
+			map1.set('deep', deepData);
+
+			expect(map2.toJSON()).toEqual({ deep: deepData });
+		});
+
+		it('should sync workflow-like structure with 50 nodes', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const workflow = createWorkflowData(50);
+			map1.set('workflow', workflow);
+
+			const result = map2.toJSON() as { workflow: Record<string, unknown> };
+			expect(result.workflow.name).toBe('Test Workflow');
+			expect(Object.keys(result.workflow.nodes as Record<string, unknown>).length).toBe(50);
+		});
+
+		it('should sync concurrent updates to different branches of nested data', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Set initial structure
+			map1.set('tree', {
+				left: { value: 'initial-left' },
+				right: { value: 'initial-right' },
+			});
+
+			// Wait for sync - use toJSON() for comparison since get() returns nested map type
+			const synced = map2.toJSON() as { tree: Record<string, unknown> };
+			expect(synced.tree).toEqual({
+				left: { value: 'initial-left' },
+				right: { value: 'initial-right' },
+			});
+
+			// Concurrent updates to different branches
+			map1.set('tree', {
+				left: { value: 'updated-by-doc1' },
+				right: { value: 'initial-right' },
+			});
+			map2.set('tree', {
+				left: { value: 'initial-left' },
+				right: { value: 'updated-by-doc2' },
+			});
+
+			// Both should converge (CRDT will pick a winner for the whole object)
+			const result1 = map1.toJSON() as { tree: Record<string, unknown> };
+			const result2 = map2.toJSON() as { tree: Record<string, unknown> };
+			expect(result1.tree).toEqual(result2.tree);
+		});
+
+		it('should handle large array-like data in nested structure', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const largeData = {
+				items: Array.from({ length: 100 }, (_, index) => ({
+					id: index,
+					data: `item-${index}`,
+					metadata: { created: Date.now(), tags: [`tag${index % 5}`] },
+				})),
+			};
+
+			map1.set('collection', largeData);
+
+			const result = map2.toJSON() as { collection: { items: unknown[] } };
+			expect(result.collection.items.length).toBe(100);
+		});
+
+		it('should sync multiple large objects concurrently', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Doc1 sets workflow data
+			const workflow1 = createWorkflowData(20);
+			map1.set('workflow1', workflow1);
+
+			// Doc2 sets different workflow data
+			const workflow2 = createWorkflowData(25);
+			map2.set('workflow2', workflow2);
+
+			// Both should have both workflows
+			const result1 = map1.toJSON() as Record<string, { nodes: Record<string, unknown> }>;
+			const result2 = map2.toJSON() as Record<string, { nodes: Record<string, unknown> }>;
+
+			expect(Object.keys(result1.workflow1.nodes).length).toBe(20);
+			expect(Object.keys(result1.workflow2.nodes).length).toBe(25);
+			expect(Object.keys(result2.workflow1.nodes).length).toBe(20);
+			expect(Object.keys(result2.workflow2.nodes).length).toBe(25);
+		});
+
+		it('should sync edits to deep nested values', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Create initial structure on doc1
+			const workflow = createWorkflowData(10);
+			map1.set('workflow', workflow);
+
+			// Verify doc2 received it
+			const initialResult = map2.toJSON() as { workflow: { nodes: Record<string, unknown> } };
+			expect(Object.keys(initialResult.workflow.nodes).length).toBe(10);
+
+			// Edit deep nested value on doc1
+			const workflowMap = map1.get('workflow') as CRDTMap<unknown>;
+			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
+			const node5 = nodes.get('node-5') as CRDTMap<unknown>;
+			const position = node5.get('position') as CRDTMap<unknown>;
+			position.set('x', 9999);
+
+			// Verify edit synced to doc2
+			const editedResult = map2.toJSON() as {
+				workflow: { nodes: Record<string, { position: { x: number } }> };
+			};
+			expect(editedResult.workflow.nodes['node-5'].position.x).toBe(9999);
+		});
+
+		it('should sync concurrent edits to different nested paths', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Create initial structure
+			const workflow = createWorkflowData(5);
+			map1.set('workflow', workflow);
+
+			// Both docs edit different nodes
+			const workflow1 = map1.get('workflow') as CRDTMap<unknown>;
+			const nodes1 = workflow1.get('nodes') as CRDTMap<unknown>;
+			const node1 = nodes1.get('node-1') as CRDTMap<unknown>;
+			node1.set('name', 'Edited by doc1');
+
+			const workflow2 = map2.get('workflow') as CRDTMap<unknown>;
+			const nodes2 = workflow2.get('nodes') as CRDTMap<unknown>;
+			const node3 = nodes2.get('node-3') as CRDTMap<unknown>;
+			node3.set('name', 'Edited by doc2');
+
+			// Both should converge with both edits
+			const result1 = map1.toJSON() as {
+				workflow: { nodes: Record<string, { name: string }> };
+			};
+			const result2 = map2.toJSON() as {
+				workflow: { nodes: Record<string, { name: string }> };
+			};
+
+			expect(result1.workflow.nodes['node-1'].name).toBe('Edited by doc1');
+			expect(result1.workflow.nodes['node-3'].name).toBe('Edited by doc2');
+			expect(result2.workflow.nodes['node-1'].name).toBe('Edited by doc1');
+			expect(result2.workflow.nodes['node-3'].name).toBe('Edited by doc2');
+		});
+
+		it('should sync deletion of deeply nested property', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const workflow = createWorkflowData(3);
+			map1.set('workflow', workflow);
+
+			// Delete nested property on doc1
+			const workflowMap = map1.get('workflow') as CRDTMap<unknown>;
+			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
+			const node0 = nodes.get('node-0') as CRDTMap<unknown>;
+			const params = node0.get('parameters') as CRDTMap<unknown>;
+			params.delete('nested');
+
+			// Verify deletion synced to doc2
+			const result = map2.toJSON() as {
+				workflow: { nodes: Record<string, { parameters: Record<string, unknown> }> };
+			};
+			expect(result.workflow.nodes['node-0'].parameters.nested).toBeUndefined();
+		});
+
+		it('should sync rapid sequential edits to nested data', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const workflow = createWorkflowData(5);
+			map1.set('workflow', workflow);
+
+			// Rapid edits on doc1
+			const workflowMap = map1.get('workflow') as CRDTMap<unknown>;
+			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
+
+			for (let i = 0; i < 5; i++) {
+				const node = nodes.get(`node-${i}`) as CRDTMap<unknown>;
+				node.set('name', `Rapid Update ${i}`);
+			}
+
+			// All edits should sync to doc2
+			const result = map2.toJSON() as {
+				workflow: { nodes: Record<string, { name: string }> };
+			};
+
+			for (let i = 0; i < 5; i++) {
+				expect(result.workflow.nodes[`node-${i}`].name).toBe(`Rapid Update ${i}`);
+			}
+		});
+	});
 });
