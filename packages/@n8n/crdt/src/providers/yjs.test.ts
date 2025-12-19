@@ -1,4 +1,4 @@
-import type { CRDTArray, CRDTDoc, CRDTMap, DeepChangeEvent } from '../types';
+import type { CRDTArray, CRDTDoc, CRDTMap, DeepChange, DeepChangeEvent } from '../types';
 import { ChangeAction } from '../types';
 import { YjsProvider } from './yjs';
 
@@ -112,7 +112,7 @@ describe('YjsProvider', () => {
 		});
 
 		it('should emit add event when adding a key', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('key1', 'value1');
@@ -128,7 +128,7 @@ describe('YjsProvider', () => {
 		it('should emit update event when updating a key', () => {
 			map.set('key1', 'value1');
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('key1', 'value2');
@@ -145,7 +145,7 @@ describe('YjsProvider', () => {
 		it('should emit delete event when deleting a key', () => {
 			map.set('key1', 'value1');
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.delete('key1');
@@ -159,7 +159,7 @@ describe('YjsProvider', () => {
 		});
 
 		it('should emit multiple changes in a single batch for transact', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			doc.transact(() => {
@@ -181,7 +181,7 @@ describe('YjsProvider', () => {
 		});
 
 		it('should stop emitting events after unsubscribe', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			const unsubscribe = map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('key1', 'value1');
@@ -196,23 +196,24 @@ describe('YjsProvider', () => {
 		it('should emit correct path for nested object changes (full replace)', () => {
 			map.set('node-1', { position: { x: 100, y: 200 } });
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			// Update the entire node (top-level change)
 			map.set('node-1', { position: { x: 150, y: 200 } });
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].path).toEqual(['node-1']);
-			expect(changes[0].action).toBe(ChangeAction.update);
-			expect(changes[0].value).toEqual({ position: { x: 150, y: 200 } });
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.path).toEqual(['node-1']);
+			expect(change.action).toBe(ChangeAction.update);
+			expect(change.value).toEqual({ position: { x: 150, y: 200 } });
 		});
 
 		it('should emit deep path when nested map is modified via get()', () => {
 			// Set up nested object structure
 			map.set('node-1', { position: { x: 100, y: 200 } });
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			// Get nested maps via public API and modify
@@ -221,14 +222,15 @@ describe('YjsProvider', () => {
 			positionMap.set('x', 150);
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].path).toEqual(['node-1', 'position', 'x']);
-			expect(changes[0].action).toBe(ChangeAction.update);
-			expect(changes[0].value).toBe(150);
-			expect(changes[0].oldValue).toBe(100);
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.path).toEqual(['node-1', 'position', 'x']);
+			expect(change.action).toBe(ChangeAction.update);
+			expect(change.value).toBe(150);
+			expect(change.oldValue).toBe(100);
 		});
 
 		it('should allow building nested structures incrementally', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			// Start with empty object, build up structure
@@ -251,7 +253,7 @@ describe('YjsProvider', () => {
 			expect(changes).toHaveLength(6);
 
 			// Verify the deep update
-			const lastChange = changes[5];
+			const lastChange = changes[5] as DeepChangeEvent;
 			expect(lastChange.path).toEqual(['node-1', 'parameters', 'body', 'data', 'nested']);
 			expect(lastChange.action).toBe(ChangeAction.update);
 			expect(lastChange.value).toBe('updated');

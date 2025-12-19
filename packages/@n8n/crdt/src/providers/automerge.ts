@@ -5,13 +5,14 @@ import type {
 	CRDTDoc,
 	CRDTMap,
 	CRDTProvider,
+	DeepChange,
 	DeepChangeEvent,
 	Unsubscribe,
 } from '../types';
 import { ChangeAction, CRDTEngine } from '../types';
 
 type AutomergeDoc = Automerge.Doc<Record<string, unknown>>;
-type ChangeHandler = (changes: DeepChangeEvent[]) => void;
+type ChangeHandler = (changes: DeepChange[]) => void;
 
 /**
  * Automerge implementation of CRDTMap.
