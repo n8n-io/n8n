@@ -147,7 +147,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	if (!props.readOnly && !props.isArchived) {
+	if (!props.readOnly && !props.isArchived && props.workflowPermissions.update) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
@@ -155,7 +155,10 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	if ((!props.readOnly && !props.isArchived) || props.isNewWorkflow) {
+	if (
+		(!props.readOnly && !props.isArchived && props.workflowPermissions.update) ||
+		props.isNewWorkflow
+	) {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
