@@ -1,5 +1,5 @@
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
-import { MessageComponentKey } from '@n8n/chat/constants';
+import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
 import type { ChatOptions } from '@n8n/chat/types';
 
 export const defaultOptions: ChatOptions = {
