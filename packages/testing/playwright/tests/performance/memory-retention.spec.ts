@@ -1,6 +1,8 @@
+import { ObservabilityHelper } from 'n8n-containers';
+
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { attachMetric, pollMemoryMetric } from '../../utils/performance-helper';
+import { attachMetric } from '../../utils/performance-helper';
 
 test.use({
 	addContainerCapability: {
@@ -8,13 +10,12 @@ test.use({
 			memory: 0.75,
 			cpu: 0.5,
 		},
+		observability: true,
 	},
 });
-test.describe('Memory Leak Detection', () => {
-	const CONTAINER_STABILIZATION_TIME = 20000;
-	const BASELINE_POLL_DURATION = 10000;
-	const FINAL_POLL_DURATION = 30000;
 
+test.describe('Memory Leak Detection @capability:observability', () => {
+	const METRICS_TIMEOUT_MS = 60000; // Wait up to 60s for metrics to be available
 	const MAX_MEMORY_RETENTION_PERCENT = 10;
 
 	/**
@@ -22,28 +23,23 @@ test.describe('Memory Leak Detection', () => {
 	 * This function can be easily modified to test different features.
 	 */
 	async function performMemoryAction(n8n: n8nPage) {
-		// Example 1: AI Workflow Builder
-		// Enable AI workflow feature
-		await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
-
+		await n8n.start.fromBlankCanvas();
 		await n8n.navigate.toWorkflows();
-		await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeVisible({ timeout: 10000 });
-		await n8n.workflows.clickEasyAiWorkflowCard();
-
-		// Wait for AI workflow builder to fully load
-		await n8n.page.waitForLoadState();
-		await expect(n8n.canvas.sticky.getStickies().first()).toBeVisible({ timeout: 10000 });
-
-		await new Promise((resolve) => setTimeout(resolve, 5000));
 	}
 
 	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
-		// Let container stabilize
-		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
+		const obs = new ObservabilityHelper(n8nContainer.observability!);
 
-		// Get baseline memory (average over 10 seconds for accuracy)
-		const baselineMemoryMB =
-			(await pollMemoryMetric(n8nContainer.baseUrl, BASELINE_POLL_DURATION, 1000)) / 1024 / 1024;
+		// Get baseline heap usage (V8 heap is better for leak detection than RSS)
+		// RSS can stay high after GC due to OS memory management
+		// waitForMetric polls until metrics are available from VictoriaMetrics
+		const heapQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[10s]) / 1024 / 1024';
+		const baselineResult = await obs.metrics.waitForMetric(heapQuery, {
+			timeoutMs: METRICS_TIMEOUT_MS,
+			intervalMs: 2000,
+		});
+		expect(baselineResult, 'Expected baseline metrics to be available').not.toBeNull();
+		const baselineMemoryMB = baselineResult!.value;
 
 		// Perform the memory-consuming action
 		await performMemoryAction(n8n);
@@ -52,9 +48,14 @@ test.describe('Memory Leak Detection', () => {
 		// Give time for garbage collection
 		await new Promise((resolve) => setTimeout(resolve, 5000));
 
-		// Measure final memory (average over 30 seconds for stability)
-		const finalMemoryMB =
-			(await pollMemoryMetric(n8nContainer.baseUrl, FINAL_POLL_DURATION, 1000)) / 1024 / 1024;
+		// Measure final heap usage (use longer window for final measurement)
+		const finalQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[30s]) / 1024 / 1024';
+		const finalResult = await obs.metrics.waitForMetric(finalQuery, {
+			timeoutMs: METRICS_TIMEOUT_MS,
+			intervalMs: 2000,
+		});
+		expect(finalResult, 'Expected final metrics to be available').not.toBeNull();
+		const finalMemoryMB = finalResult!.value;
 
 		// Calculate retention percentage - How much memory is retained after the action
 		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;

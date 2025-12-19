@@ -167,6 +167,7 @@ describe('CredentialResolverWorkflowService', () => {
 			const mockCredential = createMockCredential({
 				id: 'cred-1',
 				type: 'oauth2Api',
+				name: 'OAuth2 API',
 				isResolvable: true,
 				resolverId: null,
 			});
@@ -190,6 +191,7 @@ describe('CredentialResolverWorkflowService', () => {
 			expect(result[0]).toEqual({
 				credentialId: 'cred-1',
 				resolverId: 'resolver-1',
+				credentialName: 'OAuth2 API',
 				status: 'configured',
 				credentialType: 'oauth2Api',
 			});
@@ -219,6 +221,7 @@ describe('CredentialResolverWorkflowService', () => {
 			const mockCredential = createMockCredential({
 				id: 'cred-1',
 				type: 'oauth2Api',
+				name: 'OAuth2 API',
 				isResolvable: true,
 				resolverId: null,
 			});
@@ -242,6 +245,7 @@ describe('CredentialResolverWorkflowService', () => {
 			expect(result[0]).toEqual({
 				credentialId: 'cred-1',
 				resolverId: 'resolver-1',
+				credentialName: 'OAuth2 API',
 				status: 'missing',
 				credentialType: 'oauth2Api',
 			});
