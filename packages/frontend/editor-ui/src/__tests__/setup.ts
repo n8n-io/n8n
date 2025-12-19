@@ -95,6 +95,8 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	readonly width: number;
 	readonly height: number;
 	readonly isPrimary: boolean;
+	readonly altitudeAngle: number;
+	readonly azimuthAngle: number;
 
 	constructor(type: string, params: PointerEventInit = {}) {
 		super(type, params);
@@ -107,6 +109,8 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 		this.twist = params.twist ?? 0;
 		this.width = params.width ?? 1;
 		this.height = params.height ?? 1;
+		this.altitudeAngle = params.altitudeAngle ?? Math.PI / 2;
+		this.azimuthAngle = params.azimuthAngle ?? 0;
 		this.isPrimary = params.isPrimary ?? true;
 	}
 
