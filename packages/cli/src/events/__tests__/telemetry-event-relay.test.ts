@@ -331,26 +331,128 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('variable events', () => {
-		it('should track on `variable-created` event', () => {
-			eventService.emit('variable-created', {});
+		it('should track on `variable-created` event without projectId', () => {
+			const event: RelayEventMap['variable-created'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {});
-
-			eventService.emit('variable-created', { projectId: 'projectId' });
+			eventService.emit('variable-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-created` event with projectId', () => {
+			const event: RelayEventMap['variable-created'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				user_id: 'user123',
 				project_id: 'projectId',
 			});
 		});
 
-		it('should track on `variable-updated` event', () => {
-			eventService.emit('variable-updated', {});
+		it('should track on `variable-updated` event without projectId', () => {
+			const event: RelayEventMap['variable-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
 
-			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {});
-
-			eventService.emit('variable-updated', { projectId: 'projectId' });
+			eventService.emit('variable-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-updated` event with projectId', () => {
+			const event: RelayEventMap['variable-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				user_id: 'user123',
+				project_id: 'projectId',
+			});
+		});
+
+		it('should track on `variable-deleted` event without projectId', () => {
+			const event: RelayEventMap['variable-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
+
+			eventService.emit('variable-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-deleted` event with projectId', () => {
+			const event: RelayEventMap['variable-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
+				user_id: 'user123',
 				project_id: 'projectId',
 			});
 		});
