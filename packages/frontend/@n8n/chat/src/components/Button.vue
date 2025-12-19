@@ -56,8 +56,8 @@ const buttonTypeClass = computed(() => {
 	border: var(--chat--button--border--primary);
 
 	&:hover {
-		color: var(--chat--button--hover--color);
-		background-color: var(--chat--button--hover--background);
+		color: var(--chat--button--color--primary--hover);
+		background-color: var(--chat--button--background--primary--hover);
 		border: var(--chat--button--border--primary--hover);
 	}
 }
