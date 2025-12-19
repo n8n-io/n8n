@@ -529,7 +529,7 @@ export class WorkflowsController {
 	}
 
 	@Post('/:workflowId/activate')
-	@ProjectScope('workflow:update')
+	@ProjectScope('workflow:publish')
 	async activate(
 		req: WorkflowRequest.Activate,
 		_res: unknown,
@@ -552,7 +552,7 @@ export class WorkflowsController {
 	}
 
 	@Post('/:workflowId/deactivate')
-	@ProjectScope('workflow:update')
+	@ProjectScope('workflow:publish')
 	async deactivate(req: WorkflowRequest.Deactivate) {
 		const { workflowId } = req.params;
 
