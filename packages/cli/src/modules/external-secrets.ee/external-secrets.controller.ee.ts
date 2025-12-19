@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Get, Post, RestController, GlobalScope, Middleware } from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
 
@@ -12,7 +13,10 @@ export class ExternalSecretsController {
 	constructor(
 		private readonly secretsService: ExternalSecretsService,
 		private readonly secretsProviders: ExternalSecretsProviders,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('external-secrets');
+	}
 
 	@Middleware()
 	validateProviderName(req: Request, _: Response, next: NextFunction) {
@@ -75,6 +79,7 @@ export class ExternalSecretsController {
 			await this.secretsService.updateProvider(providerName);
 			return { updated: true };
 		} catch (error) {
+			this.logger.error('Error updating provider', { providerName, error });
 			res.statusCode = 400;
 			return { updated: false };
 		}
