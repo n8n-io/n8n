@@ -2697,6 +2697,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.8
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))

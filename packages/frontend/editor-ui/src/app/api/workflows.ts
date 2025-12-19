@@ -34,6 +34,10 @@ export async function getWorkflow(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`);
 }
 
+export async function workflowExists(context: IRestApiContext, id: string) {
+	return await makeRestApiRequest<{ exists: boolean }>(context, 'GET', `/workflows/${id}/exists`);
+}
+
 export async function getWorkflows(
 	context: IRestApiContext,
 	filter?: object,

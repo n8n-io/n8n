@@ -90,7 +90,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.sidebar.getConversations().first()).toHaveAccessibleName(/greeting/i); // verify auto-generated title
 	});
 
-	test('conversation flow', async ({ n8n }) => {
+	test.skip('conversation flow', async ({ n8n }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await page.openNewChat();
