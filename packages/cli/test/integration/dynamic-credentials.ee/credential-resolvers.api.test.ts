@@ -5,9 +5,9 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { Telemetry } from '@/telemetry';
-import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -18,6 +18,8 @@ mockInstance(Telemetry);
 const licenseMock = mock<LicenseState>();
 licenseMock.isLicensed.mockReturnValue(true);
 Container.set(LicenseState, licenseMock);
+
+process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -79,6 +81,31 @@ describe('Credential Resolvers API', () => {
 
 		it('should reject access for members', async () => {
 			await memberAgent.get('/credential-resolvers').expect(403);
+		});
+	});
+
+	describe('GET /credential-resolvers/types', () => {
+		it('should return available resolver types', async () => {
+			const response = await ownerAgent.get('/credential-resolvers/types').expect(200);
+
+			expect(response.body.data).toBeInstanceOf(Array);
+			expect(response.body.data.length).toBeGreaterThan(0);
+
+			// Verify the stub resolver is present
+			const stubResolver = response.body.data.find(
+				(type: { name: string }) => type.name === 'credential-resolver.stub-1.0',
+			);
+			expect(stubResolver).toBeDefined();
+			expect(stubResolver).toMatchObject({
+				name: 'credential-resolver.stub-1.0',
+				displayName: 'Stub Resolver',
+				description: 'A stub credential resolver for testing purposes',
+				options: expect.any(Array),
+			});
+		});
+
+		it('should reject access for members', async () => {
+			await memberAgent.get('/credential-resolvers/types').expect(403);
 		});
 	});
 

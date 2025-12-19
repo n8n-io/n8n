@@ -1,8 +1,11 @@
+import type { Logger } from '@n8n/backend-common';
+
 import type {
 	TemplateSearchQuery,
 	TemplateSearchResponse,
 	Category,
 	TemplateFetchResponse,
+	WorkflowMetadata,
 } from '@/types';
 
 /**
@@ -49,6 +52,7 @@ function buildSearchQueryString(query: TemplateSearchQuery): string {
 	// Optional user-provided values
 	if (query.search) params.append('search', query.search);
 	if (query.category) params.append('category', query.category);
+	if (query.nodes) params.append('nodes', query.nodes);
 
 	return params.toString();
 }
@@ -60,6 +64,7 @@ export async function fetchTemplateList(query: {
 	search?: string;
 	category?: Category;
 	rows?: number;
+	nodes?: string;
 }): Promise<TemplateSearchResponse> {
 	const queryString = buildSearchQueryString(query);
 	const url = `${N8N_API_BASE_URL}/templates/search${queryString ? `?${queryString}` : ''}`;
@@ -106,4 +111,76 @@ export async function fetchTemplateByID(id: number): Promise<TemplateFetchRespon
 		throw new Error(`Invalid response format from template ${id} API`);
 	}
 	return data;
+}
+
+/**
+ * Result of fetching workflows from templates
+ */
+export interface FetchWorkflowsResult {
+	workflows: WorkflowMetadata[];
+	totalFound: number;
+	templateIds: number[];
+}
+
+/**
+ * Fetch workflows from templates API and return full workflow data
+ * Shared utility used by both get-workflow-examples and get-node-examples tools
+ */
+export async function fetchWorkflowsFromTemplates(
+	query: {
+		search?: string;
+		category?: Category;
+		rows?: number;
+		nodes?: string;
+	},
+	options?: {
+		/** Maximum number of templates to fetch full data for (default: all) */
+		maxTemplates?: number;
+		logger?: Logger;
+	},
+): Promise<FetchWorkflowsResult> {
+	const { maxTemplates, logger } = options ?? {};
+
+	logger?.debug('Fetching workflows from templates', { query });
+
+	// First, fetch the list of workflow templates (metadata)
+	const response = await fetchTemplateList(query);
+
+	// Determine which templates to fetch full data for
+	const templatesToFetch = maxTemplates
+		? response.workflows.slice(0, maxTemplates)
+		: response.workflows;
+
+	// Fetch complete workflow data for each template
+	const workflowResults = await Promise.all(
+		templatesToFetch.map(async (template) => {
+			try {
+				const fullWorkflow = await fetchTemplateByID(template.id);
+				return {
+					metadata: {
+						templateId: template.id,
+						name: template.name,
+						description: template.description,
+						workflow: fullWorkflow.workflow,
+					} satisfies WorkflowMetadata,
+					templateId: template.id,
+				};
+			} catch (error) {
+				// Individual template fetch failures are non-fatal
+				logger?.warn(`Failed to fetch full workflow for template ${template.id}`, { error });
+				return null;
+			}
+		}),
+	);
+
+	// Filter out failed fetches
+	const validResults = workflowResults.filter(
+		(result): result is NonNullable<typeof result> => result !== null,
+	);
+
+	return {
+		workflows: validResults.map((r) => r.metadata),
+		totalFound: response.totalWorkflows,
+		templateIds: validResults.map((r) => r.templateId),
+	};
 }

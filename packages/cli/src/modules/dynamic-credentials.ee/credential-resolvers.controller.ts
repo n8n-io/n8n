@@ -4,6 +4,8 @@ import {
 	credentialResolverSchema,
 	credentialResolversSchema,
 	UpdateCredentialResolverDto,
+	CredentialResolverType,
+	credentialResolverTypesSchema,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -32,12 +34,23 @@ export class CredentialResolversController {
 
 	@Get('/')
 	@GlobalScope('credentialResolver:list')
-	async listResolvers(
-		_req: AuthenticatedRequest,
-		_res: Response,
-	): Promise<Array<CredentialResolver>> {
+	async listResolvers(_req: AuthenticatedRequest, _res: Response): Promise<CredentialResolver[]> {
 		try {
 			return credentialResolversSchema.parse(await this.service.findAll());
+		} catch (e: unknown) {
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Get('/types')
+	@GlobalScope('credentialResolver:list')
+	listResolverTypes(_req: AuthenticatedRequest, _res: Response): CredentialResolverType[] {
+		try {
+			const types = this.service.getAvailableTypes();
+			return credentialResolverTypesSchema.parse(types.map((t) => t.metadata));
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -102,6 +115,7 @@ export class CredentialResolversController {
 		try {
 			return credentialResolverSchema.parse(
 				await this.service.update(id, {
+					type: dto.type,
 					name: dto.name,
 					config: dto.config,
 				}),

@@ -6,6 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
+import { nanoid } from 'nanoid';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -23,6 +24,7 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -52,6 +54,7 @@ const SettingsPersonalView = async () =>
 	await import('@/features/core/auth/views/SettingsPersonalView.vue');
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
+const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -400,6 +403,16 @@ export const routes: RouteRecordRaw[] = [
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
+		beforeEnter: (to) => {
+			// Generate a unique workflow ID using nanoid and redirect to it
+			// Preserve existing query params (e.g., templateId, projectId) and add new=true
+			const newWorkflowId = nanoid();
+			return {
+				name: VIEWS.WORKFLOW,
+				params: { name: newWorkflowId },
+				query: { ...to.query, new: 'true' },
+			};
+		},
 	},
 	{
 		path: '/workflows/demo',
@@ -635,6 +648,30 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'resolvers',
+				name: VIEWS.RESOLVERS,
+				components: {
+					settingsView: SettingsResolversView,
+				},
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('DYNAMIC_CREDENTIALS');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'resolvers',
 							};
 						},
 					},

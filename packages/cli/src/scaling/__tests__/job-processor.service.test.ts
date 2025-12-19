@@ -214,6 +214,7 @@ describe('JobProcessor', () => {
 		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
 			workflowId: execution.workflowData.id,
 			executionTimeoutTimestamp: undefined,
+			workflowSettings: execution.workflowData.settings,
 		});
 
 		expect(manualExecutionService.runManually).toHaveBeenCalledWith(

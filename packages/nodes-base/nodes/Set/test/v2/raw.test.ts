@@ -19,7 +19,7 @@ const node: INode = {
 	typeVersion: 3,
 	position: [42, 42],
 	parameters: {
-		mode: 'manual',
+		mode: 'raw',
 		fields: {
 			values: [],
 		},

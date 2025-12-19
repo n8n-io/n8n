@@ -86,6 +86,7 @@ type PushRequest = Request<
 @RestController('/e2e')
 export class E2EController {
 	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
+		[LICENSE_FEATURES.DYNAMIC_CREDENTIALS]: false,
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
 		[LICENSE_FEATURES.SAML]: false,

@@ -2,12 +2,12 @@ import { Z } from 'zod-class';
 
 import {
 	credentialResolverNameSchema,
-	credentialResolverTypeSchema,
 	credentialResolverConfigSchema,
+	credentialResolverTypeNameSchema,
 } from '../../schemas/credential-resolver.schema';
 
 export class CreateCredentialResolverDto extends Z.class({
 	name: credentialResolverNameSchema,
-	type: credentialResolverTypeSchema,
+	type: credentialResolverTypeNameSchema,
 	config: credentialResolverConfigSchema,
 }) {}

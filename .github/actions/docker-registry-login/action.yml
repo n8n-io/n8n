@@ -1,0 +1,39 @@
+# Composite action for logging into Docker registries (GHCR and/or DockerHub).
+# Centralizes the login pattern used across multiple Docker workflows.
+
+name: 'Docker Registry Login'
+description: 'Login to GitHub Container Registry and/or DockerHub'
+
+inputs:
+  login-ghcr:
+    description: 'Login to GitHub Container Registry'
+    required: false
+    default: 'true'
+  login-dockerhub:
+    description: 'Login to DockerHub'
+    required: false
+    default: 'false'
+  dockerhub-username:
+    description: 'DockerHub username (required if login-dockerhub is true)'
+    required: false
+  dockerhub-password:
+    description: 'DockerHub password (required if login-dockerhub is true)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Login to GitHub Container Registry
+      if: inputs.login-ghcr == 'true'
+      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Login to DockerHub
+      if: inputs.login-dockerhub == 'true'
+      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      with:
+        username: ${{ inputs.dockerhub-username }}
+        password: ${{ inputs.dockerhub-password }}

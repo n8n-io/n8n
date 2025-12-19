@@ -1,6 +1,7 @@
 import type { INodeTypeDescription, INodeParameters } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 
 import type { ProgrammaticViolation } from '../types';
 import { isTool } from '../utils/is-tool';
@@ -53,8 +54,10 @@ export function validateFromAi(
 		return violations;
 	}
 
+	const { nodeTypeMap, nodeTypesByName } = createNodeTypeMaps(nodeTypes);
+
 	for (const node of workflow.nodes) {
-		const nodeType = nodeTypes.find((type) => type.name === node.type);
+		const nodeType = getNodeTypeForNode(node, nodeTypeMap, nodeTypesByName);
 		if (!nodeType) {
 			continue;
 		}

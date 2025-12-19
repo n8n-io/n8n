@@ -1,20 +1,3 @@
-import { In, WorkflowRepository, type User } from '@n8n/db';
-import { getBase } from '@/workflow-execute-additional-data';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import {
-	AGENT_LANGCHAIN_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	type INodeCredentials,
-	type INodePropertyOptions,
-	type IWorkflowExecuteAdditionalData,
-} from 'n8n-workflow';
 import {
 	chatHubProviderSchema,
 	emptyChatModelsResponse,
@@ -24,8 +7,24 @@ import {
 	type ChatModelDto,
 	type ChatModelsResponse,
 } from '@n8n/api-types';
-import { validChatTriggerParamsShape } from './chat-hub.types';
+import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	type INodeCredentials,
+	type INodePropertyOptions,
+	type IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { chatTriggerParamsShape } from './chat-hub.types';
+
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class ChatHubModelsService {
@@ -159,9 +158,9 @@ export class ChatHubModelsService {
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
 			case 'n8n':
-				return await this.fetchAgentWorkflowsAsModels(user);
+				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
-				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
+				return { models: await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id) };
 		}
 	}
 
@@ -713,7 +712,7 @@ export class ChatHubModelsService {
 		);
 	}
 
-	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
+	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelDto[]> {
 		// Workflows are scanned by their latest version for chat trigger nodes.
 		// This means that we might miss some active workflow versions that had chat triggers but
 		// the latest version does not, but this trade-off is done for performance.
@@ -724,66 +723,92 @@ export class ChatHubModelsService {
 		);
 
 		const activeWorkflows = workflowsWithChatTrigger
-			// Ensure the user has at least read access to the workflows
-			.filter((workflow) => workflow.scopes.includes('workflow:read'))
+			// Ensure the user has chat execution access to the workflow
+			.filter((workflow) => workflow.scopes.includes('workflow:execute-chat'))
+			// The workflow has to be active
 			.filter((workflow) => !!workflow.activeVersionId);
 
-		const workflows = await this.workflowRepository.find({
-			select: { id: true },
-			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
-			relations: { activeVersion: true },
-		});
-
-		const models: ChatModelDto[] = [];
-
-		for (const { id, activeVersion } of workflows) {
-			if (!activeVersion) {
-				continue;
-			}
-
-			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-			if (!chatTrigger) {
-				continue;
-			}
-
-			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
-			if (!chatTriggerParams) {
-				continue;
-			}
-
-			const agentNodes = activeVersion.nodes?.filter(
-				(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
-			);
-
-			// Agents older than this can't do streaming
-			if (agentNodes.some((node) => node.typeVersion < 2.1)) {
-				continue;
-			}
-
-			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
-				chatTriggerParams.options,
-			);
-
-			models.push({
-				name: chatTriggerParams.agentName ?? activeVersion.name ?? 'Unknown Agent',
-				description: chatTriggerParams.agentDescription ?? null,
-				model: {
-					provider: 'n8n',
-					workflowId: id,
-				},
-				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
-				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-				metadata: {
-					inputModalities,
-					capabilities: {
-						functionCalling: false,
-					},
-				},
-			});
+		if (activeWorkflows.length === 0) {
+			return [];
 		}
 
+		const workflows = await this.workflowRepository.find({
+			select: {
+				id: true,
+				name: true,
+				shared: {
+					role: true,
+					project: {
+						id: true,
+						icon: { type: true, value: true },
+					},
+				},
+			},
+			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
+			relations: {
+				activeVersion: true,
+				shared: {
+					project: true,
+				},
+			},
+		});
+
+		return workflows.flatMap((workflow) => {
+			const model = this.extractModelFromWorkflow(workflow);
+
+			return model ? [model] : [];
+		});
+	}
+
+	extractModelFromWorkflow({
+		name,
+		activeVersion,
+		id,
+		shared,
+	}: WorkflowEntity): ChatModelDto | null {
+		if (!activeVersion) {
+			return null;
+		}
+
+		const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		if (!chatTrigger) {
+			return null;
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams?.availableInChat) {
+			return null;
+		}
+
+		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+			chatTriggerParams.options,
+		);
+
+		const agentName =
+			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
+				? chatTriggerParams.agentName
+				: name;
+
+		// Find the owner's project (home project)
+		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+
 		return {
-			models,
+			name: agentName,
+			description: chatTriggerParams.agentDescription ?? null,
+			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			model: {
+				provider: 'n8n',
+				workflowId: id,
+			},
+			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
+			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
+			metadata: {
+				inputModalities,
+				capabilities: {
+					functionCalling: false,
+				},
+				available: true,
+			},
 		};
 	}
 
@@ -791,21 +816,33 @@ export class ChatHubModelsService {
 		rawModels: INodePropertyOptions[],
 		provider: ChatHubLLMProvider,
 	): ChatModelDto[] {
-		return rawModels.map((model) => {
-			const id = String(model.value);
+		const seen = new Set<string>();
 
-			return {
-				id,
-				name: model.name,
-				description: model.description ?? null,
-				model: {
-					provider,
-					model: id,
+		return rawModels.flatMap((model) => {
+			const id = String(model.value);
+			const metadata = getModelMetadata(provider, id);
+
+			if (!metadata.available) return [];
+
+			// Deduplication as some providers (mistralCloud) return duplicate models
+			if (seen.has(id)) return [];
+			seen.add(id);
+
+			return [
+				{
+					id,
+					name: model.name,
+					description: model.description ?? null,
+					icon: null,
+					model: {
+						provider,
+						model: id,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata,
 				},
-				createdAt: null,
-				updatedAt: null,
-				metadata: getModelMetadata(provider, id),
-			};
+			];
 		});
 	}
 }
