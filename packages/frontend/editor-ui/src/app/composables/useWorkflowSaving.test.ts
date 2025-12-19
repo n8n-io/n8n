@@ -547,6 +547,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
 
 			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			// Create a mock workflowState with spy functions
 			const setWorkflowTagIdsSpy = vi.fn();
@@ -587,6 +588,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
 
 			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const setWorkflowTagIdsSpy = vi.fn();
 			const mockWorkflowState: Partial<WorkflowState> = {
