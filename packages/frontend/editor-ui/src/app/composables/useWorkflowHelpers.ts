@@ -56,7 +56,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -847,15 +847,17 @@ export function useWorkflowHelpers() {
 		}
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
-		workflowsStore.setWorkflowVersionId(workflow.versionId);
+		if (!workflow.checksum) {
+			throw new Error('Failed to update workflow');
+		}
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
 			uiStore.stateIsDirty = false;
 		}
 
-		if (workflow.activeVersionId !== null) {
-			workflowsStore.setWorkflowActive(workflowId);
+		if (workflow.activeVersion) {
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
 		}
@@ -938,24 +940,25 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	function initState(workflowData: IWorkflowDb) {
+	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
+		const ws = overrideWorkflowState ?? workflowState;
 		workflowsStore.addWorkflow(workflowData);
-		workflowState.setActive(workflowData.activeVersionId);
+		ws.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
-		workflowState.setWorkflowId(workflowData.id);
-		workflowState.setWorkflowName({
+		ws.setWorkflowId(workflowData.id);
+		ws.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowState.setWorkflowSettings(workflowData.settings ?? {});
+		ws.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 
-		if (workflowData.activeVersion) {
-			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion);
+		if ('activeVersion' in workflowData) {
+			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
 		}
 
 		if (workflowData.usedCredentials) {
@@ -971,7 +974,7 @@ export function useWorkflowHelpers() {
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
-		workflowState.setWorkflowTagIds(tagIds || []);
+		ws.setWorkflowTagIds(tagIds || []);
 		tagsStore.upsertTags(tags);
 	}
 

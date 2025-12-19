@@ -27,6 +27,10 @@ import {
 	deepCopy,
 } from 'n8n-workflow';
 
+import {
+	validateEmbedQueryInput,
+	validateEmbedDocumentsInput,
+} from './embeddings/embeddingInputValidation';
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { N8nJsonLoader } from './N8nJsonLoader';
@@ -271,9 +275,15 @@ export function logWrapper<
 				// Docs -> Embeddings
 				if (prop === 'embedDocuments' && 'embedDocuments' in target) {
 					return async (documents: string[]): Promise<number[][]> => {
+						// Validate documents input before embedding
+						const validatedDocuments = validateEmbedDocumentsInput(
+							documents,
+							executeFunctions.getNode(),
+						);
+
 						connectionType = NodeConnectionTypes.AiEmbedding;
 						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { documents } }],
+							[{ json: { documents: validatedDocuments } }],
 						]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -281,7 +291,7 @@ export function logWrapper<
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop] as (...args: any[]) => Promise<unknown>,
-							arguments: [documents],
+							arguments: [validatedDocuments],
 						})) as number[][];
 
 						logAiEvent(executeFunctions, 'ai-document-embedded');
@@ -292,9 +302,12 @@ export function logWrapper<
 				// Query -> Embeddings
 				if (prop === 'embedQuery' && 'embedQuery' in target) {
 					return async (query: string): Promise<number[]> => {
+						// Validate query input before embedding
+						const validatedQuery = validateEmbedQueryInput(query, executeFunctions.getNode());
+
 						connectionType = NodeConnectionTypes.AiEmbedding;
 						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { query } }],
+							[{ json: { query: validatedQuery } }],
 						]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -302,8 +315,9 @@ export function logWrapper<
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop] as (...args: any[]) => Promise<unknown>,
-							arguments: [query],
+							arguments: [validatedQuery],
 						})) as number[];
+
 						logAiEvent(executeFunctions, 'ai-query-embedded');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;

@@ -39,6 +39,7 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -2874,6 +2875,134 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
+
+		it('should remove connections if the input port index is no longer valid for the type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiLanguageModel],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === sourceNodeId) return sourceNode;
+				if (id === targetNodeId) return targetNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations();
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 },
+				],
+			});
+		});
+
+		it('should keep connections if the input port index is still valid for the type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [
+					NodeConnectionTypes.Main,
+					NodeConnectionTypes.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
+				],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiLanguageModel],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === sourceNodeId) return sourceNode;
+				if (id === targetNodeId) return targetNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((type) => {
+				if (type === AGENT_NODE_TYPE) return targetNodeType;
+				if (type === OPEN_AI_CHAT_MODEL_NODE_TYPE) return sourceNodeType;
+				return undefined;
+			});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations();
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('revalidateNodeOutputConnections', () => {
@@ -3253,7 +3382,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('initializeWorkspace', () => {
-		it('should initialize the workspace', () => {
+		it('should initialize the workspace', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const workflow = createTestWorkflow({
 				nodes: [createTestNode()],
@@ -3261,13 +3390,13 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflowsStore.setNodes).toHaveBeenCalled();
 			expect(workflowsStore.setConnections).toHaveBeenCalled();
 		});
 
-		it('should initialize node data from node type description', () => {
+		it('should initialize node data from node type description', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const type = SET_NODE_TYPE;
 			const version = 1;
@@ -3292,7 +3421,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			const { initializeWorkspace } = useCanvasOperations();
-			initializeWorkspace(workflow);
+			await initializeWorkspace(workflow);
 
 			expect(workflow.nodes[0].parameters).toEqual({ value: true });
 		});
