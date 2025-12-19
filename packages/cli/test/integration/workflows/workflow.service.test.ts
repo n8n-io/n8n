@@ -3,6 +3,8 @@ import {
 	testDb,
 	mockInstance,
 	createActiveWorkflow,
+	createTeamProject,
+	linkUserToProject,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -24,7 +26,8 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { createOwner } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
 let globalConfig: GlobalConfig;
@@ -75,7 +78,16 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
+	await testDb.truncate([
+		'SharedWorkflow',
+		'ProjectRelation',
+		'WorkflowEntity',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+		'Project',
+		'User',
+	]);
+	await cleanupRolesAndScopes();
 	jest.restoreAllMocks();
 });
 
@@ -240,5 +252,58 @@ describe('activateWorkflow()', () => {
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
 		expect(workflowAfter?.activeVersionId).toBe(oldActiveVersionId);
 		expect(workflowAfter?.active).toBe(true);
+	});
+
+	test('should not activate workflow without workflow:publish permission', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		// custom role with workflow:update but not workflow:publish
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Updater',
+			description: 'Can update workflows but not publish them',
+		});
+
+		const project = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, project, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory({}, project);
+
+		await expect(workflowService.activateWorkflow(member, workflow.id)).rejects.toThrow(
+			'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+		);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(false);
+		expect(workflowAfter?.activeVersionId).toBeNull();
+	});
+});
+
+describe('deactivateWorkflow()', () => {
+	test('should not deactivate workflow without workflow:publish permission', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		// custom role with workflow:update but not workflow:publish
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Updater',
+			description: 'Can update workflows but not publish them',
+		});
+
+		const project = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, project, customRole.slug);
+
+		const workflow = await createActiveWorkflow({}, project);
+
+		await expect(workflowService.deactivateWorkflow(member, workflow.id)).rejects.toThrow(
+			'You do not have permission to deactivate this workflow. Ask the owner to share it with you.',
+		);
+
+		// Verify workflow is still active
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(true);
+		expect(workflowAfter?.activeVersionId).toBe(workflow.activeVersionId);
 	});
 });
