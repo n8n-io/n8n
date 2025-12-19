@@ -23,7 +23,6 @@ import { createBuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
-import { cachedTemplatesReducer } from '../utils/state-reducers';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildDiscoveryContextBlock,
@@ -32,6 +31,7 @@ import {
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { cachedTemplatesReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
