@@ -28,6 +28,9 @@ export interface SyncProvider {
 
 	/** Subscribe to sync state changes */
 	onSyncStateChange(handler: (syncing: boolean) => void): Unsubscribe;
+
+	/** Subscribe to sync errors (e.g., malformed updates from peers) */
+	onError(handler: (error: Error) => void): Unsubscribe;
 }
 
 /**

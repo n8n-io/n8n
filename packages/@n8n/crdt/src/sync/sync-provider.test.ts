@@ -305,6 +305,61 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 		});
 	});
 
+	describe('Error handling', () => {
+		it('should call onError handler when receiving malformed update', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const errors: Error[] = [];
+			sync2.onError((error) => errors.push(error));
+
+			// Send garbage data directly through transport
+			const garbageData = new Uint8Array([1, 2, 3, 4, 5]);
+			transport1.send(garbageData);
+
+			// Error handler should have been called
+			expect(errors.length).toBe(1);
+			expect(errors[0]).toBeInstanceOf(Error);
+		});
+
+		it('should continue syncing after receiving malformed update', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Register error handler to prevent unhandled errors
+			sync2.onError(() => {});
+
+			// Send garbage data
+			transport1.send(new Uint8Array([1, 2, 3, 4, 5]));
+
+			// Should still be syncing
+			expect(sync2.syncing).toBe(true);
+
+			// Valid updates should still work
+			map1.set('after-error', 'still-works');
+			expect(map2.get('after-error')).toBe('still-works');
+		});
+
+		it('should unsubscribe from onError handler', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			const errors: Error[] = [];
+			const unsubscribe = sync2.onError((error) => errors.push(error));
+
+			// Send garbage, should capture error
+			transport1.send(new Uint8Array([1, 2, 3]));
+			expect(errors.length).toBe(1);
+
+			// Unsubscribe
+			unsubscribe();
+
+			// Send more garbage, should not capture
+			transport1.send(new Uint8Array([4, 5, 6]));
+			expect(errors.length).toBe(1);
+		});
+	});
+
 	describe('Large deeply nested data', () => {
 		// Helper to create a deeply nested object
 		function createNestedObject(depth: number, breadth: number): Record<string, unknown> {

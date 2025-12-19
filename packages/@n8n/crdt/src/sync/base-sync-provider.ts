@@ -3,6 +3,7 @@ import type { CRDTDoc, Unsubscribe } from '../types';
 import type { SyncProvider } from './types';
 
 type SyncStateHandler = (syncing: boolean) => void;
+type ErrorHandler = (error: Error) => void;
 
 /**
  * BaseSyncProvider - Engine-agnostic sync provider implementation.
@@ -15,6 +16,7 @@ type SyncStateHandler = (syncing: boolean) => void;
 export class BaseSyncProvider implements SyncProvider {
 	private _syncing = false;
 	private stateHandlers = new Set<SyncStateHandler>();
+	private errorHandlers = new Set<ErrorHandler>();
 	private unsubscribeDoc: Unsubscribe | null = null;
 	private unsubscribeTransport: Unsubscribe | null = null;
 
@@ -35,7 +37,11 @@ export class BaseSyncProvider implements SyncProvider {
 
 		// Subscribe to incoming updates from transport
 		this.unsubscribeTransport = this.transport.onReceive((data) => {
-			this.doc.applyUpdate(data);
+			try {
+				this.doc.applyUpdate(data);
+			} catch (error) {
+				this.notifyError(error instanceof Error ? error : new Error(String(error)));
+			}
 		});
 
 		// Subscribe to outgoing updates from doc
@@ -82,9 +88,22 @@ export class BaseSyncProvider implements SyncProvider {
 		};
 	}
 
+	onError(handler: ErrorHandler): Unsubscribe {
+		this.errorHandlers.add(handler);
+		return () => {
+			this.errorHandlers.delete(handler);
+		};
+	}
+
 	private notifyStateChange(): void {
 		for (const handler of this.stateHandlers) {
 			handler(this._syncing);
+		}
+	}
+
+	private notifyError(error: Error): void {
+		for (const handler of this.errorHandlers) {
+			handler(error);
 		}
 	}
 }
