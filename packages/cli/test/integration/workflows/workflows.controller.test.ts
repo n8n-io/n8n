@@ -175,6 +175,7 @@ describe('POST /workflows', () => {
 				'workflow:execute',
 				'workflow:execute-chat',
 				'workflow:move',
+				'workflow:publish',
 				'workflow:read',
 				'workflow:share',
 				'workflow:update',
@@ -906,6 +907,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:update',
 				].sort(),
@@ -914,7 +916,13 @@ describe('GET /workflows', () => {
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
-				['workflow:read', 'workflow:update', 'workflow:execute', 'workflow:execute-chat'].sort(),
+				[
+					'workflow:read',
+					'workflow:update',
+					'workflow:execute',
+					'workflow:execute-chat',
+					'workflow:publish',
+				].sort(),
 			);
 		}
 
@@ -934,6 +942,7 @@ describe('GET /workflows', () => {
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
+				'workflow:publish',
 				'workflow:read',
 				'workflow:update',
 			]);
@@ -946,6 +955,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -2054,6 +2064,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:update',
 				].sort(),
@@ -2062,7 +2073,13 @@ describe('GET /workflows?includeFolders=true', () => {
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
-				['workflow:read', 'workflow:update', 'workflow:execute', 'workflow:execute-chat'].sort(),
+				[
+					'workflow:read',
+					'workflow:update',
+					'workflow:execute',
+					'workflow:execute-chat',
+					'workflow:publish',
+				].sort(),
 			);
 
 			expect(f1.id).toBe(savedFolder1.id);
@@ -2087,6 +2104,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
+				'workflow:publish',
 				'workflow:read',
 				'workflow:update',
 			]);
@@ -2099,6 +2117,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -3186,6 +3205,30 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
+	test('should return 403 when user lacks workflow:publish permission', async () => {
+		// Create a custom role with workflow:update but not workflow:publish
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Updater',
+			description: 'Can update workflows but not publish them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory({}, teamProject);
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(false);
+		expect(workflowAfter?.activeVersionId).toBeNull();
+	});
+
 	test('should set activeVersion relation when activating', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -3472,6 +3515,28 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when user lacks workflow:publish permission', async () => {
+		// Create a custom role with workflow:update but not workflow:publish
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Updater',
+			description: 'Can update workflows but not publish them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createActiveWorkflow({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(true);
+		expect(workflowAfter?.activeVersionId).toBe(workflow.activeVersionId);
 	});
 
 	test('should clear activeVersion relation when deactivating', async () => {

@@ -199,7 +199,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-	if (isDraftPublishEnabled && activeVersion.value && !props.readOnly) {
+	if (
+		isDraftPublishEnabled &&
+		activeVersion.value &&
+		props.workflowPermissions.publish &&
+		!props.readOnly
+	) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
 			label: locale.baseText('menuActions.unpublish'),

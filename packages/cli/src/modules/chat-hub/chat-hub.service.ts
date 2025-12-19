@@ -45,7 +45,7 @@ import {
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
-import type { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
@@ -1419,7 +1419,7 @@ export class ChatHubService {
 		}
 
 		// Prepare the actual updates to be sent to the repository
-		const sessionUpdates: Partial<ChatHubSession> = {};
+		const sessionUpdates: Partial<IChatHubSession> = {};
 
 		if (updates.agent) {
 			const model = updates.agent.model;

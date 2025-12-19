@@ -227,7 +227,7 @@ tests/
 |------|---------|---------|
 | **Page Objects** | `{PageName}Page.ts` | `CredentialsPage.ts` |
 | **Composables** | `{Domain}Composer.ts` | `WorkflowComposer.ts` |
-| **Test Files** | `{number}-{feature}.spec.ts` | `1-workflows.spec.ts` |
+| **Test Files** | `{feature}.spec.ts` | `workflows.spec.ts` |
 | **Test IDs** | `kebab-case` | `data-test-id="save-button"` |
 
 ---
@@ -302,9 +302,9 @@ export class ProjectComposer {
 
 ### When Writing Tests
 
-#### UI Tests
+#### E2E Tests
 ```typescript
-// ✅ GOOD: From 1-workflows.spec.ts
+// ✅ GOOD: From workflows/list/workflows.spec.ts
 test('should create a new workflow using add workflow button', async ({ n8n }) => {
   await n8n.workflows.clickAddWorklowButton();
 
@@ -317,7 +317,7 @@ test('should create a new workflow using add workflow button', async ({ n8n }) =
   ).toBeVisible();
 });
 
-// ✅ GOOD: From 28-debug.spec.ts - Using helper functions
+// ✅ GOOD: From workflows/editor/execution/debug.spec.ts - Using helper functions
 async function createBasicWorkflow(n8n, url = URLS.FAILING) {
   await n8n.workflows.clickAddWorklowButton();
   await n8n.canvas.addNode('Manual Trigger');
@@ -411,7 +411,7 @@ export const CODE_NODE_NAME = 'Code';
 export const SET_NODE_NAME = 'Set';
 export const HTTP_REQUEST_NODE_NAME = 'HTTP Request';
 
-// From 28-debug.spec.ts
+// From workflows/editor/execution/debug.spec.ts
 const NOTIFICATIONS = {
   WORKFLOW_CREATED: 'Workflow successfully created',
   EXECUTION_IMPORTED: 'Execution data imported',
@@ -477,7 +477,7 @@ async clickArchiveMenuItem() {
 
 ### ❌ Don't Use Raw Selectors in Tests
 ```typescript
-// BAD: From 1-workflows.spec.ts
+// BAD: From workflows/list/workflows.spec.ts
 await expect(n8n.page.getByText('No workflows found')).toBeVisible();
 
 // GOOD: Add getter to page object
@@ -552,7 +552,7 @@ export class ProjectComposer {
   }
 }
 
-// 3. Test (39-projects.spec.ts)
+// 3. Test (projects/projects.spec.ts)
 test('should filter credentials by project ID', async ({ n8n, api }) => {
   const { projectName, projectId } = await n8n.projectComposer.createProject();
   await n8n.projectComposer.addCredentialToProject(
