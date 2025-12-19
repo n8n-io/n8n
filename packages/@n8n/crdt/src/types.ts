@@ -30,12 +30,35 @@ export interface DeepChangeEvent {
 }
 
 /**
+ * CRDT Array data structure - an ordered list with deep change observation.
+ * Supports standard array operations and emits change events for mutations.
+ */
+export interface CRDTArray<T = unknown> {
+	/** Get the number of elements */
+	readonly length: number;
+	/** Get element at index. Returns CRDTMap/CRDTArray for nested objects/arrays. */
+	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined;
+	/** Append element(s) to end */
+	push(...items: T[]): void;
+	/** Insert element(s) at index */
+	insert(index: number, ...items: T[]): void;
+	/** Delete count elements starting at index */
+	delete(index: number, count?: number): void;
+	/** Convert to plain JavaScript array */
+	toArray(): T[];
+	/** Convert to JSON (alias for toArray) */
+	toJSON(): T[];
+	/** Subscribe to deep changes */
+	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe;
+}
+
+/**
  * CRDT Map data structure - a key-value store with deep change observation.
  * When getting a nested object, returns a CRDTMap wrapper for that object.
  */
 export interface CRDTMap<T = unknown> {
-	/** Get value by key. Returns CRDTMap for nested objects, primitive value otherwise. */
-	get(key: string): T | CRDTMap<unknown> | undefined;
+	/** Get value by key. Returns CRDTMap/CRDTArray for nested objects/arrays. */
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined;
 	/** Set value for key */
 	set(key: string, value: T): void;
 	/** Delete key */
@@ -62,6 +85,8 @@ export interface CRDTDoc {
 	readonly id: string;
 	/** Get or create a named Map */
 	getMap<T = unknown>(name: string): CRDTMap<T>;
+	/** Get or create a named Array */
+	getArray<T = unknown>(name: string): CRDTArray<T>;
 	/** Execute changes in a transaction (batched, atomic) */
 	transact(fn: () => void): void;
 	/** Encode the full document state as a binary update */

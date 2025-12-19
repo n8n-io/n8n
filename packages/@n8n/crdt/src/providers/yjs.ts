@@ -1,6 +1,13 @@
 import * as Y from 'yjs';
 
-import type { CRDTDoc, CRDTMap, CRDTProvider, DeepChangeEvent, Unsubscribe } from '../types';
+import type {
+	CRDTArray,
+	CRDTDoc,
+	CRDTMap,
+	CRDTProvider,
+	DeepChangeEvent,
+	Unsubscribe,
+} from '../types';
 import { ChangeAction, CRDTEngine } from '../types';
 
 /**
@@ -139,6 +146,10 @@ class YjsDoc implements CRDTDoc {
 			this.maps.set(name, map);
 		}
 		return map as CRDTMap<T>;
+	}
+
+	getArray<T = unknown>(_name: string): CRDTArray<T> {
+		throw new Error('CRDTArray not yet implemented for Yjs');
 	}
 
 	transact(fn: () => void): void {
