@@ -276,9 +276,11 @@ function onShowVersion(versionId: string) {
 	window.open(route.href, '_blank');
 }
 
-// Reset on route change
+// Reset on route change, but not if streaming is in progress
 watch(currentRoute, () => {
-	onNewWorkflow();
+	if (!builderStore.streaming) {
+		onNewWorkflow();
+	}
 });
 
 defineExpose({
