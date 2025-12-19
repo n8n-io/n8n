@@ -133,5 +133,5 @@ export async function execute(
 		queries.push(queryWithValues);
 	}
 
-	return await runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, nodeOptions);
 }

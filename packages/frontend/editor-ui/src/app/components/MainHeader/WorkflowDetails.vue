@@ -8,7 +8,6 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
@@ -111,7 +110,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
+	return !workflowsStore.isWorkflowSaved[props.id];
 });
 
 const isWorkflowSaving = computed(() => {
@@ -162,6 +161,9 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
+
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
@@ -169,7 +171,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 
 		await npsSurveyStore.fetchPromptsData();
 
@@ -249,9 +251,13 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId(props.id, route.params.name);
+
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = !workflowsStore.isWorkflowSaved[props.id];
+
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
@@ -413,8 +419,11 @@ function getToastContent() {
 	return { title, toastMessage };
 }
 
-function showCreateWorkflowSuccessToast(id?: string) {
-	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
+function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
+	if (!id) return;
+
+	// Only show toast if this is a newly created workflow
+	const shouldShowToast = wasNewWorkflow ?? false;
 
 	if (!shouldShowToast) return;
 

@@ -13,7 +13,6 @@ import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 
 vi.mock('@/app/composables/useCanvasOperations');
 vi.mock('@/app/composables/useWorkflowHelpers');
@@ -90,6 +89,8 @@ describe('useWorkflowCommands', () => {
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
+		// Mark workflow as existing by adding it to workflowsById
+		mockWorkflowsStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
 			value: { workflowSaving: false } as unknown as typeof mockUIStore.isActionActive,
@@ -486,7 +487,8 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should allow actions for new workflows regardless of permissions', () => {
-			mockWorkflowsStore.workflow.id = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			// For new workflows, remove from workflowsById so isNewWorkflow returns true
+			mockWorkflowsStore.workflowsById = {};
 			mockWorkflowsStore.workflow.scopes = ['workflow:read'];
 
 			const { commands } = useWorkflowCommands();

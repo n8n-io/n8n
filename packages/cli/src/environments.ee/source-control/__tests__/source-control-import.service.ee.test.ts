@@ -7,6 +7,8 @@ import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	Project,
+	type ProjectRelation,
+	type ProjectRelationRepository,
 	type ProjectRepository,
 	type SharedWorkflowRepository,
 	User,
@@ -47,6 +49,7 @@ describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
@@ -60,6 +63,7 @@ describe('SourceControlImportService', () => {
 		activeWorkflowManager,
 		mock(),
 		projectRepository,
+		projectRelationRepository,
 		mock(),
 		sharedWorkflowRepository,
 		mock(),
@@ -857,6 +861,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('projects', () => {
+		const mockPullingUserId = 'pulling-user-id';
+
 		describe('importTeamProjectsFromWorkFolder', () => {
 			it('should import team projects from work folder', async () => {
 				// Arrange
@@ -895,9 +901,13 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
 
 				variableService.getAllCached.mockResolvedValue([]);
+				projectRepository.findOne.mockResolvedValue(null);
 
 				// Act
-				const result = await service.importTeamProjectsFromWorkFolder(candidates);
+				const result = await service.importTeamProjectsFromWorkFolder(
+					candidates,
+					mockPullingUserId,
+				);
 
 				// Assert
 				expect(fsReadFile).toHaveBeenCalledWith(mockProjectFile1, { encoding: 'utf8' });
@@ -931,6 +941,17 @@ describe('SourceControlImportService', () => {
 					['id'],
 				);
 
+				expect(projectRelationRepository.save).toHaveBeenCalledWith({
+					projectId: mockProjectData1.id,
+					userId: mockPullingUserId,
+					role: { slug: 'project:admin' },
+				});
+				expect(projectRelationRepository.save).toHaveBeenCalledWith({
+					projectId: mockProjectData2.id,
+					userId: mockPullingUserId,
+					role: { slug: 'project:admin' },
+				});
+
 				expect(result).toEqual([
 					{
 						id: mockProjectData1.id,
@@ -941,6 +962,82 @@ describe('SourceControlImportService', () => {
 						name: mockProjectData2.name,
 					},
 				]);
+			});
+
+			it('should NOT assign pulling user as project admin for existing projects with an admin', async () => {
+				// Arrange
+				const mockProjectFile = '/mock/team-project.json';
+				const mockProjectData = {
+					id: 'existing-project',
+					name: 'Existing Team Project',
+					icon: 'icon.png',
+					description: 'An existing team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'existing-project',
+					},
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile, id: mockProjectData.id }),
+				];
+
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
+				variableService.getAllCached.mockResolvedValue([]);
+				// Project already exists
+				projectRepository.findOne.mockResolvedValue(
+					Object.assign(new Project(), { id: mockProjectData.id }),
+				);
+				// Project already has an admin
+				projectRelationRepository.findOne.mockResolvedValue(
+					mock<ProjectRelation>({
+						projectId: mockProjectData.id,
+						userId: 'existing-admin-user-id',
+					}),
+				);
+
+				// Act
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+				// Assert - project relation should NOT be created for existing projects with admin
+				expect(projectRelationRepository.save).not.toHaveBeenCalled();
+			});
+
+			it('should assign pulling user as project admin for existing projects without an admin', async () => {
+				// Arrange
+				const mockProjectFile = '/mock/team-project.json';
+				const mockProjectData = {
+					id: 'orphaned-project',
+					name: 'Orphaned Team Project',
+					icon: 'icon.png',
+					description: 'An existing team project without admin',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'orphaned-project',
+					},
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile, id: mockProjectData.id }),
+				];
+
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
+				variableService.getAllCached.mockResolvedValue([]);
+				projectRepository.findOne.mockResolvedValue(
+					Object.assign(new Project(), { id: mockProjectData.id }),
+				);
+				// Project has no admin
+				projectRelationRepository.findOne.mockResolvedValue(null);
+
+				// Act
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+				// Assert - pulling user should be assigned as admin for orphaned projects
+				expect(projectRelationRepository.save).toHaveBeenCalledWith({
+					projectId: mockProjectData.id,
+					userId: mockPullingUserId,
+					role: { slug: 'project:admin' },
+				});
 			});
 
 			it('should import only valid team projects and skip invalid ones', async () => {
@@ -998,7 +1095,12 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockNonTeamProjectData))
 					.mockResolvedValueOnce(JSON.stringify(mockInconsistentOwnerData));
 
-				const result = await service.importTeamProjectsFromWorkFolder(candidates);
+				projectRepository.findOne.mockResolvedValue(null);
+
+				const result = await service.importTeamProjectsFromWorkFolder(
+					candidates,
+					mockPullingUserId,
+				);
 
 				expect(fsReadFile).toHaveBeenCalledWith(mockTeamProjectFile, { encoding: 'utf8' });
 				expect(fsReadFile).toHaveBeenCalledWith(mockNonTeamProjectFile, { encoding: 'utf8' });
@@ -1055,8 +1157,10 @@ describe('SourceControlImportService', () => {
 					} as Variables,
 				]);
 
+				projectRepository.findOne.mockResolvedValue(null);
+
 				// Act
-				await service.importTeamProjectsFromWorkFolder(candidates);
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
 
 				// Assert
 				expect(variableService.deleteByIds).toHaveBeenCalledWith(['var2']);
