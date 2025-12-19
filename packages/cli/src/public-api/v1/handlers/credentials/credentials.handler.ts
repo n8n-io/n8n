@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import type express from 'express';
 import { z } from 'zod';
 
@@ -64,6 +66,19 @@ export = {
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
 			const { id: credentialId } = req.params;
+
+			if (req.body.isGlobal !== undefined) {
+				if (!Container.get(LicenseState).isSharingLicensed()) {
+					return res.status(403).json({ message: 'You are not licensed for sharing credentials' });
+				}
+
+				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+				if (!canShareGlobally) {
+					return res.status(403).json({
+						message: 'You do not have permission to change global sharing for credentials',
+					});
+				}
+			}
 
 			try {
 				const updatedCredential = await updateCredential(credentialId, req.body);

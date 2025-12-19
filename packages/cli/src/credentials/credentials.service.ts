@@ -452,7 +452,7 @@ export class CredentialsService {
 	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
-	): Promise<Omit<CredentialsEntity, 'data'> & { data?: ICredentialDataDecryptedObject }> {
+	): Promise<CredentialsEntity> {
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(mergedData.data, decryptedData);
@@ -461,19 +461,16 @@ export class CredentialsService {
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
 		const updateData = this.credentialsRepository.create(mergedData as ICredentialsDb);
-		await validateEntity(updateData);
 
-		const updateDataTyped = { ...updateData, data: mergedData.data } as Omit<
-			CredentialsEntity,
-			'data'
-		> & { data?: ICredentialDataDecryptedObject };
+		await validateEntity(updateData);
 
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData && updateDataTyped.data) {
-			updateDataTyped.data.oauthTokenData = decryptedData.oauthTokenData;
+		if (decryptedData.oauthTokenData) {
+			// @ts-ignore
+			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
-		return updateDataTyped;
+		return updateData;
 	}
 
 	createEncryptedData(credential: {

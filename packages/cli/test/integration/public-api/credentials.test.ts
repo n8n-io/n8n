@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -582,11 +583,10 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedCredential.type).toBe(originalType);
 	});
 
-	test('should update isGlobal and isResolvable fields', async () => {
+	test('should update isResolvable field', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 
 		const updatePayload = {
-			isGlobal: true,
 			isResolvable: true,
 		};
 
@@ -600,8 +600,135 @@ describe('PATCH /credentials/:id', () => {
 			id: savedCredential.id,
 		});
 
-		expect(updatedCredential.isGlobal).toBe(true);
 		expect(updatedCredential.isResolvable).toBe(true);
+	});
+
+	test('should fail to update isGlobal when sharing is not licensed', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Mock the license state to return false for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			isGlobal: true,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain('not licensed for sharing credentials');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(unchangedCredential.isGlobal).toBeFalsy();
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should fail to update isGlobal when user does not have credential:shareGlobally permission', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		// Mock the license state to return true for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(true);
+
+		const updatePayload = {
+			isGlobal: true,
+		};
+
+		// Member does not have credential:shareGlobally permission
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain(
+			'do not have permission to change global sharing for credentials',
+		);
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(unchangedCredential.isGlobal).toBeFalsy();
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should successfully update isGlobal when licensed and user has permission', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Mock the license state to return true for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(true);
+
+		const updatePayload = {
+			isGlobal: true,
+		};
+
+		// Owner has credential:shareGlobally permission
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify credential was updated
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(updatedCredential.isGlobal).toBe(true);
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should require license when setting isGlobal to false', async () => {
+		// First create a global credential
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Set it to global
+		await Container.get(CredentialsRepository).update(savedCredential.id, { isGlobal: true });
+
+		// Mock the license state to return false for sharing
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			isGlobal: false,
+		};
+
+		// Setting isGlobal to false should also require license
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain('not licensed for sharing credentials');
+
+		// Verify credential was not updated
+		const unchangedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(unchangedCredential.isGlobal).toBe(true);
+
+		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
 	});
 
 	test('should fail to update managed credentials', async () => {
@@ -753,6 +880,57 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.accessToken).toBe(originalAccessToken); // Should keep original, not blanking value
 		expect(updatedData.user).toBe('newUserValue'); // Should be updated
 		expect(updatedData.server).toBe(originalServer); // Should be preserved
+	});
+
+	test('should preserve oauthTokenData when updating other fields', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Manually add oauthTokenData to the credential
+		const credentialsService = Container.get(CredentialsService);
+		const existingData = credentialsService.decrypt(
+			await Container.get(CredentialsRepository).findOneByOrFail({ id: savedCredential.id }),
+			true,
+		);
+		const dataWithOAuth = {
+			...existingData,
+			oauthTokenData: {
+				access_token: 'test_access_token',
+				refresh_token: 'test_refresh_token',
+			},
+		};
+
+		// Update the credential with oauthTokenData
+		const encryptedWithOAuth = credentialsService.createEncryptedData({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+			data: dataWithOAuth,
+		});
+		await Container.get(CredentialsRepository).update(savedCredential.id, encryptedWithOAuth);
+
+		// Update without including oauthTokenData in the payload
+		const updatePayload = {
+			data: {
+				accessToken: 'newToken',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Verify oauthTokenData was preserved
+		const updatedData = await getDecryptedCredentialData(savedCredential.id);
+		expect(updatedData.oauthTokenData).toEqual({
+			access_token: 'test_access_token',
+			refresh_token: 'test_refresh_token',
+		});
+		// And other fields should be updated
+		expect(updatedData.accessToken).toBe('newToken');
 	});
 });
 

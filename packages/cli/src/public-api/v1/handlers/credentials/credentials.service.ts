@@ -139,18 +139,15 @@ export async function updateCredential(
 			delete updateData.data.oauthTokenData;
 		}
 
+		const credentialsService = Container.get(CredentialsService);
+
+		// Decrypt existing data to access oauthTokenData
+		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+
 		let dataToEncrypt: ICredentialDataDecryptedObject;
 
 		// If isPartialData is true, merge with existing decrypted data and unredact
 		if (updateData.isPartialData === true) {
-			const credentialsService = Container.get(CredentialsService);
-
-			// Decrypt existing data to allow merging and unredaction
-			const decryptedData = credentialsService.decrypt(
-				existingCredential as CredentialsEntity,
-				true,
-			);
-
 			// First merge existing decrypted data with new data
 			// This ensures all existing fields are preserved unless explicitly overridden
 			const mergedData = {
@@ -160,14 +157,14 @@ export async function updateCredential(
 
 			// Then unredact any redacted values (e.g., replace "***" with original values)
 			dataToEncrypt = credentialsService.unredact(mergedData, decryptedData);
-
-			// Preserve oauthTokenData from existing credential
-			if (decryptedData.oauthTokenData) {
-				dataToEncrypt.oauthTokenData = decryptedData.oauthTokenData;
-			}
 		} else {
 			// isPartialData is false or undefined (default): replace entire data object
 			dataToEncrypt = updateData.data;
+		}
+
+		// Preserve oauthTokenData from existing credential
+		if (decryptedData.oauthTokenData) {
+			dataToEncrypt.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
 		const newCredential = new CredentialsEntity();
@@ -182,12 +179,12 @@ export async function updateCredential(
 		Object.assign(credentialData, encryptedData);
 	}
 
-	if (updateData.isGlobal !== undefined) {
-		credentialData.isGlobal = updateData.isGlobal;
-	}
-
 	if (updateData.isResolvable !== undefined) {
 		credentialData.isResolvable = updateData.isResolvable;
+	}
+
+	if (updateData.isGlobal !== undefined) {
+		credentialData.isGlobal = updateData.isGlobal;
 	}
 
 	credentialData.updatedAt = new Date();
