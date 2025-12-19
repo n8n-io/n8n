@@ -228,16 +228,15 @@ test.describe('@isolated', () => {
 			await api.setMaxTeamProjectsQuota(-1);
 
 			await n8n.api.signin('owner');
+			const teamProject = await n8n.api.projects.createProject('Development');
+			await n8n.api.workflows.createWorkflow({
+				name: 'Sharing Test Workflow',
+				nodes: [],
+				connections: {},
+				active: false,
+			});
+
 			await n8n.navigate.toHome();
-
-			await n8n.projectComposer.createProject('Development');
-
-			await n8n.sideBar.clickHomeButton();
-			await n8n.workflows.clickNewWorkflowCard();
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Sharing Test Workflow');
-			await n8n.canvas.waitForSaveWorkflowCompleted();
-
-			await n8n.sideBar.clickHomeButton();
 			await n8n.projectTabs.clickCredentialsTab();
 			await n8n.credentials.emptyListCreateCredentialButton.click();
 			await n8n.credentials.selectCredentialType('Notion API');
@@ -254,9 +253,9 @@ test.describe('@isolated', () => {
 
 			const sharingDropdown = n8n.credentials.credentialModal.getVisibleDropdown();
 			await expect(sharingDropdown.locator('li')).toHaveCount(5);
-			await expect(sharingDropdown.getByText('Development')).toBeVisible();
+			await expect(sharingDropdown.getByText(/Development/)).toBeVisible();
 
-			await sharingDropdown.getByText('Development').click();
+			await sharingDropdown.getByText(/Development/).click();
 			await n8n.credentials.credentialModal.saveSharing();
 			await n8n.credentials.credentialModal.close();
 
@@ -271,9 +270,11 @@ test.describe('@isolated', () => {
 			await workflowSharingDropdown.locator('li').first().click();
 			await n8n.workflowSharingModal.save();
 
-			await n8n.sideBar.getProjectMenuItems().first().click();
-			await n8n.workflows.clickNewWorkflowCard();
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test workflow 2');
+			const teamWorkflow = await n8n.api.workflows.createInProject(teamProject.id, {
+				name: 'Test workflow 2',
+			});
+
+			await n8n.navigate.toWorkflow(teamWorkflow.id);
 
 			// Team project workflow cannot be shared
 			await n8n.canvas.openShareModal();
@@ -281,8 +282,7 @@ test.describe('@isolated', () => {
 
 			await n8n.workflowSharingModal.close();
 
-			await n8n.sideBar.getProjectMenuItems().first().click();
-			await n8n.projectTabs.clickCredentialsTab();
+			await n8n.navigate.toCredentials(teamProject.id);
 			await n8n.credentials.addResource.credential();
 			await n8n.credentials.selectCredentialType('Notion API');
 			await n8n.credentials.credentialModal.fillField('apiKey', TEST_API_KEY);

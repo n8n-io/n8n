@@ -1,5 +1,5 @@
 import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
-import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
@@ -747,7 +747,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
 		if (
 			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			!currentSessionWorkflowId.value ||
 			currentSessionWorkflowId.value === activeWorkflowId
 		) {
 			return;
