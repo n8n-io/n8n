@@ -437,6 +437,27 @@ function onResize(event: ResizeData) {
 
 const onResizeThrottle = useThrottleFn(onResize, 10);
 
+const postFocusPanelState = () => {
+	if (window.parent !== window) {
+		window.parent.postMessage(
+			JSON.stringify({
+				command: 'focusPanelStateChanged',
+				width: focusPanelStore.focusPanelWidth,
+				active: focusPanelStore.focusPanelActive,
+			}),
+			'*',
+		);
+	}
+};
+
+watch(
+	[() => focusPanelStore.focusPanelWidth, () => focusPanelStore.focusPanelActive],
+	() => {
+		postFocusPanelState();
+	},
+	{ immediate: true },
+);
+
 function onOpenNdv() {
 	if (node.value) {
 		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');

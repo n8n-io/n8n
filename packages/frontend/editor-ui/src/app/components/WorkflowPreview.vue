@@ -37,6 +37,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	close: [];
+	focusPanelStateChanged: [{ width: number; active: boolean }];
 }>();
 
 const i18n = useI18n();
@@ -136,26 +137,6 @@ const onMouseLeave = () => {
 	insideIframe.value = false;
 };
 
-const receiveMessage = ({ data }: MessageEvent) => {
-	if (!data?.includes?.('"command"')) {
-		return;
-	}
-	try {
-		const json = JSON.parse(data);
-		if (json.command === 'n8nReady') {
-			onReady();
-		} else if (json.command === 'openNDV') {
-			onOpenNDV();
-		} else if (json.command === 'closeNDV') {
-			onCloseNDV();
-		} else if (json.command === 'error') {
-			onError();
-		}
-	} catch (e) {
-		console.error(e);
-	}
-};
-
 const onReady = () => {
 	ready.value = true;
 
@@ -176,6 +157,38 @@ const onCloseNDV = () => {
 
 const onError = () => {
 	emit('close');
+};
+
+interface IframeMessage {
+	command: string;
+	width?: number;
+	active?: boolean;
+}
+
+type CommandHandler = (json: IframeMessage) => void;
+
+const commandHandlers: Record<string, CommandHandler> = {
+	n8nReady: () => onReady(),
+	openNDV: () => onOpenNDV(),
+	closeNDV: () => onCloseNDV(),
+	error: () => onError(),
+	focusPanelStateChanged: (json) => {
+		emit('focusPanelStateChanged', { width: json.width ?? 0, active: json.active ?? false });
+	},
+};
+
+const receiveMessage = ({ data }: MessageEvent) => {
+	if (typeof data !== 'string' || !data.includes('"command"')) {
+		return;
+	}
+	try {
+		const json = JSON.parse(data) as IframeMessage;
+		if (json.command in commandHandlers) {
+			commandHandlers[json.command](json);
+		}
+	} catch (e) {
+		console.error(e);
+	}
 };
 
 const onDocumentScroll = () => {
