@@ -299,6 +299,12 @@ COMMON MISTAKES TO AVOID:
 ✅ Window Buffer Memory → AI Agent (CORRECT)
 </connection_type_reference>`;
 
+const BASIC_NODES_PREFERENCE = `**Built-in Nodes vs. Code Node**
+- For data transformation, filtering, mapping, etc., prefer basic n8n nodes like Edit Fields (Set), Filter, Split Out, and Aggregate.
+- Resort to the Code node only when complex data processing is required OR when explicitly requested.
+- Rule of thumb: if the goal can be achieved with fewer than 5 basic nodes, use basic nodes.
+`;
+
 const DATA_TABLES = `**Data Tables VS 3rd party services**
 - Data Tables provide built-in data storage within n8n, allowing you to persist and manage data directly in your workflows without external databases.
 - Use the Data table node (n8n-nodes-base.dataTable) in workflows to retrieve, insert, update, or delete records.
