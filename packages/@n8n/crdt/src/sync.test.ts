@@ -1,5 +1,5 @@
 import { CRDTEngine, createCRDTProvider } from './index';
-import type { CRDTDoc, CRDTMap } from './types';
+import type { CRDTArray, CRDTDoc, CRDTMap } from './types';
 
 /**
  * Sync conformance tests - verify that two docs can sync manually
@@ -10,6 +10,8 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Sync Conformance: %s', (e
 	let doc2: CRDTDoc;
 	let map1: CRDTMap<unknown>;
 	let map2: CRDTMap<unknown>;
+	let arr1: CRDTArray<string>;
+	let arr2: CRDTArray<string>;
 
 	beforeEach(() => {
 		const provider = createCRDTProvider({ engine });
@@ -17,6 +19,8 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Sync Conformance: %s', (e
 		doc2 = provider.createDoc('doc-2');
 		map1 = doc1.getMap('data');
 		map2 = doc2.getMap('data');
+		arr1 = doc1.getArray('items');
+		arr2 = doc2.getArray('items');
 	});
 
 	afterEach(() => {
@@ -209,6 +213,147 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('Sync Conformance: %s', (e
 
 			// Both converge to same value
 			expect(map1.get('shared')).toBe(map2.get('shared'));
+		});
+	});
+
+	describe('Array Sync via encodeState/applyUpdate', () => {
+		it('should sync array from doc1 to doc2', () => {
+			arr1.push('a', 'b', 'c');
+
+			doc2.applyUpdate(doc1.encodeState());
+
+			expect(arr2.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should sync array from doc2 to doc1', () => {
+			arr2.push('x', 'y', 'z');
+
+			doc1.applyUpdate(doc2.encodeState());
+
+			expect(arr1.toArray()).toEqual(['x', 'y', 'z']);
+		});
+
+		it('should merge concurrent array pushes after initial sync', () => {
+			// Initial sync - establish shared history
+			arr1.push('initial');
+			doc2.applyUpdate(doc1.encodeState());
+
+			// Both make concurrent changes
+			arr1.push('from1');
+			arr2.push('from2');
+
+			// Exchange updates
+			const state1 = doc1.encodeState();
+			const state2 = doc2.encodeState();
+			doc2.applyUpdate(state1);
+			doc1.applyUpdate(state2);
+
+			// Both should have all items and converge
+			expect(arr1.toArray()).toContain('initial');
+			expect(arr1.toArray()).toContain('from1');
+			expect(arr1.toArray()).toContain('from2');
+			expect(arr2.toArray()).toEqual(arr1.toArray());
+		});
+
+		it('should sync insert operations', () => {
+			arr1.push('a', 'c');
+			doc2.applyUpdate(doc1.encodeState());
+
+			arr1.insert(1, 'b');
+			doc2.applyUpdate(doc1.encodeState());
+
+			expect(arr2.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should sync delete operations', () => {
+			arr1.push('a', 'b', 'c', 'd');
+			doc2.applyUpdate(doc1.encodeState());
+
+			arr1.delete(1, 2);
+			doc2.applyUpdate(doc1.encodeState());
+
+			expect(arr2.toArray()).toEqual(['a', 'd']);
+		});
+
+		it('should sync nested objects in arrays', () => {
+			const objArr1 = doc1.getArray<{ name: string }>('objects');
+			objArr1.push({ name: 'first' }, { name: 'second' });
+
+			doc2.applyUpdate(doc1.encodeState());
+
+			const objArr2 = doc2.getArray<{ name: string }>('objects');
+			expect(objArr2.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
+		});
+
+		it('should sync modifications to nested objects in arrays', () => {
+			const objArr1 = doc1.getArray<{ value: number }>('objects');
+			objArr1.push({ value: 100 });
+			doc2.applyUpdate(doc1.encodeState());
+
+			// Modify nested object
+			const obj = objArr1.get(0) as CRDTMap<number>;
+			obj.set('value', 999);
+			doc2.applyUpdate(doc1.encodeState());
+
+			const objArr2 = doc2.getArray<{ value: number }>('objects');
+			const result = objArr2.get(0) as CRDTMap<number>;
+			expect(result.get('value')).toBe(999);
+		});
+
+		it('should sync arrays stored in maps', () => {
+			map1.set('list', ['item1', 'item2']);
+			doc2.applyUpdate(doc1.encodeState());
+
+			const list2 = map2.get('list') as CRDTArray<string>;
+			expect(list2.toArray()).toEqual(['item1', 'item2']);
+		});
+
+		it('should sync modifications to arrays stored in maps', () => {
+			map1.set('list', ['a']);
+			doc2.applyUpdate(doc1.encodeState());
+
+			const list1 = map1.get('list') as CRDTArray<string>;
+			list1.push('b', 'c');
+			doc2.applyUpdate(doc1.encodeState());
+
+			const list2 = map2.get('list') as CRDTArray<string>;
+			expect(list2.toArray()).toEqual(['a', 'b', 'c']);
+		});
+	});
+
+	describe('Array Sync via onUpdate', () => {
+		it('should sync array changes in real-time', () => {
+			doc1.onUpdate((update) => doc2.applyUpdate(update));
+			doc2.onUpdate((update) => doc1.applyUpdate(update));
+
+			arr1.push('from1');
+			expect(arr2.toArray()).toContain('from1');
+
+			arr2.push('from2');
+			expect(arr1.toArray()).toContain('from2');
+		});
+
+		it('should handle rapid sequential array operations', () => {
+			doc1.onUpdate((update) => doc2.applyUpdate(update));
+			doc2.onUpdate((update) => doc1.applyUpdate(update));
+
+			for (let i = 0; i < 10; i++) {
+				arr1.push(`item-${i}`);
+			}
+
+			expect(arr2.length).toBe(10);
+			expect(arr2.toArray()).toEqual(arr1.toArray());
+		});
+
+		it('should handle transacted array changes', () => {
+			doc1.onUpdate((update) => doc2.applyUpdate(update));
+			doc2.onUpdate((update) => doc1.applyUpdate(update));
+
+			doc1.transact(() => {
+				arr1.push('a', 'b', 'c');
+			});
+
+			expect(arr2.toArray()).toEqual(['a', 'b', 'c']);
 		});
 	});
 });
