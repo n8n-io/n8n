@@ -88,6 +88,7 @@ const getProperties = computed(() => {
 const multipleValues = computed(() => {
 	return !!props.parameter.typeOptions?.multipleValues;
 });
+const addedOptionalValues = ref(new Map<string, Set<string>>());
 const parameterOptions = computed(() => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return [];
 
@@ -115,10 +116,8 @@ const requiredOnlyButtonText = computed(() => {
 	return locale.nodeText(activeNode.value?.type).requiredOnlyButtonText(props.parameter);
 });
 
-const addedOptionalValues = ref(new Map<string, Set<string>>());
-
-const getOptionalValuesKey = (optionName: string, index?: number): string => {
-	return index !== undefined ? `${optionName}-${index}` : optionName;
+const getOptionalValuesKey = (propertyName: string, index?: number): string => {
+	return index !== undefined ? `${propertyName}-${index}` : propertyName;
 };
 
 const hasNonDefaultValue = (
@@ -139,69 +138,69 @@ const initializeAddedOptionalValues = () => {
 
 	addedOptionalValues.value.clear();
 
-	for (const option of props.parameter.options) {
-		const optionPath = `${props.path}.${option.name}`;
-		const optionValues = get(props.nodeValues, optionPath) as
+	for (const property of props.parameter.options) {
+		const propertyPath = `${props.path}.${property.name}`;
+		const propertyValues = get(props.nodeValues, propertyPath) as
 			| INodeParameters[]
 			| INodeParameters
 			| undefined;
 
-		if (!optionValues) continue;
+		if (!propertyValues) continue;
 
-		const optionalPropertyDefs = option.values.filter(
-			(f) => f.required !== true && f.type !== 'notice',
+		const optionalValueDefs = property.values.filter(
+			(v) => v.required !== true && v.type !== 'notice',
 		);
 
-		if (multipleValues.value && Array.isArray(optionValues)) {
-			optionValues.forEach((itemValues, index) => {
-				const key = getOptionalValuesKey(option.name, index);
-				const addedProps = new Set<string>();
+		if (multipleValues.value && Array.isArray(propertyValues)) {
+			propertyValues.forEach((itemValues, index) => {
+				const key = getOptionalValuesKey(property.name, index);
+				const addedValues = new Set<string>();
 
-				for (const propDef of optionalPropertyDefs) {
-					if (hasNonDefaultValue(propDef, itemValues)) {
-						addedProps.add(propDef.name);
+				for (const valueDef of optionalValueDefs) {
+					if (hasNonDefaultValue(valueDef, itemValues)) {
+						addedValues.add(valueDef.name);
 					}
 				}
 
-				if (addedProps.size > 0) {
-					addedOptionalValues.value.set(key, addedProps);
+				if (addedValues.size > 0) {
+					addedOptionalValues.value.set(key, addedValues);
 				}
 			});
-		} else if (typeof optionValues === 'object' && !Array.isArray(optionValues)) {
-			const key = getOptionalValuesKey(option.name);
-			const addedProps = new Set<string>();
+		} else if (typeof propertyValues === 'object' && !Array.isArray(propertyValues)) {
+			const key = getOptionalValuesKey(property.name);
+			const addedValues = new Set<string>();
 
-			for (const propDef of optionalPropertyDefs) {
-				if (hasNonDefaultValue(propDef, optionValues)) {
-					addedProps.add(propDef.name);
+			for (const valueDef of optionalValueDefs) {
+				if (hasNonDefaultValue(valueDef, propertyValues)) {
+					addedValues.add(valueDef.name);
 				}
 			}
 
-			if (addedProps.size > 0) {
-				addedOptionalValues.value.set(key, addedProps);
+			if (addedValues.size > 0) {
+				addedOptionalValues.value.set(key, addedValues);
 			}
 		}
 	}
 };
 
-const isOptionalValueAdded = (optionName: string, valueName: string, index?: number): boolean => {
-	const key = getOptionalValuesKey(optionName, index);
+const isOptionalValueAdded = (propertyName: string, valueName: string, index?: number): boolean => {
+	const key = getOptionalValuesKey(propertyName, index);
 	return addedOptionalValues.value.get(key)?.has(valueName) ?? false;
 };
 
 const getVisiblePropertyValues = (
-	option: INodePropertyCollection,
+	property: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
 	if (!requiredOnly.value) {
-		return option.values;
+		return property.values;
 	}
 
-	const key = getOptionalValuesKey(option.name, index);
+	const key = getOptionalValuesKey(property.name, index);
 	const addedValues = addedOptionalValues.value.get(key);
-	const itemPath = getPropertyPath(option.name, index);
+	const itemPath = getPropertyPath(property.name, index);
 
-	return option.values.filter((value) => {
+	return property.values.filter((value) => {
 		// Always show required values
 		if (value.required === true) {
 			return true;
@@ -227,16 +226,16 @@ const getVisiblePropertyValues = (
 };
 
 const getPickerPropertyValues = (
-	option: INodePropertyCollection,
+	property: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
 	if (!requiredOnly.value) {
 		return [];
 	}
 
-	const itemPath = getPropertyPath(option.name, index);
+	const itemPath = getPropertyPath(property.name, index);
 
-	return option.values.filter((value) => {
+	return property.values.filter((value) => {
 		// Only include non-required values
 		if (value.required === true) {
 			return false;
@@ -258,11 +257,11 @@ const getPickerPropertyValues = (
 };
 
 const toggleOptionalValue = (
-	option: INodePropertyCollection,
+	property: INodePropertyCollection,
 	valueName: string,
 	index?: number,
 ) => {
-	const key = getOptionalValuesKey(option.name, index);
+	const key = getOptionalValuesKey(property.name, index);
 	let valueSet = addedOptionalValues.value.get(key);
 
 	if (!valueSet) {
@@ -270,7 +269,7 @@ const toggleOptionalValue = (
 		addedOptionalValues.value.set(key, valueSet);
 	}
 
-	const valueDef = option.values.find((v) => v.name === valueName);
+	const valueDef = property.values.find((v) => v.name === valueName);
 	if (!valueDef) return;
 
 	const isCurrentlyAdded = valueSet.has(valueName);
@@ -278,7 +277,7 @@ const toggleOptionalValue = (
 	if (isCurrentlyAdded) {
 		// Remove the value - clear it
 		valueSet.delete(valueName);
-		const path = getPropertyPath(option.name, index) + `.${valueName}`;
+		const path = getPropertyPath(property.name, index) + `.${valueName}`;
 
 		emit('valueChanged', {
 			name: path,
@@ -287,7 +286,7 @@ const toggleOptionalValue = (
 	} else {
 		// Add the value - set default
 		valueSet.add(valueName);
-		const path = getPropertyPath(option.name, index) + `.${valueName}`;
+		const path = getPropertyPath(property.name, index) + `.${valueName}`;
 
 		emit('valueChanged', {
 			name: path,
