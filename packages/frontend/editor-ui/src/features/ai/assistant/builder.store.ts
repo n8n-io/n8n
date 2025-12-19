@@ -272,12 +272,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
+			// Remove tools that were still running when aborted
+			const messagesWithoutRunningTools = chatMessages.value.filter(
+				(msg) => !(msg.type === 'tool' && msg.status === 'running'),
+			);
+
 			const userMsg = createAssistantMessage(
 				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
 				'aborted-streaming',
 				{ aborted: true },
 			);
-			chatMessages.value = [...chatMessages.value, userMsg];
+			chatMessages.value = [...messagesWithoutRunningTools, userMsg];
 			return;
 		}
 
