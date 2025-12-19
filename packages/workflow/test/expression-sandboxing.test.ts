@@ -2,6 +2,7 @@ import { Tournament } from '@n8n/tournament';
 
 import {
 	DollarSignValidator,
+	FunctionThisSanitizer,
 	PrototypeSanitizer,
 	sanitizer,
 	DOLLAR_SIGN_ERROR,
@@ -14,7 +15,7 @@ const tournament = new Tournament(
 	undefined,
 	undefined,
 	{
-		before: [],
+		before: [FunctionThisSanitizer],
 		after: [PrototypeSanitizer, DollarSignValidator],
 	},
 );
@@ -223,6 +224,144 @@ describe('PrototypeSanitizer', () => {
 					Number,
 				});
 			}).toThrowError(errorRegex);
+		});
+	});
+});
+
+describe('FunctionThisSanitizer', () => {
+	describe('call expression where callee is function expression', () => {
+		it('should transform call expression', () => {
+			const result = tournament.execute('{{ (function() { return this.process; })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+		});
+
+		it('should handle recursive call expression', () => {
+			const result = tournament.execute(
+				'{{ (function factorial(n) { return n <= 1 ? 1 : n * factorial(n - 1); })(5) }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(120);
+		});
+
+		it('should not expose process.env through named function', () => {
+			const result = tournament.execute('{{ (function test(){ return this.process.env })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should still allow access to workflow data via variables', () => {
+			const result = tournament.execute('{{ (function() { return $json.value; })() }}', {
+				__sanitize: sanitizer,
+				$json: { value: 'test-value' },
+			});
+			expect(result).toBe('test-value');
+		});
+
+		it('should handle nested call expression', () => {
+			const result = tournament.execute(
+				'{{ (function() { return (function() { return this.process; })(); })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toEqual({});
+		});
+
+		it('should handle nested recursive call expression', () => {
+			const result = tournament.execute(
+				'{{ (function() { return (function factorial(n) { return n <= 1 ? 1 : n * factorial(n - 1); })(5); })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(120);
+		});
+	});
+
+	describe('function expression', () => {
+		it('should transform function expression', () => {
+			const result = tournament.execute('{{ [1].map(function() { return this.process; }) }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual([{}]);
+		});
+
+		it('should handle recursive function expression', () => {
+			const result = tournament.execute(
+				'{{ [1, 2, 3, 4, 5].map(function factorial(n) { return n <= 1 ? 1 : n * factorial(n - 1); }) }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toEqual([1, 2, 6, 24, 120]);
+		});
+
+		it('should handle nested function expression', () => {
+			const result = tournament.execute(
+				'{{ [1, 2, 3].map(function(n) { return function() { return n * 2; }; }).map(function(fn) { return fn(); }) }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toEqual([2, 4, 6]);
+		});
+
+		it('should handle nested recursion', () => {
+			const result = tournament.execute(
+				'{{ (function fibonacci(n) { return n <= 1 ? n : fibonacci(n - 1) + fibonacci(n - 2); })(7) }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(13);
+		});
+	});
+
+	describe('process.env security', () => {
+		it('should bind function expressions to empty process object', () => {
+			const processResult = tournament.execute('{{ (function(){ return this.process })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(processResult).toEqual({});
+			expect(Object.keys(processResult as object)).toEqual([]);
+
+			const envResult = tournament.execute('{{ (function(){ return this.process.env })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(envResult).toBe(undefined);
+		});
+
+		it('should block process.env in nested functions', () => {
+			const result = tournament.execute(
+				'{{ (function outer(){ return (function inner(){ return this.process.env })(); })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(undefined);
+		});
+
+		it('should block process.env in callbacks', () => {
+			const result = tournament.execute(
+				'{{ [1].map(function(){ return this.process.env; })[0] }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(undefined);
+		});
+
+		it('should still allow access to workflow variables', () => {
+			const result = tournament.execute('{{ (function(){ return $json.value })() }}', {
+				__sanitize: sanitizer,
+				$json: { value: 'workflow-data' },
+			});
+			expect(result).toBe('workflow-data');
 		});
 	});
 });

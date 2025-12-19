@@ -84,7 +84,7 @@ The `@n8n/css-var-naming` rule enforces a structured naming pattern for CSS cust
 --n8n--color--primary: #0d6efd;
 --chat--button--background--primary: #0d6efd;
 --p--color--primary-500: #0d6efd;
---p--color--gray-740: #2e3440;
+--color--neutral-850: #2e3440;
 
 /* Component tokens */
 --button--background--primary: #0d6efd;

@@ -32,4 +32,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Create Annotation Tag',
 		description: 'Allows creating new annotation tags.',
 	},
+	'workflow:publish': {
+		displayName: 'Publish Workflow',
+		description: 'Allows publishing and unpublishing workflows.',
+	},
 };

@@ -58,9 +58,10 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { text, workflowContext } = payload.payload;
+			const { id, text, workflowContext, featureFlags } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
+					id,
 					message: text,
 					workflowContext: {
 						currentWorkflow: workflowContext.currentWorkflow,
@@ -68,6 +69,7 @@ export class AiController {
 						executionSchema: workflowContext.executionSchema,
 						expressionValues: workflowContext.expressionValues,
 					},
+					featureFlags,
 				},
 				req.user,
 				signal,
@@ -270,9 +272,7 @@ export class AiController {
 		@Body payload: AiUsageSettingsRequestDto,
 	): Promise<void> {
 		try {
-			await this.aiUsageService.updateAllowSendingParameterValues(
-				payload.allowSendingParameterValues,
-			);
+			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

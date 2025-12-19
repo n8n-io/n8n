@@ -5,7 +5,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
-import { useCanvas } from '@/features/workflows/canvas/composables/useCanvas';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
@@ -31,9 +30,6 @@ const {
 	hasExecutionErrors,
 	hasValidationErrors,
 	executionStatus,
-	executionWaiting,
-	executionWaitingForNext,
-	executionRunning,
 	hasRunData,
 	runDataIterations,
 	isDisabled,
@@ -41,7 +37,6 @@ const {
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const route = useRoute();
-const { isExecuting } = useCanvas();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
@@ -49,33 +44,30 @@ const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
 
-const isNodeExecuting = computed(() => {
-	if (!isExecuting.value) return false;
-
-	return (
-		executionRunning.value || executionWaitingForNext.value || executionStatus.value === 'running' // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
-	);
-});
 const commonClasses = computed(() => [
 	$style.status,
 	spinnerScrim ? $style.spinnerScrim : '',
 	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
 ]);
+
+const groupedExecutionErrors = computed(() => {
+	const errorCounts = executionErrors.value.reduce(
+		(acc, error) => {
+			acc[error] = (acc[error] || 0) + 1;
+			return acc;
+		},
+		{} as Record<string, number>,
+	);
+
+	return Object.entries(errorCounts).map(([error, count]) =>
+		count > 1 ? `${error} (x${count})` : error,
+	);
+});
 </script>
 
 <template>
-	<div v-if="executionWaiting || executionStatus === 'waiting'">
-		<div :class="[...commonClasses, $style.waiting]">
-			<N8nTooltip placement="bottom">
-				<template #content>
-					<div v-text="executionWaiting"></div>
-				</template>
-				<N8nIcon icon="clock" :size="size" />
-			</N8nTooltip>
-		</div>
-	</div>
 	<div
-		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
+		v-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
 	>
@@ -83,13 +75,6 @@ const commonClasses = computed(() => [
 			<template #content> {{ i18n.baseText('node.install-to-use') }} </template>
 			<N8nIcon icon="hard-drive-download" :size="size" />
 		</N8nTooltip>
-	</div>
-	<div
-		v-else-if="isNodeExecuting"
-		data-test-id="canvas-node-status-running"
-		:class="[...commonClasses, $style.running]"
-	>
-		<N8nIcon icon="refresh-cw" spin />
 	</div>
 	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
 		<N8nIcon icon="power" :size="size" />
@@ -101,7 +86,7 @@ const commonClasses = computed(() => [
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="executionErrors" />
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="groupedExecutionErrors" />
 			</template>
 			<N8nIcon icon="node-execution-error" :size="size" />
 		</N8nTooltip>

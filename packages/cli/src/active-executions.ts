@@ -21,6 +21,7 @@ import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
@@ -94,7 +95,16 @@ export class ActiveExecutions {
 				// this is resuming, so keep `startedAt` as it was
 			};
 
-			await this.executionRepository.updateExistingExecution(executionId, execution);
+			const updateSucceeded = await this.executionRepository.updateExistingExecution(
+				executionId,
+				execution,
+				'waiting', // Only update if status is 'waiting'
+			);
+
+			if (!updateSucceeded) {
+				// Another process is already resuming this execution
+				throw new ExecutionAlreadyResumingError(executionId);
+			}
 		}
 
 		const resumingExecution = this.activeExecutions[executionId];
@@ -168,7 +178,14 @@ export class ActiveExecutions {
 			// There is no execution running with that id
 			return;
 		}
-		this.eventService.emit('execution-cancelled', { executionId });
+
+		const workflowData = execution.executionData.workflowData;
+		this.eventService.emit('execution-cancelled', {
+			executionId,
+			workflowId: workflowData?.id,
+			workflowName: workflowData?.name,
+			reason: cancellationError.reason,
+		});
 		execution.responsePromise?.reject(cancellationError);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise

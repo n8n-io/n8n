@@ -14,14 +14,22 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 	}
 
 	/**
-	 * Delete workflow history records earlier than a given date, except for current workflow versions.
+	 * Delete workflow history records earlier than a given date, except for current and active workflow versions.
 	 */
-	async deleteEarlierThanExceptCurrent(date: Date) {
+	async deleteEarlierThanExceptCurrentAndActive(date: Date) {
 		const currentVersionIdsSubquery = this.manager
 			.createQueryBuilder()
 			.subQuery()
 			.select('w.versionId')
 			.from(WorkflowEntity, 'w')
+			.getQuery();
+
+		const activeVersionIdsSubquery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('w.activeVersionId')
+			.from(WorkflowEntity, 'w')
+			.where('w.activeVersionId IS NOT NULL')
 			.getQuery();
 
 		return await this.manager
@@ -30,6 +38,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.from(WorkflowHistory)
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
+			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
 			.execute();
 	}
 }

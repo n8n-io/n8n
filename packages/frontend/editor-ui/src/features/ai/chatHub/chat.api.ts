@@ -15,6 +15,8 @@ import type {
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
 	EnrichedStructuredChunk,
+	ChatHubLLMProvider,
+	ChatProviderSettingsDto,
 } from '@n8n/api-types';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
@@ -48,17 +50,15 @@ export function sendMessageApi(
 
 export function editMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	editId: ChatMessageId,
-	payload: ChatHubEditMessageRequest,
+	request: { sessionId: ChatSessionId; editId: ChatMessageId; payload: ChatHubEditMessageRequest },
 	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
 	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${editId}/edit`,
-		payload,
+		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
 		onMessageUpdated,
 		onDone,
 		onError,
@@ -68,17 +68,19 @@ export function editMessageApi(
 
 export function regenerateMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	retryId: ChatMessageId,
-	payload: ChatHubRegenerateMessageRequest,
+	request: {
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubRegenerateMessageRequest;
+	},
 	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
 ) {
 	void streamRequest<EnrichedStructuredChunk>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${retryId}/regenerate`,
-		payload,
+		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
 		onMessageUpdated,
 		onDone,
 		onError,
@@ -97,8 +99,16 @@ export const stopGenerationApi = async (
 
 export const fetchConversationsApi = async (
 	context: IRestApiContext,
+	limit: number,
+	cursor?: string,
 ): Promise<ChatHubConversationsResponse> => {
-	const apiEndpoint = '/chat/conversations';
+	const queryParams = new URLSearchParams();
+	queryParams.append('limit', limit.toString());
+	if (cursor) {
+		queryParams.append('cursor', cursor);
+	}
+
+	const apiEndpoint = `/chat/conversations?${queryParams.toString()}`;
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
@@ -174,3 +184,46 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };
+
+export const fetchChatSettingsApi = async (
+	context: IRestApiContext,
+): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> => {
+	const apiEndpoint = '/chat/settings';
+	const response = await makeRestApiRequest<{
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	}>(context, 'GET', apiEndpoint);
+	return response.providers;
+};
+
+export const fetchChatProviderSettingsApi = async (
+	context: IRestApiContext,
+	provider: ChatHubLLMProvider,
+): Promise<ChatProviderSettingsDto> => {
+	const apiEndpoint = '/chat/settings/' + provider;
+	const response = await makeRestApiRequest<{ settings: ChatProviderSettingsDto }>(
+		context,
+		'GET',
+		apiEndpoint,
+	);
+	return response.settings;
+};
+
+export const updateChatSettingsApi = async (
+	context: IRestApiContext,
+	settings: ChatProviderSettingsDto,
+): Promise<ChatProviderSettingsDto> => {
+	const apiEndpoint = '/chat/settings';
+
+	return await makeRestApiRequest<ChatProviderSettingsDto>(context, 'POST', apiEndpoint, {
+		payload: settings,
+	});
+};
+
+export function buildChatAttachmentUrl(
+	context: IRestApiContext,
+	sessionId: string,
+	messageId: string,
+	attachmentIndex: number,
+): string {
+	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
+}

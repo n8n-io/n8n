@@ -1,9 +1,4 @@
-import type {
-	FrontendSettings,
-	IEnterpriseSettings,
-	ITelemetrySettings,
-	N8nEnvFeatFlags,
-} from '@n8n/api-types';
+import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -15,8 +10,6 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
-import { UrlService } from './url.service';
-
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -25,6 +18,7 @@ import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
@@ -36,35 +30,70 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+import { UrlService } from './url.service';
 
-export type PublicEnterpriseSettings = Pick<
-	IEnterpriseSettings,
-	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
->;
+/**
+ * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
+ */
+export type PublicFrontendSettings = {
+	/** Controls initialization flow in settings store */
+	settingsMode: FrontendSettings['settingsMode'];
 
-export type PublicFrontendSettings = Pick<
-	FrontendSettings,
-	| 'settingsMode'
-	| 'instanceId'
-	| 'defaultLocale'
-	| 'versionCli'
-	| 'releaseChannel'
-	| 'versionNotifications'
-	| 'userManagement'
-	| 'sso'
-	| 'mfa'
-	| 'authCookie'
-	| 'oauthCallbackUrls'
-	| 'banners'
-	| 'previewMode'
-	| 'telemetry'
-> & {
-	enterprise: PublicEnterpriseSettings;
+	/** Used to bypass authentication on the workflows/demo page */
+	previewMode: FrontendSettings['previewMode'];
+
+	authCookie: {
+		/** Blocks insecure access incompatible with the authentication cookie. */
+		secure: FrontendSettings['authCookie']['secure'];
+	};
+
+	userManagement: {
+		/** Used to control login page UI behaviour and conditional SSO Login display */
+		authenticationMethod: FrontendSettings['userManagement']['authenticationMethod'];
+
+		/** Enables initial owner setup */
+		showSetupOnFirstLoad: FrontendSettings['userManagement']['showSetupOnFirstLoad'];
+
+		/** Determines forgot password page UX */
+		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+	};
+
+	enterprise: {
+		/** License check for SAML for SSO button visibility */
+		saml: FrontendSettings['enterprise']['saml'];
+
+		/** License check for OIDC for SSO button visibility */
+		oidc: FrontendSettings['enterprise']['oidc'];
+
+		/** License check for LDAP authentication */
+		ldap: FrontendSettings['enterprise']['ldap'];
+	};
+
+	sso: {
+		saml: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
+		};
+		ldap: {
+			/** Config flag for LDAP authentication */
+			loginEnabled: FrontendSettings['sso']['ldap']['loginEnabled'];
+
+			/** Customizes login form label (defaults to "Email") */
+			loginLabel: FrontendSettings['sso']['ldap']['loginLabel'];
+		};
+		oidc: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['oidc']['loginEnabled'];
+
+			/** Required for OIDC authentication redirect URL */
+			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
+		};
+	};
 };
 
 @Service()
 export class FrontendService {
-	settings: FrontendSettings;
+	private settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 
@@ -84,12 +113,10 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
-
-		this.initSettings();
-
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
 			void import('@/modules/community-packages/community-packages.service').then(
@@ -112,7 +139,18 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
-	private initSettings() {
+	private getConfigValue(
+		key: 'easyAIWorkflowOnboarded' | 'ai.allowSendingParameterValues',
+		defaultValue: boolean,
+	): boolean {
+		try {
+			return config.getEnv(key) ?? defaultValue;
+		} catch {
+			return defaultValue;
+		}
+	}
+
+	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
@@ -201,7 +239,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -348,7 +386,10 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): FrontendSettings {
+	async getSettings(): Promise<FrontendSettings> {
+		if (!this.settings) {
+			await this.initSettings();
+		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
@@ -364,7 +405,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -376,20 +417,11 @@ export class FrontendService {
 		}
 
 		this.settings.banners.dismissed = dismissedBanners;
-		try {
-			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
-		} catch {
-			this.settings.easyAIWorkflowOnboarded = false;
-		}
-
-		// Load AI usage settings
-		try {
-			this.settings.ai.allowSendingParameterValues =
-				config.getEnv('ai.allowSendingParameterValues') ?? true;
-		} catch {
-			// Not yet in DB, use default
-			this.settings.ai.allowSendingParameterValues = true;
-		}
+		this.settings.easyAIWorkflowOnboarded = this.getConfigValue('easyAIWorkflowOnboarded', false);
+		this.settings.ai.allowSendingParameterValues = this.getConfigValue(
+			'ai.allowSendingParameterValues',
+			true,
+		);
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -500,42 +532,34 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	getPublicSettings(): PublicFrontendSettings {
+	async getPublicSettings(): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
-			instanceId,
-			defaultLocale,
-			versionCli,
-			releaseChannel,
-			versionNotifications,
-			userManagement,
-			sso,
-			mfa,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
-			oauthCallbackUrls,
-			banners,
 			previewMode,
-			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
-		} = this.getSettings();
+			enterprise: { saml, ldap, oidc },
+		} = await this.getSettings();
 
-		return {
+		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
-			instanceId,
-			defaultLocale,
-			versionCli,
-			releaseChannel,
-			versionNotifications,
-			userManagement,
-			sso,
-			mfa,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: {
+				saml: {
+					loginEnabled: ssoSaml.loginEnabled,
+				},
+				ldap: ssoLdap,
+				oidc: {
+					loginEnabled: ssoOidc.loginEnabled,
+					loginUrl: ssoOidc.loginUrl,
+				},
+			},
 			authCookie,
-			oauthCallbackUrls,
-			banners,
 			previewMode,
-			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise: { saml, ldap, oidc },
 		};
+		return publicSettings;
 	}
 
 	getModuleSettings() {

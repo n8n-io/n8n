@@ -225,6 +225,7 @@ export class Telemetry {
 		const updatedProperties = {
 			...properties,
 			instance_id: instanceId,
+			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,
 		};
 
