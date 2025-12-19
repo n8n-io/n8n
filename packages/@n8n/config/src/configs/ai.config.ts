@@ -1,6 +1,6 @@
 import { Config, Env } from '../decorators';
 
-class HeadersRecord {
+class RequestHeaders {
 	[key: string]: string;
 
 	constructor(headers: string) {
@@ -28,5 +28,5 @@ export class AiConfig {
 	/** Default headers sent with each request to OpenAI. Separate multiple headers with "\n" */
 	@Env('N8N_AI_OPENAI_DEFAULT_HEADERS')
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	openAiDefaultHeaders: HeadersRecord = { 'OPENAI-PLATFORM': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' };
+	openAiDefaultHeaders: RequestHeaders = { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' };
 }
