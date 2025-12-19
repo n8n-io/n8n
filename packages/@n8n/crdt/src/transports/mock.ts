@@ -8,6 +8,10 @@ type ReceiveHandler = (data: Uint8Array) => void;
  *
  * Two MockTransports can be linked together to simulate a bidirectional
  * connection. Data sent on one transport is received by the other.
+ *
+ * **TESTING ONLY:** Data delivery is synchronous for deterministic tests.
+ * Real transports (WebSocket, SharedWorker) will deliver asynchronously.
+ * Code that relies on synchronous delivery may have race conditions in production.
  */
 export class MockTransport implements SyncTransport {
 	private peer: MockTransport | null = null;
