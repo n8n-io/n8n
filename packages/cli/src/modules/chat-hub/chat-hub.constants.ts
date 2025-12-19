@@ -25,7 +25,7 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		version: 1.2,
 	},
 	ollama: {
-		name: '@n8n/n8n-nodes-langchain.lmOllama',
+		name: '@n8n/n8n-nodes-langchain.lmChatOllama',
 		version: 1,
 	},
 	azureOpenAi: {

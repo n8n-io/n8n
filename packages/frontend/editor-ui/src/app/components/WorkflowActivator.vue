@@ -6,11 +6,9 @@ import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
+
 import type { PermissionsRecord } from '@n8n/permissions';
-import {
-	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/app/constants';
+import { WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY } from '@/app/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { INodeUi } from '@/Interface';
@@ -69,12 +67,9 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
-const isNewWorkflow = computed(
-	() =>
-		!props.workflowId ||
-		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflowId === 'new',
-);
+const isNewWorkflow = computed(() => {
+	return !workflowsStore.isWorkflowSaved[props.workflowId];
+});
 
 const disabled = computed((): boolean => {
 	if (props.isArchived) {
