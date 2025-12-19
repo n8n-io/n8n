@@ -2,7 +2,7 @@ import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
-import { ChatHubSession } from './chat-hub-session.entity';
+import { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -12,7 +12,10 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		super(ChatHubSession, dataSource.manager);
 	}
 
-	async createChatSession(session: Partial<ChatHubSession>, trx?: EntityManager) {
+	async createChatSession(
+		session: Partial<IChatHubSession> & Pick<IChatHubSession, 'id'>,
+		trx?: EntityManager,
+	) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.insert(ChatHubSession, session);
 			return await em.findOneOrFail(ChatHubSession, {
@@ -42,7 +45,7 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		});
 	}
 
-	async updateChatSession(id: string, updates: Partial<ChatHubSession>, trx?: EntityManager) {
+	async updateChatSession(id: string, updates: Partial<IChatHubSession>, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.update(ChatHubSession, { id }, updates);
 			return await em.findOneOrFail(ChatHubSession, {

@@ -670,6 +670,135 @@ describe('AI Builder store', () => {
 			expect(builderStore.builderThinkingMessage).toBeUndefined();
 		});
 
+		it('should remove running tool messages when AbortError occurs', async () => {
+			const builderStore = useBuilderStore();
+
+			const abortError = new Error('AbortError');
+			abortError.name = 'AbortError';
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				// First send some tool messages - one completed, one running
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'add_nodes',
+							toolCallId: 'call-1',
+							status: 'completed',
+							updates: [{ type: 'output', data: { success: true } }],
+						},
+					],
+				});
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'connect_nodes',
+							toolCallId: 'call-2',
+							status: 'running',
+							updates: [{ type: 'input', data: {} }],
+						},
+					],
+				});
+				// Then simulate abort
+				onError(abortError);
+			});
+
+			builderStore.sendChatMessage({ text: 'test message' });
+
+			// Wait for messages to be processed
+			await vi.waitFor(() => {
+				const abortedMsg = builderStore.chatMessages.find(
+					(msg) => msg.type === 'text' && 'aborted' in msg,
+				);
+				return expect(abortedMsg).toBeDefined();
+			});
+
+			// Should have: user message, completed tool, aborted message
+			// Running tool should be removed
+			const toolMessages = builderStore.chatMessages.filter((msg) => msg.type === 'tool');
+			expect(toolMessages).toHaveLength(1);
+			expect((toolMessages[0] as ChatUI.ToolMessage).toolName).toBe('add_nodes');
+			expect((toolMessages[0] as ChatUI.ToolMessage).status).toBe('completed');
+
+			// Verify no running tools remain
+			const runningTools = toolMessages.filter(
+				(msg) => (msg as ChatUI.ToolMessage).status === 'running',
+			);
+			expect(runningTools).toHaveLength(0);
+
+			// Verify aborted message is present
+			const abortedMessage = builderStore.chatMessages.find(
+				(msg) => msg.type === 'text' && 'aborted' in msg,
+			) as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage).toBeDefined();
+			expect(abortedMessage.aborted).toBe(true);
+		});
+
+		it('should remove running tool messages when service error occurs', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				// First send some tool messages - one completed, one running
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'add_nodes',
+							toolCallId: 'call-1',
+							status: 'completed',
+							updates: [{ type: 'output', data: { success: true } }],
+						},
+					],
+				});
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'connect_nodes',
+							toolCallId: 'call-2',
+							status: 'running',
+							updates: [{ type: 'input', data: {} }],
+						},
+					],
+				});
+				// Then simulate a service error
+				onError(new Error('Network error'));
+			});
+
+			builderStore.sendChatMessage({ text: 'test message' });
+
+			// Wait for error message to be processed
+			await vi.waitFor(() => {
+				const errorMsg = builderStore.chatMessages.find((msg) => msg.type === 'error');
+				return expect(errorMsg).toBeDefined();
+			});
+
+			// Should have: user message, completed tool, error message
+			// Running tool should be removed
+			const toolMessages = builderStore.chatMessages.filter((msg) => msg.type === 'tool');
+			expect(toolMessages).toHaveLength(1);
+			expect((toolMessages[0] as ChatUI.ToolMessage).toolName).toBe('add_nodes');
+			expect((toolMessages[0] as ChatUI.ToolMessage).status).toBe('completed');
+
+			// Verify no running tools remain
+			const runningTools = toolMessages.filter(
+				(msg) => (msg as ChatUI.ToolMessage).status === 'running',
+			);
+			expect(runningTools).toHaveLength(0);
+
+			// Verify error message is present
+			const errorMessage = builderStore.chatMessages.find(
+				(msg) => msg.type === 'error',
+			) as ChatUI.ErrorMessage;
+			expect(errorMessage).toBeDefined();
+			expect(errorMessage.retry).toBeDefined();
+		});
+
 		it('should abort previous request when sending new message', () => {
 			const builderStore = useBuilderStore();
 

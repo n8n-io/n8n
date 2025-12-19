@@ -36,6 +36,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
+import { inE2ETests } from '../../constants';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
@@ -471,11 +472,10 @@ export class ChatHubWorkflowService {
 	}
 
 	getSystemMessageMetadata(timeZone: string) {
-		const now = DateTime.now().setZone(timeZone).toISO({
-			includeOffset: true,
-		});
+		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
-		return `The user's current local date and time is: ${now} (timezone: ${timeZone}).
+		return `The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
 You can only produce text responses.
