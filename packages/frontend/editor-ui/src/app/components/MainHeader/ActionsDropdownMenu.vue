@@ -147,16 +147,16 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	if (!props.readOnly && !props.isArchived && props.workflowPermissions.update) {
+	if (!props.readOnly && !props.isArchived) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
-			disabled: !onWorkflowPage.value,
+			disabled: !onWorkflowPage.value || props.workflowPermissions.update !== true,
 		});
 	}
 
 	if (
-		(!props.readOnly && !props.isArchived && props.workflowPermissions.update) ||
+		(props.workflowPermissions.update === true && !props.readOnly && !props.isArchived) ||
 		props.isNewWorkflow
 	) {
 		actions.unshift({
