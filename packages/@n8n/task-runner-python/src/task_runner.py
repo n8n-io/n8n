@@ -326,7 +326,6 @@ class TaskRunner:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=self.config.task_timeout,
-                pipe_reader_timeout=self.config.pipe_reader_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )
 
