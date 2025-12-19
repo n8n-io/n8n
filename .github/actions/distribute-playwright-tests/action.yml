@@ -1,0 +1,106 @@
+name: 'Distribute Playwright Tests'
+description: 'Distributes Playwright tests across shards using duration-based greedy bin-packing'
+
+inputs:
+  shards:
+    description: 'Total number of shards'
+    required: true
+  index:
+    description: 'Shard index (0-based)'
+    required: true
+  metrics-path:
+    description: 'Path to metrics JSON file'
+    required: false
+    default: '.github/test-metrics/playwright.json'
+  dry-run:
+    description: 'Show distribution plan without outputting specs'
+    required: false
+    default: 'false'
+
+outputs:
+  specs:
+    description: 'Space-separated list of spec files for this shard'
+    value: ${{ steps.distribute.outputs.specs }}
+  spec-count:
+    description: 'Number of specs assigned to this shard'
+    value: ${{ steps.distribute.outputs.spec_count }}
+  estimated-duration:
+    description: 'Estimated duration for this shard in seconds'
+    value: ${{ steps.distribute.outputs.estimated_duration }}
+  grep-pattern:
+    description: 'Grep pattern for Playwright --grep flag (escaped for shell)'
+    value: ${{ steps.distribute.outputs.grep_pattern }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate metrics file exists
+      shell: bash
+      run: |
+        if [[ ! -f "${{ inputs.metrics-path }}" ]]; then
+          echo "::error::Metrics file not found: ${{ inputs.metrics-path }}"
+          echo "Run 'node scripts/fetch-currents-metrics.mjs' to generate metrics."
+          exit 1
+        fi
+        echo "Using metrics from: ${{ inputs.metrics-path }}"
+        echo "Metrics updated: $(jq -r '.updatedAt' ${{ inputs.metrics-path }})"
+
+    - name: Show distribution plan (dry-run)
+      if: inputs.dry-run == 'true'
+      shell: bash
+      run: |
+        node scripts/distribute-tests.mjs \
+          --shards=${{ inputs.shards }} \
+          --dry-run \
+          --metrics=${{ inputs.metrics-path }}
+
+    - name: Distribute tests
+      id: distribute
+      if: inputs.dry-run != 'true'
+      shell: bash
+      run: |
+        # Get specs for this shard
+        SPECS=$(node scripts/distribute-tests.mjs \
+          --shards=${{ inputs.shards }} \
+          --index=${{ inputs.index }} \
+          --metrics=${{ inputs.metrics-path }})
+
+        # Count specs
+        SPEC_COUNT=$(echo "$SPECS" | wc -l | tr -d ' ')
+
+        # Calculate estimated duration from metrics
+        ESTIMATED_MS=0
+        while IFS= read -r spec; do
+          DURATION=$(jq -r --arg s "$spec" '.specs[$s].avgDuration // 30000' ${{ inputs.metrics-path }})
+          ESTIMATED_MS=$((ESTIMATED_MS + DURATION))
+        done <<< "$SPECS"
+        ESTIMATED_SECONDS=$((ESTIMATED_MS / 1000))
+
+        # Create grep pattern for Playwright
+        # Escape special regex characters and join with |
+        GREP_PATTERN=$(echo "$SPECS" | sed 's/[.[\*^$()+?{|]/\\&/g' | tr '\n' '|' | sed 's/|$//')
+
+        # Convert specs to space-separated for output
+        SPECS_SPACE=$(echo "$SPECS" | tr '\n' ' ' | sed 's/ $//')
+
+        # Set outputs
+        echo "specs<<EOF" >> $GITHUB_OUTPUT
+        echo "$SPECS_SPACE" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "spec_count=$SPEC_COUNT" >> $GITHUB_OUTPUT
+        echo "estimated_duration=$ESTIMATED_SECONDS" >> $GITHUB_OUTPUT
+        echo "grep_pattern<<EOF" >> $GITHUB_OUTPUT
+        echo "$GREP_PATTERN" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        # Log summary
+        echo "::group::Shard ${{ inputs.index }}/${{ inputs.shards }} Distribution"
+        echo "Specs assigned: $SPEC_COUNT"
+        echo "Estimated duration: ${ESTIMATED_SECONDS}s (~$((ESTIMATED_SECONDS / 60))m)"
+        echo ""
+        echo "Specs:"
+        echo "$SPECS" | head -10
+        if [[ $SPEC_COUNT -gt 10 ]]; then
+          echo "... and $((SPEC_COUNT - 10)) more"
+        fi
+        echo "::endgroup::"

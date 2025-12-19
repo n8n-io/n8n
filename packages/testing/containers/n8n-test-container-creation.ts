@@ -35,8 +35,12 @@ import {
 	N8N_KEYCLOAK_CERT_PATH,
 } from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
-import type { ObservabilityStack, ScrapeTarget } from './n8n-test-container-observability';
-import type { TracingStack } from './n8n-test-container-tracing';
+import {
+	setupObservabilityStack,
+	type ObservabilityStack,
+	type ScrapeTarget,
+} from './n8n-test-container-observability';
+import { setupTracingStack, type TracingStack } from './n8n-test-container-tracing';
 import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
@@ -364,7 +368,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	// Vector collects container logs independently (persists even when process exits)
 	if (observabilityEnabled && network) {
 		log('Setting up observability stack (VictoriaLogs + VictoriaMetrics + Vector)...');
-		const { setupObservabilityStack } = await import('./n8n-test-container-observability');
 
 		// Pre-compute scrape targets (hostnames are deterministic)
 		const workerCount = queueConfig?.workers ?? 0;
@@ -412,7 +415,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (tracingEnabled && network) {
 		log('Setting up tracing stack (n8n-tracer + Jaeger)...');
-		const { setupTracingStack } = await import('./n8n-test-container-tracing');
 
 		tracingStack = await setupTracingStack({
 			projectName: uniqueProjectName,
