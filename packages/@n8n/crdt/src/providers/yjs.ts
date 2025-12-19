@@ -157,10 +157,13 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 		private readonly doc: Y.Doc,
 	) {}
 
-	get(key: string): T | CRDTMap<unknown> | undefined {
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
 		const value = this.yMap.get(key);
 		if (value instanceof Y.Map) {
 			return new YjsMap(value, this.doc);
+		}
+		if (value instanceof Y.Array) {
+			return new YjsArray(value, this.doc);
 		}
 		return value as T | undefined;
 	}
