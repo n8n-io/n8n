@@ -5,7 +5,13 @@ import { Service } from '@n8n/di';
 import axios from 'axios';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import {
+	ensureError,
+	jsonParse,
+	UnexpectedError,
+	UserError,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -26,6 +32,7 @@ import { toError } from '@/utils';
 
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
+import { getCommunityNodeTypes } from './community-node-types-utils';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
 import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
@@ -316,19 +323,37 @@ export class CommunityPackagesService {
 
 		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
-			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
-			try {
-				// Optimistic approach - stop if any installation fails
-				for (const missingPackage of missingPackages) {
-					await this.installPackage(missingPackage.packageName, missingPackage.version);
+			this.logger.info('Attempting to reinstall missing packages', {
+				missingPackages: [...missingPackages],
+			});
+			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
+			const vettedPackages = await getCommunityNodeTypes(environment);
 
-					missingPackages.delete(missingPackage);
-				}
-				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
-				await this.loadNodesAndCredentials.postProcessLoaders();
-			} catch (error) {
-				this.logger.error('n8n was unable to install the missing packages.');
+			const checksums = new Map<string, Map<string, string>>();
+			for (const p of vettedPackages) {
+				const versionMap = new Map<string, string>();
+				versionMap.set(p.npmVersion, p.checksum);
+				for (const v of p.nodeVersions ?? []) versionMap.set(v.npmVersion, v.checksum);
+				checksums.set(p.packageName, versionMap);
 			}
+
+			for (const missingPackage of missingPackages) {
+				try {
+					const checksum = checksums.get(missingPackage.packageName)?.get(missingPackage.version);
+					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
+					missingPackages.delete(missingPackage);
+				} catch (error) {
+					this.logger.error(
+						`Failed to reinstall community package ${missingPackage.packageName}: ${ensureError(error).message}`,
+					);
+				}
+			}
+
+			if (missingPackages.size === 0) {
+				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
+			}
+
+			await this.loadNodesAndCredentials.postProcessLoaders();
 		} else {
 			this.logger.warn(
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
