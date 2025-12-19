@@ -1,5 +1,5 @@
-import type { CRDTDoc, Unsubscribe } from '../types';
 import type { SyncTransport } from '../transports';
+import type { CRDTDoc, Unsubscribe } from '../types';
 import type { SyncProvider } from './types';
 
 type SyncStateHandler = (syncing: boolean) => void;
