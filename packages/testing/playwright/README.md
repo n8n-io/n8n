@@ -9,8 +9,8 @@ pnpm build:docker # from root first to test against local changes
 ## Quick Start
 ```bash
 pnpm test:all                 									# Run all tests (fresh containers, pnpm build:docker from root first to ensure local containers)
-pnpm test:local           											# Starts a local server and runs the UI tests
-N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the UI tests against the instance running
+pnpm test:local           											# Starts a local server and runs the E2E tests
+N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the instance running
 ```
 
 ## Separate Backend and Frontend URLs
@@ -43,7 +43,7 @@ pnpm test:chaos									# Runs the chaos tests
 
 
 # Development
-pnpm test:all --grep "workflow"           # Pattern match, can run across all test types UI/cli-workflow/performance
+pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
 ```
 

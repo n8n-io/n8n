@@ -65,6 +65,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'license-community-plus-registered': (event) => this.licenseCommunityPlusRegistered(event),
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
+			'variable-deleted': (event) => this.variableDeleted(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
@@ -276,15 +277,24 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Variable
 
-	private variableCreated(event: RelayEventMap['variable-created']) {
+	private variableCreated({ user, projectId }: RelayEventMap['variable-created']) {
 		this.telemetry.track('User created variable', {
-			project_id: event.projectId,
+			user_id: user.id,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 
-	private variableUpdated(event: RelayEventMap['variable-updated']) {
+	private variableUpdated({ user, projectId }: RelayEventMap['variable-updated']) {
 		this.telemetry.track('User updated variable', {
-			project_id: event.projectId,
+			user_id: user.id,
+			...(projectId && { project_id: projectId }),
+		});
+	}
+
+	private variableDeleted({ user, projectId }: RelayEventMap['variable-deleted']) {
+		this.telemetry.track('User deleted variable', {
+			user_id: user.id,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 

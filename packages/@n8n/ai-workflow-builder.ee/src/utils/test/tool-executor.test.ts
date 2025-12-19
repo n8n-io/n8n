@@ -52,8 +52,8 @@ describe('tool-executor', () => {
 			validationHistory: [],
 			techniqueCategories: [],
 			previousSummary: 'EMPTY',
-			nodeConfigurations: {},
 			templateIds: [],
+			cachedTemplates: [],
 		});
 
 		// Helper to create mock tool
@@ -819,26 +819,31 @@ describe('tool-executor', () => {
 			expect(result.techniqueCategories).toEqual([...categories1, ...categories2]);
 		});
 
-		it('should collect nodeConfigurations from tool state updates', async () => {
-			const configs1 = {
-				'n8n-nodes-base.telegram': [{ version: 1, parameters: { chatId: '123', text: 'Hello' } }],
-			};
-			const configs2 = {
-				'n8n-nodes-base.telegram': [{ version: 1, parameters: { chatId: '456', text: 'World' } }],
-				'n8n-nodes-base.gmail': [{ version: 2, parameters: { operation: 'send' } }],
-			};
+		it('should collect cachedTemplates from tool state updates', async () => {
+			const templates1 = [
+				{
+					name: 'Template 1',
+					workflow: { nodes: [], connections: {}, name: 'Template 1' },
+				},
+			];
+			const templates2 = [
+				{
+					name: 'Template 2',
+					workflow: { nodes: [], connections: {}, name: 'Template 2' },
+				},
+			];
 
 			const command1 = new MockCommand({
 				update: {
 					messages: [new ToolMessage({ content: 'Examples', tool_call_id: 'call-1' })],
-					nodeConfigurations: configs1,
+					cachedTemplates: templates1,
 				},
 			});
 
 			const command2 = new MockCommand({
 				update: {
 					messages: [new ToolMessage({ content: 'More Examples', tool_call_id: 'call-2' })],
-					nodeConfigurations: configs2,
+					cachedTemplates: templates2,
 				},
 			});
 
@@ -870,10 +875,9 @@ describe('tool-executor', () => {
 			const options: ToolExecutorOptions = { state, toolMap };
 			const result = await executeToolsInParallel(options);
 
-			expect(result.nodeConfigurations).toBeDefined();
-			// Should have 2 telegram configs merged and 1 gmail config
-			expect(result.nodeConfigurations?.['n8n-nodes-base.telegram']).toHaveLength(2);
-			expect(result.nodeConfigurations?.['n8n-nodes-base.gmail']).toHaveLength(1);
+			expect(result.cachedTemplates).toBeDefined();
+			// Should have 2 templates collected
+			expect(result.cachedTemplates).toHaveLength(2);
 		});
 	});
 });

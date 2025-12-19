@@ -85,7 +85,7 @@ const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 });
 
 async function onUserMessage(content: string) {
-	const isNewWorkflow = workflowsStore.isNewWorkflow;
+	const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
 	// Save the workflow to get workflow ID which is used for session
 	if (isNewWorkflow) {
@@ -233,9 +233,11 @@ watch(
 	},
 );
 
-// Reset on route change
+// Reset on route change, but not if streaming is in progress
 watch(currentRoute, () => {
-	onNewWorkflow();
+	if (!builderStore.streaming) {
+		onNewWorkflow();
+	}
 });
 
 defineExpose({

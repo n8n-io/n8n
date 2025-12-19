@@ -46,7 +46,7 @@ function handleSelectMenu(action: MenuAction) {
 </script>
 
 <template>
-	<RouterLink :to="getAgentRoute(agent.model)" :class="$style.card">
+	<RouterLink :to="getAgentRoute(agent.model)" :class="$style.card" data-test-id="chat-agent-card">
 		<ChatAgentAvatar :agent="agent" size="lg" />
 
 		<div :class="$style.content">
