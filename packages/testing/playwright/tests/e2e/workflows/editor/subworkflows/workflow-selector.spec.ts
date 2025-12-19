@@ -1,6 +1,5 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
-import { n8nPage } from '../../../../../pages/n8nPage';
 
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 
