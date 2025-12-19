@@ -1,8 +1,4 @@
-import {
-	DEFAULT_NEW_WORKFLOW_NAME,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WorkflowStateKey,
-} from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
 import type {
 	INewWorkflowData,
 	INodeUi,
@@ -66,7 +62,7 @@ export function useWorkflowState() {
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
 
-		if (ws.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID && ws.workflowsById[ws.workflow.id]) {
+		if (ws.workflow.id && ws.workflowsById[ws.workflow.id]) {
 			ws.workflowsById[ws.workflow.id].name = data.newName;
 		}
 	}
@@ -119,7 +115,8 @@ export function useWorkflowState() {
 	}
 
 	function setWorkflowId(id?: string) {
-		ws.workflow.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		// Set the workflow ID directly, or empty string if not provided
+		ws.workflow.id = id || '';
 		ws.workflowObject.id = ws.workflow.id;
 	}
 
@@ -231,7 +228,7 @@ export function useWorkflowState() {
 		resetAllNodesIssues();
 
 		setActive(ws.defaults.activeVersionId);
-		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });
 		setWorkflowTagIds([]);
