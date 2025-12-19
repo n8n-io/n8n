@@ -97,8 +97,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return false;
 		}
 
-		recordActivity();
-
 		if (isCurrentUserWriter.value) {
 			return true;
 		}
@@ -277,6 +275,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 					'[Collaboration] 🔓 Write access acquired by:',
 					writer?.user.email || event.data.userId,
 				);
+				recordActivity();
 				return;
 			}
 
