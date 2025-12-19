@@ -1,4 +1,4 @@
-name: 'Playwright: Coverage (Weekly)'
+name: 'Test: E2E Coverage Weekly'
 
 on:
   schedule:

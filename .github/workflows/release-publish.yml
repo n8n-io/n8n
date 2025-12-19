@@ -92,7 +92,7 @@ jobs:
   publish-to-docker-hub:
     name: Publish to DockerHub
     needs: [publish-to-npm, build-arm64]
-    uses: ./.github/workflows/docker-build-push-reusable.yml
+    uses: ./.github/workflows/build-docker-reusable.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
       release_type: ${{ needs.publish-to-npm.outputs.release_type }}
@@ -162,7 +162,7 @@ jobs:
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release
     needs: [publish-to-npm, create-github-release]
-    uses: ./.github/workflows/release-sbom-reusable.yml
+    uses: ./.github/workflows/sbom-generation-callable.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
       release_tag_ref: 'n8n@${{ needs.publish-to-npm.outputs.release }}'

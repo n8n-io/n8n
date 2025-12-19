@@ -134,7 +134,7 @@ jobs:
     name: E2E Tests
     needs: install-and-build
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/playwright-ci-reusable.yml
+    uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit

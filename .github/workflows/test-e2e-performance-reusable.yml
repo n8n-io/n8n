@@ -1,4 +1,4 @@
-name: 'Playwright: Performance'
+name: 'Test: E2E Performance'
 
 on:
   workflow_call:
@@ -7,11 +7,11 @@ on:
     - cron: '0 0 * * *' # Runs daily at midnight
   pull_request:
     paths:
-      - '.github/workflows/playwright-performance-reusable.yml'
+      - '.github/workflows/test-e2e-performance-reusable.yml'
 
 jobs:
   build-and-test-performance:
-    uses: ./.github/workflows/playwright-reusable.yml
+    uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:performance

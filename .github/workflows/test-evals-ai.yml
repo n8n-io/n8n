@@ -1,4 +1,4 @@
-name: 'Evals: AI Workflow Builder'
+name: 'Test: Evals AI Workflow Builder'
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
-      - '.github/workflows/evals-ci.yml'
+      - '.github/workflows/test-evals-ai.yml'
   schedule:
     - cron: '0 22 * * 6'
   workflow_dispatch:

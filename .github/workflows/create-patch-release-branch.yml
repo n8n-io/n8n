@@ -1,4 +1,4 @@
-name: 'Release: Create Patch Branch'
+name: Create Branch For Patch Release
 on:
   workflow_dispatch:
     inputs:
