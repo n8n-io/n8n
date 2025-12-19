@@ -285,32 +285,39 @@ describe('GetNodeExamplesTool', () => {
 		});
 	});
 
-	describe('batch processing with local cache', () => {
-		it('should use templates from earlier fetches for subsequent nodes in same batch', async () => {
+	describe('parallel batch processing', () => {
+		it('should fetch multiple nodes in parallel and combine results', async () => {
 			const configTool = createGetNodeConfigurationExamplesTool().tool;
 			const mockConfig = createToolConfig('get_node_configuration_examples', 'test-batch');
 
-			// First fetch returns a workflow containing BOTH httpRequest AND code nodes
-			mockFetchWorkflowsFromTemplates.mockResolvedValueOnce(
-				createMockFetchResult([
-					createMockWorkflow('Multi-Node Workflow', [
-						createNode({
-							id: 'http-1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 1,
-							parameters: { url: 'https://api.example.com' },
-						}),
-						createNode({
-							id: 'code-1',
-							name: 'Transform',
-							type: 'n8n-nodes-base.code',
-							typeVersion: 1,
-							parameters: { jsCode: 'return items.map(i => i);' },
-						}),
+			// Set up separate responses for each node type (fetched in parallel)
+			mockFetchWorkflowsFromTemplates
+				.mockResolvedValueOnce(
+					createMockFetchResult([
+						createMockWorkflow('HTTP Workflow', [
+							createNode({
+								id: 'http-1',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 1,
+								parameters: { url: 'https://api.example.com' },
+							}),
+						]),
 					]),
-				]),
-			);
+				)
+				.mockResolvedValueOnce(
+					createMockFetchResult([
+						createMockWorkflow('Code Workflow', [
+							createNode({
+								id: 'code-1',
+								name: 'Transform',
+								type: 'n8n-nodes-base.code',
+								typeVersion: 1,
+								parameters: { jsCode: 'return items.map(i => i);' },
+							}),
+						]),
+					]),
+				);
 
 			// Request examples for both nodes in one call
 			const result = await configTool.invoke(
@@ -330,8 +337,8 @@ describe('GetNodeExamplesTool', () => {
 			expect(message).toContain('code');
 			expect(message).toContain('return items.map');
 
-			// API should only be called ONCE - second node should use local cache
-			expect(mockFetchWorkflowsFromTemplates).toHaveBeenCalledTimes(1);
+			// API should be called for each node type (parallel fetching)
+			expect(mockFetchWorkflowsFromTemplates).toHaveBeenCalledTimes(2);
 		});
 	});
 
