@@ -31,7 +31,6 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
 import { UrlService } from './url.service';
-import { AiUsageService } from './ai-usage.service';
 
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
@@ -114,7 +113,6 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
-		private readonly aiUsageService: AiUsageService,
 		private readonly ownershipService: OwnershipService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
@@ -139,6 +137,17 @@ export class FrontendService {
 		}
 
 		return envFeatureFlags;
+	}
+
+	private getConfigValue(
+		key: 'easyAIWorkflowOnboarded' | 'ai.allowSendingParameterValues',
+		defaultValue: boolean,
+	): boolean {
+		try {
+			return config.getEnv(key) ?? defaultValue;
+		} catch {
+			return defaultValue;
+		}
 	}
 
 	private async initSettings() {
@@ -408,21 +417,11 @@ export class FrontendService {
 		}
 
 		this.settings.banners.dismissed = dismissedBanners;
-		try {
-			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
-		} catch {
-			this.settings.easyAIWorkflowOnboarded = false;
-		}
-
-		this.aiUsageService
-			.getAiUsageSettings()
-			.then((value) => {
-				this.settings.ai.allowSendingParameterValues = value;
-			})
-			.catch((error) => {
-				this.settings.ai.allowSendingParameterValues = false;
-				this.logger.error('Failed to get AI usage settings:', { error });
-			});
+		this.settings.easyAIWorkflowOnboarded = this.getConfigValue('easyAIWorkflowOnboarded', false);
+		this.settings.ai.allowSendingParameterValues = this.getConfigValue(
+			'ai.allowSendingParameterValues',
+			true,
+		);
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');

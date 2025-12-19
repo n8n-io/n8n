@@ -1,6 +1,7 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
 
 const KEY = 'ai.allowSendingParameterValues';
@@ -37,5 +38,6 @@ export class AiUsageService {
 			['key'],
 		);
 		await this.cacheService.set(KEY, allowSendingActualData.toString());
+		config.set(KEY, allowSendingActualData);
 	}
 }
