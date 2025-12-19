@@ -331,7 +331,7 @@ export = {
 	],
 	activateWorkflow: [
 		apiKeyHasScope('workflow:activate'),
-		projectScope('workflow:update', 'workflow'),
+		projectScope('workflow:publish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { versionId, name, description } = req.body;
@@ -358,7 +358,7 @@ export = {
 	],
 	deactivateWorkflow: [
 		apiKeyHasScope('workflow:deactivate'),
-		projectScope('workflow:update', 'workflow'),
+		projectScope('workflow:publish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
