@@ -66,6 +66,9 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 
 <style lang="scss" module>
 .saving {
+	// Keep the button disabled while saving, but prevent the icon from taking the disabled color.
+	--button--color--text--disabled: var(--button--color--text--highlight);
+
 	:global(.n8n-icon) {
 		animation: loading-rotate 1s linear infinite;
 	}
