@@ -211,4 +211,97 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 			expect(map3.toJSON()).toEqual(expected);
 		});
 	});
+
+	describe('Concurrent edit conflicts', () => {
+		it('should resolve conflict on same key (both converge)', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Both set the same key simultaneously
+			map1.set('shared', 'from-doc1');
+			map2.set('shared', 'from-doc2');
+
+			// Both should converge to the same value (CRDT determines winner)
+			const value1 = map1.get('shared');
+			const value2 = map2.get('shared');
+			expect(value1).toBe(value2);
+			expect(['from-doc1', 'from-doc2']).toContain(value1);
+		});
+
+		it('should merge non-conflicting concurrent changes', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Different keys - no conflict
+			map1.set('key1', 'value1');
+			map2.set('key2', 'value2');
+
+			// Both should have both keys
+			expect(map1.toJSON()).toEqual({ key1: 'value1', key2: 'value2' });
+			expect(map2.toJSON()).toEqual({ key1: 'value1', key2: 'value2' });
+		});
+
+		it('should handle rapid sequential updates to same key', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Rapid updates from doc1
+			map1.set('counter', 1);
+			map1.set('counter', 2);
+			map1.set('counter', 3);
+
+			// Doc2 should see final value
+			expect(map2.get('counter')).toBe(3);
+		});
+
+		it('should handle interleaved updates from both docs', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			map1.set('a', 1);
+			map2.set('b', 2);
+			map1.set('c', 3);
+			map2.set('d', 4);
+
+			const expected = { a: 1, b: 2, c: 3, d: 4 };
+			expect(map1.toJSON()).toEqual(expected);
+			expect(map2.toJSON()).toEqual(expected);
+		});
+
+		it('should handle nested object conflicts', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			// Both create nested structure with different values
+			map1.set('node', { x: 100 });
+			map2.set('node', { x: 200 });
+
+			// Both should converge
+			const node1 = map1.toJSON().node as { x: number };
+			const node2 = map2.toJSON().node as { x: number };
+			expect(node1.x).toBe(node2.x);
+			expect([100, 200]).toContain(node1.x);
+		});
+
+		it('should handle delete during concurrent update', async () => {
+			// Setup initial state
+			map1.set('key', 'initial');
+			await sync2.start();
+			await sync1.start();
+
+			// Now both have 'key'
+			expect(map2.get('key')).toBe('initial');
+
+			// Concurrent: doc1 updates, doc2 deletes
+			map1.set('key', 'updated');
+			map2.delete('key');
+
+			// Both should converge (either deleted or updated, but same)
+			const has1 = map1.has('key');
+			const has2 = map2.has('key');
+			expect(has1).toBe(has2);
+
+			expect(map1.get('key')).toBe(map2.get('key'));
+		});
+	});
 });
