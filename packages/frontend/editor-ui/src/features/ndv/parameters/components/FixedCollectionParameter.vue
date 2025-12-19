@@ -513,7 +513,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 								</Suspense>
 								<div
 									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
-									class="attribute-picker add-option"
+									class="optional-values-picker add-option"
 								>
 									<N8nSelect
 										:placeholder="requiredOnlyButtonText"
@@ -530,7 +530,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 											:label="value.displayName || value.name"
 											:value="value.name"
 										>
-											<div class="attribute-option">
+											<div class="optional-value-item">
 												<span>{{ value.displayName || value.name }}</span>
 												<N8nIcon
 													v-if="isOptionalValueAdded(property.name, value.name, index)"
@@ -571,7 +571,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					/>
 					<div
 						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
-						class="attribute-picker add-option"
+						class="optional-values-picker add-option"
 					>
 						<N8nSelect
 							:placeholder="requiredOnlyButtonText"
@@ -586,7 +586,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 								:label="value.displayName || value.name"
 								:value="value.name"
 							>
-								<div class="attribute-option">
+								<div class="optional-value-item">
 									<span>{{ value.displayName || value.name }}</span>
 									<N8nIcon
 										v-if="isOptionalValueAdded(property.name, value.name)"
@@ -641,12 +641,12 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 		flex-direction: column;
 	}
 
-	.attribute-picker {
+	.optional-values-picker {
 		margin-top: var(--spacing--xs);
 		margin-bottom: var(--spacing--xs);
 	}
 
-	:global(.attribute-option) {
+	:global(.optional-value-item) {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
