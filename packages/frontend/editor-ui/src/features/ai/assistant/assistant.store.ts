@@ -343,10 +343,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
 				}
 			: undefined;
+
 		return {
 			currentView: {
 				name: currentView,
-				description: assistantHelpers.getCurrentViewDescription(currentView),
+				description: `${allowSendingParameterValues.value ? '' : locale.baseText('aiAssistant.prompts.context.privacyNotice')} ${assistantHelpers.getCurrentViewDescription(currentView)}`,
 			},
 			activeNodeInfo: {
 				node: activeNodeForLLM ?? undefined,
@@ -369,7 +370,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
-					? assistantHelpers.simplifyResultData(executionResult)
+					? assistantHelpers.simplifyResultData(executionResult, {
+							removeParameterValues: !allowSendingParameterValues.value,
+						})
 					: undefined,
 		};
 	}

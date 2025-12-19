@@ -340,16 +340,16 @@ export const useAIAssistantHelpers = () => {
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
-		options: { compact?: boolean } = {},
+		options: { compact?: boolean; removeParameterValues?: boolean } = {},
 	): ChatRequest.ExecutionResultData {
-		const { compact = false } = options;
+		const { compact = false, removeParameterValues = false } = options;
 		const simplifiedResultData: ChatRequest.ExecutionResultData = {
 			runData: {},
 		};
 
-		// Handle optional error
+		// Handle optional error (can contain node parameter values, so we omit it if removeParameterValues is true)
 		if (data.error) {
-			simplifiedResultData.error = data.error;
+			simplifiedResultData.error = removeParameterValues ? undefined : data.error;
 		}
 
 		// Early return if runData is not present
