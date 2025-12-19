@@ -143,6 +143,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';
@@ -374,6 +375,7 @@ export const deprecatedIconSet = {
 	link: IconLucideLink,
 	list: IconLucideList,
 	lightbulb: IconLucideLightbulb,
+	'loader-circle': IconLucideLoaderCircle,
 	lock: IconLucideLock,
 	'map-signs': IconLucideMilestone,
 	'mouse-pointer': IconLucideMousePointer,

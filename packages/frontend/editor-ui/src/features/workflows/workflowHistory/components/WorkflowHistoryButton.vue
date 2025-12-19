@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 const locale = useI18n();
@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const uiStore = useUIStore();
 const isWorkflowSaving = ref(false);
+const loadingVisible = ref(false);
 const { debounce } = useDebounce();
 
 const debouncedRemoveSaveIndicator = debounce(
@@ -29,8 +30,12 @@ watch(
 	(value) => {
 		if (value) {
 			isWorkflowSaving.value = true;
+			loadingVisible.value = true;
 		} else {
 			debouncedRemoveSaveIndicator();
+			setTimeout(() => {
+				loadingVisible.value = false;
+			}, LOADING_ANIMATION_MIN_DURATION + 100);
 		}
 	},
 );
@@ -44,37 +49,81 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 </script>
 
 <template>
-	<N8nTooltip placement="bottom">
-		<RouterLink :to="workflowHistoryRoute">
-			<N8nIconButton
-				:class="{ [$style.saving]: isWorkflowSaving }"
-				:disabled="isNewWorkflow || isWorkflowSaving"
-				data-test-id="workflow-history-button"
-				type="highlight"
-				:icon="isWorkflowSaving ? 'rotate-left' : 'history'"
-				size="medium"
-			/>
-		</RouterLink>
-		<template #content>
-			<span v-if="isNewWorkflow">
-				{{ locale.baseText('workflowHistory.button.tooltip.empty') }}
-			</span>
-			<span v-else>{{ locale.baseText('workflowHistory.button.tooltip') }}</span>
-		</template>
-	</N8nTooltip>
+	<div :class="$style.relative">
+		<N8nTooltip placement="bottom">
+			<RouterLink :to="workflowHistoryRoute">
+				<N8nIcon
+					:class="{ [$style.loadingIcon]: true, [$style.loadingVisible]: loadingVisible }"
+					icon="spinner"
+					color="text-base"
+				/>
+				<N8nIconButton
+					:class="{ [$style.button]: true, [$style.buttonHidden]: isWorkflowSaving }"
+					:disabled="isNewWorkflow || isWorkflowSaving"
+					data-test-id="workflow-history-button"
+					type="highlight"
+					icon="history"
+					size="medium"
+				/>
+			</RouterLink>
+			<template #content>
+				<span v-if="isNewWorkflow">
+					{{ locale.baseText('workflowHistory.button.tooltip.empty') }}
+				</span>
+				<span v-else>{{ locale.baseText('workflowHistory.button.tooltip') }}</span>
+			</template>
+		</N8nTooltip>
+	</div>
 </template>
 
 <style lang="scss" module>
-.saving {
-	// Keep the button disabled while saving, but prevent the icon from taking the disabled color.
-	--button--color--text--disabled: var(--button--color--text--highlight);
+.relative {
+	position: relative;
+}
+
+.loadingIcon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0;
+	filter: blur(2px);
+	transition:
+		opacity 0.25s,
+		filter 0.25s;
+	pointer-events: none;
+}
+
+.loadingVisible {
+	opacity: 1;
+	filter: blur(0);
+	animation: loading-rotate 1s linear infinite;
+}
+
+.button {
+	transition:
+		opacity 0.25s,
+		filter 0.25s;
+	opacity: 1;
+	filter: blur(0);
+}
+
+.buttonHidden {
+	opacity: 0;
+	filter: blur(2px);
 
 	:global(.n8n-icon) {
-		animation: loading-rotate 1s linear infinite;
+		animation: icon-rotate 1s ease-in-out infinite;
 	}
 }
 
 @keyframes loading-rotate {
+	100% {
+		transform: translate(-50%, -50%) rotate(-360deg);
+	}
+}
+
+@keyframes icon-rotate {
 	100% {
 		transform: rotate(-360deg);
 	}
