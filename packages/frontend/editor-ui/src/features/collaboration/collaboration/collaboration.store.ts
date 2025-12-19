@@ -175,7 +175,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	async function fetchWriteLockState(): Promise<string | null> {
 		try {
 			const { workflowId } = workflowsStore;
-			if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			if (!workflowsStore.isWorkflowSaved[workflowId]) {
 				return null;
 			}
 
