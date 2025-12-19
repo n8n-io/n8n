@@ -72,6 +72,19 @@ export class ModelSelector implements INodeType {
 					return configuredInputs(parameters)
 				})($parameter)
 			}}`,
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Language Models'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.modelselector/',
+					},
+				],
+			},
+		},
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		requiredInputs: 1,
 		properties: [

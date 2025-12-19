@@ -1,16 +1,16 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.18.0",
+  "version": "2.0.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"WARNING: no test specified\" && exit 0",
     "typecheck": "tsc --noEmit",
     "benchmark": "zx scripts/run.mjs",
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
@@ -35,7 +35,7 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "axios": "catalog:",
-    "dotenv": "8.6.0",
+    "dotenv": "17.2.3",
     "nanoid": "catalog:",
     "zx": "^8.1.4"
   },

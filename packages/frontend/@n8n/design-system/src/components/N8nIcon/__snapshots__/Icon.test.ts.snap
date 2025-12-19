@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Icon > should render correctly with a custom color 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with a custom size 1`] = `
+"<svg viewBox="0 0 24 24" width="24px" height="24px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with a deprecated icon 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="variable">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 21s-4-3-4-9s4-9 4-9m8 0s4 3 4 9s-4 9-4 9M15 9l-6 6m0-6l6 6"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with default props 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with predefined size 1`] = `
+"<svg viewBox="0 0 24 24" width="16px" height="16px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;
+
+exports[`Icon > should render correctly with spin enabled 1`] = `
+"<svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" data-icon="check">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"></path>
+</svg>"
+`;

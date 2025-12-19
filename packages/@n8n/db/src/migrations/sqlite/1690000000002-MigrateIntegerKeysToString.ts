@@ -10,7 +10,6 @@ export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigr
 	transaction = false as const;
 
 	async up(context: MigrationContext) {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		await pruneExecutionsData(context);
 
 		const { queryRunner, tablePrefix } = context;

@@ -1,0 +1,4 @@
+evaluations/results/*
+evaluations/nodes.json
+.prompts/
+categorization-summary*

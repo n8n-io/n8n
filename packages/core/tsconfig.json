@@ -4,6 +4,7 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"lib": ["es2022"],
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {
@@ -18,7 +19,7 @@
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"references": [
-		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../@n8n/decorators/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },

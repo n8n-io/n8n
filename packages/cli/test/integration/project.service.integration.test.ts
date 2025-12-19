@@ -1,3 +1,10 @@
+import {
+	linkUserToProject,
+	createTeamProject,
+	getAllProjectRelations,
+	createWorkflow,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -5,10 +12,8 @@ import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { LicenseMocker } from '@test-integration/license';
 
-import { linkUserToProject, createTeamProject, getAllProjectRelations } from './shared/db/projects';
 import { createUser } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
+import { LicenseState } from '@n8n/backend-common';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
@@ -22,6 +27,7 @@ describe('ProjectService', () => {
 
 		const license: LicenseMocker = new LicenseMocker();
 		license.mock(Container.get(License));
+		license.mockLicenseState(Container.get(LicenseState));
 		license.enable('feat:projectRole:editor');
 	});
 
@@ -57,7 +63,7 @@ describe('ProjectService', () => {
 			expect(relations[0]).toMatchObject({
 				projectId: project.id,
 				userId: user.id,
-				role: 'project:admin',
+				role: { slug: 'project:admin' },
 			});
 		});
 
@@ -78,7 +84,7 @@ describe('ProjectService', () => {
 			expect(relations[0]).toMatchObject({
 				projectId: project.id,
 				userId: user.id,
-				role: 'project:editor',
+				role: { slug: 'project:editor' },
 			});
 		});
 	});
@@ -99,7 +105,7 @@ describe('ProjectService', () => {
 			expect(relations[0]).toMatchObject({
 				projectId: project.id,
 				userId: user.id,
-				role: 'project:admin',
+				role: { slug: 'project:admin' },
 			});
 		});
 	});

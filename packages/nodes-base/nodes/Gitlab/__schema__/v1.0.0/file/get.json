@@ -19,10 +19,10 @@
         "execute_filemode": {
             "type": "boolean"
         },
-        "file_path": {
+        "file_name": {
             "type": "string"
         },
-        "last_commit_id": {
+        "file_path": {
             "type": "string"
         },
         "ref": {
@@ -32,5 +32,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 4
 }

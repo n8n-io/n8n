@@ -2,7 +2,12 @@ import { Time } from '@n8n/constants';
 import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
 import type { ITaskDataConnections } from 'n8n-workflow';
-import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	jsonParse,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import { resolve, join, dirname } from 'path';
 
 const { E2E_TESTS } = process.env;
@@ -23,8 +28,12 @@ export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
+];
+
+export const TRIGGER_COUNT_EXCLUDED_NODES = [
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
 ];
 
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
@@ -52,6 +61,8 @@ export const RESPONSE_ERROR_MESSAGES = {
 } as const;
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
+export const OIDC_STATE_COOKIE_NAME = 'n8n-oidc-state';
+export const OIDC_NONCE_COOKIE_NAME = 'n8n-oidc-nonce';
 
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
@@ -75,10 +86,6 @@ export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
-export const MIN_PASSWORD_CHAR_LENGTH = 8;
-
-export const MAX_PASSWORD_CHAR_LENGTH = 64;
-
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;
@@ -88,6 +95,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'googleOAuth2Api',
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
+	'mcpOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {
@@ -128,9 +136,10 @@ export const WsStatusCodes = {
 	CloseGoingAway: 1001,
 	CloseProtocolError: 1002,
 	CloseUnsupportedData: 1003,
-	CloseNoStatus: 1005,
 	CloseAbnormal: 1006,
 	CloseInvalidData: 1007,
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
+
+export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';

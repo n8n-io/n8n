@@ -1,12 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
-import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import { License } from '@/license';
@@ -23,7 +22,6 @@ import {
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
-import { mockInstance } from '../../shared/mocking';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
@@ -113,7 +111,6 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
@@ -366,6 +363,27 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 		expect(resp.status).toBe(400);
 		expect(resp.body.data).toEqual({ updated: false });
 		expect(updateSpy).not.toBeCalled();
+	});
+
+	test('updates are reflected in list of secrets after manual sync', async () => {
+		// Baseline: current secrets before any change
+		const listBefore = await authOwnerAgent.get('/external-secrets/secrets');
+		expect(listBefore.status).toBe(200);
+		expect(listBefore.body.data).toEqual({ dummy: ['test1', 'test2'] });
+
+		// Arrange: change what the provider will publish on update()
+		const manager = Container.get(ExternalSecretsManager);
+		const provider = manager.getProvider('dummy') as unknown as DummyProvider;
+		provider._updateSecrets = { rotated: 'new-value' };
+
+		// Act: trigger manual update (as frontend would do)
+		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
+		expect(resp.status).toBe(200);
+
+		// Assert: list endpoint reflects freshly updated secrets
+		const listAfter = await authOwnerAgent.get('/external-secrets/secrets');
+		expect(listAfter.status).toBe(200);
+		expect(listAfter.body.data).toEqual({ dummy: ['rotated'] });
 	});
 });
 

@@ -1,18 +1,15 @@
-/**
- * @jest-environment jsdom
- */
+// @vitest-environment jsdom
 
 import { DateTime, Duration, Interval } from 'luxon';
-
-import { ExpressionError } from '@/errors/expression.error';
-import { extendSyntax } from '@/extensions/expression-extension';
-import type { INodeExecutionData } from '@/interfaces';
-import { Workflow } from '@/workflow';
 
 import { workflow } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
+import { ExpressionError } from '../src/errors/expression.error';
+import { extendSyntax } from '../src/extensions/expression-extension';
+import type { INodeExecutionData } from '../src/interfaces';
+import { Workflow } from '../src/workflow';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -71,9 +68,11 @@ describe('Expression', () => {
 			expect(evaluate('={{Reflect}}')).toEqual({});
 			expect(evaluate('={{Proxy}}')).toEqual({});
 
+			vi.useFakeTimers({ now: new Date() });
 			expect(() => evaluate('={{constructor}}')).toThrowError(
 				new ExpressionError('Cannot access "constructor" due to security concerns'),
 			);
+			vi.useRealTimers();
 
 			expect(evaluate('={{escape}}')).toEqual({});
 			expect(evaluate('={{unescape}}')).toEqual({});
@@ -85,11 +84,11 @@ describe('Expression', () => {
 				DateTime.now().toLocaleString(),
 			);
 
-			jest.useFakeTimers({ now: new Date() });
+			vi.useFakeTimers({ now: new Date() });
 			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
 				Interval.after(new Date(), 100),
 			);
-			jest.useRealTimers();
+			vi.useRealTimers();
 
 			expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
 
@@ -162,11 +161,15 @@ describe('Expression', () => {
 		});
 
 		it('should not able to do arbitrary code execution', () => {
-			const testFn = jest.fn();
+			const testFn = vi.fn();
 			Object.assign(global, { testFn });
+
+			vi.useFakeTimers({ now: new Date() });
 			expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
 				new ExpressionError('Cannot access "constructor" due to security concerns'),
 			);
+			vi.useRealTimers();
+
 			expect(testFn).not.toHaveBeenCalled();
 		});
 	});
@@ -184,6 +187,8 @@ describe('Expression', () => {
 				continue;
 			}
 			test(t.expression, () => {
+				vi.spyOn(workflow, 'getParentNodes').mockReturnValue(['Parent']);
+
 				const evaluationTests = t.tests.filter(
 					(test): test is ExpressionTestEvaluation => test.type === 'evaluation',
 				);
@@ -192,7 +197,11 @@ describe('Expression', () => {
 					const input = test.input.map((d) => ({ json: d })) as any;
 
 					if ('error' in test) {
+						vi.useFakeTimers({ now: test.error.timestamp });
+
 						expect(() => evaluate(t.expression, input)).toThrowError(test.error);
+
+						vi.useRealTimers();
 					} else {
 						expect(evaluate(t.expression, input)).toStrictEqual(test.output);
 					}
@@ -207,12 +216,16 @@ describe('Expression', () => {
 				continue;
 			}
 			test(t.expression, () => {
+				vi.useFakeTimers({ now: new Date() });
+
 				for (const test of t.tests.filter(
 					(test): test is ExpressionTestTransform => test.type === 'transform',
 				)) {
 					const expr = t.expression;
 					expect(extendSyntax(expr, test.forceTransform)).toEqual(test.result ?? expr);
 				}
+
+				vi.useRealTimers();
 			});
 		}
 	});

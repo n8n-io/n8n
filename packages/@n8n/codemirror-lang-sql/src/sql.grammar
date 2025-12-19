@@ -1,0 +1,63 @@
+@precedence { dot }
+
+@top Script {
+  Statement { element* Semi }*
+  Statement { element+ }?
+}
+
+@skip { Whitespace | LineComment | BlockComment }
+
+element {
+  String |
+  Number |
+  Bool |
+  Null |
+  Identifier |
+  QuotedIdentifier |
+  Bits |
+  Bytes |
+  Builtin |
+  SpecialVar |
+  CompositeIdentifier {
+    Dot? (QuotedIdentifier | Identifier | SpecialVar) (!dot Dot (QuotedIdentifier | Identifier | SpecialVar))+
+  } |
+  Keyword |
+  Type |
+  Operator |
+  Punctuation |
+  Parens { ParenL element* ParenR } |
+  Braces { BraceL element* BraceR } |
+  Brackets { BracketL element* BracketR }
+  Function
+}
+
+@external tokens tokens from "./tokens" {
+  Whitespace
+  LineComment
+  BlockComment
+  String
+  Number
+  Bool
+  Null
+  ParenL[@name="("]
+  ParenR[@name=")"]
+  BraceL[@name="{"]
+  BraceR[@name="}"]
+  BracketL[@name="["]
+  BracketR[@name="]"]
+  Semi[@name=";"]
+  Dot[@name="."]
+  Operator
+  Punctuation
+  SpecialVar
+  Identifier
+  QuotedIdentifier
+  Keyword
+  Type
+  Bits
+  Bytes
+  Builtin
+  Function
+}
+
+@detectDelim

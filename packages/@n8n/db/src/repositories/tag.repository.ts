@@ -65,6 +65,12 @@ export class TagRepository extends Repository<TagEntity> {
 		const dbTags = await this.find({
 			where: { name: In(tags) },
 			relations: ['workflows'],
+			select: {
+				id: true,
+				workflows: {
+					id: true,
+				},
+			},
 		});
 
 		const workflowIdsPerTag = dbTags.map((tag) => tag.workflows.map((workflow) => workflow.id));

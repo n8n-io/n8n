@@ -13,6 +13,9 @@
         "idMember": {
             "type": "string"
         },
+        "isMalicious": {
+            "type": "boolean"
+        },
         "isUpload": {
             "type": "boolean"
         },
@@ -58,5 +61,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

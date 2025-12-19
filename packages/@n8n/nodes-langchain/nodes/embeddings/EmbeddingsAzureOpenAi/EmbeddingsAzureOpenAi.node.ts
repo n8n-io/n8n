@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { AzureOpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -8,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -42,9 +42,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
@@ -154,6 +154,13 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIBasePath: credentials.endpoint
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
+			configuration: {
+				fetchOptions: {
+					dispatcher: getProxyAgent(
+						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
+					),
+				},
+			},
 			...options,
 		});
 

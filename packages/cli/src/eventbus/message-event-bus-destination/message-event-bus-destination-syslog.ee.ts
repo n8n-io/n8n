@@ -57,6 +57,7 @@ export class MessageEventBusDestinationSyslog
 			facility: syslog.Facility.Local0,
 			// severity: syslog.Severity.Error,
 			port: this.port,
+			rfc3164: false,
 			transport:
 				options.protocol !== undefined && options.protocol === 'tcp'
 					? syslog.Transport.Tcp
@@ -102,6 +103,7 @@ export class MessageEventBusDestinationSyslog
 			);
 		} catch (error) {
 			if (error.message) this.logger.debug(error.message as string);
+			throw error;
 		}
 		if (msg.eventName === eventMessageGenericDestinationTestEvent) {
 			await new Promise((resolve) => setTimeout(resolve, 500));

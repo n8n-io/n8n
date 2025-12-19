@@ -5,7 +5,7 @@ export class LingvaNexApi implements ICredentialType {
 
 	displayName = 'LingvaNex API';
 
-	documentationUrl = 'lingvaNex';
+	documentationUrl = 'lingvanex';
 
 	properties: INodeProperties[] = [
 		{

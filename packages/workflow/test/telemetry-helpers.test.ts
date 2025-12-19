@@ -1,19 +1,23 @@
-import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
-import { STICKY_NODE_TYPE } from '@/constants';
-import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
+import { nodeTypes } from './ExpressionExtensions/helpers';
+import type { NodeTypes } from './node-types';
+import { STICKY_NODE_TYPE } from '../src/constants';
+import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
+	IConnections,
 	INode,
 	INodeTypeDescription,
+	INodeTypes,
 	IRun,
 	IRunData,
 	NodeConnectionType,
 	IWorkflowBase,
 	INodeParameters,
-} from '@/interfaces';
-import { NodeConnectionTypes } from '@/interfaces';
-import * as nodeHelpers from '@/node-helpers';
+} from '../src/interfaces';
+import { NodeConnectionTypes } from '../src/interfaces';
+import * as nodeHelpers from '../src/node-helpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
 	extractLastExecutedNodeCredentialData,
@@ -21,14 +25,13 @@ import {
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
+	getNodeRole,
 	resolveAIMetrics,
 	resolveVectorStoreMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
-} from '@/telemetry-helpers';
-import { randomInt } from '@/utils';
-
-import { nodeTypes } from './ExpressionExtensions/helpers';
-import type { NodeTypes } from './node-types';
+} from '../src/telemetry-helpers';
+import { randomInt } from '../src/utils';
+import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -104,6 +107,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -169,6 +173,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -213,6 +218,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -280,6 +286,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -304,7 +311,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 					},
 					id: '03e85c3e-4303-4f93-8d62-e05d457e8f70',
 					name: 'Sticky Note',
@@ -351,6 +358,384 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test('should return node graph with agent node and all prompt types when cloud telemetry is enabled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+						prompts: { text: 'Agent prompt text', ...optionalPrompts },
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with agent node without prompt types when cloud telemetry is disbaled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						text: 'Agent prompt text',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-node-id',
+					name: 'Agent Node',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'other-node-id',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+			],
+			connections: {
+				'Agent Node': {
+					main: [[{ node: 'Other Node', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: false })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agent', 'n8n-nodes-base.set'],
+				node_connections: [{ start: '0', end: '1' }],
+				nodes: {
+					'0': {
+						id: 'agent-node-id',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1,
+						position: [100, 100],
+						agent: 'toolsAgent',
+					},
+					'1': {
+						id: 'other-node-id',
+						type: 'n8n-nodes-base.set',
+						version: 1,
+						position: [200, 200],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Node': '0', 'Other Node': '1' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with agent tool node and prompt text when cloud telemetry is enabled', () => {
+		const optionalPrompts = {
+			humanMessage: 'Human message',
+			systemMessage: 'System message',
+			humanMessageTemplate: 'Human template',
+			prefix: 'Prefix',
+			suffixChat: 'Suffix Chat',
+			suffix: 'Suffix',
+			prefixPrompt: 'Prefix Prompt',
+			suffixPrompt: 'Suffix Prompt',
+		};
+
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						text: 'Tool agent prompt',
+						options: {
+							...optionalPrompts,
+						},
+					},
+					id: 'agent-tool-node-id',
+					name: 'Agent Tool Node',
+					type: '@n8n/n8n-nodes-langchain.agentTool',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.agentTool'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'agent-tool-node-id',
+						type: '@n8n/n8n-nodes-langchain.agentTool',
+						version: 1,
+						position: [300, 300],
+						prompts: { text: 'Tool agent prompt', ...optionalPrompts },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Agent Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with openai langchain node and prompts array when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						messages: {
+							values: [
+								{ role: 'system', content: 'You are a helpful assistant.' },
+								{ role: 'user', content: 'Hello!' },
+							],
+						},
+					},
+					id: 'openai-node-id',
+					name: 'OpenAI Node',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'openai-node-id',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'OpenAI Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with chain summarization node and summarization prompts when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						options: {
+							summarizationMethodAndPrompts: {
+								values: { summaryPrompt: 'Summarize this text.' },
+							},
+						},
+					},
+					id: 'summarization-node-id',
+					name: 'Summarization Node',
+					type: '@n8n/n8n-nodes-langchain.chainSummarization',
+					typeVersion: 1,
+					position: [500, 500],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.chainSummarization'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'summarization-node-id',
+						type: '@n8n/n8n-nodes-langchain.chainSummarization',
+						version: 1,
+						position: [500, 500],
+						prompts: { summaryPrompt: 'Summarize this text.' },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Summarization Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with langchain custom tool node and description prompt when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						description: 'Custom tool description',
+					},
+					id: 'custom-tool-node-id',
+					name: 'Custom Tool Node',
+					type: '@n8n/n8n-nodes-langchain.customTool',
+					typeVersion: 1,
+					position: [600, 600],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.customTool'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'custom-tool-node-id',
+						type: '@n8n/n8n-nodes-langchain.customTool',
+						version: 1,
+						position: [600, 600],
+						// prompts: { description: 'Custom tool description' },
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Custom Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should return node graph with chain llm node and messageValues prompts when cloud telemetry is enabled', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						messages: {
+							messageValues: [
+								{ role: 'system', content: 'Chain LLM system prompt.' },
+								{ role: 'user', content: 'Chain LLM user prompt.' },
+							],
+						},
+					},
+					id: 'chain-llm-node-id',
+					name: 'Chain LLM Node',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					position: [700, 700],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.chainLlm'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'chain-llm-node-id',
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1,
+						position: [700, 700],
+						prompts: [
+							{ role: 'system', content: 'Chain LLM system prompt.' },
+							{ role: 'user', content: 'Chain LLM user prompt.' },
+						],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Chain LLM Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
 	test('should return node graph with stickies indicating overlap', () => {
 		const workflow: IWorkflowBase = {
 			createdAt: new Date('2024-01-05T13:49:14.244Z'),
@@ -358,6 +743,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -382,7 +768,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 						height: 488,
 						width: 645,
 					},
@@ -501,6 +887,7 @@ describe('generateNodesGraph', () => {
 						type: 'n8n-nodes-base.webhook',
 						version: 1.1,
 						position: [520, 380],
+						response_mode: 'onReceived',
 					},
 				},
 				notes: {},
@@ -912,6 +1299,7 @@ describe('generateNodesGraph', () => {
 					'2': {
 						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [780, 500],
 					},
@@ -932,7 +1320,7 @@ describe('generateNodesGraph', () => {
 	test('should not fail on error to resolve a node parameter for sticky node type', () => {
 		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
 
-		jest.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
 			throw new ApplicationError('Could not find property option');
 		});
 
@@ -1037,6 +1425,410 @@ describe('generateNodesGraph', () => {
 				},
 				notes: {},
 			},
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with undefined metrics - uses default predefined metric', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						// metrics is undefined - should fall back to default metric
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: [DEFAULT_EVALUATION_METRIC], // Default metric
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with custom metric parameter', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						metric: 'helpfulness',
+						// metrics is undefined but metric parameter is set
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: ['helpfulness'], // Custom metric from parameter
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with valid metrics assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						metrics: {
+							assignments: [
+								{ name: 'accuracy', value: 0.95 },
+								{ name: 'precision', value: 0.87 },
+								{ name: 'recall', value: 0.92 },
+							],
+						},
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: ['accuracy', 'precision', 'recall'],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test.each([
+		{ typeVersion: 1.2, parameterValue: undefined, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: true, expectedValue: true },
+		{ typeVersion: 1.3, parameterValue: false, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: undefined, expectedValue: true },
+	])(
+		'should handle LMChatOpenAi node with use_responses_api set to $expectedValue when typeVersion is $typeVersion and parameterValue is $parameterValue',
+		({ typeVersion, parameterValue, expectedValue }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							responsesApiEnabled: parameterValue,
+						},
+						id: 'lmchatopenai-node-id',
+						name: 'LMChatOpenAi Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'lmchatopenai-node-id',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: typeVersion,
+							position: [100, 100],
+							use_responses_api: expectedValue,
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'LMChatOpenAi Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should add package version to node graph', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+					name: 'When clicking ‘Execute workflow’',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+					name: 'Community Installed Node',
+					type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+					name: 'Community Installed Node 2',
+					type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+					name: 'Community Missing Node',
+					type: 'community-missing-node.communityMissingNode',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+		};
+
+		expect(
+			generateNodesGraph(workflow, {
+				...nodeTypes,
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const orig = nodeTypes.getByNameAndVersion(nodeType, version);
+					if (nodeType === 'n8n-nodes-community-installed-node.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.0',
+							},
+						};
+					}
+					if (nodeType === 'n8n-nodes-community-installed-node2.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.1',
+							},
+						};
+					}
+					return orig;
+				},
+			}),
+		).toEqual({
+			evaluationTriggerNodeNames: [],
+			nameIndices: {
+				'When clicking ‘Execute workflow’': '0',
+				'Community Installed Node': '1',
+				'Community Installed Node 2': '2',
+				'Community Missing Node': '3',
+			},
+			webhookNodeNames: [],
+			nodeGraph: {
+				is_pinned: false,
+				node_types: [
+					'n8n-nodes-base.manualTrigger',
+					'n8n-nodes-community-installed-node.communityInstalledNode',
+					'n8n-nodes-community-installed-node2.communityInstalledNode',
+					'community-missing-node.communityMissingNode',
+				],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						position: [100, 100],
+					},
+					'1': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+						type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+						version: 1,
+						position: [200, 200],
+						package_version: '1.0.0',
+					},
+					'2': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+						type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+						version: 1,
+						position: [300, 300],
+						package_version: '1.0.1',
+					},
+					'3': {
+						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+						type: 'community-missing-node.communityMissingNode',
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+			},
+		});
+	});
+
+	test.each(['classify', 'sanitize'])(
+		'should handle Guardrails node with valid guardrails assignments for operation %s',
+		(operation) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							operation,
+							guardrails: {
+								promptInjection: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								nsfw: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								pii: {
+									type: 'all',
+									entities: ['email', 'phone'],
+									customRegex: {
+										regex: ['/1234567890/'],
+									},
+								},
+								urls: {
+									allowedUrls: 'https://example.com',
+									allowedSchemes: ['https'],
+									blockUserinfo: true,
+									allowSubdomains: true,
+								},
+							},
+						},
+						id: 'guardrails-node-id',
+						name: 'Guardrails Node',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'guardrails-node-id',
+							type: '@n8n/n8n-nodes-langchain.guardrails',
+							version: 1,
+							position: [100, 100],
+							operation,
+							used_guardrails: ['promptInjection', 'nsfw', 'pii', 'urls'],
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Guardrails Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should handle Guardrails node without guardrails assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'classify',
+						guardrails: {},
+					},
+					id: 'guardrails-node-id',
+					name: 'Guardrails Node',
+					type: '@n8n/n8n-nodes-langchain.guardrails',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'guardrails-node-id',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						version: 1,
+						position: [100, 100],
+						operation: 'classify',
+						used_guardrails: [],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Guardrails Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
 		});
@@ -1717,7 +2509,7 @@ describe('makeAIMetrics', () => {
 			position: [0, 0],
 		}) as INode;
 
-	it('should count applicable nodes and parameters', async () => {
+	it('should count applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -1762,7 +2554,7 @@ describe('makeAIMetrics', () => {
 		});
 	});
 
-	it('should not count non-applicable nodes and parameters', async () => {
+	it('should not count non-applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -1782,7 +2574,7 @@ describe('makeAIMetrics', () => {
 		expect(result).toMatchObject({});
 	});
 
-	it('should count ai nodes without tools', async () => {
+	it('should count ai nodes without tools', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2037,6 +2829,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		id: 'test-workflow',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		nodes,
 		connections: connections || {},
@@ -2206,9 +2999,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			},
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
@@ -2260,9 +3053,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			],
 		});
 
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
@@ -2288,9 +3081,9 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ model: 'gpt-4' }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ model: 'gpt-4' }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
@@ -2378,14 +3171,329 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		jest
-			.spyOn(nodeHelpers, 'getNodeParameters')
-			.mockReturnValueOnce(mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }));
+		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+			mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }),
+		);
 
 		const result = extractLastExecutedNodeStructuredOutputErrorInfo(workflow, nodeTypes, runData);
 		expect(result).toEqual({
 			num_tools: 0,
 			model_name: 'gemini-1.5-pro',
+		});
+	});
+
+	it('should capture Agent node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						agent: 'toolsAgent',
+						options: {
+							enableStreaming: false,
+						},
+					},
+					id: 'agent-id-streaming-disabled',
+					name: 'Agent with streaming disabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						agent: 'conversationalAgent',
+						options: {
+							enableStreaming: true,
+						},
+					},
+					id: 'agent-id-streaming-enabled',
+					name: 'Agent with streaming enabled',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [300, 100],
+				},
+				{
+					parameters: {
+						agent: 'openAiFunctionsAgent',
+					},
+					id: 'agent-id-default-streaming',
+					name: 'Agent with default streaming',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2.1,
+					position: [500, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'agent-id-streaming-disabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [100, 100],
+			agent: 'toolsAgent',
+			is_streaming: false,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'agent-id-streaming-enabled',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [300, 100],
+			agent: 'conversationalAgent',
+			is_streaming: true,
+		});
+
+		expect(result.nodeGraph.nodes['2']).toEqual({
+			id: 'agent-id-default-streaming',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.1,
+			position: [500, 100],
+			agent: 'openAiFunctionsAgent',
+			is_streaming: true,
+		});
+	});
+
+	it('should capture Chat Trigger node streaming parameters', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						public: true,
+						options: {
+							responseMode: 'streaming',
+						},
+					},
+					id: 'chat-trigger-id',
+					name: 'Chat Trigger',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {
+						public: false,
+						options: {
+							responseMode: 'lastNode',
+						},
+					},
+					id: 'chat-trigger-id-2',
+					name: 'Chat Trigger 2',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					typeVersion: 1,
+					position: [300, 100],
+				},
+			],
+			connections: {},
+		};
+
+		const result = generateNodesGraph(workflow, nodeTypes);
+
+		expect(result.nodeGraph.nodes['0']).toEqual({
+			id: 'chat-trigger-id',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [100, 100],
+			response_mode: 'streaming',
+			public_chat: true,
+		});
+
+		expect(result.nodeGraph.nodes['1']).toEqual({
+			id: 'chat-trigger-id-2',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1,
+			position: [300, 100],
+			response_mode: 'lastNode',
+			public_chat: false,
+		});
+	});
+});
+
+describe('getNodeRole', () => {
+	const makeNode = (name: string, type: string, typeVersion = 1): INode => ({
+		id: `${name}-id`,
+		name,
+		type,
+		typeVersion,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	describe('trigger role', () => {
+		it('should return trigger for node with no incoming main connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Trigger', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+
+		it('should return trigger for isolated node with no connections', () => {
+			const nodes = [makeNode('Trigger', 'n8n-nodes-base.manualTrigger')];
+
+			const connections: IConnections = {};
+
+			const result = getNodeRole('Trigger', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+	});
+
+	describe('terminal role', () => {
+		it('should return terminal for node with incoming but no outgoing connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Set', connections, nodeTypes, nodes);
+			expect(result).toBe('terminal');
+		});
+	});
+
+	describe('internal role', () => {
+		it('should return internal for node with both incoming and outgoing connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Middle', 'n8n-nodes-base.set'),
+				makeNode('End', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Middle', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Middle: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Middle', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for subnode even without main connections', () => {
+			const nodes = [
+				makeNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				makeNode('Wikipedia', '@n8n/n8n-nodes-langchain.toolWikipedia'),
+			];
+
+			const connections: IConnections = {
+				Wikipedia: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Wikipedia', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for calculator tool subnode', () => {
+			const nodes = [
+				makeNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				makeNode('Calculator', '@n8n/n8n-nodes-langchain.toolCalculator'),
+			];
+
+			const connections: IConnections = {
+				Calculator: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Calculator', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for PartialExecutionToolExecutor', () => {
+			const nodes: INode[] = [];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('PartialExecutionToolExecutor', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should return trigger for node not in connections', () => {
+			const nodes = [makeNode('Isolated', 'n8n-nodes-base.set')];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('Isolated', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+
+		it('should handle node with empty output arrays', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Set: {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+			};
+
+			const result = getNodeRole('Set', connections, nodeTypes, nodes);
+			expect(result).toBe('terminal');
+		});
+
+		it('should handle multiple output branches', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set1', 'n8n-nodes-base.set'),
+				makeNode('TrueBranch', 'n8n-nodes-base.set'),
+				makeNode('FalseBranch', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Set1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Set1: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'TrueBranch', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'FalseBranch', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Set1', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should handle node not found in nodes array', () => {
+			const nodes = [makeNode('Trigger', 'n8n-nodes-base.manualTrigger')];
+			const connections: IConnections = {};
+
+			// Node 'NotInArray' is not in the nodes array
+			const result = getNodeRole('NotInArray', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
 		});
 	});
 });

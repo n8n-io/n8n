@@ -15,6 +15,7 @@ import {
 	FolderRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -22,6 +23,8 @@ import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
+
+import { WorkflowFinderService } from './workflow-finder.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -33,8 +36,6 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowFinderService } from './workflow-finder.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -52,6 +53,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly folderService: FolderService,
 		private readonly folderRepository: FolderRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async shareWithProjects(
@@ -74,7 +76,7 @@ export class EnterpriseWorkflowService {
 		);
 
 		const newSharedWorkflows = projects
-			// We filter by role === 'project:personalOwner' above and there should
+			// We filter by role === PROJECT_OWNER_ROLE_SLUG above and there should
 			// always only be one owner.
 			.map((project) =>
 				this.sharedWorkflowRepository.create({
@@ -328,8 +330,9 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
+		const wasActive = this.isActiveWorkflow(workflow);
+
 		// 6. deactivate workflow if necessary
-		const wasActive = workflow.active;
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
@@ -341,12 +344,14 @@ export class EnterpriseWorkflowService {
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
 		// 9. Move workflow to the right folder if any
-		// @ts-ignore CAT-957
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. try to activate it again if it was active
+		// 10. Update potential cached project association
+		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+
+		// 11. try to activate it again if it was active
 		if (wasActive) {
-			return await this.attemptWorkflowReactivation(workflowId);
+			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
 
 		return;
@@ -393,14 +398,14 @@ export class EnterpriseWorkflowService {
 		// 2. Get all workflows in the nested folders
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'active', 'shared'],
+			select: ['id', 'activeVersionId', 'shared'],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
 			},
 		});
 
-		const activeWorkflows = workflows.filter((w) => w.active).map((w) => w.id);
+		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
@@ -440,7 +445,7 @@ export class EnterpriseWorkflowService {
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
 		);
 
 		await Promise.all(deactivateWorkflowsPromises);
@@ -461,8 +466,8 @@ export class EnterpriseWorkflowService {
 
 		// 9. try to activate workflows again if they were active
 
-		for (const workflowId of activeWorkflows) {
-			await this.attemptWorkflowReactivation(workflowId);
+		for (const workflow of activeWorkflows) {
+			await this.attemptWorkflowReactivation(workflow.id, workflow.activeVersionId, user.id);
 		}
 	}
 
@@ -477,12 +482,21 @@ export class EnterpriseWorkflowService {
 		};
 	}
 
-	private async attemptWorkflowReactivation(workflowId: string) {
+	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
 		try {
 			await this.activeWorkflowManager.add(workflowId, 'update');
+
 			return;
 		} catch (error) {
 			await this.workflowRepository.updateActiveState(workflowId, false);
+
+			// If reactivation failed we track deactivation of the workflow
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId,
+				event: 'deactivated',
+				userId,
+			});
 
 			if (error instanceof WorkflowActivationError) {
 				return this.formatActivationError(error);
@@ -563,5 +577,11 @@ export class EnterpriseWorkflowService {
 				},
 			);
 		});
+	}
+
+	private isActiveWorkflow(
+		workflow: WorkflowEntity,
+	): workflow is WorkflowEntity & { activeVersionId: string } {
+		return workflow.activeVersionId !== null;
 	}
 }

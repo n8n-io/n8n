@@ -1,10 +1,10 @@
+import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 

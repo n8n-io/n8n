@@ -6,10 +6,9 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'model',
 		type: 'options',
-		default: 'r1-1776',
+		default: 'sonar',
 		required: true,
 		options: [
-			{ name: 'R1-1776', value: 'r1-1776' },
 			{ name: 'Sonar', value: 'sonar' },
 			{ name: 'Sonar Deep Research', value: 'sonar-deep-research' },
 			{ name: 'Sonar Pro', value: 'sonar-pro' },
@@ -130,9 +129,9 @@ const properties: INodeProperties[] = [
 				displayName: 'Frequency Penalty',
 				name: 'frequencyPenalty',
 				type: 'number',
-				default: 1,
+				default: 0,
 				typeOptions: {
-					minValue: 1,
+					minValue: 0,
 				},
 				description:
 					"Values greater than 1.0 penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",

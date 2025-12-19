@@ -49,7 +49,7 @@
 	align-items: center;
 
 	.el-loading-text {
-		color: var(--color-primary);
+		color: var(--color--primary);
 		margin: 3px 0;
 		font-size: 14px;
 	}
@@ -66,12 +66,12 @@
 		stroke-dasharray: 90, 150;
 		stroke-dashoffset: 0;
 		stroke-width: 2;
-		stroke: var(--color-primary);
+		stroke: var(--color--primary);
 		stroke-linecap: round;
 	}
 
 	i {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 

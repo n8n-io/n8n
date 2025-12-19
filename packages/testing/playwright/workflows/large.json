@@ -1,0 +1,149 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-496, 192],
+			"id": "eb667a4b-8428-455e-9a09-2bc4b9d43ee6",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jsCode": "// The array to hold our user data\nconst items = [];\nconst numberOfItems = Number($input.first().json.itemCount)\n\n// Loop 500 times to create 500 user objects\nfor (let i = 1; i <= numberOfItems; i++) {\n  const user = {\n    id: i,\n    firstName: 'User',\n    lastName: `${i}`,\n    email: `user.${i}@example.com`,\n  };\n  items.push(user);\n}\n\n// Return the data in the format n8n expects.\n// Each object in the array becomes a separate item in the n8n workflow.\nreturn items.map(item => ({ json: item }));"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-80, 192],
+			"id": "abb04bd3-f0c7-490c-a86f-76e473b9ece3",
+			"name": "Code"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "90606208-ab4b-4b4e-a73e-d01f8c53a142",
+							"leftValue": "={{ $json.id }}",
+							"rightValue": 3000,
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [208, 0],
+			"id": "3a218f47-a535-4b6a-b8c8-5b21c48e578c",
+			"name": "If"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [480, 272],
+			"id": "7df7bf46-4a1b-4cb5-a5ff-140eff995129",
+			"name": "Code1"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [480, 80],
+			"id": "ab5a4ad6-bbf5-4b6b-a5ba-f6d46e14f598",
+			"name": "Code2"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "99ed2132-dca6-4e9f-b7e3-5612ad22ee29",
+							"name": "itemCount",
+							"value": "10000",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-288, 192],
+			"id": "ff650b7e-9b79-4403-b66f-0b11755d7999",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Code2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "9864951ea4472b9d0ea716c66bb2527efb446aa6309ab9f74077ab1db432402b"
+	}
+}

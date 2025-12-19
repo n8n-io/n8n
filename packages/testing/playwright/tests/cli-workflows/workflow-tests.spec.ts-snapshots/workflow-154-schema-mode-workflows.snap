@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "startData": {
+          "type": "object",
+          "properties": {}
+        },
+        "resultData": {
+          "type": "object",
+          "properties": {
+            "runData": {
+              "type": "object",
+              "properties": {
+                "Start": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Function": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "AWS Rekognition": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "lastNodeExecuted": {
+              "type": "string"
+            }
+          }
+        },
+        "executionData": {
+          "type": "object",
+          "properties": {
+            "contextData": {
+              "type": "object",
+              "properties": {}
+            },
+            "nodeExecutionStack": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecution": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecutionSource": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "stoppedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "finished": {
+      "type": "boolean"
+    }
+  }
+}

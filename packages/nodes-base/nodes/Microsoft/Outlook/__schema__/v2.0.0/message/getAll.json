@@ -67,7 +67,10 @@
                     }
                 }
             }
+        },
+        "subject": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 8
 }

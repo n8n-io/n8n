@@ -63,7 +63,7 @@ const onLabelClick = () => {
 .n8nCheckbox {
 	display: flex !important;
 	white-space: normal !important;
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing--2xs);
 
 	span {
 		white-space: normal;

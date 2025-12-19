@@ -7,7 +7,7 @@ import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 /**
@@ -50,6 +50,7 @@ export function executeErrorWorkflow(
 					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 					mode,
 					retryOf,
+					executionContext: fullRunData.data.executionData?.runtimeData,
 				},
 				workflow: {
 					id: workflowId,

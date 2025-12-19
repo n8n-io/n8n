@@ -271,4 +271,331 @@ describe('GmailTrigger', () => {
 
 		expect(response).toMatchSnapshot();
 	});
+
+	it('should skip DRAFTS when option is set', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'DRAFT', name: 'DRAFT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['DRAFT'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', labelIds: ['INBOX'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { filters: { includeDrafts: false } } },
+		});
+
+		expect(response).toEqual([
+			[
+				{
+					binary: undefined,
+					json: {
+						attachements: undefined,
+						date: '2024-08-31T00:00:00.000Z',
+						from: {
+							html: 'from@example.com',
+							text: 'from@example.com',
+							value: [{ address: 'from@example.com', name: 'From' }],
+						},
+						headerlines: undefined,
+						headers: { headerKey: 'headerValue' },
+						html: '<p>test</p>',
+						id: '2',
+						labelIds: ['INBOX'],
+						sizeEstimate: 4,
+						threadId: 'testThreadId',
+						to: {
+							html: 'to@example.com',
+							text: 'to@example.com',
+							value: [{ address: 'to@example.com', name: 'To' }],
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('should skip emails with SENT label', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'SENT', name: 'SENT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['INBOX'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', labelIds: ['SENT'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger);
+
+		expect(response).toEqual([
+			[
+				{
+					binary: undefined,
+					json: {
+						attachements: undefined,
+						date: '2024-08-31T00:00:00.000Z',
+						from: {
+							html: 'from@example.com',
+							text: 'from@example.com',
+							value: [{ address: 'from@example.com', name: 'From' }],
+						},
+						headerlines: undefined,
+						headers: { headerKey: 'headerValue' },
+						html: '<p>test</p>',
+						id: '1',
+						labelIds: ['INBOX'],
+						sizeEstimate: 4,
+						threadId: 'testThreadId',
+						to: {
+							html: 'to@example.com',
+							text: 'to@example.com',
+							value: [{ address: 'to@example.com', name: 'To' }],
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('should not skip emails that were sent to own account', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'SENT', name: 'SENT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', labelIds: ['INBOX', 'SENT'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', labelIds: ['SENT'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger);
+		expect(response).toEqual([
+			[
+				{
+					binary: undefined,
+					json: {
+						attachements: undefined,
+						date: '2024-08-31T00:00:00.000Z',
+						from: {
+							html: 'from@example.com',
+							text: 'from@example.com',
+							value: [{ address: 'from@example.com', name: 'From' }],
+						},
+						headerlines: undefined,
+						headers: { headerKey: 'headerValue' },
+						html: '<p>test</p>',
+						id: '1',
+						labelIds: ['INBOX', 'SENT'],
+						sizeEstimate: 4,
+						threadId: 'testThreadId',
+						to: {
+							html: 'to@example.com',
+							text: 'to@example.com',
+							value: [{ address: 'to@example.com', name: 'To' }],
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('should handle multiple emails with the same timestamp', async () => {
+		const timestamp = '1727777957000';
+		const messageListResponse: MessageListResponse = {
+			messages: [
+				createListMessage({ id: '1' }),
+				createListMessage({ id: '2' }),
+				createListMessage({ id: '3' }),
+			],
+			resultSizeEstimate: 3,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: timestamp }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', internalDate: timestamp }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
+			.reply(200, createMessage({ id: '3', internalDate: timestamp }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData: {
+				'Gmail Trigger': {
+					lastTimeChecked: Number(timestamp) / 1000,
+					possibleDuplicates: ['1', '2'],
+				},
+			},
+		});
+
+		expect(response).toEqual([[{ json: expect.objectContaining({ id: '3' }) }]]);
+	});
+
+	it('should not skip emails when no messages are found', async () => {
+		const initialTimestamp = 1727777957;
+		const emailTimestamp = String((initialTimestamp + 1) * 1000);
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: emailTimestamp }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData: {
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+			},
+		});
+
+		expect(response).toEqual([[{ json: expect.objectContaining({ id: '1' }) }]]);
+	});
+
+	it('should update timestamp even when all emails are filtered (prevents infinite re-fetch)', async () => {
+		const initialTimestamp = 1727777957;
+		const draftEmailTimestamp = String((initialTimestamp + 1) * 1000);
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: 'draft-1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'DRAFT', name: 'DRAFT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/draft-1?.*'))
+			.reply(
+				200,
+				createMessage({ id: 'draft-1', internalDate: draftEmailTimestamp, labelIds: ['DRAFT'] }),
+			);
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { filters: { includeDrafts: false } } },
+			workflowStaticData: {
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+			},
+		});
+
+		expect(response).toBeNull();
+	});
+
+	it('should handle emails with invalid dates by using startDate fallback', async () => {
+		const initialTimestamp = 1727777957;
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		// Email without any date fields - should be treated as invalid
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: undefined }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData: {
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+			},
+		});
+
+		// Should still return the email even though it has invalid date
+		expect(response).toHaveLength(1);
+		expect(response?.[0]?.[0]?.json?.id).toBe('1');
+	});
+
+	it('should handle mixed valid and filtered emails with same timestamp', async () => {
+		const timestamp = '1727777957000';
+		const messageListResponse: MessageListResponse = {
+			messages: [
+				createListMessage({ id: '1' }),
+				createListMessage({ id: '2' }),
+				createListMessage({ id: '3' }),
+			],
+			resultSizeEstimate: 3,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, {
+				labels: [
+					{ id: 'INBOX', name: 'INBOX' },
+					{ id: 'DRAFT', name: 'DRAFT' },
+				],
+			});
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: timestamp, labelIds: ['INBOX'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', internalDate: timestamp, labelIds: ['DRAFT'] }));
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
+			.reply(200, createMessage({ id: '3', internalDate: timestamp, labelIds: ['INBOX'] }));
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { filters: { includeDrafts: false } } },
+			workflowStaticData: {
+				'Gmail Trigger': {
+					lastTimeChecked: Number(timestamp) / 1000 - 1,
+				},
+			},
+		});
+
+		// Should return 2 emails (1 and 3), filtering out the draft (2)
+		expect(response).toHaveLength(1);
+		expect(response?.[0]).toHaveLength(2);
+		expect(response?.[0]?.[0]?.json?.id).toBe('1');
+		expect(response?.[0]?.[1]?.json?.id).toBe('3');
+	});
 });

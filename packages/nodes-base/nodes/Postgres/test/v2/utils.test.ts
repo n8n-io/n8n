@@ -1,8 +1,14 @@
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import type { INode, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
-import type { ColumnInfo } from '../../v2/helpers/interfaces';
+import type {
+	ColumnInfo,
+	PostgresNodeOptions,
+	QueriesRunner,
+	QueryMode,
+	QueryWithValues,
+} from '../../v2/helpers/interfaces';
 import {
 	addSortRules,
 	addReturning,
@@ -18,7 +24,7 @@ import {
 	convertValuesToJsonWithPgp,
 	hasJsonDataTypeInSchema,
 	evaluateExpression,
-	addExecutionHints,
+	runQueriesAndHandleErrors,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -101,27 +107,11 @@ describe('Test PostgresV2, wrapData', () => {
 
 describe('Test PostgresV2, prepareErrorItem', () => {
 	it('should return error info item', () => {
-		const items = [
-			{
-				json: {
-					id: 1,
-					name: 'Name 1',
-				},
-			},
-			{
-				json: {
-					id: 2,
-					name: 'Name 2',
-				},
-			},
-		];
-
 		const error = new Error('Test error');
-		const item = prepareErrorItem(items, error, 1);
+		const item = prepareErrorItem(error, 1);
 		expect(item).toBeDefined();
 
-		expect((item.json.item as IDataObject)?.id).toEqual(2);
-		expect(item.json.message).toEqual('Test error');
+		expect((item.pairedItem as IPairedItemData).item).toEqual(1);
 		expect(item.json.error).toBeDefined();
 	});
 });
@@ -536,9 +526,9 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			},
 		];
 
-		convertArraysToPostgresFormat(item, schema, node, 0);
+		const result = convertArraysToPostgresFormat(item, schema, node, 0);
 
-		expect(item).toEqual({
+		expect(result).toEqual({
 			jsonb_array: '{"{\\"key\\":\\"value44\\"}"}',
 			json_array: '{"{\\"key\\":\\"value54\\"}"}',
 			int_array: '{1,2,5}',
@@ -546,39 +536,109 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			bool_array: '{"true","false"}',
 		});
 	});
+
+	it('should not modify the original data object', () => {
+		const referenceItem = {
+			arr: [1, 2, 3],
+		};
+		const item = {
+			arr: [1, 2, 3],
+		};
+		const schema: ColumnInfo[] = [
+			{
+				column_name: 'arr',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_int4',
+				column_default: null,
+			},
+		];
+
+		const result = convertArraysToPostgresFormat(item, schema, node, 0);
+
+		expect(result).toEqual({
+			arr: '{1,2,3}',
+		});
+		expect(item).toEqual(referenceItem);
+	});
 });
 
-describe('Test PostgresV2, addExecutionHints', () => {
-	it('should add batching insert hint to executeQuery operation', () => {
-		const context = {
-			getNodeParameter: (parameterName: string) => {
-				if (parameterName === 'options.queryBatching') {
-					return 'single';
-				}
-				if (parameterName === 'query') {
-					return 'INSERT INTO my_test_table VALUES (`{{ $json.name }}`)';
-				}
-			},
-			addExecutionHints: jest.fn(),
-		} as unknown as IExecuteFunctions;
+describe('Test PostgresV2, runQueriesAndHandleErrors', () => {
+	it.each([['single'], ['transaction']] as QueryMode[][])(
+		'should return errors without running queries when batching is %s',
+		async (batching) => {
+			const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
+			const queries: QueryWithValues[] = [
+				{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
+			];
+			const nodeOptions: PostgresNodeOptions = { queryBatching: batching };
+			const errorItemsMap: Map<number, INodeExecutionData> = new Map();
+			errorItemsMap.set(1, { json: { error: new Error('Test error') }, pairedItem: { item: 1 } });
 
-		addExecutionHints(context, [{ json: {} }, { json: {} }], 'executeQuery', false);
-		expect(context.addExecutionHints).toHaveBeenCalledWith({
-			message:
-				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
-			location: 'outputPane',
-		});
-	});
-	it('should add run per item hint to select operation', () => {
-		const context = {
-			addExecutionHints: jest.fn(),
-		} as unknown as IExecuteFunctions;
+			const result = await runQueriesAndHandleErrors(
+				runQueries,
+				queries,
+				nodeOptions,
+				errorItemsMap,
+			);
 
-		addExecutionHints(context, [{ json: {} }, { json: {} }], 'select', false);
-		expect(context.addExecutionHints).toHaveBeenCalledWith({
-			location: 'outputPane',
-			message:
-				"This node ran 2 times, once for each input item. To run for the first item only, enable 'execute once' in the node settings",
-		});
+			expect(result).toEqual([
+				{ json: { error: new Error('Test error') }, pairedItem: { item: 1 } },
+			]);
+			expect(runQueries).not.toHaveBeenCalled();
+		},
+	);
+
+	it('should run queries and return errors when batching is independently', async () => {
+		const runQueries: QueriesRunner = jest.fn().mockResolvedValue([
+			{ json: { id: 1 }, pairedItem: { item: 0 } },
+			{ json: { id: 3 }, pairedItem: { item: 2 } },
+		]);
+		const queries: QueryWithValues[] = [
+			{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
+			{ query: 'INSERT INTO my_table (id) VALUES (3)', values: [] },
+		];
+		const nodeOptions: PostgresNodeOptions = { queryBatching: 'independently' };
+		const errorItemsMap: Map<number, INodeExecutionData> = new Map();
+		errorItemsMap.set(1, { json: { error: new Error('Test error') }, pairedItem: { item: 1 } });
+
+		const result = await runQueriesAndHandleErrors(runQueries, queries, nodeOptions, errorItemsMap);
+
+		expect(result).toEqual([
+			{ json: { id: 1 }, pairedItem: { item: 0 } },
+			{ json: { error: new Error('Test error') }, pairedItem: { item: 1 } },
+			{ json: { id: 3 }, pairedItem: { item: 2 } },
+		]);
 	});
+
+	it.each([['single'], ['transaction'], ['independently']] as QueryMode[][])(
+		'should run queries when batching is %s and there are no errors',
+		async (batching) => {
+			const runQueries: QueriesRunner = jest.fn().mockResolvedValue([
+				{ json: { id: 1 }, pairedItem: { item: 0 } },
+				{ json: { id: 2 }, pairedItem: { item: 1 } },
+				{ json: { id: 3 }, pairedItem: { item: 2 } },
+			]);
+			const queries: QueryWithValues[] = [
+				{ query: 'INSERT INTO my_table (id) VALUES (1)', values: [] },
+				{ query: 'INSERT INTO my_table (id) VALUES (2)', values: [] },
+				{ query: 'INSERT INTO my_table (id) VALUES (3)', values: [] },
+			];
+			const nodeOptions: PostgresNodeOptions = { queryBatching: batching };
+			const errorItemsMap: Map<number, INodeExecutionData> = new Map();
+
+			const result = await runQueriesAndHandleErrors(
+				runQueries,
+				queries,
+				nodeOptions,
+				errorItemsMap,
+			);
+
+			expect(result).toEqual([
+				{ json: { id: 1 }, pairedItem: { item: 0 } },
+				{ json: { id: 2 }, pairedItem: { item: 1 } },
+				{ json: { id: 3 }, pairedItem: { item: 2 } },
+			]);
+		},
+	);
 });

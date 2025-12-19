@@ -1,5 +1,6 @@
 import type { ApiKeyScope } from '@n8n/permissions';
 import { Column, Entity, Index, ManyToOne, Unique } from '@n8n/typeorm';
+import { ApiKeyAudience } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import { User } from './user';
@@ -26,4 +27,7 @@ export class ApiKey extends WithTimestampsAndStringId {
 	@Index({ unique: true })
 	@Column({ type: String })
 	apiKey: string;
+
+	@Column({ type: String, default: 'public-api' })
+	audience: ApiKeyAudience;
 }

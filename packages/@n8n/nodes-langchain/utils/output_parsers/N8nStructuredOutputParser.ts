@@ -1,5 +1,5 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import { StructuredOutputParser } from '@langchain/classic/output_parsers';
 import get from 'lodash/get';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -66,7 +66,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 			if (e instanceof SyntaxError) {
 				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
 			} else if (
-				text.trim() === '{}' ||
+				(typeof text === 'string' && text.trim() === '{}') ||
 				(e instanceof z.ZodError &&
 					e.issues?.[0] &&
 					e.issues?.[0].code === 'invalid_type' &&

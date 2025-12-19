@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { WorkflowSharingRole } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type WorkflowSharingRole } from '@n8n/permissions';
 import { DataSource, Repository, In, Not } from '@n8n/typeorm';
 import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 
@@ -28,7 +28,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				role: 'workflow:owner',
 				workflowId: In(workflowIds),
 			},
-			relations: { project: { projectRelations: { user: true } } },
+			relations: { project: { projectRelations: { user: true, role: true } } },
 		});
 	}
 
@@ -46,7 +46,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 			where: {
 				workflowId,
-				project: { projectRelations: { role: 'project:personalOwner', userId } },
+				project: { projectRelations: { role: { slug: PROJECT_OWNER_ROLE_SLUG }, userId } },
 			},
 		});
 
@@ -149,6 +149,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where?: FindOptionsWhere<SharedWorkflow>;
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
+			includeActiveVersion?: boolean;
 			em?: EntityManager;
 		} = {},
 	) {
@@ -156,6 +157,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where = {},
 			includeTags = false,
 			includeParentFolder = false,
+			includeActiveVersion = false,
 			em = this.manager,
 		} = options;
 
@@ -169,6 +171,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 					shared: { project: { projectRelations: { user: true } } },
 					tags: includeTags,
 					parentFolder: includeParentFolder,
+					activeVersion: includeActiveVersion ? { workflowPublishHistory: true } : false,
 				},
 			},
 		});

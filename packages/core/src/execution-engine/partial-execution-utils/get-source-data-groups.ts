@@ -123,7 +123,6 @@ export function getSourceDataGroups(
 		currentInputIndex++;
 
 		const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			(c) => c.inputIndex === currentInputIndex,
 		);
 
@@ -137,7 +136,6 @@ export function getSourceDataGroups(
 		}
 
 		const connectionWithoutDataIndex = sortedConnectionsWithoutData.findIndex(
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			(c) => c.inputIndex === currentInputIndex,
 		);
 

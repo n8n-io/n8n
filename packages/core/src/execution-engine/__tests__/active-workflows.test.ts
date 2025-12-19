@@ -196,7 +196,7 @@ describe('ActiveWorkflows', () => {
 
 				// Get the executeTrigger function that was registered
 				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
-				const executeTrigger = registerCronCall[2] as () => Promise<void>;
+				const executeTrigger = registerCronCall[1] as () => Promise<void>;
 
 				// Execute the trigger function to simulate a regular poll
 				await executeTrigger();
