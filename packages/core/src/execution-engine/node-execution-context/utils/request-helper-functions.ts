@@ -69,6 +69,7 @@ import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
+import { AiConfig } from '@n8n/config';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -145,6 +146,15 @@ function setAxiosAgents(
 	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
 }
 
+function applyVendorHeaders(config: AxiosRequestConfig) {
+	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
+		config.headers = {
+			...Container.get(AiConfig).openAiDefaultHeaders,
+			...(config.headers || {}),
+		};
+	}
+}
+
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
 	if (config.data === undefined) {
@@ -152,6 +162,7 @@ axios.interceptors.request.use((config) => {
 	}
 
 	setAxiosAgents(config);
+	applyVendorHeaders(config);
 
 	return config;
 });
