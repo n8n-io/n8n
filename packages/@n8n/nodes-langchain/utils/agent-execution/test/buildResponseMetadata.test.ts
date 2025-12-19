@@ -2,7 +2,7 @@ import type { EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';
 
-import type { RequestResponseMetadata } from '../../types';
+import type { RequestResponseMetadata } from '../types';
 import { buildResponseMetadata } from '../buildResponseMetadata';
 
 // Mock the buildSteps function from agent-execution

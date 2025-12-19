@@ -112,6 +112,7 @@ export class WorkflowExecute {
 		destinationNode?: IDestinationNode,
 		pinData?: IPinData,
 		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
+		additonalRunFilterNodes?: string[],
 	): PCancelable<IRun> {
 		this.status = 'running';
 
@@ -128,6 +129,9 @@ export class WorkflowExecute {
 			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
 			if (destinationNode.mode === 'inclusive') {
 				runNodeFilter.push(destinationNode.nodeName);
+			}
+			if (additonalRunFilterNodes) {
+				runNodeFilter.push.apply(runNodeFilter, additonalRunFilterNodes);
 			}
 		}
 
@@ -772,7 +776,7 @@ export class WorkflowExecute {
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
 				waitingNodeIndex
 			].main = waitingExecutionSource;
-		} else {
+		} else if (workflow.nodes[connectionData.node]) {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
 				node: workflow.nodes[connectionData.node],
@@ -829,6 +833,11 @@ export class WorkflowExecute {
 		for (const nodeName of checkNodes) {
 			let nodeIssues: INodeIssues | null = null;
 			const node = workflow.nodes[nodeName];
+
+			if (!node && nodeName === TOOL_EXECUTOR_NODE_NAME) {
+				// ToolExecutor is a virtual node which is not saved in the workflow during test executions
+				continue;
+			}
 
 			if (node.disabled === true) {
 				continue;

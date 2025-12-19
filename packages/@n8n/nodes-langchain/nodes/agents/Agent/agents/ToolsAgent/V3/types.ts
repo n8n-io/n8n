@@ -1,15 +1,7 @@
-import type {
-	ToolCallData,
-	ToolCallRequest,
-	AgentResult,
-	RequestResponseMetadata as SharedRequestResponseMetadata,
-} from '@utils/agent-execution';
+import type { ToolCallData, ToolCallRequest, AgentResult } from '@utils/agent-execution';
 
 // Re-export shared types for backwards compatibility
 export type { ToolCallData, ToolCallRequest, AgentResult };
-
-// Use the shared metadata type directly (it already includes previousRequests)
-export type RequestResponseMetadata = SharedRequestResponseMetadata;
 
 // Keep the IntermediateStep type for compatibility
 export type IntermediateStep = {

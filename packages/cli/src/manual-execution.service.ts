@@ -118,6 +118,8 @@ export class ManualExecutionService {
 
 			const startNode = this.getExecutionStartNode(data, workflow);
 
+			const additionalRunFilterNodes: string[] = [];
+
 			if (data.destinationNode) {
 				const destinationNode = workflow.getNode(data.destinationNode.nodeName);
 				a.ok(
@@ -149,6 +151,12 @@ export class ManualExecutionService {
 					// Set destination to Tool Executor
 					// TODO(CAT-1265): Verify that this works as expected with inclusive mode.
 					data.destinationNode = { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' };
+					// One manual execution may run multiple tools, if the tool is connected through HITL node
+					// Allow execution by adding to runFilter
+					const connectedTools = workflow.getParentNodes(TOOL_EXECUTOR_NODE_NAME, 'ALL_NON_MAIN');
+					for (const connectedTool of connectedTools) {
+						additionalRunFilterNodes.push(connectedTool);
+					}
 				}
 			}
 
@@ -161,6 +169,7 @@ export class ManualExecutionService {
 				data.destinationNode,
 				data.pinData,
 				data.triggerToStartFrom,
+				additionalRunFilterNodes,
 			);
 		} else {
 			a.ok(

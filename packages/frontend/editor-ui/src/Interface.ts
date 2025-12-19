@@ -33,6 +33,7 @@ import type {
 	ISourceData,
 	PublicInstalledPackage,
 	IDestinationNode,
+	AgentRequestQuery,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -194,7 +195,7 @@ export interface IStartRunData {
 		data?: ITaskData;
 	};
 	agentRequest?: {
-		query: NodeParameterValueType;
+		query: AgentRequestQuery;
 		tool: {
 			name: NodeParameterValueType;
 		};

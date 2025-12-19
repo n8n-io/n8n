@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Toolkit } from '@langchain/classic/agents';
-import { DynamicStructuredTool } from '@langchain/core/tools';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
@@ -326,6 +326,22 @@ function validateInputConfiguration(
 	}
 }
 
+function fillToolMetadata(targetTool: unknown, sourceNodeName: string) {
+	if (targetTool instanceof DynamicStructuredTool || targetTool instanceof DynamicTool) {
+		targetTool.metadata ??= {};
+		targetTool.metadata.sourceNodeName = sourceNodeName;
+	}
+
+	if (targetTool instanceof Toolkit) {
+		for (const tool of targetTool.tools) {
+			if (tool instanceof DynamicStructuredTool) {
+				tool.metadata ??= {};
+				tool.metadata.sourceNodeName = sourceNodeName;
+			}
+		}
+	}
+}
+
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
 	workflow: Workflow,
@@ -446,19 +462,7 @@ export async function getInputConnectionData(
 				const response = supplyData.response;
 
 				// Ensure sourceNodeName is set for proper routing
-				if (response instanceof DynamicStructuredTool) {
-					response.metadata ??= {};
-					response.metadata.sourceNodeName = connectedNode.name;
-				}
-
-				if (response instanceof Toolkit) {
-					for (const tool of response.tools) {
-						if (tool instanceof DynamicStructuredTool) {
-							tool.metadata ??= {};
-							tool.metadata.sourceNodeName = connectedNode.name;
-						}
-					}
-				}
+				fillToolMetadata(response, connectedNode.name);
 
 				if (supplyData.closeFunction) {
 					closeFunctions.push(supplyData.closeFunction);
