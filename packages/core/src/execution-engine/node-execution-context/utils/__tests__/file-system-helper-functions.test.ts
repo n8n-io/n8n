@@ -1,3 +1,4 @@
+import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { constants, createReadStream } from 'node:fs';
@@ -23,6 +24,9 @@ jest.mock('node:fs/promises');
 const originalProcessEnv = { ...process.env };
 
 let instanceSettings: InstanceSettings;
+let securityConfig: SecurityConfig;
+let originalBlockedFilePatterns: string;
+
 beforeEach(() => {
 	process.env = { ...originalProcessEnv };
 
@@ -33,6 +37,13 @@ beforeEach(() => {
 	(fsRealpath as jest.Mock).mockImplementation((path: string) => path);
 
 	instanceSettings = Container.get(InstanceSettings);
+	securityConfig = Container.get(SecurityConfig);
+	securityConfig.restrictFileAccessTo = '';
+	originalBlockedFilePatterns = securityConfig.blockFilePatterns;
+});
+
+afterEach(() => {
+	securityConfig.blockFilePatterns = originalBlockedFilePatterns;
 });
 
 describe('isFilePathBlocked', () => {
@@ -181,6 +192,45 @@ describe('isFilePathBlocked', () => {
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
+	});
+
+	it.each(['.git', '/.git', '/tmp/.git', '/tmp/.git/config'])(
+		'should per default block access to %s',
+		async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
+		},
+	);
+
+	it('should allow access when pattern matching is disabled', async () => {
+		securityConfig.blockFilePatterns = '';
+		expect(isFilePathBlocked(await resolvePath('/tmp/.git'))).toBe(false);
+	});
+
+	it('should block all access when using invalid pattern', async () => {
+		securityConfig.blockFilePatterns = '(';
+		expect(isFilePathBlocked(await resolvePath('/tmp/xo'))).toBe(true);
+	});
+
+	describe('when multiple file patterns are configured', () => {
+		beforeEach(() => {
+			securityConfig.blockFilePatterns = 'hello; \\/there$; ^where';
+		});
+
+		it.each([
+			'hello',
+			'xhellox',
+			'subpath/hello/',
+			'/there',
+			'/subpath/there',
+			'where',
+			'where-is/it',
+		])('should block access to %s', async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
+		});
+
+		it.each(['/there/is', '/where'])('should not block access to %s', async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
+		});
 	});
 });
 
