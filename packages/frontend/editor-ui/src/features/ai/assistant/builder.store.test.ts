@@ -815,7 +815,7 @@ describe('AI Builder store', () => {
 				onError(new Error('Network error'));
 			});
 
-			builderStore.sendChatMessage({ text: 'test message' });
+			await builderStore.sendChatMessage({ text: 'test message' });
 
 			// Wait for error message to be processed
 			await vi.waitFor(() => {
