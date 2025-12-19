@@ -1,5 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
+import { User, type WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
