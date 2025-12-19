@@ -94,7 +94,7 @@ const togglePopup = () => {
 		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']">
-			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip">
+			<N8nTooltip placement="right">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
 				</template>

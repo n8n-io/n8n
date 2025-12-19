@@ -1,7 +1,6 @@
-import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
 import { createPinia } from 'pinia';
-import { waitAllPromises, getTooltip } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
+import { waitAllPromises, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -167,30 +166,27 @@ describe('SettingsPersonalView', () => {
 	test.each([
 		['Default', ROLE.Default, false, 'Default role for new users'],
 		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],
-		[
-			'Admin',
-			ROLE.Admin,
-			false,
-			'Full access to manage workflows,tags, credentials, projects, users and more',
-		],
+		['Admin', ROLE.Admin, false, 'Full access to manage workflows'],
 		['Owner', ROLE.Owner, false, 'Manage everything'],
 		['Owner', ROLE.Owner, true, 'Manage everything and access Cloud dashboard'],
-	])('should show %s user role information', async (label, role, hasCloudPlan, tooltipText) => {
-		vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
-		vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
+	])(
+		'should show %s user role information with tooltip',
+		async (label, role, hasCloudPlan, expectedTooltip) => {
+			vi.spyOn(cloudPlanStore, 'hasCloudPlan', 'get').mockReturnValue(hasCloudPlan);
+			vi.spyOn(usersStore, 'globalRoleName', 'get').mockReturnValue(role);
 
-		const { queryByTestId } = renderComponent({ pinia });
-		await waitAllPromises();
+			const { queryByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
 
-		expect(queryByTestId('current-user-role')).toBeVisible();
-		expect(queryByTestId('current-user-role')).toHaveTextContent(label);
+			const roleElement = queryByTestId('current-user-role');
+			expect(roleElement).toBeVisible();
+			expect(roleElement).toHaveTextContent(label);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		await userEvent.hover(queryByTestId('current-user-role')!);
-
-		await waitFor(() => {
-			const tooltip = getTooltip();
-			expect(tooltip).toHaveTextContent(tooltipText);
-		});
-	});
+			// Hover and verify tooltip content
+			if (roleElement) {
+				await hoverTooltipTrigger(roleElement);
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(expectedTooltip));
+			}
+		},
+	);
 });

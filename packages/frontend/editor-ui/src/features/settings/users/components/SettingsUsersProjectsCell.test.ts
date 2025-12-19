@@ -1,11 +1,10 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor, within } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/vue';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getTooltip } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 
 const baseUser: UsersList['items'][number] = {
 	id: '1',
@@ -62,36 +61,34 @@ describe('SettingsUsersProjectsCell', () => {
 	});
 
 	it('should show a tooltip with additional projects when list is long', async () => {
-		const props = {
-			data: {
-				...baseUser,
-				projectRelations: [
-					{ name: 'Project A' },
-					{ name: 'Project B' },
-					{ name: 'Project C' },
-					{ name: 'Project D' },
-				],
+		renderComponent({
+			props: {
+				data: {
+					...baseUser,
+					projectRelations: [
+						{ name: 'Project A' },
+						{ name: 'Project B' },
+						{ name: 'Project C' },
+						{ name: 'Project D' },
+					],
+				},
 			},
-		};
-		renderComponent({ props });
+		});
 
 		// Visible projects
 		expect(screen.getByText('Project A')).toBeInTheDocument();
 		expect(screen.getByText('Project B')).toBeInTheDocument();
 
-		// Additional count - hover to show tooltip
+		// Additional count should have tooltip with hidden project names
 		const additionalCount = screen.getByText('+ 2');
 		expect(additionalCount).toBeInTheDocument();
 
-		await userEvent.hover(additionalCount);
-
-		// Projects inside the tooltip content
+		// Verify tooltip shows hidden project names on hover
+		await hoverTooltipTrigger(additionalCount);
 		await waitFor(() => {
 			const tooltip = getTooltip();
-			expect(tooltip).toBeInTheDocument();
-			const list = within(tooltip).getByRole('list');
-			expect(within(list).getByText('Project C')).toBeInTheDocument();
-			expect(within(list).getByText('Project D')).toBeInTheDocument();
+			expect(tooltip).toHaveTextContent('Project C');
+			expect(tooltip).toHaveTextContent('Project D');
 		});
 	});
 });

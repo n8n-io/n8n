@@ -30,7 +30,6 @@ exports[`PushConnectionTracker > should render error when disconnected and conne
       <span
         data-grace-area-trigger=""
         data-state="closed"
-        disabled="false"
       >
         <n8n-icon-stub
           icon="triangle-alert"

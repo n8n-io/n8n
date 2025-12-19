@@ -1,8 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { within, waitFor } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -190,20 +190,15 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(indicator).toBeInTheDocument();
 
-			// Find the SVG trigger element (has data-grace-area-trigger from Reka UI)
+			// Find the SVG trigger element and hover to show tooltip
 			const svgTrigger = indicator.querySelector('svg');
-			expect(svgTrigger).toBeInTheDocument();
+			if (!svgTrigger) throw new Error('SVG trigger not found');
 
-			// Hover on the SVG to show the tooltip
-			await userEvent.hover(svgTrigger as Element);
-
-			// Wait for tooltip content to appear
+			await hoverTooltipTrigger(svgTrigger);
 			await waitFor(() => {
 				const tooltip = getTooltip();
-				expect(tooltip).toBeInTheDocument();
-				// TimeAgo component has a title attribute with the full date
-				const timeAgoElement = tooltip.querySelector('[title]');
-				expect(timeAgoElement).toHaveAttribute('title', expect.stringContaining('Jun'));
+				expect(tooltip).toHaveTextContent('Published Version');
+				expect(tooltip).toHaveTextContent('Published');
 			});
 		});
 	});

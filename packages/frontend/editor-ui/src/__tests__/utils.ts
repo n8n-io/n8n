@@ -162,3 +162,28 @@ export const queryTooltip = () => document.querySelector('.n8n-tooltip') as HTML
  * Get a within() wrapper for querying inside the tooltip
  */
 export const withinTooltip = () => within(getTooltip());
+
+/**
+ * Triggers tooltip hover by dispatching a proper pointermove event.
+ * Works with Reka UI tooltips in JSDOM by setting correct pointerType.
+ *
+ * Requires PointerEvent polyfill in setup.ts (already configured).
+ *
+ * @example
+ * const button = getByRole('button');
+ * await hoverTooltipTrigger(button);
+ * await waitFor(() => expect(getTooltip()).toHaveTextContent('Expected text'));
+ */
+export const hoverTooltipTrigger = async (element: Element): Promise<void> => {
+	const event = new PointerEvent('pointermove', {
+		bubbles: true,
+		cancelable: true,
+		pointerType: 'mouse',
+		clientX: 100,
+		clientY: 100,
+	});
+
+	element.dispatchEvent(event);
+	// Allow Vue reactivity and Reka UI to process
+	await new Promise((r) => setTimeout(r, 10));
+};

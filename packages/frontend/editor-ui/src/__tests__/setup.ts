@@ -81,6 +81,50 @@ process.env.TZ = 'UTC';
 configure({ testIdAttribute: 'data-test-id' });
 
 /**
+ * PointerEvent polyfill for JSDOM
+ * Required for Reka UI tooltip hover to work (checks event.pointerType)
+ */
+class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
+	readonly pointerId: number;
+	readonly pointerType: string;
+	readonly pressure: number;
+	readonly tangentialPressure: number;
+	readonly tiltX: number;
+	readonly tiltY: number;
+	readonly twist: number;
+	readonly width: number;
+	readonly height: number;
+	readonly isPrimary: boolean;
+
+	constructor(type: string, params: PointerEventInit = {}) {
+		super(type, params);
+		this.pointerId = params.pointerId ?? 0;
+		this.pointerType = params.pointerType ?? 'mouse';
+		this.pressure = params.pressure ?? 0;
+		this.tangentialPressure = params.tangentialPressure ?? 0;
+		this.tiltX = params.tiltX ?? 0;
+		this.tiltY = params.tiltY ?? 0;
+		this.twist = params.twist ?? 0;
+		this.width = params.width ?? 1;
+		this.height = params.height ?? 1;
+		this.isPrimary = params.isPrimary ?? true;
+	}
+
+	getCoalescedEvents(): PointerEvent[] {
+		return [];
+	}
+	getPredictedEvents(): PointerEvent[] {
+		return [];
+	}
+}
+
+// Only polyfill if PointerEvent is missing or incomplete
+if (typeof globalThis.PointerEvent === 'undefined') {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	(globalThis as any).PointerEvent = JsonDomPointerEvent;
+}
+
+/**
  * Fixes missing pointer APIs and defaultPrevented issues for jsdom + user-event
  * Required for Reka UI components (tooltips, etc.) to work properly in tests
  */

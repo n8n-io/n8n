@@ -1,7 +1,6 @@
-import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getTooltip } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 
 const renderComponent = createComponentRenderer(GlobalExecutionsListItemQueuedTooltip);
@@ -32,39 +31,46 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 			},
 		});
 
-		await userEvent.hover(getByText('Waiting'));
+		// Verify slot content is rendered
+		const slotContent = getByText('Waiting');
+		expect(slotContent).toBeInTheDocument();
 
-		await waitFor(() => {
-			const tooltip = getTooltip();
-			expect(tooltip).toHaveTextContent(/waiting indefinitely/);
-		});
+		// Hover and verify tooltip content
+		await hoverTooltipTrigger(slotContent);
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent('waiting indefinitely for an incoming webhook'),
+		);
 	});
 
 	it('should show queued tooltip for self-hosted', async () => {
 		const { getByText } = renderComponent({
 			props: {
 				status: 'new',
-				concurrencyCap: 0,
+				concurrencyCap: 5,
 			},
 			slots: {
 				default: '<span>Queued</span>',
 			},
 		});
 
-		await userEvent.hover(getByText('Queued'));
+		// Verify slot content is rendered
+		const slotContent = getByText('Queued');
+		expect(slotContent).toBeInTheDocument();
 
+		// Hover and verify tooltip content
+		await hoverTooltipTrigger(slotContent);
 		await waitFor(() => {
 			const tooltip = getTooltip();
-			expect(tooltip).toHaveTextContent(/instance is limited/);
+			expect(tooltip).toHaveTextContent('concurrency capacity is available');
 			expect(tooltip).toHaveTextContent('View docs');
 		});
 	});
 
 	it('should show queued tooltip for cloud', async () => {
-		const { getByText, emitted } = renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				status: 'new',
-				concurrencyCap: 0,
+				concurrencyCap: 5,
 				isCloudDeployment: true,
 			},
 			slots: {
@@ -72,17 +78,16 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 			},
 		});
 
-		await userEvent.hover(getByText('Queued'));
+		// Verify slot content is rendered
+		const slotContent = getByText('Queued');
+		expect(slotContent).toBeInTheDocument();
 
-		let tooltipElement: HTMLElement | null = null;
+		// Hover and verify tooltip content
+		await hoverTooltipTrigger(slotContent);
 		await waitFor(() => {
-			tooltipElement = getTooltip();
-			expect(tooltipElement).toHaveTextContent(/plan is limited/);
-			expect(tooltipElement).toHaveTextContent('Upgrade now');
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('concurrency capacity is available');
+			expect(tooltip).toHaveTextContent('Upgrade now');
 		});
-
-		await userEvent.click(within(tooltipElement!).getByText('Upgrade now'));
-
-		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
 });

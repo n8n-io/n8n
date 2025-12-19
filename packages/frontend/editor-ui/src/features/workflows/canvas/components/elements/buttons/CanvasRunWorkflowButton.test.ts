@@ -1,8 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { getTooltip, queryTooltip } from '@/__tests__/utils';
+import { queryTooltip, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
 import CanvasRunWorkflowButton from './CanvasRunWorkflowButton.vue';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import { createTestNode } from '@/__tests__/mocks';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -59,9 +60,13 @@ describe('CanvasRunWorkflowButton', () => {
 
 	it('should show tooltip when not executing', async () => {
 		const wrapper = renderComponent({ props: { executing: false } });
-		await userEvent.hover(wrapper.getByRole('button'));
+		const button = wrapper.getByRole('button');
 
-		await waitFor(() => expect(getTooltip()).toBeInTheDocument());
+		// Verify tooltip shows execution label and shortcut on hover
+		await hoverTooltipTrigger(button);
+		// Tooltip has showAfter of 500ms, wait for it
+		await new Promise((r) => setTimeout(r, 600));
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute workflow'));
 	});
 
 	it('should not show tooltip when executing', async () => {

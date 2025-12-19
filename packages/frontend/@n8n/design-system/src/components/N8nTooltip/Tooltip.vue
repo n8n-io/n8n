@@ -16,7 +16,6 @@ import N8nButton from '../N8nButton';
 
 defineOptions({
 	name: 'N8nTooltip',
-	inheritAttrs: false,
 });
 
 const props = withDefaults(defineProps<N8nTooltipProps>(), {
@@ -30,8 +29,9 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	avoidCollisions: true,
 });
 
-// Get append-to target from composable
-const appendTo = useInjectTooltipAppendTo();
+// Get append-to target from composable, defaulting to body for proper z-index stacking
+const injectedAppendTo = useInjectTooltipAppendTo();
+const appendTo = computed(() => injectedAppendTo.value ?? 'body');
 
 // Convert Element+ placement to Reka UI side + align
 type Side = 'top' | 'bottom' | 'left' | 'right';
@@ -51,6 +51,9 @@ const placementParts = computed(() => {
 	};
 });
 
+// Reka UI handles enterable behavior via disableHoverableContent prop
+const disableHoverableContent = computed(() => !props.enterable);
+
 // Handle controlled visibility
 const isOpen = ref(false);
 
@@ -64,9 +67,6 @@ watch(
 	{ immediate: true },
 );
 
-// Reka UI handles enterable behavior via disableHoverableContent prop
-const disableHoverableContent = computed(() => !props.enterable);
-
 // Determine if we're in controlled mode
 const isControlled = computed(() => props.visible !== undefined);
 
@@ -76,20 +76,15 @@ const handleOpenChange = (open: boolean) => {
 </script>
 
 <template>
-	<TooltipProvider
-		:delay-duration="showAfter"
-		:disable-hoverable-content="disableHoverableContent"
-		:skip-delay-duration="0"
-	>
+	<TooltipProvider>
 		<TooltipRoot
-			:open="isControlled ? isOpen : undefined"
-			:default-open="false"
 			:disabled="disabled"
-			:disable-closing-trigger="true"
-			:ignore-non-keyboard-focus="true"
+			:delay-duration="showAfter"
+			:open="isControlled ? isOpen : undefined"
+			:disable-hoverable-content="disableHoverableContent"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as-child :disabled="disabled">
+			<TooltipTrigger as-child>
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
@@ -136,6 +131,7 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
+	z-index: 2100; // Above header and other fixed elements
 	max-width: 180px;
 	padding: 10px;
 	font-size: 12px;

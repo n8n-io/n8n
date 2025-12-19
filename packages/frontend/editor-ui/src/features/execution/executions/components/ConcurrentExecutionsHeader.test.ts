@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
-import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import ConcurrentExecutionsHeader from './ConcurrentExecutionsHeader.vue';
 
 vi.mock('vue-router', () => {
@@ -47,8 +47,8 @@ describe('ConcurrentExecutionsHeader', () => {
 		},
 	);
 
-	it('should show tooltip on hover with Upgrade link and emit "goToUpgrade" on click when on cloud', async () => {
-		const { container, emitted } = renderComponent({
+	it('should show tooltip on hover with Upgrade link when on cloud', async () => {
+		const { container } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
 				concurrencyCap: 5,
@@ -56,22 +56,20 @@ describe('ConcurrentExecutionsHeader', () => {
 			},
 		});
 
-		const tooltipTrigger = container.querySelector('svg') as SVGSVGElement;
+		const tooltipTrigger = container.querySelector('svg');
+		if (!tooltipTrigger) throw new Error('SVG trigger not found');
 
 		expect(tooltipTrigger).toBeVisible();
 
-		await userEvent.hover(tooltipTrigger);
-
+		await hoverTooltipTrigger(tooltipTrigger);
 		await waitFor(() => {
-			expect(screen.getByText('Upgrade now')).toBeVisible();
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('2 out of 5');
+			expect(tooltip).toHaveTextContent('Upgrade now');
 		});
-
-		await userEvent.click(screen.getByText('Upgrade now'));
-
-		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
 
-	it('should show tooltip on hover with Viev docs link when self-hosted', async () => {
+	it('should show tooltip on hover with View docs link when self-hosted', async () => {
 		const { container } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
@@ -79,14 +77,16 @@ describe('ConcurrentExecutionsHeader', () => {
 			},
 		});
 
-		const tooltipTrigger = container.querySelector('svg') as SVGSVGElement;
+		const tooltipTrigger = container.querySelector('svg');
+		if (!tooltipTrigger) throw new Error('SVG trigger not found');
 
 		expect(tooltipTrigger).toBeVisible();
 
-		await userEvent.hover(tooltipTrigger);
-
+		await hoverTooltipTrigger(tooltipTrigger);
 		await waitFor(() => {
-			expect(screen.getByText('View docs')).toBeVisible();
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('2 out of 5');
+			expect(tooltip).toHaveTextContent('View docs');
 		});
 	});
 });

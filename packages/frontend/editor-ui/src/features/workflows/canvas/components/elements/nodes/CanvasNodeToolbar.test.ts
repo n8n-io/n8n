@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import {
 	createCanvasNodeProvide,
 	createCanvasProvide,
@@ -67,11 +68,9 @@ describe('CanvasNodeToolbar', () => {
 		const button = getByTestId('execute-node-button');
 		expect(button).toBeDisabled();
 
-		await userEvent.hover(button);
-
-		await waitFor(() => {
-			expect(screen.getByText("This node is deactivated and can't be run")).toBeVisible();
-		});
+		// Verify tooltip shows deactivated message on hover
+		await hoverTooltipTrigger(button);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('deactivated'));
 	});
 
 	it('should not render execute node button when renderType is configuration', async () => {

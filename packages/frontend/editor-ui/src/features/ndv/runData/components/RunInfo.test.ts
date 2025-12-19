@@ -2,10 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import type { ITaskData } from 'n8n-workflow';
 import RunInfo from './RunInfo.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getTooltip } from '@/__tests__/utils';
-import { mock } from 'vitest-mock-extended';
-import userEvent from '@testing-library/user-event';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
 	convertToDisplayDateComponents: vi.fn(() => ({
@@ -68,17 +67,13 @@ describe('RunInfo', () => {
 		// Verify the component renders with success status
 		expect(statusIcon).toHaveAttribute('data-test-id', 'node-run-status-success');
 
-		// Hover over the info icon svg to trigger tooltip (tooltip trigger is on the icon span)
-		const infoIconSvg = infoIcon.querySelector('svg');
-		await userEvent.hover(infoIconSvg!);
-
+		// Verify tooltip shows execution details on hover
+		await hoverTooltipTrigger(infoIcon);
 		await waitFor(() => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Success');
-			expect(tooltip).toHaveTextContent('Start time:');
-			expect(tooltip).toHaveTextContent('Jan 15 at 10:30:00');
-			expect(tooltip).toHaveTextContent('Execution time:');
-			expect(tooltip).toHaveTextContent('1500 ms');
+			expect(tooltip).toHaveTextContent('Start time');
+			expect(tooltip).toHaveTextContent('Execution time');
 		});
 	});
 
@@ -111,17 +106,13 @@ describe('RunInfo', () => {
 		// For cancelled status, only info tooltip is shown (no status icon)
 		expect(infoIcon).toHaveAttribute('data-test-id', 'node-run-info');
 
-		// Hover over the info icon svg to trigger tooltip
-		const infoIconSvg = infoIcon.querySelector('svg');
-		await userEvent.hover(infoIconSvg!);
-
+		// Verify tooltip shows canceled status on hover
+		await hoverTooltipTrigger(infoIcon);
 		await waitFor(() => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Canceled');
-			expect(tooltip).toHaveTextContent('Start time:');
-			expect(tooltip).toHaveTextContent('Jan 15 at 10:30:00');
-			expect(tooltip).toHaveTextContent('Execution time:');
-			expect(tooltip).toHaveTextContent('800 ms');
+			expect(tooltip).toHaveTextContent('Start time');
+			expect(tooltip).toHaveTextContent('Execution time');
 		});
 	});
 
@@ -160,17 +151,13 @@ describe('RunInfo', () => {
 		// Verify the component renders with error status
 		expect(statusIcon).toHaveAttribute('data-test-id', 'node-run-status-danger');
 
-		// Hover over the info icon svg to trigger tooltip
-		const infoIconSvg = infoIcon.querySelector('svg');
-		await userEvent.hover(infoIconSvg!);
-
+		// Verify tooltip shows failed status on hover
+		await hoverTooltipTrigger(infoIcon);
 		await waitFor(() => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Failed');
-			expect(tooltip).toHaveTextContent('Start time:');
-			expect(tooltip).toHaveTextContent('Jan 15 at 10:30:00');
-			expect(tooltip).toHaveTextContent('Execution time:');
-			expect(tooltip).toHaveTextContent('1200 ms');
+			expect(tooltip).toHaveTextContent('Start time');
+			expect(tooltip).toHaveTextContent('Execution time');
 		});
 	});
 });

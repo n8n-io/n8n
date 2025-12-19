@@ -1,6 +1,6 @@
 import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
-import { getTooltip } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import * as useResolvedExpression from '@/app/composables/useResolvedExpression';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { STORES } from '@n8n/stores';
@@ -108,17 +108,13 @@ describe('Assignment.vue', () => {
 		});
 
 		const typeSelect = getByTestId('assignment-type-select');
+		expect(typeSelect).toBeInTheDocument();
 
-		// Hover over the type select to trigger tooltip
-		await userEvent.hover(typeSelect);
-
-		// Check if tooltip with binary data information is displayed
-		await waitFor(() => {
-			const tooltip = getTooltip();
-			expect(tooltip).toHaveTextContent(
-				'Specify the property name of the binary data in the input item',
-			);
-		});
+		// Hover and verify tooltip shows binary data access help
+		await hoverTooltipTrigger(typeSelect);
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent('Specify the property name of the binary data'),
+		);
 	});
 
 	it('should not auto-change type when disableType is true', async () => {
