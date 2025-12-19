@@ -770,17 +770,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('Workflow builder journey', payload);
 	}
 
-	watch(
-		workflowTodos,
-		(newTodos, oldTodos) => {
-			// Only track if we had todos before and now we don't
-			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0) {
-				trackWorkflowBuilderJourney('no_placeholder_values_left');
-			}
-		},
-		{ deep: true },
-	);
-
 	// Public API
 	return {
 		// State
