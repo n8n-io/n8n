@@ -233,6 +233,8 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 
 	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
 		const arrayData = this.getArrayData();
+		if (index < 0 || index >= arrayData.length) return undefined;
+
 		const value = arrayData[index];
 
 		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -318,7 +320,7 @@ class AutomergeNestedArray<T = unknown> implements CRDTArray<T> {
 
 	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
 		const data = this.getNestedData();
-		if (!data) return undefined;
+		if (!data || index < 0 || index >= data.length) return undefined;
 
 		const value = data[index];
 
@@ -762,6 +764,7 @@ class AutomergeDocHolder {
 
 	destroy(): void {
 		this.changeHandlers.clear();
+		this.updateHandlers.clear();
 	}
 }
 
