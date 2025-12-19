@@ -428,13 +428,8 @@ export class WorkflowsController {
 
 	@Get('/:workflowId/exists')
 	async exists(req: WorkflowRequest.Get) {
-		const { workflowId } = req.params;
-
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:read',
-		]);
-
-		return { exists: !!workflow };
+		const exists = await this.workflowRepository.existsBy({ id: req.params.workflowId });
+		return { exists };
 	}
 
 	@Patch('/:workflowId')
