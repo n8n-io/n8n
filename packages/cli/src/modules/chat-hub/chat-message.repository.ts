@@ -31,7 +31,11 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.insert(ChatHubMessage, message);
-			await this.chatSessionRepository.updateLastMessageAt(sessionId, em);
+			await this.chatSessionRepository.updateChatSession(
+				sessionId,
+				{ lastMessageAt: new Date() },
+				em,
+			);
 		});
 	}
 
