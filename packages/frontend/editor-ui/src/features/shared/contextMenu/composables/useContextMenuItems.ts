@@ -109,9 +109,15 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 		return true;
 	};
 
+	const isAiSubNode = (node: INodeUi): boolean => {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		return NodeHelpers.isSubNodeType(nodeType);
+	};
+
 	return computed(() => {
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+		const canExtract = nodes.some(isExecutable) && !nodes.some(isAiSubNode);
 
 		const i18nOptions = {
 			adjustToNumber: nodes.length,
@@ -206,7 +212,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
-				...extractionActions,
+				...(canExtract ? extractionActions : []),
 				...selectionActions,
 				{
 					id: 'delete',
