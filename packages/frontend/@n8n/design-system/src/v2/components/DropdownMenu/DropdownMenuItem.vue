@@ -190,6 +190,8 @@ watch(
 					ref="subContentRef"
 					:class="$style['sub-content']"
 					:side-offset="1"
+					:prioritize-position="true"
+					sticky="partial"
 					@keydown="handleSubContentKeydown"
 				>
 					<N8nDropdownMenuSearch
@@ -281,6 +283,8 @@ watch(
 
 .children-container {
 	padding: var(--spacing--4xs);
+	max-height: var(--reka-dropdown-menu-content-available-height);
+	overflow-y: auto;
 }
 
 .item {

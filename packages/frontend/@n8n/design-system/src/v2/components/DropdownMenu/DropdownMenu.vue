@@ -231,6 +231,7 @@ defineExpose({ open, close });
 				:align="placementParts.align"
 				:side-offset="5"
 				:style="contentStyle"
+				:prioritize-position="true"
 				@keydown="handleContentKeydown"
 				@mouseleave="navigation.reset"
 			>
@@ -335,6 +336,8 @@ $menu_width: 180px;
 	display: flex;
 	flex-direction: column;
 	width: $menu_width;
+	max-height: var(--reka-dropdown-menu-content-available-height);
+	overflow-y: auto;
 	border-radius: var(--radius);
 	border: var(--border);
 	background-color: var(--color--background--light-2);
