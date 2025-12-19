@@ -764,7 +764,10 @@ export class LmChatOpenAi implements INodeType {
 			credentials.headerName &&
 			typeof credentials.headerValue === 'string'
 		) {
-			configuration.defaultHeaders[credentials.headerName] = credentials.headerValue;
+			configuration.defaultHeaders = {
+				...configuration.defaultHeaders,
+				[credentials.headerName]: credentials.headerValue,
+			};
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
