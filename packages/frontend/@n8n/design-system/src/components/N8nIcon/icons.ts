@@ -84,6 +84,7 @@ import IconLucideClipboard from '~icons/lucide/clipboard';
 import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
 import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideClock from '~icons/lucide/clock';
+import IconLucideRotateCcw from '~icons/lucide/rotate-ccw';
 import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
@@ -532,6 +533,7 @@ export const updatedIconSet = {
 	'clipboard-check': IconLucideClipboardCheck,
 	'clipboard-list': IconLucideClipboardList,
 	clock: IconLucideClock,
+	'clock-rotate-left': IconLucideRotateCcw,
 	cloud: IconLucideCloud,
 	'cloud-download': IconLucideCloudDownload,
 	code: IconLucideCode,

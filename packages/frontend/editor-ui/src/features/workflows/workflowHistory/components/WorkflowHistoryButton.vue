@@ -51,7 +51,7 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 				:disabled="isNewWorkflow"
 				data-test-id="workflow-history-button"
 				type="highlight"
-				icon="history"
+				:icon="isWorkflowSaving ? 'clock-rotate-left' : 'history'"
 				size="medium"
 			/>
 		</RouterLink>
@@ -66,7 +66,9 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 
 <style lang="scss" module>
 .saving {
-	animation: loading-rotate 1s linear infinite;
+	:global(.n8n-icon) {
+		animation: loading-rotate 1s linear infinite;
+	}
 }
 
 @keyframes loading-rotate {
