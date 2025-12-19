@@ -35,7 +35,10 @@ import {
 	N8N_KEYCLOAK_CERT_PATH,
 } from './n8n-test-container-keycloak';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
+import type { ObservabilityStack, ScrapeTarget } from './n8n-test-container-observability';
+import type { TracingStack } from './n8n-test-container-tracing';
 import { createElapsedLogger, createSilentLogConsumer } from './n8n-test-container-utils';
+import { waitForNetworkQuiet } from './network-stabilization';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // --- Constants ---
@@ -100,6 +103,10 @@ export interface N8NConfig {
 	email?: boolean;
 	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
 	oidc?: boolean;
+	/** Enable VictoriaObs stack for test observability (VictoriaLogs + VictoriaMetrics) */
+	observability?: boolean;
+	/** Enable tracing stack for workflow execution visualization (n8n-tracer + Jaeger) */
+	tracing?: boolean;
 }
 
 export interface N8NStack {
@@ -113,6 +120,10 @@ export interface N8NStack {
 		/** Internal discovery URL for n8n container to access Keycloak via Docker network */
 		internalDiscoveryUrl: string;
 	};
+	/** Observability stack when observability is enabled */
+	observability?: ObservabilityStack;
+	/** Tracing stack when tracing is enabled */
+	tracing?: TracingStack;
 }
 
 /**
@@ -147,16 +158,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled = false,
 		projectName,
 		resourceQuota,
-		taskRunner = false,
+		taskRunner,
 		sourceControl = false,
 		email = false,
 		oidc = false,
+		observability = false,
+		tracing = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
-	const taskRunnerEnabled = !!taskRunner;
+	// Task runner is enabled by default for all containerized stacks (mirrors production default)
+	const taskRunnerEnabled = taskRunner ?? true;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
 	const oidcEnabled = !!oidc;
+	const observabilityEnabled = !!observability;
+	const tracingEnabled = !!tracing;
 	// OIDC requires PostgreSQL for SSO support
 	const usePostgres = postgres || !!queueConfig || oidcEnabled;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -174,7 +190,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		taskRunnerEnabled ||
 		sourceControlEnabled ||
 		emailEnabled ||
-		oidcEnabled;
+		oidcEnabled ||
+		observabilityEnabled ||
+		tracingEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -301,6 +319,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
+	let observabilityStack: ObservabilityStack | undefined;
+	let tracingStack: TracingStack | undefined;
+
 	let earlyAllocatedPort: number | undefined;
 	let earlyAllocatedLoadBalancerPort: number | undefined;
 	if (oidcEnabled) {
@@ -336,6 +357,71 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			...environment,
 			...getKeycloakN8nEnvironment(),
 		};
+	}
+
+	// Set up observability stack early to capture startup metrics
+	// VictoriaMetrics will retry failed scrapes until n8n containers are ready
+	// Vector collects container logs independently (persists even when process exits)
+	if (observabilityEnabled && network) {
+		log('Setting up observability stack (VictoriaLogs + VictoriaMetrics + Vector)...');
+		const { setupObservabilityStack } = await import('./n8n-test-container-observability');
+
+		// Pre-compute scrape targets (hostnames are deterministic)
+		const workerCount = queueConfig?.workers ?? 0;
+		const scrapeTargets: ScrapeTarget[] = [];
+
+		// Add main targets (all grouped under 'n8n-main' job)
+		// Hostname must match the container name: single instance uses '-n8n', multi uses '-n8n-main-{i}'
+		for (let i = 1; i <= mainCount; i++) {
+			const hostname =
+				mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
+			scrapeTargets.push({
+				job: 'n8n-main',
+				instance: `n8n-main-${i}`,
+				host: hostname,
+				port: 5678,
+			});
+		}
+
+		// Add worker targets (all grouped under 'n8n-worker' job)
+		for (let i = 1; i <= workerCount; i++) {
+			scrapeTargets.push({
+				job: 'n8n-worker',
+				instance: `n8n-worker-${i}`,
+				host: `${uniqueProjectName}-n8n-worker-${i}`,
+				port: 5678,
+			});
+		}
+
+		// Start full observability stack (VictoriaLogs, VictoriaMetrics, Vector)
+		observabilityStack = await setupObservabilityStack({
+			projectName: uniqueProjectName,
+			network,
+			scrapeTargets,
+		});
+
+		containers.push(
+			observabilityStack.victoriaLogs.container,
+			observabilityStack.victoriaMetrics.container,
+		);
+		if (observabilityStack.vector) {
+			containers.push(observabilityStack.vector.container);
+		}
+		log('Observability stack ready (logs collected by Vector)');
+	}
+
+	if (tracingEnabled && network) {
+		log('Setting up tracing stack (n8n-tracer + Jaeger)...');
+		const { setupTracingStack } = await import('./n8n-test-container-tracing');
+
+		tracingStack = await setupTracingStack({
+			projectName: uniqueProjectName,
+			network,
+			deploymentMode: 'scaling',
+		});
+
+		containers.push(tracingStack.jaeger.container, tracingStack.n8nTracer.container);
+		log('Tracing stack ready');
 	}
 
 	let baseUrl: string;
@@ -414,9 +500,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (taskRunnerEnabled && network) {
-		const taskBrokerUri = queueConfig?.workers
-			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
-			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
+		// Determine task broker hostname based on mode:
+		// - Queue mode with workers: use first worker
+		// - Queue mode without workers (multi-main): use first main (named -n8n-main-1)
+		// - Single instance: use main (named -n8n)
+		const taskBrokerHost = queueConfig?.workers
+			? `${uniqueProjectName}-n8n-worker-1`
+			: mainCount > 1
+				? `${uniqueProjectName}-n8n-main-1`
+				: `${uniqueProjectName}-n8n`;
+		const taskBrokerUri = `http://${taskBrokerHost}:5679`;
 
 		const taskRunnerContainer = await setupTaskRunner({
 			projectName: uniqueProjectName,
@@ -436,6 +529,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	log(`Stack ready! baseUrl: ${baseUrl}`);
+
+	// Wait for Docker network changes to settle before proceeding.
+	// This prevents ERR_NETWORK_CHANGED errors when containers join the network.
+	await waitForNetworkQuiet();
+
 	return {
 		baseUrl,
 		stop: async () => {
@@ -448,6 +546,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				internalDiscoveryUrl: oidcInternalDiscoveryUrl!,
 			},
 		}),
+		...(observabilityStack && { observability: observabilityStack }),
+		...(tracingStack && { tracing: tracingStack }),
 	};
 }
 
@@ -531,7 +631,6 @@ async function createN8NInstances({
 	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
-		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
 		log(`Starting main ${i}/${mainCount}: ${name}`);
 		const container = await createN8NContainer({
 			name,
@@ -540,7 +639,7 @@ async function createN8NInstances({
 			network,
 			isWorker: false,
 			instanceNumber: i,
-			networkAlias,
+			networkAlias: name, // Use container name as network alias for VictoriaMetrics scraping
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
 			resourceQuota,
 			keycloakCertPem,
@@ -599,6 +698,8 @@ async function createN8NContainer({
 	keycloakCertPem,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
 	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
+
+	// Use silent log consumer - Vector handles log collection when observability is enabled
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);

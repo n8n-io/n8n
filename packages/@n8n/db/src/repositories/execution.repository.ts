@@ -367,7 +367,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
 			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
 			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.insert({ executionId, workflowData, data });
+			await this.executionDataRepository.insert({
+				executionId,
+				workflowData,
+				data,
+				workflowVersionId: currentWorkflow.versionId,
+			});
 			return String(executionId);
 		} else {
 			// All other database drivers should create executions and execution-data atomically
@@ -378,7 +383,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				});
 				const { id: executionId } = inserted[0] as { id: string };
 				await this.executionDataRepository.createExecutionDataForExecution(
-					{ executionId, workflowData, data },
+					{ executionId, workflowData, data, workflowVersionId: currentWorkflow.versionId },
 					transactionManager,
 				);
 				return String(executionId);
