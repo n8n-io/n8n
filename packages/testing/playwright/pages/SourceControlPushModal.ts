@@ -47,7 +47,7 @@ export class SourceControlPushModal {
 
 	// File items
 	getFileInModal(fileName: string): Locator {
-		return this.getModal().getByText(fileName);
+		return this.getModal().getByTestId('push-modal-item').filter({ hasText: fileName }).first();
 	}
 
 	getFileCheckboxByName(fileName: string): Locator {

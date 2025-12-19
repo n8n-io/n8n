@@ -32,7 +32,7 @@ export class SourceControlPullModal {
 	}
 
 	getFileInModal(fileName: string): Locator {
-		return this.page.getByTestId('pull-modal-item').filter({ hasText: fileName });
+		return this.page.getByTestId('pull-modal-item').filter({ hasText: fileName }).first();
 	}
 
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted' | 'Conflict'): Locator {

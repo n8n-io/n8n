@@ -872,6 +872,7 @@ onMounted(async () => {
 										:active="active"
 										:size-dependencies="[file.name, file.id]"
 										:data-index="index"
+										data-test-id="push-modal-item"
 									>
 										<N8nCheckbox
 											:class="[$style.listItem]"
