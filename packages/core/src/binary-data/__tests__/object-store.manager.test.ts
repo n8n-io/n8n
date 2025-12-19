@@ -34,7 +34,11 @@ describe('store()', () => {
 	it('should store a buffer', async () => {
 		const metadata = { mimeType: 'text/plain' };
 
-		const result = await objectStoreManager.store(workflowId, executionId, mockBuffer, metadata);
+		const result = await objectStoreManager.store(
+			{ type: 'execution', workflowId, executionId },
+			mockBuffer,
+			metadata,
+		);
 
 		expect(result.fileId.startsWith(prefix)).toBe(true);
 		expect(result.fileSize).toBe(mockBuffer.length);
@@ -94,7 +98,10 @@ describe('getMetadata()', () => {
 
 describe('copyByFileId()', () => {
 	it('should copy by file ID and return the file ID', async () => {
-		const targetFileId = await objectStoreManager.copyByFileId(workflowId, executionId, fileId);
+		const targetFileId = await objectStoreManager.copyByFileId(
+			{ type: 'execution', workflowId, executionId },
+			fileId,
+		);
 
 		expect(targetFileId.startsWith(prefix)).toBe(true);
 		expect(objectStoreService.get).toHaveBeenCalledWith(fileId, { mode: 'buffer' });
@@ -109,8 +116,7 @@ describe('copyByFilePath()', () => {
 		fs.readFile = jest.fn().mockResolvedValue(mockBuffer);
 
 		const result = await objectStoreManager.copyByFilePath(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			sourceFilePath,
 			metadata,
 		);

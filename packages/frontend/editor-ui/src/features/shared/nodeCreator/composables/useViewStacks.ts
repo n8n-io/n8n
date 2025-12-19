@@ -25,7 +25,7 @@ import difference from 'lodash/difference';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import {
-	extendItemsWithUUID,
+	finalizeItems,
 	flattenCreateElements,
 	groupItemsInSections,
 	isAINode,
@@ -109,7 +109,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = getLastActiveStack();
 
 		if (!stack?.baselineItems) {
-			return stack.items ? extendItemsWithUUID(stack.items) : [];
+			return stack.items ? finalizeItems(stack.items) : [];
 		}
 
 		if (stack.search && searchBaseItems.value) {
@@ -130,7 +130,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				searchBase = filterOutAiNodes(searchBase);
 			}
 
-			const searchResults = extendItemsWithUUID(
+			const searchResults = finalizeItems(
 				searchNodes(stack.search || '', searchBase, {
 					popularity: nodePopularityMap,
 				}),
@@ -143,7 +143,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			return groupedNodes;
 		}
-		return extendItemsWithUUID(groupIfAiNodes(stack.baselineItems, stack.title, true));
+		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack.title, true));
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -193,7 +193,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		// Apply filtering for AI nodes if the current view is not the AI root view
 		const filteredNodes = isAiRootView(stack) ? allNodes : filterOutAiNodes(allNodes);
 
-		let globalSearchResult: INodeCreateElement[] = extendItemsWithUUID(
+		let globalSearchResult: INodeCreateElement[] = finalizeItems(
 			searchNodes(stack.search || '', filteredNodes, {
 				popularity: nodePopularityMap,
 			}),

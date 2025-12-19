@@ -23,7 +23,6 @@ import type {
 	ExecutionError,
 	ExecutionStatus,
 	INode,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -35,6 +34,7 @@ import {
 	UserError,
 	Workflow,
 	WorkflowOperationError,
+	createErrorExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -187,6 +187,7 @@ export class ExecutionService {
 		const executionMode = 'retry';
 
 		execution.workflowData.active = false;
+		execution.workflowData.activeVersionId = null;
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -324,51 +325,7 @@ export class ExecutionService {
 
 		if (saveDataErrorExecutionDisabled) return;
 
-		const executionData: IRunExecutionData = {
-			startData: {
-				destinationNode: node.name,
-				runNodeFilter: [node.name],
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack: [
-					{
-						node,
-						data: {
-							main: [
-								[
-									{
-										json: {},
-										pairedItem: {
-											item: 0,
-										},
-									},
-								],
-							],
-						},
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-			resultData: {
-				runData: {
-					[node.name]: [
-						{
-							startTime: 0,
-							executionIndex: 0,
-							executionTime: 0,
-							error,
-							source: [],
-						},
-					],
-				},
-				error,
-				lastNodeExecuted: node.name,
-			},
-		};
+		const executionData = createErrorExecutionData(node, error);
 
 		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,

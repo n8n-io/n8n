@@ -260,6 +260,14 @@ export function displaySummaryTable(metrics: {
 			['  Agent Prompt', formatColoredScore(programmaticAverages.agentPrompt)],
 			['  Tools', formatColoredScore(programmaticAverages.tools)],
 			['  FromAI', formatColoredScore(programmaticAverages.fromAi)],
+		);
+
+		// Add similarity if available (-1 means no tests had reference workflows)
+		if (programmaticAverages.similarity >= 0) {
+			summaryTable.push(['  Similarity', formatColoredScore(programmaticAverages.similarity)]);
+		}
+
+		summaryTable.push(
 			['  Violations', ''],
 			[
 				'    Critical',
@@ -424,6 +432,19 @@ export function displayViolationsDetail(results: TestResult[]): void {
 					}),
 				),
 			];
+
+			// Add similarity violations if available
+			if (result.programmaticEvaluationResult.similarity) {
+				progViolations.push(
+					...result.programmaticEvaluationResult.similarity.violations.map(
+						(violation: ProgrammaticViolation) => ({
+							violation: { ...violation, category: 'Similarity' },
+							testName: result.testCase.name,
+							source: 'programmatic' as const,
+						}),
+					),
+				);
+			}
 
 			allViolations.push(...llmViolations, ...progViolations);
 		}

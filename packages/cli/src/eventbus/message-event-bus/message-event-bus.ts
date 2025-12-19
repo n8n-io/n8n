@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -165,7 +165,7 @@ export class MessageEventBus extends EventEmitter {
 
 			if (unfinishedExecutionIds.length > 0) {
 				const activeWorkflows = await this.workflowRepository.find({
-					where: { active: true },
+					where: { activeVersionId: Not(IsNull()) },
 					select: ['id', 'name'],
 				});
 				if (activeWorkflows.length > 0) {
@@ -186,14 +186,20 @@ export class MessageEventBus extends EventEmitter {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
 					const recoveredIds: string[] = [];
+					const crashedWorkflowIds: Set<string> = new Set();
 
 					for (const executionId of unfinishedExecutionIds) {
-						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
+						const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
 						const recoveredExecution = await this.recoveryService.recoverFromLogs(
 							executionId,
-							logMesssages ?? [],
+							logMessages ?? [],
 						);
-						if (recoveredExecution) recoveredIds.push(executionId);
+						if (recoveredExecution) {
+							if (recoveredExecution.status === 'crashed') {
+								crashedWorkflowIds.add(recoveredExecution.workflowId);
+							}
+							recoveredIds.push(executionId);
+						}
 					}
 
 					if (recoveredIds.length > 0) {
@@ -201,6 +207,13 @@ export class MessageEventBus extends EventEmitter {
 						this.logger.info(
 							'This could be due to a crash of an active workflow or a restart of n8n',
 						);
+					}
+
+					if (
+						this.globalConfig.executions.recovery.workflowDeactivationEnabled &&
+						crashedWorkflowIds.size > 0
+					) {
+						await this.recoveryService.autoDeactivateWorkflowsIfNeeded(crashedWorkflowIds);
 					}
 				}
 

@@ -6,7 +6,8 @@ export class DataTableComposer {
 	async createNewDataTable(name: string) {
 		const nameInput = this.n8n.dataTable.getNewDataTableNameInput();
 		await nameInput.fill(name);
-		await this.n8n.dataTable.getNewDataTableConfirmButton().click();
+		await this.n8n.dataTable.getFromScratchOption().click();
+		await this.n8n.dataTable.getProceedFromSelectButton().click();
 	}
 
 	/**
