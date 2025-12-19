@@ -47,6 +47,22 @@ async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
 	}
 }
 
+function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
+	const { blockFilePatterns } = Container.get(SecurityConfig);
+
+	return blockFilePatterns
+		.split(';')
+		.map((pattern) => pattern.trim())
+		.filter((pattern) => pattern)
+		.some((pattern) => {
+			try {
+				return new RegExp(pattern, 'mi').test(resolvedFilePath);
+			} catch {
+				return true;
+			}
+		});
+}
+
 function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	const allowedPaths = getAllowedPaths();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
@@ -55,6 +71,10 @@ function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	if (
 		restrictedPaths.some((restrictedPath) => isContainedWithin(restrictedPath, resolvedFilePath))
 	) {
+		return true;
+	}
+
+	if (isFilePatternBlocked(resolvedFilePath)) {
 		return true;
 	}
 
