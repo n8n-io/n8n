@@ -14,6 +14,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -69,7 +70,6 @@ import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
-import { AiConfig } from '@n8n/config';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
