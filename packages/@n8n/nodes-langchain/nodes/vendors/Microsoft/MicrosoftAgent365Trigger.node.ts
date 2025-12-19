@@ -1,4 +1,4 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -190,32 +190,44 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		}
 		//================================================================================
 
-		setObservabilityDefaultEnv();
+		try {
+			setObservabilityDefaultEnv();
 
-		const credentials = (await this.getCredentials(
-			'microsoftAgent365Api',
-		)) as MicrosoftAgent365Credentials;
+			const credentials = (await this.getCredentials(
+				'microsoftAgent365Api',
+			)) as MicrosoftAgent365Credentials;
 
-		const agent = createMicrosoftAgentApplication(credentials);
+			const agent = createMicrosoftAgentApplication(credentials);
 
-		const activityCapture: ActivityCapture = {
-			input: '',
-			output: [],
-		};
+			const activityCapture: ActivityCapture = {
+				input: '',
+				output: [],
+			};
 
-		const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);
+			const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);
 
-		(req as any).user = {
-			aud: credentials.clientId,
-			appid: credentials.clientId,
-			azp: credentials.clientId,
-		};
+			(req as any).user = {
+				aud: credentials.clientId,
+				appid: credentials.clientId,
+				azp: credentials.clientId,
+			};
 
-		await agent.adapter.process(req, res, callback);
+			await agent.adapter.process(req, res, callback);
 
-		return {
-			noWebhookResponse: true,
-			workflowData: [this.helpers.returnJsonArray({ ...activityCapture })],
-		};
+			return {
+				noWebhookResponse: true,
+				workflowData: [this.helpers.returnJsonArray({ ...activityCapture })],
+			};
+		} catch (error) {
+			const errorData = error.response?.data;
+			if (typeof errorData === 'object' && 'error' in errorData) {
+				const message = 'Error: ' + String(errorData.error);
+				const description = (errorData.error_description as string) ?? error.message;
+
+				throw new NodeOperationError(this.getNode(), message, { description });
+			}
+
+			throw new NodeOperationError(this.getNode(), error.message);
+		}
 	}
 }
