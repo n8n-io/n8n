@@ -3,16 +3,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createEngineRequests } from '../createEngineRequests';
-import type { ToolCallRequest } from '../types';
+import type { ToolCallRequest, ToolMetadata } from '../types';
 
 describe('createEngineRequests', () => {
-	const createMockTool = (
-		name: string,
-		metadata?: {
-			sourceNodeName?: string;
-			isFromToolkit?: boolean;
-		},
-	) => {
+	const createMockTool = (name: string, metadata?: ToolMetadata) => {
 		return new DynamicStructuredTool({
 			name,
 			description: `A test tool named ${name}`,

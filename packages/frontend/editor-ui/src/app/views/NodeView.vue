@@ -64,7 +64,6 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
@@ -129,7 +128,6 @@ import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/ut
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -202,7 +200,6 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
-const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -298,12 +295,7 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -479,7 +471,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		openWorkflow(workflowData);
+		await openWorkflow(workflowData);
 
 		if (workflowData.parentFolder) {
 			workflowsStore.setParentFolder(workflowData.parentFolder);
@@ -540,11 +532,11 @@ function updateNodesIssues() {
  * Workflow
  */
 
-function openWorkflow(data: IWorkflowDb) {
+async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	documentTitle.setDocumentTitle(data.name, 'IDLE');
 
-	initializeWorkspace(data);
+	await initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -999,7 +991,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 	await initializeData();
 
-	initializeWorkspace({
+	await initializeWorkspace({
 		...workflowData,
 		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
@@ -1525,7 +1517,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
-				openWorkflow(workflowData);
+				await openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
@@ -1925,6 +1917,11 @@ watch(
 );
 
 onBeforeRouteLeave(async (to, from, next) => {
+	// Close the focus panel when leaving the workflow view
+	if (focusPanelStore.focusPanelActive) {
+		focusPanelStore.closeFocusPanel();
+	}
+
 	const toNodeViewTab = getNodeViewTab(to);
 
 	if (
@@ -2029,6 +2026,7 @@ onActivated(() => {
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	toast.clearAllStickyNotifications();
 });
 
 onBeforeUnmount(() => {

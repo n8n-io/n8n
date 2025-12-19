@@ -12,10 +12,15 @@ export { createEngineRequests } from './createEngineRequests';
 export { buildSteps } from './buildSteps';
 export { processEventStream } from './processEventStream';
 export { loadMemory, saveToMemory, buildToolContext } from './memoryManagement';
-export { processHitlResponses, type HitlProcessingResult } from './handleHitlResponse';
+export { processHitlResponses, type HitlProcessingResult } from './processHitlResponses';
 export type {
 	ToolCallRequest,
 	ToolCallData,
 	AgentResult,
 	RequestResponseMetadata,
+	ToolMetadata,
+	ThinkingMetadata,
+	GoogleThinkingMetadata,
+	AnthropicThinkingMetadata,
+	HitlMetadata,
 } from './types';
