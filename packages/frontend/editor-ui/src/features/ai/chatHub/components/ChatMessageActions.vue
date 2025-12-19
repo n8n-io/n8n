@@ -12,11 +12,11 @@ import { useRouter } from 'vue-router';
 const i18n = useI18n();
 const router = useRouter();
 
-const { message, alternatives, isSpeaking, isSpeechSynthesisAvailable } = defineProps<{
+const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming } = defineProps<{
 	message: ChatMessage;
-	alternatives: ChatMessageId[];
 	isSpeechSynthesisAvailable: boolean;
 	isSpeaking: boolean;
+	hasSessionStreaming: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,7 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const currentAlternativeIndex = computed(() => {
-	return alternatives.findIndex((id) => id === message.id);
+	return message.alternatives.findIndex((id) => id === message.id);
 });
 
 const showExecutionUrl = computed(() => {
@@ -87,6 +87,7 @@ function handleReadAloud() {
 				size="medium"
 				text
 				data-test-id="chat-message-edit"
+				:disabled="hasSessionStreaming"
 				@click="handleEdit"
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
@@ -98,6 +99,7 @@ function handleReadAloud() {
 				size="medium"
 				text
 				data-test-id="chat-message-regenerate"
+				:disabled="hasSessionStreaming"
 				@click="handleRegenerate"
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
@@ -117,27 +119,29 @@ function handleReadAloud() {
 				</N8nLink>
 			</template>
 		</N8nTooltip>
-		<template v-if="alternatives.length > 1">
+		<template v-if="message.alternatives.length > 1">
 			<N8nIconButton
 				icon="chevron-left"
 				type="tertiary"
 				size="medium"
 				text
-				:disabled="currentAlternativeIndex === 0"
+				:disabled="hasSessionStreaming || currentAlternativeIndex === 0"
 				data-test-id="chat-message-prev-alternative"
-				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex - 1])"
+				@click="$emit('switchAlternative', message.alternatives[currentAlternativeIndex - 1])"
 			/>
 			<N8nText size="medium" color="text-base">
-				{{ `${currentAlternativeIndex + 1}/${alternatives.length}` }}
+				{{ `${currentAlternativeIndex + 1}/${message.alternatives.length}` }}
 			</N8nText>
 			<N8nIconButton
 				icon="chevron-right"
 				type="tertiary"
 				size="medium"
 				text
-				:disabled="currentAlternativeIndex === alternatives.length - 1"
+				:disabled="
+					hasSessionStreaming || currentAlternativeIndex === message.alternatives.length - 1
+				"
 				data-test-id="chat-message-next-alternative"
-				@click="$emit('switchAlternative', alternatives[currentAlternativeIndex + 1])"
+				@click="$emit('switchAlternative', message.alternatives[currentAlternativeIndex + 1])"
 			/>
 		</template>
 	</div>
