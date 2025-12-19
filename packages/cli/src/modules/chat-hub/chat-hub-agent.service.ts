@@ -8,7 +8,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ChatHubAgent } from './chat-hub-agent.entity';
+import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
@@ -75,7 +75,7 @@ export class ChatHubAgentService {
 			tools: data.tools,
 		});
 
-		this.logger.info(`Chat agent created: ${id} by user ${user.id}`);
+		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
 		return agent;
 	}
 
@@ -95,20 +95,20 @@ export class ChatHubAgentService {
 			await this.chatHubCredentialsService.ensureCredentialById(user, updates.credentialId);
 		}
 
-		const updateData: Partial<ChatHubAgent> = {};
+		const updateData: Partial<IChatHubAgent> = {};
+
 		if (updates.name !== undefined) updateData.name = updates.name;
 		if (updates.description !== undefined) updateData.description = updates.description ?? null;
 		if (updates.icon !== undefined) updateData.icon = updates.icon;
 		if (updates.systemPrompt !== undefined) updateData.systemPrompt = updates.systemPrompt;
 		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
-		if (updates.provider !== undefined)
-			updateData.provider = updates.provider as ChatHubAgent['provider'];
+		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 		if (updates.tools !== undefined) updateData.tools = updates.tools;
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
-		this.logger.info(`Chat agent updated: ${id} by user ${user.id}`);
+		this.logger.debug(`Chat agent updated: ${id} by user ${user.id}`);
 		return agent;
 	}
 
@@ -121,6 +121,6 @@ export class ChatHubAgentService {
 
 		await this.chatAgentRepository.deleteAgent(id);
 
-		this.logger.info(`Chat agent deleted: ${id} by user ${userId}`);
+		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
 	}
 }
