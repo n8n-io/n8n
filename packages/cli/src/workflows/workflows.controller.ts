@@ -427,7 +427,6 @@ export class WorkflowsController {
 	}
 
 	@Get('/:workflowId/exists')
-	@ProjectScope('workflow:read')
 	async exists(req: WorkflowRequest.Get) {
 		const exists = await this.workflowRepository.existsBy({ id: req.params.workflowId });
 		return { exists };
