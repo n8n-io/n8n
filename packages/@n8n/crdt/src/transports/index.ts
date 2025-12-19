@@ -1,2 +1,3 @@
 export type { SyncTransport } from './types';
 export { MockTransport } from './mock';
+export { MessagePortTransport } from './message-port';
