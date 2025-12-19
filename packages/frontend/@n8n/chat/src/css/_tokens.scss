@@ -85,14 +85,10 @@
 	--chat--input--left--panel--width: 2rem;
 
 	/* Button Styles */
-	--chat--button--color: var(--chat--color-light);
-	--chat--button--background: var(--chat--color--primary);
 	--chat--button--padding: calc(var(--chat--spacing) * 1 / 2) var(--chat--spacing);
 	--chat--button--border-radius: var(--chat--border-radius);
 	--chat--button--font-size: 1rem;
 	--chat--button--line-height: 1.5;
-	--chat--button--hover--color: var(--chat--color-light);
-	--chat--button--hover--background: var(--chat--color--primary-shade-50);
 	--chat--button--color--primary: var(--chat--color-light);
 	--chat--button--background--primary: var(--chat--color--primary);
 	--chat--button--border--primary: none;
