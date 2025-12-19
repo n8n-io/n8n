@@ -409,6 +409,7 @@ describe('GlobalConfig', () => {
 		externalFrontendHooksUrls: '',
 		ai: {
 			enabled: false,
+			openAiDefaultHeaders: {},
 		},
 	};
 
