@@ -1,5 +1,28 @@
 # CRDT Abstraction Layer - Implementation Plan
 
+## Current Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **CRDTMap** | ✅ Complete | Full CRUD + nested maps + `onDeepChange` |
+| **CRDTArray** | ❌ Not started | |
+| **CRDTText** | ❌ Not started | |
+| **CRDTCounter** | ❌ Not started | |
+| **encodeState / applyUpdate** | ✅ Complete | Full state encoding + incremental sync |
+| **onUpdate** | ✅ Complete | Incremental updates (Automerge uses `saveSince`) |
+| **SyncProvider** | ✅ Complete | Engine-agnostic `BaseSyncProvider` |
+| **SyncTransport** | ✅ Complete | Interface + `MockTransport` for testing |
+| **Error handling** | ✅ Complete | `SyncProvider.onError()` for malformed updates |
+| **Awareness** | ❌ Not started | User presence, cursors |
+| **UndoManager** | ❌ Not started | |
+| **Persistence** | ❌ Not started | IndexedDB, filesystem adapters |
+| **WebSocket Transport** | ❌ Not started | |
+| **SharedWorker Transport** | ❌ Not started | |
+
+**Summary:** Phase 0 complete, Phase 1 complete. Ready for Phase 2 (real transports, awareness) or additional data types.
+
+---
+
 ## Overview
 
 Create a standalone `@n8n/crdt` package that provides a unified API for working with CRDT data structures, abstracting away the underlying library (Yjs or Automerge). The abstraction covers data structures, sync protocol, awareness, and persistence - all with pluggable transports.
