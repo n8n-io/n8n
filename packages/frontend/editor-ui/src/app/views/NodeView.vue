@@ -416,7 +416,12 @@ async function initializeRoute(force = false) {
 
 			// Check if we should initialize for a new workflow
 			if (isNewWorkflowRoute.value) {
-				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
+				let exists;
+				try {
+					exists = await workflowsStore.checkWorkflowExists(workflowId.value);
+				} catch {
+					exists = false;
+				}
 				if (!exists && route.meta?.nodeView === true) {
 					return await initializeWorkspaceForNewWorkflow();
 				} else {
