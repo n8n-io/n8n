@@ -368,12 +368,12 @@ export class I18nClass {
 
 			/**
 			 * Text for a button to add non-required options inside a `fixedCollection`
-			 * param having `showRequiredOnly: true`.
+			 * param having `requiredOnly: true`.
 			 */
-			showRequiredOnlyButtonText({ name: parameterName, typeOptions }: INodeProperties) {
+			requiredOnlyButtonText({ name: parameterName, typeOptions }: INodeProperties) {
 				return context.dynamicRender({
-					key: `${initialKey}.${parameterName}.showRequiredOnlyButtonText`,
-					fallback: typeOptions?.showRequiredOnlyButtonText,
+					key: `${initialKey}.${parameterName}.requiredOnlyButtonText`,
+					fallback: typeOptions?.requiredOnlyButtonText,
 				});
 			},
 

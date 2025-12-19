@@ -436,6 +436,7 @@ const formOptions: INodePropertyCollection[] = [
 				typeOptions: {
 					numberPrecision: 0,
 					minValue: 1,
+					requiredOnlyAutoShow: true,
 				},
 				displayOptions: {
 					show: {
@@ -452,6 +453,7 @@ const formOptions: INodePropertyCollection[] = [
 				typeOptions: {
 					numberPrecision: 0,
 					minValue: 0,
+					requiredOnlyAutoShow: true,
 				},
 				displayOptions: {
 					show: {
@@ -468,6 +470,7 @@ const formOptions: INodePropertyCollection[] = [
 				typeOptions: {
 					numberPrecision: 0,
 					minValue: 1,
+					requiredOnlyAutoShow: true,
 				},
 				displayOptions: {
 					show: {
@@ -575,8 +578,8 @@ export const formFieldsDynamic: INodeProperties = {
 	typeOptions: {
 		multipleValues: true,
 		sortable: true,
-		showRequiredOnly: true,
-		showRequiredOnlyButtonText: 'Add Attributes',
+		requiredOnly: true,
+		requiredOnlyButtonText: 'Add Attributes',
 	},
 	displayOptions: {
 		show: {

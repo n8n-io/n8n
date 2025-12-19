@@ -1480,8 +1480,9 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
-	showRequiredOnly?: boolean; // Supported by: fixedCollection
-	showRequiredOnlyButtonText?: string; // Supported by: fixedCollection with showRequiredOnly
+	requiredOnly?: boolean; // Supported by: fixedCollection - hide optional properties by default
+	requiredOnlyButtonText?: string; // Supported by: fixedCollection with requiredOnly
+	requiredOnlyAutoShow?: boolean; // Auto-show when displayOptions conditions are met (for dependent properties)
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;

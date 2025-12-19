@@ -104,15 +104,15 @@ const sortable = computed(() => {
 	return !!props.parameter.typeOptions?.sortable;
 });
 
-const showRequiredOnly = computed(() => {
-	return !!props.parameter.typeOptions?.showRequiredOnly;
+const requiredOnly = computed(() => {
+	return !!props.parameter.typeOptions?.requiredOnly;
 });
 
-const showRequiredOnlyButtonText = computed(() => {
-	if (!props.parameter.typeOptions?.showRequiredOnlyButtonText) {
+const requiredOnlyButtonText = computed(() => {
+	if (!props.parameter.typeOptions?.requiredOnlyButtonText) {
 		return locale.baseText('fixedCollectionParameter.addProperty');
 	}
-	return locale.nodeText(activeNode.value?.type).showRequiredOnlyButtonText(props.parameter);
+	return locale.nodeText(activeNode.value?.type).requiredOnlyButtonText(props.parameter);
 });
 
 const addedOptionalProperties = ref(new Map<string, Set<string>>());
@@ -134,7 +134,7 @@ const hasNonDefaultValue = (
 };
 
 const initializeAddedPropertiesFromValues = () => {
-	if (!showRequiredOnly.value) return;
+	if (!requiredOnly.value) return;
 	if (!isINodePropertyCollectionList(props.parameter.options)) return;
 
 	addedOptionalProperties.value.clear();
@@ -197,12 +197,13 @@ const getVisibleProperties = (
 	property: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
-	if (!showRequiredOnly.value) {
+	if (!requiredOnly.value) {
 		return property.values;
 	}
 
 	const key = getOptionalPropertiesKey(property.name, index);
 	const addedProps = addedOptionalProperties.value.get(key);
+	const itemPath = getPropertyPath(property.name, index);
 
 	return property.values.filter((prop) => {
 		// Always show required properties
@@ -215,8 +216,17 @@ const getVisibleProperties = (
 			return true;
 		}
 
-		// Show optional properties only if explicitly added
-		return addedProps?.has(prop.name) ?? false;
+		// Show optional properties if explicitly added via picker
+		if (addedProps?.has(prop.name)) {
+			return true;
+		}
+
+		// Auto-show properties marked as depending on optional properties
+		if (prop.typeOptions?.requiredOnlyAutoShow) {
+			return nodeHelpers.displayParameter(props.nodeValues, prop, itemPath, activeNode.value);
+		}
+
+		return false;
 	});
 };
 
@@ -224,7 +234,7 @@ const getPickerProperties = (
 	property: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
-	if (!showRequiredOnly.value) {
+	if (!requiredOnly.value) {
 		return [];
 	}
 
@@ -238,6 +248,11 @@ const getPickerProperties = (
 
 		// Exclude notice types - they're just display messages, not input properties
 		if (prop.type === 'notice') {
+			return false;
+		}
+
+		// Exclude properties that auto-show based on parent optional properties
+		if (prop.typeOptions?.requiredOnlyAutoShow) {
 			return false;
 		}
 
@@ -506,7 +521,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									class="attribute-picker add-option"
 								>
 									<N8nSelect
-										:placeholder="showRequiredOnlyButtonText"
+										:placeholder="requiredOnlyButtonText"
 										size="small"
 										filterable
 										:model-value="null"
@@ -564,7 +579,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						class="attribute-picker add-option"
 					>
 						<N8nSelect
-							:placeholder="showRequiredOnlyButtonText"
+							:placeholder="requiredOnlyButtonText"
 							size="small"
 							filterable
 							:model-value="null"
