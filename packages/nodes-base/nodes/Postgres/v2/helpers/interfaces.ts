@@ -18,7 +18,7 @@ export type ColumnInfo = {
 	udt_name?: string;
 	column_default?: string | null;
 	is_generated?: 'ALWAYS' | 'NEVER';
-	identity_generation?: 'ALWAYS' | 'NEVER';
+	identity_generation?: 'ALWAYS' | 'NEVER' | 'BY DEFAULT';
 };
 export type EnumInfo = {
 	typname: string;
@@ -33,7 +33,6 @@ export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient };
 
 export type QueriesRunner = (
 	queries: QueryWithValues[],
-	items: INodeExecutionData[],
 	options: IDataObject,
 ) => Promise<INodeExecutionData[]>;
 

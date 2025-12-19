@@ -1,15 +1,17 @@
-import type { CredentialsEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
-import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/test-db';
 
 const credentialPayload = randomCredentialPayload();
 let memberWhoOwnsCredential: User;

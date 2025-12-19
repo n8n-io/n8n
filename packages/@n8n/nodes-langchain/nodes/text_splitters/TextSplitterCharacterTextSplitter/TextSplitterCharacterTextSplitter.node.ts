@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
 import { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
@@ -37,9 +36,9 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
@@ -55,12 +54,14 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
+				description: 'Maximum number of characters per chunk',
 			},
 			{
 				displayName: 'Chunk Overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
+				description: 'Number of characters shared between consecutive chunks to preserve context',
 			},
 		],
 	};

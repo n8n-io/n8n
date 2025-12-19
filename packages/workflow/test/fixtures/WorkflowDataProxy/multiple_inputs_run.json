@@ -1,0 +1,114 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"Manual Trigger": [
+					{
+						"startTime": 1749486952181,
+						"executionIndex": 0,
+						"source": [],
+						"hints": [],
+						"executionTime": 2,
+						"executionStatus": "success",
+						"data": { "main": [[{ "json": {}, "pairedItem": { "item": 0 } }]] }
+					}
+				],
+				"Set main variable": [
+					{
+						"startTime": 1749486952183,
+						"executionIndex": 1,
+						"source": [{ "previousNode": "Manual Trigger" }],
+						"hints": [],
+						"executionTime": 2,
+						"executionStatus": "success",
+						"data": { "main": [[{ "json": { "main_variable": 2 }, "pairedItem": { "item": 0 } }]] }
+					}
+				],
+				"Set variable_1": [
+					{
+						"startTime": 1749486952185,
+						"executionIndex": 2,
+						"source": [{ "previousNode": "Set main variable" }],
+						"hints": [],
+						"executionTime": 0,
+						"executionStatus": "success",
+						"data": {
+							"main": [[{ "json": { "variable_1": "1234" }, "pairedItem": { "item": 0 } }]]
+						}
+					}
+				],
+				"Set variable_2": [
+					{
+						"startTime": 1749486952186,
+						"executionIndex": 3,
+						"source": [{ "previousNode": "Set main variable" }],
+						"hints": [],
+						"executionTime": 0,
+						"executionStatus": "success",
+						"data": {
+							"main": [[{ "json": { "variable_2": "2345" }, "pairedItem": { "item": 0 } }]]
+						}
+					}
+				],
+				"Set variable_3": [
+					{
+						"startTime": 1749486952187,
+						"executionIndex": 4,
+						"source": [{ "previousNode": "Set main variable" }],
+						"hints": [],
+						"executionTime": 0,
+						"executionStatus": "success",
+						"data": {
+							"main": [[{ "json": { "variable_3": "3456" }, "pairedItem": { "item": 0 } }]]
+						}
+					}
+				],
+				"Merge": [
+					{
+						"startTime": 1749486952197,
+						"executionIndex": 5,
+						"source": [null, null, { "previousNode": "Set variable_3" }],
+						"hints": [],
+						"executionTime": 12,
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[{ "json": { "variable_3": "3456" }, "pairedItem": { "item": 0, "input": 2 } }]
+							]
+						}
+					}
+				],
+				"Output": [
+					{
+						"startTime": 1749486952210,
+						"executionIndex": 6,
+						"source": [{ "previousNode": "Merge" }],
+						"hints": [],
+						"executionTime": 4,
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": { "final_variable_2": "3456", "main": "2" },
+										"pairedItem": { "item": 0 }
+									}
+								]
+							]
+						}
+					}
+				]
+			},
+			"pinData": {},
+			"lastNodeExecuted": "Output"
+		},
+		"executionData": {
+			"contextData": {},
+			"nodeExecutionStack": [],
+			"metadata": {},
+			"waitingExecution": {},
+			"waitingExecutionSource": {}
+		}
+	}
+}

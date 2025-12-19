@@ -1,4 +1,4 @@
-import { type StoryFn } from '@storybook/vue3';
+import { type StoryFn } from '@storybook/vue3-vite';
 
 import ColorCircles from './ColorCircles.vue';
 
@@ -22,47 +22,39 @@ const Template =
 	});
 
 export const Gray = Template(
-	"<color-circles :colors=\"['--prim-gray-820', '--prim-gray-800', '--prim-gray-740', '--prim-gray-670', '--prim-gray-540', '--prim-gray-490', '--prim-gray-420', '--prim-gray-320', '--prim-gray-200', '--prim-gray-120', '--prim-gray-70', '--prim-gray-30', '--prim-gray-40', '--prim-gray-10', '--prim-gray-0']\" />",
+	"<color-circles :colors=\"['--color--neutral-950', '--color--neutral-900', '--color--neutral-850', '--color--neutral-800', '--color--neutral-700', '--color--neutral-600', '--color--neutral-500', '--color--neutral-400', '--color--neutral-300', '--color--neutral-250', '--color--neutral-200', '--color--neutral-150', '--color--neutral-125', '--color--neutral-100', '--color--neutral-100', '--color--neutral-50', '--color--neutral-white']\" />",
 );
 
 export const Primary = Template(
-	"<color-circles :colors=\"['--prim-color-primary-shade-300', '--prim-color-primary-shade-100', '--prim-color-primary', '--prim-color-primary-tint-100', '--prim-color-primary-tint-200', '--prim-color-primary-tint-250', '--prim-color-primary-tint-300']\" />",
+	"<color-circles :colors=\"['--color--orange-400', '--color--orange-300', '--color--orange-250', '--color--orange-200', '--color--orange-150', '--color--orange-100', '--color--orange-50']\" />",
 );
 
 export const Secondary = Template(
-	"<color-circles :colors=\"['--prim-color-secondary-shade-250', '--prim-color-secondary-shade-100', '--prim-color-secondary', '--prim-color-secondary-tint-100', '--prim-color-secondary-tint-200', '--prim-color-secondary-tint-300', '--prim-color-secondary-tint-400']\" />",
+	"<color-circles :colors=\"['--color--purple-900','--color--purple-700','--color--purple-600','--color--purple-500','--color--purple-400','--color--purple-300','--color--purple-200']\" />",
 );
 
 export const AlternateA = Template(
-	"<color-circles :colors=\"['--prim-color-alt-a-shade-200', '--prim-color-alt-a-shade-100', '--prim-color-alt-a', '--prim-color-alt-a-tint-300', '--prim-color-alt-a-tint-400', '--prim-color-alt-a-tint-500', '--prim-color-alt-a-tint-550']\" />",
+	"<color-circles :colors=\"['--color--green-900', '--color--green-700', '--color--green-600', '--color--green-300', '--color--green-200', '--color--green-100', '--color--green-50']\" />",
 );
 
 export const AlternateB = Template(
-	"<color-circles :colors=\"['--prim-color-alt-b-shade-350', '--prim-color-alt-b-shade-250', '--prim-color-alt-b-shade-100', '--prim-color-alt-b', '--prim-color-alt-b-tint-150', '--prim-color-alt-b-tint-250', '--prim-color-alt-b-tint-300', '--prim-color-alt-b-tint-400']\" />",
+	"<color-circles :colors=\"['--color--gold-800', '--color--gold-700', '--color--gold-500', '--color--gold-400', '--color--gold-300', '--color--gold-200', '--color--gold-100', '--color--gold-50']\" />",
 );
 
 export const AlternateC = Template(
-	"<color-circles :colors=\"['--prim-color-alt-c-shade-250', '--prim-color-alt-c-shade-150', '--prim-color-alt-c-shade-100', '--prim-color-alt-c', '--prim-color-alt-c-tint-150', '--prim-color-alt-c-tint-250', '--prim-color-alt-c-tint-300', '--prim-color-alt-c-tint-400', '--prim-color-alt-c-tint-450']\" />",
+	"<color-circles :colors=\"['--color--red-900', '--color--red-800', '--color--red-700', '--color--red-600', '--color--red-400', '--color--red-300', '--color--red-250', '--color--red-100', '--color--red-50']\" />",
 );
 
 export const AlternateD = Template(
-	"<color-circles :colors=\"['--prim-color-alt-d-shade-700', '--prim-color-alt-d-shade-600', '--prim-color-alt-d-shade-150', '--prim-color-alt-d']\" />",
+	"<color-circles :colors=\"['--color--yellow-800', '--color--yellow-700', '--color--yellow-200', '--color--yellow-100']\" />",
 );
 
 export const AlternateE = Template(
-	"<color-circles :colors=\"['--prim-color-alt-e-shade-350', '--prim-color-alt-e-shade-250', '--prim-color-alt-e-shade-150', '--prim-color-alt-e-shade-100', '--prim-color-alt-e', '--prim-color-alt-e-tint-250', '--prim-color-alt-e-tint-350']\" />",
+	"<color-circles :colors=\"['--color--blue-800', '--color--blue-700', '--color--blue-600', '--color--blue-500', '--color--blue-400', '--color--blue-200', '--color--blue-100']\" />",
 );
 
-export const AlternateF = Template(
-	"<color-circles :colors=\"['--prim-color-alt-f', '--prim-color-alt-f-tint-150']\" />",
-);
+export const AlternateF = Template('<color-circles :colors="[\'--color--mint-600\']" />');
 
-export const AlternateG = Template(
-	"<color-circles :colors=\"['--prim-color-alt-g', '--prim-color-alt-g-tint-150']\" />",
-);
+export const AlternateG = Template('<color-circles :colors="[\'--color--slate-700\']" />');
 
-export const AlternateH = Template('<color-circles :colors="[\'--prim-color-alt-h\']" />');
-
-export const AlternateI = Template('<color-circles :colors="[\'--prim-color-alt-i\']" />');
-
-export const AlternateJ = Template('<color-circles :colors="[\'--prim-color-alt-j\']" />');
+export const AlternateH = Template('<color-circles :colors="[\'--color--red-400\']" />');

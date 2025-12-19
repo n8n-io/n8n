@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';

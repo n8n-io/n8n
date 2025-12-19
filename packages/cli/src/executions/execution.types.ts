@@ -1,12 +1,10 @@
-import type { ExecutionSummaries, ExecutionEntity } from '@n8n/db';
+import type { AuthenticatedRequest, ExecutionSummaries, ExecutionEntity } from '@n8n/db';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	IDataObject,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import type { AuthenticatedRequest } from '@/requests';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
@@ -16,8 +14,6 @@ export declare namespace ExecutionRequest {
 			lastId: string;
 			firstId: string;
 		};
-
-		type GetOne = { unflattedResponse: 'true' | 'false' };
 	}
 
 	namespace BodyParams {
@@ -43,11 +39,11 @@ export declare namespace ExecutionRequest {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
 
-	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
+	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 
-	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow: boolean }, {}>;
+	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow?: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
 

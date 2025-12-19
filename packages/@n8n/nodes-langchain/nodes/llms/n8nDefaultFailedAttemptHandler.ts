@@ -27,13 +27,13 @@ export const n8nDefaultFailedAttemptHandler = (error: any) => {
 		throw error;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (error?.code === 'ECONNABORTED') {
 		throw error;
 	}
 
 	const status =
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		error?.response?.status ?? error?.status;
 	if (status && STATUS_NO_RETRY.includes(+status)) {
 		throw error;

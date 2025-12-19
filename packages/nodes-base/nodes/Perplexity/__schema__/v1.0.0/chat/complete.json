@@ -1,0 +1,108 @@
+{
+    "type": "object",
+    "properties": {
+        "choices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "delta": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "role": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "finish_reason": {
+                        "type": "string"
+                    },
+                    "index": {
+                        "type": "integer"
+                    },
+                    "message": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "role": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "citations": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "created": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "model": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "search_results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "snippet": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "usage": {
+            "type": "object",
+            "properties": {
+                "completion_tokens": {
+                    "type": "integer"
+                },
+                "cost": {
+                    "type": "object",
+                    "properties": {
+                        "request_cost": {
+                            "type": "number"
+                        },
+                        "total_cost": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "prompt_tokens": {
+                    "type": "integer"
+                },
+                "search_context_size": {
+                    "type": "string"
+                },
+                "total_tokens": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 4
+}

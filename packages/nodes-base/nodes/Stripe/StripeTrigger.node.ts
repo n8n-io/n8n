@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	JsonObject,
+	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -827,6 +828,15 @@ export class StripeTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'string',
+				placeholder: '2025-05-28.basil',
+				default: '',
+				description:
+					'The API version to use for requests. It controls the format and structure of the incoming event payloads that Stripe sends to your webhook. If empty, Stripe will use the default API version set in your account at the time, which may lead to event processing issues if the API version changes in the future.',
+			},
 		],
 	};
 
@@ -871,11 +881,24 @@ export class StripeTrigger implements INodeType {
 
 				const endpoint = '/webhook_endpoints';
 
-				const body = {
+				interface StripeWebhookBody {
+					url: string | undefined;
+					description: string;
+					enabled_events: object | NodeParameterValue;
+					api_version?: string;
+					[key: string]: any;
+				}
+
+				const body: StripeWebhookBody = {
 					url: webhookUrl,
 					description: webhookDescription,
 					enabled_events: events,
 				};
+
+				const apiVersion = this.getNodeParameter('apiVersion', '');
+				if (apiVersion && apiVersion !== '') {
+					body.api_version = apiVersion as string;
+				}
 
 				const responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
 

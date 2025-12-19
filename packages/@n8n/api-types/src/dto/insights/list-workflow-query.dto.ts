@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { InsightsDateFilterDto } from './date-filter.dto';
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const MAX_ITEMS_PER_PAGE = 100;
@@ -21,6 +20,8 @@ const VALID_SORT_OPTIONS = [
 	'runTime:desc',
 	'averageRunTime:asc',
 	'averageRunTime:desc',
+	'workflowName:asc',
+	'workflowName:desc',
 ] as const;
 
 // ---------------------
@@ -34,6 +35,8 @@ const sortByValidator = z
 export class ListInsightsWorkflowQueryDto extends Z.class({
 	...paginationSchema,
 	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
-	dateRange: InsightsDateFilterDto.shape.dateRange,
+	startDate: z.coerce.date().optional(),
+	endDate: z.coerce.date().optional(),
 	sortBy: sortByValidator,
+	projectId: z.string().optional(),
 }) {}

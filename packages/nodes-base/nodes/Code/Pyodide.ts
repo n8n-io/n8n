@@ -28,32 +28,29 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 		)) as PyodideInterface;
 
 		await pyodideInstance.runPythonAsync(`
-blocked_modules = ["os"]
+import os
 
-import sys
-for module_name in blocked_modules:
-	del sys.modules[module_name]
+def blocked_function(*args, **kwargs):
+    raise RuntimeError("Blocked for security reasons")
+
+os.system = blocked_function
 
 from importlib.abc import MetaPathFinder
 from importlib.machinery import ModuleSpec
 from types import ModuleType
 from typing import Sequence, Optional
 
-class ImportBlocker(MetaPathFinder):
-	def find_spec(
-		self,
-		fullname: str,
-		path: Sequence[bytes | str] | None,
-		target: ModuleType | None = None,
-) -> Optional[ModuleSpec]:
-		if fullname in blocked_modules:
-				raise ModuleNotFoundError(f"Module {fullname!r} is blocked", name=fullname)
-		return None
-
-sys.meta_path.insert(0, ImportBlocker())
-
 from _pyodide_core import jsproxy_typedict
 from js import Object
+
+Object.constructor.constructor = blocked_function
+
+import sys
+class blocked_module:
+    def __getattr__(self, name):
+        blocked_function()
+
+sys.modules['js'] = blocked_module()
 `);
 	}
 

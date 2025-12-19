@@ -1,0 +1,294 @@
+# This workflow is used to build and push the Docker image for n8nio/n8n and n8nio/runners
+#
+# - Uses docker-config.mjs for context determination, this determines what needs to be built based on the trigger
+# - Uses docker-tags.mjs for tag generation, this generates the tags for the images
+
+name: 'Docker: Build and Push'
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=7168'
+  NODE_VERSION: '22.21.1'
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+  workflow_call:
+    inputs:
+      n8n_version:
+        description: 'N8N version to build'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type (stable, nightly, dev)'
+        required: false
+        type: string
+        default: 'stable'
+      push_enabled:
+        description: 'Whether to push the built images'
+        required: false
+        type: boolean
+        default: true
+
+  workflow_dispatch:
+    inputs:
+      push_enabled:
+        description: 'Push image to registry'
+        required: false
+        type: boolean
+        default: true
+      success_url:
+        description: 'URL to call after the build is successful'
+        required: false
+        type: string
+
+jobs:
+  determine-build-context:
+    name: Determine Build Context
+    runs-on: ubuntu-latest
+    outputs:
+      release_type: ${{ steps.context.outputs.release_type }}
+      n8n_version: ${{ steps.context.outputs.version }}
+      push_enabled: ${{ steps.context.outputs.push_enabled }}
+      push_to_docker: ${{ steps.context.outputs.push_to_docker }}
+      build_matrix: ${{ steps.context.outputs.build_matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Determine build context
+        id: context
+        run: |
+          node .github/scripts/docker/docker-config.mjs \
+            --event "${{ github.event_name }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --branch "${{ github.ref_name }}" \
+            --version "${{ inputs.n8n_version }}" \
+            --release-type "${{ inputs.release_type }}" \
+            --push-enabled "${{ inputs.push_enabled }}"
+
+  build-and-push-docker:
+    name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
+    needs: determine-build-context
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
+    outputs:
+      image_ref: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
+      primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
+      runners_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
+      runners_distroless_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build:n8n
+          enable-docker-cache: 'true'
+
+      - name: Determine Docker tags for all images
+        id: determine-tags
+        run: |
+          node .github/scripts/docker/docker-tags.mjs \
+            --all \
+            --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
+            --platform "${{ matrix.docker_platform }}" \
+            ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
+
+          echo "=== Generated Docker Tags ==="
+          cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
+            echo "${key}: ${value%%,*}..."  # Show first tag for brevity
+          done
+
+      - name: Login to Docker registries
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+          login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push n8n Docker image
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: true
+          sbom: true
+          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+
+      - name: Build and push task runners Docker image (Alpine)
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: true
+          sbom: true
+          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          tags: ${{ steps.determine-tags.outputs.runners_tags }}
+
+      - name: Build and push task runners Docker image (distroless)
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile.distroless
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: true
+          sbom: true
+          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+
+  create_multi_arch_manifest:
+    name: Create Multi-Arch Manifest
+    needs: [determine-build-context, build-and-push-docker]
+    runs-on: ubuntu-latest
+    if: |
+      needs.build-and-push-docker.result == 'success' &&
+      needs.determine-build-context.outputs.push_enabled == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+          login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create GHCR multi-arch manifests
+        run: |
+          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+
+          # Function to create manifest for an image
+          create_manifest() {
+            local IMAGE_NAME=$1
+            local MANIFEST_TAG=$2
+
+            if [[ -z "$MANIFEST_TAG" ]]; then
+              echo "Skipping $IMAGE_NAME - no manifest tag"
+              return
+            fi
+
+            echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
+
+            # For branch builds, only AMD64 is built
+            if [[ "$RELEASE_TYPE" == "branch" ]]; then
+              docker buildx imagetools create \
+                --tag "$MANIFEST_TAG" \
+                "${MANIFEST_TAG}-amd64"
+            else
+              docker buildx imagetools create \
+                --tag "$MANIFEST_TAG" \
+                "${MANIFEST_TAG}-amd64" \
+                "${MANIFEST_TAG}-arm64"
+            fi
+          }
+
+          # Create manifests for all images
+          create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
+          create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
+          create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
+
+      - name: Create Docker Hub manifests
+        if: needs.determine-build-context.outputs.push_to_docker == 'true'
+        run: |
+          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+
+          # Create manifests for each image type
+          declare -A images=(
+            ["n8n"]="${VERSION}"
+            ["runners"]="${VERSION}"
+            ["runners-distroless"]="${VERSION}-distroless"
+          )
+
+          for image in "${!images[@]}"; do
+            TAG_SUFFIX="${images[$image]}"
+            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+
+            echo "Creating Docker Hub manifest for $image"
+            docker buildx imagetools create \
+              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+          done
+
+  call-success-url:
+    name: Call Success URL
+    needs: [create_multi_arch_manifest]
+    runs-on: ubuntu-latest
+    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
+    steps:
+      - name: Call Success URL
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success_url }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
+        run: |
+          echo "Calling success URL: ${{ env.SUCCESS_URL }}"
+          curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
+        shell: bash
+
+  security-scan:
+    name: Security Scan
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      success() &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       needs.determine-build-context.outputs.release_type == 'rc')
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
+    secrets: inherit
+
+  security-scan-runners:
+    name: Security Scan (runners)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      success() &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       needs.determine-build-context.outputs.release_type == 'rc')
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+    secrets: inherit
+
+  notify-on-failure:
+    name: Notify Cats on nightly build failure
+    runs-on: ubuntu-latest
+    needs: [build-and-push-docker]
+    if: needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
+    steps:
+      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ needs.build-and-push-docker.result }}
+          channel: '#team-catalysts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

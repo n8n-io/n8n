@@ -25,7 +25,7 @@
 	],
 	"references": [
 		{ "path": "../../core/tsconfig.build.json" },
-		{ "path": "../../nodes-base/tsconfig.build.json" },
-		{ "path": "../../workflow/tsconfig.build.json" }
+		{ "path": "../../nodes-base/tsconfig.build.cjs.json" },
+		{ "path": "../../workflow/tsconfig.build.esm.json" }
 	]
 }

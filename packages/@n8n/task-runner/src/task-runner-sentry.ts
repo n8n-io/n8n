@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { ErrorEvent, Exception } from '@sentry/types';
+import type { ErrorEvent, Exception } from '@sentry/core';
 import { ErrorReporter } from 'n8n-core';
 
 import { SentryConfig } from './config/sentry-config';
@@ -26,6 +26,7 @@ export class TaskRunnerSentry {
 			environment,
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
+			withEventLoopBlockDetection: false,
 		});
 	}
 
@@ -55,8 +56,20 @@ export class TaskRunnerSentry {
 		const frames = error.stacktrace?.frames;
 		if (!frames) return false;
 
-		return frames.some(
-			(frame) => frame.filename === 'node:vm' && frame.function === 'runInContext',
-		);
+		return frames.some((frame) => {
+			if (frame.filename === 'node:vm' && frame.function === 'runInContext') {
+				return true;
+			}
+
+			if (frame.filename === 'evalmachine.<anonymous>') {
+				return true;
+			}
+
+			if (frame.function === 'VmCodeWrapper') {
+				return true;
+			}
+
+			return false;
+		});
 	}
 }

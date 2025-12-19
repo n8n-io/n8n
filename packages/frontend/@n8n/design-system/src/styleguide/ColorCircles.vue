@@ -74,7 +74,7 @@ const getHSLValue = (color: string) => resolveHSLCalc(hsl.value[color]);
 	text-align: center;
 	align-self: flex-start;
 	padding: 5px;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .circle {
@@ -91,6 +91,6 @@ const getHSLValue = (color: string) => resolveHSLCalc(hsl.value[color]);
 
 .hsl {
 	composes: color;
-	content: var(--color-primary);
+	content: var(--color--primary);
 }
 </style>

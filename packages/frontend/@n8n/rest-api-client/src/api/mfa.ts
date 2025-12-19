@@ -33,3 +33,9 @@ export type DisableMfaParams = {
 export async function disableMfa(context: IRestApiContext, data: DisableMfaParams): Promise<void> {
 	return await makeRestApiRequest(context, 'POST', '/mfa/disable', data);
 }
+
+export async function updateEnforceMfa(context: IRestApiContext, enforce: boolean): Promise<void> {
+	return await makeRestApiRequest(context, 'POST', '/mfa/enforce-mfa', {
+		enforce,
+	});
+}

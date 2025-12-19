@@ -6,7 +6,7 @@ import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import { writeFile, chmod, readFile } from 'node:fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import path from 'path';
 
 import {
@@ -91,14 +91,72 @@ export class SourceControlPreferencesService {
 		return dbKeyPair.publicKey;
 	}
 
+	private async getHttpsCredentialsFromDatabase() {
+		const dbSetting = await this.settingsRepository.findByKey(
+			'features.sourceControl.httpsCredentials',
+		);
+
+		if (!dbSetting?.value) throw new UnexpectedError('No credentials found for https connection');
+
+		type HttpsCredentials = { encryptedUsername: string; encryptedPassword: string };
+
+		return jsonParse<HttpsCredentials>(dbSetting.value);
+	}
+
+	async getDecryptedHttpsCredentials(): Promise<{ username: string; password: string }> {
+		const credentials = await this.getHttpsCredentialsFromDatabase();
+
+		return {
+			username: this.cipher.decrypt(credentials.encryptedUsername),
+			password: this.cipher.decrypt(credentials.encryptedPassword),
+		};
+	}
+
+	async saveHttpsCredentials(username: string, password: string): Promise<void> {
+		try {
+			await this.settingsRepository.save({
+				key: 'features.sourceControl.httpsCredentials',
+				value: JSON.stringify({
+					encryptedUsername: this.cipher.encrypt(username),
+					encryptedPassword: this.cipher.encrypt(password),
+				}),
+				loadOnStartup: true,
+			});
+		} catch (error) {
+			throw new UnexpectedError('Failed to save HTTPS credentials to database', { cause: error });
+		}
+	}
+
+	async deleteHttpsCredentials(): Promise<void> {
+		try {
+			await this.settingsRepository.delete({ key: 'features.sourceControl.httpsCredentials' });
+		} catch (error) {
+			this.logger.error('Failed to delete HTTPS credentials from database', { error });
+		}
+	}
+
 	async getPrivateKeyPath() {
 		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
 
 		const tempFilePath = path.join(this.instanceSettings.n8nFolder, 'ssh_private_key_temp');
 
-		await writeFile(tempFilePath, dbPrivateKey);
+		// Ensure proper line endings (LF only) for SSH keys, especially on Windows
+		const normalizedKey = dbPrivateKey.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-		await chmod(tempFilePath, 0o600);
+		try {
+			// Remove existing file if it exists to avoid permission conflicts
+			// Using force: true ignores ENOENT but allows other errors to surface
+			await fsRm(tempFilePath, { force: true });
+
+			// Always use restrictive permissions for SSH private keys (security requirement)
+			await writeFile(tempFilePath, normalizedKey, { mode: 0o600 });
+		} catch (error) {
+			this.logger.error('Failed to write SSH private key to temp file', {
+				tempFilePath,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw new UnexpectedError('Failed to create SSH private key file', { cause: error });
+		}
 
 		return tempFilePath;
 	}
@@ -203,9 +261,25 @@ export class SourceControlPreferencesService {
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
 
-		if (noKeyPair) await this.generateAndSaveKeyPair();
+		// Generate SSH key pair for SSH connections or when connectionType is undefined for backward compatibility
+		if (
+			noKeyPair &&
+			(preferences.connectionType === 'ssh' || preferences.connectionType === undefined)
+		) {
+			await this.generateAndSaveKeyPair();
+		}
 
-		this.sourceControlPreferences = preferences;
+		const sanitizedPreferences = { ...preferences };
+
+		if (preferences.httpsUsername && preferences.httpsPassword) {
+			await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
+		}
+
+		delete sanitizedPreferences.httpsUsername;
+		delete sanitizedPreferences.httpsPassword;
+
+		this.sourceControlPreferences = sanitizedPreferences;
+
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {

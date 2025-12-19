@@ -1,8 +1,7 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import type { PublicUser } from '@n8n/db';
-import { InvalidAuthTokenRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
@@ -16,9 +15,8 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
 
 const browserId = 'test-browser-id';
@@ -40,7 +38,7 @@ describe('MeController', () => {
 				email: 'valid@email.com',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:owner',
+				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
 			});
 			const payload = new UserUpdateRequestDto({
@@ -89,8 +87,9 @@ describe('MeController', () => {
 			const user = mock<User>({
 				id: '123',
 				password: 'password',
+				email: 'current@email.com',
 				authIdentities: [],
-				role: 'global:owner',
+				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
 			});
 			const req = mock<AuthenticatedRequest>({ user });
@@ -105,7 +104,7 @@ describe('MeController', () => {
 				controller.updateCurrentUser(
 					req,
 					mock(),
-					mock({ email: 'valid@email.com', firstName: 'John', lastName: 'Potato' }),
+					mock({ email: user.email, firstName: 'John', lastName: 'Potato' }),
 				),
 			).rejects.toThrowError(new BadRequestError('Invalid email address'));
 		});
@@ -117,7 +116,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: true,
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
@@ -141,7 +140,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: true,
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
@@ -167,7 +166,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: true,
 					mfaSecret: 'secret',
 				});
@@ -190,6 +189,133 @@ describe('MeController', () => {
 					}),
 				);
 
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('when mfa is disabled and email is being changed', () => {
+			const oldPasswordPlain = 'old_password';
+			const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
+
+			it('should throw BadRequestError if currentPassword is missing', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'michel-new@email.com',
+							firstName: 'Michel',
+							lastName: 'n8n',
+						}),
+					),
+				).rejects.toThrowError(new BadRequestError('Current password is required to change email'));
+			});
+
+			it('should throw BadRequestError if currentPassword is not a string', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				await expect(
+					controller.updateCurrentUser(req, mock(), {
+						email: 'michel-new@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+						currentPassword: 123 as any,
+					} as any),
+				).rejects.toThrowError(new BadRequestError('Current password is required to change email'));
+			});
+
+			it('should throw BadRequestError if currentPassword is incorrect', async () => {
+				const user = mock<User>({
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						mock({
+							email: 'michel-new@email.com',
+							firstName: 'Michel',
+							lastName: 'n8n',
+							currentPassword: 'wrong-password',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError(
+						'Unable to update profile. Please check your credentials and try again.',
+					),
+				);
+			});
+
+			it('should update the user email if currentPassword is correct', async () => {
+				const user = mock<User>({
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+				const res = mock<Response>();
+				userRepository.findOneByOrFail.mockResolvedValue(user);
+				userRepository.findOneOrFail.mockResolvedValue(user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+				const result = await controller.updateCurrentUser(
+					req,
+					res,
+					mock({
+						email: 'michel-new@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+						currentPassword: oldPasswordPlain,
+					}),
+				);
+
+				expect(userService.update).toHaveBeenCalled();
+				expect(result).toEqual({});
+			});
+
+			it('should not require currentPassword when email is not being changed', async () => {
+				const user = mock<User>({
+					email: 'michel@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+				const res = mock<Response>();
+				userRepository.findOneByOrFail.mockResolvedValue(user);
+				userRepository.findOneOrFail.mockResolvedValue(user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+				const result = await controller.updateCurrentUser(
+					req,
+					res,
+					new UserUpdateRequestDto({
+						email: 'michel@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+					}),
+				);
+
+				expect(userService.update).toHaveBeenCalled();
 				expect(result).toEqual({});
 			});
 		});

@@ -1,4 +1,4 @@
-import { roleSchema, userListItemSchema, usersListSchema } from '../user.schema';
+import { roleSchema, userDetailSchema, userBaseSchema, usersListSchema } from '../user.schema';
 
 describe('user.schema', () => {
 	describe('roleSchema', () => {
@@ -14,7 +14,7 @@ describe('user.schema', () => {
 		});
 	});
 
-	describe('userListItemSchema', () => {
+	describe('userDetailSchema', () => {
 		test.each([
 			{
 				name: 'valid user',
@@ -31,16 +31,11 @@ describe('user.schema', () => {
 				isValid: true,
 			},
 			{
-				name: 'user with null fields',
+				name: 'user with undefined fields',
 				data: {
 					id: '123',
-					firstName: null,
-					lastName: null,
-					email: null,
 					role: 'global:member',
 					isPending: false,
-					lastActive: null,
-					projects: null,
 				},
 				isValid: true,
 			},
@@ -85,7 +80,92 @@ describe('user.schema', () => {
 				isValid: false,
 			},
 		])('should validate $name', ({ data, isValid }) => {
-			const result = userListItemSchema.safeParse(data);
+			const result = userDetailSchema.safeParse(data);
+			expect(result.success).toBe(isValid);
+		});
+	});
+
+	describe('userBaseSchema', () => {
+		test.each([
+			{
+				name: 'valid user',
+				data: {
+					id: '123',
+					firstName: 'John',
+					lastName: 'Doe',
+					email: 'johndoe@example.com',
+					role: 'global:member',
+					isPending: false,
+					lastActive: '2023-10-01T12:00:00Z',
+					projects: ['project1', 'project2'],
+				},
+				isValid: true,
+			},
+			{
+				name: 'user with undefined fields',
+				data: {
+					id: '123',
+					role: 'global:member',
+					isPending: false,
+				},
+				isValid: true,
+			},
+			{
+				name: 'invalid email',
+				data: {
+					id: '123',
+					firstName: 'John',
+					lastName: 'Doe',
+					email: 'not-an-email',
+					role: 'global:member',
+					isPending: false,
+					lastActive: '2023-10-01T12:00:00Z',
+					projects: ['project1', 'project2'],
+				},
+				isValid: false,
+			},
+			{
+				name: 'missing required fields',
+				data: {
+					firstName: 'John',
+					lastName: 'Doe',
+					email: null,
+					role: 'global:member',
+					isPending: false,
+					lastActive: '2023-10-01T12:00:00Z',
+				},
+				isValid: false,
+			},
+			{
+				name: 'chat user',
+				data: {
+					id: '123',
+					firstName: 'John',
+					lastName: 'Doe',
+					email: 'johndoe@example.com',
+					role: 'global:chatUser',
+					isPending: false,
+					lastActive: '2023-10-01T12:00:00Z',
+					projects: [],
+				},
+				isValid: true,
+			},
+			{
+				name: 'invalid role',
+				data: {
+					id: '123',
+					firstName: 'John',
+					lastName: 'Doe',
+					email: 'johndoe@example.com',
+					role: 'invalid-role',
+					isPending: false,
+					lastActive: '2023-10-01T12:00:00Z',
+					projects: ['project1', 'project2'],
+				},
+				isValid: false,
+			},
+		])('should validate $name', ({ data, isValid }) => {
+			const result = userBaseSchema.safeParse(data);
 			expect(result.success).toBe(isValid);
 		});
 	});
@@ -96,7 +176,7 @@ describe('user.schema', () => {
 				name: 'valid users list',
 				data: {
 					count: 2,
-					data: [
+					items: [
 						{
 							id: '123',
 							firstName: 'John',
@@ -104,7 +184,6 @@ describe('user.schema', () => {
 							email: 'johndoe@example.com',
 							role: 'global:member',
 							isPending: false,
-							lastActive: '2023-10-01T12:00:00Z',
 							projects: ['project1', 'project2'],
 						},
 						{
@@ -114,7 +193,6 @@ describe('user.schema', () => {
 							email: 'janedoe@example.com',
 							role: 'global:admin',
 							isPending: true,
-							lastActive: '2023-10-02T12:00:00Z',
 							projects: null,
 						},
 					],
@@ -125,14 +203,14 @@ describe('user.schema', () => {
 				name: 'empty users list',
 				data: {
 					count: 0,
-					data: [],
+					items: [],
 				},
 				isValid: true,
 			},
 			{
 				name: 'missing count',
 				data: {
-					data: [],
+					items: [],
 				},
 				isValid: false,
 			},
@@ -147,7 +225,7 @@ describe('user.schema', () => {
 				name: 'invalid user in list',
 				data: {
 					count: 1,
-					data: [
+					items: [
 						{
 							id: '123',
 							firstName: 'John',

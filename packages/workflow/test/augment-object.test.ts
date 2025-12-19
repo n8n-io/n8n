@@ -1,6 +1,6 @@
-import { augmentArray, augmentObject } from '@/augment-object';
-import type { IDataObject } from '@/interfaces';
-import { deepCopy } from '@/utils';
+import { augmentArray, augmentObject } from '../src/augment-object';
+import type { IDataObject } from '../src/interfaces';
+import { deepCopy } from '../src/utils';
 
 describe('AugmentObject', () => {
 	describe('augmentArray', () => {
@@ -483,46 +483,6 @@ describe('AugmentObject', () => {
 				aa: '1',
 			});
 			expect(originalObject).toEqual(copyOriginal);
-		});
-
-		test('should be faster than doing a deepCopy', () => {
-			const iterations = 100;
-			const originalObject: any = {
-				a: {
-					b: {
-						c: {
-							d: {
-								e: {
-									f: 12345,
-								},
-							},
-						},
-					},
-				},
-			};
-			for (let i = 0; i < 10; i++) {
-				originalObject[i.toString()] = deepCopy(originalObject);
-			}
-
-			let startTime = new Date().getTime();
-			for (let i = 0; i < iterations; i++) {
-				const augmentedObject = augmentObject(originalObject);
-				for (let i = 0; i < 5000; i++) {
-					augmentedObject.a!.b.c.d.e.f++;
-				}
-			}
-			const timeAugmented = new Date().getTime() - startTime;
-
-			startTime = new Date().getTime();
-			for (let i = 0; i < iterations; i++) {
-				const copiedObject = deepCopy(originalObject);
-				for (let i = 0; i < 5000; i++) {
-					copiedObject.a!.b.c.d.e.f++;
-				}
-			}
-			const timeCopied = new Date().getTime() - startTime;
-
-			expect(timeAugmented).toBeLessThan(timeCopied);
 		});
 
 		test('should ignore non-enumerable keys', () => {

@@ -42,6 +42,9 @@ const isModeRootExecution = {
 	internal: false,
 
 	manual: false,
+
+	// n8n Chat hub messages
+	chat: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
@@ -87,16 +90,24 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
 		const isSuccess = runData.status === 'success';
-		const manual = runData.mode === 'manual';
+		const manualExecution = runData.mode === 'manual';
+		const chatExecution = runData.mode === 'chat';
+
+		if (chatExecution) {
+			// Chat workflows are short lived and deleted immediately after execution, so we skip statistics for them.
+			// They are also not counted towards execution limits.
+			return;
+		}
+
 		let name: StatisticsNames;
 		const isRootExecution =
 			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
 		if (isSuccess) {
-			if (manual) name = StatisticsNames.manualSuccess;
+			if (manualExecution) name = StatisticsNames.manualSuccess;
 			else name = StatisticsNames.productionSuccess;
 		} else {
-			if (manual) name = StatisticsNames.manualError;
+			if (manualExecution) name = StatisticsNames.manualError;
 			else name = StatisticsNames.productionError;
 		}
 
@@ -113,8 +124,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+				let userId: string | null = null;
+
 				if (project.type === 'personal') {
 					const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+					userId = owner?.id ?? null;
 
 					if (owner && !owner.settings?.userActivated) {
 						await this.userService.updateSettings(owner.id, {
@@ -123,13 +137,13 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 							userActivatedAt: runData.startedAt.getTime(),
 						});
 					}
-
-					this.eventService.emit('first-production-workflow-succeeded', {
-						projectId: project.id,
-						workflowId,
-						userId: owner!.id,
-					});
 				}
+
+				this.eventService.emit('first-production-workflow-succeeded', {
+					projectId: project.id,
+					workflowId,
+					userId,
+				});
 			}
 		} catch (error) {
 			this.logger.debug('Unable to fire first workflow success telemetry event');

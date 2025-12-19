@@ -219,6 +219,30 @@ export class McpServerManager {
 		return wasToolCall(req.rawBody.toString());
 	}
 
+	async handleDeleteRequest(req: express.Request, resp: CompressionResponse) {
+		const sessionId = this.getSessionId(req);
+
+		if (!sessionId) {
+			resp.status(400).send('No sessionId provided');
+			return;
+		}
+
+		const transport = this.getTransport(sessionId);
+
+		if (transport) {
+			if (transport instanceof FlushingStreamableHTTPTransport) {
+				await transport.handleRequest(req, resp);
+				return;
+			} else {
+				// For SSE transport, we don't support DELETE requests
+				resp.status(405).send('Method Not Allowed');
+				return;
+			}
+		}
+
+		resp.status(404).send('Session not found');
+	}
+
 	setUpHandlers(server: Server) {
 		server.setRequestHandler(
 			ListToolsRequestSchema,

@@ -1,10 +1,8 @@
-import { ProjectRelationRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { randomEmail, testDb } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createAdmin, createMember, createOwner } from './shared/db/users';
-import { randomEmail } from './shared/random';
-import * as testDb from './shared/test-db';
+import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users';
 
 describe('UserRepository', () => {
 	let userRepository: UserRepository;
@@ -30,6 +28,7 @@ describe('UserRepository', () => {
 				createMember(),
 				createMember(),
 				createMember(),
+				createChatUser(),
 			]);
 
 			const usersByRole = await userRepository.countUsersByRole();
@@ -38,6 +37,7 @@ describe('UserRepository', () => {
 				'global:admin': 2,
 				'global:member': 3,
 				'global:owner': 1,
+				'global:chatUser': 1,
 			});
 		});
 	});
@@ -46,7 +46,26 @@ describe('UserRepository', () => {
 		test('should create personal project for a user', async () => {
 			const { user, project } = await userRepository.createUserWithProject({
 				email: randomEmail(),
-				role: 'global:member',
+				role: { slug: 'global:member' },
+			});
+
+			const projectRelation = await Container.get(ProjectRelationRepository).findOneOrFail({
+				where: {
+					userId: user.id,
+					project: {
+						type: 'personal',
+					},
+				},
+				relations: ['project'],
+			});
+
+			expect(projectRelation.project.id).toBe(project.id);
+		});
+
+		test('should create personal project for a chat user', async () => {
+			const { user, project } = await userRepository.createUserWithProject({
+				email: randomEmail(),
+				role: { slug: 'global:chatUser' },
 			});
 
 			const projectRelation = await Container.get(ProjectRelationRepository).findOneOrFail({

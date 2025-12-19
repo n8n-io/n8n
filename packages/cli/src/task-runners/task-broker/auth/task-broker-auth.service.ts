@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes, timingSafeEqual } from 'crypto';
 
-import { Time } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
 
 const GRANT_TOKEN_TTL = 15 * Time.seconds.toMilliseconds;

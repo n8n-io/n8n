@@ -4,6 +4,9 @@
         "canUploadPhoto": {
             "type": "integer"
         },
+        "department": {
+            "type": "string"
+        },
         "displayName": {
             "type": "string"
         },
@@ -11,6 +14,9 @@
             "type": "string"
         },
         "id": {
+            "type": "string"
+        },
+        "jobTitle": {
             "type": "string"
         },
         "lastName": {
@@ -21,7 +27,13 @@
         },
         "photoUrl": {
             "type": "string"
+        },
+        "pronouns": {
+            "type": "null"
+        },
+        "supervisor": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

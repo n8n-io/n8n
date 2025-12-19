@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
+import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
-import { ApplicationError } from './errors/application.error';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -28,6 +27,8 @@ import type {
 	INode,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
+import { createResultError, createResultOk } from './result';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
@@ -401,12 +402,17 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError('Referenced node is unexecuted', {
+				throw new ExpressionError(`Node '${nodeName}' hasn't been executed`, {
+					messageTemplate:
+						'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+					functionality: 'pairedItem',
+					descriptionKey: isScriptingNode(nodeName, that.workflow)
+						? 'pairedItemNoConnectionCodeNode'
+						: 'pairedItemNoConnection',
+					type: 'no_execution_data',
+					nodeCause: nodeName,
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
-					type: 'no_node_execution_data',
-					descriptionKey: 'noNodeExecutionData',
-					nodeCause: nodeName,
 				});
 			}
 
@@ -495,11 +501,16 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (!node) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError('Referenced node does not exist', {
+							messageTemplate: 'Make sure to double-check the node name for typos',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'paired_item_no_connection',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -513,31 +524,36 @@ export class WorkflowDataProxy {
 							return undefined;
 						}
 
+						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
-							if (that.workflow.getParentNodes(nodeName).length === 0) {
-								throw new ExpressionError('No execution data available', {
-									messageTemplate:
-										'No execution data available to expression under ‘%%PARAMETER%%’',
-									descriptionKey: 'noInputConnection',
-									nodeCause: nodeName,
-									runIndex: that.runIndex,
-									itemIndex: that.itemIndex,
-									type: 'no_input_connection',
-								});
-							}
-
-							throw new ExpressionError('No execution data available', {
+							throw new ExpressionError(`Node '${nodeName}' hasn't been executed`, {
+								messageTemplate:
+									'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+								functionality: 'pairedItem',
+								descriptionKey: isScriptingNode(nodeName, that.workflow)
+									? 'pairedItemNoConnectionCodeNode'
+									: 'pairedItemNoConnection',
+								type: 'no_execution_data',
+								nodeCause: nodeName,
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
-								type: 'no_execution_data',
 							});
 						}
 
 						if (executionData.length <= that.itemIndex) {
-							throw new ExpressionError(`No data found for item-index: "${that.itemIndex}"`, {
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-							});
+							throw new ExpressionError(
+								`"${nodeName}" node has ${executionData.length} item(s) but you're trying to access item ${that.itemIndex}`,
+								{
+									messageTemplate:
+										'Adjust your expression to access an existing item index (0-{{maxIndex}})',
+									functionality: 'pairedItem',
+									descriptionKey: 'pairedItemInvalidIndex',
+									type: 'no_execution_data',
+									nodeCause: nodeName,
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+								},
+							);
 						}
 
 						if (['data', 'json'].includes(name)) {
@@ -778,19 +794,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
 		const createMissingPairedItemError = (
 			nodeCause: string,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
@@ -912,106 +915,93 @@ export class WorkflowDataProxy {
 			return outputs;
 		}
 
-		function resolveMultiplePairings(
-			pairings: IPairedItemData[],
-			source: ISourceData[],
-			destinationNode: string,
-			method: PairedItemMethod,
-			itemIndex: number,
-		): INodeExecutionData {
-			const results = pairings
-				.map((pairing) => {
-					try {
-						const input = pairing.input || 0;
-						if (input >= source.length) {
-							// Could not resolve pairedItem as the defined node input does not exist on source.previousNode.
-							return null;
-						}
-						// eslint-disable-next-line @typescript-eslint/no-use-before-define
-						return getPairedItem(destinationNode, source[input], pairing, method);
-					} catch {
-						return null;
-					}
-				})
-				.filter(Boolean) as INodeExecutionData[];
+		const normalizePairedItem = (
+			paired: number | IPairedItemData | Array<number | IPairedItemData> | null | undefined,
+		): IPairedItemData[] => {
+			if (paired === null || paired === undefined) {
+				return [];
+			}
 
-			if (results.length === 1) return results[0];
+			const pairedItems = Array.isArray(paired) ? paired : [paired];
 
-			const allSame = results.every((r) => r === results[0]);
-			if (allSame) return results[0];
+			return pairedItems.map((p) => (typeof p === 'number' ? { item: p } : p));
+		};
 
-			throw createPairedItemMultipleItemsFound(destinationNode, itemIndex);
-		}
-
-		/**
-		 * Attempts to find the execution data for a specific paired item
-		 * by traversing the node execution ancestry chain.
-		 */
 		const getPairedItem = (
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-		): INodeExecutionData | null => {
-			// Step 1: Normalize inputs
+			nodeBeforeLast?: string,
+		): INodeExecutionData => {
+			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
 
-			let currentPairedItem = pairedItem;
-			let currentSource = sourceData;
-			let nodeBeforeLast: string | undefined;
-
-			// Step 2: Traverse ancestry to find correct node
-			while (currentSource && currentSource.previousNode !== destinationNodeName) {
-				const taskData = getTaskData(currentSource);
-
-				const outputData = getNodeOutput(taskData, currentSource, nodeBeforeLast);
-				const sourceArray = taskData?.source.filter((s): s is ISourceData => s !== null) ?? [];
-
-				const item = outputData[currentPairedItem.item];
-				if (item?.pairedItem === undefined) {
-					throw createMissingPairedItemError(currentSource.previousNode, usedMethodName);
-				}
-
-				// Multiple pairings? Recurse over all
-				if (Array.isArray(item.pairedItem)) {
-					return resolveMultiplePairings(
-						item.pairedItem,
-						sourceArray,
-						destinationNodeName,
-						usedMethodName,
-						currentPairedItem.item,
-					);
-				}
-
-				// Follow single paired item
-				currentPairedItem =
-					typeof item.pairedItem === 'number' ? { item: item.pairedItem } : item.pairedItem;
-
-				const inputIndex = currentPairedItem.input || 0;
-				if (inputIndex >= sourceArray.length) {
-					if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
-					throw createBranchNotFoundError(
-						currentSource.previousNode,
-						currentPairedItem.item,
-						nodeBeforeLast,
-					);
-				}
-
-				nodeBeforeLast = currentSource.previousNode;
-				currentSource = currentPairedItem.sourceOverwrite || sourceArray[inputIndex];
+			if (!sourceData) {
+				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
-			// Step 3: Final node reached — fetch paired item
-			if (!currentSource) throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
+			const taskData = getTaskData(sourceData);
+			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
+			const item = outputData[pairedItem.item];
+			const sourceArray = taskData?.source ?? [];
 
-			const finalTaskData = getTaskData(currentSource);
-			const finalOutputData = getNodeOutput(finalTaskData, currentSource);
+			// Done: reached the destination node in the ancestry chain
+			if (sourceData.previousNode === destinationNodeName) {
+				if (pairedItem.item >= outputData.length) {
+					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+				}
 
-			if (currentPairedItem.item >= finalOutputData.length) {
-				throw createInvalidPairedItemError({ nodeName: currentSource.previousNode });
+				return item;
 			}
 
-			return finalOutputData[currentPairedItem.item];
+			// Normalize paired item to always be IPairedItemData[]
+			const nextPairedItems = normalizePairedItem(item.pairedItem);
+
+			if (nextPairedItems.length === 0) {
+				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+			}
+
+			// Recursively traverse ancestry to find the destination node + paired item
+			const results = nextPairedItems.flatMap((nextPairedItem) => {
+				const inputIndex = nextPairedItem.input ?? 0;
+
+				if (inputIndex >= sourceArray.length) return [];
+
+				const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
+
+				try {
+					return createResultOk(
+						getPairedItem(
+							destinationNodeName,
+							nextSource,
+							{ ...nextPairedItem, input: inputIndex },
+							usedMethodName,
+							sourceData.previousNode,
+						),
+					);
+				} catch (error) {
+					return createResultError(error);
+				}
+			});
+
+			if (results.every((result) => !result.ok)) {
+				throw results[0].error;
+			}
+
+			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
+
+			if (matchedItems.length === 0) {
+				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+			}
+
+			const [first, ...rest] = matchedItems;
+			if (rest.some((r) => r !== first)) {
+				throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
+			}
+
+			return first;
 		};
 
 		const handleFromAi = (
@@ -1037,12 +1027,21 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
-			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
 
-			if (Boolean(!placeholdersDataInputData)) {
+			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			let inputData;
+			let placeholdersDataInputData;
+
+			if (!resultData) {
+				inputData = this.connectionInputData?.[runIndex];
+				placeholdersDataInputData = inputData?.json;
+			} else {
+				inputData =
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+			}
+
+			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
 					runIndex,
 					itemIndex,
@@ -1078,12 +1077,17 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError('Referenced node is unexecuted', {
+						throw createExpressionError(`Node '${nodeName}' hasn't been executed`, {
+							messageTemplate:
+								'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'no_execution_data',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							type: 'no_node_execution_data',
-							descriptionKey: 'noNodeExecutionData',
-							nodeCause: nodeName,
 						});
 					}
 				};
@@ -1126,11 +1130,24 @@ export class WorkflowDataProxy {
 								let contextNode = that.contextNodeName;
 								if (activeNode) {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
-									contextNode = parentMainInputNode.name ?? contextNode;
+									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+								// Check if the node has any children and check parents for them instead of the activeNodeName
+								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
+								if (children.length === 0) {
+									// Node has no children, check parent of context node
+									const parents = that.workflow.getParentNodes(contextNode);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
+								} else {
+									// Node has children, check parent of children
+									const parents = children.flatMap((child) =>
+										that.workflow.getParentNodes(child, 'ALL'),
+									);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
 								}
 
 								ensureNodeExecutionData();

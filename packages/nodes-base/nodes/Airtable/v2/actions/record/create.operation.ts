@@ -63,10 +63,9 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const options = this.getNodeParameter('options', i, {});
+			const typecast = Boolean(options.typecast);
 
-			const body: IDataObject = {
-				typecast: options.typecast ? true : false,
-			};
+			const body: IDataObject = { typecast };
 
 			if (options.returnFieldsByFieldId !== undefined) {
 				body.returnFieldsByFieldId = options.returnFieldsByFieldId as boolean;
@@ -77,7 +76,9 @@ export async function execute(
 			}
 
 			if (dataMode === 'defineBelow') {
-				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
+				const fields = this.getNodeParameter('columns.value', i, [], {
+					skipValidation: typecast,
+				}) as IDataObject;
 
 				body.fields = fields;
 			}
@@ -89,7 +90,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, undefined, i);
 			if (this.continueOnFail()) {

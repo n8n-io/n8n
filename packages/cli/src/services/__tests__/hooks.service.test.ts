@@ -1,14 +1,18 @@
-import type { SettingsRepository, User } from '@n8n/db';
-import type { CredentialsRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	SettingsRepository,
+	User,
+	CredentialsRepository,
+	WorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
+import { IsNull, Not } from '@n8n/typeorm';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { Invitation } from '@/interfaces';
-import type { AuthenticatedRequest } from '@/requests';
 import { HooksService } from '@/services/hooks.service';
 import type { UserService } from '@/services/user.service';
 
@@ -22,6 +26,11 @@ describe('HooksService', () => {
 	const settingsRepository = mock<SettingsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
+
+	const authMiddleware = jest.fn();
+
+	authService.createAuthMiddleware.mockReturnValue(authMiddleware);
+
 	const hooksService = new HooksService(
 		userService,
 		authService,
@@ -49,12 +58,13 @@ describe('HooksService', () => {
 	it('hooksService.issueCookie should call authService.issueCookie', async () => {
 		// ARRANGE
 		const res = mock<Response>();
+		mockedUser.mfaEnabled = false; // Mock mfaEnabled property
 
 		// ACT
 		hooksService.issueCookie(res, mockedUser);
 
 		// ASSERT
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser);
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser, false);
 	});
 
 	it('hooksService.findOneUser should call userRepository.findOne', async () => {
@@ -91,7 +101,7 @@ describe('HooksService', () => {
 
 	it('hooksService.workflowsCount should call workflowRepository.count', async () => {
 		// ARRANGE
-		const filter = { where: { active: true } };
+		const filter = { where: { activeVersionId: Not(IsNull()) } };
 
 		// ACT
 		await hooksService.workflowsCount(filter);
@@ -134,7 +144,7 @@ describe('HooksService', () => {
 		await hooksService.authMiddleware(req, res, next);
 
 		// ASSERT
-		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res, next);
+		expect(authMiddleware).toHaveBeenCalledWith(req, res, next);
 	});
 
 	it('hooksService.dbCollections should return valid repositories', async () => {

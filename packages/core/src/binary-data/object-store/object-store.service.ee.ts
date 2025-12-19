@@ -107,14 +107,15 @@ export class ObjectStoreService {
 			};
 
 			if (metadata.fileName) {
-				params.Metadata = { filename: metadata.fileName };
+				params.Metadata = { filename: encodeURIComponent(metadata.fileName) };
 			}
 
 			if (metadata.mimeType) {
 				params.ContentType = metadata.mimeType;
 			}
 
-			this.logger.debug('Sending PUT request to S3', { params });
+			const { Body: _body, ...logParams } = params;
+			this.logger.debug('Sending PUT request to S3', { params: logParams });
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
@@ -174,7 +175,8 @@ export class ObjectStoreService {
 			// Add metadata with the expected prefix format
 			if (response.Metadata) {
 				Object.entries(response.Metadata).forEach(([key, value]) => {
-					headers[`x-amz-meta-${key.toLowerCase()}`] = value;
+					headers[`x-amz-meta-${key.toLowerCase()}`] =
+						key === 'filename' ? decodeURIComponent(value) : value;
 				});
 			}
 
