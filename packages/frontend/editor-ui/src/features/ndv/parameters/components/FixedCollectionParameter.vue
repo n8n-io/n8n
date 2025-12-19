@@ -115,10 +115,10 @@ const requiredOnlyButtonText = computed(() => {
 	return locale.nodeText(activeNode.value?.type).requiredOnlyButtonText(props.parameter);
 });
 
-const addedOptionalProperties = ref(new Map<string, Set<string>>());
+const addedOptionalValues = ref(new Map<string, Set<string>>());
 
-const getOptionalPropertiesKey = (propertyName: string, index?: number): string => {
-	return index !== undefined ? `${propertyName}-${index}` : propertyName;
+const getOptionalValuesKey = (optionName: string, index?: number): string => {
+	return index !== undefined ? `${optionName}-${index}` : optionName;
 };
 
 const hasNonDefaultValue = (
@@ -133,11 +133,11 @@ const hasNonDefaultValue = (
 	return true;
 };
 
-const initializeAddedPropertiesFromValues = () => {
+const initializeAddedOptionalValues = () => {
 	if (!requiredOnly.value) return;
 	if (!isINodePropertyCollectionList(props.parameter.options)) return;
 
-	addedOptionalProperties.value.clear();
+	addedOptionalValues.value.clear();
 
 	for (const option of props.parameter.options) {
 		const optionPath = `${props.path}.${option.name}`;
@@ -154,7 +154,7 @@ const initializeAddedPropertiesFromValues = () => {
 
 		if (multipleValues.value && Array.isArray(optionValues)) {
 			optionValues.forEach((itemValues, index) => {
-				const key = getOptionalPropertiesKey(option.name, index);
+				const key = getOptionalValuesKey(option.name, index);
 				const addedProps = new Set<string>();
 
 				for (const propDef of optionalPropertyDefs) {
@@ -164,11 +164,11 @@ const initializeAddedPropertiesFromValues = () => {
 				}
 
 				if (addedProps.size > 0) {
-					addedOptionalProperties.value.set(key, addedProps);
+					addedOptionalValues.value.set(key, addedProps);
 				}
 			});
 		} else if (typeof optionValues === 'object' && !Array.isArray(optionValues)) {
-			const key = getOptionalPropertiesKey(option.name);
+			const key = getOptionalValuesKey(option.name);
 			const addedProps = new Set<string>();
 
 			for (const propDef of optionalPropertyDefs) {
@@ -178,124 +178,120 @@ const initializeAddedPropertiesFromValues = () => {
 			}
 
 			if (addedProps.size > 0) {
-				addedOptionalProperties.value.set(key, addedProps);
+				addedOptionalValues.value.set(key, addedProps);
 			}
 		}
 	}
 };
 
-const isOptionalPropertyAdded = (
-	propertyName: string,
-	propName: string,
-	index?: number,
-): boolean => {
-	const key = getOptionalPropertiesKey(propertyName, index);
-	return addedOptionalProperties.value.get(key)?.has(propName) ?? false;
+const isOptionalValueAdded = (optionName: string, valueName: string, index?: number): boolean => {
+	const key = getOptionalValuesKey(optionName, index);
+	return addedOptionalValues.value.get(key)?.has(valueName) ?? false;
 };
 
-const getVisibleProperties = (
-	property: INodePropertyCollection,
+const getVisiblePropertyValues = (
+	option: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
 	if (!requiredOnly.value) {
-		return property.values;
+		return option.values;
 	}
 
-	const key = getOptionalPropertiesKey(property.name, index);
-	const addedProps = addedOptionalProperties.value.get(key);
-	const itemPath = getPropertyPath(property.name, index);
+	const key = getOptionalValuesKey(option.name, index);
+	const addedValues = addedOptionalValues.value.get(key);
+	const itemPath = getPropertyPath(option.name, index);
 
-	return property.values.filter((prop) => {
-		// Always show required properties
-		if (prop.required === true) {
+	return option.values.filter((value) => {
+		// Always show required values
+		if (value.required === true) {
 			return true;
 		}
 
-		// Always show notice properties - they're informational, not input properties
-		if (prop.type === 'notice') {
+		// Always show notice values - they're informational, not input properties
+		if (value.type === 'notice') {
 			return true;
 		}
 
-		// Show optional properties if explicitly added via picker
-		if (addedProps?.has(prop.name)) {
+		// Show optional values if explicitly added via picker
+		if (addedValues?.has(value.name)) {
 			return true;
 		}
 
-		// Auto-show properties marked as depending on optional properties
-		if (prop.typeOptions?.requiredOnlyAutoShow) {
-			return nodeHelpers.displayParameter(props.nodeValues, prop, itemPath, activeNode.value);
+		// Auto-show values marked as depending on optional properties
+		if (value.typeOptions?.requiredOnlyAutoShow) {
+			return nodeHelpers.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
 		}
 
 		return false;
 	});
 };
 
-const getPickerProperties = (
-	property: INodePropertyCollection,
+const getPickerPropertyValues = (
+	option: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
 	if (!requiredOnly.value) {
 		return [];
 	}
 
-	const itemPath = getPropertyPath(property.name, index);
+	const itemPath = getPropertyPath(option.name, index);
 
-	return property.values.filter((prop) => {
-		// Only include non-required properties
-		if (prop.required === true) {
+	return option.values.filter((value) => {
+		// Only include non-required values
+		if (value.required === true) {
 			return false;
 		}
 
 		// Exclude notice types - they're just display messages, not input properties
-		if (prop.type === 'notice') {
+		if (value.type === 'notice') {
 			return false;
 		}
 
-		// Exclude properties that auto-show based on parent optional properties
-		if (prop.typeOptions?.requiredOnlyAutoShow) {
+		// Exclude values that auto-show based on parent optional properties
+		if (value.typeOptions?.requiredOnlyAutoShow) {
 			return false;
 		}
 
 		// Use the existing displayParameter helper from node-helpers to check visibility
-		return nodeHelpers.displayParameter(props.nodeValues, prop, itemPath, activeNode.value);
+		return nodeHelpers.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
 	});
 };
 
-const toggleOptionalProperty = (
-	property: INodePropertyCollection,
-	propName: string,
+const toggleOptionalValue = (
+	option: INodePropertyCollection,
+	valueName: string,
 	index?: number,
 ) => {
-	const key = getOptionalPropertiesKey(property.name, index);
-	let propSet = addedOptionalProperties.value.get(key);
+	const key = getOptionalValuesKey(option.name, index);
+	let valueSet = addedOptionalValues.value.get(key);
 
-	if (!propSet) {
-		propSet = new Set();
-		addedOptionalProperties.value.set(key, propSet);
+	if (!valueSet) {
+		valueSet = new Set();
+		addedOptionalValues.value.set(key, valueSet);
 	}
 
-	const propDef = property.values.find((p) => p.name === propName);
-	if (!propDef) return;
+	const valueDef = option.values.find((v) => v.name === valueName);
+	if (!valueDef) return;
 
-	const isCurrentlyAdded = propSet.has(propName);
+	const isCurrentlyAdded = valueSet.has(valueName);
 
 	if (isCurrentlyAdded) {
-		// Remove the property - clear its value
-		propSet.delete(propName);
-		const path = getPropertyPath(property.name, index) + `.${propName}`;
+		// Remove the value - clear it
+		valueSet.delete(valueName);
+		const path = getPropertyPath(option.name, index) + `.${valueName}`;
 
 		emit('valueChanged', {
 			name: path,
 			value: undefined,
 		});
 	} else {
-		// Add the property - set default value
-		propSet.add(propName);
-		const path = getPropertyPath(property.name, index) + `.${propName}`;
+		// Add the value - set default
+		valueSet.add(valueName);
+		const path = getPropertyPath(option.name, index) + `.${valueName}`;
 
 		emit('valueChanged', {
 			name: path,
-			value: deepCopy(propDef.default),
+			value: deepCopy(valueDef.default),
 		});
 	}
 };
@@ -310,7 +306,7 @@ watch(
 
 onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
-	initializeAddedPropertiesFromValues();
+	initializeAddedOptionalValues();
 });
 
 const deleteOption = (optionName: string, index?: number) => {
@@ -507,7 +503,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 								</div>
 								<Suspense>
 									<ParameterInputList
-										:parameters="getVisibleProperties(property, index)"
+										:parameters="getVisiblePropertyValues(property, index)"
 										:node-values="nodeValues"
 										:path="getPropertyPath(property.name, index)"
 										:hide-delete="true"
@@ -517,7 +513,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									/>
 								</Suspense>
 								<div
-									v-if="getPickerProperties(property, index).length > 0 && !isReadOnly"
+									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
 									class="attribute-picker add-option"
 								>
 									<N8nSelect
@@ -526,19 +522,19 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										filterable
 										:model-value="null"
 										@update:model-value="
-											(fieldName: string) => toggleOptionalProperty(property, fieldName, index)
+											(valueName: string) => toggleOptionalValue(property, valueName, index)
 										"
 									>
 										<N8nOption
-											v-for="field in getPickerProperties(property, index)"
-											:key="field.name"
-											:label="field.displayName || field.name"
-											:value="field.name"
+											v-for="value in getPickerPropertyValues(property, index)"
+											:key="value.name"
+											:label="value.displayName || value.name"
+											:value="value.name"
 										>
 											<div class="attribute-option">
-												<span>{{ field.displayName || field.name }}</span>
+												<span>{{ value.displayName || value.name }}</span>
 												<N8nIcon
-													v-if="isOptionalPropertyAdded(property.name, field.name, index)"
+													v-if="isOptionalValueAdded(property.name, value.name, index)"
 													icon="check"
 													size="medium"
 												/>
@@ -565,7 +561,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						></N8nIconButton>
 					</div>
 					<ParameterInputList
-						:parameters="getVisibleProperties(property)"
+						:parameters="getVisiblePropertyValues(property)"
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="isReadOnly"
@@ -575,7 +571,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						@value-changed="valueChanged"
 					/>
 					<div
-						v-if="getPickerProperties(property).length > 0 && !isReadOnly"
+						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
 						class="attribute-picker add-option"
 					>
 						<N8nSelect
@@ -583,20 +579,18 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 							size="small"
 							filterable
 							:model-value="null"
-							@update:model-value="
-								(fieldName: string) => toggleOptionalProperty(property, fieldName)
-							"
+							@update:model-value="(valueName: string) => toggleOptionalValue(property, valueName)"
 						>
 							<N8nOption
-								v-for="field in getPickerProperties(property)"
-								:key="field.name"
-								:label="field.displayName || field.name"
-								:value="field.name"
+								v-for="value in getPickerPropertyValues(property)"
+								:key="value.name"
+								:label="value.displayName || value.name"
+								:value="value.name"
 							>
 								<div class="attribute-option">
-									<span>{{ field.displayName || field.name }}</span>
+									<span>{{ value.displayName || value.name }}</span>
 									<N8nIcon
-										v-if="isOptionalPropertyAdded(property.name, field.name)"
+										v-if="isOptionalValueAdded(property.name, value.name)"
 										icon="check"
 										size="medium"
 									/>
