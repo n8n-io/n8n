@@ -2,19 +2,14 @@ import { v4 as uuid } from 'uuid';
 
 import type { ChatMessage } from '../types';
 
-interface ChatNodeApprovalMessage {
-	type: 'approval';
+interface ChatNodeMessageWithButtons {
+	type: 'with-buttons';
 	text: string;
-	approve: {
+	buttons: Array<{
 		text: string;
 		link: string;
 		type: string;
-	};
-	decline?: {
-		text: string;
-		link: string;
-		type: string;
-	};
+	}>;
 }
 
 export function constructChatWebsocketUrl(
@@ -37,17 +32,16 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 		text: message,
 	};
 	try {
-		const parsed = JSON.parse(message) as ChatNodeApprovalMessage;
-		if (parsed.type === 'approval') {
+		const parsed = JSON.parse(message) as ChatNodeMessageWithButtons;
+		if (parsed.type === 'with-buttons') {
 			chatMessage = {
 				id,
 				sender: 'bot',
 				type: 'component',
-				key: 'approval',
+				key: 'with-buttons',
 				arguments: {
 					text: parsed.text,
-					approve: parsed.approve,
-					decline: parsed.decline,
+					buttons: parsed.buttons,
 				},
 			};
 		}

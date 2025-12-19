@@ -6,7 +6,7 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import MessageApproval from '@n8n/chat/components/MessageApproval.vue';
+import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { ChatOptionsSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
@@ -113,7 +113,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			allowFileUploads: params.allowFileUploads,
 			allowedFilesMimeTypes,
 			messageComponents: {
-				approval: MessageApproval,
+				'with-buttons': MessageWithButtons,
 			},
 		};
 

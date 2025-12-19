@@ -1,4 +1,4 @@
-import MessageApproval from '@n8n/chat/components/MessageApproval.vue';
+import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import type { ChatOptions } from '@n8n/chat/types';
 
 export const defaultOptions: ChatOptions = {
@@ -28,7 +28,7 @@ export const defaultOptions: ChatOptions = {
 	theme: {},
 	enableStreaming: false,
 	messageComponents: {
-		approval: MessageApproval,
+		'with-buttons': MessageWithButtons,
 	},
 };
 

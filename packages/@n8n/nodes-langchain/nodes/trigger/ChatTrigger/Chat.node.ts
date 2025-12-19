@@ -26,7 +26,6 @@ import type {
 	NodeTypeAndVersion,
 	INode,
 	INodePropertyOptions,
-	ChatNodeApprovalMessage,
 	ChatNodeMessageButtonType,
 	ChatNodeMessage,
 } from 'n8n-workflow';
@@ -82,36 +81,17 @@ function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
 		return message;
 	}
 
-	let approvalMessage: ChatNodeApprovalMessage | undefined;
 	const config = getSendAndWaitConfig(ctx);
-	if (config.options.length === 2) {
-		approvalMessage = {
-			type: 'approval',
-			text: message,
-			approve: {
-				text: config.options[1].label,
-				link: config.options[1].url,
-				type: config.options[1].style as ChatNodeMessageButtonType,
-			},
-			decline: {
-				text: config.options[0].label,
-				link: config.options[0].url,
-				type: config.options[0].style as ChatNodeMessageButtonType,
-			},
-		};
-	} else if (config.options.length === 1) {
-		approvalMessage = {
-			type: 'approval',
-			text: message,
-			approve: {
-				text: config.options[0].label,
-				link: config.options[0].url,
-				type: config.options[0].style as ChatNodeMessageButtonType,
-			},
-		};
-	}
-
-	return approvalMessage ?? message;
+	return {
+		type: 'with-buttons',
+		text: message,
+		// the buttons are reversed to show the primary button first
+		buttons: config.options.reverse().map((option) => ({
+			text: option.label,
+			link: option.url,
+			type: option.style as ChatNodeMessageButtonType,
+		})),
+	};
 }
 
 export class Chat implements INodeType {

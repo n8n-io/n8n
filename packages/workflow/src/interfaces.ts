@@ -1304,22 +1304,17 @@ export interface IPairedItemData {
 
 export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 
-export type ChatNodeApprovalMessage = {
-	type: 'approval';
+export type ChatNodeMessageWithButtons = {
+	type: 'with-buttons';
 	text: string;
-	approve: {
+	buttons: Array<{
 		text: string;
 		link: string;
 		type: ChatNodeMessageButtonType;
-	};
-	decline?: {
-		text: string;
-		link: string;
-		type: ChatNodeMessageButtonType;
-	};
+	}>;
 };
 
-export type ChatNodeMessage = ChatNodeApprovalMessage | string;
+export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
 export interface INodeExecutionData {
 	[key: string]:

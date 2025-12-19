@@ -4,16 +4,11 @@ import MarkdownRenderer from './MarkdownRenderer.vue';
 
 defineProps<{
 	text: string;
-	approve: {
+	buttons: Array<{
 		text: string;
 		link: string;
 		type: 'primary' | 'secondary';
-	};
-	decline?: {
-		text: string;
-		link: string;
-		type: 'primary' | 'secondary';
-	};
+	}>;
 }>();
 </script>
 
@@ -21,17 +16,11 @@ defineProps<{
 	<div>
 		<MarkdownRenderer :text="text" />
 		<div :class="$style.buttons">
-			<Button element="a" :href="approve.link" :type="approve.type" target="_blank">{{
-				approve.text
-			}}</Button>
-			<Button
-				v-if="decline"
-				element="a"
-				:href="decline.link"
-				:type="decline.type"
-				target="_blank"
-				>{{ decline.text }}</Button
-			>
+			<template v-for="button in buttons" :key="button.text">
+				<Button element="a" :href="button.link" :type="button.type" target="_blank">{{
+					button.text
+				}}</Button>
+			</template>
 		</div>
 	</div>
 </template>
