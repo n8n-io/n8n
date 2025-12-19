@@ -610,6 +610,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			chat_session_id: currentSessionId.value,
 			message_number: usersMessages.value.length,
 			task: chatSessionTask.value,
+			allow_sending_parameter_values: allowSendingParameterValues.value,
 		});
 	}
 
