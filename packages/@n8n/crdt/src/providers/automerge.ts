@@ -1,6 +1,13 @@
 import * as Automerge from '@automerge/automerge';
 
-import type { CRDTDoc, CRDTMap, CRDTProvider, DeepChangeEvent, Unsubscribe } from '../types';
+import type {
+	CRDTArray,
+	CRDTDoc,
+	CRDTMap,
+	CRDTProvider,
+	DeepChangeEvent,
+	Unsubscribe,
+} from '../types';
 import { ChangeAction, CRDTEngine } from '../types';
 
 type AutomergeDoc = Automerge.Doc<Record<string, unknown>>;
@@ -492,6 +499,10 @@ class AutomergeDocImpl implements CRDTDoc {
 			this.maps.set(name, map);
 		}
 		return map as CRDTMap<T>;
+	}
+
+	getArray<T = unknown>(_name: string): CRDTArray<T> {
+		throw new Error('CRDTArray not yet implemented for Automerge');
 	}
 
 	transact(fn: () => void): void {
