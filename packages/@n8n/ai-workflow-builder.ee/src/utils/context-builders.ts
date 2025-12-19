@@ -54,12 +54,17 @@ export function buildDiscoveryContextBlock(
 	if (discoveryContext.nodesFound.length > 0) {
 		parts.push('Discovered Nodes:');
 		discoveryContext.nodesFound.forEach(
-			({ nodeName, version, reasoning, connectionChangingParameters }) => {
+			({ nodeName, version, reasoning, connectionChangingParameters, availableResources }) => {
 				const params =
 					connectionChangingParameters.length > 0
 						? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
 						: '';
-				parts.push(`- ${nodeName} v${version}: ${reasoning}${params}`);
+				// Include available resources summary for nodes with resource/operation pattern
+				const resourceInfo =
+					availableResources && availableResources.length > 0
+						? ` [Resources: ${availableResources.map((r) => `${r.value}(${r.operations.map((o) => o.value).join(',')})`).join('; ')}]`
+						: '';
+				parts.push(`- ${nodeName} v${version}: ${reasoning}${params}${resourceInfo}`);
 			},
 		);
 	}

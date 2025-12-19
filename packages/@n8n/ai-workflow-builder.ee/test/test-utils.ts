@@ -501,16 +501,16 @@ export const buildAddNodeInput = (overrides: {
 	nodeType: string;
 	nodeVersion?: number;
 	name?: string;
-	connectionParametersReasoning?: string;
-	connectionParameters?: Record<string, unknown>;
+	initialParametersReasoning?: string;
+	initialParameters?: Record<string, unknown>;
 }) => ({
 	nodeType: overrides.nodeType,
 	nodeVersion: overrides.nodeVersion ?? 1,
 	name: overrides.name ?? 'Test Node',
-	connectionParametersReasoning:
-		overrides.connectionParametersReasoning ??
-		'Standard node with static inputs/outputs, no connection parameters needed',
-	connectionParameters: overrides.connectionParameters ?? {},
+	initialParametersReasoning:
+		overrides.initialParametersReasoning ??
+		'Standard node with static inputs/outputs, no initial parameters needed',
+	initialParameters: overrides.initialParameters ?? {},
 });
 
 // Build connect nodes input

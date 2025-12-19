@@ -196,29 +196,13 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(parentState.discoveryContext.bestPractices);
 		}
 
-		// 3. Available resources and operations for nodes (from discovery)
-		const nodesWithResources = parentState.discoveryContext?.nodesFound.filter(
-			(node) => node.availableResources && node.availableResources.length > 0,
-		);
-		if (nodesWithResources && nodesWithResources.length > 0) {
-			contextParts.push('=== AVAILABLE RESOURCES AND OPERATIONS ===');
-			contextParts.push(
-				'Use these when calling update_node_parameters to specify the resource and operation parameters:',
-			);
-			for (const node of nodesWithResources) {
-				contextParts.push(`\nNode: ${node.nodeName} (version ${node.version})`);
-				for (const resource of node.availableResources!) {
-					const ops = resource.operations.map((op) => op.value).join(', ');
-					contextParts.push(`  Resource "${resource.value}": operations [${ops}]`);
-				}
-			}
-		}
-
-		// 4. Full workflow JSON (nodes to configure)
+		// 3. Full workflow JSON (nodes to configure)
+		// Note: resource/operation are already set by Builder via initialParameters
+		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 5. Full execution context (data + schema for parameter values)
+		// 4. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 

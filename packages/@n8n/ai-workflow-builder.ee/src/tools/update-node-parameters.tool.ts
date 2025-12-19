@@ -33,6 +33,8 @@ import {
 
 /**
  * Schema for update node parameters input
+ * Note: resource/operation are automatically detected from the node's existing parameters
+ * (set by Builder via initialParameters) for filtering purposes.
  */
 const updateNodeParametersSchema = z.object({
 	nodeId: z.string().describe('The ID of the node to update'),
@@ -41,18 +43,6 @@ const updateNodeParametersSchema = z.object({
 		.min(1)
 		.describe(
 			'Array of natural language changes to apply to the node parameters (e.g., "Set the URL to call the weather API", "Add an API key header")',
-		),
-	resource: z
-		.string()
-		.optional()
-		.describe(
-			'The resource to configure (e.g., "page", "databasePage"). Use the value from availableResources in the discovery context. When provided, only parameters for this resource will be included in context.',
-		),
-	operation: z
-		.string()
-		.optional()
-		.describe(
-			'The operation to configure (e.g., "create", "archive"). Use the value from availableResources in the discovery context. When provided, only parameters for this operation will be included in context.',
 		),
 });
 
@@ -280,10 +270,8 @@ async function processParameterUpdates(
 	console.log('Node ID:', nodeId);
 	console.log('Node Type:', node.type);
 	console.log('Node Version:', node.typeVersion);
-	console.log('Node Type Definition versions:', nodeType.version);
-	console.log('Requested changes:', changes);
-	console.log('Resource filter:', resource ?? 'none');
-	console.log('Operation filter:', operation ?? 'none');
+	console.log('Resource filter:', resource ?? 'none', resource ? '(auto-detected)' : '');
+	console.log('Operation filter:', operation ?? 'none', operation ? '(auto-detected)' : '');
 
 	// Get the node's properties definition as JSON (unfiltered)
 	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
@@ -302,7 +290,7 @@ async function processParameterUpdates(
 		`After version filtering: ${versionFilteredProperties.length} properties (from ${nodeType.properties?.length ?? 0})`,
 	);
 
-	// Step 2: Filter by resource/operation (if provided)
+	// Step 2: Filter by resource/operation (if provided or auto-detected from node)
 	const finalFilteredProperties = filterPropertiesByResourceOperation(
 		versionFilteredProperties,
 		resource,
@@ -403,7 +391,7 @@ export function createUpdateNodeParametersTool(
 			try {
 				// Validate input using Zod schema
 				const validatedInput = updateNodeParametersSchema.parse(input);
-				const { nodeId, changes, resource, operation } = validatedInput;
+				const { nodeId, changes } = validatedInput;
 
 				// Get current state
 				const state = getWorkflowState();
@@ -421,6 +409,11 @@ export function createUpdateNodeParametersTool(
 					reporter.error(error);
 					return createErrorResponse(config, error);
 				}
+
+				// Auto-detect resource/operation from node's existing parameters
+				// Builder sets these via initialParameters during node creation
+				const resource = node.parameters?.resource as string | undefined;
+				const operation = node.parameters?.operation as string | undefined;
 
 				// Find the node type
 				const nodeType = findNodeType(node.type, node.typeVersion, nodeTypes);
