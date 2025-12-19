@@ -1,11 +1,12 @@
 import {
-	type INodeProperties,
-	type INodePropertyOptions,
-	type INodePropertyCollection,
-	type INodeParameterResourceLocator,
-	type ResourceMapperValue,
+	type AssignmentCollectionValue,
 	type FilterValue,
+	type INodeParameterResourceLocator,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
 	type NodeConnectionType,
+	type ResourceMapperValue,
 	nodeConnectionTypes,
 } from './interfaces';
 
@@ -61,6 +62,15 @@ export const isResourceMapperValue = (value: unknown): value is ResourceMapperVa
 		'mappingMode' in value &&
 		'schema' in value &&
 		'value' in value
+	);
+};
+
+export const isAssignmentCollectionValue = (value: unknown): value is AssignmentCollectionValue => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'assignments' in value &&
+		Array.isArray((value as AssignmentCollectionValue).assignments)
 	);
 };
 

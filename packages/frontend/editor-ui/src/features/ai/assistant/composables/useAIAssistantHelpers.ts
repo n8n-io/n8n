@@ -1,12 +1,20 @@
-import { deepCopy } from 'n8n-workflow';
+import {
+	deepCopy,
+	isAssignmentCollectionValue,
+	isFilterValue,
+	isResourceLocatorValue,
+	isResourceMapperValue,
+} from 'n8n-workflow';
 import type {
+	FilterValue,
 	IDataObject,
+	INode,
+	INodeParameters,
 	IRunExecutionData,
 	NodeApiError,
 	NodeError,
 	NodeOperationError,
-	INode,
-	INodeParameters,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -96,11 +104,93 @@ export const useAIAssistantHelpers = () => {
 	/**
 	 * Removes sensitive values from node parameters while preserving structure
 	 * for AI assistant context when allowSendingParameterData is false.
-	 * Since we are calling this recursively, we use method overloads to keep type safety.
 	 */
 	function removeParameterValues(params: INodeParameters): INodeParameters {
-		// TODO: Implement this
-		return {};
+		const sanitized: INodeParameters = {};
+		const parameters = params ?? {};
+		for (const [key, value] of Object.entries(parameters)) {
+			sanitized[key] = sanitizeParameterValue(value);
+		}
+		return sanitized;
+	}
+
+	function sanitizeFilterConditionValue(
+		value: FilterValue['conditions'][number]['leftValue'],
+	): FilterValue['conditions'][number]['leftValue'] {
+		if (Array.isArray(value)) {
+			return [];
+		}
+		return null;
+	}
+
+	function sanitizeParameterValue(value: NodeParameterValueType): NodeParameterValueType {
+		if (value === null || value === undefined) {
+			return value;
+		}
+
+		if (Array.isArray(value)) {
+			return value.map((item) =>
+				sanitizeParameterValue(item as NodeParameterValueType),
+			) as NodeParameterValueType;
+		}
+
+		if (typeof value === 'string') {
+			return '';
+		}
+
+		if (typeof value === 'number' || typeof value === 'boolean') {
+			return null;
+		}
+
+		if (isResourceLocatorValue(value)) {
+			const {
+				cachedResultName: _cachedResultName,
+				cachedResultUrl: _cachedResultUrl,
+				...rest
+			} = value;
+			return {
+				...rest,
+				value: '',
+			};
+		}
+
+		if (isAssignmentCollectionValue(value)) {
+			return {
+				assignments:
+					value.assignments?.map((assignment) => {
+						const { value: _assignmentValue, ...rest } = assignment;
+						return { ...rest };
+					}) ?? [],
+			};
+		}
+
+		if (isResourceMapperValue(value)) {
+			return {
+				...value,
+				value: null,
+			};
+		}
+
+		if (isFilterValue(value)) {
+			return {
+				...value,
+				conditions: value.conditions.map((condition) => ({
+					...condition,
+					leftValue: sanitizeFilterConditionValue(condition.leftValue),
+					rightValue: sanitizeFilterConditionValue(condition.rightValue),
+				})),
+			};
+		}
+
+		if (typeof value === 'object') {
+			const sanitizedObject: INodeParameters = {};
+			for (const [key, childValue] of Object.entries(value as INodeParameters)) {
+				sanitizedObject[key] = sanitizeParameterValue(childValue);
+			}
+			return sanitizedObject;
+		}
+
+		return value;
 	}
 
 	/**
