@@ -13,9 +13,7 @@ test.use({
  * These tests require the task runner container to be running.
  * Use @capability:task-runner tag to ensure they only run in task runner mode.
  */
-// Task runner health check needs investigation
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Task Runner Capability @capability:task-runner', () => {
+test.describe('Task Runner Capability @capability:task-runner', () => {
 	test('should execute Javascript with task runner enabled', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);

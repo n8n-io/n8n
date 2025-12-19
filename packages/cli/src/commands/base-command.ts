@@ -124,10 +124,7 @@ export abstract class BaseCommand<F = never> {
 			);
 
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
-		// Use advisory lock to prevent race conditions in multi-main setups.
-		await this.dbConnection.withAdvisoryLock(async () => {
-			await Container.get(AuthRolesService).init();
-		});
+		await Container.get(AuthRolesService).init();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 

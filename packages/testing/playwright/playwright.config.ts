@@ -110,10 +110,9 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 
 	reporter: IS_CI
 		? [
-				...(process.env.CURRENTS_RECORD_KEY
-					? []
-					: [['list'] as const, ['html', { open: 'never' }] as const]),
+				['list'],
 				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
+				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
 				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
