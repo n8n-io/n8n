@@ -263,9 +263,9 @@ export class TestRunnerService {
 		// the same way as it would be passed in manual mode
 		if (this.executionsConfig.mode === 'queue') {
 			data.executionData = createRunExecutionData({
+				executionData: null,
 				resultData: {
 					pinData,
-					runData: {},
 				},
 				manualData: {
 					userId: metadata.userId,
@@ -318,7 +318,7 @@ export class TestRunnerService {
 		};
 
 		const data: IWorkflowExecutionDataProcess = {
-			destinationNode: triggerNode.name,
+			destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
 			executionMode: 'manual',
 			runData: {},
 			workflowData: {
@@ -334,7 +334,7 @@ export class TestRunnerService {
 			userId: metadata.userId,
 			executionData: createRunExecutionData({
 				startData: {
-					destinationNode: triggerNode.name,
+					destinationNode: { nodeName: triggerNode.name, mode: 'inclusive' },
 				},
 				manualData: {
 					userId: metadata.userId,

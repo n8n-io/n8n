@@ -7,12 +7,14 @@ import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
 import { type ChatModelDto, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-const { session, isRenaming, active } = defineProps<{
+const { session, isRenaming, active, compact } = defineProps<{
 	session: ChatHubSessionDto;
 	isRenaming: boolean;
 	active: boolean;
+	compact: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 const input = useTemplateRef('input');
 const editedLabel = ref('');
 const chatStore = useChatStore();
+const i18n = useI18n();
 
 type SessionAction = 'rename' | 'delete';
 
@@ -35,30 +38,18 @@ const agent = computed<ChatModelDto | null>(() => {
 		return null;
 	}
 
-	const agent = chatStore.getAgent(model);
-
-	if (agent) {
-		return agent;
-	}
-
-	return {
-		model,
-		name: session.agentName || '',
-		description: null,
-		createdAt: null,
-		updatedAt: null,
-	};
+	return chatStore.getAgent(model, { name: session.agentName, icon: session.agentIcon });
 });
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
 		id: 'rename',
-		label: 'Rename',
+		label: i18n.baseText('chatHub.session.actions.rename'),
 		icon: 'pencil',
 	},
 	{
 		id: 'delete',
-		label: 'Delete',
+		label: i18n.baseText('chatHub.session.actions.delete'),
 		icon: 'trash-2',
 	},
 ]);
@@ -113,15 +104,17 @@ watch(
 	<ChatSidebarLink
 		:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: session.id } }"
 		:active="active"
+		:compact="compact"
 		:menu-items="dropdownItems"
-		:label="session.title"
+		:label="session.agentName"
+		:title="session.title"
 		@action-select="handleActionSelect"
 	>
 		<template v-if="isRenaming" #default>
 			<N8nInput
-				size="small"
 				ref="input"
 				v-model="editedLabel"
+				size="large"
 				@blur="handleBlur"
 				@keydown="handleKeyDown"
 			/>

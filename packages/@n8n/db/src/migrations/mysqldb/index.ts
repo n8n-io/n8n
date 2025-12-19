@@ -116,8 +116,18 @@ import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/17
 import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762771954619-IsGlobalGlobalColumnToCredentialsTable';
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
+import { ActivateExecuteWorkflowTriggerWorkflows1763048000000 } from '../common/1763048000000-ActivateExecuteWorkflowTriggerWorkflows';
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
+import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
+import { AddCreatorIdToProjectTable1764276827837 } from '../common/1764276827837-AddCreatorIdToProjectTable';
+import { CreateDynamicCredentialResolverTable1764682447000 } from '../common/1764682447000-CreateCredentialResolverTable';
+import { AddDynamicCredentialEntryTable1764689388394 } from '../common/1764689388394-AddDynamicCredentialEntryTable';
+import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
+import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459448000-AddResolvableFieldsToCredentials';
+import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
+import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddAgentIdForeignKeys';
+import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -241,4 +251,14 @@ export const mysqlMigrations: Migration[] = [
 	AddAttachmentsToChatHubMessages1761773155024,
 	AddActiveVersionIdColumn1763047800000,
 	CreateBinaryDataTable1763716655000,
+	CreateWorkflowPublishHistoryTable1764167920585,
+	ActivateExecuteWorkflowTriggerWorkflows1763048000000,
+	AddCreatorIdToProjectTable1764276827837,
+	CreateDynamicCredentialResolverTable1764682447000,
+	AddDynamicCredentialEntryTable1764689388394,
+	BackfillMissingWorkflowHistoryRecords1765448186933,
+	AddResolvableFieldsToCredentials1765459448000,
+	AddIconToAgentTable1765788427674,
+	AddAgentIdForeignKeys1765886667897,
+	AddWorkflowVersionIdToExecutionData1765892199653,
 ];

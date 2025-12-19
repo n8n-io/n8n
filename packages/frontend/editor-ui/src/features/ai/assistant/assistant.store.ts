@@ -30,6 +30,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { v4 as uuid } from 'uuid';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -560,6 +561,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				rootStore.restApiContext,
 				{
 					payload: {
+						id: uuid(),
 						role: 'user',
 						type: 'message',
 						text: chatMessage.text,

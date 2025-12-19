@@ -22,6 +22,7 @@ import {
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
+	validateSafeRedirectUrl,
 } from '../utils/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -397,7 +398,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		await formWebhook(executeFunctions);
 
@@ -492,7 +496,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		for (const { description, expected } of formDescription) {
 			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
@@ -565,6 +572,68 @@ describe('FormTrigger, formWebhook', () => {
 				],
 			],
 		});
+	});
+
+	it('should set Content-Security-Policy header with sandbox CSP on GET request', async () => {
+		const mockRender = jest.fn();
+		const mockSetHeader = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue('Test');
+		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+		executeFunctions.getMode.mockReturnValue('manual');
+		executeFunctions.getInstanceId.mockReturnValue('instanceId');
+		executeFunctions.getChildNodes.mockReturnValue([]);
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: mockSetHeader,
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockSetHeader).toHaveBeenCalledWith(
+			'Content-Security-Policy',
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+		);
+	});
+
+	it('should include sandbox directive in CSP header for security', async () => {
+		const mockRender = jest.fn();
+		const mockSetHeader = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue('Test');
+		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+		executeFunctions.getMode.mockReturnValue('manual');
+		executeFunctions.getInstanceId.mockReturnValue('instanceId');
+		executeFunctions.getChildNodes.mockReturnValue([]);
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: mockSetHeader,
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockSetHeader).toHaveBeenCalledWith(
+			'Content-Security-Policy',
+			expect.stringContaining('sandbox'),
+		);
 	});
 });
 
@@ -751,7 +820,7 @@ describe('FormTrigger, prepareFormData', () => {
 		});
 	});
 
-	it('should set redirectUrl with http if protocol is missing', () => {
+	it('should set redirectUrl with https if protocol is missing', () => {
 		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
@@ -773,7 +842,7 @@ describe('FormTrigger, prepareFormData', () => {
 			query,
 		});
 
-		expect(result.redirectUrl).toBe('http://example.com/thank-you');
+		expect(result.redirectUrl).toBe('https://example.com/thank-you');
 	});
 
 	it('should return invalid form data when formFields are empty', () => {
@@ -1155,6 +1224,82 @@ describe('FormTrigger, prepareFormData - Checkbox and Radio Fields', () => {
 			{ id: 'option1_field-1', label: 'Office' },
 		]);
 	});
+
+	describe('Version 2.4+ fieldName support', () => {
+		it('should use fieldName for query parameters in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const query: IDataObject = { userName: 'John Doe' };
+
+			const result = prepareFormData({
+				formTitle: 'Test Form',
+				formDescription: 'Test Description',
+				formSubmittedText: undefined,
+				redirectUrl: undefined,
+				formFields,
+				testRun: true,
+				query,
+				nodeVersion: 2.4,
+			});
+
+			expect(result.formFields[0].defaultValue).toBe('John Doe');
+			expect(result.formFields[0].label).toBe('User Name'); // Label should still be fieldLabel for rendering
+		});
+
+		it('should use fieldLabel for query parameters in v2.3 and earlier', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const query: IDataObject = { 'User Name': 'John Doe' };
+
+			const result = prepareFormData({
+				formTitle: 'Test Form',
+				formDescription: 'Test Description',
+				formSubmittedText: undefined,
+				redirectUrl: undefined,
+				formFields,
+				testRun: true,
+				query,
+				nodeVersion: 2.3,
+			});
+
+			expect(result.formFields[0].defaultValue).toBe('John Doe');
+			expect(result.formFields[0].label).toBe('User Name');
+		});
+
+		it('should fallback to fieldLabel if fieldName is missing in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const query: IDataObject = { 'User Name': 'John Doe' };
+
+			const result = prepareFormData({
+				formTitle: 'Test Form',
+				formDescription: 'Test Description',
+				formSubmittedText: undefined,
+				redirectUrl: undefined,
+				formFields,
+				testRun: true,
+				query,
+				nodeVersion: 2.4,
+			});
+
+			expect(result.formFields[0].defaultValue).toBe('John Doe');
+			expect(result.formFields[0].label).toBe('User Name');
+		});
+	});
 });
 
 describe('addFormResponseDataToReturnItem - Checkbox and Radio Fields', () => {
@@ -1414,6 +1559,31 @@ describe('prepareFormReturnItem', () => {
 		expect(result.binary!.Multiple_Files_1).toEqual({});
 	});
 
+	it('should call rm to clean up temporary files after file processing', async () => {
+		// Using require() here for inline jest.spyOn() pattern - this is acceptable in tests
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const rmSpy = jest.spyOn(require('fs/promises'), 'rm').mockResolvedValue(undefined);
+
+		const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+			{ filepath: '/tmp/file1', originalFilename: 'file1.txt', mimetype: 'text/plain', size: 1024 },
+			{ filepath: '/tmp/file2', originalFilename: 'file2.txt', mimetype: 'text/plain', size: 2048 },
+		];
+
+		mockContext.getBodyData.mockReturnValue({
+			data: {},
+			files: { 'field-0': mockFiles },
+		});
+
+		const formFields = [{ fieldLabel: 'Multiple Files', fieldType: 'file', multipleFiles: true }];
+		await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(rmSpy).toHaveBeenCalledTimes(2);
+		expect(rmSpy).toHaveBeenCalledWith('/tmp/file1', { force: true });
+		expect(rmSpy).toHaveBeenCalledWith('/tmp/file2', { force: true });
+
+		rmSpy.mockRestore();
+	});
+
 	it('should format date fields', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '2023-04-01' },
@@ -1492,6 +1662,126 @@ describe('prepareFormReturnItem', () => {
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
 
 		expect(result.json.formQueryParameters).toBeUndefined();
+	});
+
+	describe('Version 2.4+ fieldName support', () => {
+		it('should use fieldName for binary property names in v2.4+', async () => {
+			const mockFile: Partial<MultiPartFormData.File> = {
+				filepath: '/tmp/uploaded-file',
+				originalFilename: 'test.txt',
+				mimetype: 'text/plain',
+				size: 1024,
+				newFilename: 'test.txt',
+			};
+
+			mockContext.getBodyData.mockReturnValue({
+				data: {},
+				files: { 'field-0': mockFile },
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.4,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'resume',
+					fieldLabel: 'Resume Upload',
+					fieldType: 'file',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.binary).toBeDefined();
+			expect(result.binary!.resume).toBeDefined();
+			expect(result.binary!['Resume_Upload']).toBeUndefined();
+		});
+
+		it('should use fieldLabel for binary property names in v2.3 and earlier', async () => {
+			const mockFile: Partial<MultiPartFormData.File> = {
+				filepath: '/tmp/uploaded-file',
+				originalFilename: 'test.txt',
+				mimetype: 'text/plain',
+				size: 1024,
+				newFilename: 'test.txt',
+			};
+
+			mockContext.getBodyData.mockReturnValue({
+				data: {},
+				files: { 'field-0': mockFile },
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.3,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'resume',
+					fieldLabel: 'Resume Upload',
+					fieldType: 'file',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.binary).toBeDefined();
+			expect(result.binary!['Resume_Upload']).toBeDefined();
+			expect(result.binary!.resume).toBeUndefined();
+		});
+
+		it('should use fieldName for output data keys in v2.4+', async () => {
+			mockContext.getBodyData.mockReturnValue({
+				data: { 'field-0': 'John Doe' },
+				files: {},
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.4,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.json.userName).toBe('John Doe');
+			expect(result.json['User Name']).toBeUndefined();
+		});
+
+		it('should use fieldLabel for output data keys in v2.3 and earlier', async () => {
+			mockContext.getBodyData.mockReturnValue({
+				data: { 'field-0': 'John Doe' },
+				files: {},
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.3,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.json['User Name']).toBe('John Doe');
+			expect(result.json.userName).toBeUndefined();
+		});
 	});
 
 	it('should return html if field name is set', async () => {
@@ -1866,5 +2156,205 @@ describe('addFormResponseDataToReturnItem', () => {
 
 		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
+	});
+
+	describe('Version 2.4+ fieldName support', () => {
+		it('should use fieldName for output data keys in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const bodyData: IDataObject = { 'field-0': 'John Doe' };
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.4);
+
+			expect(returnItem.json.userName).toBe('John Doe');
+			expect(returnItem.json['User Name']).toBeUndefined();
+		});
+
+		it('should use fieldLabel for output data keys in v2.3 and earlier', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const bodyData: IDataObject = { 'field-0': 'John Doe' };
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.3);
+
+			expect(returnItem.json['User Name']).toBe('John Doe');
+			expect(returnItem.json.userName).toBeUndefined();
+		});
+
+		it('should fallback to fieldLabel if fieldName is missing in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const bodyData: IDataObject = { 'field-0': 'John Doe' };
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.4);
+
+			expect(returnItem.json['User Name']).toBe('John Doe');
+		});
+
+		it('should handle multiple fields with fieldName in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'firstName',
+					fieldLabel: 'First Name',
+					fieldType: 'text',
+				},
+				{
+					fieldName: 'lastName',
+					fieldLabel: 'Last Name',
+					fieldType: 'text',
+				},
+				{
+					fieldName: 'email',
+					fieldLabel: 'Email Address',
+					fieldType: 'email',
+				},
+			];
+			const bodyData: IDataObject = {
+				'field-0': 'John',
+				'field-1': 'Doe',
+				'field-2': 'john@example.com',
+			};
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.4);
+
+			expect(returnItem.json.firstName).toBe('John');
+			expect(returnItem.json.lastName).toBe('Doe');
+			expect(returnItem.json.email).toBe('john@example.com');
+			expect(returnItem.json['First Name']).toBeUndefined();
+			expect(returnItem.json['Last Name']).toBeUndefined();
+			expect(returnItem.json['Email Address']).toBeUndefined();
+		});
+	});
+});
+
+describe('validateSafeRedirectUrl', () => {
+	it('should return null for undefined input', () => {
+		expect(validateSafeRedirectUrl(undefined)).toBeNull();
+	});
+
+	it('should return null for empty string', () => {
+		expect(validateSafeRedirectUrl('')).toBeNull();
+		expect(validateSafeRedirectUrl('   ')).toBeNull();
+	});
+
+	it('should return valid http/https URLs', () => {
+		expect(validateSafeRedirectUrl('https://example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('http://example.com/path')).toBe('http://example.com/path');
+	});
+
+	it('should add https:// prefix to URLs without protocol', () => {
+		expect(validateSafeRedirectUrl('example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('example.com/path')).toBe('https://example.com/path');
+	});
+
+	it('should trim whitespace from URLs', () => {
+		expect(validateSafeRedirectUrl('  https://example.com  ')).toBe('https://example.com');
+	});
+
+	it('should return null for javascript: URLs', () => {
+		expect(validateSafeRedirectUrl('javascript:alert(1)')).toBeNull();
+	});
+
+	it('should return null for data: URLs', () => {
+		expect(validateSafeRedirectUrl('data:text/html,<script>alert(1)</script>')).toBeNull();
+	});
+
+	it('should return null for invalid URLs', () => {
+		expect(validateSafeRedirectUrl('not a valid url')).toBeNull();
+	});
+});
+
+describe('FormTrigger, prepareFormData - Default Value', () => {
+	it('should use defaultValue when no query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				placeholder: 'Enter your name',
+				defaultValue: 'John Doe',
+			},
+			{
+				fieldLabel: 'Email',
+				fieldType: 'email',
+				requiredField: true,
+				placeholder: 'Enter your email',
+				defaultValue: 'john@example.com',
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('John Doe');
+		expect(result.formFields[1].defaultValue).toBe('john@example.com');
+	});
+
+	it('should prioritize query parameter over defaultValue', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				defaultValue: 'Default Name',
+			},
+		];
+
+		const query = { Name: 'Query Name' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('Query Name');
+	});
+
+	it('should use empty string when neither defaultValue nor query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('');
 	});
 });

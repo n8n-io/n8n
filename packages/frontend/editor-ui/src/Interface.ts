@@ -32,6 +32,7 @@ import type {
 	ITaskData,
 	ISourceData,
 	PublicInstalledPackage,
+	IDestinationNode,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -61,6 +62,7 @@ import type {
 	FolderListItem,
 	ResourceParentFolder,
 } from '@/features/core/folders/folders.types';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
 export * from '@n8n/design-system/types';
 
@@ -183,7 +185,7 @@ export interface IAiDataContent {
 export interface IStartRunData {
 	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	runData?: IRunData;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
@@ -259,6 +261,8 @@ export interface IWorkflowDb {
 		createdAt?: string;
 		updatedAt?: string;
 	};
+	activeVersion?: WorkflowHistory | null;
+	checksum?: string;
 }
 
 // For workflow list we don't need the full workflow data
@@ -765,6 +769,7 @@ export interface ITabBarItem {
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
 	isArchived?: boolean;
+	active?: boolean;
 }
 
 export interface CurlToJSONResponse {
@@ -844,11 +849,11 @@ export type CloudUpdateLinkSourceType =
 	| 'evaluations'
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
-	| 'custom-roles';
+	| 'custom-roles'
+	| 'main-sidebar';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
-	| 'upgrade-canvas-nav'
 	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
@@ -871,7 +876,9 @@ export type UTMCampaign =
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
 	| 'upgrade-builder'
-	| 'upgrade-custom-roles';
+	| 'upgrade-custom-roles'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-main-sidebar';
 
 export type AddedNode = {
 	type: string;

@@ -195,6 +195,64 @@ describe('NodeExecutionContext', () => {
 		});
 	});
 
+	describe('_getCredentials', () => {
+		it('should set executionContext on additionalData before retrieving credentials', async () => {
+			const credentialDetails = { id: 'cred123', name: 'Test Credential' };
+			const testNode = mock<INode>({
+				type: 'n8n-nodes-base.httpRequest',
+			});
+			testNode.credentials = { testCredential: credentialDetails };
+
+			const runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+			};
+			const testRunExecutionData = createRunExecutionData({
+				resultData: { runData: {} },
+				executionData: { runtimeData },
+			});
+
+			let capturedExecutionContext: unknown;
+			const mockCredentialsHelper = {
+				getDecrypted: jest
+					.fn()
+					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
+						// Capture the executionContext value at the moment getDecrypted is called
+						capturedExecutionContext = additionalData.executionContext;
+						return { token: 'test-token' };
+					}),
+				getCredentialsProperties: jest.fn(),
+			};
+
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mockCredentialsHelper,
+			});
+
+			const contextWithCredentials = new TestContext(
+				workflow,
+				testNode,
+				mockAdditionalData,
+				mode,
+				testRunExecutionData,
+			);
+
+			await contextWithCredentials['_getCredentials']('testCredential');
+
+			// Assert that executionContext was already set when getDecrypted was called
+			expect(capturedExecutionContext).toEqual(runtimeData);
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				mockAdditionalData,
+				credentialDetails,
+				'testCredential',
+				mode,
+				undefined,
+				false,
+				undefined,
+			);
+		});
+	});
+
 	describe('prepareOutputData', () => {
 		it('should return the input array wrapped in another array', async () => {
 			const outputData = [mock<INodeExecutionData>(), mock<INodeExecutionData>()];
@@ -402,6 +460,123 @@ describe('NodeExecutionContext', () => {
 			expect(result).toBe(
 				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
 			);
+		});
+	});
+
+	describe('nodeFeatures', () => {
+		it('should return empty object when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({});
+		});
+
+		it('should return enabled features based on node version', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: true,
+				useFeatureB: false,
+				useFeatureC: true,
+			});
+		});
+
+		it('should return correct features for version 2.1', () => {
+			node.typeVersion = 2.1;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: false,
+				useFeatureB: true,
+				useFeatureC: false,
+			});
+		});
+
+		it('should handle simple version number conditions', () => {
+			node.typeVersion = 2;
+			nodeType.description.features = {
+				useFeatureD: { '@version': [2] },
+				useFeatureE: { '@version': [{ _cnd: { lt: 2.3 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureD: true,
+				useFeatureE: true,
+			});
+		});
+	});
+
+	describe('isNodeFeatureEnabled', () => {
+		it('should return true when feature is enabled', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when feature is disabled', () => {
+			node.typeVersion = 2.3;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when feature does not exist', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('nonExistentFeature');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should handle multiple features correctly', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			expect(testContext.isNodeFeatureEnabled('useFeatureA')).toBe(true);
+			expect(testContext.isNodeFeatureEnabled('useFeatureB')).toBe(false);
+			expect(testContext.isNodeFeatureEnabled('useFeatureC')).toBe(true);
 		});
 	});
 });
