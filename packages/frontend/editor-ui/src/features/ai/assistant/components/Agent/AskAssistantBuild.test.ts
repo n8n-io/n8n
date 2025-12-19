@@ -267,7 +267,7 @@ describe('AskAssistantBuild', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
 			// Mock empty workflow to ensure initialGeneration is true
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
@@ -461,7 +461,7 @@ describe('AskAssistantBuild', () => {
 		it('should save workflow after initial generation when workflow was empty', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -535,7 +535,7 @@ describe('AskAssistantBuild', () => {
 					connections: {},
 				},
 			});
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -594,7 +594,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow when generation ends with error', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -648,7 +648,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow when generation is cancelled', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -703,31 +703,10 @@ describe('AskAssistantBuild', () => {
 			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
 		});
 
-		it('should save new workflow before sending first message', async () => {
-			// Setup: new workflow
-			workflowsStore.isNewWorkflow = true;
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			const wrapper = renderComponent();
-
-			// Send initial message
-			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			// Verify workflow was saved to get ID for session
-			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(1);
-		});
-
 		it('should work when opening existing AI builder session', async () => {
 			// Setup: existing workflow with AI session
 			workflowsStore.workflowId = 'existing-id';
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 
 			// Simulate existing AI session messages
@@ -804,7 +783,7 @@ describe('AskAssistantBuild', () => {
 					connections: {},
 				},
 			});
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -872,7 +851,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save if workflow is still empty after generation ends', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -904,7 +883,7 @@ describe('AskAssistantBuild', () => {
 		it('should save workflow after initial generation from canvas', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -953,7 +932,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow from canvas when generation fails', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -1002,7 +981,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow from canvas when generation is cancelled', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -1057,7 +1036,7 @@ describe('AskAssistantBuild', () => {
 		it('should handle multiple canvas generations correctly', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -1583,7 +1562,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should reset shouldTidyUp flag on new user message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 

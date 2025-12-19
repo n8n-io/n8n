@@ -126,8 +126,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function isResponding(sessionId: ChatSessionId) {
-		const last = lastMessage(sessionId);
-		return last?.status === 'running';
+		return streaming.value?.sessionId === sessionId;
 	}
 
 	function computeActiveChain(
