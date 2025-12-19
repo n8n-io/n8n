@@ -1,24 +1,18 @@
 ARG NODE_VERSION=22.21.1
 
-# ==============================================================================
-# STAGE 1: Builder for Base Dependencies
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
-# Install fonts
-RUN \
-  apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
-  update-ms-fonts && \
-  fc-cache -f && \
-  apk del .build-deps-fonts && \
-  find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
-
-# Install essential OS dependencies
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
+# Install all dependencies in a single layer to minimize image size
+RUN apk add --no-cache busybox-binsh && \
+    # Install fonts
+    apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
+    update-ms-fonts && \
+    fc-cache -f && \
+    apk del .build-deps-fonts && \
+    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
+    # Install OS dependencies
     apk update && \
     apk upgrade --no-cache && \
-    apk add --no-cache libxml2 && \
     apk add --no-cache \
         git \
         openssh \
@@ -27,22 +21,12 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/reposito
         tini \
         tzdata \
         ca-certificates \
-        libc6-compat \
-        jq
-
-# Install full-icu
-RUN npm install -g full-icu@1.5.0
-
-RUN rm -rf /tmp/* /root/.npm /root/.cache/node
-
-# ==============================================================================
-# STAGE 2: Final Base Runtime Image
-# ==============================================================================
-FROM node:${NODE_VERSION}-alpine
-
-COPY --from=builder / /
-
-RUN rm -rf /opt/yarn* && apk del apk-tools
+        libc6-compat && \
+    # Install full-icu
+    npm install -g full-icu@1.5.0 && \
+    # Cleanup
+    rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
+    apk del apk-tools
 
 WORKDIR /home/node
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu

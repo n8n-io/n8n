@@ -32,12 +32,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
-      - name: Login to Docker registries
+      - name: Login to DHI Registry (for pulling base images)
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to Docker registries (for pushing)
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
         uses: ./.github/actions/docker-registry-login
         with:
-          login-ghcr: true
-          login-dockerhub: true
+          login-ghcr: 'true'
+          login-dockerhub: 'true'
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
