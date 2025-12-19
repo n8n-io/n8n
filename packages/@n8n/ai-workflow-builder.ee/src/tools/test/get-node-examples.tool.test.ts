@@ -92,7 +92,7 @@ describe('GetNodeExamplesTool', () => {
 			);
 
 			const result = await configTool.invoke(
-				{ nodeType: 'n8n-nodes-base.httpRequest' },
+				{ nodes: [{ nodeType: 'n8n-nodes-base.httpRequest' }] },
 				mockConfig,
 			);
 
@@ -103,7 +103,7 @@ describe('GetNodeExamplesTool', () => {
 			expect(message).toContain('httpRequest');
 			expect(message).toContain('https://api.example.com');
 			expect(mockFetchWorkflowsFromTemplates).toHaveBeenCalledWith(
-				{ nodes: 'n8n-nodes-base.httpRequest', rows: 10 },
+				{ nodes: 'n8n-nodes-base.httpRequest', rows: 5 },
 				expect.any(Object),
 			);
 		});
@@ -128,7 +128,10 @@ describe('GetNodeExamplesTool', () => {
 				messages: [],
 			});
 
-			const result = await configTool.invoke({ nodeType: 'n8n-nodes-base.code' }, mockConfig);
+			const result = await configTool.invoke(
+				{ nodes: [{ nodeType: 'n8n-nodes-base.code' }] },
+				mockConfig,
+			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
@@ -164,7 +167,7 @@ describe('GetNodeExamplesTool', () => {
 			);
 
 			const result = await configTool.invoke(
-				{ nodeType: 'n8n-nodes-base.httpRequest', nodeVersion: 2 },
+				{ nodes: [{ nodeType: 'n8n-nodes-base.httpRequest', nodeVersion: 2 }] },
 				mockConfig,
 			);
 
@@ -182,7 +185,7 @@ describe('GetNodeExamplesTool', () => {
 			mockFetchWorkflowsFromTemplates.mockResolvedValue(createMockFetchResult([]));
 
 			const result = await configTool.invoke(
-				{ nodeType: 'n8n-nodes-base.unknownNode' },
+				{ nodes: [{ nodeType: 'n8n-nodes-base.unknownNode' }] },
 				mockConfig,
 			);
 
@@ -226,7 +229,7 @@ describe('GetNodeExamplesTool', () => {
 			);
 
 			const result = await connectionTool.invoke(
-				{ nodeType: 'n8n-nodes-base.splitInBatches' },
+				{ nodes: [{ nodeType: 'n8n-nodes-base.splitInBatches' }] },
 				mockConfig,
 			);
 
@@ -253,7 +256,10 @@ describe('GetNodeExamplesTool', () => {
 				messages: [],
 			});
 
-			const result = await connectionTool.invoke({ nodeType: 'n8n-nodes-base.if' }, mockConfig);
+			const result = await connectionTool.invoke(
+				{ nodes: [{ nodeType: 'n8n-nodes-base.if' }] },
+				mockConfig,
+			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
@@ -269,13 +275,63 @@ describe('GetNodeExamplesTool', () => {
 			mockFetchWorkflowsFromTemplates.mockResolvedValue(createMockFetchResult([]));
 
 			const result = await connectionTool.invoke(
-				{ nodeType: 'n8n-nodes-base.unknownNode' },
+				{ nodes: [{ nodeType: 'n8n-nodes-base.unknownNode' }] },
 				mockConfig,
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
 
 			expectToolSuccess(content, 'No connection examples found');
+		});
+	});
+
+	describe('batch processing with local cache', () => {
+		it('should use templates from earlier fetches for subsequent nodes in same batch', async () => {
+			const configTool = createGetNodeConfigurationExamplesTool().tool;
+			const mockConfig = createToolConfig('get_node_configuration_examples', 'test-batch');
+
+			// First fetch returns a workflow containing BOTH httpRequest AND code nodes
+			mockFetchWorkflowsFromTemplates.mockResolvedValueOnce(
+				createMockFetchResult([
+					createMockWorkflow('Multi-Node Workflow', [
+						createNode({
+							id: 'http-1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							parameters: { url: 'https://api.example.com' },
+						}),
+						createNode({
+							id: 'code-1',
+							name: 'Transform',
+							type: 'n8n-nodes-base.code',
+							typeVersion: 1,
+							parameters: { jsCode: 'return items.map(i => i);' },
+						}),
+					]),
+				]),
+			);
+
+			// Request examples for both nodes in one call
+			const result = await configTool.invoke(
+				{
+					nodes: [{ nodeType: 'n8n-nodes-base.httpRequest' }, { nodeType: 'n8n-nodes-base.code' }],
+				},
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			const message = content.update.messages[0]?.kwargs.content;
+
+			expectToolSuccess(content, 'Node Configuration Examples');
+			// Should contain examples for both nodes
+			expect(message).toContain('httpRequest');
+			expect(message).toContain('https://api.example.com');
+			expect(message).toContain('code');
+			expect(message).toContain('return items.map');
+
+			// API should only be called ONCE - second node should use local cache
+			expect(mockFetchWorkflowsFromTemplates).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -304,7 +360,10 @@ describe('GetNodeExamplesTool', () => {
 
 			mockFetchWorkflowsFromTemplates.mockResolvedValue(createMockFetchResult(fetchedWorkflows));
 
-			const result = await configTool.invoke({ nodeType: 'n8n-nodes-base.set' }, mockConfig);
+			const result = await configTool.invoke(
+				{ nodes: [{ nodeType: 'n8n-nodes-base.set' }] },
+				mockConfig,
+			);
 
 			const content = parseToolResult<ParsedToolContentWithState>(result);
 
@@ -327,7 +386,10 @@ describe('GetNodeExamplesTool', () => {
 				messages: [],
 			});
 
-			const result = await configTool.invoke({ nodeType: 'n8n-nodes-base.merge' }, mockConfig);
+			const result = await configTool.invoke(
+				{ nodes: [{ nodeType: 'n8n-nodes-base.merge' }] },
+				mockConfig,
+			);
 
 			const content = parseToolResult<ParsedToolContentWithState>(result);
 

@@ -25,9 +25,10 @@ import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
+import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
-import { appendArrayReducer } from '../utils/state-reducers';
+import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -102,6 +103,12 @@ export const DiscoverySubgraphState = Annotation.Root({
 	// Output: Template IDs fetched from workflow examples for telemetry
 	templateIds: Annotation<number[]>({
 		reducer: appendArrayReducer,
+		default: () => [],
+	}),
+
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
 });
@@ -311,6 +318,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			userRequest,
 			messages: [contextMessage], // Context already in messages
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -343,6 +351,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			coordinationLog: [logEntry],
 			// Pass template IDs for telemetry
 			templateIds,
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 		};
 	}
 }

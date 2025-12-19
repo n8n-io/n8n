@@ -21,7 +21,9 @@ import { createValidateStructureTool } from '../tools/validate-structure.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createBuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import { cachedTemplatesReducer } from '../utils/state-reducers';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildDiscoveryContextBlock,
@@ -76,6 +78,12 @@ export const BuilderSubgraphState = Annotation.Root({
 			if (!y || y.length === 0) return x ?? [];
 			return [...(x ?? []), ...y];
 		},
+		default: () => [],
+	}),
+
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
 });
@@ -209,6 +217,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowContext: parentState.workflowContext,
 			discoveryContext: parentState.discoveryContext,
 			messages: [contextMessage], // Context already in messages
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -253,6 +262,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
+			cachedTemplates: subgraphOutput.cachedTemplates,
 		};
 	}
 }

@@ -22,14 +22,25 @@ import type { NodeConfigurationEntry } from '../types/tools';
 import { fetchWorkflowsFromTemplates } from './web/templates';
 
 /**
- * Schema for get node examples tool input
+ * Schema for a single node request
  */
-const getNodeExamplesSchema = z.object({
+const nodeRequestSchema = z.object({
 	nodeType: z.string().describe('The exact node type name (e.g., n8n-nodes-base.httpRequest)'),
 	nodeVersion: z
 		.number()
 		.optional()
 		.describe('Optional specific node version to filter examples by'),
+});
+
+/**
+ * Schema for get node examples tool input - accepts a list of nodes
+ */
+const getNodeExamplesSchema = z.object({
+	nodes: z
+		.array(nodeRequestSchema)
+		.min(1)
+		.max(10)
+		.describe('List of nodes to get examples for (1-10 nodes)'),
 });
 
 /** Example type determines what format the tool returns */
@@ -42,35 +53,35 @@ const TOOL_CONFIG: Record<NodeExampleType, { meta: BuilderToolBase; description:
 			toolName: 'get_node_configuration_examples',
 			displayTitle: 'Getting node configuration examples',
 		},
-		description: `Get real-world parameter configuration examples for a specific node type from community templates.
+		description: `Get real-world parameter configuration examples for multiple node types from community templates.
 
 Use this tool when you need reference examples for configuring node parameters:
 - When you need to understand proper parameter structure
 - To see how templated workflows configure specific integrations
 
 Parameters:
-- nodeType: The exact node type (e.g., "n8n-nodes-base.httpRequest")
-- nodeVersion: Optional version number to filter examples
+- nodes: Array of objects with nodeType (required) and nodeVersion (optional)
+  Example: [{ nodeType: "n8n-nodes-base.httpRequest" }, { nodeType: "n8n-nodes-base.gmail", nodeVersion: 2 }]
 
-Returns markdown-formatted examples showing proven parameter configurations.`,
+Returns markdown-formatted examples showing proven parameter configurations for each node.`,
 	},
 	connections: {
 		meta: {
 			toolName: 'get_node_connection_examples',
 			displayTitle: 'Getting node connection examples',
 		},
-		description: `Get mermaid diagrams showing how a specific node type is typically connected in real workflows.
+		description: `Get mermaid diagrams showing how specific node types are typically connected in real workflows.
 
 Use this tool when you need to understand node connection patterns:
 - When connecting nodes with non-standard output patterns (e.g., splitInBatches, Switch, IF)
-- To see how the node is typically placed in workflow flows
-- To understand which nodes typically come before/after this node
+- To see how nodes are typically placed in workflow flows
+- To understand which nodes typically come before/after specific nodes
 
 Parameters:
-- nodeType: The exact node type (e.g., "n8n-nodes-base.splitInBatches")
-- nodeVersion: Optional version number to filter examples
+- nodes: Array of objects with nodeType (required) and nodeVersion (optional)
+  Example: [{ nodeType: "n8n-nodes-base.splitInBatches" }, { nodeType: "n8n-nodes-base.if" }]
 
-Returns mermaid diagrams from community workflows containing this node.`,
+Returns mermaid diagrams from community workflows containing each node.`,
 	},
 };
 
@@ -81,41 +92,70 @@ interface WorkflowRetrievalResult {
 	newTemplates: WorkflowMetadata[];
 }
 
+/** Options for getWorkflowsForNodeType */
+interface GetWorkflowsOptions {
+	nodeType: string;
+	logger?: Logger;
+	onProgress?: (message: string) => void;
+	/** Local cache of templates accumulated during batch processing */
+	localCache?: WorkflowMetadata[];
+}
+
 /**
  * Single retrieval function for getting workflows containing a specific node type.
- * Checks cached templates first, then fetches from API if needed.
+ * Checks local cache first, then state cache, then fetches from API if needed.
  */
-async function getWorkflowsForNodeType(
-	nodeType: string,
-	logger?: Logger,
-	onProgress?: (message: string) => void,
-): Promise<WorkflowRetrievalResult> {
-	// Get cached templates from state
-	let cachedTemplates: WorkflowMetadata[] = [];
+async function getWorkflowsForNodeType({
+	nodeType,
+	logger,
+	onProgress,
+	localCache = [],
+}: GetWorkflowsOptions): Promise<WorkflowRetrievalResult> {
+	// First check local cache (templates fetched earlier in the same batch)
+	const relevantFromLocal = localCache.filter((wf) =>
+		wf.workflow.nodes.some((n) => n.type === nodeType),
+	);
 
+	if (relevantFromLocal.length > 0) {
+		const nodeConfigs = getNodeConfigurationsFromTemplates(relevantFromLocal, nodeType);
+
+		logger?.debug('Found node configurations in local batch cache', {
+			nodeType,
+			configCount: nodeConfigs.length,
+			workflowCount: relevantFromLocal.length,
+		});
+
+		return {
+			workflows: relevantFromLocal,
+			nodeConfigs,
+			newTemplates: [], // Already in local cache, not "new"
+		};
+	}
+
+	// Then check state cache (templates from previous tool calls)
+	let stateCachedTemplates: WorkflowMetadata[] = [];
 	try {
 		const state = getWorkflowState();
-		cachedTemplates = state?.cachedTemplates ?? [];
+		stateCachedTemplates = state?.cachedTemplates ?? [];
 	} catch {
 		// State may not be available in some contexts
 	}
 
-	// Check if cached templates contain this node type
-	const relevantWorkflows = cachedTemplates.filter((wf) =>
+	const relevantFromState = stateCachedTemplates.filter((wf) =>
 		wf.workflow.nodes.some((n) => n.type === nodeType),
 	);
 
-	if (relevantWorkflows.length > 0) {
-		const nodeConfigs = getNodeConfigurationsFromTemplates(relevantWorkflows, nodeType);
+	if (relevantFromState.length > 0) {
+		const nodeConfigs = getNodeConfigurationsFromTemplates(relevantFromState, nodeType);
 
-		logger?.debug('Found node configurations in cached templates', {
+		logger?.debug('Found node configurations in state cache', {
 			nodeType,
 			configCount: nodeConfigs.length,
-			workflowCount: relevantWorkflows.length,
+			workflowCount: relevantFromState.length,
 		});
 
 		return {
-			workflows: relevantWorkflows,
+			workflows: relevantFromState,
 			nodeConfigs,
 			newTemplates: [],
 		};
@@ -126,7 +166,7 @@ async function getWorkflowsForNodeType(
 
 	try {
 		const result = await fetchWorkflowsFromTemplates(
-			{ nodes: nodeType, rows: 10 },
+			{ nodes: nodeType, rows: 5 },
 			{ maxTemplates: 5, logger },
 		);
 
@@ -233,34 +273,52 @@ export function createGetNodeExamplesTool({ exampleType, logger }: CreateNodeExa
 
 			try {
 				const validatedInput = getNodeExamplesSchema.parse(input);
-				const { nodeType, nodeVersion } = validatedInput;
+				const { nodes } = validatedInput;
 
 				reporter.start(validatedInput);
 
-				const result = await getWorkflowsForNodeType(nodeType, logger, (msg) =>
-					reportProgress(reporter, msg),
-				);
+				// Process all nodes and collect results
+				// Use localCache to accumulate templates during batch processing
+				// so subsequent nodes can benefit from earlier fetches
+				const allMessages: string[] = [];
+				const allNewTemplates: WorkflowMetadata[] = [];
+				let totalFound = 0;
 
-				// Format based on example type
-				const message =
-					exampleType === 'configuration'
-						? formatNodeConfigurationExamples(nodeType, result.nodeConfigs, nodeVersion)
-						: formatConnectionExamples(nodeType, result.workflows);
+				for (const { nodeType, nodeVersion } of nodes) {
+					const result = await getWorkflowsForNodeType({
+						nodeType,
+						logger,
+						onProgress: (msg: string) => reportProgress(reporter, msg),
+						localCache: allNewTemplates, // Pass accumulated templates
+					});
 
-				const totalFound =
-					exampleType === 'configuration' ? result.nodeConfigs.length : result.workflows.length;
+					// Format based on example type
+					const message =
+						exampleType === 'configuration'
+							? formatNodeConfigurationExamples(nodeType, result.nodeConfigs, nodeVersion)
+							: formatConnectionExamples(nodeType, result.workflows);
 
-				reporter.complete({ nodeType, totalFound, message });
+					allMessages.push(message);
+					// Add new templates to local cache for subsequent iterations
+					allNewTemplates.push(...result.newTemplates);
+					totalFound +=
+						exampleType === 'configuration' ? result.nodeConfigs.length : result.workflows.length;
+				}
+
+				const combinedMessage = allMessages.join('\n\n---\n\n');
+				const nodeTypes = nodes.map((n) => n.nodeType);
+
+				reporter.complete({ nodeTypes, totalFound, message: combinedMessage });
 
 				// Build state updates - only add new templates if fetched from API
 				const stateUpdates: Record<string, unknown> = {};
-				if (result.newTemplates.length > 0) {
-					stateUpdates.cachedTemplates = result.newTemplates;
+				if (allNewTemplates.length > 0) {
+					stateUpdates.cachedTemplates = allNewTemplates;
 				}
 
 				return createSuccessResponse(
 					config,
-					message,
+					combinedMessage,
 					Object.keys(stateUpdates).length > 0 ? stateUpdates : undefined,
 				);
 			} catch (error) {

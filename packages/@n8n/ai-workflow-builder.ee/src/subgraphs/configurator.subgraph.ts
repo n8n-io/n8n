@@ -21,7 +21,9 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
+import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import { cachedTemplatesReducer } from '../utils/state-reducers';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildWorkflowJsonBlock,
@@ -81,6 +83,12 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 			if (!y || y.length === 0) return x ?? [];
 			return [...(x ?? []), ...y];
 		},
+		default: () => [],
+	}),
+
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
 });
@@ -225,6 +233,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			userRequest,
 			discoveryContext: parentState.discoveryContext,
 			messages: [contextMessage],
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -260,6 +269,8 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 			// NO messages - clean separation from user-facing conversation
 		};
 	}
