@@ -111,13 +111,17 @@ export class DbConnection {
 	}
 
 	/**
-	 * Execute an async function with a PostgreSQL transaction-level advisory lock.
+	 * Execute an async function with a PostgreSQL session-level advisory lock.
 	 * This ensures only one n8n instance executes the function at a time in multi-main setups.
 	 * For non-PostgreSQL databases, the function is executed without locking.
 	 *
-	 * Uses transaction-level locks (pg_try_advisory_xact_lock) which automatically release
-	 * when the transaction ends (commit or rollback) or if the connection drops.
-	 * This is safer than session-level locks as it prevents orphaned locks.
+	 * Uses a QueryRunner to maintain a dedicated connection for the entire lock lifecycle.
+	 * This ensures the same connection is used for both lock acquisition and release,
+	 * which is required for session-level advisory locks to work correctly with connection pooling.
+	 *
+	 * When pool size is 1, advisory locking is skipped because:
+	 * 1. The pool itself acts as a natural lock - only one connection can exist at a time
+	 * 2. The QueryRunner would hold the only connection, leaving none for the function to use
 	 *
 	 * The lock has a timeout to prevent indefinite blocking if another instance holds the lock.
 	 * If the lock cannot be acquired within the timeout, an error is thrown.
@@ -125,22 +129,30 @@ export class DbConnection {
 	async withAdvisoryLock<T>(fn: () => Promise<T>): Promise<T> {
 		const { dataSource, options } = this;
 		const isPostgres = options.type === 'postgres';
+		const poolSize = 'poolSize' in options ? (options.poolSize as number) : undefined;
 
+		// Skip advisory lock for non-PostgreSQL databases
 		if (!isPostgres) {
 			return await fn();
 		}
 
-		// Use a transaction so the lock auto-releases on commit/rollback/connection drop
-		return await dataSource.transaction(async (entityManager) => {
-			const startTime = Date.now();
-			let lockAcquired = false;
+		// Skip advisory lock when pool size is 1 - the pool itself acts as a lock,
+		// and using a QueryRunner would consume the only available connection
+		if (poolSize === 1) {
+			return await fn();
+		}
 
-			// Try to acquire the transaction-level lock with timeout
+		// Use a QueryRunner to maintain a dedicated connection for lock/unlock
+		const queryRunner = dataSource.createQueryRunner();
+		let lockAcquired = false;
+
+		try {
+			const startTime = Date.now();
+
+			// Try to acquire the session-level lock with timeout
 			while (!lockAcquired) {
-				const result = await entityManager.query<Array<{ pg_try_advisory_xact_lock: boolean }>>(
-					`SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_KEY})`,
-				);
-				lockAcquired = result[0]?.pg_try_advisory_xact_lock ?? false;
+				const result = await queryRunner.query(`SELECT pg_try_advisory_lock(${ADVISORY_LOCK_KEY})`);
+				lockAcquired = result[0]?.pg_try_advisory_lock ?? false;
 
 				if (!lockAcquired) {
 					const elapsed = Date.now() - startTime;
@@ -158,9 +170,19 @@ export class DbConnection {
 			}
 
 			// Lock acquired, execute the function
-			// Lock will auto-release when transaction commits or rolls back
 			return await fn();
-		});
+		} finally {
+			// Only unlock if we successfully acquired the lock
+			if (lockAcquired) {
+				try {
+					await queryRunner.query(`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`);
+				} catch {
+					// Ignore unlock errors - connection may have dropped, which auto-releases the lock
+				}
+			}
+			// Always release the QueryRunner to return connection to pool
+			await queryRunner.release();
+		}
 	}
 
 	async close() {

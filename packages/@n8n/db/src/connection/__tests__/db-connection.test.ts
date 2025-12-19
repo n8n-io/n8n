@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
-import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
+import { DataSource, type DataSourceOptions, type QueryRunner } from '@n8n/typeorm';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, OperationalError } from 'n8n-workflow';
@@ -40,10 +40,8 @@ describe('DbConnection', () => {
 		migrations,
 	};
 
-	// Mock entity manager for transaction-level advisory lock
-	const mockEntityManager = {
-		query: jest.fn(),
-	};
+	// Mock QueryRunner for advisory lock tests
+	const mockQueryRunner = mock<QueryRunner>();
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -51,18 +49,11 @@ describe('DbConnection', () => {
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
 		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
 
-		// Default mock for transaction - executes callback with mock entity manager
-		dataSource.transaction.mockImplementation(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			async (callbackOrIsolationLevel: any) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-				return await callbackOrIsolationLevel(mockEntityManager);
-			},
-		);
-
-		// Default mock for advisory lock - returns true (lock acquired)
+		// Default mock for QueryRunner - returns true (lock acquired)
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		mockEntityManager.query.mockResolvedValue([{ pg_try_advisory_xact_lock: true }]);
+		mockQueryRunner.query.mockResolvedValue([{ pg_try_advisory_lock: true }]);
+		mockQueryRunner.release.mockResolvedValue(undefined);
+		dataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
 
 		dbConnection = new DbConnection(
 			errorReporter,
@@ -207,33 +198,33 @@ describe('DbConnection', () => {
 			expect(dbConnection.connectionState.migrated).toBe(true);
 		});
 
-		it('should acquire transaction-level advisory lock for postgres', async () => {
+		it('should acquire session-level advisory lock for postgres using QueryRunner', async () => {
 			dataSource.runMigrations.mockResolvedValue([]);
 			jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
 
 			await dbConnection.migrate();
 
-			// Should use transaction for lock
-			expect(dataSource.transaction).toHaveBeenCalled();
-			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SELECT pg_try_advisory_xact_lock(1850)',
-			);
-			// No explicit unlock needed - transaction-level locks auto-release
+			// Should create a dedicated QueryRunner for the lock
+			expect(dataSource.createQueryRunner).toHaveBeenCalled();
+			// Should acquire and release session-level lock on the same QueryRunner
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_try_advisory_lock(1850)');
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+			// Should release the QueryRunner after completion
+			expect(mockQueryRunner.release).toHaveBeenCalled();
 		});
 
-		it('should auto-release advisory lock when migrations fail (via transaction rollback)', async () => {
+		it('should release advisory lock and QueryRunner when migrations fail', async () => {
 			const migrationError = new Error('Migration failed');
 			dataSource.runMigrations.mockRejectedValue(migrationError);
 			jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
 
 			await expect(dbConnection.migrate()).rejects.toThrow('Migration failed');
 
-			// Lock should have been acquired via transaction
-			expect(dataSource.transaction).toHaveBeenCalled();
-			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SELECT pg_try_advisory_xact_lock(1850)',
-			);
-			// No explicit unlock needed - transaction rollback auto-releases the lock
+			// Lock should have been acquired and released on the same QueryRunner
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_try_advisory_lock(1850)');
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+			// QueryRunner should be released even on failure
+			expect(mockQueryRunner.release).toHaveBeenCalled();
 		});
 
 		it('should not use advisory lock for sqlite', async () => {
@@ -257,8 +248,7 @@ describe('DbConnection', () => {
 			// @ts-expect-error accessing private property for testing
 			const sqliteDataSource = sqliteDbConnection.dataSource as jest.Mocked<DataSource>;
 			sqliteDataSource.runMigrations = jest.fn().mockResolvedValue([]);
-			sqliteDataSource.query = jest.fn();
-			sqliteDataSource.transaction = jest.fn();
+			sqliteDataSource.createQueryRunner = jest.fn();
 			// @ts-expect-error mock options
 			sqliteDataSource.options = { migrations, type: 'sqlite' };
 
@@ -266,23 +256,24 @@ describe('DbConnection', () => {
 
 			await sqliteDbConnection.migrate();
 
-			// Should not use transaction for SQLite (no advisory lock support)
-			expect(sqliteDataSource.transaction).not.toHaveBeenCalled();
+			// Should not create QueryRunner for SQLite (no advisory lock support)
+			expect(sqliteDataSource.createQueryRunner).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('withAdvisoryLock', () => {
-		it('should acquire transaction-level advisory lock for postgres', async () => {
+		it('should use dedicated QueryRunner for lock/unlock to ensure same connection', async () => {
 			const mockFn = jest.fn().mockResolvedValue('result');
 
 			await dbConnection.withAdvisoryLock(mockFn);
 
-			// Should use transaction for lock
-			expect(dataSource.transaction).toHaveBeenCalled();
-			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SELECT pg_try_advisory_xact_lock(1850)',
-			);
-			// No explicit unlock needed - transaction-level locks auto-release on commit
+			// Should create a dedicated QueryRunner
+			expect(dataSource.createQueryRunner).toHaveBeenCalledTimes(1);
+			// Should acquire and release lock on the same QueryRunner (ensures same connection)
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_try_advisory_lock(1850)');
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+			// Should release QueryRunner after completion
+			expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return the result from the callback function', async () => {
@@ -294,26 +285,25 @@ describe('DbConnection', () => {
 			expect(result).toEqual(expectedResult);
 		});
 
-		it('should auto-release advisory lock when callback fails (via transaction rollback)', async () => {
+		it('should release advisory lock and QueryRunner when callback fails', async () => {
 			const mockError = new Error('Callback failed');
 			const mockFn = jest.fn().mockRejectedValue(mockError);
 
 			await expect(dbConnection.withAdvisoryLock(mockFn)).rejects.toThrow('Callback failed');
 
-			// Lock should have been acquired via transaction
-			expect(dataSource.transaction).toHaveBeenCalled();
-			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SELECT pg_try_advisory_xact_lock(1850)',
-			);
-			// No explicit unlock needed - transaction rollback auto-releases the lock
+			// Lock should have been acquired and released on same QueryRunner
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_try_advisory_lock(1850)');
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+			// QueryRunner should be released even on failure
+			expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
 		});
 
-		it('should retry acquiring lock and timeout with clear error message', async () => {
+		it('should release QueryRunner without unlocking when lock acquisition times out', async () => {
 			jest.useFakeTimers();
 
 			// Mock lock always returning false (lock not acquired)
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			mockEntityManager.query.mockResolvedValue([{ pg_try_advisory_xact_lock: false }]);
+			mockQueryRunner.query.mockResolvedValue([{ pg_try_advisory_lock: false }]);
 
 			const mockFn = jest.fn().mockResolvedValue('result');
 			const lockPromise = dbConnection.withAdvisoryLock(mockFn);
@@ -328,6 +318,10 @@ describe('DbConnection', () => {
 
 			// Function should never have been called
 			expect(mockFn).not.toHaveBeenCalled();
+			// QueryRunner should still be released on timeout
+			expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
+			// Should NOT try to unlock since lock was never acquired
+			expect(mockQueryRunner.query).not.toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
 
 			jest.useRealTimers();
 		});
@@ -336,11 +330,11 @@ describe('DbConnection', () => {
 			jest.useFakeTimers();
 
 			// First call returns false, second returns true
-			mockEntityManager.query
+			mockQueryRunner.query
 				// eslint-disable-next-line @typescript-eslint/naming-convention
-				.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: false }])
+				.mockResolvedValueOnce([{ pg_try_advisory_lock: false }])
 				// eslint-disable-next-line @typescript-eslint/naming-convention
-				.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+				.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
 
 			const mockFn = jest.fn().mockResolvedValue('result');
 			const lockPromise = dbConnection.withAdvisoryLock(mockFn);
@@ -352,7 +346,9 @@ describe('DbConnection', () => {
 
 			expect(result).toBe('result');
 			expect(mockFn).toHaveBeenCalled();
-			// No explicit unlock call - transaction commit auto-releases
+			// Should explicitly unlock on the same QueryRunner
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+			expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
 
 			jest.useRealTimers();
 		});
@@ -361,10 +357,10 @@ describe('DbConnection', () => {
 			jest.useFakeTimers();
 
 			// First call returns empty array (edge case), second returns true
-			mockEntityManager.query
+			mockQueryRunner.query
 				.mockResolvedValueOnce([]) // Empty result - should default to false
 				// eslint-disable-next-line @typescript-eslint/naming-convention
-				.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+				.mockResolvedValueOnce([{ pg_try_advisory_lock: true }]);
 
 			const mockFn = jest.fn().mockResolvedValue('result');
 			const lockPromise = dbConnection.withAdvisoryLock(mockFn);
@@ -375,12 +371,13 @@ describe('DbConnection', () => {
 			const result = await lockPromise;
 
 			expect(result).toBe('result');
-			expect(mockEntityManager.query).toHaveBeenCalledTimes(2);
+			// 2 calls for lock attempts + 1 for unlock
+			expect(mockQueryRunner.query).toHaveBeenCalledTimes(3);
 
 			jest.useRealTimers();
 		});
 
-		it('should not use advisory lock for sqlite', async () => {
+		it('should not use advisory lock or QueryRunner for sqlite', async () => {
 			const sqliteOptions: DataSourceOptions = {
 				type: 'sqlite',
 				database: ':memory:',
@@ -398,8 +395,7 @@ describe('DbConnection', () => {
 
 			// @ts-expect-error accessing private property for testing
 			const sqliteDataSource = sqliteDbConnection.dataSource as jest.Mocked<DataSource>;
-			sqliteDataSource.query = jest.fn();
-			sqliteDataSource.transaction = jest.fn();
+			sqliteDataSource.createQueryRunner = jest.fn();
 			// @ts-expect-error mock options
 			sqliteDataSource.options = { migrations, type: 'sqlite' };
 
@@ -408,8 +404,202 @@ describe('DbConnection', () => {
 			await sqliteDbConnection.withAdvisoryLock(mockFn);
 
 			expect(mockFn).toHaveBeenCalled();
-			// Should not use transaction for SQLite (no advisory lock support)
-			expect(sqliteDataSource.transaction).not.toHaveBeenCalled();
+			// Should not create QueryRunner for SQLite (no advisory lock support)
+			expect(sqliteDataSource.createQueryRunner).not.toHaveBeenCalled();
+		});
+
+		it('should verify lock is acquired before function runs and released after', async () => {
+			const callOrder: string[] = [];
+
+			mockQueryRunner.query.mockImplementation(async (sql: string) => {
+				if (sql.includes('pg_try_advisory_lock')) {
+					callOrder.push('lock');
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					return [{ pg_try_advisory_lock: true }];
+				}
+				if (sql.includes('pg_advisory_unlock')) {
+					callOrder.push('unlock');
+					return [];
+				}
+				return [];
+			});
+
+			const mockFn = jest.fn().mockImplementation(async () => {
+				callOrder.push('function');
+				return 'result';
+			});
+
+			await dbConnection.withAdvisoryLock(mockFn);
+
+			expect(callOrder).toEqual(['lock', 'function', 'unlock']);
+		});
+
+		it('should still release QueryRunner if unlock query fails', async () => {
+			mockQueryRunner.query.mockImplementation(async (sql: string) => {
+				if (sql.includes('pg_try_advisory_lock')) {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					return [{ pg_try_advisory_lock: true }];
+				}
+				if (sql.includes('pg_advisory_unlock')) {
+					throw new Error('Connection dropped');
+				}
+				return [];
+			});
+
+			const mockFn = jest.fn().mockResolvedValue('result');
+			const result = await dbConnection.withAdvisoryLock(mockFn);
+
+			// Should still succeed - unlock errors are swallowed
+			expect(result).toBe('result');
+			// QueryRunner should still be released
+			expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not use advisory lock or QueryRunner for mysql', async () => {
+			const mysqlOptions: DataSourceOptions = {
+				type: 'mysql',
+				host: 'localhost',
+				port: 3306,
+				username: 'user',
+				password: 'password',
+				database: 'n8n',
+				migrations,
+			};
+			connectionOptions.getOptions.mockReturnValue(mysqlOptions);
+
+			const mysqlDbConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				binaryDataConfig,
+			);
+
+			// @ts-expect-error accessing private property for testing
+			const mysqlDataSource = mysqlDbConnection.dataSource as jest.Mocked<DataSource>;
+			mysqlDataSource.createQueryRunner = jest.fn();
+			// @ts-expect-error mock options
+			mysqlDataSource.options = { migrations, type: 'mysql' };
+
+			const mockFn = jest.fn().mockResolvedValue('result');
+
+			await mysqlDbConnection.withAdvisoryLock(mockFn);
+
+			expect(mockFn).toHaveBeenCalled();
+			// Should not create QueryRunner for MySQL (no advisory lock support)
+			expect(mysqlDataSource.createQueryRunner).not.toHaveBeenCalled();
+		});
+
+		it('should not use advisory lock or QueryRunner for mariadb', async () => {
+			const mariadbOptions: DataSourceOptions = {
+				type: 'mariadb',
+				host: 'localhost',
+				port: 3306,
+				username: 'user',
+				password: 'password',
+				database: 'n8n',
+				migrations,
+			};
+			connectionOptions.getOptions.mockReturnValue(mariadbOptions);
+
+			const mariadbDbConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				binaryDataConfig,
+			);
+
+			// @ts-expect-error accessing private property for testing
+			const mariadbDataSource = mariadbDbConnection.dataSource as jest.Mocked<DataSource>;
+			mariadbDataSource.createQueryRunner = jest.fn();
+			// @ts-expect-error mock options
+			mariadbDataSource.options = { migrations, type: 'mariadb' };
+
+			const mockFn = jest.fn().mockResolvedValue('result');
+
+			await mariadbDbConnection.withAdvisoryLock(mockFn);
+
+			expect(mockFn).toHaveBeenCalled();
+			// Should not create QueryRunner for MariaDB (no advisory lock support)
+			expect(mariadbDataSource.createQueryRunner).not.toHaveBeenCalled();
+		});
+
+		it('should not use advisory lock when postgres pool size is 1', async () => {
+			const postgresPoolSize1Options: DataSourceOptions = {
+				type: 'postgres',
+				host: 'localhost',
+				port: 5432,
+				username: 'user',
+				password: 'password',
+				database: 'n8n',
+				poolSize: 1,
+				migrations,
+			};
+			connectionOptions.getOptions.mockReturnValue(postgresPoolSize1Options);
+
+			const poolSize1DbConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				binaryDataConfig,
+			);
+
+			// @ts-expect-error accessing private property for testing
+			const poolSize1DataSource = poolSize1DbConnection.dataSource as jest.Mocked<DataSource>;
+			poolSize1DataSource.createQueryRunner = jest.fn();
+			// @ts-expect-error mock options
+			poolSize1DataSource.options = { migrations, type: 'postgres', poolSize: 1 };
+
+			const mockFn = jest.fn().mockResolvedValue('result');
+
+			const result = await poolSize1DbConnection.withAdvisoryLock(mockFn);
+
+			expect(result).toBe('result');
+			expect(mockFn).toHaveBeenCalled();
+			// Should NOT create QueryRunner when pool size is 1 - the pool itself acts as a lock
+			expect(poolSize1DataSource.createQueryRunner).not.toHaveBeenCalled();
+		});
+
+		it('should use advisory lock when postgres pool size is greater than 1', async () => {
+			const postgresPoolSize2Options: DataSourceOptions = {
+				type: 'postgres',
+				host: 'localhost',
+				port: 5432,
+				username: 'user',
+				password: 'password',
+				database: 'n8n',
+				poolSize: 2,
+				migrations,
+			};
+			connectionOptions.getOptions.mockReturnValue(postgresPoolSize2Options);
+
+			const poolSize2DbConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				binaryDataConfig,
+			);
+
+			// @ts-expect-error accessing private property for testing
+			const poolSize2DataSource = poolSize2DbConnection.dataSource as jest.Mocked<DataSource>;
+			// @ts-expect-error mock options
+			poolSize2DataSource.options = { migrations, type: 'postgres', poolSize: 2 };
+			poolSize2DataSource.createQueryRunner = jest.fn().mockReturnValue(mockQueryRunner);
+
+			const mockFn = jest.fn().mockResolvedValue('result');
+
+			const result = await poolSize2DbConnection.withAdvisoryLock(mockFn);
+
+			expect(result).toBe('result');
+			expect(mockFn).toHaveBeenCalled();
+			// Should create QueryRunner for pool size > 1
+			expect(poolSize2DataSource.createQueryRunner).toHaveBeenCalled();
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_try_advisory_lock(1850)');
+			expect(mockQueryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock(1850)');
+			expect(mockQueryRunner.release).toHaveBeenCalled();
 		});
 	});
 
