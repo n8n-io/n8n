@@ -117,7 +117,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	return computed(() => {
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
-		const canExtract = nodes.some(isExecutable) && !nodes.some(isAiSubNode);
+		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
 
 		const i18nOptions = {
 			adjustToNumber: nodes.length,
