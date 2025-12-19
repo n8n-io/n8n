@@ -162,6 +162,13 @@ export namespace ChatRequest {
 		step?: 'n8n_documentation' | 'n8n_forum';
 		codeSnippet?: string;
 		quickReplies?: ChatUI.QuickReply[];
+		/** Version ID for restore functionality - sent by backend on user messages */
+		revertVersionId?: string;
+		/** Version info enriched by frontend with timestamp from workflow history */
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
 	}
 
 	export interface SummaryMessage {
@@ -238,6 +245,15 @@ export namespace AskAiRequest {
 // Type guards for ChatRequest messages
 export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
 	return 'type' in msg && msg.type === 'message' && 'text' in msg;
+}
+
+/** TextMessage with revertVersionId that can be transformed */
+export type TextMessageWithRevertVersionId = ChatRequest.TextMessage & { revertVersionId: string };
+
+export function hasRevertVersionId(
+	msg: ChatRequest.MessageResponse,
+): msg is TextMessageWithRevertVersionId {
+	return isTextMessage(msg) && typeof msg.revertVersionId === 'string';
 }
 
 export function isSummaryMessage(
