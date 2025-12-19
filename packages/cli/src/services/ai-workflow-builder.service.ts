@@ -49,6 +49,7 @@ export class WorkflowBuilderService {
 					consumerId,
 					baseUrl,
 					n8nVersion: N8N_VERSION,
+					instanceId: this.instanceSettings.instanceId,
 				});
 
 				// Register for license certificate updates
