@@ -108,7 +108,7 @@ export function processHitlResponses(
 			pendingGatedToolActions.push({
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: hitl.gatedToolNodeName,
-				input: hitl.originalInput,
+				input: { tool: hitl.toolName, ...hitl.originalInput },
 				type: NodeConnectionTypes.AiTool,
 				id: `hitl_approved_${actionResponse.action.id}`,
 				metadata: {
@@ -117,10 +117,7 @@ export function processHitlResponses(
 					parentNodeName: actionResponse.action.nodeName,
 				},
 			});
-
-			// Don't include the HITL response in processed responses
-			// The gated tool's response will replace it
-		} else if (approved === false) {
+		} else {
 			const modifiedResponse: ExecuteNodeResult<RequestResponseMetadata> = {
 				...actionResponse,
 				data: {
@@ -130,9 +127,8 @@ export function processHitlResponses(
 							[
 								{
 									json: {
-										response: `Tool "${hitl.toolName}" execution was denied by human reviewer. Do not attempt this tool call again.`,
+										response: 'Tool execution was denied by human reviewer.',
 										approved: false,
-										deniedTool: hitl.toolName,
 									},
 								},
 							],
@@ -141,9 +137,6 @@ export function processHitlResponses(
 				},
 			};
 			processedActionResponses.push(modifiedResponse);
-		} else {
-			// Unknown approval status - pass through
-			processedActionResponses.push(actionResponse);
 		}
 	}
 

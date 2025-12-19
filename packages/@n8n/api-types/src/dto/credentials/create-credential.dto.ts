@@ -8,4 +8,5 @@ export class CreateCredentialDto extends Z.class({
 	projectId: z.string().optional(),
 	uiContext: z.string().optional(),
 	isGlobal: z.boolean().optional(),
+	isResolvable: z.boolean().optional(),
 }) {}
