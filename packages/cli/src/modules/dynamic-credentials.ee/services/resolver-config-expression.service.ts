@@ -1,6 +1,6 @@
 import { CredentialResolverConfiguration } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { getNonWorkflowAdditionalKeys } from 'n8n-core/src/execution-engine/node-execution-context/utils/get-additional-keys';
+import { getNonWorkflowAdditionalKeys } from 'n8n-core';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { isNodeParameters, Workflow } from 'n8n-workflow';
 
@@ -16,16 +16,10 @@ export class ResolverConfigExpressionService {
 	private readonly mockNode: INode;
 
 	constructor(private readonly nodeTypes: NodeTypes) {
-		// Mock node setup for expression resolution
-		// We won't use any of its properties, but it's required by the workflow expression resolver
 		this.mockNode = {
-			id: 'mock',
-			name: '',
-			typeVersion: 1,
-			type: 'mock',
-			position: [0, 0],
-			parameters: {} as INodeParameters,
-		};
+			id: '1',
+			name: 'Mock Node',
+		} as INode;
 	}
 
 	/**
@@ -39,7 +33,7 @@ export class ResolverConfigExpressionService {
 	): Promise<CredentialResolverConfiguration> {
 		// Create a minimal workflow with the mock node to leverage the expression resolver
 		const workflow = new Workflow({
-			nodes: [this.mockNode],
+			nodes: [],
 			connections: {},
 			active: false,
 			nodeTypes: this.nodeTypes,

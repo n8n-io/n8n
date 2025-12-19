@@ -478,8 +478,7 @@ describe('CredentialsHelper', () => {
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(mockAdditionalData);
 			expect(call[2].executionContext).toBe(mockAdditionalData.executionContext);
-			expect(call[3]).toBe('manual');
-			expect(call[4]).toBe(false); // canUseExternalSecrets
+			expect(call[3]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should pass workflowSettings from additionalData to resolver', async () => {
@@ -498,8 +497,7 @@ describe('CredentialsHelper', () => {
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(mockAdditionalData);
 			expect(call[2].workflowSettings).toBe(mockAdditionalData.workflowSettings);
-			expect(call[3]).toBe('manual');
-			expect(call[4]).toBe(false); // canUseExternalSecrets
+			expect(call[3]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should skip resolution when credentialResolutionProvider is not set', async () => {
@@ -618,8 +616,7 @@ describe('CredentialsHelper', () => {
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(additionalDataWithoutSettings);
 			expect(call[2].workflowSettings).toBeUndefined();
-			expect(call[3]).toBe('manual');
-			expect(call[4]).toBe(false); // canUseExternalSecrets
+			expect(call[3]).toBe(false); // canUseExternalSecrets
 		});
 	});
 });

@@ -82,64 +82,24 @@ export function isNodeParameters(value: unknown): value is INodeParameters {
  * ```
  */
 export function isValidNodeParameterValueType(value: unknown): value is NodeParameterValueType {
-	// Check primitives first (most common case)
-	if (isNodeParameterValue(value)) {
-		return true;
-	}
-
-	// Check special object types
-	if (isResourceLocatorValue(value)) {
-		return true;
-	}
-
-	if (isResourceMapperValue(value)) {
-		return true;
-	}
-
-	if (isFilterValue(value)) {
-		return true;
-	}
-
-	if (isAssignmentCollectionValue(value)) {
-		return true;
-	}
-
-	// Check arrays
-	if (Array.isArray(value)) {
-		// Empty arrays are valid
-		if (value.length === 0) {
-			return true;
-		}
-
-		// Check if it's an array of primitives
-		if (value.every(isNodeParameterValue)) {
-			return true;
-		}
-
-		// Check if it's an array of INodeParameters
-		if (value.every(isNodeParameters)) {
-			return true;
-		}
-
-		// Check if it's an array of resource locators
-		if (value.every(isResourceLocatorValue)) {
-			return true;
-		}
-
-		// Check if it's an array of resource mapper values
-		if (value.every(isResourceMapperValue)) {
-			return true;
-		}
-
-		return false;
-	}
-
-	// Check if it's INodeParameters (must be last to avoid infinite recursion on first check)
-	if (isNodeParameters(value)) {
-		return true;
-	}
-
-	return false;
+	return (
+		// Primitives (most common case)
+		isNodeParameterValue(value) ||
+		// Special object types
+		isResourceLocatorValue(value) ||
+		isResourceMapperValue(value) ||
+		isFilterValue(value) ||
+		isAssignmentCollectionValue(value) ||
+		// Arrays - all items should be valid NodeParameterValueType
+		(Array.isArray(value) &&
+			(value.length === 0 ||
+				value.every(isNodeParameterValue) ||
+				value.every(isNodeParameters) ||
+				value.every(isResourceLocatorValue) ||
+				value.every(isResourceMapperValue))) ||
+		// INodeParameters (must be last to avoid infinite recursion on first check)
+		isNodeParameters(value)
+	);
 }
 
 /**
