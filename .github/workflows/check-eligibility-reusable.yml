@@ -13,7 +13,7 @@
 #
 # It outputs `should_run` as 'true' if ALL conditions pass, 'false' otherwise.
 
-name: PR Eligibility Check
+name: 'Check: PR Eligibility'
 
 on:
   workflow_call:

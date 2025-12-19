@@ -1,4 +1,4 @@
-name: Build, unit test and lint branch
+name: 'CI: Pull Requests'
 
 on:
   pull_request:
@@ -99,7 +99,7 @@ jobs:
   unit-test:
     name: Unit tests
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/units-tests-reusable.yml
+    uses: ./.github/workflows/test-unit-reusable.yml
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -125,7 +125,7 @@ jobs:
   lint:
     name: Lint
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/linting-reusable.yml
+    uses: ./.github/workflows/test-linting-reusable.yml
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -134,7 +134,7 @@ jobs:
     name: E2E Tests
     needs: install-and-build
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/playwright-test-ci.yml
+    uses: ./.github/workflows/playwright-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
@@ -143,7 +143,7 @@ jobs:
     name: Security Checks
     needs: install-and-build
     if: needs.install-and-build.outputs.workflows_changed == 'true'
-    uses: ./.github/workflows/ci-security.yml
+    uses: ./.github/workflows/sec-checks-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit

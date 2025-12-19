@@ -1,4 +1,4 @@
-name: Reusable linting workflow
+name: 'Test: Linting'
 
 on:
   workflow_call:

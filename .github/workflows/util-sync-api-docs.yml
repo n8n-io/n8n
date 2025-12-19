@@ -1,4 +1,4 @@
-name: Sync Public API Schema to Docs Repo
+name: 'Util: Sync API Docs'
 
 on:
   # Triggers for the master branch if relevant Public API files have changed

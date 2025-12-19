@@ -1,4 +1,4 @@
-name: Check Documentation URLs
+name: 'Util: Check Doc URLs'
 
 on:
   release:

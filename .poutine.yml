@@ -41,14 +41,14 @@ skip:
   # direct interpolation of github.event.inputs.dataset
   - rule: injection
     path:
-      - .github/workflows/ci-evals.yml
+      - .github/workflows/evals-ci.yml
 
   # TODO: Review untrusted checkout execution patterns.
   # These workflows run local actions or package managers after checking out
   # untrusted PR code, which is a potential security risk.
   - rule: untrusted_checkout_exec
     path:
-      - .github/workflows/sbom-generation-callable.yml
-      - .github/workflows/linting-reusable.yml
-      - .github/workflows/test-workflows-callable.yml
-      - .github/workflows/units-tests-reusable.yml
+      - .github/workflows/release-sbom-reusable.yml
+      - .github/workflows/test-linting-reusable.yml
+      - .github/workflows/test-workflows-reusable.yml
+      - .github/workflows/test-unit-reusable.yml

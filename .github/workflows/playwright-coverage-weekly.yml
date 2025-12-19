@@ -1,4 +1,4 @@
-name: Weekly Coverage Tests
+name: 'Playwright: Coverage (Weekly)'
 
 on:
   schedule:

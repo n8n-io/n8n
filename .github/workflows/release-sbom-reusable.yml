@@ -1,4 +1,4 @@
-name: 'Release: Attach SBOM'
+name: 'Release: SBOM'
 
 on:
   workflow_call:

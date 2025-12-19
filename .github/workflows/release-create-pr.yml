@@ -1,4 +1,4 @@
-name: 'Release: Create Pull Request'
+name: 'Release: Create PR'
 
 on:
   workflow_dispatch:

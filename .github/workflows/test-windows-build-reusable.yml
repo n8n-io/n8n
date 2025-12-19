@@ -1,4 +1,4 @@
-name: Windows CI
+name: 'Test: Windows Build'
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ on:
     paths:
       - '**/package.json'
       - '**/turbo.json'
-      - '.github/workflows/build-windows.yml'
+      - '.github/workflows/test-windows-build-reusable.yml'
 
 jobs:
   build:

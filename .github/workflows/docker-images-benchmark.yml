@@ -1,4 +1,4 @@
-name: Benchmark Docker Image CI
+name: 'Docker: Benchmark Image'
 
 on:
   workflow_dispatch:

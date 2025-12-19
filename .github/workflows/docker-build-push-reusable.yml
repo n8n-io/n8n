@@ -3,7 +3,7 @@
 # - Uses docker-config.mjs for context determination, this determines what needs to be built based on the trigger
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
-name: 'Docker: Build and Push'
+name: 'Docker: Build & Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
@@ -262,7 +262,7 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'nightly' ||
        needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    uses: ./.github/workflows/sec-trivy-reusable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
     secrets: inherit
@@ -275,7 +275,7 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'nightly' ||
        needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    uses: ./.github/workflows/sec-trivy-reusable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
     secrets: inherit
