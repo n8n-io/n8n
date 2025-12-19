@@ -567,7 +567,6 @@ export async function formWebhook(
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
-
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
@@ -588,7 +587,6 @@ export async function formWebhook(
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 
 	const method = context.getRequestObject().method;
-
 	validateResponseModeConfiguration(context);
 
 	//Show the form on GET request
@@ -596,7 +594,6 @@ export async function formWebhook(
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
 		let responseMode = context.getNodeParameter('responseMode', '') as string;
-
 		let formSubmittedText;
 		let redirectUrl;
 		let appendAttribution = true;
@@ -660,7 +657,6 @@ export async function formWebhook(
 	}
 
 	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
-
 	return {
 		webhookResponse: { status: 200 },
 		workflowData: [[returnItem]],

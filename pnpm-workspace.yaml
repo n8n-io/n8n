@@ -86,10 +86,10 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
-  - 'tsdown@0.16.5'
+  - tsdown@0.16.5
   - eslint-plugin-storybook
   - '@langchain/*'
-  - 'langchain'
+  - langchain
   - '@anthropic-ai/sdk'
   - '@google/generative-ai'
   - '@google/genai'
