@@ -752,7 +752,10 @@ class AutomergeDocHolder {
 
 		if (headsChanged) {
 			this.notifyHandlers(beforeHeads);
-			// Also notify update handlers so changes propagate through chains
+			// Notify update handlers so changes propagate through sync chains (hub topology).
+			// Automerge's saveSince() handles deduplication - it only returns changes
+			// newer than lastSyncedHeads, so re-broadcasting the same data is prevented
+			// at the serialization level, not here.
 			this.notifyUpdateHandlers();
 		}
 	}
