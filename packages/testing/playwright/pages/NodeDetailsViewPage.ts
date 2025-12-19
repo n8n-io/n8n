@@ -518,6 +518,17 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getNodeParameters().getByTestId('collection-add-option-select');
 	}
 
+	getFixedCollectionAttributePicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-attribute');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionAttribute(attributeName: string, index?: number) {
+		const picker = this.getFixedCollectionAttributePicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: attributeName, exact: true }).click();
+	}
+
 	getParameterSwitch(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('.el-switch');
 	}

@@ -513,6 +513,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 								<div
 									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
 									class="optional-values-picker add-option"
+									data-test-id="fixed-collection-add-attribute"
 								>
 									<N8nSelect
 										:placeholder="requiredOnlyButtonText"
@@ -571,6 +572,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 					<div
 						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
 						class="optional-values-picker add-option"
+						data-test-id="fixed-collection-add-attribute"
 					>
 						<N8nSelect
 							:placeholder="requiredOnlyButtonText"
