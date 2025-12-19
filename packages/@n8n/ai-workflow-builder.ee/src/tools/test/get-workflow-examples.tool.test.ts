@@ -55,11 +55,13 @@ describe('GetWorkflowExamplesTool', () => {
 	};
 
 	// Helper to create mock workflow metadata
+	let mockTemplateIdCounter = 1;
 	const createMockWorkflowMetadata = (
 		name: string,
 		description: string,
 		nodeCount: number = 3,
 	): WorkflowMetadata => ({
+		templateId: mockTemplateIdCounter++,
 		name,
 		description,
 		workflow: {

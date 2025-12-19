@@ -138,6 +138,7 @@ n6 --> n14
 
 		it('should handle workflow with single node', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1001,
 				name: 'Simple Workflow',
 				workflow: {
 					name: 'Simple Workflow',
@@ -168,6 +169,7 @@ n1["Trigger"]
 
 		it('should handle workflow with branching connections', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1002,
 				name: 'Branching Workflow',
 				workflow: {
 					name: 'Branching Workflow',
@@ -254,6 +256,7 @@ n3 --> n5["Send Failure Email"]
 
 		it('should render conditional nodes (if, switch, filter) with diamond shape', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1003,
 				name: 'Conditional Workflow',
 				workflow: {
 					name: 'Conditional Workflow',
@@ -352,6 +355,7 @@ n4 --> n5["End"]
 
 		it('should include resource and operation in node type comment', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1004,
 				name: 'Resource Operation Workflow',
 				workflow: {
 					name: 'Resource Operation Workflow',
@@ -423,6 +427,7 @@ n4["HTTP Request"]
 
 		it('should handle nodes without parameters', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1005,
 				name: 'Empty Params',
 				workflow: {
 					name: 'Empty Params',
@@ -453,6 +458,7 @@ n1["Empty Node"]
 
 		it('should add non-overlapping sticky notes as comments at start', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1006,
 				name: 'With Sticky',
 				workflow: {
 					name: 'With Sticky',
@@ -492,6 +498,7 @@ n1["Start"]
 
 		it('should add sticky overlapping single node as comment before that node', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1007,
 				name: 'Sticky Over Node',
 				workflow: {
 					name: 'Sticky Over Node',
@@ -547,6 +554,7 @@ n1 --> n2["End"]
 		it('should wrap multiple overlapping nodes in a subgraph', () => {
 			// Based on the user-provided example with If and Switch inside a sticky
 			const workflow: WorkflowMetadata = {
+				templateId: 1008,
 				name: 'Multi Node Sticky',
 				workflow: {
 					name: 'Multi Node Sticky',
@@ -627,6 +635,7 @@ n2 --> n3{"Filter"}
 
 		it('should skip sticky notes without content', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 1009,
 				name: 'Empty Sticky',
 				workflow: {
 					name: 'Empty Sticky',
@@ -662,11 +671,248 @@ n1["Start"]
 
 			expect(result).toEqual(expected);
 		});
+
+		it('should render AI capability connections with dotted arrows and type labels', () => {
+			const workflow: WorkflowMetadata = {
+				templateId: 9001,
+				name: 'AI Connection Types',
+				workflow: {
+					name: 'AI Connection Types',
+					nodes: [
+						{
+							parameters: {},
+							id: 'trigger1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							position: [100, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'agent1',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							position: [300, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Start: {
+							main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'OpenAI Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			// Should contain dotted arrow with connection type for AI connections
+			expect(result).toContain('-.ai_languageModel.->');
+			// Should contain solid arrow for main connections
+			expect(result).toContain('-->');
+		});
+
+		it('should handle nodes with only AI connections and no main output', () => {
+			const workflow: WorkflowMetadata = {
+				templateId: 9002,
+				name: 'AI Only Node',
+				workflow: {
+					name: 'AI Only Node',
+					nodes: [
+						{
+							parameters: {},
+							id: 'model1',
+							name: 'Chat Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							position: [0, 100],
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'agent1',
+							name: 'Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							position: [200, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Chat Model': {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			// Chat Model should appear in output
+			expect(result).toContain('Chat Model');
+			// Should have the AI connection
+			expect(result).toContain('-.ai_languageModel.->');
+			// Chat Model should NOT have any main arrows going FROM it (no "n1 -->" pattern)
+			const lines = result.split('\n');
+			const chatModelId = lines.find((l) => l.includes('Chat Model'))?.match(/^(n\d+)/)?.[1];
+			expect(chatModelId).toBeDefined();
+			// No main connection arrows FROM the chat model node
+			expect(result).not.toMatch(new RegExp(`${chatModelId} -->`));
+		});
+
+		it('should respect includeNodeType: false option', () => {
+			const workflow: WorkflowMetadata = {
+				templateId: 9003,
+				name: 'Type Option Test',
+				workflow: {
+					name: 'Type Option Test',
+					nodes: [
+						{
+							parameters: { text: 'hello' },
+							id: 'node1',
+							name: 'Set Data',
+							type: 'n8n-nodes-base.set',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const result = mermaidStringify(workflow, {
+				includeNodeType: false,
+				includeNodeParameters: true,
+			});
+
+			// Should NOT contain node type comment
+			expect(result).not.toContain('n8n-nodes-base.set');
+			// Should still contain node name
+			expect(result).toContain('Set Data');
+			// Should contain parameters since includeNodeParameters is true
+			expect(result).toContain('text');
+		});
+
+		it('should handle cyclic workflows without infinite loops', () => {
+			const workflow: WorkflowMetadata = {
+				templateId: 9004,
+				name: 'Loop Workflow',
+				workflow: {
+					name: 'Loop Workflow',
+					nodes: [
+						{
+							parameters: {},
+							id: 'trigger1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { batchSize: 10 },
+							id: 'loop1',
+							name: 'Loop Over Items',
+							type: 'n8n-nodes-base.splitInBatches',
+							position: [200, 0],
+							typeVersion: 3,
+						},
+						{
+							parameters: {},
+							id: 'process1',
+							name: 'Process Item',
+							type: 'n8n-nodes-base.set',
+							position: [400, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Start: {
+							main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Loop Over Items': {
+							main: [
+								[], // Done output (empty for this test)
+								[{ node: 'Process Item', type: 'main', index: 0 }], // Loop output
+							],
+						},
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Process Item': {
+							main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]], // Loop back
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			// Should complete without hanging
+			expect(result).toContain('```mermaid');
+			// Each node should appear only once in definitions
+			const loopMatches = result.match(/Loop Over Items/g);
+			expect(loopMatches?.length).toBeLessThanOrEqual(2); // Definition + connection reference
+		});
+
+		it('should render agent node even without AI sub-nodes connected', () => {
+			const workflow: WorkflowMetadata = {
+				templateId: 9005,
+				name: 'Standalone Agent',
+				workflow: {
+					name: 'Standalone Agent',
+					nodes: [
+						{
+							parameters: {},
+							id: 'trigger1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { promptType: 'define', text: 'Hello' },
+							id: 'agent1',
+							name: 'Lonely Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							position: [200, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						Start: {
+							main: [[{ node: 'Lonely Agent', type: 'main', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const result = mermaidStringify(workflow, { includeNodeParameters: false });
+
+			// Agent should still be rendered
+			expect(result).toContain('Lonely Agent');
+			// Should have main connection to agent
+			expect(result).toContain('--> ');
+			expect(result).toContain('Lonely Agent');
+		});
 	});
 
 	describe('processWorkflowExamples', () => {
 		it('should generate mermaid diagrams and collect node configurations in one pass', () => {
 			const workflow1: WorkflowMetadata = {
+				templateId: 2001,
 				name: 'Workflow 1',
 				workflow: {
 					name: 'Workflow 1',
@@ -698,6 +944,7 @@ n1["Start"]
 			};
 
 			const workflow2: WorkflowMetadata = {
+				templateId: 2002,
 				name: 'Workflow 2',
 				workflow: {
 					name: 'Workflow 2',
@@ -772,6 +1019,7 @@ n1["Start"]
 
 		it('should skip nodes with empty parameters', () => {
 			const workflow: WorkflowMetadata = {
+				templateId: 2003,
 				name: 'Empty Params',
 				workflow: {
 					name: 'Empty Params',

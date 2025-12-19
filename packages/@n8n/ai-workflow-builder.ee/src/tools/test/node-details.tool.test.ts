@@ -625,10 +625,12 @@ describe('NodeDetailsTool', () => {
 
 		describe('cached templates', () => {
 			// Helper to create mock cached templates with specific node configurations
+			let mockTemplateIdCounter = 1;
 			const createMockCachedTemplate = (
 				name: string,
 				nodes: Array<ReturnType<typeof createNode>>,
 			): WorkflowMetadata => ({
+				templateId: mockTemplateIdCounter++,
 				name,
 				description: `Template: ${name}`,
 				workflow: {

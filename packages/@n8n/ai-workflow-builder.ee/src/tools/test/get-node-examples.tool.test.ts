@@ -48,11 +48,13 @@ describe('GetNodeExamplesTool', () => {
 	});
 
 	// Helper to create mock workflow metadata with specific nodes
+	let mockTemplateIdCounter = 1;
 	const createMockWorkflow = (
 		name: string,
 		nodes: INode[],
 		connections: IConnections = {},
 	): WorkflowMetadata => ({
+		templateId: mockTemplateIdCounter++,
 		name,
 		description: `Workflow: ${name}`,
 		workflow: { nodes, connections, name },
