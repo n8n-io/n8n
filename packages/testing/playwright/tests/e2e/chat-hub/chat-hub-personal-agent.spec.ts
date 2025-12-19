@@ -105,6 +105,9 @@ test.describe('Personal agent @capability:proxy', () => {
 			'reply in Chinese',
 		);
 		await agentsPage.personalAgentModal.getSystemPromptField().fill('reply in Japanese');
+		await expect(agentsPage.personalAgentModal.getSystemPromptField()).toHaveValue(
+			'reply in Japanese',
+		);
 		await agentsPage.personalAgentModal.getSaveButton().click();
 		await expect(agentsPage.personalAgentModal.getRoot()).not.toBeInViewport(); // wait for modal to close
 
