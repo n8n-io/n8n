@@ -116,7 +116,9 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
