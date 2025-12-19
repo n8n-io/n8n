@@ -22,7 +22,7 @@ const {
 	message,
 	compact,
 	isEditing,
-	isStreaming,
+	hasSessionStreaming,
 	minHeight,
 	cachedAgentDisplayName,
 	cachedAgentIcon,
@@ -31,7 +31,7 @@ const {
 	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
-	isStreaming: boolean;
+	hasSessionStreaming: boolean;
 	cachedAgentDisplayName: string | null;
 	cachedAgentIcon: AgentIconOrEmoji | null;
 	/**
@@ -268,14 +268,14 @@ onBeforeMount(() => {
 						:plugins="markdown.plugins.value"
 					/>
 				</div>
-				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
+				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
 					:message="message"
-					:alternatives="message.alternatives"
+					:has-session-streaming="hasSessionStreaming"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"

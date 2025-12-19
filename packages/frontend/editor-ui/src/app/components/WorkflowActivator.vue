@@ -231,7 +231,7 @@ watch(
 				:disabled="
 					disabled ||
 					workflowActivate.updatingWorkflowActivation.value ||
-					(!isNewWorkflow && !workflowPermissions.update)
+					(!isNewWorkflow && !workflowPermissions.publish)
 				"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
