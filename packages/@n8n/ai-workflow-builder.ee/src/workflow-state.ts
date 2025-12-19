@@ -2,8 +2,8 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { NodeConfigurationsMap, SimpleWorkflow, WorkflowOperation } from './types';
-import { appendArrayReducer, nodeConfigurationsReducer } from './utils/state-reducers';
+import type { SimpleWorkflow, WorkflowMetadata, WorkflowOperation } from './types';
+import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
 import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -103,16 +103,16 @@ export const WorkflowState = Annotation.Root({
 		default: () => 'EMPTY',
 	}),
 
-	// Node configurations collected from workflow examples
-	// Used to provide context when updating node parameters
-	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: nodeConfigurationsReducer,
-		default: () => ({}),
-	}),
-
 	// Template IDs fetched from workflow examples for telemetry
 	templateIds: Annotation<number[]>({
 		reducer: appendArrayReducer,
+		default: () => [],
+	}),
+
+	// Cached workflow templates from template API
+	// Shared across tools to reduce API calls
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
 });
