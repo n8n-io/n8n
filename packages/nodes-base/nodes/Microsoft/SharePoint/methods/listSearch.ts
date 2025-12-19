@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { IDriveItem, IList, IListItem, ISite } from '../helpers/interfaces';
+import { escapeFilterValue } from '../helpers/utils';
 import { microsoftSharePointApiRequest } from '../transport';
 
 export async function getFiles(
@@ -34,7 +35,7 @@ export async function getFiles(
 			$select: 'id,name,file',
 		};
 		if (filter) {
-			qs.$filter = `startswith(name, '${filter.replaceAll("'", "''")}')`;
+			qs.$filter = `startswith(name, '${escapeFilterValue(filter)}')`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -134,7 +135,7 @@ export async function getItems(
 			$select: 'id,fields',
 		};
 		if (filter) {
-			qs.$filter = `fields/Title eq '${filter.replaceAll("'", "''")}'`;
+			qs.$filter = `fields/Title eq '${escapeFilterValue(filter)}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -182,7 +183,7 @@ export async function getLists(
 			$select: 'id,displayName',
 		};
 		if (filter) {
-			qs.$filter = `displayName eq '${filter.replaceAll("'", "''")}'`;
+			qs.$filter = `displayName eq '${escapeFilterValue(filter)}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
