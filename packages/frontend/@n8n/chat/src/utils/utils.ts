@@ -1,9 +1,12 @@
 import { v4 as uuid } from 'uuid';
 
+import { MessageComponentKey } from '../constants';
 import type { ChatMessage } from '../types';
 
+const CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE = 'with-buttons';
+
 interface ChatNodeMessageWithButtons {
-	type: 'with-buttons';
+	type: typeof CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE;
 	text: string;
 	buttons: Array<{
 		text: string;
@@ -33,12 +36,12 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 	};
 	try {
 		const parsed = JSON.parse(message) as ChatNodeMessageWithButtons;
-		if (parsed.type === 'with-buttons') {
+		if (parsed.type === CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE) {
 			chatMessage = {
 				id,
 				sender: 'bot',
 				type: 'component',
-				key: 'with-buttons',
+				key: MessageComponentKey.WITH_BUTTONS,
 				arguments: {
 					text: parsed.text,
 					buttons: parsed.buttons,

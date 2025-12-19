@@ -1,4 +1,5 @@
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
+import { MessageComponentKey } from '@n8n/chat/constants';
 import type { ChatOptions } from '@n8n/chat/types';
 
 export const defaultOptions: ChatOptions = {
@@ -28,7 +29,7 @@ export const defaultOptions: ChatOptions = {
 	theme: {},
 	enableStreaming: false,
 	messageComponents: {
-		'with-buttons': MessageWithButtons,
+		[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
 	},
 };
 

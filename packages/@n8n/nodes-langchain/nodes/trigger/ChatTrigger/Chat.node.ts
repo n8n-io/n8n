@@ -13,6 +13,7 @@ import {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
+	ChatNodeMessageType,
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -83,7 +84,7 @@ function getChatMessage(ctx: IExecuteFunctions): ChatNodeMessage {
 
 	const config = getSendAndWaitConfig(ctx);
 	return {
-		type: 'with-buttons',
+		type: ChatNodeMessageType.WITH_BUTTONS,
 		text: message,
 		// the buttons are reversed to show the primary button first
 		buttons: config.options.reverse().map((option) => ({

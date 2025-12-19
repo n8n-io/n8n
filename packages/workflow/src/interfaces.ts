@@ -1302,10 +1302,14 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export const ChatNodeMessageType = {
+	WITH_BUTTONS: 'with-buttons',
+} as const;
+
 export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 
 export type ChatNodeMessageWithButtons = {
-	type: 'with-buttons';
+	type: typeof ChatNodeMessageType.WITH_BUTTONS;
 	text: string;
 	buttons: Array<{
 		text: string;
