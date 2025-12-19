@@ -1,4 +1,4 @@
-import type { CRDTDoc, CRDTMap, DeepChangeEvent } from '../types';
+import type { CRDTArray, CRDTDoc, CRDTMap, DeepChangeEvent } from '../types';
 import { ChangeAction } from '../types';
 import { YjsProvider } from './yjs';
 
@@ -256,6 +256,114 @@ describe('YjsProvider', () => {
 			expect(lastChange.action).toBe(ChangeAction.update);
 			expect(lastChange.value).toBe('updated');
 			expect(lastChange.oldValue).toBe('value');
+		});
+	});
+
+	describe('CRDTArray basic operations', () => {
+		let doc: CRDTDoc;
+		let arr: CRDTArray<string>;
+
+		beforeEach(() => {
+			const provider = new YjsProvider();
+			doc = provider.createDoc('test');
+			arr = doc.getArray<string>('test-array');
+		});
+
+		afterEach(() => {
+			doc.destroy();
+		});
+
+		it('should push and get values', () => {
+			arr.push('a', 'b', 'c');
+
+			expect(arr.get(0)).toBe('a');
+			expect(arr.get(1)).toBe('b');
+			expect(arr.get(2)).toBe('c');
+			expect(arr.get(3)).toBeUndefined();
+		});
+
+		it('should report correct length', () => {
+			expect(arr.length).toBe(0);
+
+			arr.push('a');
+			expect(arr.length).toBe(1);
+
+			arr.push('b', 'c');
+			expect(arr.length).toBe(3);
+		});
+
+		it('should insert at index', () => {
+			arr.push('a', 'c');
+			arr.insert(1, 'b');
+
+			expect(arr.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should insert multiple items at index', () => {
+			arr.push('a', 'd');
+			arr.insert(1, 'b', 'c');
+
+			expect(arr.toArray()).toEqual(['a', 'b', 'c', 'd']);
+		});
+
+		it('should delete single element', () => {
+			arr.push('a', 'b', 'c');
+			arr.delete(1);
+
+			expect(arr.toArray()).toEqual(['a', 'c']);
+		});
+
+		it('should delete multiple elements', () => {
+			arr.push('a', 'b', 'c', 'd');
+			arr.delete(1, 2);
+
+			expect(arr.toArray()).toEqual(['a', 'd']);
+		});
+
+		it('should convert to array', () => {
+			arr.push('a', 'b', 'c');
+
+			expect(arr.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should convert to JSON (same as toArray)', () => {
+			arr.push('a', 'b', 'c');
+
+			expect(arr.toJSON()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should share underlying data for the same name', () => {
+			const arr1 = doc.getArray<string>('test-array');
+			const arr2 = doc.getArray<string>('test-array');
+
+			arr1.push('value');
+			expect(arr2.get(0)).toBe('value');
+		});
+
+		it('should handle nested objects', () => {
+			const objArr = doc.getArray<{ name: string }>('obj-array');
+			objArr.push({ name: 'first' }, { name: 'second' });
+
+			expect(objArr.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
+
+			// Get nested object as CRDTMap
+			const first = objArr.get(0) as CRDTMap<string>;
+			expect(first.get('name')).toBe('first');
+		});
+
+		it('should handle nested arrays', () => {
+			const nestedArr = doc.getArray<string[]>('nested-array');
+			nestedArr.push(['a', 'b'], ['c', 'd']);
+
+			expect(nestedArr.toArray()).toEqual([
+				['a', 'b'],
+				['c', 'd'],
+			]);
+
+			// Get nested array as CRDTArray
+			const inner = nestedArr.get(0) as CRDTArray<string>;
+			expect(inner.get(0)).toBe('a');
+			expect(inner.length).toBe(2);
 		});
 	});
 });
