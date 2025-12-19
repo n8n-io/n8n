@@ -129,9 +129,7 @@ export const useAIAssistantHelpers = () => {
 		}
 
 		if (Array.isArray(value)) {
-			return value.map((item) =>
-				sanitizeParameterValue(item as NodeParameterValueType),
-			) as NodeParameterValueType;
+			return value.map((item) => sanitizeParameterValue(item)) as NodeParameterValueType;
 		}
 
 		if (typeof value === 'string') {
@@ -184,7 +182,7 @@ export const useAIAssistantHelpers = () => {
 
 		if (typeof value === 'object') {
 			const sanitizedObject: INodeParameters = {};
-			for (const [key, childValue] of Object.entries(value as INodeParameters)) {
+			for (const [key, childValue] of Object.entries(value)) {
 				sanitizedObject[key] = sanitizeParameterValue(childValue);
 			}
 			return sanitizedObject;
