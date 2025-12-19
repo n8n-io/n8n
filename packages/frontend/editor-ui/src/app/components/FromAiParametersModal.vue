@@ -372,9 +372,9 @@ const onExecute = async () => {
 
 	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
 	// check if there's a selected tool, e.g. HITL/MCP client tool selector
-	const selectedToolName = inputValues.find(
-		(value) => value.metadata?.type === 'selector' && value.metadata.nodeName === nodeName,
-	)?.value as string | undefined;
+	// findLast is used to get the last selected tool from the tool chain
+	const selectedToolName = inputValues.findLast((value) => value.metadata?.type === 'selector')
+		?.value as string | undefined;
 
 	const agentRequest: IAgentRequest = {
 		query: {},
