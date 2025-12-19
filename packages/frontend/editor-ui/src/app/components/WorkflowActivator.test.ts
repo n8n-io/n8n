@@ -44,7 +44,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		};
 
@@ -62,7 +62,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -86,7 +86,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -147,7 +147,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -215,7 +215,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -257,7 +257,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -272,7 +272,7 @@ describe('WorkflowActivator', () => {
 				isArchived: true,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		};
 
