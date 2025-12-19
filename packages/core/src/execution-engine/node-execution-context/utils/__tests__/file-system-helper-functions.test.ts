@@ -193,11 +193,12 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
 	});
 
-	['.git', '/.git', '/tmp/.git', '/tmp/.git/config'].forEach((path) => {
-		it(`should per default block access to ${path}`, async () => {
+	it.each(['.git', '/.git', '/tmp/.git', '/tmp/.git/config'])(
+		'should per default block access to %s',
+		async (path) => {
 			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
-		});
-	});
+		},
+	);
 
 	it('should allow access when pattern matching is disabled', async () => {
 		securityConfig.blockFilePatterns = '';
@@ -214,7 +215,7 @@ describe('isFilePathBlocked', () => {
 			securityConfig.blockFilePatterns = 'hello; \\/there$; ^where';
 		});
 
-		[
+		it.each([
 			'hello',
 			'xhellox',
 			'subpath/hello/',
@@ -222,16 +223,12 @@ describe('isFilePathBlocked', () => {
 			'/subpath/there',
 			'where',
 			'where-is/it',
-		].forEach((path) => {
-			it(`should block access to ${path}`, async () => {
-				expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
-			});
+		])('should block access to %s', async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
 		});
 
-		['/there/is', '/where'].forEach((path) => {
-			it(`should not block access to ${path}`, async () => {
-				expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
-			});
+		it.each(['/there/is', '/where'])('should not block access to %s', async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
 		});
 	});
 });
