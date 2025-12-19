@@ -3,6 +3,11 @@ import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
+import {
+	extractResourceOperations,
+	formatResourceOperationsForPrompt,
+	type ResourceOperationInfo,
+} from '@/utils/resource-operation-extractor';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
@@ -79,6 +84,7 @@ function formatNodeDetails(
 	withParameters: boolean = false,
 	withConnections: boolean = true,
 	examples: INodeParameters[] = [],
+	resourceOperationInfo?: ResourceOperationInfo | null,
 ): string {
 	const parts: string[] = [];
 
@@ -90,6 +96,11 @@ function formatNodeDetails(
 
 	if (details.subtitle) {
 		parts.push(`<subtitle>${details.subtitle}</subtitle>`);
+	}
+
+	// Resource/Operation info (for nodes that follow this pattern)
+	if (resourceOperationInfo) {
+		parts.push(formatResourceOperationsForPrompt(resourceOperationInfo));
 	}
 
 	// Parameters
@@ -189,6 +200,9 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				// Extract node details
 				const details = extractNodeDetails(nodeType);
 
+				// Extract resource/operation info for nodes that follow this pattern
+				const resourceOperationInfo = extractResourceOperations(nodeType, nodeVersion);
+
 				// Get example configurations from state, filtered by node type and version
 				let examples: INodeParameters[] = [];
 				try {
@@ -202,8 +216,14 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 					examples = [];
 				}
 
-				// Format the output message with examples
-				const message = formatNodeDetails(details, withParameters, withConnections, examples);
+				// Format the output message with examples and resource/operation info
+				const message = formatNodeDetails(
+					details,
+					withParameters,
+					withConnections,
+					examples,
+					resourceOperationInfo,
+				);
 
 				// Report completion
 				const output: NodeDetailsOutput = {

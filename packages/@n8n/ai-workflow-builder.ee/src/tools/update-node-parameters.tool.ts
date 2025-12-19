@@ -1,6 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
-import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
+import type {
+	INode,
+	INodeTypeDescription,
+	INodeParameters,
+	Logger,
+	INodeProperties,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
@@ -36,7 +42,207 @@ const updateNodeParametersSchema = z.object({
 		.describe(
 			'Array of natural language changes to apply to the node parameters (e.g., "Set the URL to call the weather API", "Add an API key header")',
 		),
+	resource: z
+		.string()
+		.optional()
+		.describe(
+			'The resource to configure (e.g., "page", "databasePage"). Use the value from availableResources in the discovery context. When provided, only parameters for this resource will be included in context.',
+		),
+	operation: z
+		.string()
+		.optional()
+		.describe(
+			'The operation to configure (e.g., "create", "archive"). Use the value from availableResources in the discovery context. When provided, only parameters for this operation will be included in context.',
+		),
 });
+
+/**
+ * Check if a property should be visible for a specific node version.
+ * Only evaluates @version conditions, ignoring other displayOptions.
+ *
+ * @param property - The node property to check
+ * @param nodeVersion - The version of the node
+ * @returns true if the property is visible for the given version
+ */
+function isPropertyVisibleForVersion(property: INodeProperties, nodeVersion: number): boolean {
+	const displayOptions = property.displayOptions;
+
+	// No displayOptions means always visible
+	if (!displayOptions) {
+		return true;
+	}
+
+	const { show, hide } = displayOptions;
+
+	// Check 'show' conditions for @version
+	if (show?.['@version']) {
+		const versionConditions = show['@version'];
+		const matches = checkVersionCondition(versionConditions, nodeVersion);
+		if (!matches) {
+			return false; // Version doesn't match show condition
+		}
+	}
+
+	// Check 'hide' conditions for @version
+	if (hide?.['@version']) {
+		const versionConditions = hide['@version'];
+		const matches = checkVersionCondition(versionConditions, nodeVersion);
+		if (matches) {
+			return false; // Version matches hide condition
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Check if a version matches the given version conditions.
+ * Supports both simple values (e.g., [1, 2]) and complex conditions (e.g., [{ _cnd: { gte: 2.2 } }])
+ */
+function checkVersionCondition(conditions: unknown[], nodeVersion: number): boolean {
+	return conditions.some((condition) => {
+		// Simple value match
+		if (typeof condition === 'number') {
+			return condition === nodeVersion;
+		}
+
+		// Complex condition with _cnd operator
+		if (
+			condition &&
+			typeof condition === 'object' &&
+			'_cnd' in condition &&
+			typeof (condition as Record<string, unknown>)._cnd === 'object'
+		) {
+			const cnd = (condition as { _cnd: Record<string, number> })._cnd;
+			const [operator, targetValue] = Object.entries(cnd)[0];
+
+			switch (operator) {
+				case 'eq':
+					return nodeVersion === targetValue;
+				case 'not':
+					return nodeVersion !== targetValue;
+				case 'gte':
+					return nodeVersion >= targetValue;
+				case 'lte':
+					return nodeVersion <= targetValue;
+				case 'gt':
+					return nodeVersion > targetValue;
+				case 'lt':
+					return nodeVersion < targetValue;
+				default:
+					return false;
+			}
+		}
+
+		return false;
+	});
+}
+
+/**
+ * Filter node properties to only include those visible for a specific version.
+ * This ONLY evaluates @version conditions, preserving properties that depend
+ * on other parameter values (like resource/operation).
+ *
+ * @param properties - The node's properties array
+ * @param nodeVersion - The version of the node
+ * @returns Filtered array of properties visible for the given version
+ */
+function filterPropertiesByVersion(
+	properties: INodeProperties[],
+	nodeVersion: number,
+	_nodeTypeDescription: INodeTypeDescription,
+): INodeProperties[] {
+	return properties.filter((property) => isPropertyVisibleForVersion(property, nodeVersion));
+}
+
+/**
+ * Check if a property should be visible for a specific resource.
+ */
+function isPropertyVisibleForResource(property: INodeProperties, resource: string): boolean {
+	const displayOptions = property.displayOptions;
+
+	// No displayOptions or no resource condition means visible for all resources
+	if (!displayOptions?.show?.resource && !displayOptions?.hide?.resource) {
+		return true;
+	}
+
+	// Check 'show' conditions for resource
+	if (displayOptions.show?.resource) {
+		const resourceCondition = displayOptions.show.resource;
+		if (!resourceCondition.includes(resource)) {
+			return false;
+		}
+	}
+
+	// Check 'hide' conditions for resource
+	if (displayOptions.hide?.resource) {
+		const resourceCondition = displayOptions.hide.resource;
+		if (resourceCondition.includes(resource)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Check if a property should be visible for a specific operation.
+ */
+function isPropertyVisibleForOperation(property: INodeProperties, operation: string): boolean {
+	const displayOptions = property.displayOptions;
+
+	// No displayOptions or no operation condition means visible for all operations
+	if (!displayOptions?.show?.operation && !displayOptions?.hide?.operation) {
+		return true;
+	}
+
+	// Check 'show' conditions for operation
+	if (displayOptions.show?.operation) {
+		const operationCondition = displayOptions.show.operation;
+		if (!operationCondition.includes(operation)) {
+			return false;
+		}
+	}
+
+	// Check 'hide' conditions for operation
+	if (displayOptions.hide?.operation) {
+		const operationCondition = displayOptions.hide.operation;
+		if (operationCondition.includes(operation)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Filter node properties by resource and operation.
+ * This dramatically reduces the context sent to the LLM for nodes with many resources/operations.
+ *
+ * @param properties - The node's properties array
+ * @param resource - The resource to filter by (optional)
+ * @param operation - The operation to filter by (optional)
+ * @returns Filtered array of properties
+ */
+function filterPropertiesByResourceOperation(
+	properties: INodeProperties[],
+	resource?: string,
+	operation?: string,
+): INodeProperties[] {
+	return properties.filter((property) => {
+		// If resource is specified, check resource visibility
+		if (resource && !isPropertyVisibleForResource(property, resource)) {
+			return false;
+		}
+
+		// If operation is specified, check operation visibility
+		if (operation && !isPropertyVisibleForOperation(property, operation)) {
+			return false;
+		}
+
+		return true;
+	});
+}
 
 /**
  * Build a success message for the parameter update
@@ -58,6 +264,8 @@ async function processParameterUpdates(
 	llm: BaseChatModel,
 	logger?: Logger,
 	instanceUrl?: string,
+	resource?: string,
+	operation?: string,
 ): Promise<INodeParameters> {
 	const workflow = getCurrentWorkflow(state);
 
@@ -67,8 +275,53 @@ async function processParameterUpdates(
 	// Format inputs for the chain
 	const formattedChanges = formatChangesForPrompt(changes);
 
-	// Get the node's properties definition as JSON
+	// DEBUG: Log node version and type info
+	console.log('=== DEBUG: processParameterUpdates ===');
+	console.log('Node ID:', nodeId);
+	console.log('Node Type:', node.type);
+	console.log('Node Version:', node.typeVersion);
+	console.log('Node Type Definition versions:', nodeType.version);
+	console.log('Requested changes:', changes);
+	console.log('Resource filter:', resource ?? 'none');
+	console.log('Operation filter:', operation ?? 'none');
+
+	// Get the node's properties definition as JSON (unfiltered)
 	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+	const nodePropertiesTokenEstimate = Math.ceil(nodePropertiesJson.length / 4);
+	console.log(
+		`Node properties JSON size (UNFILTERED): ${nodePropertiesJson.length} chars (~${nodePropertiesTokenEstimate} tokens)`,
+	);
+
+	// Step 1: Filter by version
+	const versionFilteredProperties = filterPropertiesByVersion(
+		nodeType.properties || [],
+		node.typeVersion,
+		nodeType,
+	);
+	console.log(
+		`After version filtering: ${versionFilteredProperties.length} properties (from ${nodeType.properties?.length ?? 0})`,
+	);
+
+	// Step 2: Filter by resource/operation (if provided)
+	const finalFilteredProperties = filterPropertiesByResourceOperation(
+		versionFilteredProperties,
+		resource,
+		operation,
+	);
+
+	// Get final filtered JSON for the LLM
+	const filteredPropertiesJson = JSON.stringify(finalFilteredProperties, null, 2);
+	const filteredTokenEstimate = Math.ceil(filteredPropertiesJson.length / 4);
+
+	const totalReduction =
+		nodeType.properties?.length && nodeType.properties.length > 0
+			? ((1 - finalFilteredProperties.length / nodeType.properties.length) * 100).toFixed(1)
+			: '0.0';
+
+	console.log(`After resource/operation filtering: ${finalFilteredProperties.length} properties`);
+	console.log(
+		`FINAL: ${filteredPropertiesJson.length} chars (~${filteredTokenEstimate} tokens) - ${totalReduction}% reduction`,
+	);
 
 	// Call the parameter updater chain with dynamic prompt building
 	const parametersChain = createParameterUpdaterChain(
@@ -89,7 +342,7 @@ async function processParameterUpdates(
 		node_name: node.name,
 		node_type: node.type,
 		current_parameters: JSON.stringify(currentParameters, null, 2),
-		node_definition: nodePropertiesJson,
+		node_definition: filteredPropertiesJson, // Use filtered properties for LLM context
 		changes: formattedChanges,
 		instanceUrl: instanceUrl ?? '',
 	})) as INodeParameters;
@@ -150,7 +403,7 @@ export function createUpdateNodeParametersTool(
 			try {
 				// Validate input using Zod schema
 				const validatedInput = updateNodeParametersSchema.parse(input);
-				const { nodeId, changes } = validatedInput;
+				const { nodeId, changes, resource, operation } = validatedInput;
 
 				// Get current state
 				const state = getWorkflowState();
@@ -193,6 +446,8 @@ export function createUpdateNodeParametersTool(
 						llm,
 						logger,
 						instanceUrl,
+						resource,
+						operation,
 					);
 
 					// Create updated node

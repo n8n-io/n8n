@@ -36,7 +36,25 @@ const PARAMETER_CONFIGURATION = `Use update_node_parameters with natural languag
 - "Set URL to https://api.example.com/weather"
 - "Add header Authorization: Bearer token"
 - "Set method to POST"
-- "Add field 'status' with value 'processed'"`;
+- "Add field 'status' with value 'processed'"
+
+IMPORTANT: For nodes with resource/operation patterns (like Notion, Google Sheets, etc.):
+- Check the discoveryContext for availableResources which lists valid resources and operations for each node
+- When calling update_node_parameters, ALWAYS pass the resource and operation parameters if the node has them
+- This dramatically improves accuracy and reduces errors
+- Example: update_node_parameters(nodeId, changes, resource="page", operation="archive")
+- DO NOT specify resource/operation values in the changes array - use the dedicated parameters instead`;
+
+const RESOURCE_OPERATION_GUIDANCE = `When configuring nodes with resource/operation patterns:
+1. Look up the node in discoveryContext.nodesFound to find availableResources
+2. Choose the appropriate resource and operation based on the user's request
+3. Pass them as the resource and operation parameters to update_node_parameters
+4. Only include other parameter changes in the changes array
+
+Example for Notion:
+- If discoveryContext shows: page: [archive, create, search]
+- And user wants to "archive a page"
+- Call: update_node_parameters(nodeId, ["Set page ID to ={{ $json.pageId }}"], resource="page", operation="archive")`;
 
 const DATA_REFERENCING = `Nodes output an array of items. Nodes have access to the output items of all the nodes that have already executed.
 
@@ -131,6 +149,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
+		.section('resource_operation_guidance', RESOURCE_OPERATION_GUIDANCE)
 		.section('data_referencing', DATA_REFERENCING)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
