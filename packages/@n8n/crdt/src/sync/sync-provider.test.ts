@@ -134,6 +134,25 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('SyncProvider Conformance:
 
 			expect(states).toEqual([true]); // Only got the start, not the stop
 		});
+
+		it('should not create infinite sync loop when applying updates', async () => {
+			await sync1.start();
+			await sync2.start();
+
+			let updateCount1 = 0;
+			let updateCount2 = 0;
+
+			doc1.onUpdate(() => updateCount1++);
+			doc2.onUpdate(() => updateCount2++);
+
+			// Make a single change
+			map1.set('key', 'value');
+
+			// Should have limited update calls, not infinite loop
+			// Each doc emits 1 update for the change, possibly 1 more for sync receipt
+			expect(updateCount1).toBeLessThan(5);
+			expect(updateCount2).toBeLessThan(5);
+		});
 	});
 
 	describe('Three-doc chain sync', () => {

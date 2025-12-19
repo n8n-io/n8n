@@ -79,3 +79,13 @@ await syncB.start();
 - `SyncProvider` - Manages document synchronization
 - `SyncTransport` - Transport interface for moving binary data
 - `MockTransport` - In-memory transport for testing
+
+## Provider Differences
+
+While the API is unified, some edge-case behaviors differ between providers:
+
+| Behavior | Yjs | Automerge |
+|----------|-----|-----------|
+| Array out-of-bounds index | Throws `RangeError` | Clamps to valid range |
+
+For portable code, always use valid indices (`0 <= index <= length`).
