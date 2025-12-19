@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from './Button.vue';
+import MarkdownRenderer from './MarkdownRenderer.vue';
 
 defineProps<{
 	text: string;
@@ -18,7 +19,7 @@ defineProps<{
 
 <template>
 	<div>
-		<div>{{ text }}</div>
+		<MarkdownRenderer :text="text" />
 		<div :class="$style.buttons">
 			<Button element="a" :href="approve.link" :type="approve.type" target="_blank">{{
 				approve.text
