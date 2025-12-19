@@ -1,5 +1,5 @@
-import { ChangeAction, CRDTEngine, createCRDTProvider } from './index';
-import type { CRDTDoc, CRDTMap, DeepChangeEvent } from './types';
+import { ChangeAction, CRDTEngine, createCRDTProvider, isMapChange } from './index';
+import type { CRDTDoc, CRDTMap, DeepChange, DeepChangeEvent } from './types';
 
 describe('createCRDTProvider', () => {
 	it('should create a Yjs provider', () => {
@@ -173,7 +173,7 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 		});
 
 		it('should batch changes in transact()', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			doc.transact(() => {
@@ -232,50 +232,54 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 
 	describe('Deep Change Events', () => {
 		it('should emit add events', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('key', 'value');
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].action).toBe(ChangeAction.add);
-			expect(changes[0].path).toEqual(['key']);
-			expect(changes[0].value).toBe('value');
+			expect(isMapChange(changes[0])).toBe(true);
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.action).toBe(ChangeAction.add);
+			expect(change.path).toEqual(['key']);
+			expect(change.value).toBe('value');
 		});
 
 		it('should emit update events with oldValue', () => {
 			map.set('key', 'old');
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('key', 'new');
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].action).toBe(ChangeAction.update);
-			expect(changes[0].path).toEqual(['key']);
-			expect(changes[0].value).toBe('new');
-			expect(changes[0].oldValue).toBe('old');
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.action).toBe(ChangeAction.update);
+			expect(change.path).toEqual(['key']);
+			expect(change.value).toBe('new');
+			expect(change.oldValue).toBe('old');
 		});
 
 		it('should emit delete events with oldValue', () => {
 			map.set('key', 'value');
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.delete('key');
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].action).toBe(ChangeAction.delete);
-			expect(changes[0].path).toEqual(['key']);
-			expect(changes[0].oldValue).toBe('value');
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.action).toBe(ChangeAction.delete);
+			expect(change.path).toEqual(['key']);
+			expect(change.oldValue).toBe('value');
 		});
 
 		it('should emit deep path for nested modifications', () => {
 			map.set('node', { position: { x: 100, y: 200 } });
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			const nodeMap = map.get('node') as CRDTMap<unknown>;
@@ -283,31 +287,33 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			positionMap.set('x', 150);
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].path).toEqual(['node', 'position', 'x']);
-			expect(changes[0].action).toBe(ChangeAction.update);
-			expect(changes[0].value).toBe(150);
-			expect(changes[0].oldValue).toBe(100);
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.path).toEqual(['node', 'position', 'x']);
+			expect(change.action).toBe(ChangeAction.update);
+			expect(change.value).toBe(150);
+			expect(change.oldValue).toBe(100);
 		});
 
 		it('should emit single event for full object replacement', () => {
 			map.set('node', { position: { x: 100, y: 200 } });
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('node', { position: { x: 150, y: 200 } });
 
 			expect(changes).toHaveLength(1);
-			expect(changes[0].path).toEqual(['node']);
-			expect(changes[0].action).toBe(ChangeAction.update);
-			expect(changes[0].value).toEqual({ position: { x: 150, y: 200 } });
+			const change = changes[0] as DeepChangeEvent;
+			expect(change.path).toEqual(['node']);
+			expect(change.action).toBe(ChangeAction.update);
+			expect(change.value).toEqual({ position: { x: 150, y: 200 } });
 			// Note: oldValue for full object replacement may vary by provider
 			// Yjs returns {} because the Y.Map is already replaced when toJSON is called
 			// Automerge can reconstruct the old value from document history
 		});
 
 		it('should stop emitting events after unsubscribe', () => {
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			const unsubscribe = map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
 			map.set('key1', 'value1');
@@ -478,7 +484,7 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			const workflow = createWorkflowData(3);
 			map.set('workflow', workflow);
 
-			const changes: DeepChangeEvent[] = [];
+			const changes: DeepChange[] = [];
 			map.onDeepChange((events) => changes.push(...events));
 
 			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
@@ -487,7 +493,9 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			node1.set('name', 'Renamed Node');
 
 			expect(changes.length).toBeGreaterThan(0);
-			const nameChange = changes.find((c) => c.path.includes('name') && c.value === 'Renamed Node');
+			const nameChange = changes
+				.filter(isMapChange)
+				.find((c) => c.path.includes('name') && c.value === 'Renamed Node');
 			expect(nameChange).toBeDefined();
 		});
 

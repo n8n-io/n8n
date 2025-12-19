@@ -1,10 +1,12 @@
 import * as Y from 'yjs';
 
 import type {
+	ArrayChangeEvent,
 	CRDTArray,
 	CRDTDoc,
 	CRDTMap,
 	CRDTProvider,
+	DeepChange,
 	DeepChangeEvent,
 	Unsubscribe,
 } from '../types';
@@ -94,10 +96,56 @@ class YjsArray<T = unknown> implements CRDTArray<T> {
 		return this.toArray();
 	}
 
-	onDeepChange(_handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
-		// Will be implemented in step 1.4
-		throw new Error('onDeepChange not yet implemented for YjsArray');
+	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe {
+		const observer = (events: Array<Y.YEvent<Y.Array<unknown>>>) => {
+			const changes: DeepChange[] = [];
+
+			for (const event of events) {
+				if (event instanceof Y.YArrayEvent) {
+					// Pass through Yjs delta format directly
+					changes.push(arrayEventToChange(event));
+				} else if (event instanceof Y.YMapEvent) {
+					changes.push(...mapEventToChanges(event));
+				}
+			}
+
+			if (changes.length > 0) {
+				handler(changes);
+			}
+		};
+
+		this.yArray.observeDeep(observer);
+
+		return () => {
+			this.yArray.unobserveDeep(observer);
+		};
 	}
+}
+
+/**
+ * Convert Yjs array event to ArrayChangeEvent (pass-through delta format).
+ */
+function arrayEventToChange(event: Y.YArrayEvent<unknown>): ArrayChangeEvent {
+	return {
+		path: event.path,
+		delta: event.delta as ArrayChangeEvent['delta'],
+	};
+}
+
+/**
+ * Convert Yjs map events to DeepChangeEvents.
+ */
+function mapEventToChanges(event: Y.YMapEvent<unknown>): DeepChangeEvent[] {
+	return Array.from(event.changes.keys, ([key, change]) => ({
+		path: [...event.path, key],
+		action: change.action,
+		...(change.action !== ChangeAction.delete && {
+			value: toJSONValue(event.target.get(key)),
+		}),
+		...(change.action !== ChangeAction.add && {
+			oldValue: toJSONValue(change.oldValue),
+		}),
+	}));
 }
 
 /**
@@ -150,22 +198,17 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 		return this.yMap.toJSON() as Record<string, T>;
 	}
 
-	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
+	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe {
 		const observer = (events: Array<Y.YEvent<Y.Map<unknown>>>) => {
-			const changes: DeepChangeEvent[] = events
-				.filter((event): event is Y.YMapEvent<unknown> => event instanceof Y.YMapEvent)
-				.flatMap((mapEvent) =>
-					Array.from(mapEvent.changes.keys, ([key, change]) => ({
-						path: [...mapEvent.path, key],
-						action: change.action,
-						...(change.action !== ChangeAction.delete && {
-							value: toJSONValue(mapEvent.target.get(key)),
-						}),
-						...(change.action !== ChangeAction.add && {
-							oldValue: toJSONValue(change.oldValue),
-						}),
-					})),
-				);
+			const changes: DeepChange[] = [];
+
+			for (const event of events) {
+				if (event instanceof Y.YArrayEvent) {
+					changes.push(arrayEventToChange(event));
+				} else if (event instanceof Y.YMapEvent) {
+					changes.push(...mapEventToChanges(event));
+				}
+			}
 
 			if (changes.length > 0) {
 				handler(changes);

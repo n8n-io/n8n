@@ -6,7 +6,11 @@ import type { CRDTConfig, CRDTProvider } from './types';
 // Types
 export type {
 	Unsubscribe,
+	ArrayDelta,
+	ArrayChangeEvent,
 	DeepChangeEvent,
+	DeepChange,
+	CRDTArray,
 	CRDTMap,
 	CRDTDoc,
 	CRDTProvider,
@@ -15,6 +19,9 @@ export type {
 
 // Constants (also exports corresponding types via declaration merging)
 export { ChangeAction, CRDTEngine } from './types';
+
+// Type guards
+export { isMapChange, isArrayChange } from './types';
 
 // Providers
 export { YjsProvider } from './providers/yjs';

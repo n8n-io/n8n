@@ -16,7 +16,7 @@ export type ChangeAction = (typeof ChangeAction)[keyof typeof ChangeAction];
 
 /**
  * Represents a deep change event emitted when nested data in a CRDT structure changes.
- * This unified format works identically for both Yjs and Automerge providers.
+ * Used for Map changes (key-value updates).
  */
 export interface DeepChangeEvent {
 	/** Full path to changed value, e.g., ['node-1', 'position', 'x'] */
@@ -27,6 +27,50 @@ export interface DeepChangeEvent {
 	value?: unknown;
 	/** Previous value (for update/delete) */
 	oldValue?: unknown;
+}
+
+/**
+ * Delta operation for array changes (Quill delta format).
+ * At most one of insert/retain/delete should be set.
+ */
+export interface ArrayDelta {
+	/** Items to insert at current position */
+	insert?: unknown[];
+	/** Number of items to skip/retain */
+	retain?: number;
+	/** Number of items to delete */
+	delete?: number;
+}
+
+/**
+ * Array change event using delta format.
+ */
+export interface ArrayChangeEvent {
+	/** Path to the array that changed */
+	path: Array<string | number>;
+	/** Delta operations describing the change */
+	delta: ArrayDelta[];
+}
+
+/**
+ * Union type for deep change events from observeDeep.
+ * Array mutations emit ArrayChangeEvent (delta format).
+ * Map mutations emit DeepChangeEvent (action format).
+ */
+export type DeepChange = ArrayChangeEvent | DeepChangeEvent;
+
+/**
+ * Type guard to check if a DeepChange is a DeepChangeEvent (map change).
+ */
+export function isMapChange(change: DeepChange): change is DeepChangeEvent {
+	return 'action' in change;
+}
+
+/**
+ * Type guard to check if a DeepChange is an ArrayChangeEvent (array change).
+ */
+export function isArrayChange(change: DeepChange): change is ArrayChangeEvent {
+	return 'delta' in change;
 }
 
 /**
@@ -48,8 +92,8 @@ export interface CRDTArray<T = unknown> {
 	toArray(): T[];
 	/** Convert to JSON (alias for toArray) */
 	toJSON(): T[];
-	/** Subscribe to deep changes */
-	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe;
+	/** Subscribe to deep changes (this array and all nested structures) */
+	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe;
 }
 
 /**
@@ -73,8 +117,8 @@ export interface CRDTMap<T = unknown> {
 	entries(): IterableIterator<[string, T]>;
 	/** Convert to plain JSON object */
 	toJSON(): Record<string, T>;
-	/** Subscribe to deep changes (nested property changes) */
-	onDeepChange(handler: (changes: DeepChangeEvent[]) => void): Unsubscribe;
+	/** Subscribe to deep changes (this map and all nested structures) */
+	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe;
 }
 
 /**
