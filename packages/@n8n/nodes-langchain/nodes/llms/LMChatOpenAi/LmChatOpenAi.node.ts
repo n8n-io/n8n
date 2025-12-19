@@ -19,6 +19,8 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 const INCLUDE_JSON_WARNING: INodeProperties = {
 	displayName:
@@ -739,7 +741,11 @@ export class LmChatOpenAi implements INodeType {
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as ModelOptions;
 
-		const configuration: ClientOptions = {};
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+
+		const configuration: ClientOptions = {
+			defaultHeaders,
+		};
 
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
@@ -758,9 +764,7 @@ export class LmChatOpenAi implements INodeType {
 			credentials.headerName &&
 			typeof credentials.headerValue === 'string'
 		) {
-			configuration.defaultHeaders = {
-				[credentials.headerName]: credentials.headerValue,
-			};
+			configuration.defaultHeaders[credentials.headerName] = credentials.headerValue;
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
