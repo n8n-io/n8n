@@ -1,6 +1,13 @@
 import { test, expect } from '../../fixtures/base';
 
-test('Leader election @mode:multi-main @chaostest', async ({ chaos }) => {
+// Enable observability to use VictoriaLogs for log queries
+test.use({
+	addContainerCapability: {
+		observability: true,
+	},
+});
+
+test('Leader election @mode:multi-main @chaostest @capability:observability', async ({ chaos }) => {
 	// First get the container (try main 1 first)
 	const namePattern = 'n8n-main-*';
 
