@@ -13,12 +13,13 @@ import { v4 as uuid } from 'uuid';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { commentFields, commentOperations } from './CommentDescription';
-import { prepareBinariesDataList, twistApiRequest } from './GenericFunctions';
+import { twistApiRequest } from './GenericFunctions';
 import {
 	messageConversationFields,
 	messageConversationOperations,
 } from './MessageConversationDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { prepareBinariesDataList } from '../../utils/binary';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {

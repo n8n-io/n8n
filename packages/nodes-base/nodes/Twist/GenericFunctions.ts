@@ -5,7 +5,6 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
-	IBinaryData,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -40,10 +39,4 @@ export async function twistApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-}
-
-export function prepareBinariesDataList(data: string | string[] | IBinaryData | IBinaryData[]) {
-	if (Array.isArray(data)) return data;
-	if (typeof data === 'object') return [data];
-	return data.split(',').map((item: string) => item.trim());
 }
