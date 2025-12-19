@@ -310,12 +310,17 @@ export function useBuilderMessages() {
 		});
 	}
 
-	function createUserMessage(content: string, id: string): ChatUI.AssistantMessage {
+	function createUserMessage(
+		content: string,
+		id: string,
+		revertVersion?: { id: string; createdAt: string },
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			role: 'user',
 			type: 'text',
 			content,
+			revertVersion,
 			read: true,
 		};
 	}
@@ -391,6 +396,7 @@ export function useBuilderMessages() {
 				role: message.role ?? 'assistant',
 				type: 'text',
 				content: message.text,
+				revertVersion: message.revertVersion,
 				read: false,
 			} satisfies ChatUI.AssistantMessage;
 		}
