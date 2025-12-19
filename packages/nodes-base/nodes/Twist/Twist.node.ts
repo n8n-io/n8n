@@ -19,6 +19,7 @@ import {
 	messageConversationOperations,
 } from './MessageConversationDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
+import { prepareBinariesDataList } from '../../utils/binary';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
@@ -245,7 +246,7 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(body.binaryProperties as string);
 
 							const attachments: IDataObject[] = [];
 
@@ -343,7 +344,7 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(body.binaryProperties as string);
 
 							const attachments: IDataObject[] = [];
 
@@ -411,7 +412,7 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(body.binaryProperties as string);
 
 							const attachments: IDataObject[] = [];
 
@@ -525,7 +526,7 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(body.binaryProperties as string);
 
 							const attachments: IDataObject[] = [];
 
@@ -598,7 +599,7 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(body.binaryProperties as string);
 
 							const attachments: IDataObject[] = [];
 
@@ -695,7 +696,7 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',');
+							const binaryProperties = prepareBinariesDataList(body.binaryProperties as string);
 
 							const attachments: IDataObject[] = [];
 
