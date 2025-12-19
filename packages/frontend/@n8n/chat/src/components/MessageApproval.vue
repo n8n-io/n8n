@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from '@n8n/chat/components';
+import Button from './Button.vue';
 
 defineProps<{
 	text: string;
@@ -38,7 +38,7 @@ defineProps<{
 <style lang="scss" module>
 .buttons {
 	display: flex;
-	gap: 12px;
-	margin-top: 12px;
+	gap: var(--chat--spacing);
+	margin-top: var(--chat--spacing);
 }
 </style>

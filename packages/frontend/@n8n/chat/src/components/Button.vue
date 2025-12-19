@@ -28,7 +28,6 @@ const buttonTypeClass = computed(() => {
 	text-align: center;
 	vertical-align: middle;
 	user-select: none;
-	border: var(--chat--button--border-width) solid;
 	padding: var(--chat--button--padding);
 	font-size: var(--chat--button--font-size);
 	line-height: var(--chat--button--line-height);
@@ -54,24 +53,24 @@ const buttonTypeClass = computed(() => {
 .chat-button-primary {
 	color: var(--chat--button--color--primary);
 	background-color: var(--chat--button--background--primary);
-	border-color: var(--chat--button--border-color--primary);
+	border: var(--chat--button--border--primary);
 
 	&:hover {
 		color: var(--chat--button--hover--color);
 		background-color: var(--chat--button--hover--background);
-		border-color: var(--chat--button--border-color--primary--hover);
+		border: var(--chat--button--border--primary--hover);
 	}
 }
 
 .chat-button-secondary {
 	color: var(--chat--button--color--secondary);
 	background-color: var(--chat--button--background--secondary);
-	border-color: var(--chat--button--border-color--secondary);
+	border: var(--chat--button--border--secondary);
 
 	&:hover {
 		color: var(--chat--button--color--secondary--hover);
 		background-color: var(--chat--button--background--secondary--hover);
-		border-color: var(--chat--button--border-color--secondary--hover);
+		border: var(--chat--button--border--secondary--hover);
 	}
 }
 </style>

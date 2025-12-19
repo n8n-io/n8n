@@ -89,23 +89,22 @@
 	--chat--button--background: var(--chat--color--primary);
 	--chat--button--padding: calc(var(--chat--spacing) * 1 / 2) var(--chat--spacing);
 	--chat--button--border-radius: var(--chat--border-radius);
-	--chat--button--border-width: 0;
 	--chat--button--font-size: 1rem;
 	--chat--button--line-height: 1.5;
 	--chat--button--hover--color: var(--chat--color-light);
 	--chat--button--hover--background: var(--chat--color--primary-shade-50);
 	--chat--button--color--primary: var(--chat--color-light);
 	--chat--button--background--primary: var(--chat--color--primary);
-	--chat--button--border-color--primary: var(--chat--color--primary);
+	--chat--button--border--primary: none;
 	--chat--button--color--primary--hover: var(--chat--color-light);
 	--chat--button--background--primary--hover: var(--chat--color--primary-shade-50);
-	--chat--button--border-color--primary--hover: var(--chat--color--primary-shade-50);
+	--chat--button--border--primary--hover: none;
 	--chat--button--color--secondary: var(--chat--color-light);
 	--chat--button--background--secondary: var(--chat--color--secondary);
-	--chat--button--border-color--secondary: var(--chat--color--secondary);
+	--chat--button--border--secondary: none;
 	--chat--button--color--secondary--hover: var(--chat--color-light);
 	--chat--button--background--secondary--hover: var(--chat--color-secondary-shade-50);
-	--chat--button--border-color--secondary--hover: var(--chat--color-secondary-shade-50);
+	--chat--button--border--secondary--hover: none;
 	--chat--close--button--color-hover: var(--chat--color--primary);
 
 	/* Send and File Buttons */
