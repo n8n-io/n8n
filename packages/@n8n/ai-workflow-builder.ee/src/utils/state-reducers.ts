@@ -1,4 +1,4 @@
-import type { WorkflowMetadata } from '../types/tools';
+import type { WorkflowMetadata } from '../types';
 
 /**
  * Reducer for appending arrays with null/empty check.
@@ -9,7 +9,7 @@ export function appendArrayReducer<T>(current: T[], update: T[] | undefined | nu
 }
 
 /**
- * Reducer for caching workflow templates, deduplicating by name.
+ * Reducer for caching workflow templates, deduplicating by template ID.
  * Merges new templates with existing ones, avoiding duplicates.
  */
 export function cachedTemplatesReducer(
@@ -20,15 +20,15 @@ export function cachedTemplatesReducer(
 		return current;
 	}
 
-	// Build a map of existing templates by name for fast lookup
-	const existingByName = new Map(current.map((wf) => [wf.name, wf]));
+	// Build a map of existing templates by ID for fast lookup
+	const existingById = new Map(current.map((wf) => [wf.templateId, wf]));
 
 	// Add new templates that don't already exist
 	for (const workflow of update) {
-		if (!existingByName.has(workflow.name)) {
-			existingByName.set(workflow.name, workflow);
+		if (!existingById.has(workflow.templateId)) {
+			existingById.set(workflow.templateId, workflow);
 		}
 	}
 
-	return Array.from(existingByName.values());
+	return Array.from(existingById.values());
 }

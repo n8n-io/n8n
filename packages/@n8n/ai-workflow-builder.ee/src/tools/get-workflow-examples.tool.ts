@@ -12,7 +12,7 @@ import {
 	createSuccessResponse,
 	createErrorResponse,
 } from './helpers';
-import { processWorkflowExamples } from './utils/markdown-workflow.utils';
+import { processWorkflowExamples } from './utils/mermaid.utils';
 import { fetchWorkflowsFromTemplates } from './web/templates';
 
 /**

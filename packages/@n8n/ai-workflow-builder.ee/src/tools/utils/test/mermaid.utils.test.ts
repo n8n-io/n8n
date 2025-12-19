@@ -1,6 +1,6 @@
 import type { WorkflowMetadata } from '@/types';
 
-import { mermaidStringify, processWorkflowExamples } from '../markdown-workflow.utils';
+import { mermaidStringify, processWorkflowExamples } from '../mermaid.utils';
 import { aiAssistantWorkflow } from './workflows/ai-assistant.workflow';
 
 describe('markdown-workflow.utils', () => {

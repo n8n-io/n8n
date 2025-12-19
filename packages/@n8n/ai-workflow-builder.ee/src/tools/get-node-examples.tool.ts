@@ -13,7 +13,7 @@ import {
 	getWorkflowState,
 	reportProgress,
 } from './helpers';
-import { mermaidStringify } from './utils/markdown-workflow.utils';
+import { mermaidStringify } from './utils/mermaid.utils';
 import {
 	formatNodeConfigurationExamples,
 	getNodeConfigurationsFromTemplates,
@@ -45,9 +45,8 @@ const TOOL_CONFIG: Record<NodeExampleType, { meta: BuilderToolBase; description:
 		description: `Get real-world parameter configuration examples for a specific node type from community templates.
 
 Use this tool when you need reference examples for configuring node parameters:
-- Before configuring nodes with complex parameters
 - When you need to understand proper parameter structure
-- To see how community workflows configure specific integrations
+- To see how templated workflows configure specific integrations
 
 Parameters:
 - nodeType: The exact node type (e.g., "n8n-nodes-base.httpRequest")

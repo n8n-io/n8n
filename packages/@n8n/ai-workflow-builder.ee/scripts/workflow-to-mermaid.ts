@@ -5,7 +5,7 @@ import { jsonParse } from 'n8n-workflow';
 import { basename, dirname, join } from 'path';
 import pc from 'picocolors';
 
-import { mermaidStringify, type MermaidOptions } from '@/tools/utils/markdown-workflow.utils';
+import { mermaidStringify, type MermaidOptions } from '@/tools/utils/mermaid.utils';
 import type { WorkflowMetadata } from '@/types';
 import type { SimpleWorkflow } from '@/types/workflow';
 

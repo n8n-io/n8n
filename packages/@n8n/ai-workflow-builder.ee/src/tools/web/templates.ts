@@ -158,6 +158,7 @@ export async function fetchWorkflowsFromTemplates(
 				const fullWorkflow = await fetchTemplateByID(template.id);
 				return {
 					metadata: {
+						templateId: template.id,
 						name: template.name,
 						description: template.description,
 						workflow: fullWorkflow.workflow,

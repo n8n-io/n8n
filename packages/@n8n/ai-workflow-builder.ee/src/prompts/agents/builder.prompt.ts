@@ -233,10 +233,20 @@ Usage:
 - nodeType: "n8n-nodes-base.splitInBatches" (exact node type)
 - Returns mermaid diagrams showing how the node is typically connected
 
-CRITICAL for splitInBatches:
-- Output 0 (first connection) = "Done" branch - runs AFTER all looping completes
-- Output 1 (second connection) = "Loop" branch - processes each batch during the loop
-- This is COUNTERINTUITIVE - always verify with examples if unsure
+CRITICAL for Loop Over Items (splitInBatches):
+This node has TWO outputs that work differently from most nodes:
+- Output 0 (first array element) = "Done" branch - connects to nodes that run AFTER all looping completes
+- Output 1 (second array element) = "Loop" branch - connects to nodes that process each batch during the loop
+This is COUNTERINTUITIVE - the loop processing is on output 1, NOT output 0.
+
+When connecting splitInBatches, use sourceOutputIndex to specify which output:
+- sourceOutputIndex: 0 → "Done" branch (post-loop processing, aggregation)
+- sourceOutputIndex: 1 → "Loop" branch (batch processing during loop)
+
+Example: Looping over items, processing each batch, then aggregating results:
+- connect_nodes(source: "Loop Over Items", target: "Process Each Batch", sourceOutputIndex: 1)  // Loop branch
+- connect_nodes(source: "Loop Over Items", target: "Aggregate Results", sourceOutputIndex: 0)  // Done branch
+- connect_nodes(source: "Process Each Batch", target: "Loop Over Items")  // Loop back for next batch
 </node_connection_examples>`;
 
 const CONNECTION_TYPES = `<connection_type_reference>

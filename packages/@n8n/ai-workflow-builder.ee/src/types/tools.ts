@@ -158,6 +158,7 @@ export interface CategorizePromptOutput {
  * Description of a workflow example we have found
  */
 export interface WorkflowMetadata {
+	templateId: number;
 	name: string;
 	description?: string;
 	workflow: SimpleWorkflow;
