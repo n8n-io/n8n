@@ -1,4 +1,11 @@
-import type { CRDTDoc, CRDTMap, DeepChange, DeepChangeEvent } from '../types';
+import type {
+	ArrayChangeEvent,
+	CRDTArray,
+	CRDTDoc,
+	CRDTMap,
+	DeepChange,
+	DeepChangeEvent,
+} from '../types';
 import { ChangeAction } from '../types';
 import { AutomergeProvider } from './automerge';
 
@@ -78,11 +85,12 @@ describe('AutomergeProvider', () => {
 			expect(map.toJSON()).toEqual({ a: '1', b: '2' });
 		});
 
-		it('should return the same map instance for the same name', () => {
+		it('should share underlying data for the same name', () => {
 			const map1 = doc.getMap('test-map');
 			const map2 = doc.getMap('test-map');
 
-			expect(map1).toBe(map2);
+			map1.set('key', 'value');
+			expect(map2.get('key')).toBe('value');
 		});
 
 		it('should batch changes in transact()', () => {
@@ -258,6 +266,223 @@ describe('AutomergeProvider', () => {
 			expect(lastChange.action).toBe(ChangeAction.update);
 			expect(lastChange.value).toBe('updated');
 			expect(lastChange.oldValue).toBe('value');
+		});
+
+		it('should return CRDTArray when getting array value from map', () => {
+			map.set('items', ['a', 'b', 'c']);
+
+			const items = map.get('items') as CRDTArray<string>;
+			expect(items.length).toBe(3);
+			expect(items.get(0)).toBe('a');
+			expect(items.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should emit ArrayChangeEvent when nested array is modified via get()', () => {
+			map.set('items', ['a', 'b']);
+
+			const changes: DeepChange[] = [];
+			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+
+			// Modify the nested array
+			const items = map.get('items') as CRDTArray<string>;
+			items.push('c');
+
+			expect(changes).toHaveLength(1);
+			const change = changes[0] as ArrayChangeEvent;
+			expect(change.path).toEqual(['items']);
+			expect(change.delta).toEqual([{ retain: 2 }, { insert: ['c'] }]);
+		});
+
+		it('should emit ArrayChangeEvent with correct path for deeply nested array', () => {
+			map.set('node-1', { connections: ['conn-a'] });
+
+			const changes: DeepChange[] = [];
+			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+
+			const node = map.get('node-1') as CRDTMap<unknown>;
+			const connections = node.get('connections') as CRDTArray<string>;
+			connections.push('conn-b');
+
+			expect(changes).toHaveLength(1);
+			const change = changes[0] as ArrayChangeEvent;
+			expect(change.path).toEqual(['node-1', 'connections']);
+			expect(change.delta).toEqual([{ retain: 1 }, { insert: ['conn-b'] }]);
+		});
+	});
+
+	describe('CRDTArray basic operations', () => {
+		let doc: CRDTDoc;
+		let arr: CRDTArray<string>;
+
+		beforeEach(() => {
+			const provider = new AutomergeProvider();
+			doc = provider.createDoc('test');
+			arr = doc.getArray<string>('test-array');
+		});
+
+		afterEach(() => {
+			doc.destroy();
+		});
+
+		it('should push and get values', () => {
+			arr.push('a', 'b', 'c');
+
+			expect(arr.get(0)).toBe('a');
+			expect(arr.get(1)).toBe('b');
+			expect(arr.get(2)).toBe('c');
+			expect(arr.get(3)).toBeUndefined();
+		});
+
+		it('should report correct length', () => {
+			expect(arr.length).toBe(0);
+
+			arr.push('a');
+			expect(arr.length).toBe(1);
+
+			arr.push('b', 'c');
+			expect(arr.length).toBe(3);
+		});
+
+		it('should insert at index', () => {
+			arr.push('a', 'c');
+			arr.insert(1, 'b');
+
+			expect(arr.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should insert multiple items at index', () => {
+			arr.push('a', 'd');
+			arr.insert(1, 'b', 'c');
+
+			expect(arr.toArray()).toEqual(['a', 'b', 'c', 'd']);
+		});
+
+		it('should delete single element', () => {
+			arr.push('a', 'b', 'c');
+			arr.delete(1);
+
+			expect(arr.toArray()).toEqual(['a', 'c']);
+		});
+
+		it('should delete multiple elements', () => {
+			arr.push('a', 'b', 'c', 'd');
+			arr.delete(1, 2);
+
+			expect(arr.toArray()).toEqual(['a', 'd']);
+		});
+
+		it('should convert to array', () => {
+			arr.push('a', 'b', 'c');
+
+			expect(arr.toArray()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should convert to JSON (same as toArray)', () => {
+			arr.push('a', 'b', 'c');
+
+			expect(arr.toJSON()).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should share underlying data for the same name', () => {
+			const arr1 = doc.getArray<string>('test-array');
+			const arr2 = doc.getArray<string>('test-array');
+
+			arr1.push('value');
+			expect(arr2.get(0)).toBe('value');
+		});
+
+		it('should handle nested objects', () => {
+			const objArr = doc.getArray<{ name: string }>('obj-array');
+			objArr.push({ name: 'first' }, { name: 'second' });
+
+			expect(objArr.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
+
+			// Get nested object as CRDTMap
+			const first = objArr.get(0) as CRDTMap<string>;
+			expect(first.get('name')).toBe('first');
+		});
+
+		it('should handle nested arrays', () => {
+			const nestedArr = doc.getArray<string[]>('nested-array');
+			nestedArr.push(['a', 'b'], ['c', 'd']);
+
+			expect(nestedArr.toArray()).toEqual([
+				['a', 'b'],
+				['c', 'd'],
+			]);
+
+			// Get nested array as CRDTArray
+			const inner = nestedArr.get(0) as CRDTArray<string>;
+			expect(inner.get(0)).toBe('a');
+			expect(inner.length).toBe(2);
+		});
+	});
+
+	describe('CRDTArray onDeepChange', () => {
+		let doc: CRDTDoc;
+		let arr: CRDTArray<string>;
+
+		beforeEach(() => {
+			const provider = new AutomergeProvider();
+			doc = provider.createDoc('test');
+			arr = doc.getArray<string>('test-array');
+		});
+
+		afterEach(() => {
+			doc.destroy();
+		});
+
+		it('should emit insert delta when pushing items', () => {
+			const changes: DeepChange[] = [];
+			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+
+			arr.push('a', 'b');
+
+			expect(changes).toHaveLength(1);
+			const change = changes[0] as ArrayChangeEvent;
+			expect(change.path).toEqual([]);
+			expect(change.delta).toEqual([{ insert: ['a', 'b'] }]);
+		});
+
+		it('should emit insert delta when inserting at index', () => {
+			arr.push('a', 'c');
+
+			const changes: DeepChange[] = [];
+			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+
+			arr.insert(1, 'b');
+
+			expect(changes).toHaveLength(1);
+			const change = changes[0] as ArrayChangeEvent;
+			expect(change.path).toEqual([]);
+			expect(change.delta).toEqual([{ retain: 1 }, { insert: ['b'] }]);
+		});
+
+		it('should emit delete delta when deleting items', () => {
+			arr.push('a', 'b', 'c');
+
+			const changes: DeepChange[] = [];
+			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+
+			arr.delete(1, 1);
+
+			expect(changes).toHaveLength(1);
+			const change = changes[0] as ArrayChangeEvent;
+			expect(change.path).toEqual([]);
+			expect(change.delta).toEqual([{ retain: 1 }, { delete: 1 }]);
+		});
+
+		it('should stop emitting events after unsubscribe', () => {
+			const changes: DeepChange[] = [];
+			const unsubscribe = arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+
+			arr.push('a');
+			expect(changes).toHaveLength(1);
+
+			unsubscribe();
+
+			arr.push('b');
+			expect(changes).toHaveLength(1); // No new changes
 		});
 	});
 });
