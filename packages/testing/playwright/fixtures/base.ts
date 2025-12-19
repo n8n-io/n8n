@@ -7,6 +7,7 @@ import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers'
 
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
+import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { ProxyServer } from '../services/proxy-server';
@@ -46,6 +47,8 @@ interface ContainerConfig {
 	email?: boolean;
 	/** Enable OIDC testing with Keycloak. Requires postgres: true for SSO support. */
 	oidc?: boolean;
+	/** Enable observability stack (VictoriaLogs + VictoriaMetrics) for log streaming and metrics testing. */
+	observability?: boolean;
 	resourceQuota?: {
 		memory?: number; // in GB
 		cpu?: number; // in cores
@@ -58,12 +61,13 @@ interface ContainerConfig {
  * Provides tag-driven authentication and database management.
  */
 export const test = base.extend<
-	TestFixtures & CurrentsFixtures,
+	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures,
 	WorkerFixtures & CurrentsWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
+	...observabilityFixtures,
 
 	// Add a container capability to the test e.g proxy server, task runner, etc
 	addContainerCapability: [
@@ -170,6 +174,7 @@ export const test = base.extend<
 	],
 
 	// Create container test helpers for the n8n container.
+	// When observability is enabled, uses VictoriaLogs for simpler/faster log queries.
 	chaos: [
 		async ({ n8nContainer }, use) => {
 			if (getBackendUrl()) {
@@ -177,7 +182,9 @@ export const test = base.extend<
 					'Chaos testing is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
 				);
 			}
-			const helpers = new ContainerTestHelpers(n8nContainer.containers);
+			const helpers = new ContainerTestHelpers(n8nContainer.containers, {
+				observability: n8nContainer.observability,
+			});
 			await use(helpers);
 		},
 		{ scope: 'worker' },

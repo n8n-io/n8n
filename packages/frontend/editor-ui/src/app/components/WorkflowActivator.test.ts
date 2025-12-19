@@ -10,6 +10,19 @@ import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils'
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useToast } from '@/app/composables/useToast';
+import { createTestWorkflow } from '@/__tests__/mocks';
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+	}),
+	useRoute: () => ({
+		query: {},
+		params: {},
+	}),
+	RouterLink: vi.fn(),
+}));
 
 const renderComponent = createComponentRenderer(WorkflowActivator);
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -39,12 +52,17 @@ describe('WorkflowActivator', () => {
 	});
 
 	it('renders correctly', () => {
+		// Add workflow to workflowsById to mark it as saved
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
+
 		const renderOptions = {
 			props: {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		};
 
@@ -56,6 +74,9 @@ describe('WorkflowActivator', () => {
 
 	it('display an inactive tooltip when there are no nodes available', async () => {
 		mockWorkflowsStore.workflowId = '1';
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
 		mockWorkflowsStore.workflowTriggerNodes = [];
 
 		const { getByTestId, getByRole } = renderComponent({
@@ -63,7 +84,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -83,6 +104,9 @@ describe('WorkflowActivator', () => {
 
 	it('should allow activation when only execute workflow trigger is available', async () => {
 		mockWorkflowsStore.workflowId = '1';
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
 		mockWorkflowsStore.workflowTriggerNodes = [
 			{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, disabled: false } as never,
 		];
@@ -92,7 +116,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -105,6 +129,9 @@ describe('WorkflowActivator', () => {
 	it('Should show warning toast if the workflow to be activated has non-disabled node using free OpenAI credentials', async () => {
 		const toast = useToast();
 
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
 		mockWorkflowsStore.usedCredentials = {
 			'1': {
 				id: '1',
@@ -153,7 +180,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -173,6 +200,9 @@ describe('WorkflowActivator', () => {
 	it('Should not show warning toast if the workflow to be activated has disabled node using free OpenAI credentials', async () => {
 		const toast = useToast();
 
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
 		mockWorkflowsStore.usedCredentials = {
 			'1': {
 				id: '1',
@@ -221,7 +251,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -233,6 +263,9 @@ describe('WorkflowActivator', () => {
 	it('Should not show warning toast if the workflow to be activated has no node with free OpenAI credential', async () => {
 		const toast = useToast();
 
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
 		mockWorkflowsStore.usedCredentials = {
 			'1': {
 				id: '1',
@@ -263,7 +296,7 @@ describe('WorkflowActivator', () => {
 				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		});
 
@@ -273,12 +306,16 @@ describe('WorkflowActivator', () => {
 	});
 
 	it('Should be disabled on archived workflow', async () => {
+		mockWorkflowsStore.workflowsById = {
+			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
+		};
+
 		const renderOptions = {
 			props: {
 				isArchived: true,
 				workflowActive: false,
 				workflowId: '1',
-				workflowPermissions: { update: true },
+				workflowPermissions: { publish: true },
 			},
 		};
 

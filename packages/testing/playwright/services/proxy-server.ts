@@ -73,7 +73,10 @@ export class ProxyServer {
 	/**
 	 * Load all expectations from the specified subfolder and mock them
 	 */
-	async loadExpectations(folderName: string): Promise<void> {
+	async loadExpectations(
+		folderName: string,
+		options: { strictBodyMatching?: boolean } = {},
+	): Promise<void> {
 		try {
 			const targetDir = join(this.expectationsDir, folderName);
 			const files = await fs.readdir(targetDir);
@@ -85,6 +88,11 @@ export class ProxyServer {
 					const filePath = join(targetDir, file);
 					const fileContent = await fs.readFile(filePath, 'utf8');
 					const expectation = JSON.parse(fileContent);
+
+					if (options.strictBodyMatching && expectation.httpRequest?.body) {
+						expectation.httpRequest.body.matchType = 'STRICT';
+					}
+
 					expectations.push(expectation);
 				} catch (parseError) {
 					console.log(`Error parsing expectation from ${file}:`, parseError);

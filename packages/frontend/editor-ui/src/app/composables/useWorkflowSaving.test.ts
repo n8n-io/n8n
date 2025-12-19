@@ -1,5 +1,5 @@
 import { useUIStore } from '@/app/stores/ui.store';
-import { MODAL_CANCEL, MODAL_CONFIRM, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -109,6 +109,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -184,7 +186,10 @@ describe('useWorkflowSaving', () => {
 
 			const workflowStore = useWorkflowsStore();
 			const MOCK_ID = 'existing-workflow-id';
+			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
 			workflowStore.workflow.id = MOCK_ID;
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowStore.workflowsById = { [MOCK_ID]: existingWorkflow };
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -217,7 +222,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.stateIsDirty = true;
 
 			const workflowStore = useWorkflowsStore();
-			workflowStore.workflow.id = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			workflowStore.workflow.id = '';
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -268,6 +273,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {
@@ -414,6 +421,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w0' });
@@ -435,6 +444,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.workflowsById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w1' });
@@ -456,6 +467,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { w2: workflow };
+			workflowsStore.isWorkflowSaved = { w2: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
@@ -477,6 +490,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflowsById = { w3: workflow };
+			workflowsStore.isWorkflowSaved = { w3: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);

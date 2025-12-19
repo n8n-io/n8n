@@ -1,5 +1,5 @@
 import type { VIEWS } from '@/app/constants';
-import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -270,6 +270,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 		builderThinkingMessage.value = undefined;
 
+		// Remove tools that were still running when error occurred
+		const messagesWithoutRunningTools = chatMessages.value.filter(
+			(msg) => !(msg.type === 'tool' && msg.status === 'running'),
+		);
+
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
 			const userMsg = createAssistantMessage(
@@ -277,7 +282,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				'aborted-streaming',
 				{ aborted: true },
 			);
-			chatMessages.value = [...chatMessages.value, userMsg];
+			chatMessages.value = [...messagesWithoutRunningTools, userMsg];
 			return;
 		}
 
@@ -287,7 +292,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			retry,
 		);
 
-		chatMessages.value = [...chatMessages.value, errorMessage];
+		chatMessages.value = [...messagesWithoutRunningTools, errorMessage];
 	}
 
 	// Helper functions
@@ -728,7 +733,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
 			if (
 				newWorkflowId &&
-				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {
@@ -764,17 +769,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		telemetry.track('Workflow builder journey', payload);
 	}
-
-	watch(
-		workflowTodos,
-		(newTodos, oldTodos) => {
-			// Only track if we had todos before and now we don't
-			if (oldTodos && oldTodos.length > 0 && newTodos.length === 0) {
-				trackWorkflowBuilderJourney('no_placeholder_values_left');
-			}
-		},
-		{ deep: true },
-	);
 
 	// Public API
 	return {
