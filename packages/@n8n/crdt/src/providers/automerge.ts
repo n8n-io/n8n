@@ -404,8 +404,11 @@ class AutomergeDocHolder {
 	private doc: AutomergeDoc;
 	private changeHandlers: Map<string, Set<ChangeHandler>> = new Map();
 	private updateHandlers: Set<UpdateHandler> = new Set();
-	private inTransaction = false;
+	/** Tracks nested transaction depth (0 = not in transaction) */
+	private transactionDepth = 0;
 	private transactionBeforeHeads: Automerge.Heads | null = null;
+	/** Queued change functions to apply when outermost transaction ends */
+	private pendingChanges: Array<(doc: Record<string, unknown>) => void> = [];
 	/** Tracks the last heads sent to update handlers for incremental sync */
 	private lastSyncedHeads: Automerge.Heads = [];
 
@@ -422,26 +425,49 @@ class AutomergeDocHolder {
 	}
 
 	change(fn: (doc: Record<string, unknown>) => void): void {
-		const beforeHeads = this.inTransaction ? null : this.getHeads();
-		this.doc = Automerge.change(this.doc, fn);
-
-		if (!this.inTransaction && beforeHeads) {
-			this.notifyHandlers(beforeHeads);
-			this.notifyUpdateHandlers();
+		if (this.transactionDepth > 0) {
+			// Inside a transaction - queue the change for later
+			this.pendingChanges.push(fn);
+			return;
 		}
+
+		// Not in transaction - apply immediately
+		const beforeHeads = this.getHeads();
+		this.doc = Automerge.change(this.doc, fn);
+		this.notifyHandlers(beforeHeads);
+		this.notifyUpdateHandlers();
 	}
 
 	startTransaction(): void {
-		this.inTransaction = true;
-		this.transactionBeforeHeads = this.getHeads();
+		if (this.transactionDepth === 0) {
+			// Outermost transaction - capture heads before any changes
+			this.transactionBeforeHeads = this.getHeads();
+		}
+		this.transactionDepth++;
 	}
 
 	endTransaction(): void {
-		this.inTransaction = false;
-		if (this.transactionBeforeHeads) {
-			this.notifyHandlers(this.transactionBeforeHeads);
-			this.notifyUpdateHandlers();
-			this.transactionBeforeHeads = null;
+		this.transactionDepth--;
+
+		if (this.transactionDepth === 0) {
+			// Outermost transaction ending - apply all queued changes
+			if (this.pendingChanges.length > 0) {
+				const changes = this.pendingChanges;
+				this.pendingChanges = [];
+
+				this.doc = Automerge.change(this.doc, (doc) => {
+					for (const fn of changes) {
+						fn(doc);
+					}
+				});
+			}
+
+			// Notify with all changes at once
+			if (this.transactionBeforeHeads) {
+				this.notifyHandlers(this.transactionBeforeHeads);
+				this.notifyUpdateHandlers();
+				this.transactionBeforeHeads = null;
+			}
 		}
 	}
 

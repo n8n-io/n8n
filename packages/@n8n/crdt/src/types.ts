@@ -76,6 +76,10 @@ export function isArrayChange(change: DeepChange): change is ArrayChangeEvent {
 /**
  * CRDT Array data structure - an ordered list with deep change observation.
  * Supports standard array operations and emits change events for mutations.
+ *
+ * Note on bounds checking: Behavior for out-of-bounds indices may vary by provider.
+ * Yjs throws RangeError for invalid indices; Automerge clamps to array bounds.
+ * Use valid indices (0 <= index <= length) for consistent cross-provider behavior.
  */
 export interface CRDTArray<T = unknown> {
 	/** Get the number of elements */
@@ -84,9 +88,9 @@ export interface CRDTArray<T = unknown> {
 	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined;
 	/** Append element(s) to end */
 	push(...items: T[]): void;
-	/** Insert element(s) at index */
+	/** Insert element(s) at index. Use index <= length for consistent behavior. */
 	insert(index: number, ...items: T[]): void;
-	/** Delete count elements starting at index */
+	/** Delete count elements starting at index. Use valid indices for consistent behavior. */
 	delete(index: number, count?: number): void;
 	/** Convert to plain JavaScript array */
 	toArray(): T[];
@@ -98,10 +102,13 @@ export interface CRDTArray<T = unknown> {
 
 /**
  * CRDT Map data structure - a key-value store with deep change observation.
- * When getting a nested object, returns a CRDTMap wrapper for that object.
+ *
+ * Note on nested values:
+ * - `get()` returns CRDTMap/CRDTArray wrappers for nested objects/arrays (for modification)
+ * - `values()`, `entries()`, `toJSON()` return plain JSON values (for reading/iteration)
  */
 export interface CRDTMap<T = unknown> {
-	/** Get value by key. Returns CRDTMap/CRDTArray for nested objects/arrays. */
+	/** Get value by key. Returns CRDTMap/CRDTArray wrappers for nested objects/arrays. */
 	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined;
 	/** Set value for key */
 	set(key: string, value: T): void;
@@ -111,9 +118,9 @@ export interface CRDTMap<T = unknown> {
 	has(key: string): boolean;
 	/** Get all keys */
 	keys(): IterableIterator<string>;
-	/** Get all values */
+	/** Get all values as plain JSON (not CRDT wrappers) */
 	values(): IterableIterator<T>;
-	/** Get all entries */
+	/** Get all entries as plain JSON (not CRDT wrappers) */
 	entries(): IterableIterator<[string, T]>;
 	/** Convert to plain JSON object */
 	toJSON(): Record<string, T>;
