@@ -204,6 +204,8 @@ class AutomergeDocHolder {
 	private updateHandlers: Set<UpdateHandler> = new Set();
 	private inTransaction = false;
 	private transactionBeforeHeads: Automerge.Heads | null = null;
+	/** Tracks the last heads sent to update handlers for incremental sync */
+	private lastSyncedHeads: Automerge.Heads = [];
 
 	constructor(readonly id: string) {
 		this.doc = Automerge.init();
@@ -243,7 +245,15 @@ class AutomergeDocHolder {
 
 	private notifyUpdateHandlers(): void {
 		if (this.updateHandlers.size === 0) return;
-		const update = Automerge.save(this.doc);
+
+		// Use saveSince for incremental updates instead of full save
+		// This dramatically reduces bandwidth for large documents
+		const update = Automerge.saveSince(this.doc, this.lastSyncedHeads);
+		this.lastSyncedHeads = this.getHeads();
+
+		// Skip if no actual changes (empty update)
+		if (update.byteLength === 0) return;
+
 		for (const handler of this.updateHandlers) {
 			handler(update);
 		}
@@ -440,9 +450,11 @@ class AutomergeDocHolder {
 
 	applyUpdate(update: Uint8Array): void {
 		const beforeHeads = this.getHeads();
-		const incomingDoc = Automerge.load<Record<string, unknown>>(update);
-		// Clone before merge to avoid mutation issues
-		this.doc = Automerge.merge(Automerge.clone(this.doc), incomingDoc);
+
+		// Use loadIncremental which handles both full saves and incremental updates
+		// This is more efficient than load+merge and works with saveSince output
+		this.doc = Automerge.loadIncremental(this.doc, update);
+
 		const afterHeads = this.getHeads();
 
 		// Only notify if something actually changed

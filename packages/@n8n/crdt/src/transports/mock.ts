@@ -46,6 +46,7 @@ export class MockTransport implements SyncTransport {
 
 	async connect(): Promise<void> {
 		this._connected = true;
+		return await Promise.resolve();
 	}
 
 	disconnect(): void {

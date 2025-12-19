@@ -1,5 +1,5 @@
-import type { CRDTDoc, Unsubscribe } from '../types';
 import type { SyncTransport } from '../transports';
+import type { CRDTDoc, Unsubscribe } from '../types';
 
 /**
  * SyncProvider - Wires a CRDTDoc to a SyncTransport for synchronization.
