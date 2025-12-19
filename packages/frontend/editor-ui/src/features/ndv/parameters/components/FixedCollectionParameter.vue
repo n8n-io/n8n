@@ -218,7 +218,7 @@ const getVisiblePropertyValues = (
 
 		// Auto-show values marked as depending on optional properties
 		if (value.typeOptions?.requiredOnlyAutoShow) {
-			return nodeHelpers.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
+			return true;
 		}
 
 		return false;
