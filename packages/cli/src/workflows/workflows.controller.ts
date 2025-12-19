@@ -426,6 +426,12 @@ export class WorkflowsController {
 		return { ...workflow, scopes, checksum };
 	}
 
+	/**
+	 * Checks whether a workflow with the given ID exists.
+	 *
+	 * @note We cannot use @ProjectScope here because we want to check for the id's existence
+	 *       Adding a scope would disable the route if the user didn't have access to the workflow
+	 */
 	@Get('/:workflowId/exists')
 	async exists(req: WorkflowRequest.Get) {
 		const exists = await this.workflowRepository.existsBy({ id: req.params.workflowId });
