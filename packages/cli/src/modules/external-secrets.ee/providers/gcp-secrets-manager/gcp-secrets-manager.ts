@@ -9,14 +9,12 @@ import type {
 	RawGcpSecretAccountKey,
 } from './types';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
-import type { SecretsProvider, SecretsProviderState } from '../../types';
+import { SecretsProvider } from '../../types';
 
-export class GcpSecretsManager implements SecretsProvider {
+export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';
 
 	displayName = 'GCP Secrets Manager';
-
-	state: SecretsProviderState = 'initializing';
 
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
@@ -40,6 +38,7 @@ export class GcpSecretsManager implements SecretsProvider {
 	private settings: GcpSecretAccountKey;
 
 	constructor(private readonly logger = Container.get(Logger)) {
+		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
 
@@ -47,24 +46,17 @@ export class GcpSecretsManager implements SecretsProvider {
 		this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
 	}
 
-	async connect() {
+	protected async doConnect(): Promise<void> {
 		const { projectId, privateKey, clientEmail } = this.settings;
 
 		const { SecretManagerServiceClient: GcpClient } = await import('@google-cloud/secret-manager');
 
-		try {
-			this.client = new GcpClient({
-				credentials: { client_email: clientEmail, private_key: privateKey },
-				projectId,
-			});
-			this.state = 'connected';
-			this.logger.debug('GCP Secrets Manager provider connected');
-		} catch (error) {
-			this.state = 'error';
-			this.logger.debug('GCP Secrets Manager provider failed to connect', {
-				error: ensureError(error),
-			});
-		}
+		this.client = new GcpClient({
+			credentials: { client_email: clientEmail, private_key: privateKey },
+			projectId,
+		});
+
+		this.logger.debug('GCP Secrets Manager provider connected');
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
