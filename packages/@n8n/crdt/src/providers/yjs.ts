@@ -257,12 +257,9 @@ class YjsDoc implements CRDTDoc {
 	}
 
 	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe {
-		const wrappedHandler = (update: Uint8Array) => {
-			handler(update);
-		};
-		this.yDoc.on('update', wrappedHandler);
+		this.yDoc.on('update', handler);
 		return () => {
-			this.yDoc.off('update', wrappedHandler);
+			this.yDoc.off('update', handler);
 		};
 	}
 
