@@ -888,18 +888,19 @@ describe('Request Helper Functions', () => {
 
 		it('should include vendor headers in requests to OpenAi', async () => {
 			const { openAiDefaultHeaders } = Container.get(AiConfig);
-			nock('https://api.openai.com', {
+			const scope = nock('https://api.openai.com', {
 				reqheaders: openAiDefaultHeaders,
 			})
 				.get('/chat')
 				.reply(200, { success: true });
 
-			const response = await invokeAxios({
+			const response = await httpRequest({
+				method: 'GET',
 				url: 'https://api.openai.com/chat',
+				headers: { 'X-Custom-Header': 'custom-value' },
 			});
-
-			expect(response.status).toBe(200);
-			expect(response.data).toEqual({ success: true });
+			expect(response).toEqual({ success: true });
+			scope.done();
 		});
 	});
 
