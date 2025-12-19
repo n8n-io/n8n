@@ -122,6 +122,12 @@ const isWorkflowSaving = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
+// For workflow name and tags editing: needs update permission and not archived
+const readOnlyActions = computed(() => {
+	if (isNewWorkflow.value) return props.readOnly;
+	return props.readOnly || props.isArchived || !workflowPermissions.value.update;
+});
+
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
@@ -188,7 +194,7 @@ async function onSaveButtonClick() {
 }
 
 function onTagsEditEnable() {
-	if (props.readOnly || props.isArchived) {
+	if (readOnlyActions.value) {
 		return;
 	}
 
@@ -214,7 +220,7 @@ async function onTagsBlur() {
 		return;
 	}
 
-	if (props.readOnly || props.isArchived) {
+	if (readOnlyActions.value) {
 		isTagsEditEnabled.value = false;
 		return;
 	}
@@ -522,8 +528,8 @@ onBeforeUnmount(() => {
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
-							:read-only="readOnly || isArchived"
-							:disabled="readOnly || isArchived"
+							:read-only="readOnlyActions"
+							:disabled="readOnlyActions"
 							@update:model-value="onNameSubmit"
 						/>
 					</template>
@@ -533,7 +539,7 @@ onBeforeUnmount(() => {
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
-					v-if="isTagsEditEnabled && !(readOnly || isArchived)"
+					v-if="isTagsEditEnabled && !readOnlyActions"
 					ref="dropdown"
 					v-model="appliedTagIds"
 					:event-bus="tagsEventBus"
@@ -543,7 +549,7 @@ onBeforeUnmount(() => {
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
-				<div v-else-if="(tags ?? []).length === 0 && !(readOnly || isArchived)">
+				<div v-else-if="(tags ?? []).length === 0 && !readOnlyActions">
 					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 						+ {{ i18n.baseText('workflowDetails.addTag') }}
 					</span>
@@ -581,7 +587,7 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:name="name"
 				:meta="meta"
-				:read-only="readOnly"
+				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
@@ -595,7 +601,7 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:current-folder="currentFolder"
 				:meta="meta"
-				:read-only="readOnly"
+				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:active="active"
 				:is-new-workflow="isNewWorkflow"

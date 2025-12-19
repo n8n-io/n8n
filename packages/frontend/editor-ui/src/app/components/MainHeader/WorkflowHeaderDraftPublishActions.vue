@@ -35,6 +35,16 @@ const props = defineProps<{
 }>();
 
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
+
+const readOnlyForPublish = computed(() => {
+	if (props.isNewWorkflow) return props.readOnly;
+	return (
+		props.readOnly ||
+		props.isArchived ||
+		(!props.workflowPermissions.update && !props.workflowPermissions.publish)
+	);
+});
+
 const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -203,11 +213,7 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<<<<<<< HEAD
-		<div
-			v-if="!isArchived && !readOnly && (workflowPermissions.update || workflowPermissions.publish)"
-			:class="$style.publishButtonWrapper"
-		>
+		<div v-if="!readOnlyForPublish" :class="$style.publishButtonWrapper">
 			<N8nTooltip :disabled="!publishTooltipText">
 				<template #content>
 					{{ publishTooltipText }}
@@ -229,7 +235,7 @@ defineExpose({
 			ref="actionsMenu"
 			:workflow-permissions="workflowPermissions"
 			:is-new-workflow="isNewWorkflow"
-			:read-only="readOnly"
+			:read-only="props.readOnly"
 			:is-archived="isArchived"
 			:name="name"
 			:tags="tags"

@@ -380,6 +380,22 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
 		});
 
+		it('should not have edit actions on archived workflow even with update permission', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: true,
+					readOnly: false,
+					scopes: ['workflow:update', 'workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+		});
+
 		it("should call onWorkflowMenuSelect on 'Archive' option click on nonactive workflow", async () => {
 			const { getByTestId } = renderComponent({
 				props: {

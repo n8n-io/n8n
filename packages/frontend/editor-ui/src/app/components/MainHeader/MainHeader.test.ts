@@ -6,7 +6,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { STORES } from '@n8n/stores';
-import { getResourcePermissions } from '@n8n/permissions';
 
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: vi.fn(() => ({
@@ -94,13 +93,11 @@ const renderComponent = createComponentRenderer(MainHeader, {
 });
 
 describe('MainHeader', () => {
-	let mockGetResourcePermissions: ReturnType<typeof vi.fn>;
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 	let collaborationStore: MockedStore<typeof useCollaborationStore>;
 
 	beforeEach(() => {
-		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		collaborationStore = mockedStore(useCollaborationStore);
@@ -127,10 +124,10 @@ describe('MainHeader', () => {
 	});
 
 	describe('readOnly computed', () => {
-		it('should be false when user has update permission and no other read-only conditions', () => {
-			workflowsStore.workflow.scopes = ['workflow:read', 'workflow:update'];
+		it('should be false when there are no read-only conditions', () => {
 			sourceControlStore.preferences.branchReadOnly = false;
 			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
+			workflowsStore.workflow.isArchived = false;
 
 			const { getByTestId } = renderComponent();
 
@@ -138,27 +135,10 @@ describe('MainHeader', () => {
 			expect(workflowDetails).toHaveAttribute('data-read-only', 'false');
 		});
 
-		it('should be true when user lacks update permission', () => {
-			mockGetResourcePermissions.mockReturnValue({
-				workflow: { update: false },
-			});
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				scopes: ['workflow:read'],
-			};
-			sourceControlStore.preferences.branchReadOnly = false;
-			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
-
-			const { getByTestId } = renderComponent();
-
-			const workflowDetails = getByTestId('workflow-details-stub');
-			expect(workflowDetails).toHaveAttribute('data-read-only', 'true');
-		});
-
 		it('should be true when branch is read-only', () => {
-			workflowsStore.workflow.scopes = ['workflow:read', 'workflow:update'];
-			sourceControlStore.preferences.branchReadOnly = true; // Source control read-only
+			sourceControlStore.preferences.branchReadOnly = true;
 			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
+			workflowsStore.workflow.isArchived = false;
 
 			const { getByTestId } = renderComponent();
 
@@ -167,9 +147,9 @@ describe('MainHeader', () => {
 		});
 
 		it('should be true when collaboration requires read-only', () => {
-			workflowsStore.workflow.scopes = ['workflow:read', 'workflow:update'];
 			sourceControlStore.preferences.branchReadOnly = false;
 			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(true);
+			workflowsStore.workflow.isArchived = false;
 
 			const { getByTestId } = renderComponent();
 

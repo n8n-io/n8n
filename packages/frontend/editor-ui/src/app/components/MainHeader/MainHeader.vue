@@ -24,7 +24,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
-import { getResourcePermissions } from '@n8n/permissions';
 
 import { N8nIcon } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
@@ -76,16 +75,8 @@ const workflow = computed(() => workflowsStore.workflow);
 const workflowId = computed(() => String(route.params.name || workflowsStore.workflowId));
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
-const workflowPermissions = computed(() => {
-	if (!workflow.value?.scopes) return {};
-	return getResourcePermissions(workflow.value.scopes).workflow;
-});
-
 const readOnly = computed(
-	() =>
-		sourceControlStore.preferences.branchReadOnly ||
-		collaborationStore.shouldBeReadOnly ||
-		workflowPermissions.value.update === false,
+	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
