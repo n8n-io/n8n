@@ -3,7 +3,7 @@
 # - Uses docker-config.mjs for context determination, this determines what needs to be built based on the trigger
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
-name: 'Docker: Build and Push'
+name: 'Docker: Build and Push GHCR'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
