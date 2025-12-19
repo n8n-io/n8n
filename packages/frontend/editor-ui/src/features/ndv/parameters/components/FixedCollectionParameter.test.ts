@@ -203,6 +203,20 @@ describe('FixedCollectionParameter.vue', () => {
 								type: 'notice',
 								default: '',
 							},
+							{
+								displayName: 'Min Value',
+								name: 'minValue',
+								type: 'number',
+								default: 0,
+								typeOptions: {
+									requiredOnlyAutoShow: true,
+								},
+								displayOptions: {
+									show: {
+										fieldType: ['number'],
+									},
+								},
+							},
 						],
 					},
 				],
@@ -318,6 +332,29 @@ describe('FixedCollectionParameter.vue', () => {
 			};
 
 			const { container } = renderRequiredOnly({ props: propsWithSavedValue });
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(4);
+			});
+		});
+
+		it('auto-shows fields with requiredOnlyAutoShow when displayOptions conditions are met', async () => {
+			const propsWithAutoShow: Props = {
+				...requiredOnlyProps,
+				nodeValues: {
+					parameters: {
+						formFields: {
+							values: [{ fieldLabel: 'Age', fieldType: 'number' }],
+						},
+					},
+				},
+				values: {
+					values: [{ fieldLabel: 'Age', fieldType: 'number' }],
+				},
+			};
+
+			const { container } = renderRequiredOnly({ props: propsWithAutoShow });
 
 			await waitFor(() => {
 				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
