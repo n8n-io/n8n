@@ -280,7 +280,10 @@ export class WorkflowExecutionService {
 	async executeViaPublicApi(
 		workflow: WorkflowEntity,
 		user: User,
-		options: { inputData?: IDataObject; pinData?: IPinData },
+		options: {
+			inputData?: Record<string, unknown>;
+			pinData?: Record<string, Array<{ json: Record<string, unknown> }>>;
+		},
 	): Promise<{ executionId: string }> {
 		const { inputData, pinData } = options;
 
@@ -296,11 +299,12 @@ export class WorkflowExecutionService {
 
 		if (pinData) {
 			// Use provided pinData directly (advanced mode)
-			effectivePinData = pinData;
+			// The pinData structure from the API is compatible with IPinData
+			effectivePinData = pinData as IPinData;
 		} else if (inputData) {
 			// Convert simple inputData to pinData format for the start node
 			effectivePinData = {
-				[startNode.name]: [{ json: inputData }],
+				[startNode.name]: [{ json: inputData as IDataObject }],
 			};
 		}
 

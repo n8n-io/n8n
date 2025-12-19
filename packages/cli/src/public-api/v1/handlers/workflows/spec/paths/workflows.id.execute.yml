@@ -28,6 +28,8 @@ post:
         application/json:
           schema:
             type: object
+            required:
+              - executionId
             properties:
               executionId:
                 type: string

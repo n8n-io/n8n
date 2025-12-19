@@ -6,7 +6,6 @@ import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
-import type { IDataObject, IPinData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -421,8 +420,8 @@ export = {
 				// Execute workflow
 				const executionService = Container.get(WorkflowExecutionService);
 				const result = await executionService.executeViaPublicApi(workflow, req.user, {
-					inputData: inputData as IDataObject | undefined,
-					pinData: pinData as IPinData | undefined,
+					inputData,
+					pinData,
 				});
 
 				return res.json({ executionId: result.executionId });
