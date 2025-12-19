@@ -348,7 +348,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
 				user_id: 'user123',
-				project_id: undefined,
 			});
 		});
 
@@ -391,7 +390,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
 				user_id: 'user123',
-				project_id: undefined,
 			});
 		});
 
@@ -434,7 +432,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
 				user_id: 'user123',
-				project_id: undefined,
 			});
 		});
 

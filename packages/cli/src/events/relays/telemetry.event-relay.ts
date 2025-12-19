@@ -280,21 +280,21 @@ export class TelemetryEventRelay extends EventRelay {
 	private variableCreated({ user, projectId }: RelayEventMap['variable-created']) {
 		this.telemetry.track('User created variable', {
 			user_id: user.id,
-			project_id: projectId,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 
 	private variableUpdated({ user, projectId }: RelayEventMap['variable-updated']) {
 		this.telemetry.track('User updated variable', {
 			user_id: user.id,
-			project_id: projectId,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 
 	private variableDeleted({ user, projectId }: RelayEventMap['variable-deleted']) {
 		this.telemetry.track('User deleted variable', {
 			user_id: user.id,
-			project_id: projectId,
+			...(projectId && { project_id: projectId }),
 		});
 	}
 
