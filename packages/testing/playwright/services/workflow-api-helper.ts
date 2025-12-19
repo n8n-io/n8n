@@ -95,6 +95,8 @@ export class WorkflowApiHelper {
 		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
+		delete workflow.id;
+
 		const idLength = options?.idLength ?? 12;
 		const webhookPrefix = options?.webhookPrefix ?? 'test-webhook';
 		const uniqueSuffix = nanoid(idLength);
