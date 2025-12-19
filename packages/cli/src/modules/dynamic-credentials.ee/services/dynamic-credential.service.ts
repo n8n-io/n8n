@@ -6,7 +6,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
@@ -43,8 +42,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 *
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
-	 * @param additionalData Additional workflow execution data for expression resolution, context and settings
-	 * @param mode Workflow execution mode
+	 * @param additionalData Additional workflow execution data for context and settings
 	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
 	 * @returns Resolved credential data (either dynamic or static)
 	 * @throws {CredentialResolutionError} If resolution fails and fallback is not allowed
@@ -53,7 +51,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
 		additionalData?: IWorkflowExecuteAdditionalData,
-		mode?: WorkflowExecuteMode,
 		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
@@ -100,18 +97,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const parsedConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
-			// Type assertion after validation to preserve INodeParameters type
-			let resolverConfig: Record<string, unknown> = parsedConfig;
-
-			// Resolve expressions in resolver configuration if context is available
-			if (additionalData && mode) {
-				resolverConfig = this.expressionService.resolveForRuntime(
-					resolverConfig,
-					additionalData,
-					mode,
-					canUseExternalSecrets ?? false,
-				);
-			}
+			// Resolve expressions in resolver configuration using global data only
+			const resolverConfig = await this.expressionService.resolve(
+				parsedConfig,
+				canUseExternalSecrets ?? false,
+			);
 
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(

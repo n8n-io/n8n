@@ -457,7 +457,6 @@ describe('CredentialsHelper', () => {
 				},
 				{ apiKey: 'static-key' },
 				mockAdditionalData,
-				'manual',
 				false, // canUseExternalSecrets
 			);
 			expect(result).toEqual(resolvedData);

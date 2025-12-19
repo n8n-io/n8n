@@ -1,33 +1,23 @@
 import { CredentialResolverConfiguration } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { getAdditionalKeys } from 'n8n-core';
-import type {
-	INode,
-	INodeParameters,
-	INodeProperties,
-	INodeType,
-	INodeTypeData,
-	INodeTypes,
-	IVersionedNodeType,
-	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import { isNodeParameters, NodeHelpers, UnexpectedError, Workflow } from 'n8n-workflow';
+import { getNonWorkflowAdditionalKeys } from 'n8n-core/src/execution-engine/node-execution-context/utils/get-additional-keys';
+import type { INode, INodeParameters } from 'n8n-workflow';
+import { isNodeParameters, Workflow } from 'n8n-workflow';
 
+import { NodeTypes } from '@/node-types';
 import { getBase } from '@/workflow-execute-additional-data';
 
 /**
  * Service for resolving expressions in credential resolver configurations.
- * Provides both validation-time resolution (with mock values) and runtime resolution (with actual execution context).
+ * Uses global data only (secrets, variables) without runtime execution context.
  */
 @Service()
 export class ResolverConfigExpressionService {
 	private readonly mockNode: INode;
 
-	private readonly mockNodeTypes: INodeTypes;
-
-	constructor() {
+	constructor(private readonly nodeTypes: NodeTypes) {
 		// Mock node setup for expression resolution
+		// We won't use any of its properties, but it's required by the workflow expression resolver
 		this.mockNode = {
 			id: 'mock',
 			name: '',
@@ -36,51 +26,27 @@ export class ResolverConfigExpressionService {
 			position: [0, 0],
 			parameters: {} as INodeParameters,
 		};
-
-		const mockNodesData: INodeTypeData = {
-			mock: {
-				sourcePath: '',
-				type: {
-					description: { properties: [] as INodeProperties[] },
-				} as INodeType,
-			},
-		};
-
-		this.mockNodeTypes = {
-			getKnownTypes(): { [key: string]: { className: string; sourcePath: string } } {
-				return {};
-			},
-			getByName(nodeType: string): INodeType | IVersionedNodeType {
-				return mockNodesData[nodeType]?.type;
-			},
-			getByNameAndVersion(nodeType: string, version?: number): INodeType {
-				if (!mockNodesData[nodeType]) {
-					throw new UnexpectedError(`Node type "${nodeType}" not found`);
-				}
-				return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-			},
-		};
 	}
 
 	/**
-	 * Resolves expressions in config for validation purposes.
-	 * Uses mock/empty values to validate expression syntax during resolver creation/update.
+	 * Resolves expressions in config using global data only (secrets, variables).
+	 * Does not use runtime execution context or workflow data.
 	 * @throws Error if expression syntax is invalid
 	 */
-
-	async resolveForValidation(
+	async resolve(
 		config: CredentialResolverConfiguration,
 		canUseExternalSecrets = false,
 	): Promise<CredentialResolverConfiguration> {
+		// Create a minimal workflow with the mock node to leverage the expression resolver
 		const workflow = new Workflow({
 			nodes: [this.mockNode],
 			connections: {},
 			active: false,
-			nodeTypes: this.mockNodeTypes,
+			nodeTypes: this.nodeTypes,
 		});
 
 		const additionalData = await getBase();
-		const additionalKeys = getAdditionalKeys(additionalData, 'manual', null, {
+		const additionalKeys = getNonWorkflowAdditionalKeys(additionalData, {
 			secretsEnabled: canUseExternalSecrets,
 		});
 
@@ -93,43 +59,6 @@ export class ResolverConfigExpressionService {
 			this.mockNode,
 			config,
 			'manual',
-			additionalKeys,
-			undefined,
-			undefined,
-			config,
-		) as INodeParameters;
-	}
-
-	/**
-	 * Resolves expressions in config for runtime execution.
-	 * Uses actual execution context to resolve expressions to real values.
-	 */
-	resolveForRuntime(
-		config: CredentialResolverConfiguration,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		canUseExternalSecrets: boolean,
-	): CredentialResolverConfiguration {
-		const workflow = new Workflow({
-			nodes: [this.mockNode],
-			connections: {},
-			active: false,
-			nodeTypes: this.mockNodeTypes,
-		});
-
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
-			secretsEnabled: canUseExternalSecrets,
-		});
-
-		// If config is not INodeParameters, return as is
-		if (!isNodeParameters(config)) {
-			return config;
-		}
-
-		return workflow.expression.getComplexParameterValue(
-			this.mockNode,
-			config,
-			mode,
 			additionalKeys,
 			undefined,
 			undefined,

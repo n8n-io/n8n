@@ -4,7 +4,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import type {
@@ -84,7 +83,6 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
@@ -92,7 +90,6 @@ describe('DynamicCredentialsProxy', () => {
 			const additionalData: Partial<IWorkflowExecuteAdditionalData> = {
 				executionId: 'exec-123',
 			};
-			const mode: WorkflowExecuteMode = 'manual';
 			const canUseExternalSecrets = true;
 
 			mockResolverProvider.resolveIfNeeded.mockResolvedValue(staticData);
@@ -102,7 +99,6 @@ describe('DynamicCredentialsProxy', () => {
 				credentialMetadata,
 				staticData,
 				additionalData as IWorkflowExecuteAdditionalData,
-				mode,
 				canUseExternalSecrets,
 			);
 
@@ -110,7 +106,6 @@ describe('DynamicCredentialsProxy', () => {
 				credentialMetadata,
 				staticData,
 				additionalData,
-				mode,
 				canUseExternalSecrets,
 			);
 		});

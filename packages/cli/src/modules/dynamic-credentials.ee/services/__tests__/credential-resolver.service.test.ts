@@ -75,8 +75,7 @@ describe('DynamicCredentialResolverService', () => {
 		} as unknown as jest.Mocked<Cipher>;
 
 		mockExpressionService = {
-			resolveForRuntime: jest.fn((config) => config),
-			resolveForValidation: jest.fn(async (config) => await Promise.resolve(config)),
+			resolve: jest.fn(async (config) => await Promise.resolve(config)),
 		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
 
 		service = new DynamicCredentialResolverService(

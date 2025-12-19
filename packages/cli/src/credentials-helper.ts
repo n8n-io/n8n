@@ -378,7 +378,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 				},
 				decryptedDataOriginal,
 				additionalData,
-				mode,
 				canUseExternalSecrets,
 			);
 		}

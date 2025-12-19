@@ -159,13 +159,10 @@ export class DynamicCredentialResolverService {
 			throw new CredentialResolverValidationError(`Unknown resolver type: ${type}`);
 		}
 
-		// Resolve expressions in the config with mock/empty values to validate syntax
+		// Resolve expressions in the config to validate syntax
 		let resolvedConfig = config;
 		try {
-			resolvedConfig = await this.expressionService.resolveForValidation(
-				config,
-				canUseExternalSecrets ?? false,
-			);
+			resolvedConfig = await this.expressionService.resolve(config, canUseExternalSecrets ?? false);
 		} catch (error) {
 			// If expression resolution fails, it means there's a syntax error
 			throw new CredentialResolverValidationError(
