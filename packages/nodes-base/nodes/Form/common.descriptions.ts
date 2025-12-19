@@ -281,7 +281,6 @@ const formOptions: INodePropertyCollection[] = [
 					},
 				},
 			},
-
 			{
 				displayName: 'Field Options',
 				name: 'fieldOptions',
