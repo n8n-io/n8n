@@ -475,21 +475,21 @@ describe('MigrationRules', () => {
 			{
 				severity: 'critical',
 				label: 'Critical',
-				tooltipKey: 'workflowTooltip.critical',
+				tooltipText: 'will break',
 			},
 			{
 				severity: 'medium',
 				label: 'Medium',
-				tooltipKey: 'workflowTooltip.medium',
+				tooltipText: 'incorrect results',
 			},
 			{
 				severity: 'low',
 				label: 'Low',
-				tooltipKey: 'workflowTooltip.low',
+				tooltipText: 'slightly',
 			},
 		] as const)(
 			'should show $severity severity tooltip on hover',
-			async ({ severity, label, tooltipKey }) => {
+			async ({ severity, label, tooltipText }) => {
 				const report = createMockReport({
 					report: {
 						generatedAt: new Date('2024-01-01'),
@@ -511,7 +511,7 @@ describe('MigrationRules', () => {
 				// Verify tooltip shows severity description on hover
 				const labelElement = screen.getByText(label);
 				await hoverTooltipTrigger(labelElement);
-				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipKey));
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));
 			},
 		);
 	});

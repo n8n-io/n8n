@@ -167,6 +167,9 @@ export const withinTooltip = () => within(getTooltip());
  * Triggers tooltip hover by dispatching a proper pointermove event.
  * Works with Reka UI tooltips in JSDOM by setting correct pointerType.
  *
+ * Automatically finds the actual tooltip trigger element (with data-grace-area-trigger)
+ * if the passed element is a parent container.
+ *
  * Requires PointerEvent polyfill in setup.ts (already configured).
  *
  * @example
@@ -175,6 +178,25 @@ export const withinTooltip = () => within(getTooltip());
  * await waitFor(() => expect(getTooltip()).toHaveTextContent('Expected text'));
  */
 export const hoverTooltipTrigger = async (element: Element): Promise<void> => {
+	// Find actual tooltip trigger - check element, children, then ancestors
+	let trigger: Element = element;
+
+	if (element.hasAttribute('data-grace-area-trigger')) {
+		trigger = element;
+	} else {
+		// Check children first
+		const childTrigger = element.querySelector('[data-grace-area-trigger]');
+		if (childTrigger) {
+			trigger = childTrigger;
+		} else {
+			// Check ancestors
+			const ancestorTrigger = element.closest('[data-grace-area-trigger]');
+			if (ancestorTrigger) {
+				trigger = ancestorTrigger;
+			}
+		}
+	}
+
 	const event = new PointerEvent('pointermove', {
 		bubbles: true,
 		cancelable: true,
@@ -183,7 +205,7 @@ export const hoverTooltipTrigger = async (element: Element): Promise<void> => {
 		clientY: 100,
 	});
 
-	element.dispatchEvent(event);
+	trigger.dispatchEvent(event);
 	// Allow Vue reactivity and Reka UI to process
 	await new Promise((r) => setTimeout(r, 10));
 };

@@ -122,11 +122,10 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	}
 }
 
-// Only polyfill if PointerEvent is missing or incomplete
-if (typeof globalThis.PointerEvent === 'undefined') {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	(globalThis as any).PointerEvent = JsonDomPointerEvent;
-}
+// Always apply our PointerEvent polyfill - JSDOM's PointerEvent is incomplete
+// and doesn't properly support pointerType which Reka UI requires for tooltips
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).PointerEvent = JsonDomPointerEvent;
 
 /**
  * Fixes missing pointer APIs and defaultPrevented issues for jsdom + user-event
