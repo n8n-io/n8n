@@ -420,7 +420,10 @@ export class SourceControlService {
 
 		// IMPORTANT: Make sure the projects and folders get processed first as the workflows depend on them
 		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(projectsToBeImported);
+		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(
+			projectsToBeImported,
+			user.id,
+		);
 
 		const foldersToBeImported = getNonDeletedResources(statusResult, 'folders')[0];
 		if (foldersToBeImported) {
