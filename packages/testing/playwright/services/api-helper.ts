@@ -238,6 +238,132 @@ export class ApiHelpers {
 		return data.status === 'ok';
 	}
 
+	// ===== LOG STREAMING METHODS =====
+
+	/**
+	 * Create a syslog destination for log streaming.
+	 * Requires the logStreaming feature to be enabled.
+	 *
+	 * @param config - Syslog destination configuration
+	 * @returns Created destination data
+	 */
+	async createSyslogDestination(config: {
+		host: string;
+		port: number;
+		protocol?: 'tcp' | 'udp';
+		facility?: number;
+		app_name?: string;
+		label?: string;
+		subscribedEvents?: string[];
+	}): Promise<{ id: string }> {
+		const response = await this.request.post('/rest/eventbus/destination', {
+			data: {
+				__type: '$$MessageEventBusDestinationSyslog',
+				host: config.host,
+				port: config.port,
+				protocol: config.protocol ?? 'tcp',
+				facility: config.facility ?? 16, // Local0
+				app_name: config.app_name ?? 'n8n',
+				label: config.label ?? 'VictoriaLogs Syslog',
+				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to create syslog destination: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		// Handle both direct response and {data: ...} wrapped response
+		return result.data ?? result;
+	}
+
+	/**
+	 * Create a webhook destination for log streaming.
+	 * Requires the logStreaming feature to be enabled.
+	 *
+	 * @param config - Webhook destination configuration
+	 * @returns Created destination data
+	 */
+	async createWebhookDestination(config: {
+		url: string;
+		method?: 'POST' | 'GET' | 'PUT' | 'PATCH';
+		label?: string;
+		subscribedEvents?: string[];
+		sendPayload?: boolean;
+	}): Promise<{ id: string }> {
+		const response = await this.request.post('/rest/eventbus/destination', {
+			data: {
+				__type: '$$MessageEventBusDestinationWebhook',
+				url: config.url,
+				method: config.method ?? 'POST',
+				label: config.label ?? 'Webhook Destination',
+				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
+				sendPayload: config.sendPayload ?? true,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		// Handle both direct response and {data: ...} wrapped response
+		return result.data ?? result;
+	}
+
+	/**
+	 * Delete a log streaming destination.
+	 *
+	 * @param id - Destination ID to delete
+	 */
+	async deleteLogStreamingDestination(id: string): Promise<void> {
+		const response = await this.request.delete(`/rest/eventbus/destination?id=${id}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to delete log streaming destination: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
+	/**
+	 * Get all log streaming destinations.
+	 *
+	 * @returns Array of destination configurations
+	 */
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	async getLogStreamingDestinations(): Promise<Array<{ id: string; __type: string }>> {
+		const response = await this.request.get('/rest/eventbus/destination');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to get log streaming destinations: ${response.status()} ${await response.text()}`,
+			);
+		}
+		const result = await response.json();
+		// Handle both direct response and {data: ...} wrapped response
+		return result.data ?? result;
+	}
+
+	/**
+	 * Send a test message to a log streaming destination.
+	 *
+	 * @param id - Destination ID to test
+	 * @returns True if test was successful
+	 */
+	async testLogStreamingDestination(id: string): Promise<boolean> {
+		const response = await this.request.get(`/rest/eventbus/testmessage?id=${id}`);
+		if (!response.ok()) {
+			return false;
+		}
+		const result = await response.json();
+		// Handle both direct response and {data: ...} wrapped response
+		return result.data ?? result;
+	}
+
 	// ===== PRIVATE METHODS =====
 
 	private async loginAndSetCookies(
