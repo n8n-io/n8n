@@ -84,7 +84,6 @@ import IconLucideClipboard from '~icons/lucide/clipboard';
 import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
 import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideClock from '~icons/lucide/clock';
-import IconLucideRotateCcw from '~icons/lucide/rotate-ccw';
 import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
@@ -179,6 +178,7 @@ import IconLucidePower from '~icons/lucide/power';
 import IconLucideRedo2 from '~icons/lucide/redo-2';
 import IconLucideRefreshCw from '~icons/lucide/refresh-cw';
 import IconLucideRemoveFormatting from '~icons/lucide/remove-formatting';
+import IconLucideRotateCcw from '~icons/lucide/rotate-ccw';
 import IconLucideRss from '~icons/lucide/rss';
 import IconLucideSatelliteDish from '~icons/lucide/satellite-dish';
 import IconLucideSave from '~icons/lucide/save';
@@ -533,7 +533,6 @@ export const updatedIconSet = {
 	'clipboard-check': IconLucideClipboardCheck,
 	'clipboard-list': IconLucideClipboardList,
 	clock: IconLucideClock,
-	'clock-rotate-left': IconLucideRotateCcw,
 	cloud: IconLucideCloud,
 	'cloud-download': IconLucideCloudDownload,
 	code: IconLucideCode,
@@ -627,6 +626,7 @@ export const updatedIconSet = {
 	'redo-2': IconLucideRedo2,
 	'refresh-cw': IconLucideRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
+	'rotate-left': IconLucideRotateCcw,
 	rss: IconLucideRss,
 	robot: IconLucideBot,
 	'satellite-dish': IconLucideSatelliteDish,

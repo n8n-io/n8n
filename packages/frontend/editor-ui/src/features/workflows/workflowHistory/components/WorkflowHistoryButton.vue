@@ -48,10 +48,10 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
 				:class="{ [$style.saving]: isWorkflowSaving }"
-				:disabled="isNewWorkflow"
+				:disabled="isNewWorkflow || isWorkflowSaving"
 				data-test-id="workflow-history-button"
 				type="highlight"
-				:icon="isWorkflowSaving ? 'clock-rotate-left' : 'history'"
+				:icon="isWorkflowSaving ? 'rotate-left' : 'history'"
 				size="medium"
 			/>
 		</RouterLink>
