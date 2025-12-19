@@ -102,6 +102,19 @@ describe('AutomergeProvider', () => {
 
 			expect(map.toJSON()).toEqual({ a: '1', b: '2', c: '3' });
 		});
+
+		it('should remain usable after exception in transaction', () => {
+			expect(() => {
+				doc.transact(() => {
+					map.set('before-error', 'value');
+					throw new Error('Intentional error');
+				});
+			}).toThrow('Intentional error');
+
+			// Document should still be usable after the error
+			map.set('after-error', 'works');
+			expect(map.get('after-error')).toBe('works');
+		});
 	});
 
 	describe('CRDTMap onDeepChange', () => {

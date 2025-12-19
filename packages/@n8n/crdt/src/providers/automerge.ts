@@ -791,6 +791,9 @@ class AutomergeDocHolder {
 	destroy(): void {
 		this.changeHandlers.clear();
 		this.updateHandlers.clear();
+		this.pendingChanges = [];
+		this.transactionDepth = 0;
+		this.transactionBeforeHeads = null;
 	}
 }
 

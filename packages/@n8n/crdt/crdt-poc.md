@@ -742,7 +742,7 @@ const doc = provider.createDoc('workflow-123');
 // Use data structures
 const nodes = doc.getMap<NodeData>('nodes');
 const connections = doc.getArray<Connection>('connections');
-const notes = doc.getText('notes');
+// const notes = doc.getText('notes'); // Phase 2 - not yet implemented
 
 // Make changes
 doc.transact(() => {
