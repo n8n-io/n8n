@@ -1,6 +1,8 @@
 import * as Automerge from '@automerge/automerge';
 
 import type {
+	ArrayChangeEvent,
+	ArrayDelta,
 	CRDTArray,
 	CRDTDoc,
 	CRDTMap,
@@ -29,13 +31,17 @@ class AutomergeMap<T = unknown> implements CRDTMap<T> {
 		return (doc[this.mapName] as Record<string, unknown>) ?? {};
 	}
 
-	get(key: string): T | CRDTMap<unknown> | undefined {
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
 		const mapData = this.getMapData();
 		const value = mapData[key];
 
 		// If value is an object (not null, not array), return a nested AutomergeMap
 		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
 			return new AutomergeNestedMap(this.docHolder, this.mapName, [key]) as CRDTMap<unknown>;
+		}
+		// If value is an array, return a nested AutomergeArray
+		if (Array.isArray(value)) {
+			return new AutomergeNestedArray(this.docHolder, this.mapName, [key]) as CRDTArray<unknown>;
 		}
 
 		return value as T | undefined;
@@ -116,7 +122,7 @@ class AutomergeNestedMap<T = unknown> implements CRDTMap<T> {
 		return current as Record<string, unknown> | undefined;
 	}
 
-	get(key: string): T | CRDTMap<unknown> | undefined {
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
 		const data = this.getNestedData();
 		if (!data) return undefined;
 
@@ -127,6 +133,12 @@ class AutomergeNestedMap<T = unknown> implements CRDTMap<T> {
 				...this.path,
 				key,
 			]) as CRDTMap<unknown>;
+		}
+		if (Array.isArray(value)) {
+			return new AutomergeNestedArray(this.docHolder, this.mapName, [
+				...this.path,
+				key,
+			]) as CRDTArray<unknown>;
 		}
 
 		return value as T | undefined;
@@ -197,6 +209,186 @@ class AutomergeNestedMap<T = unknown> implements CRDTMap<T> {
 		this.docHolder.addChangeHandler(this.mapName, handler);
 		return () => {
 			this.docHolder.removeChangeHandler(this.mapName, handler);
+		};
+	}
+}
+
+/**
+ * Automerge implementation of CRDTArray.
+ */
+class AutomergeArray<T = unknown> implements CRDTArray<T> {
+	constructor(
+		private readonly docHolder: AutomergeDocHolder,
+		private readonly arrayName: string,
+	) {}
+
+	private getArrayData(): unknown[] {
+		const doc = this.docHolder.getDoc();
+		return (doc[this.arrayName] as unknown[]) ?? [];
+	}
+
+	get length(): number {
+		return this.getArrayData().length;
+	}
+
+	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+		const arrayData = this.getArrayData();
+		const value = arrayData[index];
+
+		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			return new AutomergeNestedMap(this.docHolder, this.arrayName, [index]) as CRDTMap<unknown>;
+		}
+		if (Array.isArray(value)) {
+			return new AutomergeNestedArray(this.docHolder, this.arrayName, [
+				index,
+			]) as CRDTArray<unknown>;
+		}
+
+		return value as T | undefined;
+	}
+
+	push(...items: T[]): void {
+		this.docHolder.change((doc) => {
+			doc[this.arrayName] ??= [];
+			const arr = doc[this.arrayName] as unknown[];
+			arr.push(...items);
+		});
+	}
+
+	insert(index: number, ...items: T[]): void {
+		this.docHolder.change((doc) => {
+			doc[this.arrayName] ??= [];
+			const arr = doc[this.arrayName] as unknown[];
+			arr.splice(index, 0, ...items);
+		});
+	}
+
+	delete(index: number, count = 1): void {
+		this.docHolder.change((doc) => {
+			if (doc[this.arrayName]) {
+				const arr = doc[this.arrayName] as unknown[];
+				arr.splice(index, count);
+			}
+		});
+	}
+
+	toArray(): T[] {
+		return [...this.getArrayData()] as T[];
+	}
+
+	toJSON(): T[] {
+		return this.toArray();
+	}
+
+	onDeepChange(handler: ChangeHandler): Unsubscribe {
+		this.docHolder.addChangeHandler(this.arrayName, handler);
+		return () => {
+			this.docHolder.removeChangeHandler(this.arrayName, handler);
+		};
+	}
+}
+
+/**
+ * Nested array for accessing deep paths within an Automerge document.
+ */
+class AutomergeNestedArray<T = unknown> implements CRDTArray<T> {
+	constructor(
+		private readonly docHolder: AutomergeDocHolder,
+		private readonly arrayName: string,
+		private readonly path: Array<string | number>,
+	) {}
+
+	private getNestedData(): unknown[] | undefined {
+		const doc = this.docHolder.getDoc();
+		let current: unknown = doc[this.arrayName];
+
+		for (const segment of this.path) {
+			if (current === null || current === undefined) {
+				return undefined;
+			}
+			current = (current as Record<string | number, unknown>)[segment];
+		}
+
+		return Array.isArray(current) ? current : undefined;
+	}
+
+	get length(): number {
+		return this.getNestedData()?.length ?? 0;
+	}
+
+	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+		const data = this.getNestedData();
+		if (!data) return undefined;
+
+		const value = data[index];
+
+		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			return new AutomergeNestedMap(this.docHolder, this.arrayName, [
+				...this.path,
+				index,
+			]) as CRDTMap<unknown>;
+		}
+		if (Array.isArray(value)) {
+			return new AutomergeNestedArray(this.docHolder, this.arrayName, [
+				...this.path,
+				index,
+			]) as CRDTArray<unknown>;
+		}
+
+		return value as T | undefined;
+	}
+
+	push(...items: T[]): void {
+		this.docHolder.change((doc) => {
+			let current: unknown = doc[this.arrayName];
+			for (const segment of this.path) {
+				if (!current) return;
+				current = (current as Record<string | number, unknown>)[segment];
+			}
+			if (Array.isArray(current)) {
+				current.push(...items);
+			}
+		});
+	}
+
+	insert(index: number, ...items: T[]): void {
+		this.docHolder.change((doc) => {
+			let current: unknown = doc[this.arrayName];
+			for (const segment of this.path) {
+				if (!current) return;
+				current = (current as Record<string | number, unknown>)[segment];
+			}
+			if (Array.isArray(current)) {
+				current.splice(index, 0, ...items);
+			}
+		});
+	}
+
+	delete(index: number, count = 1): void {
+		this.docHolder.change((doc) => {
+			let current: unknown = doc[this.arrayName];
+			for (const segment of this.path) {
+				if (!current) return;
+				current = (current as Record<string | number, unknown>)[segment];
+			}
+			if (Array.isArray(current)) {
+				current.splice(index, count);
+			}
+		});
+	}
+
+	toArray(): T[] {
+		return [...(this.getNestedData() ?? [])] as T[];
+	}
+
+	toJSON(): T[] {
+		return this.toArray();
+	}
+
+	onDeepChange(handler: ChangeHandler): Unsubscribe {
+		this.docHolder.addChangeHandler(this.arrayName, handler);
+		return () => {
+			this.docHolder.removeChangeHandler(this.arrayName, handler);
 		};
 	}
 }
@@ -279,47 +471,26 @@ class AutomergeDocHolder {
 		const afterHeads = this.getHeads();
 		const patches = Automerge.diff(this.doc, beforeHeads, afterHeads);
 
-		// Group patches by map name, filtering out map container creation patches
-		const patchesByMap = new Map<string, typeof patches>();
+		// Group patches by container name, filtering out container creation patches
+		const patchesByContainer = new Map<string, typeof patches>();
 		for (const patch of patches) {
-			// Skip patches with only 1 path segment (map container creation)
+			// Skip patches with only 1 path segment (container creation)
 			// These are internal to how we structure the document
 			if (patch.path.length <= 1) continue;
 
-			const mapName = patch.path[0] as string;
-			if (!patchesByMap.has(mapName)) {
-				patchesByMap.set(mapName, []);
+			const containerName = patch.path[0] as string;
+			if (!patchesByContainer.has(containerName)) {
+				patchesByContainer.set(containerName, []);
 			}
-			patchesByMap.get(mapName)!.push(patch);
+			patchesByContainer.get(containerName)!.push(patch);
 		}
 
-		// Notify handlers for each map
-		for (const [mapName, mapPatches] of patchesByMap) {
-			const handlers = this.changeHandlers.get(mapName);
+		// Notify handlers for each container
+		for (const [containerName, containerPatches] of patchesByContainer) {
+			const handlers = this.changeHandlers.get(containerName);
 			if (!handlers || handlers.size === 0) continue;
 
-			// Collapse patches that are children of other patches with empty object values
-			// This handles the case where setting { position: { x: 150 } } creates multiple patches
-			const collapsedPatches = this.collapseObjectPatches(mapPatches, mapName);
-
-			const changes: DeepChangeEvent[] = collapsedPatches.map((patch) => {
-				const path = patch.path.slice(1);
-				const action =
-					patch.action === 'del'
-						? ChangeAction.delete
-						: this.wasKeyExisting(mapName, path, beforeHeads)
-							? ChangeAction.update
-							: ChangeAction.add;
-
-				return {
-					path,
-					action,
-					...(patch.action !== 'del' && 'value' in patch && { value: patch.value }),
-					...(action !== ChangeAction.add && {
-						oldValue: this.getOldValue(mapName, path, beforeHeads),
-					}),
-				};
-			});
+			const changes = this.patchesToChanges(containerPatches, containerName, beforeHeads);
 
 			if (changes.length > 0) {
 				for (const handler of handlers) {
@@ -327,6 +498,115 @@ class AutomergeDocHolder {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Convert Automerge patches to DeepChange events.
+	 * Separates array patches (insert/del with numeric index) from map patches.
+	 */
+	private patchesToChanges(
+		patches: Automerge.Patch[],
+		containerName: string,
+		beforeHeads: Automerge.Heads,
+	): DeepChange[] {
+		const arrayPatches: Automerge.Patch[] = [];
+		const mapPatches: Automerge.Patch[] = [];
+
+		for (const patch of patches) {
+			// Array operations: insert always, del only if last path segment is numeric
+			if (patch.action === 'insert') {
+				arrayPatches.push(patch);
+			} else if (patch.action === 'del' && typeof patch.path[patch.path.length - 1] === 'number') {
+				arrayPatches.push(patch);
+			} else {
+				mapPatches.push(patch);
+			}
+		}
+
+		return [
+			...this.arrayPatchesToDeltas(arrayPatches),
+			...this.mapPatchesToChanges(mapPatches, containerName, beforeHeads),
+		];
+	}
+
+	/**
+	 * Convert array patches to ArrayChangeEvent with Quill-style delta format.
+	 * Automerge: { action: 'insert', path: [..., index], values: [...] }
+	 * Delta:     [{ retain: N }, { insert: [...] }]
+	 */
+	private arrayPatchesToDeltas(patches: Automerge.Patch[]): ArrayChangeEvent[] {
+		if (patches.length === 0) return [];
+
+		// Group by array path (everything except the index)
+		const byPath = new Map<string, Automerge.Patch[]>();
+		for (const patch of patches) {
+			const arrayPath = patch.path.slice(1, -1); // Remove container name and index
+			const key = arrayPath.join('/');
+			if (!byPath.has(key)) byPath.set(key, []);
+			byPath.get(key)!.push(patch);
+		}
+
+		const changes: ArrayChangeEvent[] = [];
+		for (const [pathKey, groupPatches] of byPath) {
+			const arrayPath = pathKey
+				? pathKey.split('/').map((s) => (isNaN(Number(s)) ? s : Number(s)))
+				: [];
+
+			// Sort by index for proper delta generation
+			groupPatches.sort((a, b) => (a.path.at(-1) as number) - (b.path.at(-1) as number));
+
+			const delta: ArrayDelta[] = [];
+			let pos = 0;
+
+			for (const patch of groupPatches) {
+				const index = patch.path.at(-1) as number;
+				if (index > pos) delta.push({ retain: index - pos });
+
+				if (patch.action === 'insert' && 'values' in patch) {
+					delta.push({ insert: patch.values as unknown[] });
+					pos = index + (patch.values as unknown[]).length;
+				} else if (patch.action === 'del') {
+					const count = 'length' in patch ? (patch.length as number) : 1;
+					delta.push({ delete: count });
+					pos = index;
+				}
+			}
+
+			if (delta.length > 0) changes.push({ path: arrayPath, delta });
+		}
+
+		return changes;
+	}
+
+	/**
+	 * Convert map patches to DeepChangeEvent format.
+	 */
+	private mapPatchesToChanges(
+		patches: Automerge.Patch[],
+		containerName: string,
+		beforeHeads: Automerge.Heads,
+	): DeepChangeEvent[] {
+		// Collapse patches that are children of other patches with empty object values
+		const collapsedPatches = this.collapseObjectPatches(patches, containerName);
+
+		return collapsedPatches.map((patch) => {
+			const path = patch.path.slice(1);
+			const action =
+				patch.action === 'del'
+					? ChangeAction.delete
+					: this.wasKeyExisting(containerName, path, beforeHeads)
+						? ChangeAction.update
+						: ChangeAction.add;
+
+			return {
+				path,
+				action,
+				...(patch.action !== 'del' && 'value' in patch && { value: patch.value }),
+				...(action !== ChangeAction.add && {
+					oldValue: this.getOldValue(containerName, path, beforeHeads),
+				}),
+			};
+		});
 	}
 
 	/**
@@ -487,23 +767,17 @@ class AutomergeDocHolder {
  */
 class AutomergeDocImpl implements CRDTDoc {
 	private readonly docHolder: AutomergeDocHolder;
-	private readonly maps = new Map<string, AutomergeMap<unknown>>();
 
 	constructor(readonly id: string) {
 		this.docHolder = new AutomergeDocHolder(id);
 	}
 
 	getMap<T = unknown>(name: string): CRDTMap<T> {
-		let map = this.maps.get(name);
-		if (!map) {
-			map = new AutomergeMap<unknown>(this.docHolder, name);
-			this.maps.set(name, map);
-		}
-		return map as CRDTMap<T>;
+		return new AutomergeMap<T>(this.docHolder, name);
 	}
 
-	getArray<T = unknown>(_name: string): CRDTArray<T> {
-		throw new Error('CRDTArray not yet implemented for Automerge');
+	getArray<T = unknown>(name: string): CRDTArray<T> {
+		return new AutomergeArray<T>(this.docHolder, name);
 	}
 
 	transact(fn: () => void): void {
@@ -532,7 +806,6 @@ class AutomergeDocImpl implements CRDTDoc {
 
 	destroy(): void {
 		this.docHolder.destroy();
-		this.maps.clear();
 	}
 }
 
