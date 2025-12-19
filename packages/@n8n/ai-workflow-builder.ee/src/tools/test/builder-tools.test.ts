@@ -184,7 +184,7 @@ describe('builder-tools', () => {
 			expect(createGetBestPracticesTool).toHaveBeenCalled();
 			expect(createGetWorkflowExamplesTool).toHaveBeenCalledWith(mockLogger);
 			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes);
+			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
 			expect(createAddNodeTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createRemoveConnectionTool).toHaveBeenCalled();
 			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
@@ -244,7 +244,7 @@ describe('builder-tools', () => {
 			});
 
 			expect(createNodeSearchTool).toHaveBeenCalledWith(customNodeTypes);
-			expect(createNodeDetailsTool).toHaveBeenCalledWith(customNodeTypes);
+			expect(createNodeDetailsTool).toHaveBeenCalledWith(customNodeTypes, undefined);
 			expect(createAddNodeTool).toHaveBeenCalledWith(customNodeTypes);
 			expect(createConnectNodesTool).toHaveBeenCalledWith(customNodeTypes, undefined);
 		});
