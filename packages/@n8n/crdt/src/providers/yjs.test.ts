@@ -78,11 +78,12 @@ describe('YjsProvider', () => {
 			expect(map.toJSON()).toEqual({ a: '1', b: '2' });
 		});
 
-		it('should return the same map instance for the same name', () => {
+		it('should share underlying data for the same name', () => {
 			const map1 = doc.getMap('test-map');
 			const map2 = doc.getMap('test-map');
 
-			expect(map1).toBe(map2);
+			map1.set('key', 'value');
+			expect(map2.get('key')).toBe('value');
 		});
 
 		it('should batch changes in transact()', () => {

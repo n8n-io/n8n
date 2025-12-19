@@ -49,6 +49,58 @@ function toYjsValue(value: unknown, doc: Y.Doc): unknown {
 }
 
 /**
+ * Yjs implementation of CRDTArray.
+ */
+class YjsArray<T = unknown> implements CRDTArray<T> {
+	constructor(
+		private readonly yArray: Y.Array<unknown>,
+		private readonly doc: Y.Doc,
+	) {}
+
+	get length(): number {
+		return this.yArray.length;
+	}
+
+	get(index: number): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+		const value = this.yArray.get(index);
+		if (value instanceof Y.Map) {
+			return new YjsMap(value, this.doc);
+		}
+		if (value instanceof Y.Array) {
+			return new YjsArray(value, this.doc);
+		}
+		return value as T | undefined;
+	}
+
+	push(...items: T[]): void {
+		const yItems = items.map((item) => toYjsValue(item, this.doc));
+		this.yArray.push(yItems);
+	}
+
+	insert(index: number, ...items: T[]): void {
+		const yItems = items.map((item) => toYjsValue(item, this.doc));
+		this.yArray.insert(index, yItems);
+	}
+
+	delete(index: number, count = 1): void {
+		this.yArray.delete(index, count);
+	}
+
+	toArray(): T[] {
+		return this.yArray.toJSON() as T[];
+	}
+
+	toJSON(): T[] {
+		return this.toArray();
+	}
+
+	onDeepChange(_handler: (changes: DeepChangeEvent[]) => void): Unsubscribe {
+		// Will be implemented in step 1.4
+		throw new Error('onDeepChange not yet implemented for YjsArray');
+	}
+}
+
+/**
  * Yjs implementation of CRDTMap.
  */
 class YjsMap<T = unknown> implements CRDTMap<T> {
@@ -133,23 +185,17 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
  */
 class YjsDoc implements CRDTDoc {
 	private readonly yDoc: Y.Doc;
-	private readonly maps = new Map<string, YjsMap<unknown>>();
 
 	constructor(readonly id: string) {
 		this.yDoc = new Y.Doc({ guid: id });
 	}
 
 	getMap<T = unknown>(name: string): CRDTMap<T> {
-		let map = this.maps.get(name);
-		if (!map) {
-			map = new YjsMap<unknown>(this.yDoc.getMap(name), this.yDoc);
-			this.maps.set(name, map);
-		}
-		return map as CRDTMap<T>;
+		return new YjsMap<T>(this.yDoc.getMap(name), this.yDoc);
 	}
 
-	getArray<T = unknown>(_name: string): CRDTArray<T> {
-		throw new Error('CRDTArray not yet implemented for Yjs');
+	getArray<T = unknown>(name: string): CRDTArray<T> {
+		return new YjsArray<T>(this.yDoc.getArray(name), this.yDoc);
 	}
 
 	transact(fn: () => void): void {
@@ -176,7 +222,6 @@ class YjsDoc implements CRDTDoc {
 
 	destroy(): void {
 		this.yDoc.destroy();
-		this.maps.clear();
 	}
 }
 
