@@ -198,7 +198,6 @@ const getVisiblePropertyValues = (
 
 	const key = getOptionalValuesKey(property.name, index);
 	const addedValues = addedOptionalValues.value.get(key);
-	const itemPath = getPropertyPath(property.name, index);
 
 	return property.values.filter((value) => {
 		// Always show required values
