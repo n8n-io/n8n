@@ -270,6 +270,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 		builderThinkingMessage.value = undefined;
 
+		// Remove tools that were still running when error occurred
+		const messagesWithoutRunningTools = chatMessages.value.filter(
+			(msg) => !(msg.type === 'tool' && msg.status === 'running'),
+		);
+
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
 			const userMsg = createAssistantMessage(
@@ -277,7 +282,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				'aborted-streaming',
 				{ aborted: true },
 			);
-			chatMessages.value = [...chatMessages.value, userMsg];
+			chatMessages.value = [...messagesWithoutRunningTools, userMsg];
 			return;
 		}
 
@@ -287,7 +292,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			retry,
 		);
 
-		chatMessages.value = [...chatMessages.value, errorMessage];
+		chatMessages.value = [...messagesWithoutRunningTools, errorMessage];
 	}
 
 	// Helper functions

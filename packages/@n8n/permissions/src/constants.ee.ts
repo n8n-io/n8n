@@ -30,6 +30,7 @@ export const RESOURCES = {
 		'move',
 		'activate',
 		'deactivate',
+		'publish',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,

@@ -1,13 +1,16 @@
+import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
+import { Not, IsNull } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService, FileLocation } from 'n8n-core';
-import { Not, IsNull } from '@n8n/typeorm';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
+
+import { ChatHubMessageRepository } from './chat-message.repository';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -97,9 +100,9 @@ export class ChatHubAttachmentService {
 	/**
 	 * Deletes all files attached to messages in the session
 	 */
-	async deleteAllBySessionId(sessionId: string): Promise<void> {
-		const messages = await this.messageRepository.getManyBySessionId(sessionId);
-
+	async deleteAllBySessionId(sessionId: string, trx?: EntityManager): Promise<void> {
+		const messages = await this.messageRepository.getManyBySessionId(sessionId, trx);
+		// Attachment deletion cannot be rolled back, and the transaction doesn't cover it.
 		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
