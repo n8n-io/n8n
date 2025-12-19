@@ -812,12 +812,12 @@ describe('GET /workflows/:workflowId/exists', () => {
 		expect(response.body).toEqual({ data: { exists: false } });
 	});
 
-	test('should return false when workflow exists but user does not have access', async () => {
+	test('should return true when workflow exists even if user does not have access', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/exists`).expect(200);
 
-		expect(response.body).toEqual({ data: { exists: false } });
+		expect(response.body).toEqual({ data: { exists: true } });
 	});
 
 	test('should return true when workflow is shared with user', async () => {
