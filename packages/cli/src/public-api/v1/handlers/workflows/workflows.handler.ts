@@ -386,14 +386,25 @@ export = {
 		projectScope('workflow:execute', 'workflow'),
 		async (req: WorkflowRequest.Execute, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
-			const { inputData, pinData } = req.body ?? {};
 
-			// Validate: cannot use both inputData and pinData
-			if (inputData && pinData) {
-				return res.status(400).json({
+			// Validate request body with Zod
+			const executeBodySchema = z
+				.object({
+					inputData: z.record(z.unknown()).optional(),
+					pinData: z.record(z.array(z.object({ json: z.record(z.unknown()) }))).optional(),
+				})
+				.refine((data) => !(data.inputData && data.pinData), {
 					message: 'Cannot use both inputData and pinData. Choose one.',
 				});
+
+			const parseResult = executeBodySchema.safeParse(req.body ?? {});
+			if (!parseResult.success) {
+				return res.status(400).json({
+					message: parseResult.error.errors[0]?.message ?? 'Invalid request body',
+				});
 			}
+
+			const { inputData, pinData } = parseResult.data;
 
 			try {
 				// Get workflow
