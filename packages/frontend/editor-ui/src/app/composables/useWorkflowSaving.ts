@@ -3,13 +3,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import {
-	MODAL_CANCEL,
-	MODAL_CLOSE,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	VIEWS,
-} from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -101,8 +95,8 @@ export function useWorkflowSaving({
 
 				return;
 			case MODAL_CLOSE:
-				// for new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				// For new workflows that are not saved yet, don't do anything, only close modal
+				if (workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -143,7 +137,9 @@ export function useWorkflowSaving({
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
-		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
+		// Check if workflow needs to be saved as new (doesn't exist in store yet)
+		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		if (!currentWorkflow || !existingWorkflow?.id) {
 			return !!(await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
 				redirect,
@@ -265,6 +261,7 @@ export function useWorkflowSaving({
 			openInNewWindow,
 			parentFolderId,
 			uiContext,
+			requestNewId,
 			data,
 			autosaved,
 		}: {
@@ -273,6 +270,7 @@ export function useWorkflowSaving({
 			resetWebhookUrls?: boolean;
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
+			requestNewId?: boolean;
 			parentFolderId?: string;
 			uiContext?: string;
 			data?: WorkflowDataCreate;
@@ -285,6 +283,10 @@ export function useWorkflowSaving({
 
 			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
+
+			if (requestNewId) {
+				delete workflowDataRequest.id;
+			}
 
 			if (resetNodeIds) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
@@ -379,7 +381,8 @@ export function useWorkflowSaving({
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
 			workflowState.setWorkflowTagIds(tagIds);
 
-			const templateId = router.currentRoute.value.query.templateId;
+			const route = router.currentRoute.value;
+			const templateId = route.query.templateId;
 			if (templateId) {
 				telemetry.track('User saved new workflow from template', {
 					template_id: tryToParseNumber(String(templateId)),
@@ -390,9 +393,9 @@ export function useWorkflowSaving({
 
 			if (redirect) {
 				await router.replace({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
-					query: { action: 'workflowSave' },
+					name: route.name,
+					params: { ...route.params },
+					query: { ...route.query, new: undefined },
 				});
 			}
 
