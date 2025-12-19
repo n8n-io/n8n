@@ -2,7 +2,7 @@ import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
-import { ChatHubAgent } from './chat-hub-agent.entity';
+import { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 
 @Service()
 export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
@@ -10,7 +10,10 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 		super(ChatHubAgent, dataSource.manager);
 	}
 
-	async createAgent(agent: Partial<ChatHubAgent>, trx?: EntityManager) {
+	async createAgent(
+		agent: Partial<IChatHubAgent> & Pick<IChatHubAgent, 'id'>,
+		trx?: EntityManager,
+	) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.insert(ChatHubAgent, agent);
 			return await em.findOneOrFail(ChatHubAgent, {
@@ -19,16 +22,7 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 		});
 	}
 
-	async updateAgent(
-		id: string,
-		updates: Partial<
-			Pick<
-				ChatHubAgent,
-				'name' | 'description' | 'systemPrompt' | 'provider' | 'model' | 'credentialId'
-			>
-		>,
-		trx?: EntityManager,
-	) {
+	async updateAgent(id: string, updates: Partial<IChatHubAgent>, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.update(ChatHubAgent, { id }, updates);
 			return await em.findOneOrFail(ChatHubAgent, {

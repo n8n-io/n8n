@@ -20,6 +20,7 @@ jobs:
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
+      workflows_changed: ${{ steps.paths-filter.outputs.workflows == 'true' }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -46,6 +47,8 @@ jobs:
             non-python:
               - '**'
               - '!packages/@n8n/task-runner-python/**'
+            workflows:
+              - .github/**
       - name: Setup and Build
         if: steps.paths-filter.outputs.non-python == 'true'
         uses: ./.github/actions/setup-nodejs
@@ -136,19 +139,37 @@ jobs:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  security-checks:
+    name: Security Checks
+    needs: install-and-build
+    if: needs.install-and-build.outputs.workflows_changed == 'true'
+    uses: ./.github/workflows/ci-security.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
   # This job is required by GitHub branch protection rules.
   # PRs cannot be merged unless this job passes.
-  # If you add/remove jobs that should block merging, update the 'needs' array below.
+  # If you add/remove jobs that should block merging, update the 'needs' array
+  # and the skip conditions in the 'if' block below.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests]
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, security-checks]
     if: always()
     runs-on: ubuntu-slim
     steps:
       - name: Fail if any required job failed or was skipped unexpectedly
-        # The non_python_changed check allows jobs to be skipped for python-only changes,
-        # since those jobs don't run when only python files are modified.
+        # Explicit checks for each job's skip conditions:
+        # - Non-python jobs (unit-test, typecheck, lint, e2e-tests): can skip when non_python_changed == false
+        # - security-checks: can skip when workflows_changed == false
         if: |
           contains(needs.*.result, 'failure') ||
-          (needs.install-and-build.outputs.non_python_changed == 'true' && contains(needs.*.result, 'skipped'))
+          (needs.install-and-build.outputs.non_python_changed == 'true' && (
+            needs.unit-test.result == 'skipped' ||
+            needs.typecheck.result == 'skipped' ||
+            needs.lint.result == 'skipped' ||
+            needs.e2e-tests.result == 'skipped'
+          )) ||
+          (needs.install-and-build.outputs.workflows_changed == 'true' &&
+            needs.security-checks.result == 'skipped')
         run: exit 1

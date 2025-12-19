@@ -205,7 +205,7 @@ const customAgentId = computed(() =>
 		? selectedModel.value.model.agentId
 		: undefined,
 );
-const customAgent = useCustomAgent(customAgentId);
+const { customAgent } = useCustomAgent(customAgentId);
 
 const selectedTools = computed<INode[]>(() => {
 	if (customAgent.value) {
@@ -635,7 +635,7 @@ function onFilesDropped(files: File[]) {
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="message.status === 'running'"
+						:has-session-streaming="isResponding"
 						:cached-agent-display-name="selectedModel?.name ?? null"
 						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
