@@ -601,9 +601,9 @@ describe('AI Builder store', () => {
 
 		// Retry the failed request
 		if (errorMessage.retry) {
-			void errorMessage.retry();
-			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
+			await errorMessage.retry();
 		}
+		expect(builderStore.chatMessages.length).toBe(2);
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].type).toBe('text');
 		expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
