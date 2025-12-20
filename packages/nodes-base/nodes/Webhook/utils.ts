@@ -140,14 +140,12 @@ export const isIpWhitelisted = (
 
 	const allowList = getAllowList(whitelist);
 
-	for (const address of whitelist) {
-		if (ip === address || allowList.check(ip ?? '')) {
-			return true;
-		}
+	if (allowList.check(ip ?? '')) {
+		return true;
+	}
 
-		if (ips.some((entry) => allowList.check(entry))) {
-			return true;
-		}
+	if (ips.some((ipEntry) => allowList.check(ipEntry))) {
+		return true;
 	}
 
 	return false;
