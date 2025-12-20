@@ -23,6 +23,7 @@ import {
 	replaceEmptyStringsByNulls,
 	configureTableSchemaUpdater,
 	convertArraysToPostgresFormat,
+	runQueriesAndHandleErrors,
 } from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
@@ -213,103 +214,116 @@ export async function execute(
 	let tableSchema = await getTableSchema(db, schema, table);
 
 	const queries: QueryWithValues[] = [];
-
+	const errorItemsMap = new Map<number, INodeExecutionData>();
 	for (let i = 0; i < items.length; i++) {
-		schema = this.getNodeParameter('schema', i, undefined, {
-			extractValue: true,
-		}) as string;
+		try {
+			schema = this.getNodeParameter('schema', i, undefined, {
+				extractValue: true,
+			}) as string;
 
-		table = this.getNodeParameter('table', i, undefined, {
-			extractValue: true,
-		}) as string;
+			table = this.getNodeParameter('table', i, undefined, {
+				extractValue: true,
+			}) as string;
 
-		const columnsToMatchOn: string[] =
-			nodeVersion < 2.2
-				? [this.getNodeParameter('columnToMatchOn', i) as string]
-				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
-
-		const dataMode =
-			nodeVersion < 2.2
-				? (this.getNodeParameter('dataMode', i) as string)
-				: (this.getNodeParameter('columns.mappingMode', i) as string);
-
-		let item: IDataObject = {};
-
-		if (dataMode === 'autoMapInputData') {
-			item = items[i].json;
-		}
-
-		if (dataMode === 'defineBelow') {
-			const valuesToSend =
+			const columnsToMatchOn: string[] =
 				nodeVersion < 2.2
-					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
-					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
-							.values as IDataObject[]);
+					? [this.getNodeParameter('columnToMatchOn', i) as string]
+					: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
-			if (nodeVersion < 2.2) {
-				item = prepareItem(valuesToSend);
-				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
-			} else {
-				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			const dataMode =
+				nodeVersion < 2.2
+					? (this.getNodeParameter('dataMode', i) as string)
+					: (this.getNodeParameter('columns.mappingMode', i) as string);
+
+			let item: IDataObject = {};
+
+			if (dataMode === 'autoMapInputData') {
+				item = items[i].json;
 			}
-		}
 
-		if (!item[columnsToMatchOn[0]]) {
-			throw new NodeOperationError(
-				this.getNode(),
-				"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
-			);
-		}
+			if (dataMode === 'defineBelow') {
+				const valuesToSend =
+					nodeVersion < 2.2
+						? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+								.values as IDataObject[])
+						: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
+								.values as IDataObject[]);
 
-		if (item[columnsToMatchOn[0]] && Object.keys(item).length === 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
-			);
-		}
+				if (nodeVersion < 2.2) {
+					item = prepareItem(valuesToSend);
+					item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
+				} else {
+					item = this.getNodeParameter('columns.value', i) as IDataObject;
+				}
+			}
 
-		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
+			if (!item[columnsToMatchOn[0]]) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+				);
+			}
 
-		if (nodeVersion >= 2.4) {
-			item = convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
-		}
+			if (item[columnsToMatchOn[0]] && Object.keys(item).length === 1) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
+				);
+			}
 
-		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
+			tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
-		let values: QueryValues = [schema, table];
+			if (nodeVersion >= 2.4) {
+				item = convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+			}
 
-		let valuesLength = values.length + 1;
-		const conflictColumns: string[] = [];
-		columnsToMatchOn.forEach((column) => {
-			conflictColumns.push(`$${valuesLength}:name`);
+			item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
+
+			let values: QueryValues = [schema, table];
+
+			let valuesLength = values.length + 1;
+			const conflictColumns: string[] = [];
+			columnsToMatchOn.forEach((column) => {
+				conflictColumns.push(`$${valuesLength}:name`);
+				valuesLength = valuesLength + 1;
+				values.push(column);
+			});
+			const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})`;
+
+			const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
 			valuesLength = valuesLength + 1;
-			values.push(column);
-		});
-		const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})`;
+			values.push(item);
 
-		const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
-		valuesLength = valuesLength + 1;
-		values.push(item);
+			const updateColumns = Object.keys(item).filter(
+				(column) => !columnsToMatchOn.includes(column),
+			);
+			const updates: string[] = [];
 
-		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
-		const updates: string[] = [];
+			for (const column of updateColumns) {
+				updates.push(`$${valuesLength}:name = $${valuesLength + 1}`);
+				valuesLength = valuesLength + 2;
+				values.push(column, item[column] as string);
+			}
 
-		for (const column of updateColumns) {
-			updates.push(`$${valuesLength}:name = $${valuesLength + 1}`);
-			valuesLength = valuesLength + 2;
-			values.push(column, item[column] as string);
+			const updateQuery =
+				updates?.length > 0 ? ` DO UPDATE  SET ${updates.join(', ')}` : ' DO NOTHING ';
+			let query = `${insertQuery}${updateQuery}`;
+
+			const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
+
+			[query, values] = addReturning(query, outputColumns, values);
+
+			queries.push({ query, values });
+		} catch (e) {
+			if (this.continueOnFail()) {
+				const error = e instanceof Error ? e : String(e);
+				errorItemsMap.set(i, { json: { error }, pairedItem: { item: i } });
+				continue;
+			}
+
+			throw e;
 		}
-
-		const updateQuery =
-			updates?.length > 0 ? ` DO UPDATE  SET ${updates.join(', ')}` : ' DO NOTHING ';
-		let query = `${insertQuery}${updateQuery}`;
-
-		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
-
-		[query, values] = addReturning(query, outputColumns, values);
-
-		queries.push({ query, values });
 	}
 
-	return await runQueries(queries, items, nodeOptions);
+	return await runQueriesAndHandleErrors(runQueries, queries, nodeOptions, errorItemsMap);
 }

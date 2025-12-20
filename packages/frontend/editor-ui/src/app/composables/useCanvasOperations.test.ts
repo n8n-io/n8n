@@ -65,6 +65,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 
 const mockRoute = reactive({
 	query: {},
+	params: {},
 });
 
 const mockRouterReplace = vi.fn();
