@@ -124,7 +124,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 				// Disable other trigger nodes (keep valid executeWorkflowTrigger and errorTrigger enabled)
 				let nodesModified = false;
 				nodes.forEach((node: Node) => {
-					if (this.isTriggerNode(node.type)) {
+					if (node.type && this.isTriggerNode(node.type)) {
 						// Keep valid Execute Workflow Trigger active
 						if (
 							node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&

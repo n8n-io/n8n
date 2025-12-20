@@ -14,7 +14,7 @@ import {
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
-import { N8nPopoverReka } from '@n8n/design-system';
+import { N8nPopover } from '@n8n/design-system';
 type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
 
 const hoverOptions: UseElementHoverOptions = {
@@ -98,7 +98,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 </script>
 
 <template>
-	<N8nPopoverReka
+	<N8nPopover
 		:open="state.isOpen"
 		side="left"
 		:side-flip="false"
@@ -130,7 +130,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				search-shortcut="ctrl+f"
 			/>
 		</template>
-	</N8nPopoverReka>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>
