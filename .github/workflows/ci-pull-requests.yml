@@ -17,6 +17,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
@@ -61,10 +62,6 @@ jobs:
           name: editor-ui-dist
           path: packages/frontend/editor-ui/dist/
           retention-days: 1
-
-      - name: Upload Bundle Analysis to Codecov
-        if: steps.paths-filter.outputs.non-python == 'true'
-        run: npx @codecov/bundle-analyzer@1.9.1 ./packages/frontend/editor-ui/dist --bundle-name=editor-ui --upload-token=${{ secrets.CODECOV_TOKEN }}
 
   bundle-size-check:
     name: Bundle Size Check

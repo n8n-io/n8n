@@ -1,5 +1,5 @@
 {
-	"globalEnv": ["CI", "COVERAGE_ENABLED", "BUILD_WITH_COVERAGE"],
+	"globalEnv": ["CI", "COVERAGE_ENABLED", "BUILD_WITH_COVERAGE", "CODECOV_TOKEN"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
