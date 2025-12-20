@@ -5,25 +5,32 @@ exports[`WorkflowHistoryButton > should be enabled if the workflow is not new 1`
   
   
   
-  <div
+  <span
     data-grace-area-trigger=""
     data-state="closed"
-    to="[object Object]"
   >
     
-    <n8n-icon-button-stub
-      active="false"
-      data-test-id="workflow-history-button"
-      disabled="false"
-      icon="history"
-      loading="false"
-      outline="false"
-      size="medium"
-      text="false"
-      type="highlight"
-    />
     
-  </div>
+    <div
+      to="[object Object]"
+    >
+      
+      <n8n-icon-button-stub
+        active="false"
+        data-test-id="workflow-history-button"
+        disabled="false"
+        icon="history"
+        loading="false"
+        outline="false"
+        size="medium"
+        text="false"
+        type="highlight"
+      />
+      
+    </div>
+    
+    
+  </span>
   <!--v-if-->
   
   

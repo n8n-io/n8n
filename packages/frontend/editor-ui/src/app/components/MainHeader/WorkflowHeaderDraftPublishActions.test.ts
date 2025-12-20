@@ -413,7 +413,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, emitted } = renderComponent();
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
 
 			expect(emitted('workflow:saved')).toBeTruthy();
 		});

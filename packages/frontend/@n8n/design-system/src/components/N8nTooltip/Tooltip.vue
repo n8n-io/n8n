@@ -83,6 +83,7 @@ const handleOpenChange = (open: boolean) => {
 			:open="isControlled ? isOpen : undefined"
 			:disable-hoverable-content="disableHoverableContent"
 			:disable-closing-trigger="true"
+			:ignore-non-keyboard-focus="true"
 			@update:open="handleOpenChange"
 		>
 			<TooltipTrigger as="span">
