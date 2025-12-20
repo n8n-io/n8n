@@ -160,7 +160,7 @@ test.describe('Data Mapping', () => {
 		await expect(firstHeader).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
-		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'bottom');
+		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'center');
 
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible();
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{ $json.timestamp }}');
