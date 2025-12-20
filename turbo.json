@@ -1,5 +1,15 @@
 {
-	"globalEnv": ["CI", "COVERAGE_ENABLED", "BUILD_WITH_COVERAGE", "CODECOV_TOKEN"],
+	"globalEnv": [
+		"CI",
+		"COVERAGE_ENABLED",
+		"BUILD_WITH_COVERAGE",
+		"CODECOV_TOKEN",
+		"GITHUB_ACTIONS",
+		"GITHUB_REPOSITORY",
+		"GITHUB_SHA",
+		"GITHUB_HEAD_REF",
+		"GITHUB_REF"
+	],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
