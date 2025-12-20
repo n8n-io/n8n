@@ -4,11 +4,13 @@ import { Container } from '@n8n/di';
 import { NodeOperationError } from 'n8n-workflow';
 import type { FileSystemHelperFunctions, INode, ResolvedFilePath } from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
-import { constants, createReadStream } from 'node:fs';
+import { constants } from 'node:fs';
 import {
 	access as fsAccess,
 	writeFile as fsWriteFile,
 	realpath as fsRealpath,
+	stat as fsStat,
+	open as fsOpen,
 } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve, posix } from 'node:path';
@@ -90,6 +92,9 @@ function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(resolvedFilePath) {
+		// Get the device and inode number of the path we're checking.
+		const pathIdentity = await fsStat(resolvedFilePath);
+		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
@@ -111,27 +116,36 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 				: error;
 		}
 
-		// Use O_NOFOLLOW to prevent createReadStream from following symlinks. We require that the path
-		// already be resolved beforehand.
-		const stream = createReadStream(resolvedFilePath, {
-			flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
-		});
+		// Open a file handle.
+		let fileHandle;
+		try {
+			fileHandle = await fsOpen(resolvedFilePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+		} catch (error) {
+			if (error instanceof Error && 'code' in error && error.code === 'ELOOP') {
+				throw new NodeOperationError(node, error, {
+					message: 'Symlinks are not allowed.',
+					level: 'warning',
+				});
+			} else {
+				throw error;
+			}
+		}
 
-		return await new Promise<ReturnType<typeof createReadStream>>((resolve, reject) => {
-			stream.once('error', (error) => {
-				if ((error as NodeJS.ErrnoException).code === 'ELOOP') {
-					reject(
-						new NodeOperationError(node, error, {
-							level: 'warning',
-							description: 'Symlinks are not allowed.',
-						}),
-					);
-				} else {
-					reject(error);
-				}
+		// Verify that the handle we've opened is the same as the path we checked earlier.
+		// This ensures nothing has changed between checking and reading.
+		const fileHandleIdentity = await fileHandle.stat();
+		if (
+			fileHandleIdentity.dev !== pathIdentity.dev ||
+			fileHandleIdentity.ino !== pathIdentity.ino
+		) {
+			throw new NodeOperationError(node, 'The file has changed and cannot be accessed.', {
+				level: 'warning',
 			});
-			stream.once('open', () => resolve(stream));
-		});
+		}
+
+		// The file handle we opened matches the path we checked, and the path is allowed,
+		// so we can go ahead and read the file.
+		return fileHandle.createReadStream();
 	},
 
 	getStoragePath() {

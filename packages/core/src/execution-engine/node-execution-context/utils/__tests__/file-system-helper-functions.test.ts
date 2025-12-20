@@ -1,8 +1,13 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { constants, createReadStream } from 'node:fs';
-import { access as fsAccess, realpath as fsRealpath } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import {
+	access as fsAccess,
+	realpath as fsRealpath,
+	stat as fsStat,
+	open as fsOpen,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
@@ -286,11 +291,14 @@ describe('getFileSystemHelperFunctions', () => {
 	});
 
 	describe('createReadStream', () => {
+		const mockFileStats = { dev: 123, ino: 456 };
+
 		it('should throw error for non-existent file', async () => {
 			const filePath = '/non/existent/file';
 			const error = new Error('ENOENT');
 			// @ts-expect-error undefined property
 			error.code = 'ENOENT';
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
 
 			await expect(
@@ -300,7 +308,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 		it('should throw when file access is blocked', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
-			(fsAccess as jest.Mock).mockResolvedValueOnce({});
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
 			).rejects.toThrow('Access to the file is not allowed');
@@ -308,11 +316,7 @@ describe('getFileSystemHelperFunctions', () => {
 
 		it('should not reveal if file exists if it is within restricted path', async () => {
 			securityConfig.restrictFileAccessTo = '/allowed/path';
-
-			const error = new Error('ENOENT');
-			// @ts-expect-error undefined property
-			error.code = 'ENOENT';
-			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
@@ -321,56 +325,54 @@ describe('getFileSystemHelperFunctions', () => {
 
 		it('should create a read stream if file access is permitted', async () => {
 			const filePath = '/allowed/path';
-			(fsAccess as jest.Mock).mockResolvedValueOnce({});
-
-			// Mock createReadStream to return a proper stream-like object
-			const mockStream: { once: jest.Mock } = {
-				once: jest.fn((event: string, callback: (error?: Error) => void): typeof mockStream => {
-					if (event === 'open') {
-						// Immediately call the open callback
-						setImmediate(() => callback());
-					}
-					return mockStream;
-				}),
+			const mockStream = { pipe: jest.fn() };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(mockFileStats),
+				createReadStream: jest.fn().mockReturnValue(mockStream),
 			};
-			(createReadStream as jest.Mock).mockReturnValueOnce(mockStream);
 
-			await helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath));
-			expect(createReadStream).toHaveBeenCalledWith(
-				filePath,
-				expect.objectContaining({
-					flags: expect.any(Number),
-				}),
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			const result = await helperFunctions.createReadStream(
+				await helperFunctions.resolvePath(filePath),
 			);
+
+			expect(result).toBe(mockStream);
+			expect(fsOpen).toHaveBeenCalledWith(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
 		});
 
-		it('should reject symlinks with O_NOFOLLOW to prevent TOCTOU attacks', async () => {
+		it('should reject symlinks with ELOOP error', async () => {
 			const filePath = '/allowed/path/file';
-
-			// Clear previous mocks and set up fresh mocks
-			(fsAccess as jest.Mock).mockReset();
-			(fsAccess as jest.Mock).mockResolvedValue(undefined);
-
-			// Simulate the ELOOP error that occurs when O_NOFOLLOW encounters a symlink
 			const eloopError = new Error('ELOOP: too many symbolic links encountered');
 			// @ts-expect-error undefined property
 			eloopError.code = 'ELOOP';
 
-			// Mock createReadStream to return a stream that emits an error event
-			const mockStream: { once: jest.Mock } = {
-				once: jest.fn((event: string, callback: (error?: Error) => void): typeof mockStream => {
-					if (event === 'error') {
-						// Emit the error asynchronously
-						setImmediate(() => callback(eloopError));
-					}
-					return mockStream;
-				}),
-			};
-			(createReadStream as jest.Mock).mockReturnValueOnce(mockStream);
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as jest.Mock).mockRejectedValueOnce(eloopError);
 
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
-			).rejects.toThrow('ELOOP: too many symbolic links encountered');
+			).rejects.toThrow('Symlinks are not allowed.');
+		});
+
+		it('should reject when file identity changes (TOCTOU prevention)', async () => {
+			const filePath = '/allowed/path/file';
+			const differentStats = { dev: 999, ino: 888 };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(differentStats),
+				createReadStream: jest.fn(),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await expect(
+				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
+			).rejects.toThrow('The file has changed and cannot be accessed.');
 		});
 	});
 
