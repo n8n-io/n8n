@@ -6,6 +6,9 @@ import type { ButtonType } from '@n8n/design-system';
 
 import { N8nButton } from '@n8n/design-system';
 
+// Explicit click emit is required for Playwright tests - N8nTooltip wraps
+// content in a span (via TooltipTrigger), which can interfere with click
+// event detection in automated tests
 const emit = defineEmits<{
 	click: [];
 }>();
