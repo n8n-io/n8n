@@ -193,10 +193,13 @@ export class WorkflowToolService {
 
 					if (manualLogging) {
 						const metadata = parseErrorMetadata(error);
+						// Wrap error in INodeExecutionData format so it can be properly processed
+						// by buildSteps and displayed in the UI execution data
+						const errorData: INodeExecutionData[] = [{ json: { error: errorResponse } }];
 						void context.addOutputData(
 							NodeConnectionTypes.AiTool,
 							localRunIndex,
-							executionError,
+							[errorData],
 							metadata,
 						);
 					}
@@ -424,8 +427,9 @@ export class WorkflowToolService {
 			return new DynamicTool({ name, description, func });
 		}
 
-		// Otherwise, prepare Zod schema and create a structured tool
+		// Prepare Zod schema for the structured tool
 		const schema = createZodSchemaFromArgs(collectedArguments);
+
 		return new DynamicStructuredTool({ schema, name, description, func });
 	}
 }

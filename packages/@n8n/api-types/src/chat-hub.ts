@@ -459,7 +459,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	icon: agentIconOrEmojiSchema.optional(),
 	systemPrompt: z.string().min(1).optional(),
 	credentialId: z.string().optional(),
-	provider: chatHubProviderSchema.optional(),
+	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 	tools: z.array(INodeSchema).optional(),
 }) {}
@@ -494,3 +494,8 @@ export type ChatProviderSettingsDto = z.infer<typeof chatProviderSettingsSchema>
 export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
 }) {}
+
+export interface ChatHubModuleSettings {
+	enabled: boolean;
+	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+}
