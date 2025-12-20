@@ -56,6 +56,19 @@ Valid Connection Methods:
    - Tools connected to agents via [ai_tool] - provides capabilities to agents
    - Vector stores use [ai_embedding] and [ai_document] - for AI-powered data retrieval
 
+   **CRITICAL: AI sub-nodes are the SOURCE of ai_* connections, NOT the target.**
+   - Document Loader connects TO Vector Store (Document Loader is source, Vector Store is target)
+   - Embeddings connects TO Vector Store (Embeddings is source, Vector Store is target)
+   - Chat Model connects TO AI Agent (Chat Model is source, AI Agent is target)
+
+   In the connections JSON, this appears as:
+   \`\`\`json
+   "Document Loader": { "ai_document": [[{ "node": "Vector Store", ... }]] }
+   \`\`\`
+   This means the connection EXISTS - Document Loader provides ai_document capability TO Vector Store.
+
+   **NEVER flag "Vector Store missing Document Loader" if Document Loader has ai_document → Vector Store.**
+
 3. **Shared Memory**: Multiple agents/workflows sharing the same memory node for context/data persistence
    - Same Window Buffer Memory connected to both a scheduled agent AND a chat agent
    - Both agents can access shared conversation history and context

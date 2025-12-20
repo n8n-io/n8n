@@ -407,7 +407,12 @@ defineExpose({
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary" :text="text">
+		<N8nButton
+			:class="$style.dropdownButton"
+			type="secondary"
+			:text="text"
+			data-test-id="chat-model-selector"
+		>
 			<ChatAgentAvatar
 				:agent="selectedAgent"
 				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
