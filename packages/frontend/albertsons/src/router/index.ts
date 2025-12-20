@@ -162,12 +162,23 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
-
+	// Albertsons Agent Library
 	{
 		path: '/agent-library',
 		name: 'ALBERTSONS_AGENT_LIBRARY',
 		components: {
 			default: () => import('@src/views/AgentLibrary.vue'),
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/executions',
+		name: 'EXECUTIONS',
+		components: {
+			default: () => import('@src/views/ExecutionsView.vue'),
 			sidebar: MainSidebar,
 		},
 		meta: {
