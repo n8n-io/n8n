@@ -252,6 +252,9 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 					dualStack: false,
+					slotsRefreshInterval: 5_000,
+					slotsRefreshTimeout: 1_000,
+					dnsResolveStrategy: 'LOOKUP',
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -319,6 +322,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
+			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,

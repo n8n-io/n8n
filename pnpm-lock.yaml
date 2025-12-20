@@ -2694,6 +2694,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.8
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2933,6 +2936,9 @@ importers:
       '@n8n/vm2':
         specifier: 3.9.25
         version: 3.9.25
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       alasql:
         specifier: 4.4.0
         version: 4.4.0(encoding@0.1.13)
@@ -8364,6 +8370,10 @@ packages:
     peerDependenciesMeta:
       '@vue/compiler-sfc':
         optional: true
+
+  '@thednp/dommatrix@2.0.12':
+    resolution: {integrity: sha512-eOshhlSShBXLfrMQqqhA450TppJXhKriaQdN43mmniOCMn9sD60QKF1Axsj7bKl339WH058LuGFS6H84njYH5w==}
+    engines: {node: '>=20', pnpm: '>=8.6.0'}
 
   '@tokenizer/token@0.3.0':
     resolution: {integrity: sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==}
@@ -25186,6 +25196,8 @@ snapshots:
       vue: 3.5.13(typescript@5.9.2)
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.13
+
+  '@thednp/dommatrix@2.0.12': {}
 
   '@tokenizer/token@0.3.0': {}
 
