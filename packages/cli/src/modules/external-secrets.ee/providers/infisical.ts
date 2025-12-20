@@ -4,7 +4,8 @@ import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers
 import { UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
-import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '../types';
+import { SecretsProvider } from '../types';
+import type { SecretsProviderSettings } from '../types';
 
 export interface InfisicalSettings {
 	token: string;
@@ -23,7 +24,7 @@ interface InfisicalServiceToken {
 	scopes?: Array<{ environment: string; path: string }>;
 }
 
-export class InfisicalProvider implements SecretsProvider {
+export class InfisicalProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
 		{
 			displayName:
@@ -60,8 +61,6 @@ export class InfisicalProvider implements SecretsProvider {
 
 	name = 'infisical';
 
-	state: SecretsProviderState = 'initializing';
-
 	private cachedSecrets: Record<string, string> = {};
 
 	private client: InfisicalClient;
@@ -97,18 +96,15 @@ export class InfisicalProvider implements SecretsProvider {
 		}
 	}
 
-	async connect(): Promise<void> {
+	protected async doConnect(): Promise<void> {
 		this.client = new InfisicalClient(this.settings);
-		if ((await this.test())[0]) {
-			try {
-				this.environment = await this.getEnvironment();
-				this.state = 'connected';
-			} catch {
-				this.state = 'error';
-			}
-		} else {
-			this.state = 'error';
+
+		const [testSuccess] = await this.test();
+		if (!testSuccess) {
+			throw new Error('Connection test failed');
 		}
+
+		this.environment = await this.getEnvironment();
 	}
 
 	async getEnvironment(): Promise<string> {
