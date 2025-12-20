@@ -82,9 +82,10 @@ const handleOpenChange = (open: boolean) => {
 			:delay-duration="showAfter"
 			:open="isControlled ? isOpen : undefined"
 			:disable-hoverable-content="disableHoverableContent"
+			:disable-closing-trigger="true"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as-child>
+			<TooltipTrigger as="span">
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
