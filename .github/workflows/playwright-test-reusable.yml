@@ -73,13 +73,18 @@ jobs:
   matrix:
     runs-on: ubuntu-slim
     outputs:
-      shards: ${{ steps.generate.outputs.shards }}
+      matrix: ${{ steps.generate.outputs.matrix }}
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: |
+            .github/test-metrics
+            packages/testing/playwright/scripts
+          sparse-checkout-cone-mode: false
+
       - name: Generate shard matrix
         id: generate
-        run: |
-          SHARDS=$(seq 1 ${{ inputs.shards }} | jq -R . | jq -s -c .)
-          echo "shards=$SHARDS" >> "$GITHUB_OUTPUT"
+        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix ${{ inputs.shards }} ${{ inputs.use-custom-orchestration && '--orchestrate' || '' }})" >> "$GITHUB_OUTPUT"
 
   test:
     needs: matrix
@@ -88,8 +93,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(needs.matrix.outputs.shards) }}
-    name: Test
+        include: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    name: Shard ${{ matrix.shard }}
 
     steps:
       - name: Checkout
@@ -114,30 +119,11 @@ jobs:
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
-        run: |
-          # Pre-pull all test container images to avoid network changes during test execution
-          npx tsx packages/testing/containers/pull-test-images.ts || true
-
-      - name: Distribute Tests
-        if: ${{ inputs.use-custom-orchestration }}
-        id: distribute
-        uses: ./.github/actions/distribute-playwright-tests
-        with:
-          shards: ${{ strategy.job-total }}
-          index: ${{ strategy.job-index }}
+        run: npx tsx packages/testing/containers/pull-test-images.ts || true
 
       - name: Run Tests
-        run: |
-          if [[ "${{ inputs.use-custom-orchestration }}" == "true" ]]; then
-            echo "Running ${{ steps.distribute.outputs.spec-count }} specs (estimated: ${{ steps.distribute.outputs.estimated-duration }}s)"
-            ${{ inputs.test-command }} \
-              --workers=${{ env.PLAYWRIGHT_WORKERS }} \
-              ${{ steps.distribute.outputs.specs }}
-          else
-            ${{ inputs.test-command }} \
-              --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
-              --workers=${{ env.PLAYWRIGHT_WORKERS }}
-          fi
+        # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
+        run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
         env:
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
