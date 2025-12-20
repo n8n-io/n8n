@@ -20,7 +20,7 @@ from src.errors import (
 from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 
-from src.message_types.broker import NodeMode, Items
+from src.message_types.broker import NodeMode, Items, Query
 from src.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
@@ -36,7 +36,6 @@ from src.constants import (
     SIGTERM_EXIT_CODE,
     SIGKILL_EXIT_CODE,
     PIPE_MSG_PREFIX_LENGTH,
-    LOG_PIPE_READER_TIMEOUT_TRIGGERED,
 )
 
 from multiprocessing.context import ForkServerProcess
@@ -59,6 +58,7 @@ class TaskExecutor:
         node_mode: NodeMode,
         items: Items,
         security_config: SecurityConfig,
+        query: Query = None,
     ) -> tuple[ForkServerProcess, PipeConnection, PipeConnection]:
         """Create a subprocess for executing a Python code task and a pipe for communication."""
 
@@ -78,6 +78,7 @@ class TaskExecutor:
                 items,
                 write_conn,
                 security_config,
+                query,
             ),
         )
 
@@ -89,7 +90,6 @@ class TaskExecutor:
         read_conn: PipeConnection,
         write_conn: PipeConnection,
         task_timeout: int,
-        pipe_reader_timeout: float,
         continue_on_fail: bool,
     ) -> tuple[Items, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
@@ -123,18 +123,16 @@ class TaskExecutor:
                 assert process.exitcode is not None
                 raise TaskSubprocessFailedError(process.exitcode)
 
-            pipe_reader.join(timeout=pipe_reader_timeout)
+            pipe_reader.join(timeout=task_timeout)
 
             if pipe_reader.is_alive():
-                logger.warning(
-                    LOG_PIPE_READER_TIMEOUT_TRIGGERED.format(
-                        timeout=pipe_reader_timeout
-                    )
-                )
                 try:
                     read_conn.close()
                 except Exception:
                     pass
+                raise TaskResultReadError(
+                    TimeoutError(f"Pipe reader timed out after {task_timeout}s")
+                )
 
             if pipe_reader.error:
                 raise TaskResultReadError(pipe_reader.error)
@@ -186,6 +184,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
+        query: Query = None,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -204,6 +203,7 @@ class TaskExecutor:
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
+                "_query": query,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
 
@@ -223,6 +223,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
+        _query: Query = None,  # unused, only to keep signatures consistent across modes
     ):
         """Execute a Python code task in per-item mode."""
 

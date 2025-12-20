@@ -17,10 +17,8 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -37,7 +35,7 @@ import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { ElDialog } from 'element-plus';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -70,7 +68,6 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
@@ -186,10 +183,7 @@ const inputNode = computed(() => {
 const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 const isTriggerNode = computed(
-	() =>
-		!!activeNodeType.value &&
-		(activeNodeType.value.group.includes('trigger') ||
-			activeNodeType.value.name === START_NODE_TYPE),
+	() => !!activeNodeType.value && activeNodeType.value.group.includes('trigger'),
 );
 
 const showTriggerPanel = computed(() => {
@@ -373,9 +367,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 
 const onWorkflowActivate = () => {
 	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {

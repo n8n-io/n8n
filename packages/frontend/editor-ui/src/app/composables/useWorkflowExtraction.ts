@@ -263,6 +263,14 @@ export function useWorkflowExtraction() {
 		try {
 			const createdWorkflow = await workflowsStore.createNewWorkflow(workflowData);
 
+			try {
+				await workflowsStore.publishWorkflow(createdWorkflow.id, {
+					versionId: createdWorkflow.versionId,
+				});
+			} catch (activationError) {
+				console.error('Failed to activate extracted sub-workflow:', activationError);
+			}
+
 			const { href } = router.resolve({
 				name: VIEWS.WORKFLOW,
 				params: {

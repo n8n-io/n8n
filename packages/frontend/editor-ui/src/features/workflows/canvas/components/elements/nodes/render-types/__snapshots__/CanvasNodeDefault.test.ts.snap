@@ -4,7 +4,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 <div
   class="node configurable"
   data-test-id="canvas-configurable-node"
-  style="--canvas-node--width: 224px; --canvas-node--height: 96px; --node--icon--size: 40px;"
+  style="--canvas-node--width: 224px; --canvas-node--height: 96px; --node--icon--size: 40px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
   <node-icon-stub
@@ -45,7 +45,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 <div
   class="node configurable configuration"
   data-test-id="canvas-configurable-node"
-  style="--canvas-node--width: 240px; --canvas-node--height: 80px; --node--icon--size: 30px;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 80px; --node--icon--size: 30px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
   <node-icon-stub
@@ -79,7 +79,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 <div
   class="node configuration"
   data-test-id="canvas-configuration-node"
-  style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node--icon--size: 30px;"
+  style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node--icon--size: 30px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
   <node-icon-stub
@@ -113,7 +113,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 <div
   class="node"
   data-test-id="canvas-default-node"
-  style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node--icon--size: 40px;"
+  style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node--icon--size: 40px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
   <node-icon-stub
@@ -154,7 +154,7 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
 <div
   class="node trigger"
   data-test-id="canvas-trigger-node"
-  style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node--icon--size: 40px;"
+  style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node--icon--size: 40px; --canvas-node--border--opacity-light: 0.100; --canvas-node--border--opacity-dark: 0.200;"
 >
   <!--v-if-->
   <node-icon-stub
