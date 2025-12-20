@@ -2449,7 +2449,7 @@ export class Github implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-							if (binaryData.id?.startsWith('filesystem-v2:')) {
+							if (binaryData.id && binaryData.id.split(':').length > 1) {
 								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 								body.content = buffer.toString('base64');
 							} else {
