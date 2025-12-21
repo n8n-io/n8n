@@ -13,11 +13,13 @@ const CONTAINER_ONLY_TAGS = [
 	'task-runner',
 	'source-control',
 	'email',
+	'oidc',
+	'observability',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 
 // Tags that need serial execution
-// These tests will be run AFTER the first run of the UI tests
+// These tests will be run AFTER the first run of the E2E tests
 // In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
 const SERIAL_EXECUTION = /@db:reset/;
 
@@ -29,11 +31,8 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 }, observability: true } },
 ];
-
-// Disable fullyParallel when running with single worker (no benefit, used by Currents orchestration)
-const enableParallelism = process.env.PLAYWRIGHT_WORKERS !== '1';
 
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
@@ -42,7 +41,7 @@ export function getProjects(): Project[] {
 	if (isLocal) {
 		projects.push(
 			{
-				name: 'ui',
+				name: 'e2e',
 				testDir: './tests/e2e',
 				grepInvert: new RegExp(
 					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
@@ -51,7 +50,7 @@ export function getProjects(): Project[] {
 				use: { baseURL: getFrontendUrl() },
 			},
 			{
-				name: 'ui:isolated',
+				name: 'e2e:isolated',
 				testDir: './tests/e2e',
 				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 				workers: 1,
@@ -63,15 +62,15 @@ export function getProjects(): Project[] {
 			const grepInvertPatterns = [SERIAL_EXECUTION.source, ISOLATED_ONLY.source];
 			projects.push(
 				{
-					name: `${name}:ui`,
+					name: `${name}:e2e`,
 					testDir: './tests/e2e',
 					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
-					fullyParallel: enableParallelism,
+					fullyParallel: true,
 					use: { containerConfig: config },
 				},
 				{
-					name: `${name}:ui:isolated`,
+					name: `${name}:e2e:isolated`,
 					testDir: './tests/e2e',
 					grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 					workers: 1,

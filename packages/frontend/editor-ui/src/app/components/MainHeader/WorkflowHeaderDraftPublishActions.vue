@@ -84,7 +84,11 @@ const isWorkflowSaved = computed(() => {
 	return !uiStore.stateIsDirty && !props.isNewWorkflow;
 });
 
-const showPublishIndicator = computed(() => {
+const publishButtonEnabled = computed(() => {
+	if (!props.workflowPermissions.publish) {
+		return false;
+	}
+
 	if (!containsTrigger.value) {
 		return false;
 	}
@@ -98,6 +102,32 @@ const showPublishIndicator = computed(() => {
 			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||
 		uiStore.stateIsDirty
 	);
+});
+
+const publishTooltipText = computed(() => {
+	if (!props.workflowPermissions.publish) {
+		return i18n.baseText('workflows.publish.permissionDenied');
+	}
+
+	const wfHasAnyChanges =
+		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+
+	if (!containsTrigger.value) {
+		return i18n.baseText('workflows.publishModal.noTriggerMessage');
+	}
+
+	if (workflowsStore.nodesIssuesExist) {
+		return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+			interpolate: { count: workflowsStore.nodesWithIssues.length },
+			adjustToNumber: workflowsStore.nodesWithIssues.length,
+		});
+	}
+
+	if (!wfHasAnyChanges && !uiStore.stateIsDirty) {
+		return i18n.baseText('workflows.publishModal.noChanges');
+	}
+
+	return '';
 });
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
@@ -143,21 +173,24 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<div v-if="!isArchived && workflowPermissions.update" :class="$style.publishButtonWrapper">
-			<N8nButton
-				:loading="autoSaveForPublish"
-				:disabled="isWorkflowSaving"
-				type="secondary"
-				data-test-id="workflow-open-publish-modal-button"
-				@click="onPublishButtonClick"
-			>
-				{{ locale.baseText('workflows.publish') }}
-			</N8nButton>
-			<span
-				v-if="showPublishIndicator"
-				:class="$style.publishButtonIndicator"
-				data-test-id="workflow-publish-indicator"
-			></span>
+		<div
+			v-if="!isArchived && (workflowPermissions.update || workflowPermissions.publish)"
+			:class="$style.publishButtonWrapper"
+		>
+			<N8nTooltip :disabled="!publishTooltipText">
+				<template #content>
+					{{ publishTooltipText }}
+				</template>
+				<N8nButton
+					:loading="autoSaveForPublish"
+					:disabled="!publishButtonEnabled || isWorkflowSaving"
+					type="secondary"
+					data-test-id="workflow-open-publish-modal-button"
+					@click="onPublishButtonClick"
+				>
+					{{ locale.baseText('workflows.publish') }}
+				</N8nButton>
+			</N8nTooltip>
 		</div>
 		<SaveButton
 			type="primary"
@@ -208,16 +241,5 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-block;
-}
-
-.publishButtonIndicator {
-	position: absolute;
-	top: -2px;
-	right: -2px;
-	width: 7px;
-	height: 7px;
-	background-color: var(--color--primary);
-	border-radius: 50%;
-	box-shadow: 0 0 0 2px var(--color--background--light-3);
 }
 </style>
