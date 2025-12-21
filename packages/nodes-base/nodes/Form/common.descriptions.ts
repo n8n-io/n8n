@@ -560,11 +560,6 @@ export const formFields: INodeProperties = {
 		multipleValues: true,
 		sortable: true,
 	},
-	displayOptions: {
-		show: {
-			'@version': [{ _cnd: { lt: 2.5 } }],
-		},
-	},
 	options: formOptions,
 };
 
@@ -579,11 +574,6 @@ export const formFieldsDynamic: INodeProperties = {
 		sortable: true,
 		requiredOnly: true,
 		requiredOnlyButtonText: 'Add Attributes',
-	},
-	displayOptions: {
-		show: {
-			'@version': [{ _cnd: { gte: 2.5 } }],
-		},
 	},
 	options: formOptions,
 };

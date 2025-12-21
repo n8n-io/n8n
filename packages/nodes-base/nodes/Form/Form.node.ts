@@ -85,8 +85,18 @@ export const formFieldsProperties: INodeProperties[] = [
 			},
 		},
 	},
-	{ ...formFields, displayOptions: { show: { defineForm: ['fields'] } } },
-	{ ...formFieldsDynamic, displayOptions: { show: { defineForm: ['fields'] } } },
+	{
+		...formFields,
+		displayOptions: {
+			show: { '@version': [{ _cnd: { lt: 2.5 } }], defineForm: ['fields'] },
+		},
+	},
+	{
+		...formFieldsDynamic,
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 2.5 } }], defineForm: ['fields'] },
+		},
+	},
 ];
 
 const pageProperties = updateDisplayOptions(

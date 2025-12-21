@@ -103,8 +103,8 @@ const descriptionV2: INodeTypeDescription = {
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
-		formFields,
-		formFieldsDynamic,
+		{ ...formFields, displayOptions: { show: { '@version': [{ _cnd: { lt: 2.5 } }] } } },
+		{ ...formFieldsDynamic, displayOptions: { show: { '@version': [{ _cnd: { gte: 2.5 } }] } } },
 		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		{
 			...formRespondMode,

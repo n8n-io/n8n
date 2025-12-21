@@ -276,22 +276,19 @@ const toggleOptionalValue = (
 	if (isCurrentlyAdded) {
 		// Remove the value - clear it
 		valueSet.delete(valueName);
-		const path = getPropertyPath(property.name, index) + `.${valueName}`;
-
-		emit('valueChanged', {
-			name: path,
-			value: undefined,
-		});
 	} else {
 		// Add the value - set default
 		valueSet.add(valueName);
-		const path = getPropertyPath(property.name, index) + `.${valueName}`;
-
-		emit('valueChanged', {
-			name: path,
-			value: deepCopy(valueDef.default),
-		});
 	}
+
+	// Re-set Map entry to trigger Vue reactivity after Set mutation
+	addedOptionalValues.value.set(key, valueSet);
+
+	const path = getPropertyPath(property.name, index) + `.${valueName}`;
+	emit('valueChanged', {
+		name: path,
+		value: isCurrentlyAdded ? undefined : deepCopy(valueDef.default),
+	});
 };
 
 watch(
