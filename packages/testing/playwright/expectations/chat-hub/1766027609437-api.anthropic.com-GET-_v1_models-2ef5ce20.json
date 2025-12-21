@@ -1,0 +1,103 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/v1/models"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["24"],
+			"request-id": ["req_011CWDRUFrwWJCybpJpNksZL"],
+			"anthropic-organization-id": ["00000000-0000-0000-0000-000000000000"],
+			"X-Robots-Tag": ["none"],
+			"Vary": ["accept-encoding"],
+			"Strict-Transport-Security": ["max-age=31536000; includeSubDomains; preload"],
+			"Server": ["cloudflare"],
+			"Date": ["Thu, 18 Dec 2025 03:13:17 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["9afb7bc6685094d7-TXL"],
+			"CF-Cache-Status": ["DYNAMIC"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"data": [
+					{
+						"type": "model",
+						"id": "claude-opus-4-5-20251101",
+						"display_name": "Claude Opus 4.5",
+						"created_at": "2025-11-24T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-haiku-4-5-20251001",
+						"display_name": "Claude Haiku 4.5",
+						"created_at": "2025-10-15T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-sonnet-4-5-20250929",
+						"display_name": "Claude Sonnet 4.5",
+						"created_at": "2025-09-29T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-opus-4-1-20250805",
+						"display_name": "Claude Opus 4.1",
+						"created_at": "2025-08-05T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-opus-4-20250514",
+						"display_name": "Claude Opus 4",
+						"created_at": "2025-05-22T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-sonnet-4-20250514",
+						"display_name": "Claude Sonnet 4",
+						"created_at": "2025-05-22T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-3-7-sonnet-20250219",
+						"display_name": "Claude Sonnet 3.7",
+						"created_at": "2025-02-24T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-3-5-haiku-20241022",
+						"display_name": "Claude Haiku 3.5",
+						"created_at": "2024-10-22T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-3-haiku-20240307",
+						"display_name": "Claude Haiku 3",
+						"created_at": "2024-03-07T00:00:00Z"
+					},
+					{
+						"type": "model",
+						"id": "claude-3-opus-20240229",
+						"display_name": "Claude Opus 3",
+						"created_at": "2024-02-29T00:00:00Z"
+					}
+				],
+				"has_more": false,
+				"first_id": "claude-opus-4-5-20251101",
+				"last_id": "claude-3-opus-20240229"
+			},
+			"rawBytes": "eyJkYXRhIjpbeyJ0eXBlIjoibW9kZWwiLCJpZCI6ImNsYXVkZS1vcHVzLTQtNS0yMDI1MTEwMSIsImRpc3BsYXlfbmFtZSI6IkNsYXVkZSBPcHVzIDQuNSIsImNyZWF0ZWRfYXQiOiIyMDI1LTExLTI0VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtaGFpa3UtNC01LTIwMjUxMDAxIiwiZGlzcGxheV9uYW1lIjoiQ2xhdWRlIEhhaWt1IDQuNSIsImNyZWF0ZWRfYXQiOiIyMDI1LTEwLTE1VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOSIsImRpc3BsYXlfbmFtZSI6IkNsYXVkZSBTb25uZXQgNC41IiwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMjlUMDA6MDA6MDBaIn0seyJ0eXBlIjoibW9kZWwiLCJpZCI6ImNsYXVkZS1vcHVzLTQtMS0yMDI1MDgwNSIsImRpc3BsYXlfbmFtZSI6IkNsYXVkZSBPcHVzIDQuMSIsImNyZWF0ZWRfYXQiOiIyMDI1LTA4LTA1VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtb3B1cy00LTIwMjUwNTE0IiwiZGlzcGxheV9uYW1lIjoiQ2xhdWRlIE9wdXMgNCIsImNyZWF0ZWRfYXQiOiIyMDI1LTA1LTIyVDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtc29ubmV0LTQtMjAyNTA1MTQiLCJkaXNwbGF5X25hbWUiOiJDbGF1ZGUgU29ubmV0IDQiLCJjcmVhdGVkX2F0IjoiMjAyNS0wNS0yMlQwMDowMDowMFoifSx7InR5cGUiOiJtb2RlbCIsImlkIjoiY2xhdWRlLTMtNy1zb25uZXQtMjAyNTAyMTkiLCJkaXNwbGF5X25hbWUiOiJDbGF1ZGUgU29ubmV0IDMuNyIsImNyZWF0ZWRfYXQiOiIyMDI1LTAyLTI0VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtMy01LWhhaWt1LTIwMjQxMDIyIiwiZGlzcGxheV9uYW1lIjoiQ2xhdWRlIEhhaWt1IDMuNSIsImNyZWF0ZWRfYXQiOiIyMDI0LTEwLTIyVDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtMy1oYWlrdS0yMDI0MDMwNyIsImRpc3BsYXlfbmFtZSI6IkNsYXVkZSBIYWlrdSAzIiwiY3JlYXRlZF9hdCI6IjIwMjQtMDMtMDdUMDA6MDA6MDBaIn0seyJ0eXBlIjoibW9kZWwiLCJpZCI6ImNsYXVkZS0zLW9wdXMtMjAyNDAyMjkiLCJkaXNwbGF5X25hbWUiOiJDbGF1ZGUgT3B1cyAzIiwiY3JlYXRlZF9hdCI6IjIwMjQtMDItMjlUMDA6MDA6MDBaIn1dLCJoYXNfbW9yZSI6ZmFsc2UsImZpcnN0X2lkIjoiY2xhdWRlLW9wdXMtNC01LTIwMjUxMTAxIiwibGFzdF9pZCI6ImNsYXVkZS0zLW9wdXMtMjAyNDAyMjkifQ=="
+		}
+	},
+	"id": "1766027609437-api.anthropic.com-GET-_v1_models-2ef5ce20.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
