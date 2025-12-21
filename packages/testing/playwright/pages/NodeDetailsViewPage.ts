@@ -518,17 +518,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getNodeParameters().getByTestId('collection-add-option-select');
 	}
 
-	getFixedCollectionAttributePicker(index?: number) {
-		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-attribute');
-		return index !== undefined ? pickers.nth(index) : pickers.first();
-	}
-
-	async addFixedCollectionAttribute(attributeName: string, index?: number) {
-		const picker = this.getFixedCollectionAttributePicker(index);
-		await picker.locator('input').click();
-		await this.page.getByRole('option', { name: attributeName, exact: true }).click();
-	}
-
 	getParameterSwitch(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('.el-switch');
 	}
@@ -884,6 +873,17 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async addItemToFixedCollection(collectionName: string) {
 		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+	}
+
+	getFixedCollectionPropertyPicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionProperty(propertyName: string, index?: number) {
+		const picker = this.getFixedCollectionPropertyPicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
 	}
 
 	async clickParameterItemAction(actionText: string) {
