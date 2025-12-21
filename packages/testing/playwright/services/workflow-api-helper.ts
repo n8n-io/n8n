@@ -156,11 +156,21 @@ export class WorkflowApiHelper {
 	/** Imports a workflow from file, making it unique for testing. */
 	async importWorkflowFromFile(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			transform?: (workflow: Partial<IWorkflowBase>) => Partial<IWorkflowBase>;
+		},
 	): Promise<WorkflowImportResult> {
 		const filePath = resolveFromRoot('workflows', fileName);
 		const fileContent = readFileSync(filePath, 'utf8');
-		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+		let workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+
+		// Apply transform if provided
+		if (options?.transform) {
+			workflowDefinition = options.transform(workflowDefinition) as IWorkflowBase;
+		}
 
 		return await this.importWorkflowFromDefinition(workflowDefinition, options);
 	}
