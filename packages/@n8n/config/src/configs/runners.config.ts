@@ -24,6 +24,14 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_AUTH_TOKEN')
 	authToken: string = '';
 
+	/**
+	 * TTL (in seconds) for grant tokens used to authenticate runner WebSocket connections.
+	 * Increase this if task runners take longer to start up in container environments
+	 * (e.g., set to 60 for slow container environments).
+	 */
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL')
+	grantTokenTtl: number = 15;
+
 	/** Port task runners broker should listen on */
 	@Env('N8N_RUNNERS_BROKER_PORT')
 	port: number = 5679;

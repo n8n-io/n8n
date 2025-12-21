@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 
@@ -14,7 +15,10 @@ import { ForbiddenError } from '../../../errors/response-errors/forbidden.error'
  */
 @Service()
 export class TaskBrokerAuthController {
-	constructor(private readonly authService: TaskBrokerAuthService) {
+	constructor(
+		private readonly authService: TaskBrokerAuthService,
+		private readonly logger: Logger,
+	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
 	}
@@ -53,6 +57,14 @@ export class TaskBrokerAuthController {
 		const grantToken = authHeader.slice('Bearer '.length);
 		const isConsumed = await this.authService.tryConsumeGrantToken(grantToken);
 		if (!isConsumed) {
+			this.logger.warn(
+				'Task runner WebSocket connection rejected: grant token invalid or expired',
+				{
+					runnerId: req.query?.id,
+					grantTokenTtlMs: this.authService.getGrantTokenTtl(),
+					hint: 'If runner startup exceeds TTL, increase N8N_RUNNERS_GRANT_TOKEN_TTL',
+				},
+			);
 			res.status(403).json({ code: 403, message: 'Forbidden' });
 			return;
 		}
