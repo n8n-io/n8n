@@ -17,10 +17,13 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
@@ -33,9 +36,6 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -220,10 +220,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			this.instanceSettings.markAsLeader();
-		} else {
-			await this.initOrchestration();
 		}
-
 		await this.initLicense();
 
 		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
@@ -253,6 +250,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// Initialize orchestration after modules so that any module
+		// @OnPubSubEvent handler decorators are taken into account
+		if (this.globalConfig.executions.mode === 'queue') {
+			await this.initOrchestration();
+		}
 
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
