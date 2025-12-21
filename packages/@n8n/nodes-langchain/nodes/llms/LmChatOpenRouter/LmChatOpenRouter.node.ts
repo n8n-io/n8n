@@ -10,6 +10,7 @@ import {
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { DEFAULT_OPENROUTER_API_URL } from './constants';
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
@@ -53,7 +54,7 @@ export class LmChatOpenRouter implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '={{ $credentials?.url }}',
+			baseURL: `={{ $credentials?.url || "${DEFAULT_OPENROUTER_API_URL}" }}`,
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
@@ -225,10 +226,12 @@ export class LmChatOpenRouter implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const baseURL = credentials.url || DEFAULT_OPENROUTER_API_URL;
+
 		const configuration: ClientOptions = {
-			baseURL: credentials.url,
+			baseURL,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url),
+				dispatcher: getProxyAgent(baseURL),
 			},
 		};
 
