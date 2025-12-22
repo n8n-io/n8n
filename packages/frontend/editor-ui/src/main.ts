@@ -1,5 +1,5 @@
 import { createApp } from 'vue';
-// Cache bust for Codecov bundle analysis test
+
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
 import '@vue-flow/controls/dist/style.css';
