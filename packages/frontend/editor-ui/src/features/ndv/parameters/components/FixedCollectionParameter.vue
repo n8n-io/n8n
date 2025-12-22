@@ -106,15 +106,15 @@ const sortable = computed(() => {
 	return !!props.parameter.typeOptions?.sortable;
 });
 
-const requiredOnly = computed(() => {
-	return !!props.parameter.typeOptions?.requiredOnly;
+const hideOptionalFields = computed(() => {
+	return !!props.parameter.typeOptions?.hideOptionalFields;
 });
 
-const requiredOnlyButtonText = computed(() => {
-	if (!props.parameter.typeOptions?.requiredOnlyButtonText) {
-		return locale.baseText('fixedCollectionParameter.addProperty');
+const addOptionalFieldButtonText = computed(() => {
+	if (!props.parameter.typeOptions?.addOptionalFieldButtonText) {
+		return locale.baseText('fixedCollectionParameter.addField');
 	}
-	return locale.nodeText(activeNode.value?.type).requiredOnlyButtonText(props.parameter);
+	return locale.nodeText(activeNode.value?.type).addOptionalFieldButtonText(props.parameter);
 });
 
 const getOptionalValuesKey = (propertyName: string, index?: number): string => {
@@ -136,7 +136,7 @@ const hasNonDefaultValue = (
 };
 
 const initializeAddedOptionalValues = () => {
-	if (!requiredOnly.value) return;
+	if (!hideOptionalFields.value) return;
 	if (!isINodePropertyCollectionList(props.parameter.options)) return;
 
 	addedOptionalValues.value.clear();
@@ -195,7 +195,7 @@ const getVisiblePropertyValues = (
 	property: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
-	if (!requiredOnly.value) {
+	if (!hideOptionalFields.value) {
 		return property.values;
 	}
 
@@ -218,8 +218,8 @@ const getVisiblePropertyValues = (
 			return true;
 		}
 
-		// Auto-show values marked as depending on optional properties
-		if (value.typeOptions?.requiredOnlyAutoShow) {
+		// Show fields marked with showEvenWhenOptional
+		if (value.typeOptions?.showEvenWhenOptional) {
 			return true;
 		}
 
@@ -231,7 +231,7 @@ const getPickerPropertyValues = (
 	property: INodePropertyCollection,
 	index?: number,
 ): INodeProperties[] => {
-	if (!requiredOnly.value) {
+	if (!hideOptionalFields.value) {
 		return [];
 	}
 
@@ -248,8 +248,8 @@ const getPickerPropertyValues = (
 			return false;
 		}
 
-		// Exclude values that auto-show based on parent optional properties
-		if (value.typeOptions?.requiredOnlyAutoShow) {
+		// Exclude fields with showEvenWhenOptional - they appear without the picker
+		if (value.typeOptions?.showEvenWhenOptional) {
 			return false;
 		}
 
@@ -516,7 +516,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 									data-test-id="fixed-collection-add-property"
 								>
 									<N8nSelect
-										:placeholder="requiredOnlyButtonText"
+										:placeholder="addOptionalFieldButtonText"
 										size="small"
 										filterable
 										:model-value="null"
@@ -575,7 +575,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						data-test-id="fixed-collection-add-property"
 					>
 						<N8nSelect
-							:placeholder="requiredOnlyButtonText"
+							:placeholder="addOptionalFieldButtonText"
 							size="small"
 							filterable
 							:model-value="null"

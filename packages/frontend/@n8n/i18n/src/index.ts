@@ -367,13 +367,13 @@ export class I18nClass {
 			},
 
 			/**
-			 * Text for a button to add non-required options inside a `fixedCollection`
-			 * param having `requiredOnly: true`.
+			 * Text for a button to add optional fields inside a `fixedCollection`
+			 * param having `hideOptionalFields: true`.
 			 */
-			requiredOnlyButtonText({ name: parameterName, typeOptions }: INodeProperties) {
+			addOptionalFieldButtonText({ name: parameterName, typeOptions }: INodeProperties) {
 				return context.dynamicRender({
-					key: `${initialKey}.${parameterName}.requiredOnlyButtonText`,
-					fallback: typeOptions?.requiredOnlyButtonText,
+					key: `${initialKey}.${parameterName}.addOptionalFieldButtonText`,
+					fallback: typeOptions?.addOptionalFieldButtonText,
 				});
 			},
 

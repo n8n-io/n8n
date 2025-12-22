@@ -148,8 +148,8 @@ describe('FixedCollectionParameter.vue', () => {
 		expect(document.activeElement).toBe(input);
 	});
 
-	describe('requiredOnly mode', () => {
-		const requiredOnlyProps: Props = {
+	describe('hideOptionalFields mode', () => {
+		const hideOptionalFieldsProps: Props = {
 			parameter: {
 				displayName: 'Form Fields',
 				name: 'formFields',
@@ -158,8 +158,8 @@ describe('FixedCollectionParameter.vue', () => {
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
-					requiredOnly: true,
-					requiredOnlyButtonText: 'Add Attributes',
+					hideOptionalFields: true,
+					addOptionalFieldButtonText: 'Add Attributes',
 				},
 				default: {},
 				options: [
@@ -209,7 +209,7 @@ describe('FixedCollectionParameter.vue', () => {
 								type: 'number',
 								default: 0,
 								typeOptions: {
-									requiredOnlyAutoShow: true,
+									showEvenWhenOptional: true,
 								},
 								displayOptions: {
 									show: {
@@ -236,10 +236,10 @@ describe('FixedCollectionParameter.vue', () => {
 		};
 
 		const renderRequiredOnly = createComponentRenderer(FixedCollectionParameter, {
-			props: requiredOnlyProps,
+			props: hideOptionalFieldsProps,
 		});
 
-		it('renders the optional values picker when requiredOnly is true', () => {
+		it('renders the optional values picker when hideOptionalFields is true', () => {
 			const { container } = renderRequiredOnly();
 			const picker = container.querySelector('.optional-values-picker');
 			expect(picker).toBeInTheDocument();
@@ -306,7 +306,7 @@ describe('FixedCollectionParameter.vue', () => {
 
 		it('initializes with optional values visible when they have non-default data', async () => {
 			const propsWithSavedValue: Props = {
-				...requiredOnlyProps,
+				...hideOptionalFieldsProps,
 				nodeValues: {
 					parameters: {
 						formFields: {
@@ -347,7 +347,7 @@ describe('FixedCollectionParameter.vue', () => {
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
-						requiredOnly: true,
+						hideOptionalFields: true,
 					},
 					default: {},
 					options: [
@@ -420,7 +420,7 @@ describe('FixedCollectionParameter.vue', () => {
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
-						requiredOnly: true,
+						hideOptionalFields: true,
 					},
 					default: {},
 					options: [
@@ -485,9 +485,9 @@ describe('FixedCollectionParameter.vue', () => {
 			});
 		});
 
-		it('auto-shows fields with requiredOnlyAutoShow when displayOptions conditions are met', async () => {
+		it('shows fields with showEvenWhenOptional when displayOptions conditions are met', async () => {
 			const propsWithAutoShow: Props = {
-				...requiredOnlyProps,
+				...hideOptionalFieldsProps,
 				nodeValues: {
 					parameters: {
 						formFields: {
