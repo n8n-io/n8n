@@ -13,9 +13,6 @@ import { useTelemetry } from '../composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
-	data: {
-		workflowId: string;
-	};
 }>();
 
 const executionsStore = useExecutionsStore();

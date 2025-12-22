@@ -1223,4 +1223,29 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// Just return the string data as-is.
 		return data;
 	}
+
+	async findByStopExecutionsFilter(query: ExecutionSummaries.StopExecutionFilterQuery) {
+		const findBy = {
+			workflowId: query.workflowId,
+			status: In(query.status ?? []),
+			...(query.startedAfter
+				? {
+						startedAt: MoreThanOrEqual(
+							DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter)),
+						),
+					}
+				: {}),
+			...(query.startedBefore
+				? {
+						startedAt: LessThanOrEqual(
+							DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore)),
+						),
+					}
+				: {}),
+		};
+
+		this.logger.warn('findBy', findBy);
+
+		return await this.findBy(findBy);
+	}
 }

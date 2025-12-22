@@ -34,10 +34,15 @@ export class ExecutionsController {
 		}
 	}
 
+	/**
+	 * Stops executions based on the provided filter
+	 *
+	 * @returns The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 */
 	@Post('/stopMany')
 	async stopMany(req: ExecutionRequest.StopMany) {
 		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-		await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+		return await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
 	}
 
 	@Get('/', { middlewares: [parseRangeQuery] })

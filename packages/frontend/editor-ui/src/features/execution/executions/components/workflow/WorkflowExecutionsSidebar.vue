@@ -22,7 +22,6 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 import { ElCheckbox } from 'element-plus';
 import { N8nHeading, N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
@@ -163,10 +162,7 @@ function onAutoRefreshChange(enabled: string | number | boolean) {
 
 function onStopManyExecutions() {
 	telemetry.track('User initiated stop many executions');
-	uiStore.openModalWithData({
-		name: STOP_MANY_EXECUTIONS_MODAL_KEY,
-		data: { workflowId: useWorkflowsStore().workflowId },
-	});
+	uiStore.openModal(STOP_MANY_EXECUTIONS_MODAL_KEY);
 }
 
 function scrollToActiveCard(): void {
