@@ -1042,7 +1042,6 @@ async function optionSelected(command: string) {
 			break;
 
 		case 'removeExpression':
-			isFocused.value = false;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1052,6 +1051,7 @@ async function optionSelected(command: string) {
 					parameterOptions.value,
 				),
 			);
+			await setFocus();
 			break;
 
 		case 'refreshOptions':

@@ -42,7 +42,7 @@ type Props = {
 	value: NodeParameterValueType;
 	label?: IParameterLabel;
 	displayOptions?: boolean;
-	optionsPosition?: 'bottom' | 'top';
+	optionsPosition?: 'bottom' | 'top' | 'top-absolute';
 	hideHint?: boolean;
 	isReadOnly?: boolean;
 	rows?: number;
@@ -439,6 +439,26 @@ function removeOverride(clearField = false) {
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
+		<div
+			:class="{
+				[$style.optionsTopAbsolute]: true,
+				[$style.visible]: menuExpanded || focused || forceShowExpression,
+			}"
+		>
+			<ParameterOptions
+				v-if="displayOptions && optionsPosition === 'top-absolute'"
+				:parameter="parameter"
+				:value="value"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
+				@update:model-value="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</div>
 		<ParameterOverrideSelectableList
 			v-if="isContentOverride && fromAIOverride"
 			v-model="fromAIOverride"
@@ -481,6 +501,19 @@ function removeOverride(clearField = false) {
 .options {
 	position: absolute;
 	bottom: -22px;
+	right: 0;
+	z-index: 1;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+
+.optionsTopAbsolute {
+	position: absolute;
+	bottom: 100%;
 	right: 0;
 	z-index: 1;
 	opacity: 0;

@@ -776,7 +776,12 @@ watch(
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !item.parameter.isNodeSetting"
+					v-if="
+						hideDelete !== true &&
+						!isReadOnly &&
+						!item.parameter.isNodeSetting &&
+						!isCollectionOverhaulEnabled
+					"
 					type="tertiary"
 					text
 					size="small"

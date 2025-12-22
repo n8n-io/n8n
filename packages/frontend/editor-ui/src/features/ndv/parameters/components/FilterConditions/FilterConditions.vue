@@ -32,9 +32,15 @@ interface Props {
 	path: string;
 	node: INode | null;
 	readOnly?: boolean;
+	removeFirstMargin?: boolean;
+	removeLastMargin?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), { readOnly: false });
+const props = withDefaults(defineProps<Props>(), {
+	readOnly: false,
+	removeFirstMargin: false,
+	removeLastMargin: false,
+});
 
 const emit = defineEmits<{
 	valueChanged: [
@@ -166,7 +172,12 @@ function getIssues(index: number): string[] {
 
 <template>
 	<div
-		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
+		:class="{
+			[$style.filter]: true,
+			[$style.single]: singleCondition,
+			[$style.noTopMargin]: removeFirstMargin,
+			[$style.noBottomMargin]: removeLastMargin,
+		}"
 		:data-test-id="`filter-${parameter.name}`"
 	>
 		<N8nInputLabel
@@ -237,6 +248,18 @@ function getIssues(index: number): string[] {
 	display: flex;
 	flex-direction: column;
 	margin: var(--spacing--xs) 0;
+
+	&.noTopMargin {
+		margin-top: 0;
+	}
+
+	&.noBottomMargin {
+		margin-bottom: 0;
+	}
+}
+
+.filter:not(.single) .content {
+	margin-top: var(--spacing--xs);
 }
 
 .conditions {
@@ -244,31 +267,27 @@ function getIssues(index: number): string[] {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 }
+
 .combinator {
 	position: relative;
 	z-index: 1;
 	margin-top: var(--spacing--2xs);
-	margin-bottom: calc(var(--spacing--2xs) * -1);
+	margin-bottom: var(--spacing--2xs);
 	margin-left: var(--spacing--lg);
 }
 
 .condition {
 	padding-left: var(--spacing--lg);
-	padding-bottom: var(--spacing--xs);
 }
 
 .single {
 	.condition {
 		padding-left: 0;
 	}
-
-	.content {
-		margin-top: calc(var(--spacing--xs) * -1);
-	}
 }
 
 .addConditionWrapper {
-	margin-top: var(--spacing--lg);
+	margin-top: var(--spacing--xs);
 	margin-left: var(--spacing--lg);
 }
 .ghost,
