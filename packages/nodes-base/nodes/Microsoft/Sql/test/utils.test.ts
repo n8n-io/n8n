@@ -7,6 +7,7 @@ import {
 	configurePool,
 	deleteOperation,
 	escapeIdentifier,
+	escapeTableName,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
 	mssqlChunk,
@@ -342,12 +343,28 @@ describe('MSSQL tests', () => {
 		});
 	});
 
+	describe('escapeIdentifier', () => {
+		it('keeps outer brackets', () => {
+			expect(escapeIdentifier('[test]')).toEqual('[test]');
+		});
+
+		it('escapes content while using outer brackets', () => {
+			expect(escapeIdentifier('[test.hello]]')).toEqual('[test.hello]]]');
+		});
+
+		it('escapes content while not using outer brackets', () => {
+			expect(escapeIdentifier('test.hello]]')).toEqual('[test.hello]]]]]');
+		});
+	});
+
 	describe('escapeTableName', () => {
 		it('should escape table name correctly', () => {
-			expect(escapeIdentifier('test')).toEqual('[test]');
-			expect(escapeIdentifier('[test]')).toEqual('[test]');
-			expect(escapeIdentifier('test.test')).toEqual('[test].[test]');
-			expect(escapeIdentifier("test] SET mytext='1' where id=2; -- -")).toEqual(
+			expect(escapeTableName('test')).toEqual('[test]');
+			expect(escapeTableName('[test]')).toEqual('[test]');
+			expect(escapeTableName('test.test')).toEqual('[test.test]');
+			expect(escapeTableName('[test].[test]')).toEqual('[test].[test]');
+			expect(escapeTableName('[test]--.ok].[[test]]')).toEqual('[test]]--.ok].[[test]]]');
+			expect(escapeTableName("test] SET mytext='1' where id=2; -- -")).toEqual(
 				"[test]] SET mytext='1' where id=2; -- -]",
 			);
 		});

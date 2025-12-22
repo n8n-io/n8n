@@ -114,23 +114,30 @@ export function configurePool(credentials: IDataObject) {
 	return new mssql.ConnectionPool(config);
 }
 
-const ID_GLOBAL_REGEXP = /\]/g;
-export const escapeIdentifier = (identifier: string) => {
-	return identifier
-		.split('.')
-		.map((part) => {
-			part = part.trim();
+export function escapeIdentifier(identifier: string) {
+	if (identifier.startsWith('[') && identifier.endsWith(']')) {
+		identifier = identifier.slice(1, -1);
+	}
 
-			// If already wrapped in brackets, return as-is (assume it's correctly escaped)
-			if (part.startsWith('[') && part.endsWith(']')) {
-				return part;
-			}
+	return `[${identifier.replaceAll(']', ']]')}]`;
+}
 
-			// Escape closing brackets by doubling them, then wrap in brackets
-			return '[' + part.replace(ID_GLOBAL_REGEXP, ']]') + ']';
-		})
-		.join('.');
-};
+export function escapeTableName(table: string) {
+	table = table.trim();
+	if (table.startsWith('[') && table.endsWith(']')) {
+		return (
+			table
+				// remove outer brackets
+				.slice(1, -1)
+				// split by inner parts, for example when database name is provided in form of [db].[dbo].[receipts]
+				.split('].[')
+				.map((part) => escapeIdentifier(`[${part}]`))
+				.join('.')
+		);
+	}
+
+	return escapeIdentifier(table);
+}
 
 const MSSQL_PARAMETER_LIMIT = 2100;
 
@@ -172,7 +179,7 @@ export async function insertOperation(tables: ITables, pool: mssql.ConnectionPoo
 					}
 				}
 
-				const query = `INSERT INTO ${escapeIdentifier(table)} (${formatColumns(
+				const query = `INSERT INTO ${escapeTableName(table)} (${formatColumns(
 					columnString,
 				)}) VALUES ${valuesPlaceholder.join(', ')};`;
 
@@ -200,7 +207,7 @@ export async function updateOperation(tables: ITables, pool: mssql.ConnectionPoo
 					request.input(`v${index}`, item[col]);
 				}
 
-				const query = `UPDATE ${escapeIdentifier(table)} SET ${setValues.join(
+				const query = `UPDATE ${escapeTableName(table)} SET ${setValues.join(
 					', ',
 				)} WHERE ${condition};`;
 
@@ -229,7 +236,7 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 						request.input(`v${index}`, entry[deleteKey]);
 					}
 
-					const query = `DELETE FROM ${escapeIdentifier(
+					const query = `DELETE FROM ${escapeTableName(
 						table,
 					)} WHERE ${escapeIdentifier(deleteKey)} IN (${valuesPlaceholder.join(', ')});`;
 
