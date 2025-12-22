@@ -69,7 +69,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 				startDate,
 			})
 			.groupBy('wh.workflowId')
-			.getRawMany<WorkflowHistory>(); // need raw due to `distinct(true)`
+			.getRawMany<{ workflowId: string }>();
 
 		return result.map((x) => x.workflowId);
 	}
