@@ -140,20 +140,38 @@ export class ScalingService {
 		else if (instanceType === 'worker') await this.stopWorker();
 	}
 
-	private async pauseQueue() {
-		await this.queue.pause(true, true); // no more jobs will be enqueued or picked up
-		this.logger.debug('Paused queue');
+	/**
+	 * Pause queue processing to prevent picking up new jobs.
+	 * Already running jobs will continue to completion.
+	 *
+	 * @param local - If true, only pause locally (this worker). If false, pause globally across all workers.
+	 */
+	async pauseQueue(local = true) {
+		this.assertQueue();
+		await this.queue.pause(local, true); // second param: doNotWaitActive = true
+		this.logger.debug('Paused queue', { local });
+	}
+
+	/**
+	 * Resume queue processing to allow picking up new jobs.
+	 *
+	 * @param local - If true, only resume locally (this worker). If false, resume globally across all workers.
+	 */
+	async resumeQueue(local = true) {
+		this.assertQueue();
+		await this.queue.resume(local);
+		this.logger.debug('Resumed queue', { local });
 	}
 
 	private async stopMain() {
-		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
+		if (this.instanceSettings.isSingleMain) await this.pauseQueue(false);
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
 	private async stopWorker() {
-		await this.pauseQueue();
+		await this.pauseQueue(false);
 
 		let count = 0;
 
