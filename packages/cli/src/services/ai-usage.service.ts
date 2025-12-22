@@ -24,7 +24,7 @@ export class AiUsageService {
 		}
 
 		const row = await this.settingsRepository.findByKey(KEY);
-		const allowSending = row?.value === 'true';
+		const allowSending = (row?.value ?? 'true') === 'true';
 		await this.cacheService.set(KEY, allowSending.toString());
 		return allowSending;
 	}
