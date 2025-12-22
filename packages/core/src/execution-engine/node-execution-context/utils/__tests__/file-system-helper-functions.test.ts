@@ -377,6 +377,8 @@ describe('getFileSystemHelperFunctions', () => {
 	});
 
 	describe('writeContentToFile', () => {
+		const mockFileStats = { dev: 123, ino: 456, isFile: () => true };
+
 		it('should throw error for blocked file path', async () => {
 			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 
@@ -387,6 +389,146 @@ describe('getFileSystemHelperFunctions', () => {
 					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
 			).rejects.toThrow('not writable');
+		});
+
+		it('should reject symlinks with ELOOP error', async () => {
+			const filePath = '/allowed/path/file';
+			const eloopError = new Error('ELOOP: too many symbolic links encountered');
+			// @ts-expect-error undefined property
+			eloopError.code = 'ELOOP';
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockRejectedValueOnce(eloopError);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(filePath),
+					'test content',
+				),
+			).rejects.toThrow('Symlinks are not allowed.');
+		});
+
+		it('should reject when file identity changes (TOCTOU prevention)', async () => {
+			const filePath = '/allowed/path/file';
+			const differentStats = { dev: 999, ino: 888, isFile: () => true };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(differentStats),
+				truncate: jest.fn(),
+				write: jest.fn(),
+				close: jest.fn(),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(filePath),
+					'test content',
+				),
+			).rejects.toThrow('The file has changed and cannot be written.');
+
+			expect(mockFileHandle.close).toHaveBeenCalled();
+		});
+
+		it('should successfully write to file when identity matches', async () => {
+			const filePath = '/allowed/path/file';
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(mockFileStats),
+				truncate: jest.fn().mockResolvedValue(undefined),
+				writeFile: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await helperFunctions.writeContentToFile(
+				await helperFunctions.resolvePath(filePath),
+				'test content',
+			);
+
+			expect(fsOpen).toHaveBeenCalledWith(
+				filePath,
+				constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW,
+			);
+			expect(mockFileHandle.truncate).toHaveBeenCalledWith(0);
+			expect(mockFileHandle.writeFile).toHaveBeenCalledWith('test content', { encoding: 'binary' });
+			expect(mockFileHandle.close).toHaveBeenCalled();
+		});
+
+		it('should successfully create and write to new file', async () => {
+			const filePath = '/allowed/path/newfile';
+			const enoentError = new Error('ENOENT');
+			// @ts-expect-error undefined property
+			enoentError.code = 'ENOENT';
+
+			const newFileStats = { dev: 123, ino: 789, isFile: () => true };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(newFileStats),
+				truncate: jest.fn().mockResolvedValue(undefined),
+				writeFile: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockRejectedValueOnce(enoentError);
+			(fsStat as jest.Mock).mockResolvedValueOnce(newFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await helperFunctions.writeContentToFile(
+				await helperFunctions.resolvePath(filePath),
+				'new content',
+			);
+
+			expect(mockFileHandle.truncate).toHaveBeenCalledWith(0);
+			expect(mockFileHandle.writeFile).toHaveBeenCalledWith('new content', { encoding: 'binary' });
+			expect(mockFileHandle.close).toHaveBeenCalled();
+		});
+
+		it('should strip O_TRUNC flag from user flags', async () => {
+			const filePath = '/allowed/path/file';
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(mockFileStats),
+				truncate: jest.fn().mockResolvedValue(undefined),
+				writeFile: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await helperFunctions.writeContentToFile(
+				await helperFunctions.resolvePath(filePath),
+				'test content',
+				constants.O_TRUNC, // This should be stripped
+			);
+
+			// Verify O_TRUNC was not passed to fsOpen
+			expect(fsOpen).toHaveBeenCalledWith(
+				filePath,
+				constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW,
+			);
+		});
+
+		it('should reject non-regular files (directories)', async () => {
+			const filePath = '/allowed/path/directory';
+			const dirStats = { dev: 123, ino: 456, isFile: () => false };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(dirStats),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(dirStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(filePath),
+					'test content',
+				),
+			).rejects.toThrow('The path is not a regular file.');
+
+			expect(mockFileHandle.close).toHaveBeenCalled();
 		});
 	});
 });
