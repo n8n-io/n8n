@@ -5,9 +5,12 @@ import { jsonParse } from 'n8n-workflow';
 import { basename, dirname, join } from 'path';
 import pc from 'picocolors';
 
-import { mermaidStringify, type MermaidOptions } from '@/tools/utils/markdown-workflow.utils';
+import { mermaidStringify, type MermaidOptions } from '@/tools/utils/mermaid.utils';
 import type { WorkflowMetadata } from '@/types';
 import type { SimpleWorkflow } from '@/types/workflow';
+
+// exported workflows (unlike templates) don't have a template ID - but the script doesn't need them to have it
+const templateId = 0;
 
 /**
  * Type guard to check if value is a direct workflow format (nodes and connections at root)
@@ -135,6 +138,7 @@ function loadWorkflow(filePath: string): WorkflowMetadata {
 	if (isDirectWorkflowFormat(json)) {
 		const name = json.name ?? basename(filePath, '.json');
 		return {
+			templateId,
 			name,
 			workflow: {
 				name,
@@ -147,6 +151,7 @@ function loadWorkflow(filePath: string): WorkflowMetadata {
 	if (isWorkflowMetadataFormat(json)) {
 		const workflowName = json.workflow.name ?? basename(filePath, '.json');
 		return {
+			templateId,
 			name: json.name ?? workflowName,
 			workflow: {
 				name: workflowName,
