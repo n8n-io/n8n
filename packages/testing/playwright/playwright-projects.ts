@@ -14,6 +14,7 @@ const CONTAINER_ONLY_TAGS = [
 	'source-control',
 	'email',
 	'oidc',
+	'observability',
 ];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 
@@ -30,7 +31,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 }, observability: true } },
 ];
 
 export function getProjects(): Project[] {

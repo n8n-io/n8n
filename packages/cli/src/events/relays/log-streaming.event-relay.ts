@@ -50,6 +50,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
+			'variable-created': (event) => this.variableCreated(event),
+			'variable-updated': (event) => this.variableUpdated(event),
+			'variable-deleted': (event) => this.variableDeleted(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -462,6 +465,34 @@ export class LogStreamingEventRelay extends EventRelay {
 	private credentialsUpdated({ user, ...rest }: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	// #endregion
+
+	// #region Variable
+
+	@Redactable()
+	private variableCreated({ user, ...rest }: RelayEventMap['variable-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.variable.created',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private variableUpdated({ user, ...rest }: RelayEventMap['variable-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.variable.updated',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private variableDeleted({ user, ...rest }: RelayEventMap['variable-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.variable.deleted',
 			payload: { ...user, ...rest },
 		});
 	}
