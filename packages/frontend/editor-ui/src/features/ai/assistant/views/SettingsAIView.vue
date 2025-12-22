@@ -8,11 +8,13 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
+const telemetry = useTelemetry();
 
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
@@ -61,6 +63,9 @@ const onallowSendingParameterValuesChange = async (newValue: boolean | string | 
 		toast.showMessage({
 			title: i18n.baseText('settings.ai.updated.success'),
 			type: 'success',
+		});
+		telemetry.track('User changed AI Usage settings', {
+			allow_sending_parameter_values: newValue,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ai.updated.error'));
