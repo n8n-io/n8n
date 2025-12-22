@@ -408,6 +408,7 @@ describe('GlobalConfig', () => {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
+		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
 		},
@@ -438,6 +439,7 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
+
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
