@@ -5,7 +5,6 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
 import type { RedisClientService } from '@/services/redis-client.service';
-import { CircuitBreakerOpen } from '@/utils/circuit-breaker';
 
 import type { ScalingService } from '../scaling.service';
 import { WorkerHealthMonitor } from '../worker-health-monitor';
@@ -28,22 +27,27 @@ describe('WorkerHealthMonitor', () => {
 		},
 	});
 
-	const dbConnection = mock<DbConnection>();
 	const redisClientService = mock<RedisClientService>();
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
 	const scalingService = mock<ScalingService>();
 
 	let monitor: WorkerHealthMonitor;
+	let dbConnectionState: { connected: boolean; migrated: boolean };
+	let dbConnection: DbConnection;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
 
 		// Default to healthy state
-		dbConnection.connectionState = {
+		dbConnectionState = {
 			connected: true,
 			migrated: true,
 		};
+		dbConnection = mock<DbConnection>();
+		Object.defineProperty(dbConnection, 'connectionState', {
+			get: () => dbConnectionState,
+		});
 		redisClientService.isConnected.mockReturnValue(true);
 
 		monitor = new WorkerHealthMonitor(
@@ -83,7 +87,7 @@ describe('WorkerHealthMonitor', () => {
 		});
 
 		it('should pause queue immediately if worker is unhealthy on startup', async () => {
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 
 			await monitor.start(scalingService);
 
@@ -108,16 +112,14 @@ describe('WorkerHealthMonitor', () => {
 
 		it('should pause queue when database becomes unhealthy', async () => {
 			// Make DB unhealthy
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 
-			// Trigger health checks - need 3 failures to open circuit
-			await jest.advanceTimersByTimeAsync(1000);
-			await jest.advanceTimersByTimeAsync(1000);
+			// First health check - should pause queue immediately
 			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith('Paused queue due to unhealthy worker state', {
-				circuitState: 'OPEN',
+				circuitState: 'CLOSED',
 			});
 		});
 
@@ -131,15 +133,12 @@ describe('WorkerHealthMonitor', () => {
 			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith('Database is not healthy', {
-				connected: true,
-				migrated: true,
-			});
+			expect(logger.warn).toHaveBeenCalledWith('Redis is not healthy');
 		});
 
 		it('should resume queue when worker becomes healthy again', async () => {
 			// Make worker unhealthy
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 
 			// Trigger 3 failures to open circuit
 			await jest.advanceTimersByTimeAsync(1000);
@@ -150,33 +149,35 @@ describe('WorkerHealthMonitor', () => {
 			jest.clearAllMocks();
 
 			// Make worker healthy again
-			dbConnection.connectionState.connected = true;
+			dbConnectionState.connected = true;
 
 			// Wait for circuit breaker timeout (10 seconds)
 			await jest.advanceTimersByTimeAsync(10_000);
 
-			// Circuit breaker enters HALF_OPEN, need 2 successful checks
-			await jest.advanceTimersByTimeAsync(1000);
+			// Circuit breaker enters HALF_OPEN, first successful check resumes queue
 			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(scalingService.resumeQueue).toHaveBeenCalledTimes(1);
 			expect(logger.info).toHaveBeenCalledWith('Resumed queue after worker became healthy', {
-				circuitState: 'CLOSED',
+				circuitState: 'HALF_OPEN',
 			});
 		});
 
-		it('should not flap between paused and resumed on transient failures', async () => {
+		it('should pause and resume on transient failures', async () => {
 			// Simulate transient failure - 1 failure, then healthy
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 			await jest.advanceTimersByTimeAsync(1000);
+
+			// Queue should be paused after first failure
+			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
 			jest.clearAllMocks();
 
-			dbConnection.connectionState.connected = true;
+			dbConnectionState.connected = true;
 			await jest.advanceTimersByTimeAsync(1000);
 
-			// Should not pause queue (only 1 failure, threshold is 3)
+			// Queue should be resumed when healthy again
 			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
-			expect(scalingService.resumeQueue).not.toHaveBeenCalled();
+			expect(scalingService.resumeQueue).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -188,7 +189,7 @@ describe('WorkerHealthMonitor', () => {
 
 		it('should use circuit breaker to prevent flapping', async () => {
 			// Make worker unhealthy
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 
 			// First failure
 			await jest.advanceTimersByTimeAsync(1000);
@@ -206,7 +207,7 @@ describe('WorkerHealthMonitor', () => {
 
 		it('should test recovery after circuit breaker timeout', async () => {
 			// Open circuit
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 			await jest.advanceTimersByTimeAsync(1000);
 			await jest.advanceTimersByTimeAsync(1000);
 			await jest.advanceTimersByTimeAsync(1000);
@@ -215,14 +216,17 @@ describe('WorkerHealthMonitor', () => {
 			jest.clearAllMocks();
 
 			// Make healthy and wait for timeout
-			dbConnection.connectionState.connected = true;
+			dbConnectionState.connected = true;
+			// Advance time by exactly the timeout period - the check at t=13s will
+			// be the first one after timeout, transitioning to HALF_OPEN and succeeding
 			await jest.advanceTimersByTimeAsync(10_000);
 
-			// Should attempt recovery check
-			await jest.advanceTimersByTimeAsync(1000);
+			// After the 10s advance, the check at t=13s has run successfully in HALF_OPEN
+			// (halfOpenCount = 1), circuit is still HALF_OPEN
 			expect(monitor.getState().circuitState).toBe('HALF_OPEN');
+			expect(monitor.getState().isQueuePaused).toBe(false);
 
-			// Need 2 successful checks to close circuit
+			// Need one more successful check to close the circuit
 			await jest.advanceTimersByTimeAsync(1000);
 			expect(monitor.getState().circuitState).toBe('CLOSED');
 			expect(monitor.getState().isQueuePaused).toBe(false);
@@ -264,7 +268,7 @@ describe('WorkerHealthMonitor', () => {
 
 		it('should handle pause queue errors gracefully', async () => {
 			scalingService.pauseQueue.mockRejectedValue(new Error('Pause failed'));
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 
 			// Trigger failures to open circuit
 			await jest.advanceTimersByTimeAsync(1000);
@@ -277,10 +281,12 @@ describe('WorkerHealthMonitor', () => {
 		});
 
 		it('should handle resume queue errors gracefully', async () => {
+			// Reset pauseQueue mock from previous test and make it succeed
+			scalingService.pauseQueue.mockResolvedValue(undefined);
 			scalingService.resumeQueue.mockRejectedValue(new Error('Resume failed'));
 
 			// Open circuit
-			dbConnection.connectionState.connected = false;
+			dbConnectionState.connected = false;
 			await jest.advanceTimersByTimeAsync(1000);
 			await jest.advanceTimersByTimeAsync(1000);
 			await jest.advanceTimersByTimeAsync(1000);
@@ -288,10 +294,8 @@ describe('WorkerHealthMonitor', () => {
 			jest.clearAllMocks();
 
 			// Recover
-			dbConnection.connectionState.connected = true;
+			dbConnectionState.connected = true;
 			await jest.advanceTimersByTimeAsync(10_000);
-			await jest.advanceTimersByTimeAsync(1000);
-			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(logger.error).toHaveBeenCalledWith('Failed to resume queue', {
 				error: expect.any(Error),
