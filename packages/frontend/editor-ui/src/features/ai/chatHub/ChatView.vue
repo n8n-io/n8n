@@ -636,7 +636,6 @@ function onFilesDropped(files: File[]) {
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
 						:has-session-streaming="isResponding"
-						:model="selectedModel"
 						:cached-agent-display-name="selectedModel?.name ?? null"
 						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="

@@ -32,7 +32,6 @@ const {
 	compact: boolean;
 	isEditing: boolean;
 	hasSessionStreaming: boolean;
-	model: ChatModelDto | null;
 	cachedAgentDisplayName: string | null;
 	cachedAgentIcon: AgentIconOrEmoji | null;
 	/**
@@ -276,7 +275,6 @@ onBeforeMount(() => {
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
 					:message="message"
-					:model="model"
 					:has-session-streaming="hasSessionStreaming"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
-import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
+import type { ChatMessageId } from '@n8n/api-types';
 import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -10,15 +11,14 @@ import { useRouter } from 'vue-router';
 
 const i18n = useI18n();
 const router = useRouter();
+const workflowsStore = useWorkflowsStore();
 
-const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming, model } =
-	defineProps<{
-		message: ChatMessage;
-		isSpeechSynthesisAvailable: boolean;
-		isSpeaking: boolean;
-		hasSessionStreaming: boolean;
-		model: ChatModelDto | null;
-	}>();
+const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming } = defineProps<{
+	message: ChatMessage;
+	isSpeechSynthesisAvailable: boolean;
+	isSpeaking: boolean;
+	hasSessionStreaming: boolean;
+}>();
 
 const emit = defineEmits<{
 	edit: [];
@@ -31,14 +31,13 @@ const currentAlternativeIndex = computed(() => {
 	return message.alternatives.findIndex((id) => id === message.id);
 });
 
-const showExecutionUrl = computed(() => {
-	return model?.model.provider === 'n8n' && model.metadata.scopes?.includes('workflow:read');
-});
-
 const executionUrl = computed(() => {
-	if (!showExecutionUrl.value) return undefined;
-
-	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+	if (
+		workflowsStore.canViewWorkflows &&
+		message.type === 'ai' &&
+		message.provider === 'n8n' &&
+		message.executionId
+	) {
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: { name: message.workflowId, executionId: message.executionId },
