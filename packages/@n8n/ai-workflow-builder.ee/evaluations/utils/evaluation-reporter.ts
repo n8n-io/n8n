@@ -53,6 +53,9 @@ export function generateMarkdownReport(
 - Connections: ${formatPercentage(categoryAverages.connections)}
 - Expressions: ${formatPercentage(categoryAverages.expressions)}
 - Node Configuration: ${formatPercentage(categoryAverages.nodeConfiguration)}
+- Efficiency: ${formatPercentage(categoryAverages.efficiency ?? 0)}
+- Data Flow: ${formatPercentage(categoryAverages.dataFlow ?? 0)}
+- Maintainability: ${formatPercentage(categoryAverages.maintainability ?? 0)}
 - Best Practices: ${formatPercentage(categoryAverages.bestPractices ?? 0)}
 
 ## Violations Summary
@@ -125,6 +128,18 @@ export function generateMarkdownReport(
 			...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
 				...v,
 				category: 'Node Configuration',
+			})),
+			...result.evaluationResult.efficiency.violations.map((v) => ({
+				...v,
+				category: 'Efficiency',
+			})),
+			...result.evaluationResult.dataFlow.violations.map((v) => ({
+				...v,
+				category: 'Data Flow',
+			})),
+			...result.evaluationResult.maintainability.violations.map((v) => ({
+				...v,
+				category: 'Maintainability',
 			})),
 			...result.evaluationResult.bestPractices.violations.map((v) => ({
 				...v,
@@ -239,6 +254,9 @@ export function displaySummaryTable(metrics: {
 		['  Connections', formatColoredScore(categoryAverages.connections)],
 		['  Expressions', formatColoredScore(categoryAverages.expressions)],
 		['  Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
+		['  Efficiency', formatColoredScore(categoryAverages.efficiency ?? 0)],
+		['  Data Flow', formatColoredScore(categoryAverages.dataFlow ?? 0)],
+		['  Maintainability', formatColoredScore(categoryAverages.maintainability ?? 0)],
 		['  Best Practices', formatColoredScore(categoryAverages.bestPractices ?? 0)],
 		['  Violations', ''],
 		[
@@ -384,6 +402,21 @@ export function displayViolationsDetail(results: TestResult[]): void {
 				})),
 				...result.evaluationResult.nodeConfiguration.violations.map((violation: Violation) => ({
 					violation: { ...violation, category: 'Node Config' },
+					testName: result.testCase.name,
+					source: 'llm' as const,
+				})),
+				...result.evaluationResult.efficiency.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Efficiency' },
+					testName: result.testCase.name,
+					source: 'llm' as const,
+				})),
+				...result.evaluationResult.dataFlow.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Data Flow' },
+					testName: result.testCase.name,
+					source: 'llm' as const,
+				})),
+				...result.evaluationResult.maintainability.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Maintainability' },
 					testName: result.testCase.name,
 					source: 'llm' as const,
 				})),

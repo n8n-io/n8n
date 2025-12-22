@@ -1,19 +1,16 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
 
 import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
-import type { SecretsProvider, SecretsProviderState } from '../../types';
+import { SecretsProvider } from '../../types';
 
-export class AzureKeyVault implements SecretsProvider {
+export class AzureKeyVault extends SecretsProvider {
 	name = 'azureKeyVault';
 
 	displayName = 'Azure Key Vault';
-
-	state: SecretsProviderState = 'initializing';
 
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
@@ -67,6 +64,7 @@ export class AzureKeyVault implements SecretsProvider {
 	private settings: AzureKeyVaultContext['settings'];
 
 	constructor(private readonly logger = Container.get(Logger)) {
+		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
 
@@ -76,23 +74,16 @@ export class AzureKeyVault implements SecretsProvider {
 		this.logger.debug('Azure Key Vault provider initialized');
 	}
 
-	async connect() {
+	protected async doConnect(): Promise<void> {
 		const { vaultName, tenantId, clientId, clientSecret } = this.settings;
 
 		const { ClientSecretCredential } = await import('@azure/identity');
 		const { SecretClient } = await import('@azure/keyvault-secrets');
 
-		try {
-			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-			this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
-			this.state = 'connected';
-			this.logger.debug('Azure Key Vault provider connected');
-		} catch (error) {
-			this.state = 'error';
-			this.logger.error('Azure Key Vault provider failed to connect', {
-				error: ensureError(error),
-			});
-		}
+		const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+		this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
+
+		this.logger.debug('Azure Key Vault provider connected');
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {

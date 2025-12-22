@@ -9,6 +9,7 @@ import {
 	AiSessionRetrievalRequestDto,
 	AiSessionMetadataResponseDto,
 	AiUsageSettingsRequestDto,
+	AiTruncateMessagesRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
@@ -58,7 +59,7 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { id, text, workflowContext, featureFlags } = payload.payload;
+			const { id, text, workflowContext, featureFlags, versionId } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					id,
@@ -70,6 +71,7 @@ export class AiController {
 						expressionValues: workflowContext.expressionValues,
 					},
 					featureFlags,
+					versionId,
 				},
 				req.user,
 				signal,
@@ -258,6 +260,26 @@ export class AiController {
 	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
 		try {
 			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/build/truncate-messages', { rateLimit: { limit: 100 } })
+	async truncateMessages(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiTruncateMessagesRequestDto,
+	): Promise<{ success: boolean }> {
+		try {
+			const success = await this.workflowBuilderService.truncateMessagesAfter(
+				payload.workflowId,
+				req.user,
+				payload.messageId,
+			);
+			return { success };
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

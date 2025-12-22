@@ -61,6 +61,11 @@ For high-volume processing:
 - Process files sequentially or in small batches
 - Drop unnecessary binary data after extraction to free memory
 
+### File Metadata
+Documents uploaded via a form trigger will have various bits of metadata available - filename, mimetype and size.
+These are accessible using an expression like {{ $json.documents[0].mimetype }} to access each of the document's details.
+Multiple files can be uploaded to a form which is the reason for the documents array.
+
 ## Text Extraction Strategy
 
 Choose extraction method based on document type and content:
@@ -168,8 +173,14 @@ Configuration: Set appropriate folder and file type filters
 **Extract from File (n8n-nodes-base.extractFromFile)**
 Purpose: Extract text from various file formats using format-specific operations
 Critical: ALWAYS check file type first with an IF or Switch before and select the correct operation (Extract from PDF, Extract from MS Excel, etc.)
+Critical: If the user requests handling of multiple file types (PDF, CSV, JSON, etc) then a Switch (n8n-nodes-base.switch) node should be used
+to check the file type before text extraction. Multiple text extraction nodes should be used to handle each of the different file types. For example,
+if the workflow contains a form trigger node which receives a file, then a Switch node MUST be used to split the different options out to different extraction nodes.
 Output: Extracted text is returned under the "text" key in JSON (e.g., access with {{ $json.text }})
-Pitfalls: Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
+Pitfalls:
+- Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
+- If connecting to a document upload form (n8n-nodes-base.formTrigger) use a File field type and then connect it to the extract from file node using the field name.
+For example if creating a form trigger with field "Upload Document" then set the extract from file input binary field to "Upload_Document"
 
 **AWS Textract (n8n-nodes-base.awsTextract)**
 Purpose: Advanced OCR with table and form detection

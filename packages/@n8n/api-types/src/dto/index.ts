@@ -6,6 +6,7 @@ export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 export { AiSessionMetadataResponseDto } from './ai/ai-session-metadata-response.dto';
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
+export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -112,3 +113,5 @@ export {
 	DeleteOAuthClientResponseDto,
 } from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+
+export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
