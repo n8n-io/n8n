@@ -1,9 +1,5 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	AllEntities,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, AllEntities } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import * as row from './row/Row.resource';
 import * as table from './table/Table.resource';
@@ -57,10 +53,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult = operationResult.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					operationResult.push({
-						json: this.getInputData(i)[0].json,
-						error: error as NodeOperationError,
-					});
+					const inputData = this.getInputData(i)[0].json;
+					if (error instanceof NodeApiError || error instanceof NodeOperationError) {
+						operationResult.push({ json: inputData, error });
+					} else {
+						operationResult.push({ json: inputData });
+					}
 				} else {
 					throw error;
 				}
@@ -76,10 +74,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			operationResult = responseData;
 		} catch (error) {
 			if (this.continueOnFail()) {
-				operationResult = this.getInputData().map((json) => ({
-					json,
-					error: error as NodeOperationError,
-				}));
+				if (error instanceof NodeApiError || error instanceof NodeOperationError) {
+					operationResult = this.getInputData().map((json) => ({ json, error }));
+				} else {
+					operationResult = this.getInputData().map((json) => ({ json }));
+				}
 			} else {
 				throw error;
 			}
@@ -97,10 +96,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult = operationResult.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					operationResult.push({
-						json: this.getInputData(i)[0].json,
-						error: error as NodeOperationError,
-					});
+					const inputData = this.getInputData(i)[0].json;
+					if (error instanceof NodeApiError || error instanceof NodeOperationError) {
+						operationResult.push({ json: inputData, error });
+					} else {
+						operationResult.push({ json: inputData });
+					}
 				} else {
 					throw error;
 				}
