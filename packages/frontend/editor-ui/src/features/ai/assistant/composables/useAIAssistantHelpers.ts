@@ -188,7 +188,7 @@ export const useAIAssistantHelpers = () => {
 			return sanitizedObject;
 		}
 
-		return value;
+		return null;
 	}
 
 	/**

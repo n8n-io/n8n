@@ -1,5 +1,6 @@
 import {
 	type AssignmentCollectionValue,
+	type AssignmentValue,
 	type FilterValue,
 	type INodeParameterResourceLocator,
 	type INodeProperties,
@@ -65,12 +66,26 @@ export const isResourceMapperValue = (value: unknown): value is ResourceMapperVa
 	);
 };
 
+export const isAssignmentValue = (value: unknown): value is AssignmentValue => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'id' in value &&
+		typeof value.id === 'string' &&
+		'name' in value &&
+		typeof value.name === 'string' &&
+		'value' in value &&
+		(!('type' in value) || typeof value.type === 'string')
+	);
+};
+
 export const isAssignmentCollectionValue = (value: unknown): value is AssignmentCollectionValue => {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
 		'assignments' in value &&
-		Array.isArray((value as AssignmentCollectionValue).assignments)
+		Array.isArray(value.assignments) &&
+		value.assignments.every(isAssignmentValue)
 	);
 };
 
