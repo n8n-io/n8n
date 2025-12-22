@@ -30,7 +30,7 @@ const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
 const canEdit = computed(
 	() =>
 		agent.model.provider === 'custom-agent' ||
-		(agent.model.provider === 'n8n' && agent.metadata.scopes?.includes('workflow:update')),
+		(agent.model.provider === 'n8n' && agent.metadata.scopes?.includes('workflow:read')),
 );
 
 function handleSelectMenu(action: MenuAction) {
