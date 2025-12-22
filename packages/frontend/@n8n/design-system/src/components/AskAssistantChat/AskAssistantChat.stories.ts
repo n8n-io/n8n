@@ -915,6 +915,139 @@ TaskAborted.args = {
 	],
 };
 
+export const UserMessageWithRestoreVersion = Template.bind({});
+UserMessageWithRestoreVersion.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	pruneTimeHours: 72,
+	messages: getMessages([
+		{
+			id: 'assistant-1',
+			type: 'text',
+			role: 'assistant',
+			content: "I've made some changes to your workflow. Here's what I did:",
+			read: true,
+		},
+		{
+			id: 'user-1',
+			type: 'text',
+			role: 'user',
+			content:
+				'Add an HTTP Request node to fetch data from the API and then transform the response using a Code node.',
+			revertVersion: {
+				id: 'version-abc123',
+				createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+			},
+			read: true,
+		},
+		{
+			id: 'assistant-2',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'I added the HTTP Request node and configured the Code node to transform the response. The workflow is ready to test!',
+			read: true,
+		},
+	]),
+};
+
+export const MultipleRestoreVersionMessages = Template.bind({});
+MultipleRestoreVersionMessages.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	pruneTimeHours: 48,
+	messages: getMessages([
+		{
+			id: 'user-1',
+			type: 'text',
+			role: 'user',
+			content: 'Create a basic workflow with a manual trigger',
+			revertVersion: {
+				id: 'version-001',
+				createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+			},
+			read: true,
+		},
+		{
+			id: 'assistant-1',
+			type: 'text',
+			role: 'assistant',
+			content: 'Done! I created a workflow with a Manual Trigger node.',
+			read: true,
+		},
+		{
+			id: 'user-2',
+			type: 'text',
+			role: 'user',
+			content: 'Now add a Slack node to send notifications',
+			revertVersion: {
+				id: 'version-002',
+				createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 minutes ago
+			},
+			read: true,
+		},
+		{
+			id: 'assistant-2',
+			type: 'text',
+			role: 'assistant',
+			content: 'Added the Slack node. You can now send notifications to your channels.',
+			read: true,
+		},
+		{
+			id: 'user-3',
+			type: 'text',
+			role: 'user',
+			content: 'Add error handling with an Error Trigger',
+			revertVersion: {
+				id: 'version-003',
+				createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10 minutes ago
+			},
+			read: true,
+		},
+		{
+			id: 'assistant-3',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'Error handling is now in place. Any workflow errors will be caught and can be processed.',
+			read: true,
+		},
+	]),
+};
+
+export const RestoreVersionWhileStreaming = Template.bind({});
+RestoreVersionWhileStreaming.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	streaming: true,
+	messages: getMessages([
+		{
+			id: 'user-1',
+			type: 'text',
+			role: 'user',
+			content: 'Build a complex data pipeline with multiple transformations',
+			revertVersion: {
+				id: 'version-streaming',
+				createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
+			},
+			read: true,
+		},
+		{
+			id: 'assistant-1',
+			type: 'text',
+			role: 'assistant',
+			content: 'I am building the data pipeline with the following components',
+			read: false,
+		},
+	]),
+};
+
 export const ScrollbarWithManyMessages = Template.bind({});
 ScrollbarWithManyMessages.args = {
 	user: {

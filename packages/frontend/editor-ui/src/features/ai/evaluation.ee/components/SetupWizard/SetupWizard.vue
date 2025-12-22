@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -74,10 +74,7 @@ const toggleStep = (index: number) => {
 function navigateToWorkflow(
 	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
 ) {
-	const routeWorkflowId =
-		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-			? 'new'
-			: workflowsStore.workflow.id;
+	const routeWorkflowId = workflowsStore.workflow.id || 'new';
 
 	void router.push({
 		name: VIEWS.WORKFLOW,

@@ -284,7 +284,8 @@ export function handleExecutionFinishedWithWaitTill(options: {
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (workflowsStore.isNewWorkflow) await workflowSaving.saveAsNewWorkflow();
+				if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId])
+					await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 		});

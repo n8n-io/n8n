@@ -4,12 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
-import {
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/app/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
@@ -57,9 +52,9 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflow = ref(
-	data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-		? workflowsStore.workflow
-		: workflowsStore.workflowsById[data.id],
+	data.id && workflowsStore.workflowsById[data.id]
+		? workflowsStore.workflowsById[data.id]
+		: workflowsStore.workflow,
 );
 const loading = ref(true);
 const isDirty = ref(false);
@@ -155,7 +150,7 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (!workflowsStore.isWorkflowSaved[workflow.value.id]) {
 			const parentFolderId = route.query.folderId as string | undefined;
 			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
 			if (!workflowId) {
@@ -214,7 +209,8 @@ const initialize = async () => {
 	if (isSharingEnabled.value) {
 		await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
 
-		if (workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Fetch workflow if it exists and is not new
+		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {
 			await workflowsStore.fetchWorkflow(workflow.value.id);
 		}
 
