@@ -18,7 +18,10 @@ defineOptions({ name: 'N8nPopover' });
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface Props
-	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
+	extends Pick<
+			PopoverContentProps,
+			'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference' | 'positionStrategy'
+		>,
 		Pick<PopoverRootProps, 'open'> {
 	/**
 	 * Whether to enable scrolling in the popover content
@@ -86,6 +89,7 @@ const props = withDefaults(defineProps<Props>(), {
 	zIndex: 999,
 	showArrow: false,
 	teleported: true,
+	positionStrategy: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -140,6 +144,7 @@ watch(
 				:style="{ width, zIndex }"
 				:reference="reference"
 				:force-mount="forceMount"
+				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
