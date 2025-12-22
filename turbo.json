@@ -37,7 +37,7 @@
 		"dev": { "cache": false, "persistent": true },
 		"install-browsers": {
 			"cache": true,
-			"inputs": ["$TURBO_DEFAULT$", "../../pnpm-lock.yaml"],
+			"inputs": [".playwright-version"],
 			"outputs": [".playwright-browsers/**"],
 			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},

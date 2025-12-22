@@ -21,9 +21,10 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
-      shards: '[1, 2, 3, 4, 5, 6, 7, 8]'
-      runner: blacksmith-4vcpu-ubuntu-2204
+      shards: 13
+      runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
+      use-custom-orchestration: true
     secrets: inherit
 
   multi-main-isolated:
@@ -34,8 +35,8 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
-      shards: '[1]'
-      runner: blacksmith-4vcpu-ubuntu-2204
+      shards: 2
+      runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
     secrets: inherit
 
@@ -49,7 +50,7 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: local
       test-command: pnpm --filter=n8n-playwright test:local
-      shards: '[1, 2, 3, 4, 5]'
+      shards: 5
       runner: ubuntu-latest
       workers: '2'
 
@@ -61,6 +62,6 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: local
       test-command: pnpm --filter=n8n-playwright test:local:isolated
-      shards: '[1]'
+      shards: 1
       runner: ubuntu-latest
       workers: '1'
