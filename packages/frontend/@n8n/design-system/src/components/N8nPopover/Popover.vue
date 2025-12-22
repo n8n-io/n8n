@@ -25,6 +25,10 @@ interface Props
 	 */
 	enableScrolling?: boolean;
 	/**
+	 * Whether to force mount the content even when closed
+	 */
+	forceMount?: boolean;
+	/**
 	 * Whether to enable slide-in animation
 	 */
 	enableSlideIn?: boolean;
@@ -73,6 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,
+	forceMount: false,
 	enableSlideIn: true,
 	scrollType: 'hover',
 	sideOffset: 5,
@@ -134,6 +139,7 @@ watch(
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width, zIndex }"
 				:reference="reference"
+				:force-mount="forceMount"
 				@open-auto-focus="handleOpenAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
@@ -169,6 +175,10 @@ watch(
 	&.enableSlideIn {
 		animation-duration: 400ms;
 		animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	&[data-state='closed'] {
+		display: none;
 	}
 }
 
