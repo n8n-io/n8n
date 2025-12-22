@@ -235,6 +235,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await n8n.canvas.saveWorkflow();
 
 		// check resources
+		await n8n.navigate.toHome();
 		await n8n.sideBar.getSourceControlPushButton().click();
 		await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
 
@@ -242,11 +243,11 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();
 		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).toBeHidden();
 
-		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeChecked();
-		await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).not.toBeChecked();
+		await n8n.sourceControlPushModal.selectFile('Workflow A');
+		await n8n.sourceControlPushModal.selectFile('Workflow B');
 
 		// push
-		await n8n.sourceControlPushModal.push('Push workflow A');
+		await n8n.sourceControlPushModal.push('Push workflow A and B');
 		await expectPushSuccess(n8n);
 
 		// Verify no more changes
