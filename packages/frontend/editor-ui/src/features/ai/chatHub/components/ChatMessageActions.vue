@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 import type { ChatMessageId } from '@n8n/api-types';
@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router';
 
 const i18n = useI18n();
 const router = useRouter();
+const workflowsStore = useWorkflowsStore();
 
 const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming } = defineProps<{
 	message: ChatMessage;
@@ -30,14 +31,13 @@ const currentAlternativeIndex = computed(() => {
 	return message.alternatives.findIndex((id) => id === message.id);
 });
 
-const showExecutionUrl = computed(() => {
-	return hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } });
-});
-
 const executionUrl = computed(() => {
-	if (!showExecutionUrl.value) return undefined;
-
-	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+	if (
+		workflowsStore.canViewWorkflows &&
+		message.type === 'ai' &&
+		message.provider === 'n8n' &&
+		message.executionId
+	) {
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: { name: message.workflowId, executionId: message.executionId },

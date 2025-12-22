@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 
 // Enable observability to use VictoriaLogs for log queries
 test.use({

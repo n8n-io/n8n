@@ -179,7 +179,9 @@ export class WorkflowApiHelper {
 
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
-		if (workflowId) params.set('workflowId', workflowId);
+		if (workflowId) {
+			params.set('filter', JSON.stringify({ workflowId }));
+		}
 		params.set('limit', limit.toString());
 		const response = await this.api.request.get('/rest/executions', { params });
 
