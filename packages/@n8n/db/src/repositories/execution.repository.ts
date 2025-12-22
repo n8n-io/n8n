@@ -1225,26 +1225,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findByStopExecutionsFilter(query: ExecutionSummaries.StopExecutionFilterQuery) {
-		const findBy = {
+		const findBy: FindOptionsWhere<ExecutionEntity> = {
 			workflowId: query.workflowId,
 			status: In(query.status ?? []),
-			...(query.startedAfter
-				? {
-						startedAt: MoreThanOrEqual(
-							DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter)),
-						),
-					}
-				: {}),
-			...(query.startedBefore
-				? {
-						startedAt: LessThanOrEqual(
-							DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore)),
-						),
-					}
-				: {}),
+			startedAt: And(
+				...[
+					query.startedAfter
+						? MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter)))
+						: [],
+					query.startedBefore
+						? LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore)))
+						: [],
+				].flat(),
+			),
 		};
-
-		this.logger.warn('findBy', findBy);
 
 		return await this.findBy(findBy);
 	}
