@@ -223,10 +223,10 @@
 	--button--border-color--highlight--disabled: transparent;
 
 	// Button highlight-fill
-	--button--color--text--highlight-fill: var(--color--neutral-300);
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
 	--button--border-color--highlight-fill: transparent;
 	--button--color--background--highlight-fill: var(--color--background);
-	--button--color--text--highlight-fill--hover-active-focus: var(--color--orange-400);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
 	--button--border-color--highlight-fill--hover-active-focus: transparent;
 	--button--color--background--highlight-fill--hover: var(--color--background);
 	--button--color--background--highlight-fill--active-focus: var(--color--background);

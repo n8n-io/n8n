@@ -30,7 +30,7 @@
 
 	// Primary
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--orange-400));
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--primary));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--primary: var(--color-primary, var(--color--orange-300));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -349,8 +349,8 @@
 	--button--color--text--primary: var(--color--neutral-white);
 	--button--border-color--primary: var(--color--orange-300);
 	--button--color--background--primary: var(--color--orange-300);
-	--button--border-color--primary--hover-active: var(--color--orange-400);
-	--button--color--background--primary--hover-active-focus: var(--color--orange-400);
+	--button--border-color--primary--hover-active: var(--color--primary);
+	--button--color--background--primary--hover-active-focus: var(--color--primary);
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
 	--button--color--text--primary--disabled: var(--color--white-alpha-800);
 	--button--border-color--primary--disabled: var(--color--orange-200);
@@ -382,10 +382,10 @@
 	--button--color--background--highlight--disabled: transparent;
 
 	// Button highlight-fill
-	--button--color--text--highlight-fill: var(--color--neutral-700);
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
 	--button--border-color--highlight-fill: transparent;
 	--button--color--background--highlight-fill: var(--color--background);
-	--button--color--text--highlight-fill--hover-active-focus: var(--color--orange-400);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
 	--button--border-color--highlight-fill--hover-active-focus: transparent;
 	--button--color--background--highlight-fill--hover: var(--color--background);
 	--button--color--background--highlight-fill--active-focus: var(--color--background);
