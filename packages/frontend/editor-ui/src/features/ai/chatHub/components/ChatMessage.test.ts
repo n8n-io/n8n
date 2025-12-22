@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import ChatMessage from './ChatMessage.vue';
 import type { ChatMessage as ChatMessageType } from '../chat.types';
 import { waitFor } from '@testing-library/vue';
-import { createTestChatMessage } from '../__test__/data';
+import { createMockMessage } from '../__test__/data';
 
 const renderComponent = createComponentRenderer(ChatMessage);
 
@@ -16,7 +16,8 @@ describe('ChatMessage', () => {
 	});
 
 	it('should render syntax highlighting for code blocks', async () => {
-		const message: ChatMessageType = createTestChatMessage({
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
 			content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
 		});
 
@@ -25,8 +26,10 @@ describe('ChatMessage', () => {
 				message,
 				compact: false,
 				isEditing: false,
-				isStreaming: false,
+				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+				containerWidth: 100,
 			},
 			pinia,
 		});

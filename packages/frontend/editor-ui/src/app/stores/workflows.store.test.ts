@@ -5,7 +5,6 @@ import {
 	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -45,6 +44,7 @@ import {
 import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -114,7 +114,7 @@ describe('useWorkflowsStore', () => {
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.name).toBe('');
-		expect(workflowsStore.workflow.id).toBe(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		expect(workflowsStore.workflow.id).toBe('');
 	});
 
 	describe('isWaitingExecution', () => {
@@ -198,7 +198,7 @@ describe('useWorkflowsStore', () => {
 				{
 					id: 'start',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					parameters: {},
 					position: [0, 0],
@@ -286,14 +286,23 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('isNewWorkflow', () => {
-		it('should return true for a new workflow', () => {
-			expect(workflowsStore.isNewWorkflow).toBe(true);
+	describe('isWorkflowSaved', () => {
+		it('should return undefined for a new workflow', () => {
+			expect(workflowsStore.isWorkflowSaved[workflowsStore.workflowId]).toBeUndefined();
 		});
 
-		it('should return false for an existing workflow', () => {
+		it('should return true for an existing workflow', () => {
 			useWorkflowState().setWorkflowId('123');
-			expect(workflowsStore.isNewWorkflow).toBe(false);
+			// Add the workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(
+				createTestWorkflow({
+					id: '123',
+					name: 'Test Workflow',
+					active: false,
+					versionId: '1',
+				}),
+			);
+			expect(workflowsStore.isWorkflowSaved['123']).toBe(true);
 		});
 	});
 
@@ -892,12 +901,22 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('setWorkflowActive()', () => {
-		it('should set workflow as active when it is not already active', () => {
+		it('should set workflow as active when it is not already active', async () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
-			workflowsStore.setWorkflowActive('1');
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -910,7 +929,17 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
-			workflowsStore.setWorkflowActive('1');
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
 			expect(workflowsStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
@@ -921,7 +950,18 @@ describe('useWorkflowsStore', () => {
 			uiStore.stateIsDirty = true;
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
-			workflowsStore.setWorkflowActive('2');
+
+			const mockActiveVersion: WorkflowHistory = {
+				versionId: 'test-version-id',
+				name: 'Test Version',
+				authors: 'Test Author',
+				description: 'A test workflow version',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+			};
+
+			workflowsStore.setWorkflowActive('2', mockActiveVersion, true);
 			expect(workflowsStore.workflowsById['1'].active).toBe(false);
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
@@ -1458,6 +1498,7 @@ describe('useWorkflowsStore', () => {
 				.spyOn(apiUtils, 'makeRestApiRequest')
 				.mockImplementation(async () => ({
 					versionId: updatedVersionId,
+					checksum: 'checksum',
 				}));
 
 			await workflowsStore.archiveWorkflow(workflowId);
@@ -1497,6 +1538,7 @@ describe('useWorkflowsStore', () => {
 				.spyOn(apiUtils, 'makeRestApiRequest')
 				.mockImplementation(async () => ({
 					versionId: updatedVersionId,
+					checksum: 'checksum',
 				}));
 
 			await workflowsStore.unarchiveWorkflow(workflowId);
@@ -1534,7 +1576,7 @@ describe('useWorkflowsStore', () => {
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
 					id: 'w1',
-					versionId: 'v2',
+					versionId: 'v1',
 					settings: {
 						executionOrder: 'v1',
 						timezone: 'UTC',
@@ -1560,8 +1602,8 @@ describe('useWorkflowsStore', () => {
 			);
 
 			// Assert returned value and store updates
-			expect(result.versionId).toBe('v2');
-			expect(workflowsStore.workflow.versionId).toBe('v2');
+			expect(result.versionId).toBe('v1');
+			expect(workflowsStore.workflow.versionId).toBe('v1');
 			expect(workflowsStore.workflow.settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'UTC',
@@ -2206,10 +2248,14 @@ describe('useWorkflowsStore', () => {
 				status: 'success',
 			});
 
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
@@ -2231,10 +2277,14 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should handle null response from API', async () => {
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
@@ -2251,10 +2301,14 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not throw error when API call fails', async () => {
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: 'workflow-123',
 				scopes: ['workflow:update'],
 			});
+
+			workflowsStore.workflow = testWorkflow;
+			// Add workflow to workflowsById to simulate it being loaded from backend
+			workflowsStore.addWorkflow(testWorkflow);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
@@ -2273,7 +2327,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should not fetch when workflow is placeholder empty workflow', async () => {
 			workflowsStore.workflow = createTestWorkflow({
-				id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+				id: '',
 				scopes: ['workflow:update'],
 			});
 

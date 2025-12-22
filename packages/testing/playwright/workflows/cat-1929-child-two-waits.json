@@ -1,0 +1,172 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"id": "c055762a-8fe7-4141-a639-df2372f30060",
+			"typeVersion": 1.1,
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [272, 352]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "10f14daa-106e-45ba-8f57-13b5f998da5e",
+							"name": "stage",
+							"value": "before-first-wait",
+							"type": "string"
+						},
+						{
+							"id": "83f6250b-e16f-49bd-8d8c-b2074b6a2e9f",
+							"name": "webhook1",
+							"value": "={{ $execution.resumeUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [480, 352],
+			"id": "f5ba9e8a-6510-42c2-a264-972cbb4cc912",
+			"name": "Edit Fields - Before First Wait"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [704, 352],
+			"id": "949ed603-c2fc-4ea9-a663-675959c44d44",
+			"name": "Wait 1",
+			"webhookId": "a47006a8-c373-4fe9-b145-0a6a2c1f59bb"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ab8fb2ae-1a82-4a42-ae29-12e7165ad035",
+							"name": "stage",
+							"value": "after-first-wait",
+							"type": "string"
+						},
+						{
+							"id": "b2fcc9a7-100a-4e96-bd4d-da4f3ea2c6c1",
+							"name": "webhook2",
+							"value": "={{ $execution.resumeUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [928, 352],
+			"id": "e48dd6df-03d7-4c91-923c-e2f51b828de4",
+			"name": "Edit Fields - After First Wait"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [1152, 352],
+			"id": "2a3b4c5d-6e7f-8g9h-0i1j-2k3l4m5n6o7p",
+			"name": "Wait 2",
+			"webhookId": "b58117b9-d484-5gf0-c256-1b7b3d2g60cc"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "cd9fc3bf-2b11-5c07-bf4e-23f8276be146",
+							"name": "stage",
+							"value": "completed",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1376, 352],
+			"id": "g59ee7eg-14e8-5d02-a34d-e3f62fb3e3e5",
+			"name": "Edit Fields - Final"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields - Before First Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields - Before First Wait": {
+			"main": [
+				[
+					{
+						"node": "Wait 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 1": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields - After First Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields - After First Wait": {
+			"main": [
+				[
+					{
+						"node": "Wait 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 2": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields - Final",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"active": true,
+	"meta": {
+		"instanceId": "f21dcb5296ee365372dae8f32f5830ed6733682e3fba20fd801863fa536d3a9c"
+	}
+}
