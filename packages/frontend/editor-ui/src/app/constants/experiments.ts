@@ -8,7 +8,7 @@ function createExperiment(name: string, variants?: Record<string, string>) {
 }
 
 export const CANVAS_ZOOMED_VIEW_EXPERIMENT = createExperiment('canvas_zoomed_view');
-
+export const COMMAND_BAR_EXPERIMENT = createExperiment('command_bar');
 export const NDV_IN_FOCUS_PANEL_EXPERIMENT = createExperiment('ndv_in_focus_panel');
 
 export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = createExperiment('043_workflow_builder_release');

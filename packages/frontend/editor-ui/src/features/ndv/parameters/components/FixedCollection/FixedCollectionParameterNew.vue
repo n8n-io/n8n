@@ -608,6 +608,11 @@ const onAddButtonClick = () => {
 	&:last-child {
 		margin-bottom: 0;
 	}
+
+	& + & {
+		padding-top: var(--spacing--xs);
+		border-top: var(--border-width) solid var(--color--foreground);
+	}
 }
 
 .sectionHeader {

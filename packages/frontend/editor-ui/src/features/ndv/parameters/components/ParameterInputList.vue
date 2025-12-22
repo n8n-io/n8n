@@ -805,6 +805,8 @@ watch(
 				:path="item.path"
 				:node="node"
 				:read-only="isReadOnly"
+				:remove-first-margin="index === 0 && removeFirstParameterMargin"
+				:remove-last-margin="index === parameterItems.length - 1 && removeLastParameterMargin"
 				@value-changed="valueChanged"
 			/>
 			<AssignmentCollection
