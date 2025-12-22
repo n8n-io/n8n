@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
-import type { ChatMessageId } from '@n8n/api-types';
+import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -12,12 +11,14 @@ import { useRouter } from 'vue-router';
 const i18n = useI18n();
 const router = useRouter();
 
-const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming } = defineProps<{
-	message: ChatMessage;
-	isSpeechSynthesisAvailable: boolean;
-	isSpeaking: boolean;
-	hasSessionStreaming: boolean;
-}>();
+const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming, model } =
+	defineProps<{
+		message: ChatMessage;
+		isSpeechSynthesisAvailable: boolean;
+		isSpeaking: boolean;
+		hasSessionStreaming: boolean;
+		model: ChatModelDto | null;
+	}>();
 
 const emit = defineEmits<{
 	edit: [];
@@ -31,7 +32,7 @@ const currentAlternativeIndex = computed(() => {
 });
 
 const showExecutionUrl = computed(() => {
-	return hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } });
+	return model?.model.provider === 'n8n' && model.metadata.scopes?.includes('workflow:read');
 });
 
 const executionUrl = computed(() => {
