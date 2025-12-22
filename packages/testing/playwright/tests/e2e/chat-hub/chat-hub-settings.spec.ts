@@ -34,7 +34,7 @@ test.describe('Settings @capability:proxy', () => {
 		const memberN8n = await n8n.start.withUser(INSTANCE_MEMBER_CREDENTIALS[0]);
 		const chatPage = new ChatHubChatPage(memberN8n.page);
 
-		await n8n.navigate.toChatHub();
+		await memberN8n.navigate.toChatHub();
 
 		await expect(chatPage.getSelectedCredentialName()).toHaveText(anthropicCredential.name);
 
@@ -100,7 +100,7 @@ test.describe('Settings @capability:proxy', () => {
 			},
 		});
 
-		await n8n.navigate.toChatHub();
+		await memberN8n.navigate.toChatHub();
 
 		await chatPage.getModelSelectorButton().click();
 		await expect(chatPage.getVisiblePopoverMenuItem('Anthropic')).toBeVisible();

@@ -29,7 +29,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span'); // TODO
+		return this.getModelSelectorButton().locator('span');
 	}
 
 	getChatInput(): Locator {

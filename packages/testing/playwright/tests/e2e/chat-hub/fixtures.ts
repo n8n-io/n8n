@@ -70,6 +70,8 @@ export const test = base.extend<ChatHubFixtures>({
 		});
 
 		await use(res);
+
+		await n8n.api.credentials.deleteCredential(res.id);
 	},
 
 	jinaCredential: async ({ n8n, jinaApiKey }, use) => {
@@ -82,6 +84,8 @@ export const test = base.extend<ChatHubFixtures>({
 		});
 
 		await use(res);
+
+		await n8n.api.credentials.deleteCredential(res.id);
 	},
 });
 

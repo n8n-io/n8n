@@ -99,6 +99,7 @@ export class TestEntryComposer {
 		const browser = this.n8n.page.context().browser()!;
 		const context = await browser.newContext();
 		const page = await context.newPage();
+		await page.bringToFront();
 		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
 		await newN8n.api.login({ email: user.email, password: user.password });
 		return newN8n;
