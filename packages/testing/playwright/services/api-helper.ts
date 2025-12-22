@@ -13,6 +13,7 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { RoleApiHelper } from './role-api-helper';
+import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
 import { UserApiHelper } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
@@ -49,6 +50,7 @@ export class ApiHelpers {
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
+	sourceControl: SourceControlApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
@@ -60,6 +62,7 @@ export class ApiHelpers {
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
+		this.sourceControl = new SourceControlApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
