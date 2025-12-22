@@ -14,10 +14,6 @@ export class ChatHubPersonalAgentsPage extends BasePage {
 		super(page);
 	}
 
-	async open() {
-		await this.page.goto('/home/chat/personal-agents');
-	}
-
 	getNewAgentButton(): Locator {
 		return this.page.getByText('New Agent');
 	}

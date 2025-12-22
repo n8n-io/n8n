@@ -12,7 +12,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 	test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 
 		await expect(page.getGreetingMessage()).toHaveText(
 			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
@@ -35,7 +35,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 		const credModal = new CredentialModal(n8n.page.getByTestId('editCredential-modal'));
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 
 		await expect(page.getGreetingMessage()).toHaveText(
 			`Hello, ${INSTANCE_MEMBER_CREDENTIALS[0].firstName}!`,
@@ -62,7 +62,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 	test('conversation flow', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 

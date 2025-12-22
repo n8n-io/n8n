@@ -9,7 +9,7 @@ test.describe('Settings @capability:proxy', () => {
 	test('set global credentials for a provider', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubSettingsPage(n8n.page);
 
-		await page.open();
+		await n8n.navigate.toChatHubSettings();
 
 		// Open Anthropic settings
 		await page.getProviderActionToggle('Anthropic').click();
@@ -34,7 +34,7 @@ test.describe('Settings @capability:proxy', () => {
 		const memberN8n = await n8n.start.withUser(INSTANCE_MEMBER_CREDENTIALS[0]);
 		const chatPage = new ChatHubChatPage(memberN8n.page);
 
-		await chatPage.openNewChat();
+		await n8n.navigate.toChatHub();
 
 		await expect(chatPage.getSelectedCredentialName()).toHaveText(anthropicCredential.name);
 
@@ -55,7 +55,7 @@ test.describe('Settings @capability:proxy', () => {
 	}) => {
 		const page = new ChatHubSettingsPage(n8n.page);
 
-		await page.open();
+		await n8n.navigate.toChatHubSettings();
 
 		// Open Anthropic settings
 		await page.getProviderActionToggle('Anthropic').click();
@@ -100,7 +100,7 @@ test.describe('Settings @capability:proxy', () => {
 			},
 		});
 
-		await chatPage.openNewChat();
+		await n8n.navigate.toChatHub();
 
 		await chatPage.getModelSelectorButton().click();
 		await expect(chatPage.getVisiblePopoverMenuItem('Anthropic')).toBeVisible();

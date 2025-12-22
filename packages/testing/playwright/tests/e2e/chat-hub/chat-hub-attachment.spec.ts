@@ -37,7 +37,7 @@ test.describe('File attachment @capability:proxy', () => {
 	test('image attachment', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
@@ -63,7 +63,7 @@ test.describe('File attachment @capability:proxy', () => {
 	test('text file attachment', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
@@ -79,7 +79,7 @@ test.describe('File attachment @capability:proxy', () => {
 	test('reference attachment in subsequent message', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 

@@ -24,7 +24,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		});
 
 		// STEP: Navigate to workflow agents page and verify agent is listed
-		await agentsPage.open();
+		await n8n.navigate.toChatHubWorkflowAgents();
 		await expect(agentsPage.getAgentCards()).toHaveCount(1);
 		await expect(agentsPage.getAgentCards().nth(0)).toContainText('e2e workflow agent');
 
@@ -48,7 +48,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await tab1.close();
 
 		// STEP: Select the workflow agent for new conversation
-		await chatPage.openNewChat();
+		await n8n.navigate.toChatHub();
 		await chatPage.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500);
 		await chatPage.getVisiblePopoverMenuItem('Workflow agents').hover({ force: true });
@@ -69,7 +69,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await ndv2.close();
 		await canvas2.publishWorkflow();
 		await tab2.close();
-		await agentsPage.open();
+		await n8n.navigate.toChatHubWorkflowAgents();
 		await expect(agentsPage.getEmptyText()).toBeVisible();
 	});
 
@@ -93,12 +93,12 @@ test.describe('Workflow agent @capability:proxy', () => {
 
 		// Verify that the agent is visible to owner
 		const ownerWorkflowAgentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
-		await ownerWorkflowAgentsPage.open();
+		await n8n.navigate.toChatHubWorkflowAgents();
 		await expect(ownerWorkflowAgentsPage.getAgentCards()).toContainText(['Sharing test']);
 
 		// Verify that the agent is not visible to member before sharing
 		const memberWorkflowAgentsPage = new ChatHubWorkflowAgentsPage(memberN8n.page);
-		await memberWorkflowAgentsPage.open();
+		await memberN8n.navigate.toChatHubWorkflowAgents();
 		await expect(memberWorkflowAgentsPage.getEmptyText()).toBeVisible();
 
 		// Add member user to the project with project chat user role

@@ -14,10 +14,6 @@ export class ChatHubSettingsPage extends BasePage {
 		super(page);
 	}
 
-	async open() {
-		await this.page.goto('/settings/chat');
-	}
-
 	getProvidersTable(): Locator {
 		return this.page.getByTestId('chat-providers-table');
 	}

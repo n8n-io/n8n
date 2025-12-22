@@ -20,10 +20,6 @@ export class ChatHubChatPage extends BasePage {
 		super(page);
 	}
 
-	async openNewChat() {
-		await this.page.goto('/home/chat');
-	}
-
 	getGreetingMessage(): Locator {
 		return this.page.getByRole('heading', { level: 2 });
 	}

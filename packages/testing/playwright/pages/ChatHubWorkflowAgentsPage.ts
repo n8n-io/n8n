@@ -10,10 +10,6 @@ export class ChatHubWorkflowAgentsPage extends BasePage {
 		super(page);
 	}
 
-	async open() {
-		await this.page.goto('/home/chat/workflow-agents');
-	}
-
 	getAgentCards(): Locator {
 		return this.page.getByTestId('chat-agent-card');
 	}

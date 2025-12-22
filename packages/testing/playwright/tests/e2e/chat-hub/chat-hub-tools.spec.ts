@@ -11,7 +11,7 @@ test.describe('Tools usage @capability:proxy', () => {
 	}) => {
 		const page = new ChatHubChatPage(n8n.page);
 
-		await page.openNewChat();
+		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
