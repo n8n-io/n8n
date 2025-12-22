@@ -3,7 +3,7 @@ import { useChatMessaging } from '@/features/execution/logs/composables/useChatM
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ChatOptionsSymbol } from '@n8n/chat/constants';
@@ -240,7 +240,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	watch(
 		() => workflowsStore.workflowId,
 		(_newWorkflowId, prevWorkflowId) => {
-			if (prevWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			if (!prevWorkflowId) {
 				return;
 			}
 

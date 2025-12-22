@@ -15,14 +15,7 @@ import {
 	type ChatHubProvider,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nHeading,
-	N8nIconPicker,
-	N8nInput,
-	N8nInputLabel,
-	N8nSpinner,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -53,7 +46,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 
 const modalBus = ref(createEventBus());
-const customAgent = useCustomAgent(props.data.agentId);
+const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
 const name = ref('');
 const description = ref('');
@@ -79,7 +72,7 @@ const selectedAgent = computed(
 );
 
 const isEditMode = computed(() => !!props.data.agentId);
-const isLoadingAgent = computed(() => isEditMode.value && !customAgent.value);
+const isLoadingAgent = computed(() => isEditMode.value && isLoadingCustomAgent.value);
 const title = computed(() =>
 	isEditMode.value
 		? i18n.baseText('chatHub.agent.editor.title.edit')
@@ -279,6 +272,7 @@ function onSelectTools() {
 		:event-bus="modalBus"
 		width="600px"
 		:center="true"
+		:loading="isLoadingAgent"
 		max-width="90%"
 		min-height="400px"
 	>
@@ -314,7 +308,6 @@ function onSelectTools() {
 							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 							:maxlength="128"
 							:class="$style.agentNameInput"
-							:disabled="isLoadingAgent"
 						/>
 					</div>
 				</N8nInputLabel>
@@ -331,7 +324,6 @@ function onSelectTools() {
 						:maxlength="512"
 						:rows="3"
 						:class="$style.input"
-						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -347,7 +339,6 @@ function onSelectTools() {
 						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
 						:rows="6"
 						:class="$style.input"
-						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -362,7 +353,6 @@ function onSelectTools() {
 							:selected-agent="selectedAgent"
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
-							:disabled="isLoadingAgent"
 							:agents="agents"
 							:is-loading="isLoadingAgents"
 							warn-missing-credentials
@@ -379,9 +369,9 @@ function onSelectTools() {
 					>
 						<div>
 							<ToolsSelector
-								:disabled="isLoadingAgent || !canSelectTools"
+								:disabled="!canSelectTools"
 								:disabled-tooltip="
-									isLoadingAgent || canSelectTools
+									canSelectTools
 										? undefined
 										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
 								"
@@ -391,7 +381,6 @@ function onSelectTools() {
 						</div>
 					</N8nInputLabel>
 				</div>
-				<N8nSpinner v-if="isLoadingAgent" :class="$style.spinner" size="xlarge" />
 			</div>
 		</template>
 		<template #footer>
@@ -408,13 +397,6 @@ function onSelectTools() {
 </template>
 
 <style lang="scss" module>
-.spinner {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-}
-
 .header {
 	display: flex;
 	align-items: center;

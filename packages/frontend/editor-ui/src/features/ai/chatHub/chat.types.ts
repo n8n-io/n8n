@@ -11,7 +11,7 @@ import {
 	type ChatModelDto,
 	agentIconOrEmojiSchema,
 } from '@n8n/api-types';
-import type { INode } from 'n8n-workflow';
+import type { IBinaryData, INode } from 'n8n-workflow';
 import { z } from 'zod';
 import { isLlmProviderModel } from './chat.utils';
 
@@ -40,6 +40,13 @@ export interface ErrorMessage {
 }
 
 export type StreamChunk = AssistantMessage | ErrorMessage;
+
+export type MessagingState =
+	| 'idle'
+	| 'waitingFirstChunk'
+	| 'receiving'
+	| 'missingCredentials'
+	| 'missingAgent';
 
 export interface ChatMessage extends ChatHubMessageDto {
 	responses: ChatMessageId[];
@@ -77,10 +84,14 @@ export interface ChatAgentFilter {
 }
 
 export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['metadata']> {
+	promptPreviousMessageId: ChatMessageId | null;
+	promptText: string;
 	promptId: ChatMessageId;
 	sessionId: ChatSessionId;
 	retryOfMessageId: ChatMessageId | null;
+	revisionOfMessageId: ChatMessageId | null;
 	tools: INode[];
+	attachments: IBinaryData[];
 	agent: ChatModelDto;
 }
 
