@@ -95,6 +95,8 @@ export class WorkflowApiHelper {
 		workflow: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
+		delete workflow.id;
+
 		const idLength = options?.idLength ?? 12;
 		const webhookPrefix = options?.webhookPrefix ?? 'test-webhook';
 		const uniqueSuffix = nanoid(idLength);
@@ -177,7 +179,9 @@ export class WorkflowApiHelper {
 
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
-		if (workflowId) params.set('workflowId', workflowId);
+		if (workflowId) {
+			params.set('filter', JSON.stringify({ workflowId }));
+		}
 		params.set('limit', limit.toString());
 		const response = await this.api.request.get('/rest/executions', { params });
 
