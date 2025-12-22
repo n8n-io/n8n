@@ -47,11 +47,11 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 	<N8nTooltip v-if="workflowId" placement="bottom">
 		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
-				:class="{ [$style.saving]: isWorkflowSaving }"
-				:disabled="isNewWorkflow || isWorkflowSaving"
+				:disabled="isNewWorkflow"
+				:loading="isWorkflowSaving"
 				data-test-id="workflow-history-button"
 				type="highlight"
-				:icon="isWorkflowSaving ? 'rotate-left' : 'history'"
+				icon="history"
 				size="medium"
 			/>
 		</RouterLink>
@@ -63,20 +63,3 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 		</template>
 	</N8nTooltip>
 </template>
-
-<style lang="scss" module>
-.saving {
-	// Keep the button disabled while saving, but prevent the icon from taking the disabled color.
-	--button--color--text--disabled: var(--button--color--text--highlight);
-
-	:global(.n8n-icon) {
-		animation: loading-rotate 1s linear infinite;
-	}
-}
-
-@keyframes loading-rotate {
-	100% {
-		transform: rotate(-360deg);
-	}
-}
-</style>
