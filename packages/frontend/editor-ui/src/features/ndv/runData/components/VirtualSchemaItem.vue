@@ -7,6 +7,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@/Interface';
 import { ref, computed } from 'vue';
+import { useToast } from '@/app/composables/useToast';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -47,7 +48,11 @@ async function downloadBinaryData() {
 		const blob = await response.blob();
 		saveAs(blob, name);
 	} catch (error) {
-		console.error('Error downloading file');
+		useToast().showMessage({
+			title: 'Error downloading file',
+			message: 'File could not be downloaded',
+			type: 'error',
+		});
 	}
 }
 

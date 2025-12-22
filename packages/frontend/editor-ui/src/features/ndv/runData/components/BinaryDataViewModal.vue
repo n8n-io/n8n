@@ -98,6 +98,7 @@ async function loadBinaryData() {
 				embedSource.value = binaryUrl;
 		}
 	} catch (e) {
+		console.error(e.message);
 		error.value = true;
 	}
 
@@ -107,7 +108,7 @@ async function loadBinaryData() {
 watch(
 	() => props.data.binaryData,
 	() => {
-		loadBinaryData().catch(() => {});
+		loadBinaryData().catch(() => {}); //error handled in loadBinaryData
 	},
 	{ immediate: true },
 );
@@ -144,7 +145,11 @@ onBeforeUnmount(() => {
 					</audio>
 
 					<!-- IMAGE -->
-					<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
+					<img
+						v-else-if="binaryData.fileType === 'image'"
+						:src="embedSource"
+						:alt="binaryData.fileName || 'Image preview'"
+					/>
 
 					<!-- JSON -->
 					<VueJsonPretty

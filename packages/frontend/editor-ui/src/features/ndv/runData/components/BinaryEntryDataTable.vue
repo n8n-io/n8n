@@ -6,6 +6,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { computed, ref } from 'vue';
 import type { BinaryMetadata } from '@/Interface';
+import { useToast } from '@/app/composables/useToast';
+
+const BYTES_THRESHOLD = 1048576; // 1MB
 
 interface Props {
 	value: BinaryMetadata;
@@ -21,7 +24,7 @@ const tablePreview = computed(() => {
 	const mimeType = props.value.mimeType;
 	const bytes = Number(props.value.bytes);
 	const isImageType = mimeType?.startsWith('image/') ?? false;
-	const passThreshold = bytes === undefined ? false : bytes < 1048576;
+	const passThreshold = bytes === undefined ? false : bytes < BYTES_THRESHOLD;
 	return isImageType && passThreshold;
 });
 
@@ -48,7 +51,11 @@ const downloadBinaryData = async () => {
 		const blob = await response.blob();
 		saveAs(blob, fileName.value);
 	} catch (error) {
-		console.error('Error downloading file');
+		useToast().showMessage({
+			title: 'Error downloading file',
+			message: 'File could not be downloaded',
+			type: 'error',
+		});
 	}
 };
 
@@ -79,7 +86,12 @@ const fileIcon = computed(() => {
 <template>
 	<div :class="$style.container" :style="containerStyle">
 		<div :class="$style.wrapper" @click="viewBinaryData">
-			<img v-if="tablePreview" :src="fileUrl" :class="$style.imagePreview" />
+			<img
+				v-if="tablePreview"
+				:src="fileUrl"
+				:class="$style.imagePreview"
+				:alt="fileName || 'Image preview'"
+			/>
 			<div v-else :class="$style.iconWrapper">
 				<N8nIcon :icon="fileIcon" size="xlarge" />
 			</div>
