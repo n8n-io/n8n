@@ -475,7 +475,7 @@ describe('SourceControlPushModal', () => {
 
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-		const { getAllByTestId, getByText } = renderModal({
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -496,9 +496,8 @@ describe('SourceControlPushModal', () => {
 		});
 
 		// Switch to credentials tab
-		const tabs = getAllByTestId('source-control-push-modal-tab');
-		const credentialsTab = tabs.find((tab) => tab.textContent?.includes('Credentials'));
-		await userEvent.click(credentialsTab!);
+		const credentialsTab = getByTestId('source-control-push-modal-tab-credential');
+		await userEvent.click(credentialsTab);
 
 		await waitFor(() => {
 			const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
@@ -551,7 +550,7 @@ describe('SourceControlPushModal', () => {
 
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-		const { getAllByTestId, getByText } = renderModal({
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -571,11 +570,9 @@ describe('SourceControlPushModal', () => {
 			expect(workflows).toHaveLength(2);
 		});
 
-		const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
-			textContent?.includes('Credentials'),
-		);
+		const credentialsTab = getByTestId('source-control-push-modal-tab-credential');
 
-		await userEvent.click(tab[0]);
+		await userEvent.click(credentialsTab);
 
 		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
 		expect(credentials).toHaveLength(1);
@@ -768,17 +765,13 @@ describe('SourceControlPushModal', () => {
 			});
 
 			await waitFor(() => {
-				const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
-					textContent?.includes(name),
-				);
-				expect(tab.length).toBeGreaterThan(0);
+				const tab = getByTestId(`source-control-push-modal-tab-${entity}`);
+				expect(tab).toBeInTheDocument();
 			});
 
-			const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
-				textContent?.includes(name),
-			);
+			const tab = getByTestId(`source-control-push-modal-tab-${entity}`);
 
-			await userEvent.click(tab[0]);
+			await userEvent.click(tab);
 
 			await waitFor(() => {
 				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
