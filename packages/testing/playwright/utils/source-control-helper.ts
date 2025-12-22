@@ -21,16 +21,27 @@ const initSourceControlSSHKey = async ({
 	const sshKey = preferences.data.publicKey;
 
 	const sourceControlContainer = n8nContainer.containers.find((c) => c.getName().includes('gitea'));
-	await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
+	try {
+		await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
+	} catch {
+		// Key might already exist in Gitea - this is fine if we're reusing keys
+	}
 };
 
 /**
  * initialize source control preferences and SSH key
+ * Will disconnect first if already connected to ensure clean state
  */
 export const initSourceControl = async ({
 	n8n,
 	n8nContainer,
 }: { n8n: n8nPage; n8nContainer: N8NStack }) => {
+	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
+	const preferences = await preferencesResponse.json();
+	if (preferences.data?.connected) {
+		await n8n.api.sourceControl.disconnect({ keepKeyPair: true });
+	}
+
 	await initSourceControlPreferences(n8n);
 	await initSourceControlSSHKey({ n8n, n8nContainer });
 };
