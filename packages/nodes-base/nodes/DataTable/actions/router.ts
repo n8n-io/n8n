@@ -57,7 +57,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					if (error instanceof NodeApiError || error instanceof NodeOperationError) {
 						operationResult.push({ json: inputData, error });
 					} else {
-						operationResult.push({ json: inputData });
+						operationResult.push({
+							json: inputData,
+							error: new NodeOperationError(this.getNode(), error as Error),
+						});
 					}
 				} else {
 					throw error;
