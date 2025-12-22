@@ -266,11 +266,16 @@ export const useExecutionsStore = defineStore('executions', () => {
 		'startedAfter' | 'startedBefore' | 'mode' | 'workflowId' | 'status'
 	>; // parsed from query params
 
-	async function stopExecutions(filter: Omit<StopExecutionFilterQuery, 'workflowId'>) {
-		console.log(filters.value);
-		return await makeRestApiRequest(rootStore.restApiContext, 'POST', '/executions/stopMany', {
-			filter: { ...filter, workflowId: filters.value.workflowId },
-		});
+	// Returns the amount of stopped executions
+	async function stopManyExecutions(filter: Omit<StopExecutionFilterQuery, 'workflowId'>) {
+		return await makeRestApiRequest<number>(
+			rootStore.restApiContext,
+			'POST',
+			'/executions/stopMany',
+			{
+				filter: { ...filter, workflowId: filters.value.workflowId },
+			},
+		);
 	}
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
@@ -364,6 +369,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		resetData,
 		reset,
 		itemsPerPage,
-		stopExecutions,
+		stopManyExecutions,
 	};
 });

@@ -20,9 +20,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nIconButton, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -41,9 +42,11 @@ const emit = defineEmits<{
 	'execution:stopMany': [];
 }>();
 
+const uiStore = useUIStore();
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -63,6 +66,10 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 	threshold: 0.01,
 	onIntersect: () => emit('loadMore', 20),
 });
+
+const hasCancellableExecution = computed(() =>
+	props.executions.find((x) => x.status === 'running' || x.status === 'waiting'),
+);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
@@ -155,7 +162,8 @@ function onAutoRefreshChange(enabled: string | number | boolean) {
 }
 
 function onStopManyExecutions() {
-	useUIStore().openModalWithData({
+	telemetry.track('User initiated stop many executions');
+	uiStore.openModalWithData({
 		name: STOP_MANY_EXECUTIONS_MODAL_KEY,
 		data: { workflowId: useWorkflowsStore().workflowId },
 	});
@@ -204,8 +212,10 @@ const goToUpgrade = () => {
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
 			/>
-			<N8nIconButton
+			<N8nButton
+				v-if="hasCancellableExecution"
 				icon="filled-square"
+				square
 				aria-label="Stop Execution"
 				@click="onStopManyExecutions"
 			/>
@@ -290,14 +300,14 @@ const goToUpgrade = () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
-	padding-right: var(--spacing--lg);
+	padding-right: var(--spacing--md);
 }
 
 .controls {
-	padding: var(--spacing--sm) 0 var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
 
 	button {
