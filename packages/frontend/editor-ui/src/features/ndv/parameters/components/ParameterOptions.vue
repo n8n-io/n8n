@@ -193,11 +193,7 @@ const onViewSelected = (selected: string) => {
 				@click="$emit('update:modelValue', 'focus')"
 			/>
 
-			<div
-				:class="{
-					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
-				}"
-			>
+			<div>
 				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
@@ -264,12 +260,6 @@ $container-height: 22px;
 
 .expressionSwitch {
 	margin-right: var(--spacing--4xs);
-}
-
-.noExpressionSelector {
-	span {
-		padding-right: 0 !important;
-	}
 }
 
 .focusButton {

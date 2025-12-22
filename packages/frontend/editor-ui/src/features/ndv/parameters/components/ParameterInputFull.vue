@@ -441,7 +441,7 @@ function removeOverride(clearField = false) {
 		</div>
 		<div
 			:class="{
-				[$style.optionsTopAbsolute]: true,
+				[$style.optionsAbove]: true,
 				[$style.visible]: menuExpanded || focused || forceShowExpression,
 			}"
 		>
@@ -475,7 +475,8 @@ function removeOverride(clearField = false) {
 	position: relative;
 
 	&:hover {
-		.options {
+		.options,
+		.optionsAbove {
 			opacity: 1;
 		}
 	}
@@ -511,7 +512,7 @@ function removeOverride(clearField = false) {
 	}
 }
 
-.optionsTopAbsolute {
+.optionsAbove {
 	position: absolute;
 	bottom: 100%;
 	right: 0;

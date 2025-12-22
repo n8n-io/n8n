@@ -371,6 +371,54 @@ describe('FixedCollectionParameterNew.vue', () => {
 		});
 	});
 
+	describe('Auto-expand first item', () => {
+		it('should auto-expand first item when values match parameter default', () => {
+			const defaultValue = { values: [{ outputKey: 'Default Output Name' }] };
+			const rendered = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						default: defaultValue,
+					},
+					values: defaultValue,
+					nodeValues: {
+						parameters: {
+							rules: defaultValue,
+						},
+					},
+				},
+			});
+
+			// First item should be expanded - check for data-state="open" on collapsible content
+			const collapsibleContent = rendered.container.querySelector('[data-state="open"]');
+			expect(collapsibleContent).toBeInTheDocument();
+		});
+
+		it('should NOT auto-expand first item when values differ from default', () => {
+			const defaultValue = { values: [{ outputKey: 'Default Output Name' }] };
+			const rendered = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						default: defaultValue,
+					},
+					values: { values: [{ outputKey: 'User Edited Value' }] },
+					nodeValues: {
+						parameters: {
+							rules: { values: [{ outputKey: 'User Edited Value' }] },
+						},
+					},
+				},
+			});
+
+			// First item should be collapsed - check for data-state="closed" on collapsible content
+			const collapsibleContent = rendered.container.querySelector('[data-state="closed"]');
+			expect(collapsibleContent).toBeInTheDocument();
+		});
+	});
+
 	describe('Top-level multiple options', () => {
 		const topLevelMultipleOptionsProps: Props = {
 			...baseProps,

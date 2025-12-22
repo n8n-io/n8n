@@ -43,9 +43,15 @@ const props = withDefaults(defineProps<Props<T>>(), {
 
 const emit = defineEmits<{
 	select: [value: T];
+	'update:open': [value: boolean];
 }>();
 
 const isOpen = ref(false);
+
+const handleOpenChange = (value: boolean) => {
+	isOpen.value = value;
+	emit('update:open', value);
+};
 const rootRef = useTemplateRef<HTMLElement>('rootRef');
 
 const open = () => {
@@ -78,7 +84,7 @@ defineExpose({
 
 <template>
 	<div ref="rootRef">
-		<DropdownMenuRoot v-model:open="isOpen">
+		<DropdownMenuRoot :open="isOpen" @update:open="handleOpenChange">
 			<DropdownMenuTrigger
 				v-if="!$slots.trigger"
 				:class="[$style.defaultTrigger, $style[size]]"

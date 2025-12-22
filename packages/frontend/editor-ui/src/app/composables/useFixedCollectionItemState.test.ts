@@ -216,6 +216,39 @@ describe('useFixedCollectionItemState', () => {
 			const newItemIsExpanded = state.getExpandedState('property1', 0);
 			expect(newItemIsExpanded).toBe(false);
 		});
+
+		it('should renormalize stable indexes after deletion', () => {
+			const state = useFixedCollectionItemState('test-node');
+
+			state.getItemId('property1', 0);
+			state.getItemId('property1', 1);
+			state.getItemId('property1', 2);
+			state.getItemId('property1', 3);
+
+			// Delete first 3 items
+			state.cleanupItem('property1', 0);
+			state.cleanupItem('property1', 0);
+			state.cleanupItem('property1', 0);
+
+			// Remaining item should be renumbered to 0
+			expect(state.getItemStableIndex('property1', 0)).toBe(0);
+		});
+
+		it('should preserve expanded state after renormalization', () => {
+			const state = useFixedCollectionItemState('test-node');
+
+			state.getItemId('property1', 0);
+			state.getItemId('property1', 1);
+			state.getItemId('property1', 2);
+
+			state.setExpandedState('property1', 2, true);
+
+			state.cleanupItem('property1', 0);
+			state.cleanupItem('property1', 0);
+
+			// Last item now at index 0, should still be expanded
+			expect(state.getExpandedState('property1', 0)).toBe(true);
+		});
 	});
 
 	describe('cleanupProperty', () => {

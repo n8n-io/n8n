@@ -62,6 +62,7 @@ const storageKey = computed(() => {
 });
 const isExpanded = ref(props.isNewlyAdded);
 const newlyAddedParameters = ref<Set<string>>(new Set());
+const isDropdownOpen = ref(false);
 
 const placeholder = computed(() => {
 	return (
@@ -259,6 +260,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 		v-if="isNested"
 		v-model="isExpanded"
 		:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+		:show-actions-on-hover="!isDropdownOpen"
 		@keydown.stop
 	>
 		<template v-if="!isReadOnly" #actions>
@@ -267,6 +269,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:disabled="isAddDisabled"
 				data-test-id="collection-parameter-add-header"
 				@select="optionSelected"
+				@update:open="isDropdownOpen = $event"
 			>
 				<template #trigger>
 					<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />

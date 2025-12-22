@@ -8,7 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 import get from 'lodash/get';
-import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
+import isEqual from 'lodash/isEqual';
+import { computed, ref, watch, onBeforeMount, nextTick, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -65,6 +66,8 @@ const emit = defineEmits<{
 }>();
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
+const rootEl = useTemplateRef<HTMLElement>('rootEl');
+const isDropdownOpen = ref(false);
 
 const storageKey = computed(() => `${activeNode.value?.id ?? 'unknown'}-${props.path}`);
 const itemState = useFixedCollectionItemState(storageKey, {
@@ -87,6 +90,8 @@ const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleVal
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
 
 const propertyNames = computed(() => new Set(Object.keys(mutableValues.value ?? {})));
+
+const hasDefaultValues = computed(() => isEqual(props.values, props.parameter.default ?? {}));
 
 const properties = computed(() =>
 	Array.from(propertyNames.value)
@@ -232,6 +237,17 @@ watch(
 onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
 	initExpandedState();
+
+	// Auto-expand first item if this collection has default (unedited) values
+	if (hasDefaultValues.value) {
+		const firstProperty = properties.value[0];
+		if (firstProperty && multipleValues.value) {
+			const items = mutableValues.value[firstProperty.name];
+			if (Array.isArray(items) && items.length > 0) {
+				itemState.setExpandedState(firstProperty.name, 0, true);
+			}
+		}
+	}
 });
 
 const initializeParameterValue = (optionParameter: INodeProperties): NodeParameterValueType => {
@@ -257,6 +273,13 @@ const initializeParameterValue = (optionParameter: INodeProperties): NodeParamet
 	return [...existingArray, ...normalizeDefault(defaultValue)];
 };
 
+const scrollToNewItem = async (optionName: string, itemIndex: number) => {
+	await nextTick();
+	const itemId = itemState.getItemId(optionName, itemIndex);
+	const element = rootEl.value?.querySelector(`[data-item-key="${itemId}"]`);
+	element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
 const optionSelected = (optionName: string) => {
 	const option = getOptionProperties(optionName);
 	if (!option) return;
@@ -277,7 +300,12 @@ const optionSelected = (optionName: string) => {
 
 	emit('valueChanged', { name, value: newValue });
 
-	itemState.setExpandedState(option.name, existingValues.length, true);
+	const newItemIndex = existingValues.length;
+	itemState.setExpandedState(option.name, newItemIndex, true);
+
+	if (multipleValues.value) {
+		void scrollToNewItem(option.name, newItemIndex);
+	}
 
 	if (props.parameter.name === 'workflowInputs') {
 		trackFieldAdded();
@@ -336,6 +364,7 @@ const onAddButtonClick = () => {
 
 <template>
 	<div
+		ref="rootEl"
 		:class="[$style.fixedCollectionParameter, { [$style.empty]: properties.length === 0 }]"
 		:data-test-id="`fixed-collection-${props.parameter?.name}`"
 		@keydown.stop
@@ -450,6 +479,7 @@ const onAddButtonClick = () => {
 			v-else-if="shouldWrapInCollapsible"
 			v-model="isWrapperExpanded"
 			:title="displayName"
+			:show-actions-on-hover="!isDropdownOpen"
 		>
 			<template #actions>
 				<N8nTooltip v-if="shouldShowAddInCollapsibleActions" :show-after="TOOLTIP_DELAY_MS">
@@ -460,6 +490,7 @@ const onAddButtonClick = () => {
 						:disabled="isAddDisabled"
 						data-test-id="fixed-collection-add-header"
 						@select="optionSelected"
+						@update:open="isDropdownOpen = $event"
 					>
 						<template #trigger>
 							<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />

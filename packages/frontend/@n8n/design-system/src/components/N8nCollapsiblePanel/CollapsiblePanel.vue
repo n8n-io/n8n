@@ -85,6 +85,7 @@ const isOpen = computed({
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
 	background-color: var(--ndv--background--color);
+	scroll-margin-bottom: var(--spacing--xl);
 
 	// Nested panels: extend to parent's right edge and remove right border/radius
 	.collapsiblePanel & {
@@ -156,7 +157,7 @@ const isOpen = computed({
 	transition: opacity var(--animation--duration) var(--animation--easing);
 
 	button {
-		--button--color--text: var(--color--text--shade-1);
+		--button--color--text: var(--color--text--tint-1);
 	}
 }
 
@@ -175,9 +176,20 @@ const isOpen = computed({
 	}
 }
 
+.collapsiblePanel:hover,
+.collapsiblePanel:focus-within {
+	.actions {
+		opacity: 1;
+	}
+}
+
 .header:hover {
 	.actions {
 		opacity: 1;
+
+		button {
+			--button--color--text: var(--color--text--shade-1);
+		}
 	}
 
 	.trigger {
@@ -195,7 +207,8 @@ const isOpen = computed({
 .content {
 	overflow: hidden;
 
-	&:focus-within {
+	&:focus-within,
+	&:hover {
 		overflow: initial;
 	}
 
