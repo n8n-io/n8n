@@ -8,11 +8,11 @@ import {
 	getValueDescription,
 	jsonParse,
 	validateFieldType,
-	isBinaryValue,
 } from 'n8n-workflow';
 import type {
 	AssignmentCollectionValue,
 	FieldType,
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -233,6 +233,12 @@ export function resolveRawData(
 	return returnData;
 }
 
+function isBinaryData(obj: unknown): obj is IBinaryData {
+	return (
+		typeof obj === 'object' && obj !== null && ('data' in obj || 'id' in obj) && 'mimeType' in obj
+	);
+}
+
 export function prepareReturnItem(
 	context: IExecuteFunctions | ISupplyDataFunctions,
 	value: AssignmentCollectionValue,
@@ -253,7 +259,7 @@ export function prepareReturnItem(
 				continue;
 			}
 			// if binary data has no id push to binary assignments so binary data be converted later
-			if (isBinaryValue(assignment.value) && !assignment.value.id) {
+			if (isBinaryData(assignment.value) && !assignment.value.id) {
 				binaryValues.push(assignment);
 				continue;
 			}
@@ -296,7 +302,7 @@ export function prepareReturnItem(
 			const name = assignment.name;
 			const value = assignment.value as string;
 			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
-			if (!isBinaryValue(binaryData)) {
+			if (!isBinaryData(binaryData)) {
 				throw new NodeOperationError(
 					node,
 					`Could not find binary data specified in field ${name}`,

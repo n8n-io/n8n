@@ -18,7 +18,6 @@ import {
 	fileTypeFromMimeType,
 	ApplicationError,
 	UnexpectedError,
-	isBinaryValue,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -58,6 +57,15 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
 }
 
 /**
+ * Check if object is a binary data
+ */
+function isBinaryData(obj: unknown): obj is IBinaryData {
+	return (
+		typeof obj === 'object' && obj !== null && ('data' in obj || 'id' in obj) && 'mimeType' in obj
+	);
+}
+
+/**
  * If parameterData is a string, returns the binary data the given item index and
  * property name from the input data.
  * Else if parameterData is a binary data object, returns the binary data object.
@@ -70,7 +78,7 @@ export function assertBinaryData(
 	inputIndex: number,
 	binaryMode: 'separate' | 'combined' | undefined = undefined,
 ): IBinaryData {
-	if (isBinaryValue(parameterData)) {
+	if (isBinaryData(parameterData)) {
 		return parameterData;
 	}
 	if (typeof parameterData !== 'string') {
@@ -115,7 +123,7 @@ export function assertBinaryData(
 	} else {
 		const itemData = inputData.main[inputIndex]![itemIndex].json;
 		const binaryData = get(itemData, parameterData);
-		if (binaryData === undefined || !isBinaryValue(binaryData)) {
+		if (binaryData === undefined || !isBinaryData(binaryData)) {
 			throw new NodeOperationError(
 				node,
 				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
@@ -143,14 +151,14 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
-	if (isBinaryValue(parameterData)) {
+	if (isBinaryData(parameterData)) {
 		binaryData = parameterData;
 	} else if (typeof parameterData === 'string' && binaryMode !== 'combined') {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
 	} else if (typeof parameterData === 'string') {
 		const itemData = inputData.main[inputIndex]![itemIndex].json;
 		const data = get(itemData, parameterData);
-		if (data === undefined || !isBinaryValue(data)) {
+		if (data === undefined || !isBinaryData(data)) {
 			throw new UnexpectedError('Provided parameter is not a string or binary data object.');
 		}
 		binaryData = data;
