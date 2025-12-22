@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type {
@@ -38,7 +37,7 @@ const isLoadingAgents = ref(false);
 const showOpenWorkflow = computed(() => {
 	return (
 		selectedModel?.model.provider === 'n8n' &&
-		hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } })
+		selectedModel.metadata.scopes?.includes('workflow:read')
 	);
 });
 
