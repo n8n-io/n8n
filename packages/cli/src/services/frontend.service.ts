@@ -30,6 +30,7 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
 
 /**
@@ -114,6 +115,7 @@ export class FrontendService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
 		private readonly ownershipService: OwnershipService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -137,17 +139,6 @@ export class FrontendService {
 		}
 
 		return envFeatureFlags;
-	}
-
-	private getConfigValue(
-		key: 'easyAIWorkflowOnboarded' | 'ai.allowSendingParameterValues',
-		defaultValue: boolean,
-	): boolean {
-		try {
-			return config.getEnv(key) ?? defaultValue;
-		} catch {
-			return defaultValue;
-		}
 	}
 
 	private async initSettings() {
@@ -417,11 +408,12 @@ export class FrontendService {
 		}
 
 		this.settings.banners.dismissed = dismissedBanners;
-		this.settings.easyAIWorkflowOnboarded = this.getConfigValue('easyAIWorkflowOnboarded', false);
-		this.settings.ai.allowSendingParameterValues = this.getConfigValue(
-			'ai.allowSendingParameterValues',
-			true,
-		);
+		try {
+			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
+		} catch {
+			this.settings.easyAIWorkflowOnboarded = false;
+		}
+		this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
