@@ -11,7 +11,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
