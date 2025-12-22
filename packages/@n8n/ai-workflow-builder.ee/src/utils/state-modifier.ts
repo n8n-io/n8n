@@ -17,12 +17,14 @@ export type StateModificationAction =
 	| 'create_workflow_name'
 	| 'auto_compact_messages'
 	| 'cleanup_dangling'
+	| 'clear_error_state'
 	| 'continue';
 
 export interface StateModifierInput {
 	messages: BaseMessage[];
 	workflowJSON: SimpleWorkflow;
 	previousSummary?: string;
+	coordinationLog?: CoordinationLogEntry[];
 }
 
 /**
@@ -33,7 +35,7 @@ export function determineStateAction(
 	input: StateModifierInput,
 	autoCompactThresholdTokens: number,
 ): StateModificationAction {
-	const { messages, workflowJSON } = input;
+	const { messages, workflowJSON, coordinationLog } = input;
 
 	// First check for dangling tool calls (from interrupted sessions)
 	const danglingMessages = cleanupDanglingToolCallMessages(messages);
@@ -43,6 +45,33 @@ export function determineStateAction(
 
 	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage);
 	if (!lastHumanMessage) return 'continue';
+
+	// Check if there are RECURSION error entries in coordination log from previous turn
+	// If user sent a new message, clear old recursion errors to allow continuation (AI-1812)
+	// Only recursion errors - other errors should still block continuation
+	// But only do this once - check if we've already added a clear_error_state entry
+	if (coordinationLog) {
+		const hasRecursionErrors = coordinationLog.some((entry) => {
+			if (entry.status !== 'error') return false;
+			const errorMessage = entry.summary.toLowerCase();
+			return (
+				errorMessage.includes('recursion') ||
+				errorMessage.includes('maximum number of steps') ||
+				errorMessage.includes('iteration limit')
+			);
+		});
+
+		const hasAlreadyCleared = coordinationLog.some(
+			(entry) =>
+				entry.phase === 'state_management' &&
+				entry.summary.includes('Cleared') &&
+				entry.summary.includes('recursion'),
+		);
+
+		if (hasRecursionErrors && !hasAlreadyCleared) {
+			return 'clear_error_state';
+		}
+	}
 
 	// Manual /compact command
 	if (lastHumanMessage.content === '/compact') {
@@ -165,6 +194,40 @@ export function handleDeleteMessages(messages: BaseMessage[]): {
 			},
 		],
 		workflowOperations: [],
+	};
+}
+
+/**
+ * Marks error entries as cleared to allow continuation after errors (AI-1812).
+ * When a user sends a new message after hitting a recursion/error limit,
+ * we add a marker entry that signals errors have been acknowledged.
+ *
+ * Note: We don't actually remove error entries because coordinationLog uses
+ * a concat reducer, so filtering would be concatenated back. Instead, we add
+ * a marker that determineStateAction uses to skip error clearing on subsequent checks.
+ */
+export function handleClearErrorState(
+	coordinationLog: CoordinationLogEntry[],
+	logger?: Logger,
+): { coordinationLog: CoordinationLogEntry[] } {
+	const errorCount = coordinationLog.filter((entry) => entry.status === 'error').length;
+
+	if (errorCount > 0) {
+		logger?.info('Marking error state as cleared to allow continuation', { errorCount });
+	}
+
+	// Add a marker entry that signals recursion errors have been acknowledged
+	// The concat reducer will append this to existing entries
+	return {
+		coordinationLog: [
+			{
+				phase: 'state_management',
+				status: 'completed',
+				timestamp: Date.now(),
+				summary: `Cleared ${errorCount} recursion error ${errorCount === 1 ? 'entry' : 'entries'} to allow continuation`,
+				metadata: createStateManagementMetadata({ action: 'clear' }),
+			},
+		],
 	};
 }
 

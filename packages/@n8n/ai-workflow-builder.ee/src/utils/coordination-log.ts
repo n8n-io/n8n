@@ -118,8 +118,32 @@ export function getErrorEntry(log: CoordinationLogEntry[]): CoordinationLogEntry
  */
 export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecision {
 	// If any phase errored, route to responder to report the error
-	if (hasErrorInLog(log)) {
-		return 'responder';
+	// UNLESS recursion errors have been acknowledged/cleared (AI-1812)
+	const hasErrors = hasErrorInLog(log);
+
+	if (hasErrors) {
+		// Find the last clear marker (if any)
+		const lastClearIndex = log.findLastIndex(
+			(entry) =>
+				entry.phase === 'state_management' &&
+				entry.summary.includes('Cleared') &&
+				entry.summary.includes('recursion'),
+		);
+
+		// If there are errors AFTER the last clear, route to responder
+		// If no clear marker exists, route to responder
+		if (lastClearIndex === -1) {
+			return 'responder';
+		}
+
+		// Check if any errors exist after the clear marker
+		const hasErrorsAfterClear = log
+			.slice(lastClearIndex + 1)
+			.some((entry) => entry.status === 'error');
+
+		if (hasErrorsAfterClear) {
+			return 'responder';
+		}
 	}
 
 	const lastPhase = getLastCompletedPhase(log);
