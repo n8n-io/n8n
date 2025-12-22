@@ -118,7 +118,7 @@ export function configurePool(credentials: IDataObject) {
 const escapeTableName = (table: string) => {
 	table = table.trim();
 	if (table.startsWith('[') && table.endsWith(']')) {
-		table = table.substring(1, -1);
+		table = table.substring(1, table.length - 1);
 	}
 
 	return escapeIdentifier(table);
