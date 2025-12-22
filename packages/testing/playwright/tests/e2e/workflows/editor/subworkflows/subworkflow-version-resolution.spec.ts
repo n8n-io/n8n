@@ -1,40 +1,42 @@
 import { readFileSync } from 'fs';
-import type { INodeParameters, IWorkflowBase } from 'n8n-workflow';
+import type {
+	AssignmentCollectionValue,
+	INodeParameterResourceLocator,
+	IWorkflowBase,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 
 import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 
-interface AssignmentsParameter {
-	assignments: Array<{ value: string; [key: string]: unknown }>;
-}
-
-interface WorkflowIdParameter {
-	value: string;
-	[key: string]: unknown;
-}
-
-function isAssignmentsParameter(param: INodeParameters): param is AssignmentsParameter {
+function isAssignmentCollectionValue(
+	param: NodeParameterValueType,
+): param is AssignmentCollectionValue {
 	return (
 		typeof param === 'object' &&
 		param !== null &&
 		'assignments' in param &&
-		Array.isArray((param as AssignmentsParameter).assignments)
+		Array.isArray((param as AssignmentCollectionValue).assignments)
 	);
 }
 
-function isWorkflowIdParameter(param: INodeParameters): param is WorkflowIdParameter {
-	return typeof param === 'object' && param !== null && 'value' in param;
+function isResourceLocator(param: NodeParameterValueType): param is INodeParameterResourceLocator {
+	return typeof param === 'object' && param !== null && '__rl' in param && 'value' in param;
 }
 
-function assertAssignmentsParameter(param: INodeParameters): asserts param is AssignmentsParameter {
-	if (!isAssignmentsParameter(param)) {
-		throw new Error('Expected AssignmentsParameter');
+function assertAssignmentCollectionValue(
+	param: NodeParameterValueType,
+): asserts param is AssignmentCollectionValue {
+	if (!isAssignmentCollectionValue(param)) {
+		throw new Error('Expected AssignmentCollectionValue');
 	}
 }
 
-function assertWorkflowIdParameter(param: INodeParameters): asserts param is WorkflowIdParameter {
-	if (!isWorkflowIdParameter(param)) {
-		throw new Error('Expected WorkflowIdParameter');
+function assertResourceLocator(
+	param: NodeParameterValueType,
+): asserts param is INodeParameterResourceLocator {
+	if (!isResourceLocator(param)) {
+		throw new Error('Expected INodeParameterResourceLocator');
 	}
 }
 
@@ -49,10 +51,10 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 			await api.workflows.importWorkflowFromFile('subworkflow-version-child.json');
 
-		await api.workflows.activate(childWorkflowId, childWorkflow.versionId);
+		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
 
 		const assignmentsParam = childWorkflow.nodes[1].parameters.assignments;
-		assertAssignmentsParameter(assignmentsParam);
+		assertAssignmentCollectionValue(assignmentsParam);
 		assignmentsParam.assignments[0].value = 'draft-version';
 
 		await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
@@ -124,14 +126,14 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const childFilePath = resolveFromRoot('workflows', 'subworkflow-version-child.json');
 		const childDefinition = JSON.parse(readFileSync(childFilePath, 'utf8')) as IWorkflowBase;
 		const childAssignmentsParam = childDefinition.nodes[1].parameters.assignments;
-		assertAssignmentsParameter(childAssignmentsParam);
+		assertAssignmentCollectionValue(childAssignmentsParam);
 		childAssignmentsParam.assignments[0].value = 'published-version';
 
 		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 			await api.workflows.createWorkflowFromDefinition(childDefinition);
-		await api.workflows.activate(childWorkflowId, childWorkflow.versionId);
+		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
 
-		assertAssignmentsParameter(childAssignmentsParam);
+		assertAssignmentCollectionValue(childAssignmentsParam);
 		childAssignmentsParam.assignments[0].value = 'draft-version';
 		await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
 			data: {
@@ -145,7 +147,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const parentFilePath = resolveFromRoot('workflows', 'subworkflow-version-parent.json');
 		const parentDefinition = JSON.parse(readFileSync(parentFilePath, 'utf8')) as IWorkflowBase;
 		const workflowIdParam = parentDefinition.nodes[1].parameters.workflowId;
-		assertWorkflowIdParameter(workflowIdParam);
+		assertResourceLocator(workflowIdParam);
 		workflowIdParam.value = childWorkflowId;
 
 		const {
@@ -154,7 +156,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 			createdWorkflow: parentWorkflow,
 		} = await api.workflows.importWorkflowFromDefinition(parentDefinition);
 
-		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId);
+		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
 
 		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
 			method: 'POST',
@@ -219,7 +221,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 			});
 
 		try {
-			await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId);
+			await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
 			expect(true).toBe(false);
 		} catch (error: unknown) {
 			assertIsError(error);
