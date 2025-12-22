@@ -28,6 +28,20 @@ vi.mock('@n8n/permissions', () => ({
 	}),
 }));
 
+const mockWorkflowState = {
+	setWorkflowProperty: vi.fn(),
+	setWorkflowName: vi.fn(),
+	setWorkflowTagIds: vi.fn(),
+	setActive: vi.fn(),
+	setWorkflowId: vi.fn(),
+	setWorkflowSettings: vi.fn(),
+	setNodeValue: vi.fn(),
+};
+
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	injectWorkflowState: () => mockWorkflowState,
+}));
+
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,

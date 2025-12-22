@@ -92,47 +92,15 @@ interface WorkflowRetrievalResult {
 	newTemplates: WorkflowMetadata[];
 }
 
-/** Options for getWorkflowsForNodeType */
-interface GetWorkflowsOptions {
-	nodeType: string;
-	logger?: Logger;
-	onProgress?: (message: string) => void;
-	/** Local cache of templates accumulated during batch processing */
-	localCache?: WorkflowMetadata[];
-}
-
 /**
  * Single retrieval function for getting workflows containing a specific node type.
- * Checks local cache first, then state cache, then fetches from API if needed.
+ * Checks state cache first, then fetches from API if needed.
  */
-async function getWorkflowsForNodeType({
-	nodeType,
-	logger,
-	onProgress,
-	localCache = [],
-}: GetWorkflowsOptions): Promise<WorkflowRetrievalResult> {
-	// First check local cache (templates fetched earlier in the same batch)
-	const relevantFromLocal = localCache.filter((wf) =>
-		wf.workflow.nodes.some((n) => n.type === nodeType),
-	);
-
-	if (relevantFromLocal.length > 0) {
-		const nodeConfigs = getNodeConfigurationsFromTemplates(relevantFromLocal, nodeType);
-
-		logger?.debug('Found node configurations in local batch cache', {
-			nodeType,
-			configCount: nodeConfigs.length,
-			workflowCount: relevantFromLocal.length,
-		});
-
-		return {
-			workflows: relevantFromLocal,
-			nodeConfigs,
-			newTemplates: [], // Already in local cache, not "new"
-		};
-	}
-
-	// Then check state cache (templates from previous tool calls)
+async function getWorkflowsForNodeType(
+	nodeType: string,
+	logger?: Logger,
+): Promise<WorkflowRetrievalResult> {
+	// Check state cache (templates from previous tool calls)
 	let stateCachedTemplates: WorkflowMetadata[] = [];
 	try {
 		const state = getWorkflowState();
@@ -162,8 +130,6 @@ async function getWorkflowsForNodeType({
 	}
 
 	// No cached data, fetch from templates API
-	onProgress?.(`Fetching examples for ${nodeType}...`);
-
 	try {
 		const result = await fetchWorkflowsFromTemplates(
 			{ nodes: nodeType, rows: 5 },
@@ -277,33 +243,28 @@ export function createGetNodeExamplesTool({ exampleType, logger }: CreateNodeExa
 
 				reporter.start(validatedInput);
 
-				// Process all nodes and collect results
-				// Use localCache to accumulate templates during batch processing
-				// so subsequent nodes can benefit from earlier fetches
-				const allMessages: string[] = [];
+				// Fetch all node examples in parallel
+				reportProgress(reporter, `Fetching examples for ${nodes.length} node(s)...`);
+
+				const results = await Promise.all(
+					nodes.map(async ({ nodeType }) => await getWorkflowsForNodeType(nodeType, logger)),
+				);
+
+				// Process results and format messages
 				const allNewTemplates: WorkflowMetadata[] = [];
 				let totalFound = 0;
 
-				for (const { nodeType, nodeVersion } of nodes) {
-					const result = await getWorkflowsForNodeType({
-						nodeType,
-						logger,
-						onProgress: (msg: string) => reportProgress(reporter, msg),
-						localCache: allNewTemplates, // Pass accumulated templates
-					});
+				const allMessages = nodes.map(({ nodeType, nodeVersion }, i) => {
+					const result = results[i];
 
-					// Format based on example type
-					const message =
-						exampleType === 'configuration'
-							? formatNodeConfigurationExamples(nodeType, result.nodeConfigs, nodeVersion)
-							: formatConnectionExamples(nodeType, result.workflows);
-
-					allMessages.push(message);
-					// Add new templates to local cache for subsequent iterations
 					allNewTemplates.push(...result.newTemplates);
 					totalFound +=
 						exampleType === 'configuration' ? result.nodeConfigs.length : result.workflows.length;
-				}
+
+					return exampleType === 'configuration'
+						? formatNodeConfigurationExamples(nodeType, result.nodeConfigs, nodeVersion)
+						: formatConnectionExamples(nodeType, result.workflows);
+				});
 
 				const combinedMessage = allMessages.join('\n\n---\n\n');
 				const nodeTypes = nodes.map((n) => n.nodeType);

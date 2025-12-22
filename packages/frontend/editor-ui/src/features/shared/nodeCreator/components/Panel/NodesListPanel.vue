@@ -285,7 +285,7 @@ function onBackButton() {
 }
 .nodeIcon {
 	--node--icon--size: 20px;
-	--node--icon--color: var(--color--text);
+	--node-creator--icon--color: var(--node--icon--color--neutral);
 	margin-right: var(--spacing--sm);
 }
 .renderedItems {

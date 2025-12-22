@@ -46,9 +46,7 @@ const getOperatorId = (operator: FilterOperator): string =>
 
 function onSelectVisibleChange(open: boolean) {
 	menuOpen.value = open;
-	if (!open) {
-		submenu.value = 'none';
-	}
+	submenu.value = 'none';
 }
 
 function onGroupSelect(group: string) {
@@ -90,6 +88,8 @@ watch(
 					width="auto"
 					:content-class="$style.submenuContent"
 					:enable-scrolling="false"
+					:teleported="false"
+					:force-mount="true"
 				>
 					<template #trigger>
 						<div

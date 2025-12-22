@@ -1006,11 +1006,13 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
+	const setStateDirty = typeof data.setStateDirty === 'boolean' ? data.setStateDirty : undefined;
 
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
+		setStateDirty,
 	});
 
 	await nextTick();
