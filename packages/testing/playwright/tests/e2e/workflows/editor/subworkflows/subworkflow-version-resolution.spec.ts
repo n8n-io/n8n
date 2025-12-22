@@ -114,19 +114,11 @@ test.describe('Sub-workflow Version Resolution', () => {
 			data: { test: 'data' },
 		});
 
-		if (!webhookResponse) {
-			throw new Error('Webhook response is undefined - webhook may not be registered');
-		}
+		expect(webhookResponse).toBeDefined();
+		expect(webhookResponse!.ok()).toBe(true);
 
-		if (!webhookResponse.ok()) {
-			const errorText = await webhookResponse.text();
-			throw new Error(`Webhook request failed: ${webhookResponse.status()} - ${errorText}`);
-		}
-
-		const responseData = await webhookResponse.json();
-
-		const items = Array.isArray(responseData) ? responseData : [responseData];
-		expect(items[0]['wf-version']).toBe('published-version');
+		const responseData = await webhookResponse!.json();
+		expect(responseData['wf-version']).toBe('published-version');
 	});
 
 	test('should prevent publishing parent workflow when sub-workflow is not published', async ({
@@ -256,8 +248,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 		});
 
 		const updatedWorkflowData = await patchResponse.json();
-		const updatedWorkflow = updatedWorkflowData.data ?? updatedWorkflowData;
 
-		await api.workflows.activate(workflowId, updatedWorkflow.versionId);
+		await api.workflows.activate(workflowId, updatedWorkflowData.data.versionId);
 	});
 });
