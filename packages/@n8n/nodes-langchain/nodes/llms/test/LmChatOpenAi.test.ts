@@ -1,6 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
@@ -21,6 +23,7 @@ const MockedChatOpenAI = jest.mocked(ChatOpenAI);
 const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedCommon = jest.mocked(common);
+const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('LmChatOpenAi', () => {
 	let lmChatOpenAi: LmChatOpenAi;
@@ -113,7 +116,9 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
@@ -145,7 +150,9 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
@@ -182,6 +189,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -218,6 +226,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -252,6 +261,7 @@ describe('LmChatOpenAi', () => {
 					maxRetries: 2,
 					configuration: {
 						defaultHeaders: {
+							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
 						},
 					},
@@ -295,7 +305,9 @@ describe('LmChatOpenAi', () => {
 					topP: 0.9,
 					timeout: 45000,
 					maxRetries: 3,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {
 						response_format: { type: 'json_object' },
@@ -406,6 +418,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 				}),
 			);
