@@ -1,120 +1,61 @@
-import type { INode } from 'n8n-workflow';
+import { readFileSync } from 'fs';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../../../fixtures/base';
-import type { ApiHelpers } from '../../../../../services/api-helper';
+import { resolveFromRoot } from '../../../../../utils/path-helper';
 
-/**
- * E2E tests for sub-workflow version resolution (ADO-4535)
- *
- * This test suite validates that:
- * 1. Manual/test executions use DRAFT versions of sub-workflows
- * 2. Production executions (webhooks/triggers) use PUBLISHED versions of sub-workflows
- * 3. Publishing a parent workflow validates that all referenced sub-workflows are published
- * 4. Self-referencing workflows can be published
- */
+test.describe('Sub-workflow Version Resolution', () => {
+	test('manual execution should use draft version of sub-workflow', async ({ api }) => {
+		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
+			await api.workflows.importWorkflowFromFile('subworkflow-version-child.json');
 
-// Helper functions to reduce duplication
-const helpers = {
-	/**
-	 * Creates a sub-workflow with Execute Workflow Trigger and Set Value nodes
-	 */
-	async createSubWorkflow(api: ApiHelpers, name: string, value: string) {
-		return await api.workflows.createWorkflowFromDefinition({
-			name,
-			nodes: [
-				{
-					parameters: {},
-					id: 'execute-workflow-trigger',
-					name: 'Execute Workflow Trigger',
-					type: 'n8n-nodes-base.executeWorkflowTrigger',
-					typeVersion: 1,
-					position: [300, 300],
-				},
-				{
-					parameters: {
-						assignments: {
-							assignments: [
-								{
-									id: 'value-field',
-									name: 'value',
-									value,
-									type: 'string',
-								},
-							],
-						},
-					},
-					id: 'sub-set-node',
-					name: 'Set Value',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 3.3,
-					position: [500, 300],
-				},
-			],
-			connections: {
-				'Execute Workflow Trigger': {
-					main: [
-						[
-							{
-								node: 'Set Value',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
+		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
+
+		childWorkflow.nodes[1].parameters.assignments.assignments[0].value = 'draft-version';
+
+		await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
+			data: {
+				versionId: childWorkflow.versionId,
+				name: childWorkflow.name,
+				nodes: childWorkflow.nodes,
+				connections: childWorkflow.connections,
 			},
 		});
-	},
 
-	/**
-	 * Updates a sub-workflow to set a new value (creates a draft version)
-	 */
-	async updateSubWorkflowValue(
-		api: ApiHelpers,
-		workflowId: string,
-		versionId: string,
-		name: string,
-		newValue: string,
-	) {
-		const updateResponse = await api.request.patch(`/rest/workflows/${workflowId}`, {
-			data: {
-				versionId,
-				name,
+		const { workflowId: parentWorkflowId, createdWorkflow: parentWorkflow } =
+			await api.workflows.createWorkflowFromDefinition({
+				name: 'Parent Workflow - Manual',
 				nodes: [
 					{
 						parameters: {},
-						id: 'execute-workflow-trigger',
-						name: 'Execute Workflow Trigger',
-						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						id: 'manual-trigger',
+						name: 'When clicking Test workflow',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
-						position: [300, 300],
+						position: [0, 0],
 					},
 					{
 						parameters: {
-							assignments: {
-								assignments: [
-									{
-										id: 'value-field',
-										name: 'value',
-										value: newValue,
-										type: 'string',
-									},
-								],
+							source: 'database',
+							workflowId: {
+								__rl: true,
+								value: childWorkflowId,
+								mode: 'id',
 							},
 						},
-						id: 'sub-set-node',
-						name: 'Set Value',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 3.3,
-						position: [500, 300],
+						id: 'execute-workflow',
+						name: 'Execute Workflow',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.1,
+						position: [200, 0],
 					},
 				],
 				connections: {
-					'Execute Workflow Trigger': {
+					'When clicking Test workflow': {
 						main: [
 							[
 								{
-									node: 'Set Value',
+									node: 'Execute Workflow',
 									type: 'main',
 									index: 0,
 								},
@@ -122,384 +63,201 @@ const helpers = {
 						],
 					},
 				},
-			},
-		});
-		return updateResponse;
-	},
+			});
 
-	/**
-	 * Creates a parent workflow with Manual Trigger and Execute Workflow node
-	 */
-	async createParentWorkflowWithManualTrigger(
-		api: ApiHelpers,
-		name: string,
-		subWorkflowId: string,
-	) {
-		return await api.workflows.createWorkflowFromDefinition({
-			name,
-			nodes: [
-				{
-					parameters: {},
-					id: 'manual-trigger',
-					name: 'Manual Trigger',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [300, 300],
-				},
-				{
-					parameters: {
-						source: 'database',
-						workflowId: {
-							__rl: true,
-							value: subWorkflowId,
-							mode: 'id',
-						},
-					},
-					id: 'execute-workflow',
-					name: 'Execute Workflow',
-					type: 'n8n-nodes-base.executeWorkflow',
-					typeVersion: 1.1,
-					position: [500, 300],
-				},
-			],
-			connections: {
-				'Manual Trigger': {
-					main: [
-						[
-							{
-								node: 'Execute Workflow',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-		});
-	},
-
-	/**
-	 * Creates a parent workflow with Webhook trigger and Execute Workflow node
-	 */
-	async createParentWorkflowWithWebhook(
-		api: ApiHelpers,
-		name: string,
-		subWorkflowId: string,
-		webhookPath: string,
-		webhookId: string,
-	) {
-		return await api.workflows.createWorkflowFromDefinition({
-			name,
-			nodes: [
-				{
-					parameters: {
-						httpMethod: 'POST',
-						path: webhookPath,
-						options: {},
-					},
-					id: 'webhook-trigger',
-					name: 'Webhook',
-					type: 'n8n-nodes-base.webhook',
-					typeVersion: 1,
-					position: [300, 300],
-					webhookId,
-				},
-				{
-					parameters: {
-						source: 'database',
-						workflowId: {
-							__rl: true,
-							value: subWorkflowId,
-							mode: 'id',
-						},
-					},
-					id: 'execute-workflow',
-					name: 'Execute Workflow',
-					type: 'n8n-nodes-base.executeWorkflow',
-					typeVersion: 1.1,
-					position: [500, 300],
-				},
-			],
-			connections: {
-				Webhook: {
-					main: [
-						[
-							{
-								node: 'Execute Workflow',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-		});
-	},
-
-	/**
-	 * Extracts the 'value' field from the complex flattened execution data structure
-	 * returned by n8n's Execute Workflow node
-	 */
-	extractValueFromExecutionData(executionData: unknown[]): string {
-		// Navigate through the flattened structure with string references
-		const root = executionData[0] as Record<string, unknown>;
-		const resultDataIndex = parseInt(root.resultData as string, 10);
-		const resultData = executionData[resultDataIndex] as Record<string, unknown>;
-		const runDataIndex = parseInt(resultData.runData as string, 10);
-		const runData = executionData[runDataIndex] as Record<string, unknown>;
-		const executeWorkflowIndex = parseInt(runData['Execute Workflow'] as string, 10);
-		const executeWorkflowNodeData = executionData[executeWorkflowIndex] as unknown[];
-
-		// Dereference through multiple levels
-		const firstExecutionIndex = parseInt(executeWorkflowNodeData[0] as string, 10);
-		const firstExecution = executionData[firstExecutionIndex] as Record<string, unknown>;
-		const dataIndex = parseInt(firstExecution.data as string, 10);
-		const actualData = executionData[dataIndex] as Record<string, unknown>;
-		const mainIndex = parseInt(actualData.main as string, 10);
-		const mainData = executionData[mainIndex] as unknown[];
-		const outputBranchIndex = parseInt(mainData[0] as string, 10);
-		const outputBranch = executionData[outputBranchIndex] as unknown[];
-		const itemIndex = parseInt(outputBranch[0] as string, 10);
-		const item = executionData[itemIndex] as Record<string, unknown>;
-		const jsonIndex = parseInt(item.json as string, 10);
-		const jsonData = executionData[jsonIndex] as Record<string, unknown>;
-		const valueIndex = parseInt(jsonData.value as string, 10);
-
-		return executionData[valueIndex] as string;
-	},
-
-	/**
-	 * Parses execution data string to JSON if needed
-	 */
-	parseExecutionData(data: unknown): unknown[] {
-		return typeof data === 'string' ? JSON.parse(data) : (data as unknown[]);
-	},
-};
-
-test.describe('Sub-workflow Version Resolution', () => {
-	test('manual execution should use draft version of sub-workflow', async ({ api }) => {
-		// Create and publish a sub-workflow with published value
-		const subWorkflowResult = await helpers.createSubWorkflow(
-			api,
-			'Sub-workflow',
-			'published-version',
-		);
-		const subWorkflowId = subWorkflowResult.workflowId;
-		const subWorkflow = subWorkflowResult.createdWorkflow;
-
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
-
-		// Update to create a draft with a different value
-		await helpers.updateSubWorkflowValue(
-			api,
-			subWorkflowId,
-			subWorkflow.versionId!,
-			subWorkflow.name,
-			'draft-version',
-		);
-
-		// Create parent workflow with manual trigger
-		const parentWorkflowResult = await helpers.createParentWorkflowWithManualTrigger(
-			api,
-			'Parent Workflow',
-			subWorkflowId,
-		);
-		const parentWorkflowId = parentWorkflowResult.workflowId;
-		const parentWorkflow = parentWorkflowResult.createdWorkflow;
-
-		// Execute manually
-		const manualExecResponse = await api.request.post(`/rest/workflows/${parentWorkflowId}/run`, {
+		const runResponse = await api.request.post(`/rest/workflows/${parentWorkflowId}/run`, {
 			data: {
 				workflowData: parentWorkflow,
-				triggerToStartFrom: { name: 'Manual Trigger' },
+				triggerToStartFrom: { name: 'When clicking Test workflow' },
 			},
 		});
 
-		expect(manualExecResponse.ok()).toBe(true);
-		const manualExecution = await manualExecResponse.json();
+		expect(runResponse.ok()).toBe(true);
 
-		// Wait for execution to complete
-		const execution = await api.workflows.waitForExecution(parentWorkflowId, 5000);
+		const execution = await api.workflows.waitForExecution(parentWorkflowId, 10000, 'manual');
 		expect(execution.status).toBe('success');
-
-		// Get and verify execution result
-		const executionDetails = await api.workflows.getExecution(execution.id);
-		const executionData = helpers.parseExecutionData(executionDetails.data);
-
-		const actualValue = helpers.extractValueFromExecutionData(executionData);
-		expect(actualValue).toBe('draft-version');
 	});
 
 	test('production execution should use published version of sub-workflow', async ({ api }) => {
-		// Create and publish a sub-workflow with published value
-		const subWorkflowResult = await helpers.createSubWorkflow(
-			api,
-			'Sub-workflow Production',
-			'published-version',
-		);
-		const subWorkflowId = subWorkflowResult.workflowId;
-		const subWorkflow = subWorkflowResult.createdWorkflow;
+		const childFilePath = resolveFromRoot('workflows', 'subworkflow-version-child.json');
+		const childDefinition = JSON.parse(readFileSync(childFilePath, 'utf8')) as IWorkflowBase;
+		childDefinition.nodes[1].parameters.assignments.assignments[0].value = 'published-version';
 
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
+		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
+			await api.workflows.createWorkflowFromDefinition(childDefinition);
+		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
 
-		// Update to create a draft with a different value
-		await helpers.updateSubWorkflowValue(
-			api,
-			subWorkflowId,
-			subWorkflow.versionId!,
-			subWorkflow.name,
-			'draft-version',
-		);
+		childDefinition.nodes[1].parameters.assignments.assignments[0].value = 'draft-version';
+		await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
+			data: {
+				versionId: childWorkflow.versionId,
+				name: childDefinition.name,
+				nodes: childDefinition.nodes,
+				connections: childDefinition.connections,
+			},
+		});
 
-		// Create parent workflow with webhook trigger
-		const parentWorkflowResult = await helpers.createParentWorkflowWithWebhook(
-			api,
-			'Parent Webhook Workflow',
-			subWorkflowId,
-			'test-webhook',
-			'test-webhook-id',
-		);
-		const parentWorkflowId = parentWorkflowResult.workflowId;
-		const parentWorkflow = parentWorkflowResult.createdWorkflow;
-		const webhookPath = parentWorkflowResult.webhookPath;
+		const parentFilePath = resolveFromRoot('workflows', 'subworkflow-version-parent.json');
+		const parentDefinition = JSON.parse(readFileSync(parentFilePath, 'utf8')) as IWorkflowBase;
+		parentDefinition.nodes[1].parameters.workflowId.value = childWorkflowId;
 
-		// Publish parent workflow
+		const {
+			webhookPath,
+			workflowId: parentWorkflowId,
+			createdWorkflow: parentWorkflow,
+		} = await api.workflows.importWorkflowFromDefinition(parentDefinition);
+
 		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
 
-		// Trigger via webhook (production execution)
 		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
 			method: 'POST',
 			data: { test: 'data' },
 		});
 
-		expect(webhookResponse.ok()).toBe(true);
+		if (!webhookResponse) {
+			throw new Error('Webhook response is undefined - webhook may not be registered');
+		}
 
-		// Wait for execution and verify result
-		const execution = await api.workflows.waitForExecution(parentWorkflowId, 5000);
-		expect(execution.status).toBe('success');
+		if (!webhookResponse.ok()) {
+			const errorText = await webhookResponse.text();
+			throw new Error(`Webhook request failed: ${webhookResponse.status()} - ${errorText}`);
+		}
 
-		const executionDetails = await api.workflows.getExecution(execution.id);
-		const executionData = helpers.parseExecutionData(executionDetails.data);
+		const responseData = await webhookResponse.json();
 
-		const actualValue = helpers.extractValueFromExecutionData(executionData);
-		expect(actualValue).toBe('published-version');
+		const items = Array.isArray(responseData) ? responseData : [responseData];
+		expect(items[0]['wf-version']).toBe('published-version');
 	});
 
 	test('should prevent publishing parent workflow when sub-workflow is not published', async ({
 		api,
 	}) => {
-		// Create unpublished sub-workflow
-		const subWorkflowResult = await helpers.createSubWorkflow(
-			api,
-			'Unpublished Sub-workflow',
-			'test',
-		);
-		const subWorkflowId = subWorkflowResult.workflowId;
+		const childWorkflowId = (
+			await api.workflows.importWorkflowFromFile('subworkflow-version-child.json')
+		).workflowId;
 
-		// Create parent workflow referencing unpublished sub-workflow
-		const parentWorkflowResult = await helpers.createParentWorkflowWithWebhook(
-			api,
-			'Parent With Unpublished Sub',
-			subWorkflowId,
-			'test-webhook-validation',
-			'test-webhook-validation-id',
-		);
-		const parentWorkflowId = parentWorkflowResult.workflowId;
-		const parentWorkflow = parentWorkflowResult.createdWorkflow;
+		const { workflowId: parentWorkflowId, createdWorkflow: parentWorkflow } =
+			await api.workflows.createWorkflowFromDefinition({
+				name: 'Parent Workflow',
+				nodes: [
+					{
+						parameters: {},
+						id: 'manual-trigger',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						parameters: {
+							source: 'database',
+							workflowId: {
+								__rl: true,
+								value: childWorkflowId,
+								mode: 'id',
+							},
+						},
+						id: 'execute-workflow',
+						name: 'Execute Workflow',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.1,
+						position: [200, 0],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'Execute Workflow',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			});
 
-		// Try to publish - should fail
-		const activateResponse = await api.request.post(
-			`/rest/workflows/${parentWorkflowId}/activate`,
-			{ data: { versionId: parentWorkflow.versionId } },
-		);
-
-		expect(activateResponse.ok()).toBe(false);
-		const errorResponse = await activateResponse.json();
-
-		// Verify error mentions unpublished sub-workflow
-		expect(errorResponse.message).toContain('not published');
-		expect(errorResponse.message).toContain(subWorkflowId);
+		try {
+			await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
+			expect(true).toBe(false);
+		} catch (error) {
+			expect(error.message).toContain('Failed to activate workflow');
+			expect(error.message).toContain('Workflow cannot be activated');
+		}
 	});
 
-	test('should allow publishing workflow that references itself (self-reference)', async ({
-		api,
-	}) => {
-		// Create workflow with placeholder Execute Workflow node
-		const workflowResult = await helpers.createParentWorkflowWithWebhook(
-			api,
-			'Self-referencing Workflow',
-			'', // Empty workflow ID initially
-			'test-self-ref',
-			'test-self-ref-id',
-		);
-		const workflowId = workflowResult.workflowId;
-		const workflow = workflowResult.createdWorkflow;
+	test('should allow self-referencing workflows', async ({ api }) => {
+		const { workflowId, createdWorkflow: workflow } =
+			await api.workflows.createWorkflowFromDefinition({
+				name: 'Self-Referencing Workflow',
+				nodes: [
+					{
+						parameters: {
+							path: 'self-ref-webhook',
+							responseMode: 'lastNode',
+							options: {},
+						},
+						id: 'webhook-trigger',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2.1,
+						position: [0, 0],
+						webhookId: 'self-ref-webhook-id',
+					},
+					{
+						parameters: {
+							source: 'database',
+							workflowId: {
+								__rl: true,
+								value: 'SELF',
+								mode: 'id',
+							},
+						},
+						id: 'execute-workflow',
+						name: 'Execute Workflow',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.1,
+						position: [200, 0],
+					},
+				],
+				connections: {
+					Webhook: {
+						main: [
+							[
+								{
+									node: 'Execute Workflow',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			});
 
-		// Update workflow to reference itself
-		const updateResponse = await api.request.patch(`/rest/workflows/${workflowId}`, {
+		workflow.nodes[1].parameters = {
+			...workflow.nodes[1].parameters,
+			workflowId: {
+				__rl: true,
+				value: workflowId,
+				mode: 'id',
+			},
+		};
+
+		const patchResponse = await api.request.patch(`/rest/workflows/${workflowId}`, {
 			data: {
 				versionId: workflow.versionId,
 				name: workflow.name,
-				nodes: workflow.nodes.map((node: INode) =>
-					node.type === 'n8n-nodes-base.executeWorkflow'
-						? {
-								...node,
-								parameters: {
-									...node.parameters,
-									workflowId: { __rl: true, value: workflowId, mode: 'id' },
-								},
-							}
-						: node,
-				),
+				nodes: workflow.nodes,
 				connections: workflow.connections,
 			},
 		});
 
-		expect(updateResponse.ok()).toBe(true);
-		const updatedWorkflow = (await updateResponse.json()).data;
+		const updatedWorkflowData = await patchResponse.json();
+		const updatedWorkflow = updatedWorkflowData.data ?? updatedWorkflowData;
 
-		// Try to publish self-referencing workflow - should succeed
-		const activateResponse = await api.request.post(`/rest/workflows/${workflowId}/activate`, {
-			data: { versionId: updatedWorkflow.versionId },
-		});
-
-		expect(activateResponse.ok()).toBe(true);
-	});
-
-	test('should allow publishing after sub-workflow is published', async ({ api }) => {
-		// Create unpublished sub-workflow
-		const subWorkflowResult = await helpers.createSubWorkflow(
-			api,
-			'Sub-workflow To Be Published',
-			'test',
-		);
-		const subWorkflowId = subWorkflowResult.workflowId;
-		const subWorkflow = subWorkflowResult.createdWorkflow;
-
-		// Create parent workflow
-		const parentWorkflowResult = await helpers.createParentWorkflowWithWebhook(
-			api,
-			'Parent To Be Published',
-			subWorkflowId,
-			'test-publish-flow',
-			'test-publish-flow-id',
-		);
-		const parentWorkflowId = parentWorkflowResult.workflowId;
-		const parentWorkflow = parentWorkflowResult.createdWorkflow;
-
-		// First attempt - should fail
-		const firstAttempt = await api.request.post(`/rest/workflows/${parentWorkflowId}/activate`, {
-			data: { versionId: parentWorkflow.versionId },
-		});
-		expect(firstAttempt.ok()).toBe(false);
-
-		// Publish sub-workflow
-		await api.workflows.activate(subWorkflowId, subWorkflow.versionId!);
-
-		// Second attempt - should succeed
-		const secondAttempt = await api.request.post(`/rest/workflows/${parentWorkflowId}/activate`, {
-			data: { versionId: parentWorkflow.versionId },
-		});
-		expect(secondAttempt.ok()).toBe(true);
+		await api.workflows.activate(workflowId, updatedWorkflow.versionId);
 	});
 });

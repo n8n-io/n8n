@@ -1,0 +1,73 @@
+{
+	"name": "Version Test Parent",
+	"nodes": [
+		{
+			"parameters": {
+				"path": "test-webhook-path",
+				"httpMethod": "POST",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"webhookId": "test-webhook-id"
+		},
+		{
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "PLACEHOLDER_CHILD_WORKFLOW_ID",
+					"mode": "list"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"position": [208, 0],
+			"id": "execute-workflow",
+			"name": "Execute Child Workflow"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [416, 0],
+			"id": "respond-to-webhook",
+			"name": "Respond to Webhook"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Execute Child Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Execute Child Workflow": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
