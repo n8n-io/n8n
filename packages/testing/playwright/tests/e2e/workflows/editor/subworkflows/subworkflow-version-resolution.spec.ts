@@ -1,8 +1,48 @@
 import { readFileSync } from 'fs';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { INodeParameters, IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
+
+interface AssignmentsParameter {
+	assignments: Array<{ value: string; [key: string]: unknown }>;
+}
+
+interface WorkflowIdParameter {
+	value: string;
+	[key: string]: unknown;
+}
+
+function isAssignmentsParameter(param: INodeParameters): param is AssignmentsParameter {
+	return (
+		typeof param === 'object' &&
+		param !== null &&
+		'assignments' in param &&
+		Array.isArray((param as AssignmentsParameter).assignments)
+	);
+}
+
+function isWorkflowIdParameter(param: INodeParameters): param is WorkflowIdParameter {
+	return typeof param === 'object' && param !== null && 'value' in param;
+}
+
+function assertAssignmentsParameter(param: INodeParameters): asserts param is AssignmentsParameter {
+	if (!isAssignmentsParameter(param)) {
+		throw new Error('Expected AssignmentsParameter');
+	}
+}
+
+function assertWorkflowIdParameter(param: INodeParameters): asserts param is WorkflowIdParameter {
+	if (!isWorkflowIdParameter(param)) {
+		throw new Error('Expected WorkflowIdParameter');
+	}
+}
+
+function assertIsError(error: unknown): asserts error is Error {
+	if (!(error instanceof Error)) {
+		throw new Error('Expected Error instance');
+	}
+}
 
 test.describe('Sub-workflow Version Resolution', () => {
 	test('manual execution should use draft version of sub-workflow', async ({ api }) => {
@@ -11,7 +51,9 @@ test.describe('Sub-workflow Version Resolution', () => {
 
 		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
 
-		childWorkflow.nodes[1].parameters.assignments.assignments[0].value = 'draft-version';
+		const assignmentsParam = childWorkflow.nodes[1]!.parameters.assignments;
+		assertAssignmentsParameter(assignmentsParam);
+		assignmentsParam.assignments[0].value = 'draft-version';
 
 		await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
 			data: {
@@ -81,13 +123,16 @@ test.describe('Sub-workflow Version Resolution', () => {
 	test('production execution should use published version of sub-workflow', async ({ api }) => {
 		const childFilePath = resolveFromRoot('workflows', 'subworkflow-version-child.json');
 		const childDefinition = JSON.parse(readFileSync(childFilePath, 'utf8')) as IWorkflowBase;
-		childDefinition.nodes[1].parameters.assignments.assignments[0].value = 'published-version';
+		const childAssignmentsParam = childDefinition.nodes[1]!.parameters.assignments;
+		assertAssignmentsParameter(childAssignmentsParam);
+		childAssignmentsParam.assignments[0].value = 'published-version';
 
 		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 			await api.workflows.createWorkflowFromDefinition(childDefinition);
 		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
 
-		childDefinition.nodes[1].parameters.assignments.assignments[0].value = 'draft-version';
+		assertAssignmentsParameter(childAssignmentsParam);
+		childAssignmentsParam.assignments[0].value = 'draft-version';
 		await api.request.patch(`/rest/workflows/${childWorkflowId}`, {
 			data: {
 				versionId: childWorkflow.versionId,
@@ -99,7 +144,9 @@ test.describe('Sub-workflow Version Resolution', () => {
 
 		const parentFilePath = resolveFromRoot('workflows', 'subworkflow-version-parent.json');
 		const parentDefinition = JSON.parse(readFileSync(parentFilePath, 'utf8')) as IWorkflowBase;
-		parentDefinition.nodes[1].parameters.workflowId.value = childWorkflowId;
+		const workflowIdParam = parentDefinition.nodes[1]!.parameters.workflowId;
+		assertWorkflowIdParameter(workflowIdParam);
+		workflowIdParam.value = childWorkflowId;
 
 		const {
 			webhookPath,
@@ -174,7 +221,8 @@ test.describe('Sub-workflow Version Resolution', () => {
 		try {
 			await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
 			expect(true).toBe(false);
-		} catch (error) {
+		} catch (error: unknown) {
+			assertIsError(error);
 			expect(error.message).toContain('Failed to activate workflow');
 			expect(error.message).toContain('Workflow cannot be activated');
 		}
