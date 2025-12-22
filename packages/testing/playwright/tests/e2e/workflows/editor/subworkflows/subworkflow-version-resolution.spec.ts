@@ -1,7 +1,7 @@
 import type { INode } from 'n8n-workflow';
 
-import { test, expect } from '../../../fixtures/base';
-import type { ApiHelpers } from '../../../services/api-helper';
+import { test, expect } from '../../../../../fixtures/base';
+import type { ApiHelpers } from '../../../../../services/api-helper';
 
 /**
  * E2E tests for sub-workflow version resolution (ADO-4535)
@@ -319,10 +319,11 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const manualExecution = await manualExecResponse.json();
 
 		// Wait for execution to complete
-		await new Promise((resolve) => setTimeout(resolve, 2000));
+		const execution = await api.workflows.waitForExecution(parentWorkflowId, 5000);
+		expect(execution.status).toBe('success');
 
 		// Get and verify execution result
-		const executionDetails = await api.workflows.getExecution(manualExecution.data.executionId);
+		const executionDetails = await api.workflows.getExecution(execution.id);
 		const executionData = helpers.parseExecutionData(executionDetails.data);
 
 		const actualValue = helpers.extractValueFromExecutionData(executionData);
