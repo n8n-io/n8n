@@ -1,12 +1,13 @@
 import type {
-	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	ListDataTableOptions,
+	ListDataTableOptionsSortByKey,
 } from 'n8n-workflow';
 
+import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
 import { getDataTableAggregateProxy } from '../../common/utils';
 
 export const FIELD = 'list';
@@ -31,15 +32,14 @@ export const description: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 50,
+		default: ROWS_LIMIT_DEFAULT,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: ['table'],
-				operation: [FIELD],
+				...displayOptions.show,
 				returnAll: [false],
 			},
 		},
@@ -69,7 +69,7 @@ export const description: INodeProperties[] = [
 					{ name: 'Name', value: 'name' },
 					{ name: 'Size', value: 'sizeBytes' },
 					{ name: 'Updated', value: 'updatedAt' },
-				],
+				] satisfies Array<{ name: string; value: ListDataTableOptionsSortByKey }>,
 				description: 'Field to sort by',
 			},
 			{
@@ -91,7 +91,7 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const limit = this.getNodeParameter('limit', index, 50) as number;
+	const limit = this.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) as number;
 	const options = this.getNodeParameter('options', index, {}) as {
 		filterName?: string;
 		sortField?: string;
@@ -126,7 +126,7 @@ export async function execute(
 			});
 
 			for (const table of response.data) {
-				results.push({ json: table as unknown as IDataObject });
+				results.push({ json: table });
 			}
 
 			skip += take;
@@ -140,7 +140,7 @@ export async function execute(
 		});
 
 		for (const table of response.data) {
-			results.push({ json: table as unknown as IDataObject });
+			results.push({ json: table });
 		}
 	}
 

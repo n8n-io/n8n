@@ -1,6 +1,5 @@
 import type {
 	CreateDataTableColumnOptions,
-	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -95,10 +94,9 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const tableName = this.getNodeParameter('tableName', index) as string;
-	const columnsData = this.getNodeParameter('columns.column', index, []) as Array<{
-		name: string;
-		type: 'string' | 'number' | 'boolean' | 'date';
-	}>;
+	const columnsData = this.getNodeParameter('columns.column', index, []) as Array<
+		Pick<CreateDataTableColumnOptions, 'name' | 'type'>
+	>;
 	const options = this.getNodeParameter('options', index, {}) as {
 		createIfNotExists?: boolean;
 	};
@@ -114,7 +112,7 @@ export async function execute(
 
 		// If a table with exact name match exists, return it
 		if (existingTables.data.length > 0 && existingTables.data[0].name === tableName) {
-			return [{ json: existingTables.data[0] as unknown as IDataObject }];
+			return [{ json: existingTables.data[0] }];
 		}
 	}
 
@@ -129,5 +127,5 @@ export async function execute(
 		columns,
 	});
 
-	return [{ json: result as unknown as IDataObject }];
+	return [{ json: result }];
 }

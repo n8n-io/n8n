@@ -4,7 +4,7 @@ import * as create from './create.operation';
 import * as deleteTable from './delete.operation';
 import * as list from './list.operation';
 import * as update from './update.operation';
-import { DATA_TABLE_ID_FIELD } from '../../common/fields';
+import { DATA_TABLE_RESOURCE_LOCATOR_BASE } from '../../common/fields';
 
 export { create, deleteTable, list, update };
 
@@ -48,34 +48,7 @@ export const description: INodeProperties[] = [
 		default: 'list',
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		displayName: 'Data table',
-		name: DATA_TABLE_ID_FIELD,
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'tableSearch',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By Name',
-				name: 'name',
-				type: 'string',
-				placeholder: 'e.g. My Table',
-			},
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-			},
-		],
+		...DATA_TABLE_RESOURCE_LOCATOR_BASE,
 		displayOptions: {
 			show: {
 				resource: ['table'],
