@@ -281,8 +281,28 @@ export class ChatHubService {
 				// If the message to edit isn't the original message, we want to point to the original message
 				const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
 
-				// Attachments are already processed (from the original message)
-				const attachments = messageToEdit.attachments ?? [];
+				// Handle attachment changes
+				const originalAttachments = messageToEdit.attachments ?? [];
+
+				// Keep specified existing attachments
+				const keptAttachments = payload.keepAttachmentIndices.flatMap((index) => {
+					const attachment = originalAttachments[index];
+
+					return attachment ? [attachment] : [];
+				});
+
+				// Store new attachments
+				const newStoredAttachments =
+					payload.newAttachments.length > 0
+						? await this.chatHubAttachmentService.store(
+								sessionId,
+								messageId,
+								payload.newAttachments,
+							)
+						: [];
+
+				// Combine kept + new attachments
+				const attachments = [...keptAttachments, ...newStoredAttachments];
 
 				await this.saveHumanMessage(
 					payload,
