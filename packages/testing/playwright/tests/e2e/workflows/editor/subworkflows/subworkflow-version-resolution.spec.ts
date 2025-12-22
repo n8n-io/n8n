@@ -49,9 +49,9 @@ test.describe('Sub-workflow Version Resolution', () => {
 		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 			await api.workflows.importWorkflowFromFile('subworkflow-version-child.json');
 
-		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
+		await api.workflows.activate(childWorkflowId, childWorkflow.versionId);
 
-		const assignmentsParam = childWorkflow.nodes[1]!.parameters.assignments;
+		const assignmentsParam = childWorkflow.nodes[1].parameters.assignments;
 		assertAssignmentsParameter(assignmentsParam);
 		assignmentsParam.assignments[0].value = 'draft-version';
 
@@ -123,13 +123,13 @@ test.describe('Sub-workflow Version Resolution', () => {
 	test('production execution should use published version of sub-workflow', async ({ api }) => {
 		const childFilePath = resolveFromRoot('workflows', 'subworkflow-version-child.json');
 		const childDefinition = JSON.parse(readFileSync(childFilePath, 'utf8')) as IWorkflowBase;
-		const childAssignmentsParam = childDefinition.nodes[1]!.parameters.assignments;
+		const childAssignmentsParam = childDefinition.nodes[1].parameters.assignments;
 		assertAssignmentsParameter(childAssignmentsParam);
 		childAssignmentsParam.assignments[0].value = 'published-version';
 
 		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 			await api.workflows.createWorkflowFromDefinition(childDefinition);
-		await api.workflows.activate(childWorkflowId, childWorkflow.versionId!);
+		await api.workflows.activate(childWorkflowId, childWorkflow.versionId);
 
 		assertAssignmentsParameter(childAssignmentsParam);
 		childAssignmentsParam.assignments[0].value = 'draft-version';
@@ -144,7 +144,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 
 		const parentFilePath = resolveFromRoot('workflows', 'subworkflow-version-parent.json');
 		const parentDefinition = JSON.parse(readFileSync(parentFilePath, 'utf8')) as IWorkflowBase;
-		const workflowIdParam = parentDefinition.nodes[1]!.parameters.workflowId;
+		const workflowIdParam = parentDefinition.nodes[1].parameters.workflowId;
 		assertWorkflowIdParameter(workflowIdParam);
 		workflowIdParam.value = childWorkflowId;
 
@@ -154,7 +154,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 			createdWorkflow: parentWorkflow,
 		} = await api.workflows.importWorkflowFromDefinition(parentDefinition);
 
-		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
+		await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId);
 
 		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
 			method: 'POST',
@@ -162,9 +162,9 @@ test.describe('Sub-workflow Version Resolution', () => {
 		});
 
 		expect(webhookResponse).toBeDefined();
-		expect(webhookResponse!.ok()).toBe(true);
+		expect(webhookResponse.ok()).toBe(true);
 
-		const responseData = await webhookResponse!.json();
+		const responseData = await webhookResponse.json();
 		expect(responseData['wf-version']).toBe('published-version');
 	});
 
@@ -219,7 +219,7 @@ test.describe('Sub-workflow Version Resolution', () => {
 			});
 
 		try {
-			await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId!);
+			await api.workflows.activate(parentWorkflowId, parentWorkflow.versionId);
 			expect(true).toBe(false);
 		} catch (error: unknown) {
 			assertIsError(error);
