@@ -97,8 +97,8 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field_1');
 
 			// Refresh session
-			await n8n.page.getByTestId('refresh-session-button').click();
-			await expect(n8n.canvas.getManualChatMessages()).not.toBeAttached();
+			await n8n.canvas.logsPanel.refreshSession();
+			await expect(n8n.canvas.logsPanel.getManualChatMessages()).not.toBeAttached();
 
 			// Send another message
 			await n8n.canvas.logsPanel.sendManualChatMessage('Another test');
