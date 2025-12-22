@@ -1,15 +1,16 @@
+import type { WorkflowRepository } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 
-import {
-	WorkflowValidationService,
-	type WorkflowStatus,
-} from '@/workflows/workflow-validation.service';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
 describe('WorkflowValidationService', () => {
 	let service: WorkflowValidationService;
+	let mockWorkflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
 
 	beforeEach(() => {
-		service = new WorkflowValidationService();
+		mockWorkflowRepository = mock<WorkflowRepository>();
+		service = new WorkflowValidationService(mockWorkflowRepository);
 	});
 
 	describe('validateSubWorkflowReferences', () => {
@@ -42,10 +43,7 @@ describe('WorkflowValidationService', () => {
 				},
 			];
 
-			const result = await service.validateSubWorkflowReferences(nodes, async () => ({
-				exists: true,
-				isPublished: true,
-			}));
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
 		});
@@ -56,32 +54,31 @@ describe('WorkflowValidationService', () => {
 				createExecuteWorkflowNode('Sub-workflow 2', { value: 'workflow-2' }),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (workflowId: string): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: true,
-					name: `Workflow ${workflowId}`,
-				}),
+			mockWorkflowRepository.get.mockImplementation(
+				async ({ id }) =>
+					({
+						id: id as string,
+						name: `Workflow ${id}`,
+						activeVersionId: 'version-id',
+					}) as any,
 			);
 
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
-			expect(getWorkflowStatus).toHaveBeenCalledTimes(2);
+			expect(mockWorkflowRepository.get).toHaveBeenCalledTimes(2);
 		});
 
 		it('should return invalid when a referenced sub-workflow is not published', async () => {
 			const nodes: INode[] = [createExecuteWorkflowNode('Sub-workflow 1', { value: 'workflow-1' })];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: false,
-					name: 'Draft Workflow',
-				}),
-			);
+			mockWorkflowRepository.get.mockResolvedValue({
+				id: 'workflow-1',
+				name: 'Draft Workflow',
+				activeVersionId: null,
+			} as any);
 
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Node "Sub-workflow 1" references workflow workflow-1');
@@ -100,14 +97,9 @@ describe('WorkflowValidationService', () => {
 				createExecuteWorkflowNode('Sub-workflow 1', { value: 'non-existent' }),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: false,
-					isPublished: false,
-				}),
-			);
+			mockWorkflowRepository.get.mockResolvedValue(null);
 
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.invalidReferences?.[0]).toEqual({
@@ -122,17 +114,10 @@ describe('WorkflowValidationService', () => {
 				createExecuteWorkflowNode('Disabled Node', { value: 'workflow-1' }, { disabled: true }),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: false,
-				}),
-			);
-
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
-			expect(getWorkflowStatus).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
 		});
 
 		it('should skip nodes using expressions for workflowId', async () => {
@@ -140,17 +125,10 @@ describe('WorkflowValidationService', () => {
 				createExecuteWorkflowNode('Expression Node', '={{ $json.workflowId }}'),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: false,
-				}),
-			);
-
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
-			expect(getWorkflowStatus).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
 		});
 
 		it('should skip nodes using non-database sources', async () => {
@@ -168,17 +146,10 @@ describe('WorkflowValidationService', () => {
 				),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: false,
-				}),
-			);
-
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
-			expect(getWorkflowStatus).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
 		});
 
 		it('should validate nodes using database source', async () => {
@@ -186,33 +157,37 @@ describe('WorkflowValidationService', () => {
 				createExecuteWorkflowNode('Database Node', { value: 'workflow-1' }, { source: 'database' }),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: true,
-				}),
-			);
+			mockWorkflowRepository.get.mockResolvedValue({
+				id: 'workflow-1',
+				name: 'Workflow',
+				activeVersionId: 'version-id',
+			} as any);
 
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
-			expect(getWorkflowStatus).toHaveBeenCalledWith('workflow-1');
+			expect(mockWorkflowRepository.get).toHaveBeenCalledWith(
+				{ id: 'workflow-1' },
+				{ relations: [] },
+			);
 		});
 
 		it('should handle old node format with string workflowId', async () => {
 			const nodes: INode[] = [createExecuteWorkflowNode('Old Format Node', 'workflow-1')];
 
-			const getWorkflowStatus = jest.fn(
-				async (): Promise<WorkflowStatus> => ({
-					exists: true,
-					isPublished: true,
-				}),
-			);
+			mockWorkflowRepository.get.mockResolvedValue({
+				id: 'workflow-1',
+				name: 'Workflow',
+				activeVersionId: 'version-id',
+			} as any);
 
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(true);
-			expect(getWorkflowStatus).toHaveBeenCalledWith('workflow-1');
+			expect(mockWorkflowRepository.get).toHaveBeenCalledWith(
+				{ id: 'workflow-1' },
+				{ relations: [] },
+			);
 		});
 
 		it('should collect all invalid references in a single validation', async () => {
@@ -222,20 +197,32 @@ describe('WorkflowValidationService', () => {
 				createExecuteWorkflowNode('Sub-workflow 3', { value: 'workflow-3' }),
 			];
 
-			const getWorkflowStatus = jest.fn(
-				async (workflowId: string): Promise<WorkflowStatus> => ({
-					exists: workflowId !== 'workflow-2',
-					isPublished: workflowId === 'workflow-1',
-					name: workflowId === 'workflow-3' ? 'Draft Workflow 3' : undefined,
-				}),
-			);
+			mockWorkflowRepository.get.mockImplementation(async ({ id }) => {
+				if (id === 'workflow-2') return null;
+				return {
+					id: id as string,
+					name: id === 'workflow-3' ? 'Draft Workflow 3' : 'Workflow',
+					activeVersionId: id === 'workflow-1' ? 'version-id' : null,
+				} as any;
+			});
 
-			const result = await service.validateSubWorkflowReferences(nodes, getWorkflowStatus);
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.invalidReferences).toHaveLength(2);
 			expect(result.error).toContain('workflow-2');
 			expect(result.error).toContain('workflow-3');
+		});
+
+		it('should allow self-referencing workflows', async () => {
+			const nodes: INode[] = [
+				createExecuteWorkflowNode('Self Reference', { value: 'parent-workflow-id' }),
+			];
+
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
+
+			expect(result.isValid).toBe(true);
+			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
 		});
 	});
 });

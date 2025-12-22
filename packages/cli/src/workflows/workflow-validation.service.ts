@@ -1,3 +1,4 @@
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { validateWorkflowHasTriggerLikeNode } from 'n8n-workflow';
 import type { INode, INodes } from 'n8n-workflow';
@@ -26,6 +27,8 @@ export interface WorkflowStatus {
 
 @Service()
 export class WorkflowValidationService {
+	constructor(private readonly workflowRepository: WorkflowRepository) {}
+
 	validateForActivation(nodes: INodes, nodeTypes: NodeTypes): WorkflowValidationResult {
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
@@ -49,8 +52,8 @@ export class WorkflowValidationService {
 	 *
 	 */
 	async validateSubWorkflowReferences(
+		workflowId: string,
 		nodes: INode[],
-		getWorkflowStatus: (workflowId: string) => Promise<WorkflowStatus>,
 	): Promise<SubWorkflowValidationResult> {
 		const executeWorkflowNodes = nodes.filter(
 			(node) => node.type === 'n8n-nodes-base.executeWorkflow' && !node.disabled,
@@ -67,27 +70,21 @@ export class WorkflowValidationService {
 		}> = [];
 
 		for (const node of executeWorkflowNodes) {
-			const workflowId = this.extractWorkflowId(node);
+			const subWorkflowId = this.extractWorkflowId(node);
 			const source: string | undefined =
 				typeof node.parameters?.source === 'string' ? node.parameters.source : undefined;
 
-			if (this.shouldSkipSubWorkflowValidation(workflowId, source)) {
+			if (this.shouldSkipSubWorkflowValidation(subWorkflowId, source)) {
 				continue;
 			}
 
-			const status = await getWorkflowStatus(workflowId!);
+			const status = await this.getWorkflowStatus(workflowId, subWorkflowId!);
 
-			if (!status.exists) {
+			if (!status.exists || !status.isPublished) {
 				invalidReferences.push({
 					nodeName: node.name,
-					workflowId: workflowId!,
-					workflowName: undefined,
-				});
-			} else if (!status.isPublished) {
-				invalidReferences.push({
-					nodeName: node.name,
-					workflowId: workflowId!,
-					workflowName: status.name,
+					workflowId: subWorkflowId!,
+					workflowName: status.exists ? status.name : undefined,
 				});
 			}
 		}
@@ -106,6 +103,32 @@ export class WorkflowValidationService {
 		}
 
 		return { isValid: true };
+	}
+
+	/**
+	 * Gets the status of a sub-workflow for validation purposes.
+	 * Allows self-referencing workflows (workflow calling itself).
+	 */
+	private async getWorkflowStatus(
+		parentWorkflowId: string,
+		subWorkflowId: string,
+	): Promise<WorkflowStatus> {
+		// Allow self-reference (workflow calling itself)
+		if (subWorkflowId === parentWorkflowId) {
+			return { exists: true, isPublished: true };
+		}
+
+		const subWorkflow = await this.workflowRepository.get({ id: subWorkflowId }, { relations: [] });
+
+		if (!subWorkflow) {
+			return { exists: false, isPublished: false };
+		}
+
+		return {
+			exists: true,
+			isPublished: subWorkflow.activeVersionId !== null,
+			name: subWorkflow.name,
+		};
 	}
 
 	/**

@@ -984,31 +984,20 @@ export class WorkflowService {
 	/**
 	 * Validates that all sub-workflow references in a workflow are published.
 	 * Prevents publishing a parent workflow that references draft-only sub-workflows.
+	 *
+	 * Note: A published workflow could still end up referencing draft-only sub-workflows if:
+	 * - A referenced sub-workflow gets unpublished after the parent workflow was published
+	 * - The workflow ID is provided via an expression (e.g., ={{ $json.workflowId }})
+	 * - The workflow source is not 'database' (e.g., URL, parameter, localFile)
+	 *
+	 * In these cases, the invariant is enforced at execution time, where the workflow will
+	 * fail with a clear error message if the sub-workflow is not published (for production
+	 * executions) or not found.
 	 */
 	private async _validateSubWorkflowReferences(workflowId: string, nodes: INode[]) {
 		const validation = await this.workflowValidationService.validateSubWorkflowReferences(
+			workflowId,
 			nodes,
-			async (subWorkflowId: string) => {
-				// Allow self-reference (workflow calling itself)
-				if (subWorkflowId === workflowId) {
-					return { exists: true, isPublished: true };
-				}
-
-				const subWorkflow = await this.workflowRepository.get(
-					{ id: subWorkflowId },
-					{ relations: [] },
-				);
-
-				if (!subWorkflow) {
-					return { exists: false, isPublished: false };
-				}
-
-				return {
-					exists: true,
-					isPublished: subWorkflow.activeVersionId !== null,
-					name: subWorkflow.name,
-				};
-			},
 		);
 
 		if (!validation.isValid) {
