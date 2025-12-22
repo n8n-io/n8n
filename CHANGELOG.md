@@ -1,3 +1,15 @@
+## [1.123.8](https://github.com/n8n-io/n8n/compare/n8n@1.123.7...n8n@1.123.8) (2025-12-22)
+
+
+### Bug Fixes
+
+* **core:** Fix verified community packages reinstall ([#23455](https://github.com/n8n-io/n8n/issues/23455)) ([4900d89](https://github.com/n8n-io/n8n/commit/4900d8965033cad2201bc836e096d1b6bc030798))
+* **core:** Only resolve the filepath once ([#23466](https://github.com/n8n-io/n8n/issues/23466)) ([ae8097e](https://github.com/n8n-io/n8n/commit/ae8097e60eb65c229f381bbf00f6e4988d5bbbb2))
+* Limit access to files based on regex pattern ([#23528](https://github.com/n8n-io/n8n/issues/23528)) ([97365ca](https://github.com/n8n-io/n8n/commit/97365caf253978ba8e46d7bc53fa7ac3b6f67b32))
+* **n8n Form Node:** Restores executions status check for waiting forms ([#23459](https://github.com/n8n-io/n8n/issues/23459)) ([00b2b3b](https://github.com/n8n-io/n8n/commit/00b2b3b46306f88a9324a9035af5f59aa41ddbb0))
+
+
+
 ## [1.123.7](https://github.com/n8n-io/n8n/compare/n8n@1.123.6...n8n@1.123.7) (2025-12-17)
 
 
