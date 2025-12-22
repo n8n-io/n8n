@@ -267,7 +267,7 @@ describe('AskAssistantBuild', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
 			// Mock empty workflow to ensure initialGeneration is true
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
@@ -461,7 +461,7 @@ describe('AskAssistantBuild', () => {
 		it('should save workflow after initial generation when workflow was empty', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -492,7 +492,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -526,7 +526,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'existing',
 							name: 'Existing',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -535,7 +535,7 @@ describe('AskAssistantBuild', () => {
 					connections: {},
 				},
 			});
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -565,7 +565,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'existing',
 							name: 'Existing',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -594,7 +594,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow when generation ends with error', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -619,7 +619,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -648,7 +648,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow when generation is cancelled', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -671,7 +671,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -703,31 +703,10 @@ describe('AskAssistantBuild', () => {
 			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
 		});
 
-		it('should save new workflow before sending first message', async () => {
-			// Setup: new workflow
-			workflowsStore.isNewWorkflow = true;
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			const wrapper = renderComponent();
-
-			// Send initial message
-			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
-				?.__vueParentComponent;
-			if (vm?.setupState?.onUserMessage) {
-				await vm.setupState.onUserMessage(testMessage);
-			}
-
-			await flushPromises();
-
-			// Verify workflow was saved to get ID for session
-			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(1);
-		});
-
 		it('should work when opening existing AI builder session', async () => {
 			// Setup: existing workflow with AI session
 			workflowsStore.workflowId = 'existing-id';
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 
 			// Simulate existing AI session messages
@@ -795,7 +774,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'existing',
 							name: 'Existing',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -804,7 +783,7 @@ describe('AskAssistantBuild', () => {
 					connections: {},
 				},
 			});
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -838,7 +817,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'new-node',
 							name: 'New Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -872,7 +851,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save if workflow is still empty after generation ends', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const wrapper = renderComponent();
 
@@ -904,7 +883,7 @@ describe('AskAssistantBuild', () => {
 		it('should save workflow after initial generation from canvas', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -922,7 +901,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -953,7 +932,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow from canvas when generation fails', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -971,7 +950,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1002,7 +981,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT save workflow from canvas when generation is cancelled', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -1020,7 +999,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1057,7 +1036,7 @@ describe('AskAssistantBuild', () => {
 		it('should handle multiple canvas generations correctly', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -1072,7 +1051,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1147,7 +1126,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1188,7 +1167,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1229,7 +1208,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1314,7 +1293,7 @@ describe('AskAssistantBuild', () => {
 						{
 							id: 'node1',
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							position: [0, 0],
 							typeVersion: 1,
 							parameters: {},
@@ -1354,249 +1333,6 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
-	it('should track categorization telemetry when categorize_prompt tool completes', async () => {
-		renderComponent();
-
-		// Simulate streaming starts
-		builderStore.$patch({ streaming: true });
-		await flushPromises();
-
-		// Add categorization tool message
-		builderStore.toolMessages = [
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'categorize_prompt',
-				toolCallId: faker.string.uuid(),
-				status: 'completed',
-				updates: [
-					{
-						type: 'output',
-						data: {
-							categorization: {
-								techniques: ['chatbot', 'notification'],
-								confidence: 0.85,
-							},
-						},
-					},
-				],
-			},
-		];
-
-		// Simulate streaming stops (this triggers trackWorkflowModifications)
-		builderStore.$patch({ streaming: false });
-		await flushPromises();
-
-		expect(trackMock).toHaveBeenCalledWith('Classifier labels user prompt', {
-			user_id: undefined,
-			workflow_id: 'abc123',
-			classifier_labels: ['chatbot', 'notification'],
-			confidence: 0.85,
-			session_id: 'app_session_id',
-			timestamp: expect.any(String),
-		});
-	});
-
-	it('should handle multiple canvas generations correctly', async () => {
-		const originalWorkflow = {
-			nodes: [],
-			connections: {},
-		};
-		builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(originalWorkflow));
-
-		const intermediaryWorkflow = {
-			nodes: [
-				{
-					id: 'node1',
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					position: [0, 0],
-					typeVersion: 1,
-					parameters: {},
-				} as INodeUi,
-			],
-			connections: {},
-		};
-
-		const finalWorkflow = {
-			nodes: [
-				{
-					id: 'node1',
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					position: [0, 0],
-					typeVersion: 1,
-					parameters: {},
-				} as INodeUi,
-
-				{
-					id: 'node2',
-					name: 'HttpReuqest',
-					type: 'n8n-nodes-base.httpRequest',
-					position: [0, 0],
-					typeVersion: 1,
-					parameters: {},
-				} as INodeUi,
-			],
-			connections: {},
-		};
-		workflowsStore.$patch({
-			workflow: originalWorkflow,
-		});
-
-		renderComponent();
-
-		builderStore.$patch({ streaming: true });
-		await flushPromises();
-
-		// Trigger the watcher by updating workflowMessages
-		builderStore.workflowMessages = [
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'workflow-updated' as const,
-				codeSnippet: JSON.stringify(intermediaryWorkflow),
-			},
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'workflow-updated' as const,
-				codeSnippet: JSON.stringify(finalWorkflow),
-			},
-		];
-
-		const toolCallId1_1 = '1234';
-		const toolCallId1_2 = '3333';
-		const toolCallId2 = '4567';
-		const toolCallId3 = '8901';
-
-		builderStore.toolMessages = [
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'first-tool',
-				toolCallId: toolCallId1_1,
-				status: 'completed',
-				updates: [],
-			},
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'first-tool',
-				toolCallId: toolCallId1_2,
-				status: 'completed',
-				updates: [],
-			},
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'second-tool',
-				toolCallId: toolCallId2,
-				status: 'running',
-				updates: [],
-			},
-		];
-
-		builderStore.$patch({ streaming: false });
-		await flushPromises();
-
-		expect(trackMock).toHaveBeenCalledOnce();
-		expect(trackMock).toHaveBeenCalledWith('Workflow modified by builder', {
-			end_workflow_json: JSON.stringify(finalWorkflow),
-			session_id: 'app_session_id',
-			start_workflow_json: JSON.stringify(originalWorkflow),
-			// first-tool is added once, even though it completed twice
-			// second-tool is ignored because it's running
-			tools_called: ['first-tool'],
-			workflow_id: 'abc123',
-		});
-
-		trackMock.mockClear();
-
-		builderStore.$patch({ streaming: true });
-
-		await flushPromises();
-		// second run after new messages
-		const updatedWorkflow2 = {
-			...finalWorkflow,
-			nodes: [
-				...finalWorkflow.nodes,
-				{
-					id: 'node1',
-					name: 'Updated',
-					type: 'n8n-nodes-base.updated',
-					position: [0, 0],
-					typeVersion: 1,
-					parameters: {},
-				},
-			],
-		};
-		builderStore.workflowMessages = [
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'workflow-updated' as const,
-				codeSnippet: JSON.stringify(updatedWorkflow2),
-			},
-		];
-
-		builderStore.toolMessages = [
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'first-tool',
-				toolCallId: toolCallId1_1,
-				status: 'completed',
-				updates: [],
-			},
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'first-tool',
-				toolCallId: toolCallId1_2,
-				status: 'completed',
-				updates: [],
-			},
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'second-tool',
-				toolCallId: toolCallId2,
-				status: 'completed',
-				updates: [],
-			},
-			{
-				id: faker.string.uuid(),
-				role: 'assistant' as const,
-				type: 'tool' as const,
-				toolName: 'third-tool',
-				toolCallId: toolCallId3,
-				status: 'completed',
-				updates: [],
-			},
-		];
-
-		builderStore.$patch({ streaming: false });
-		await flushPromises();
-
-		expect(trackMock).toHaveBeenCalledOnce();
-		expect(trackMock).toHaveBeenCalledWith('Workflow modified by builder', {
-			end_workflow_json: JSON.stringify(updatedWorkflow2),
-			session_id: 'app_session_id',
-			start_workflow_json: JSON.stringify(originalWorkflow),
-			// first-tool is ignored, because it was tracked in first run (same tool call id)
-			tools_called: ['second-tool', 'third-tool'],
-			workflow_id: 'abc123',
-		});
-	});
-
 	describe('shouldTidyUp logic', () => {
 		it('should set tidyUp to true when new nodes are added', async () => {
 			const originalWorkflow = { nodes: [], connections: {} };
@@ -1605,7 +1341,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'new-node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: {},
@@ -1723,7 +1459,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: {},
@@ -1736,7 +1472,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: { updated: true },
@@ -1826,7 +1562,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should reset shouldTidyUp flag on new user message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 
@@ -1835,7 +1571,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: {},
@@ -1893,7 +1629,7 @@ describe('AskAssistantBuild', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
 						parameters: { updated: true },

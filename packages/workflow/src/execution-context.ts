@@ -58,6 +58,16 @@ const ExecutionContextSchemaV1 = z.object({
 	source: WorkflowExecuteModeSchema,
 
 	/**
+	 * Optional node where execution started
+	 */
+	triggerNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+		})
+		.optional(),
+
+	/**
 	 * Optional ID of the parent execution, if this is set this
 	 * execution context inherited from the mentioned parent execution context.
 	 */

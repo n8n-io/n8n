@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	CredentialResolverConfiguration,
 	CredentialResolverValidationError,
+	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -20,6 +21,7 @@ export interface CreateResolverParams {
 
 export interface UpdateResolverParams {
 	name?: string;
+	type?: string;
 	config?: CredentialResolverConfiguration;
 }
 
@@ -58,7 +60,7 @@ export class DynamicCredentialResolverService {
 		const saved = await this.repository.save(resolver);
 		this.logger.debug(`Created credential resolver "${saved.name}" (${saved.id})`);
 
-		return saved;
+		return this.withDecryptedConfig(saved);
 	}
 
 	/**
@@ -68,6 +70,13 @@ export class DynamicCredentialResolverService {
 	async findAll(): Promise<DynamicCredentialResolver[]> {
 		const resolvers = await this.repository.find();
 		return resolvers.map((resolver) => this.withDecryptedConfig(resolver));
+	}
+
+	/**
+	 * Retrieves all available resolver types.
+	 */
+	getAvailableTypes(): ICredentialResolver[] {
+		return this.registry.getAllResolvers();
 	}
 
 	/**
@@ -92,6 +101,15 @@ export class DynamicCredentialResolverService {
 		const existing = await this.repository.findOneBy({ id });
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
+		}
+
+		if (params.type !== undefined) {
+			existing.type = params.type;
+			// Re-validate existing config against new type if config wasn't provided
+			if (params.config === undefined) {
+				const existingConfig = this.decryptConfig(existing.config);
+				await this.validateConfig(existing.type, existingConfig);
+			}
 		}
 
 		if (params.config !== undefined) {
@@ -131,7 +149,7 @@ export class DynamicCredentialResolverService {
 		type: string,
 		config: CredentialResolverConfiguration,
 	): Promise<void> {
-		const resolverImplementation = this.registry.getResolverByName(type);
+		const resolverImplementation = this.registry.getResolverByTypename(type);
 		if (!resolverImplementation) {
 			throw new CredentialResolverValidationError(`Unknown resolver type: ${type}`);
 		}

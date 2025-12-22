@@ -1,13 +1,10 @@
-import {
-	DEFAULT_NEW_WORKFLOW_NAME,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WorkflowStateKey,
-} from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
 import type {
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
+	IWorkflowDb,
 } from '@/Interface';
 import type {
 	IExecutionResponse,
@@ -15,6 +12,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
 	type INodeIssueData,
@@ -64,7 +62,7 @@ export function useWorkflowState() {
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
 
-		if (ws.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID && ws.workflowsById[ws.workflow.id]) {
+		if (ws.workflow.id && ws.workflowsById[ws.workflow.id]) {
 			ws.workflowsById[ws.workflow.id].name = data.newName;
 		}
 	}
@@ -117,7 +115,8 @@ export function useWorkflowState() {
 	}
 
 	function setWorkflowId(id?: string) {
-		ws.workflow.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		// Set the workflow ID directly, or empty string if not provided
+		ws.workflow.id = id || '';
 		ws.workflowObject.id = ws.workflow.id;
 	}
 
@@ -127,6 +126,10 @@ export function useWorkflowState() {
 
 	function setWorkflowTagIds(tags: string[]) {
 		ws.workflow.tags = tags;
+	}
+
+	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
+		ws.workflow[key] = value;
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
@@ -225,7 +228,7 @@ export function useWorkflowState() {
 		resetAllNodesIssues();
 
 		setActive(ws.defaults.activeVersionId);
-		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });
 		setWorkflowTagIds([]);
@@ -233,6 +236,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
+		useBuilderStore().resetManualExecutionStats();
 	}
 
 	////
@@ -411,6 +415,7 @@ export function useWorkflowState() {
 		setWorkflowName,
 		setWorkflowSettings,
 		setWorkflowTagIds,
+		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
 

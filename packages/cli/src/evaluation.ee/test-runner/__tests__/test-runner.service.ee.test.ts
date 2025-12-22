@@ -871,6 +871,7 @@ describe('TestRunnerService', () => {
 							name: triggerNodeName,
 						},
 						executionData: createRunExecutionData({
+							executionData: null,
 							resultData: {
 								pinData: {
 									[triggerNodeName]: [testCase],
