@@ -339,6 +339,152 @@ describe('FixedCollectionParameter.vue', () => {
 			});
 		});
 
+		it('shows optional field when array value differs from array default (deep equality)', async () => {
+			const propsWithArrayField: Props = {
+				parameter: {
+					displayName: 'Config',
+					name: 'config',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+						requiredOnly: true,
+					},
+					default: {},
+					options: [
+						{
+							name: 'values',
+							displayName: 'Values',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									required: true,
+								},
+								{
+									displayName: 'Tags',
+									name: 'tags',
+									type: 'multiOptions',
+									default: [],
+									options: [
+										{ name: 'Tag A', value: 'a' },
+										{ name: 'Tag B', value: 'b' },
+									],
+								},
+							],
+						},
+					],
+				},
+				path: 'parameters.config',
+				nodeValues: {
+					parameters: {
+						config: {
+							values: [
+								{
+									name: 'Test',
+									tags: ['a', 'b'],
+								},
+							],
+						},
+					},
+				},
+				values: {
+					values: [
+						{
+							name: 'Test',
+							tags: ['a', 'b'],
+						},
+					],
+				},
+				isReadOnly: false,
+			};
+
+			const renderWithArrayField = createComponentRenderer(FixedCollectionParameter, {
+				props: propsWithArrayField,
+			});
+
+			const { container } = renderWithArrayField();
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(2);
+			});
+		});
+
+		it('does not show optional field when array value equals array default (deep equality)', async () => {
+			const propsWithArrayFieldDefault: Props = {
+				parameter: {
+					displayName: 'Config',
+					name: 'config',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+						requiredOnly: true,
+					},
+					default: {},
+					options: [
+						{
+							name: 'values',
+							displayName: 'Values',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									required: true,
+								},
+								{
+									displayName: 'Tags',
+									name: 'tags',
+									type: 'multiOptions',
+									default: [],
+									options: [
+										{ name: 'Tag A', value: 'a' },
+										{ name: 'Tag B', value: 'b' },
+									],
+								},
+							],
+						},
+					],
+				},
+				path: 'parameters.config',
+				nodeValues: {
+					parameters: {
+						config: {
+							values: [
+								{
+									name: 'Test',
+									tags: [],
+								},
+							],
+						},
+					},
+				},
+				values: {
+					values: [
+						{
+							name: 'Test',
+							tags: [],
+						},
+					],
+				},
+				isReadOnly: false,
+			};
+
+			const renderWithArrayFieldDefault = createComponentRenderer(FixedCollectionParameter, {
+				props: propsWithArrayFieldDefault,
+			});
+
+			const { container } = renderWithArrayFieldDefault();
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(1);
+			});
+		});
+
 		it('auto-shows fields with requiredOnlyAutoShow when displayOptions conditions are met', async () => {
 			const propsWithAutoShow: Props = {
 				...requiredOnlyProps,

@@ -10,6 +10,7 @@ import type {
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -127,9 +128,11 @@ const hasNonDefaultValue = (
 	if (!itemValues) return false;
 	const value = itemValues[propertyDef.name];
 	if (value === undefined || value === null) return false;
-	if (value === propertyDef.default) return false;
 	if (typeof value === 'string' && value === '') return false;
-	return true;
+	if (typeof value === 'object') {
+		return !isEqual(value, propertyDef.default);
+	}
+	return value !== propertyDef.default;
 };
 
 const initializeAddedOptionalValues = () => {
