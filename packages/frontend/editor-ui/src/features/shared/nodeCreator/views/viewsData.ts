@@ -72,7 +72,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from '../nodeCreator.utils';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
 
 export interface NodeViewItemSection {
 	key: string;

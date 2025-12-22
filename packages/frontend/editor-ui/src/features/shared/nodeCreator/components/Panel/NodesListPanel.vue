@@ -13,15 +13,10 @@ import {
 
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
-import {
-	TriggerView,
-	RegularView,
-	AIView,
-	AINodesView,
-	HitlToolView,
-	NodeView,
-} from '../../views/viewsData';
-import { useViewStacks, ViewStack } from '../../composables/useViewStacks';
+import { TriggerView, RegularView, AIView, AINodesView, HitlToolView } from '../../views/viewsData';
+import type { NodeView } from '../../views/viewsData';
+import { useViewStacks } from '../../composables/useViewStacks';
+import type { ViewStack } from '../../composables/useViewStacks';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
