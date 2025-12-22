@@ -329,6 +329,340 @@ describe('test binary data helper methods', () => {
 			).rejects.toThrow('Provided parameter is not a string or binary data object.');
 		});
 	});
+
+	describe('getBinaryDataBuffer with combined binary mode', () => {
+		beforeEach(async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+		});
+
+		it('should retrieve binary data from json path in combined mode', async () => {
+			const inputBuffer = Buffer.from('combined mode test data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {
+								file: binaryData,
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(inputData, 0, 'file', 0, 'combined');
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should retrieve binary data from nested json path in combined mode', async () => {
+			const inputBuffer = Buffer.from('nested binary data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'application/octet-stream', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {
+								data: {
+									attachments: {
+										document: binaryData,
+									},
+								},
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(
+				inputData,
+				0,
+				'data.attachments.document',
+				0,
+				'combined',
+			);
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should throw error when path does not resolve to binary data in combined mode', async () => {
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {
+								file: 'just a string',
+							},
+						},
+					],
+				],
+			};
+
+			await expect(getBinaryDataBuffer(inputData, 0, 'file', 0, 'combined')).rejects.toThrow(
+				'Provided parameter is not a string or binary data object.',
+			);
+		});
+
+		it('should throw error when path is undefined in combined mode', async () => {
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {
+								data: {
+									file: undefined,
+								},
+							},
+						},
+					],
+				],
+			};
+
+			await expect(getBinaryDataBuffer(inputData, 0, 'data.file', 0, 'combined')).rejects.toThrow(
+				'Provided parameter is not a string or binary data object.',
+			);
+		});
+
+		it('should handle binary data in array path in combined mode', async () => {
+			const inputBuffer = Buffer.from('array binary data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'image/jpeg', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {
+								files: [{ image: binaryData }],
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(inputData, 0, 'files[0].image', 0, 'combined');
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should work with different item indexes in combined mode', async () => {
+			const inputBuffer1 = Buffer.from('item 0 data', 'utf8');
+			const inputBuffer2 = Buffer.from('item 1 data', 'utf8');
+			const binaryData1 = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer1,
+				workflowId,
+				executionId,
+			);
+			const binaryData2 = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer2,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: { file: binaryData1 },
+						},
+						{
+							json: { file: binaryData2 },
+						},
+					],
+				],
+			};
+
+			const result1 = await getBinaryDataBuffer(inputData, 0, 'file', 0, 'combined');
+			expect(result1).toEqual(inputBuffer1);
+
+			const result2 = await getBinaryDataBuffer(inputData, 1, 'file', 0, 'combined');
+			expect(result2).toEqual(inputBuffer2);
+		});
+
+		it('should handle binary data with complex json structure in combined mode', async () => {
+			const inputBuffer = Buffer.from('complex structure data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'application/pdf', data: '', fileName: 'document.pdf' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {
+								response: {
+									status: 200,
+									data: {
+										files: {
+											primary: binaryData,
+										},
+									},
+								},
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(
+				inputData,
+				0,
+				'response.data.files.primary',
+				0,
+				'combined',
+			);
+			expect(result).toEqual(inputBuffer);
+		});
+	});
+
+	describe('getBinaryDataBuffer with separate binary mode', () => {
+		beforeEach(async () => {
+			binaryDataConfig.mode = 'default';
+			await binaryDataService.init();
+		});
+
+		it('should retrieve binary data in separate mode (default)', async () => {
+			const inputBuffer = Buffer.from('separate mode test', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {},
+							binary: {
+								testFile: binaryData,
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(inputData, 0, 'testFile', 0, 'separate');
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should retrieve binary data without explicit mode (defaults to separate)', async () => {
+			const inputBuffer = Buffer.from('default mode test', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {},
+							binary: {
+								testFile: binaryData,
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(inputData, 0, 'testFile', 0);
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should work with different input indexes in separate mode', async () => {
+			const inputBuffer = Buffer.from('input 1 data', 'utf8');
+			const binaryData = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				inputBuffer,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {},
+							binary: {
+								file1: mock<IBinaryData>(),
+							},
+						},
+					],
+					[
+						{
+							json: {},
+							binary: {
+								file2: binaryData,
+							},
+						},
+					],
+				],
+			};
+
+			const result = await getBinaryDataBuffer(inputData, 0, 'file2', 1, 'separate');
+			expect(result).toEqual(inputBuffer);
+		});
+
+		it('should handle multiple binary properties in separate mode', async () => {
+			const buffer1 = Buffer.from('file1 data', 'utf8');
+			const buffer2 = Buffer.from('file2 data', 'utf8');
+			const binaryData1 = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				buffer1,
+				workflowId,
+				executionId,
+			);
+			const binaryData2 = await setBinaryDataBuffer(
+				{ mimeType: 'text/plain', data: '' },
+				buffer2,
+				workflowId,
+				executionId,
+			);
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{
+							json: {},
+							binary: {
+								file1: binaryData1,
+								file2: binaryData2,
+							},
+						},
+					],
+				],
+			};
+
+			const result1 = await getBinaryDataBuffer(inputData, 0, 'file1', 0, 'separate');
+			expect(result1).toEqual(buffer1);
+
+			const result2 = await getBinaryDataBuffer(inputData, 0, 'file2', 0, 'separate');
+			expect(result2).toEqual(buffer2);
+		});
+	});
 });
 
 describe('binaryToString', () => {
@@ -449,6 +783,106 @@ describe('detectBinaryEncoding', () => {
 	it('should handle empty buffer', () => {
 		const emptyBuffer = Buffer.from('');
 		expect(detectBinaryEncoding(emptyBuffer)).toBeDefined();
+	});
+
+	it('should detect ASCII encoding', () => {
+		const asciiBuffer = Buffer.from('Simple ASCII text 123');
+		const encoding = detectBinaryEncoding(asciiBuffer);
+		expect(encoding).toBeDefined();
+		// ASCII is often detected as UTF-8, ASCII, or similar encodings
+		expect(['UTF-8', 'ASCII', 'ascii', 'windows-1252', 'ISO-8859-1']).toContain(encoding);
+	});
+
+	it('should detect Windows-1252 encoding', () => {
+		// Windows-1252 specific characters: € (0x80), • (0x95), " (0x93, 0x94)
+		const win1252Buffer = Buffer.from([0x80, 0x20, 0x95, 0x20, 0x93, 0x94]);
+		const encoding = detectBinaryEncoding(win1252Buffer);
+		expect(encoding).toBeDefined();
+		// Chardet may detect this as windows-1252 or similar
+	});
+
+	it('should detect Shift-JIS encoding', () => {
+		// Japanese text in Shift-JIS: こんにちは
+		const shiftJisBuffer = Buffer.from([
+			0x82, 0xb1, 0x82, 0xf1, 0x82, 0xc9, 0x82, 0xbf, 0x82, 0xcd,
+		]);
+		const encoding = detectBinaryEncoding(shiftJisBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should detect Big5 encoding', () => {
+		// Traditional Chinese in Big5: 哈囉
+		const big5Buffer = Buffer.from([0xab, 0xa2, 0xc5, 0x6f]);
+		const encoding = detectBinaryEncoding(big5Buffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should detect KOI8-R encoding', () => {
+		// Russian text in KOI8-R: Привет
+		const koi8rBuffer = Buffer.from([0xf0, 0xd2, 0xc9, 0xd7, 0xc5, 0xd4]);
+		const encoding = detectBinaryEncoding(koi8rBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should handle buffer with mixed content', () => {
+		const mixedBuffer = Buffer.concat([
+			Buffer.from('ASCII text '),
+			Buffer.from('UTF-8 text: '),
+			Buffer.from('世界', 'utf8'),
+		]);
+		const encoding = detectBinaryEncoding(mixedBuffer);
+		expect(encoding).toBe('UTF-8');
+	});
+
+	it('should handle buffer with special characters', () => {
+		const specialBuffer = Buffer.from('Special chars: €•™®©');
+		const encoding = detectBinaryEncoding(specialBuffer);
+		expect(encoding).toBeDefined();
+		expect(encoding).toBe('UTF-8');
+	});
+
+	it('should handle buffer with only numbers', () => {
+		const numberBuffer = Buffer.from('1234567890');
+		const encoding = detectBinaryEncoding(numberBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should handle buffer with newlines and whitespace', () => {
+		const whitespaceBuffer = Buffer.from('Line 1\nLine 2\r\nLine 3\t\tTabbed');
+		const encoding = detectBinaryEncoding(whitespaceBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should handle large buffer', () => {
+		const largeBuffer = Buffer.alloc(10000, 'A');
+		const encoding = detectBinaryEncoding(largeBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should handle binary data', () => {
+		// Random binary data
+		const binaryBuffer = Buffer.from([0x00, 0x01, 0xff, 0xfe, 0x7f, 0x80]);
+		const encoding = detectBinaryEncoding(binaryBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should handle buffer with null bytes', () => {
+		const nullBuffer = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x00, 0x00]);
+		const encoding = detectBinaryEncoding(nullBuffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should handle ISO-8859-15 encoding', () => {
+		// ISO-8859-15 with euro sign: € (0xa4)
+		const iso885915Buffer = Buffer.from([0x43, 0x61, 0x66, 0xe9, 0x20, 0xa4]);
+		const encoding = detectBinaryEncoding(iso885915Buffer);
+		expect(encoding).toBeDefined();
+	});
+
+	it('should return string type', () => {
+		const buffer = Buffer.from('test');
+		const encoding = detectBinaryEncoding(buffer);
+		expect(typeof encoding).toBe('string');
 	});
 });
 

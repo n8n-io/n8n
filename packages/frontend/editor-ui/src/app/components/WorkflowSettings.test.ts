@@ -324,8 +324,12 @@ describe('WorkflowSettingsVue', () => {
 			);
 
 			expect(dropdownItems.length).toBeGreaterThanOrEqual(2);
-			expect(dropdownItems[0]).toHaveTextContent('Run branches in parallel (v0, legacy)');
-			expect(dropdownItems[1]).toHaveTextContent('Run each branch one at a time (v1, recommended)');
+			expect(dropdownItems[0]).toHaveTextContent(
+				'Executes the first node of each branch, then the second node of each branch, and so on.',
+			);
+			expect(dropdownItems[1]).toHaveTextContent(
+				'Executes each branch in turn, from topmost to bottommost, completing one branch before starting another.',
+			);
 		});
 
 		it('should set binaryMode to separate when selecting v0', async () => {
