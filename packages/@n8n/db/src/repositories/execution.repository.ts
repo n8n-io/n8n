@@ -1228,17 +1228,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const findBy: FindOptionsWhere<ExecutionEntity> = {
 			workflowId: query.workflowId,
 			status: In(query.status ?? []),
-			startedAt: And(
-				...[
-					query.startedAfter
-						? MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter)))
-						: [],
-					query.startedBefore
-						? LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore)))
-						: [],
-				].flat(),
-			),
 		};
+
+		const startedAtConditions = [
+			query.startedAfter
+				? MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter)))
+				: [],
+			query.startedBefore
+				? LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore)))
+				: [],
+		].flat();
+
+		if (startedAtConditions.length > 0) {
+			findBy.startedAt = And(...startedAtConditions);
+		}
 
 		return await this.findBy(findBy);
 	}

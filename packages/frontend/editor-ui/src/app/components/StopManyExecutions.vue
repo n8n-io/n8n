@@ -19,8 +19,9 @@ const executionsStore = useExecutionsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-const checkWaiting = ref(false);
 const checkRunning = ref(false);
+const checkQueued = ref(false);
+const checkWaiting = ref(false);
 
 const activeFilterHint = computed(() => {
 	const { startedBefore, startedAfter } = executionsStore.executionsFilters;
@@ -49,10 +50,12 @@ const onSubmit = async () => {
 		const status = [
 			checkWaiting.value ? (['waiting'] as const) : [],
 			checkRunning.value ? (['running'] as const) : [],
+			checkQueued.value ? (['new'] as const) : [],
 		].flat();
 		telemetry.track('User confirmed stop many executions', {
 			waitingExecutions: checkWaiting.value,
 			runningExecutions: checkRunning.value,
+			queuedExecutions: checkQueued.value,
 		});
 		const { startedBefore, startedAfter } = executionsStore.executionsFilters;
 
@@ -88,10 +91,25 @@ function closeModal() {
 	>
 		<template #content>
 			<ElRow>
-				<N8nFormInput v-model="checkWaiting" type="checkbox" label="Waiting Executions" />
+				<N8nFormInput
+					v-model="checkQueued"
+					type="checkbox"
+					:label="i18n.baseText('executionStopManyModal.queued')"
+				/>
 			</ElRow>
 			<ElRow>
-				<N8nFormInput v-model="checkRunning" type="checkbox" label="Running Executions" />
+				<N8nFormInput
+					v-model="checkRunning"
+					type="checkbox"
+					:label="i18n.baseText('executionStopManyModal.running')"
+				/>
+			</ElRow>
+			<ElRow>
+				<N8nFormInput
+					v-model="checkWaiting"
+					type="checkbox"
+					:label="i18n.baseText('executionStopManyModal.waiting')"
+				/>
 			</ElRow>
 			<ElRow v-if="activeFilterHint">
 				<N8nCallout theme="info">
@@ -108,7 +126,7 @@ function closeModal() {
 					@click="closeModal"
 				/>
 				<N8nButton
-					:disabled="!checkWaiting && !checkRunning"
+					:disabled="!checkWaiting && !checkRunning && !checkQueued"
 					label="Stop Executions"
 					data-test-id="variable-modal-save-button"
 					@click="onSubmit"

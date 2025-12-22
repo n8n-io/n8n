@@ -67,7 +67,7 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 });
 
 const hasCancellableExecution = computed(() =>
-	props.executions.find((x) => x.status === 'running' || x.status === 'waiting'),
+	props.executions.find((x) => ['new', 'running', 'waiting'].includes(x.status)),
 );
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
@@ -295,7 +295,7 @@ const goToUpgrade = () => {
 .heading {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
+	align-items: center;
 	padding-right: var(--spacing--md);
 }
 
