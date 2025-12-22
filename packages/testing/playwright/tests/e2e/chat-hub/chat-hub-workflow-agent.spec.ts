@@ -119,5 +119,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await memberChatPage.getChatInput().fill('Hello');
 		await memberChatPage.getSendButton().click();
 		await expect(memberChatPage.getChatMessages().last()).toContainText(/Bonjour/i);
+
+		await n8n.api.projects.deleteProject(projectResult.id);
 	});
 });

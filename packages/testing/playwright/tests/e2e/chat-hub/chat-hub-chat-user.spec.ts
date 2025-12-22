@@ -9,7 +9,7 @@ test.describe('Chat user role @capability:proxy', () => {
 		const ownerN8n = await n8n.start.withUser(INSTANCE_OWNER_CREDENTIALS);
 
 		// Create global credential as owner
-		await ownerN8n.api.credentials.createCredential({
+		const cred = await ownerN8n.api.credentials.createCredential({
 			name: 'Global Anthropic API key',
 			type: 'anthropicApi',
 			isGlobal: true,
@@ -46,5 +46,7 @@ test.describe('Chat user role @capability:proxy', () => {
 		await expect(page.getChatMessages().nth(0)).toHaveText('Hi');
 		await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
 		await expect(page.getChatMessages()).toHaveCount(2);
+
+		await ownerN8n.api.credentials.deleteCredential(cred.id);
 	});
 });

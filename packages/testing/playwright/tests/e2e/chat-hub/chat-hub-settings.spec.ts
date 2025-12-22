@@ -92,7 +92,7 @@ test.describe('Settings @capability:proxy', () => {
 		const memberN8n = await n8n.start.withUser(INSTANCE_MEMBER_CREDENTIALS[0]);
 		const chatPage = new ChatHubChatPage(memberN8n.page);
 
-		await memberN8n.api.credentials.createCredential({
+		const cred = await memberN8n.api.credentials.createCredential({
 			name: 'Member API key',
 			type: 'anthropicApi',
 			data: {
@@ -111,5 +111,7 @@ test.describe('Settings @capability:proxy', () => {
 		await expect(anthropicModels).toHaveCount(2);
 		await expect(anthropicModels.nth(0)).toHaveText('Configure credentials');
 		await expect(anthropicModels.nth(1)).toHaveText('Claude Opus 4.5');
+
+		await memberN8n.api.credentials.deleteCredential(cred.id);
 	});
 });
