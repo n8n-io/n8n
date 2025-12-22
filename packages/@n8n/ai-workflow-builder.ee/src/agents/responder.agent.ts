@@ -76,15 +76,48 @@ export class ResponderAgent {
 			contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
 		}
 
-		// Check for errors - if there's an error, surface it prominently
+		// Check for errors - provide context-aware guidance (AI-1812)
 		const errorEntry = getErrorEntry(context.coordinationLog);
 		if (errorEntry) {
+			const hasWorkflow = context.workflowJSON.nodes.length > 0;
+			const errorMessage = errorEntry.summary.toLowerCase();
+			const isRecursionError =
+				errorMessage.includes('recursion') ||
+				errorMessage.includes('maximum number of steps') ||
+				errorMessage.includes('iteration limit');
+
 			contextParts.push(
 				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
 			);
-			contextParts.push(
-				'Please apologize to the user and explain that something went wrong while building their workflow.',
-			);
+
+			// AI-1812: Provide better guidance based on workflow state and error type
+			if (isRecursionError && hasWorkflow) {
+				// Recursion error but workflow was created
+				contextParts.push(
+					`**Workflow Status:** ${context.workflowJSON.nodes.length} nodes were created before the complexity limit was reached.`,
+				);
+				contextParts.push(
+					"Tell the user that you've created their workflow but reached a complexity limit while fine-tuning. " +
+						'The workflow should work and they can test it. ' +
+						'If they need adjustments or want to continue building, they can ask you to make specific changes.',
+				);
+			} else if (isRecursionError && !hasWorkflow) {
+				// Recursion error and no workflow created
+				contextParts.push(
+					'**Workflow Status:** No nodes were created - the request was too complex to process automatically.',
+				);
+				contextParts.push(
+					'Explain that the workflow design became too complex for automatic generation. ' +
+						'Suggest options: (1) Break the request into smaller steps, (2) Simplify the workflow, ' +
+						'or (3) Start with a basic version and iteratively add complexity.',
+				);
+			} else {
+				// Other errors (not recursion-related)
+				contextParts.push(
+					'Apologize and explain that a technical error occurred. ' +
+						'Ask if they would like to try again or approach the problem differently.',
+				);
+			}
 		}
 
 		// Discovery context
