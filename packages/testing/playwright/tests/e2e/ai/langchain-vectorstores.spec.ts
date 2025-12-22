@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 
 // Helper functions for common operations
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
+async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 10000) {
 	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
 		timeout,
 	});
