@@ -274,8 +274,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(PubSubRegistry).init();
 
 		const subscriber = Container.get(Subscriber);
-		await subscriber.subscribe('n8n.commands');
-		await subscriber.subscribe('n8n.worker-response');
+		await subscriber.subscribe(subscriber.getCommandChannel());
+		await subscriber.subscribe(subscriber.getWorkerResponseChannel());
 
 		if (this.instanceSettings.isMultiMain) {
 			await Container.get(MultiMainSetup).init();

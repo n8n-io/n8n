@@ -1,3 +1,4 @@
+import type { Scope } from '@n8n/permissions';
 import {
 	type StructuredChunk,
 	type JINA_AI_TOOL_NODE_TYPE,
@@ -231,6 +232,7 @@ export interface ChatModelMetadataDto {
 		functionCalling: boolean;
 	};
 	available: boolean;
+	scopes?: Scope[];
 }
 
 export interface ChatModelDto {
