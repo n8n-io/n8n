@@ -41,7 +41,9 @@ import {
 	WorkflowExecuteMode,
 	AGENT_LANGCHAIN_NODE_TYPE,
 	sleep,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { v4 as uuidv4 } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -79,6 +81,7 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
 
 @Service()
 export class ChatHubService {
@@ -823,30 +826,193 @@ export class ChatHubService {
 		// stream.writeHead(200, JSONL_STREAM_HEADERS);
 		// stream.flushHeaders();
 
-		const execution = await this.workflowExecutionService.executeChatWorkflow(
+		const running = await this.workflowExecutionService.executeChatWorkflow(
 			user,
 			workflowData,
 			executionData,
 			undefined,
-			true,
+			false,
 			executionMode,
 		);
 
-		const executionId = execution.executionId;
+		const messageId = uuidv4();
+		const executionId = running.executionId;
 
 		if (!executionId) {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		await this.waitForExecutionCompletion(executionId);
+		this.sendBeginResponse(res, executionId, messageId, previousMessageId, retryOfMessageId);
 
-		// await this.saveAIMessage({
-		// 	...message,
-		// 	sessionId,
-		// 	executionId,
-		// 	model,
-		// 	retryOfMessageId,
-		// });
+		await this.waitForExecutionCompletion(executionId);
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		if (!execution) {
+			throw new OperationalError(
+				'Chat execution not found after completion - make sure your instance is saving executions.',
+			);
+		}
+
+		const message = this.getMessage(execution);
+		const lastNode = getLastNodeExecuted(execution);
+
+		if (message === undefined) return;
+
+		const status = 'success';
+
+		this.sendResponseContent(
+			res,
+			message,
+			status,
+			executionId,
+			messageId,
+			previousMessageId,
+			retryOfMessageId,
+		);
+		this.sendEndResponse(res, executionId, messageId, previousMessageId, retryOfMessageId);
+
+		await this.saveAIMessage({
+			id: messageId,
+			content: message,
+			sessionId,
+			executionId,
+			model,
+			previousMessageId,
+			retryOfMessageId,
+			status,
+		});
+
+		if (execution.status === 'waiting') {
+			if (lastNode && shouldResumeImmediately(lastNode)) {
+				this.logger.debug(
+					`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
+				);
+				// const session
+				// session.connection.send(N8N_CONTINUE);
+				// const data: ChatMessage = {
+				// 	action: 'sendMessage',
+				// 	chatInput: '',
+				// 	sessionId: session.sessionId,
+				// };
+				// await this.resumeExecution(session.executionId, data, sessionKey);
+				// session.nodeWaitingForChatResponse = undefined;
+			} else {
+				this.logger.debug(
+					`Execution ${execution.id} is waiting for user input at node ${lastNode?.name}`,
+				);
+				// session.nodeWaitingForChatResponse = lastNode?.name;
+			}
+		}
+	}
+
+	/**
+	 * Returns the message to be sent of the last executed node
+	 */
+	private getMessage(execution: IExecutionResponse) {
+		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
+		if (typeof lastNodeExecuted !== 'string') return undefined;
+
+		const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
+		const data = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data;
+		const outputs = data?.main ?? data?.[NodeConnectionTypes.AiTool];
+
+		// Check all main output branches for a message
+		if (outputs && Array.isArray(outputs)) {
+			for (const branch of outputs) {
+				if (branch && Array.isArray(branch) && branch.length > 0) {
+					for (const entry of branch) {
+						const response = entry.json;
+						const message = response.output ?? response.text ?? response.message ?? '';
+						return typeof message === 'string' ? message : jsonStringify(message);
+					}
+				}
+			}
+		}
+
+		return undefined;
+	}
+
+	private sendBeginResponse(
+		res: Response,
+		executionId: string | null,
+		messageId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+	) {
+		const beginChunk: EnrichedStructuredChunk = {
+			type: 'begin',
+			metadata: {
+				nodeId: messageId,
+				nodeName: '',
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+				executionId: executionId ? parseInt(executionId, 10) : null,
+			},
+		};
+
+		res.writeHead(200, JSONL_STREAM_HEADERS);
+		res.flushHeaders();
+
+		res.write(jsonStringify(beginChunk) + '\n');
+	}
+
+	private sendResponseContent(
+		res: Response,
+		content: string,
+		status: ChatHubMessageStatus,
+		executionId: string | null,
+		messageId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+	) {
+		const contentChunk: EnrichedStructuredChunk = {
+			type: 'item',
+			content,
+			metadata: {
+				nodeId: messageId,
+				nodeName: '',
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+				executionId: executionId ? parseInt(executionId, 10) : null,
+			},
+		};
+
+		res.write(jsonStringify(contentChunk) + '\n');
+	}
+
+	private sendEndResponse(
+		res: Response,
+		executionId: string | null,
+		messageId: string,
+		previousMessageId: string,
+		retryOfMessageId: string | null,
+	) {
+		const endChunk: EnrichedStructuredChunk = {
+			type: 'end',
+			metadata: {
+				nodeId: messageId,
+				nodeName: '',
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+				messageId,
+				previousMessageId,
+				retryOfMessageId,
+				executionId: executionId ? parseInt(executionId, 10) : null,
+			},
+		};
+
+		res.write(jsonStringify(endChunk) + '\n');
 	}
 
 	private async executeWithStreaming(
@@ -1011,15 +1177,15 @@ export class ChatHubService {
 		return await new Promise<void>((resolve, reject) => {
 			const poller = setInterval(async () => {
 				try {
-					const result = await this.executionRepository.findSingleExecution(executionId, {
+					const execution = await this.executionRepository.findSingleExecution(executionId, {
 						includeData: false,
 						unflattenData: false,
 					});
 
 					// Stop polling when execution is done (or missing if instance doesn't save executions)
-					if (!result || EXECUTION_FINISHED_STATUSES.includes(result.status)) {
+					if (!execution || EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
 						this.logger.debug(
-							`Execution ${executionId} finished with status ${result?.status ?? 'missing'}`,
+							`Execution ${executionId} finished with status ${execution?.status ?? 'missing'}`,
 						);
 						clearInterval(poller);
 						resolve();
