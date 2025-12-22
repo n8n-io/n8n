@@ -314,7 +314,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		nodeInfo?: ChatRequest.NodeInfo,
 	): ChatRequest.AssistantContext | undefined {
 		if (chatSessionTask.value === 'error') {
-			return undefined;
+			return {
+				aiUsageSettings: {
+					allowSendingParameterValues: allowSendingParameterValues.value,
+				},
+			};
 		}
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
@@ -345,9 +349,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			: undefined;
 
 		return {
+			aiUsageSettings: {
+				allowSendingParameterValues: allowSendingParameterValues.value,
+			},
 			currentView: {
 				name: currentView,
-				description: `${allowSendingParameterValues.value ? '' : locale.baseText('aiAssistant.prompts.context.privacyNotice')} ${assistantHelpers.getCurrentViewDescription(currentView)}`,
+				description: assistantHelpers.getCurrentViewDescription(currentView),
 			},
 			activeNodeInfo: {
 				node: activeNodeForLLM ?? undefined,
@@ -386,7 +393,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
-			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
+			chatSessionTask.value === 'support'
+				? getVisualContext(nodeInfo)
+				: {
+						aiUsageSettings: {
+							allowSendingParameterValues: allowSendingParameterValues.value,
+						},
+					};
 
 		if (nodeInfo.authType && chatSessionTask.value === 'credentials') {
 			userMessage += ` I am using ${nodeInfo.authType.name}.`;
@@ -472,6 +485,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			nodeInputData,
 			executionSchema: schemas,
 			authType,
+			context: {
+				aiUsageSettings: {
+					allowSendingParameterValues: allowSendingParameterValues.value,
+				},
+			},
 		};
 		chatWithAssistant(
 			rootStore.restApiContext,

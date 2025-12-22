@@ -275,7 +275,6 @@
 	"aiAssistant.prompts.currentView.credentialsList": "The user is currently looking at the list of credentials.",
 	"aiAssistant.prompts.currentView.executionsView": "The user is currently looking at the list of executions for the currently open workflow.",
 	"aiAssistant.prompts.currentView.workflowEditor": "The user is currently looking at the current workflow in n8n editor, without any specific node selected.",
-	"aiAssistant.prompts.context.privacyNotice": "Note: Due to users' privacy settings, actual data values are not shared. Instead, only the structure and metadata of the workflow are provided.",
 	"aiAssistant.tooltip": "n8n AI",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
