@@ -2,7 +2,7 @@ import { useStorage } from '@/app/composables/useStorage';
 
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
