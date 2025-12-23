@@ -210,8 +210,7 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 						`Cannot access "${node.property.value as string}" due to security concerns`,
 					);
 				}
-			} else if (!node.property.type.endsWith('Literal')) {
-				// This isn't a literal value, so we need to wrap it
+			} else {
 				path.replace(
 					b.memberExpression(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any

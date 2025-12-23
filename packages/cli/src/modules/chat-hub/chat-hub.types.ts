@@ -41,6 +41,8 @@ export interface EditMessagePayload extends BaseMessagePayload {
 	editId: ChatMessageId;
 	messageId: ChatMessageId;
 	message: string;
+	newAttachments: ChatAttachment[];
+	keepAttachmentIndices: number[];
 }
 
 // From @langchain/core

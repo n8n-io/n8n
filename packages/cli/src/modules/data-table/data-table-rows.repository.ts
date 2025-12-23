@@ -564,23 +564,16 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
-		return await withTransaction(
-			this.dataSource.manager,
-			trx,
-			async (em) => {
-				const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
-				const data: DataTableRowsReturn = await query.select('*').getRawMany();
-				const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
-					count: number | string | null;
-				}>();
-				const count =
-					typeof countResult?.count === 'number'
-						? countResult.count
-						: Number(countResult?.count) || 0;
-				return { count: count ?? -1, data };
-			},
-			false,
-		);
+		const em = trx ?? this.dataSource.manager;
+
+		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
+		const data: DataTableRowsReturn = await query.select('*').getRawMany();
+		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
+			count: number | string | null;
+		}>();
+		const count =
+			typeof countResult?.count === 'number' ? countResult.count : Number(countResult?.count) || 0;
+		return { count: count ?? -1, data };
 	}
 
 	async getManyByIds(
@@ -589,32 +582,27 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
-		return await withTransaction(
-			this.dataSource.manager,
-			trx,
-			async (em) => {
-				const table = toTableName(dataTableId);
-				const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-				const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
-					this.dataSource.driver.escape(x),
-				);
-				const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+		const em = trx ?? this.dataSource.manager;
 
-				if (ids.length === 0) {
-					return [];
-				}
-
-				const rows = await em
-					.createQueryBuilder()
-					.select(selectColumns)
-					.from(table, 'dataTable')
-					.where({ id: In(ids) })
-					.getRawMany<DataTableRawRowReturn>();
-
-				return normalizeRows(rows, columns);
-			},
-			false,
+		const table = toTableName(dataTableId);
+		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
 		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+
+		if (ids.length === 0) {
+			return [];
+		}
+
+		const rows = await em
+			.createQueryBuilder()
+			.select(selectColumns)
+			.from(table, 'dataTable')
+			.where({ id: In(ids) })
+			.getRawMany<DataTableRawRowReturn>();
+
+		return normalizeRows(rows, columns);
 	}
 
 	private getManyQuery(
