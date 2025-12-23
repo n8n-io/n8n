@@ -90,6 +90,32 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async archive(workflowId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/archive`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to archive workflow: ${await response.text()}`);
+		}
+	}
+
+	async delete(workflowId: string) {
+		const response = await this.api.request.delete(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete workflow: ${await response.text()}`);
+		}
+	}
+
+	async transfer(workflowId: string, destinationProjectId: string) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
+			data: { destinationProjectId },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to transfer workflow: ${await response.text()}`);
+		}
+	}
+
 	/** Makes workflow unique by updating name, IDs, and webhook paths. */
 	private makeWorkflowUnique(
 		workflow: Partial<IWorkflowBase>,
@@ -156,11 +182,21 @@ export class WorkflowApiHelper {
 	/** Imports a workflow from file, making it unique for testing. */
 	async importWorkflowFromFile(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			transform?: (workflow: Partial<IWorkflowBase>) => Partial<IWorkflowBase>;
+		},
 	): Promise<WorkflowImportResult> {
 		const filePath = resolveFromRoot('workflows', fileName);
 		const fileContent = readFileSync(filePath, 'utf8');
-		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+		let workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+
+		// Apply transform if provided
+		if (options?.transform) {
+			workflowDefinition = options.transform(workflowDefinition) as IWorkflowBase;
+		}
 
 		return await this.importWorkflowFromDefinition(workflowDefinition, options);
 	}

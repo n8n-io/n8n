@@ -1169,6 +1169,7 @@
 	"expressionModalInput.pairedItemInvalidPinnedError": "Unpin node ‘{node}’ and execute",
 	"expressionModalInput.pairedItemError": "Can’t determine which item to use",
 	"expressionModalInput.pairedItemError.noRunData": "Can't determine which item to use - execute node for more info",
+	"fixedCollectionParameter.addField": "Add Field",
 	"fixedCollectionParameter.choose": "Choose...",
 	"fixedCollectionParameter.currentlyNoItemsExist": "Currently no items exist",
 	"fixedCollectionParameter.deleteItem": "Delete item",
