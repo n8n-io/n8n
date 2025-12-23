@@ -184,7 +184,6 @@ const plugins: UserConfig['plugins'] = [
 				}),
 			]
 		: []),
-	// Codecov bundle analysis - runs in CI when CODECOV_TOKEN is set
 	...(process.env.CODECOV_TOKEN
 		? [
 				codecovVitePlugin({

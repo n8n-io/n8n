@@ -2,15 +2,13 @@ codecov:
   max_report_age: off
   require_ci_to_pass: true
 
-# Bundle Analysis - tracks frontend bundle size changes
-# Docs: https://docs.codecov.com/docs/javascript-bundle-analysis
 bundle_analysis:
-  status: warning # Will show warning status on PR if threshold exceeded
-  warning_threshold: 1% # ~330KB for our 33MB bundle
+  status: warning
+  warning_threshold: 1%
 
 comment:
-  require_bundle_changes: bundle_increase # Only comment when bundle size increases
-  bundle_change_threshold: 100Kb # Report any increase over 100KB
+  require_bundle_changes: bundle_increase
+  bundle_change_threshold: 100Kb
 
 coverage:
   status:
