@@ -10,7 +10,8 @@ import type {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
-import { isBinary, isObj } from '@/app/utils/typeGuards';
+import { isObj } from '@/app/utils/typeGuards';
+import { isBinary } from '@n8n/design-system';
 import { isPresent, shorten } from '@/app/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 import merge from 'lodash/merge';

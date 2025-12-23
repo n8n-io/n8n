@@ -14,7 +14,6 @@ import type {
 	WorkflowResource,
 	WorkflowListItem,
 	WorkflowListResource,
-	BinaryMetadata,
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -24,7 +23,6 @@ import type { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.ty
 import { canvasConnectionModes } from '@/features/workflows/canvas/canvas.types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { BINARY_METADATA_KEYS } from '@/app/constants';
 
 /*
 	Type guards used in editor-ui project
@@ -47,31 +45,6 @@ export const isObj = (obj: unknown): obj is object =>
 
 export const isBinaryLike = (obj: unknown): obj is object =>
 	isObj(obj) && 'mimeType' in obj && 'data' in obj;
-
-export const isBinary = (obj: unknown): obj is BinaryMetadata => {
-	if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
-
-	const entry = obj as Record<string, unknown>;
-
-	if (typeof entry.mimeType !== 'string') return false;
-	if (typeof entry.id !== 'string') return false;
-
-	for (const key of Object.keys(entry)) {
-		if (key === 'mimeType' || key === 'id') continue;
-
-		const value = entry[key];
-
-		if (key === 'bytes') {
-			if (value !== undefined && typeof value !== 'number') return false;
-			continue;
-		}
-
-		if (!(BINARY_METADATA_KEYS as readonly string[]).includes(key)) return false;
-		if (value !== undefined && typeof value !== 'string') return false;
-	}
-
-	return true;
-};
 
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';

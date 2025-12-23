@@ -5,7 +5,7 @@ import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
-import type { BinaryMetadata } from '@/Interface';
+import type { BinaryMetadata } from '@n8n/design-system';
 import { ref, computed } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 
