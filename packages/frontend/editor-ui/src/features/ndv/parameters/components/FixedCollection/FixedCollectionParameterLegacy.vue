@@ -496,7 +496,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 								</Suspense>
 								<div
 									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
-									class="optional-values-picker add-option"
+									:class="$style.addOption"
 									data-test-id="fixed-collection-add-property"
 								>
 									<N8nSelect
@@ -557,7 +557,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 					/>
 					<div
 						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
-						class="optional-values-picker add-option"
+						:class="$style.addOption"
 						data-test-id="fixed-collection-add-property"
 					>
 						<N8nSelect
@@ -641,18 +641,6 @@ function getItemKey(_item: INodeParameters, index: number) {
 		.parameterItemWrapper {
 			border: none;
 		}
-	}
-
-	.optional-values-picker {
-		margin-top: var(--spacing--xs);
-		margin-bottom: var(--spacing--xs);
-	}
-
-	:global(.optional-value-item) {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		width: 100%;
 	}
 
 	.controls {
@@ -777,5 +765,12 @@ function getItemKey(_item: INodeParameters, index: number) {
 			opacity: 1;
 		}
 	}
+}
+
+:global(.optional-value-item) {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
 }
 </style>
