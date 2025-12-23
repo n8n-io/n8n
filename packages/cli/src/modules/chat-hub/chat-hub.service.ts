@@ -160,13 +160,7 @@ export class ChatHubService {
 
 		const credentialId = this.getModelCredential(model, credentials);
 
-		// Store attachments early to populate 'id' field via BinaryDataService
-		const processedAttachments = await this.chatHubAttachmentService.store(
-			sessionId,
-			messageId,
-			attachments,
-		);
-
+		let processedAttachments: IBinaryData[] = [];
 		let executionData: IRunExecutionData;
 		let workflowData: IWorkflowBase;
 		let responseMode: ChatTriggerResponseMode;
@@ -187,6 +181,13 @@ export class ChatHubService {
 				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 				const history = this.buildMessageHistory(messages, previousMessageId);
+
+				// Store attachments to populate 'id' field via BinaryDataService
+				processedAttachments = await this.chatHubAttachmentService.store(
+					sessionId,
+					messageId,
+					attachments,
+				);
 
 				await this.saveHumanMessage(
 					payload,
@@ -260,13 +261,8 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		// Store new attachments early to populate 'id' field via BinaryDataService
-		const newStoredAttachments =
-			payload.newAttachments.length > 0
-				? await this.chatHubAttachmentService.store(sessionId, messageId, payload.newAttachments)
-				: [];
-
 		let workflow;
+		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
 			workflow = await this.messageRepository.manager.transaction(async (trx) => {
@@ -278,10 +274,6 @@ export class ChatHubService {
 				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 				if (messageToEdit.type === 'ai') {
-					if (newStoredAttachments.length > 0) {
-						throw new BadRequestError('AI message cannot include attachments');
-					}
-
 					// AI edits just change the original message without revisioning or response generation
 					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
 					return null;
@@ -303,6 +295,16 @@ export class ChatHubService {
 
 						return attachment ? [attachment] : [];
 					});
+
+					// Store new attachments to populate 'id' field via BinaryDataService
+					newStoredAttachments =
+						payload.newAttachments.length > 0
+							? await this.chatHubAttachmentService.store(
+									sessionId,
+									messageId,
+									payload.newAttachments,
+								)
+							: [];
 
 					// Combine kept + new attachments
 					const attachments = [...keptAttachments, ...newStoredAttachments];
