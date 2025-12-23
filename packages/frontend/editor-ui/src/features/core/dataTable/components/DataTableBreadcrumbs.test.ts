@@ -152,7 +152,7 @@ describe('DataTableBreadcrumbs', () => {
 
 			const input = getByTestId('inline-edit-input');
 			expect(input).toBeInTheDocument();
-			expect(input).toHaveAttribute('maxlength', '30');
+			expect(input).toHaveAttribute('maxlength', '100');
 			expect(input).toHaveValue('Test DataTable');
 		});
 
