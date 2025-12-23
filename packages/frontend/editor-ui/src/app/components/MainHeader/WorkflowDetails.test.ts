@@ -12,6 +12,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
@@ -70,9 +71,10 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
+const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
-		saveCurrentWorkflow: vi.fn().mockResolvedValue(true),
+		saveCurrentWorkflow: mockSaveCurrentWorkflow,
 	}),
 }));
 
@@ -184,21 +186,17 @@ describe('WorkflowDetails', () => {
 	});
 
 	it('calls save function on save button click', async () => {
-		const onSaveButtonClick = vi.fn();
+		uiStore.stateIsDirty = true;
 		const { getByTestId } = renderComponent({
 			props: {
 				...workflow,
 				readOnly: false,
-			},
-			global: {
-				mocks: {
-					onSaveButtonClick,
-				},
+				scopes: ['workflow:update'],
 			},
 		});
 
-		await userEvent.click(getByTestId('workflow-save-button'));
-		expect(onSaveButtonClick).toHaveBeenCalled();
+		await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
+		expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 	});
 
 	it('opens share modal on share button click', async () => {
@@ -666,7 +664,7 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
 
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -704,7 +702,7 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
 
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -744,7 +742,7 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
 
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -764,6 +762,8 @@ describe('WorkflowDetails', () => {
 				params: { name: 'test' },
 			} as unknown as ReturnType<typeof useRoute>);
 
+			uiStore.stateIsDirty = true;
+
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
@@ -772,7 +772,7 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
 
 			expect(toast.showMessage).not.toHaveBeenCalled();
 		});

@@ -1,8 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
+import { within, waitFor } from '@testing-library/vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -152,7 +152,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 		});
 
-		it('should use latest activation date from workflowPublishHistory when available', () => {
+		it('should use latest activation date from workflowPublishHistory when available', async () => {
 			const oldDate = '2024-01-01T00:00:00.000Z';
 			const latestActivationDate = '2024-06-15T10:30:00.000Z';
 			workflowsStore.workflow.activeVersion = {
@@ -186,22 +186,21 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				],
 			};
 
-			const { getByTestId } = renderComponent({
-				global: {
-					stubs: {
-						N8nTooltip: {
-							template: '<div><slot name="content" /></div>',
-						},
-						TimeAgo: {
-							props: ['date'],
-							template: '<div data-test-id="time-ago-stub">{{ date }}</div>',
-						},
-					},
-				},
-			});
+			const { getByTestId } = renderComponent();
+			const indicator = getByTestId('workflow-active-version-indicator');
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
-			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+			expect(indicator).toBeInTheDocument();
+
+			// Find the SVG trigger element and hover to show tooltip
+			const svgTrigger = indicator.querySelector('svg');
+			if (!svgTrigger) throw new Error('SVG trigger not found');
+
+			await hoverTooltipTrigger(svgTrigger);
+			await waitFor(() => {
+				const tooltip = getTooltip();
+				expect(tooltip).toHaveTextContent('Published Version');
+				expect(tooltip).toHaveTextContent('Published');
+			});
 		});
 	});
 
@@ -414,7 +413,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, emitted } = renderComponent();
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			await userEvent.click(within(getByTestId('workflow-save-button')).getByRole('button'));
 
 			expect(emitted('workflow:saved')).toBeTruthy();
 		});

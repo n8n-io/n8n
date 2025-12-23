@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
+import { waitFor } from '@testing-library/vue';
 import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
-import userEvent from '@testing-library/user-event';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useToast } from '@/app/composables/useToast';
@@ -77,6 +77,7 @@ describe('WorkflowActivator', () => {
 		mockWorkflowsStore.workflowsById = {
 			'1': createTestWorkflow({ id: '1', name: 'Test Workflow' }),
 		};
+		mockWorkflowsStore.workflowTriggerNodes = [];
 
 		const { getByTestId, getByRole } = renderComponent({
 			props: {
@@ -87,13 +88,18 @@ describe('WorkflowActivator', () => {
 			},
 		});
 
-		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
-
-		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow has no trigger nodes that require activation',
-		);
+		// Verify the switch and status are rendered correctly
+		const switchElement = getByRole('switch');
+		expect(switchElement).toBeInTheDocument();
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
+
+		// Hover and verify tooltip content
+		await hoverTooltipTrigger(switchElement);
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent(
+				'This workflow has no trigger nodes that require activation',
+			),
+		);
 	});
 
 	it('should allow activation when only execute workflow trigger is available', async () => {
@@ -315,14 +321,15 @@ describe('WorkflowActivator', () => {
 
 		const { getByTestId, getByRole } = renderComponent(renderOptions);
 		expect(getByTestId('workflow-activator-status')).toBeInTheDocument();
-		expect(getByRole('switch')).toBeInTheDocument();
-		expect(getByRole('switch')).toBeDisabled();
-
-		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
-		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow is archived so it cannot be activated',
-		);
+		const switchElement = getByRole('switch');
+		expect(switchElement).toBeInTheDocument();
+		expect(switchElement).toBeDisabled();
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
+
+		// Hover and verify tooltip content
+		await hoverTooltipTrigger(switchElement);
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent('This workflow is archived so it cannot be activated'),
+		);
 	});
 });
