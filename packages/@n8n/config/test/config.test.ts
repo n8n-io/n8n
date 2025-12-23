@@ -322,6 +322,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
+			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
@@ -407,6 +408,7 @@ describe('GlobalConfig', () => {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
+		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
 		},
@@ -437,6 +439,7 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
+
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {

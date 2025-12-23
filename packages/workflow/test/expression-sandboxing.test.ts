@@ -60,6 +60,16 @@ describe('PrototypeSanitizer', () => {
 			}).toThrowError(errorRegex);
 		});
 
+		it.each([
+			['dot notation', '{{ Error.prepareStackTrace }}'],
+			['bracket notation', '{{ Error["prepareStackTrace"] }}'],
+			['assignment', '{{ Error.prepareStackTrace = (e, s) => s }}'],
+		])('should not allow access to prepareStackTrace via %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer, Error });
+			}).toThrowError(errorRegex);
+		});
+
 		describe('Dollar sign identifier handling', () => {
 			it('should not allow bare $ identifier', () => {
 				expect(() => {

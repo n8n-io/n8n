@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -82,6 +82,7 @@
     "lodash": "catalog:",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
     "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
