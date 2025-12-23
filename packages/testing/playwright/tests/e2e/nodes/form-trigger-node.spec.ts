@@ -92,7 +92,7 @@ test.describe('Form Trigger', () => {
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
 
-		// Get the form test URL from the NDV and open it in a new page
+		// Get the form test URL from the NDV
 		await n8n.canvas.openNode('On form submission');
 		const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
 		const formUrl = await formUrlLocator.textContent();
