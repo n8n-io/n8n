@@ -582,10 +582,24 @@ describe('ParameterInput.vue', () => {
 	});
 
 	test('should reset string on eventBus:removeExpression', async () => {
+		mockNdvState = {
+			...getNdvStateMock(),
+			activeNode: {
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: {
+					aStr: 'test',
+				},
+				position: [0, 0],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+			},
+		};
+
 		const eventBus = createEventBus();
 		const { emitted } = renderComponent({
 			props: {
-				path: 'aStr',
+				path: 'parameters.aStr',
 				parameter: {
 					displayName: 'A Str',
 					name: 'aStr',
