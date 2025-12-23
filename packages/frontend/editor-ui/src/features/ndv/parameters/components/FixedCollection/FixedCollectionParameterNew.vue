@@ -1,22 +1,10 @@
 <script lang="ts" setup>
-import type { IUpdateInformation } from '@/Interface';
-import type {
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	NodeParameterValueType,
-} from 'n8n-workflow';
-import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
-import get from 'lodash/get';
-import isEqual from 'lodash/isEqual';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { computed, ref, watch, onBeforeMount, nextTick, useTemplateRef } from 'vue';
-import { useI18n } from '@n8n/i18n';
-import { storeToRefs } from 'pinia';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { telemetry } from '@/app/plugins/telemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { IUpdateInformation } from '@/Interface';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import {
 	N8nButton,
@@ -27,6 +15,18 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
+} from 'n8n-workflow';
+import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
+import { storeToRefs } from 'pinia';
+import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
 
@@ -73,8 +73,17 @@ const isDropdownOpen = ref(false);
 const addedOptionalValues = ref(new Map<string, Set<string>>());
 
 const storageKey = computed(() => `${activeNode.value?.id ?? 'unknown'}-${props.path}`);
+
+const hasSingleItem = computed(() => {
+	const entries = Object.entries(props.values);
+	if (entries.length !== 1) return false;
+	const [, items] = entries[0];
+	if (Array.isArray(items)) return items.length === 1;
+	return Object.keys(items).length > 0;
+});
+
 const itemState = useFixedCollectionItemState(storageKey, {
-	defaultWrapperExpanded: props.isNewlyAdded,
+	defaultWrapperExpanded: props.isNewlyAdded || hasSingleItem.value,
 });
 
 const isWrapperExpanded = itemState.wrapperExpanded;
@@ -93,8 +102,6 @@ const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleVal
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
 
 const propertyNames = computed(() => new Set(Object.keys(mutableValues.value ?? {})));
-
-const hasDefaultValues = computed(() => isEqual(props.values, props.parameter.default ?? {}));
 
 const properties = computed(() =>
 	Array.from(propertyNames.value)
@@ -437,7 +444,7 @@ onBeforeMount(() => {
 	initExpandedState();
 	initializeAddedOptionalValues();
 
-	if (hasDefaultValues.value) {
+	if (hasSingleItem.value) {
 		const firstProperty = properties.value[0];
 		if (firstProperty && multipleValues.value) {
 			const items = mutableValues.value[firstProperty.name];

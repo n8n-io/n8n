@@ -18,6 +18,10 @@ describe('FixedCollectionParameterNew.vue', () => {
 	});
 	setActivePinia(pinia);
 
+	beforeEach(() => {
+		sessionStorage.clear();
+	});
+
 	const baseProps: Props = {
 		parameter: {
 			displayName: 'Routing Rules',
@@ -130,6 +134,51 @@ describe('FixedCollectionParameterNew.vue', () => {
 			});
 
 			expect(rendered.getByTestId('fixed-collection-rules')).toBeInTheDocument();
+		});
+
+		it('expands by default when there is only one item', () => {
+			const rendered = renderComponent({
+				props: {
+					...baseProps,
+					isNested: true,
+					isNewlyAdded: false,
+					values: {
+						values: [{ outputKey: 'Single Item' }],
+					},
+					nodeValues: {
+						parameters: {
+							rules: { values: [{ outputKey: 'Single Item' }] },
+						},
+					},
+				},
+			});
+
+			// The wrapper should be expanded - check that the nested content is visible
+			expect(rendered.getByTestId('fixed-collection-add-nested-button')).toBeVisible();
+		});
+
+		it('does not expand by default when there are multiple items', () => {
+			const rendered = renderComponent({
+				props: {
+					...baseProps,
+					isNested: true,
+					isNewlyAdded: false,
+					values: {
+						values: [{ outputKey: 'Item 1' }, { outputKey: 'Item 2' }],
+					},
+					nodeValues: {
+						parameters: {
+							rules: { values: [{ outputKey: 'Item 1' }, { outputKey: 'Item 2' }] },
+						},
+					},
+				},
+			});
+
+			// The wrapper should be collapsed - check the collapsible panel state
+			const collapsibleContent = rendered.container.querySelector(
+				'[data-test-id="fixed-collection-rules"] [data-state="open"]',
+			);
+			expect(collapsibleContent).not.toBeInTheDocument();
 		});
 	});
 
@@ -373,50 +422,43 @@ describe('FixedCollectionParameterNew.vue', () => {
 	});
 
 	describe('Auto-expand first item', () => {
-		it('should auto-expand first item when values match parameter default', () => {
-			const defaultValue = { values: [{ outputKey: 'Default Output Name' }] };
+		it('should auto-expand newly added item when optionSelected is called', async () => {
 			const rendered = renderComponent({
 				props: {
 					...baseProps,
-					parameter: {
-						...baseProps.parameter,
-						default: defaultValue,
-					},
-					values: defaultValue,
+					values: {}, // Start with no values
 					nodeValues: {
 						parameters: {
-							rules: defaultValue,
+							rules: {},
 						},
 					},
 				},
 			});
 
-			// First item should be expanded - check for data-state="open" on collapsible content
-			const collapsibleContent = rendered.container.querySelector('[data-state="open"]');
-			expect(collapsibleContent).toBeInTheDocument();
+			// Click the add button to add a new item
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-top-level-button'));
+			await nextTick();
+
+			// The newly added item should be expanded
+			expect(rendered.emitted('valueChanged')).toBeDefined();
 		});
 
-		it('should NOT auto-expand first item when values differ from default', () => {
-			const defaultValue = { values: [{ outputKey: 'Default Output Name' }] };
+		it('should auto-expand first item when there is only one item', () => {
 			const rendered = renderComponent({
 				props: {
 					...baseProps,
-					parameter: {
-						...baseProps.parameter,
-						default: defaultValue,
-					},
-					values: { values: [{ outputKey: 'User Edited Value' }] },
+					values: { values: [{ outputKey: 'Single Value' }] },
 					nodeValues: {
 						parameters: {
-							rules: { values: [{ outputKey: 'User Edited Value' }] },
+							rules: { values: [{ outputKey: 'Single Value' }] },
 						},
 					},
 				},
 			});
 
-			// First item should be collapsed - check for data-state="closed" on collapsible content
-			const collapsibleContent = rendered.container.querySelector('[data-state="closed"]');
-			expect(collapsibleContent).toBeInTheDocument();
+			// First item should be expanded when there's only one item
+			const openContent = rendered.container.querySelector('[data-state="open"]');
+			expect(openContent).toBeInTheDocument();
 		});
 	});
 

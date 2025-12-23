@@ -8,20 +8,41 @@ import { setActivePinia } from 'pinia';
 import { beforeEach } from 'vitest';
 import type { INodePropertyCollection } from 'n8n-workflow';
 
-let mockResolvedExpression = '';
-let mockIsCollectionOverhaulEnabled = false;
+// vi.hoisted runs before vi.mock, making these variables available to mock factories
+const { mockState } = vi.hoisted(() => ({
+	mockState: {
+		resolvedExpression: '',
+		isCollectionOverhaulEnabled: false,
+	},
+}));
 
 vi.mock('@/composables/useCollectionOverhaul', () => ({
 	useCollectionOverhaul: () => ({
-		isEnabled: { value: mockIsCollectionOverhaulEnabled },
+		isEnabled: {
+			get value() {
+				return mockState.isCollectionOverhaulEnabled;
+			},
+		},
 	}),
 }));
 
 vi.mock('@/composables/useResolvedExpression', () => ({
 	useResolvedExpression: () => ({
-		resolvedExpression: { value: mockResolvedExpression },
-		resolvedExpressionString: { value: mockResolvedExpression },
-		isExpression: { value: mockResolvedExpression !== '' },
+		resolvedExpression: {
+			get value() {
+				return mockState.resolvedExpression;
+			},
+		},
+		resolvedExpressionString: {
+			get value() {
+				return mockState.resolvedExpression;
+			},
+		},
+		isExpression: {
+			get value() {
+				return mockState.resolvedExpression !== '';
+			},
+		},
 	}),
 }));
 
@@ -69,8 +90,8 @@ describe('FixedCollectionItem.vue', () => {
 	};
 
 	beforeEach(() => {
-		mockResolvedExpression = '';
-		mockIsCollectionOverhaulEnabled = false;
+		mockState.resolvedExpression = '';
+		mockState.isCollectionOverhaulEnabled = false;
 
 		pinia = createTestingPinia({
 			initialState: {
@@ -111,15 +132,18 @@ describe('FixedCollectionItem.vue', () => {
 		});
 
 		it('uses custom title template when provided and resolved', () => {
-			mockResolvedExpression = 'Custom Title';
-			const { getByText } = renderComponent({
+			mockState.resolvedExpression = 'Custom Title';
+			console.log('Before render, mockState.resolvedExpression =', mockState.resolvedExpression);
+			const { getByText, container } = renderComponent({
 				props: { ...defaultProps, titleTemplate: '{{ $collection.item.value.outputKey }}' },
 			});
+			console.log('After render, mockState.resolvedExpression =', mockState.resolvedExpression);
+			console.log('Rendered HTML:', container.innerHTML.slice(0, 500));
 			expect(getByText('Custom Title')).toBeInTheDocument();
 		});
 
 		it('falls back to default title when template resolves to undefined', () => {
-			mockResolvedExpression = 'undefined';
+			mockState.resolvedExpression = 'undefined';
 			const { getByText } = renderComponent({
 				props: { ...defaultProps, titleTemplate: '{{ invalid }}' },
 			});
@@ -127,7 +151,7 @@ describe('FixedCollectionItem.vue', () => {
 		});
 
 		it('falls back to default title when template resolves to null', () => {
-			mockResolvedExpression = 'null';
+			mockState.resolvedExpression = 'null';
 			const { getByText } = renderComponent({
 				props: { ...defaultProps, titleTemplate: '{{ invalid }}' },
 			});
@@ -269,7 +293,7 @@ describe('FixedCollectionItem.vue', () => {
 
 	describe('collection overhaul feature flag', () => {
 		it('respects collection overhaul feature flag', () => {
-			mockIsCollectionOverhaulEnabled = true;
+			mockState.isCollectionOverhaulEnabled = true;
 
 			const { getByTestId } = renderComponent();
 
@@ -278,7 +302,7 @@ describe('FixedCollectionItem.vue', () => {
 		});
 
 		it('works without collection overhaul feature flag', () => {
-			mockIsCollectionOverhaulEnabled = false;
+			mockState.isCollectionOverhaulEnabled = false;
 
 			const { getByTestId } = renderComponent();
 
@@ -324,7 +348,7 @@ describe('FixedCollectionItem.vue', () => {
 		});
 
 		it('provides correct additional data to expression resolver', () => {
-			mockResolvedExpression = 'Resolved Title';
+			mockState.resolvedExpression = 'Resolved Title';
 
 			const { getByText } = renderComponent({
 				props: {
