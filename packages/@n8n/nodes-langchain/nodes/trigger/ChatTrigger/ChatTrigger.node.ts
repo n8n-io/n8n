@@ -429,6 +429,20 @@ export class ChatTrigger extends Node {
 				default: '',
 			},
 			{
+				displayName: 'Agent Icon',
+				name: 'agentIcon',
+				type: 'icon',
+				default: { type: 'icon', value: 'bot' },
+				noDataExpression: true,
+				description: 'The icon of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Agent Name',
 				name: 'agentName',
 				type: 'string',

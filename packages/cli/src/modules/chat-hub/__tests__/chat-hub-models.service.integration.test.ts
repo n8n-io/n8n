@@ -363,11 +363,8 @@ describe('ChatHubModelsService', () => {
 				expect(result.n8n.models[0].metadata.inputModalities).toEqual(['text']);
 			});
 
-			it('should include project icon in workflow model', async () => {
-				// Set project icon for the user's personal project
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
-				const projectIcon = { type: 'emoji' as const, value: '🤖' };
-				await projectRepository.update(personalProject.id, { icon: projectIcon });
+			it('should include agent icon from chat trigger in workflow model', async () => {
+				const agentIcon = { type: 'emoji' as const, value: '🤖' };
 
 				await createActiveWorkflow(
 					{
@@ -382,6 +379,7 @@ describe('ChatHubModelsService', () => {
 								parameters: {
 									availableInChat: true,
 									agentName: 'Icon Agent',
+									agentIcon,
 								},
 							},
 						],
@@ -393,7 +391,7 @@ describe('ChatHubModelsService', () => {
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
 				expect(result.n8n.models).toHaveLength(1);
-				expect(result.n8n.models[0].icon).toEqual(projectIcon);
+				expect(result.n8n.models[0].icon).toEqual(agentIcon);
 			});
 		});
 	});
