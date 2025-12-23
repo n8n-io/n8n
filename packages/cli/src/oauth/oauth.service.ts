@@ -195,7 +195,7 @@ export class OauthService {
 		return [csrfSecret, encryptedState, base64State];
 	}
 
-	protected encryptBase64EncodedState(base64EncodedState: string): string {
+	encryptBase64EncodedState(base64EncodedState: string): string {
 		const state = Buffer.from(base64EncodedState, 'base64').toString();
 		return this.cipher.encrypt(state);
 	}
