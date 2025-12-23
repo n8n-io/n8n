@@ -245,6 +245,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 						size="small"
 						filterable
 						:disabled="parameterOptions.length === 0"
+						data-test-id="collection-parameter-add"
 						@update:model-value="optionSelected"
 					>
 						<N8nOption
