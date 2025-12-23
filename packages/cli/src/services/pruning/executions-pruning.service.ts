@@ -77,8 +77,6 @@ export class ExecutionsPruningService {
 
 	@OnLeaderStepdown()
 	stopPruning() {
-		if (!this.isEnabled) return;
-
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
 
