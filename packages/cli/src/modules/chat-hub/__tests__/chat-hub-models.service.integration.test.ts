@@ -7,7 +7,6 @@ import {
 } from '@n8n/backend-test-utils';
 import assert from 'assert';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -51,12 +50,10 @@ const emptyCredentialIds = {
 
 describe('ChatHubModelsService', () => {
 	let chatHubModelsService: ChatHubModelsService;
-	let projectRepository: ProjectRepository;
 	let member: User;
 
 	beforeAll(() => {
 		chatHubModelsService = Container.get(ChatHubModelsService);
-		projectRepository = Container.get(ProjectRepository);
 	});
 
 	beforeEach(async () => {
