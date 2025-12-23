@@ -268,14 +268,24 @@ const messagingState = computed<MessagingState>(() => {
 });
 
 const editingMessageId = ref<string>();
+const messageElementsRef = useTemplateRef('messages');
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(
-	() =>
-		editingMessageId.value === undefined &&
+const canAcceptFiles = computed(() => {
+	const baseCondition =
 		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
-		!isMissingSelectedCredential.value,
-);
+		!isMissingSelectedCredential.value;
+
+	if (!baseCondition) return false;
+
+	// If editing, only allow file drops for human messages
+	if (editingMessageId.value) {
+		const editingMessage = chatMessages.value.find((msg) => msg.id === editingMessageId.value);
+		return editingMessage?.type === 'human';
+	}
+
+	return true;
+});
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
@@ -452,25 +462,30 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-async function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(
+	content: string,
+	keptAttachmentIndices: number[],
+	newFiles: File[],
+) {
 	if (
+		!editingMessageId.value ||
 		isResponding.value ||
-		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
-	const messageToEdit = message.revisionOfMessageId ?? message.id;
-
 	await chatStore.editMessage(
 		sessionId.value,
-		messageToEdit,
-		message.content,
+		editingMessageId.value,
+		content,
 		selectedModel.value,
 		credentialsForSelectedProvider.value,
+		keptAttachmentIndices,
+		newFiles,
 	);
+
 	editingMessageId.value = undefined;
 }
 
@@ -577,7 +592,13 @@ function handleOpenWorkflow(workflowId: string) {
 }
 
 function onFilesDropped(files: File[]) {
-	inputRef.value?.addAttachments(files);
+	if (!editingMessageId.value) {
+		inputRef.value?.addAttachments(files);
+		return;
+	}
+
+	const index = chatMessages.value.findIndex((message) => message.id === editingMessageId.value);
+	messageElementsRef.value?.[index]?.addFiles(files);
 }
 </script>
 
@@ -632,9 +653,11 @@ function onFilesDropped(files: File[]) {
 					<ChatMessage
 						v-for="(message, index) in chatMessages"
 						:key="message.id"
+						ref="messages"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
+						:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"
 						:has-session-streaming="isResponding"
 						:cached-agent-display-name="selectedModel?.name ?? null"
 						:cached-agent-icon="selectedModel?.icon ?? null"
