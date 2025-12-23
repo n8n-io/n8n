@@ -114,6 +114,13 @@ export class TaskRunnerModule {
 	private async startInternalTaskRunners() {
 		a.ok(this.taskBrokerWsServer, 'Task Runner WS Server not loaded');
 
+		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
+			'@/task-runners/internal-task-runner-disconnect-analyzer'
+		);
+		this.taskBrokerWsServer.setDisconnectAnalyzer(
+			Container.get(InternalTaskRunnerDisconnectAnalyzer),
+		);
+
 		const { JsTaskRunnerProcess } = await import('@/task-runners/task-runner-process-js');
 		this.jsRunnerProcess = Container.get(JsTaskRunnerProcess);
 		this.jsRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
@@ -145,13 +152,6 @@ export class TaskRunnerModule {
 			this.onRunnerRestartLoopDetected,
 		);
 		await this.pyRunnerProcess.start();
-
-		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
-			'@/task-runners/internal-task-runner-disconnect-analyzer'
-		);
-		this.taskBrokerWsServer.setDisconnectAnalyzer(
-			Container.get(InternalTaskRunnerDisconnectAnalyzer),
-		);
 	}
 
 	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {
