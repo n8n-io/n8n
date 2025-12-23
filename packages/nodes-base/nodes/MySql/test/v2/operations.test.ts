@@ -353,6 +353,7 @@ describe('Test MySql V2, operations', () => {
 					},
 					{
 						column: 'name',
+						condition: '=',
 						value: 'test',
 					},
 				],
@@ -398,7 +399,7 @@ describe('Test MySql V2, operations', () => {
 
 		expect(connectionQuerySpy).toBeCalledTimes(1);
 		expect(connectionQuerySpy).toBeCalledWith(
-			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` undefined 'test' ORDER BY `id` DESC LIMIT 2",
+			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` = 'test' ORDER BY `id` DESC LIMIT 2",
 		);
 
 		expect(connectionCommitSpy).toBeCalledTimes(1);
@@ -474,6 +475,7 @@ describe('Test MySql V2, operations', () => {
 					},
 					{
 						column: 'name',
+						condition: '=',
 						value: 'test',
 					},
 				],
@@ -519,7 +521,7 @@ describe('Test MySql V2, operations', () => {
 
 		expect(connectionQuerySpy).toBeCalledTimes(1);
 		expect(connectionQuerySpy).toBeCalledWith(
-			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` undefined 'test' ORDER BY `id` DESC LIMIT 2",
+			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` = 'test' ORDER BY `id` DESC LIMIT 2",
 		);
 
 		expect(connectionCommitSpy).toBeCalledTimes(1);
