@@ -77,10 +77,12 @@ export class ExecutionsPruningService {
 
 	@OnLeaderStepdown()
 	stopPruning() {
+		const hadTimers = this.softDeletionInterval ?? this.hardDeletionTimeout;
+
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
 
-		this.logger.debug('Stopped pruning timers');
+		if (hadTimers) this.logger.debug('Stopped pruning timers');
 	}
 
 	private scheduleRollingSoftDeletions(rateMs = this.rates.softDeletion) {
