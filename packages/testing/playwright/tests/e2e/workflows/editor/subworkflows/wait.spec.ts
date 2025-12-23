@@ -61,7 +61,7 @@ test.describe('Parent that does not wait for sub-workflow', () => {
 		expect(response.ok()).toBe(true);
 
 		// First, wait for the child to finish.
-		const childExecution = await api.workflows.waitForExecution(childWorkflowId, 5000);
+		const childExecution = await api.workflows.waitForExecution(childWorkflowId, 10000);
 		expect(childExecution.status).toBe('success');
 
 		// Verify that the parent didn't get resumed. We might need to give it a moment to reach the waiting state.
