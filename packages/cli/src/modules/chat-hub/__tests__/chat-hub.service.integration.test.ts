@@ -1,6 +1,5 @@
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createAdmin, createMember } from '@test-integration/db/users';
 import { BinaryDataService } from 'n8n-core';
