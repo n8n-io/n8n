@@ -248,7 +248,7 @@ export class WorkflowApiHelper {
 	async waitForExecution(
 		workflowId: string,
 		timeoutMs = 10000,
-		mode: 'manual' | 'webhook' | 'trigger' = 'webhook',
+		mode: 'manual' | 'webhook' | 'trigger' | 'integrated' = 'webhook',
 	): Promise<ExecutionListResponse> {
 		const initialExecutions = await this.getExecutions(workflowId, 50);
 		const initialCount = initialExecutions.length;

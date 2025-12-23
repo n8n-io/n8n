@@ -60,8 +60,12 @@ test.describe('Parent that does not wait for sub-workflow', () => {
 		const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 		expect(response.ok()).toBe(true);
 
-		// First, wait for the child to finish.
-		const childExecution = await api.workflows.waitForExecution(childWorkflowId, 10000);
+		// First, wait for the child to finish (child runs in 'integrated' mode when called by Execute Workflow node)
+		const childExecution = await api.workflows.waitForExecution(
+			childWorkflowId,
+			10000,
+			'integrated',
+		);
 		expect(childExecution.status).toBe('success');
 
 		// Verify that the parent didn't get resumed. We might need to give it a moment to reach the waiting state.
