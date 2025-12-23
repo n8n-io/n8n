@@ -75,9 +75,8 @@ test.describe('Form Trigger', () => {
 		await n8n.ndv.fillParameterInput('Form Title', 'Multi-Page Form');
 		await n8n.ndv.fillParameterInput('Form Description', 'A form with multiple pages');
 
-		// Add firstName field
+		// Add a single field to the Form Trigger node
 		await n8n.ndv.addFixedCollectionItem();
-		await n8n.ndv.fillParameterInputByName('fieldName', 'firstName');
 		await n8n.ndv.fillParameterInputByName('fieldLabel', 'What is your first name?');
 
 		await n8n.ndv.clickBackToCanvasButton();
@@ -85,9 +84,8 @@ test.describe('Form Trigger', () => {
 		// Add Form node (next page) by selecting the "Next Form Page" action
 		await n8n.canvas.addNode('n8n Form', { closeNDV: false, action: 'Next Form Page' });
 
-		// Add lastName field to the Form node
+		// Add a single field to the Form node
 		await n8n.ndv.addFixedCollectionItem();
-		await n8n.ndv.fillParameterInputByName('fieldName', 'lastName');
 		await n8n.ndv.fillParameterInputByName('fieldLabel', 'What is your last name?');
 
 		await n8n.ndv.clickBackToCanvasButton();
