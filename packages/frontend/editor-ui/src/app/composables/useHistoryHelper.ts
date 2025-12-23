@@ -10,10 +10,8 @@ import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
-import { useDebounce } from '@/app/composables/useDebounce';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 
-const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';
 
 export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
@@ -23,72 +21,63 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
 
-	const { callDebounced } = useDebounce();
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
-	const undo = async () =>
-		await callDebounced(
-			async () => {
-				const command = historyStore.popUndoableToUndo();
-				if (!command) {
-					return;
-				}
+	const undo = async () => {
+		const command = historyStore.popUndoableToUndo();
+		if (!command) {
+			return;
+		}
 
-				const timestamp = Date.now();
+		const timestamp = Date.now();
 
-				if (command instanceof BulkCommand) {
-					historyStore.bulkInProgress = true;
-					const commands = command.commands;
-					const reverseCommands: Command[] = [];
-					for (let i = commands.length - 1; i >= 0; i--) {
-						await commands[i].revert();
-						reverseCommands.push(commands[i].getReverseCommand(timestamp));
-					}
-					historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
-					await nextTick();
-					historyStore.bulkInProgress = false;
-				}
-				if (command instanceof Command) {
-					await command.revert();
-					historyStore.pushUndoableToRedo(command.getReverseCommand(timestamp));
-					uiStore.stateIsDirty = true;
-				}
-				trackCommand(command, 'undo');
-			},
-			{ debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL },
-		);
+		if (command instanceof BulkCommand) {
+			historyStore.bulkInProgress = true;
+			const commands = command.commands;
+			const reverseCommands: Command[] = [];
+			for (let i = commands.length - 1; i >= 0; i--) {
+				await commands[i].revert();
+				reverseCommands.push(commands[i].getReverseCommand(timestamp));
+			}
+			historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
+			await nextTick();
+			historyStore.bulkInProgress = false;
+		}
+		if (command instanceof Command) {
+			await command.revert();
+			historyStore.pushUndoableToRedo(command.getReverseCommand(timestamp));
+			uiStore.stateIsDirty = true;
+		}
+		trackCommand(command, 'undo');
+	};
 
-	const redo = async () =>
-		await callDebounced(
-			async () => {
-				const command = historyStore.popUndoableToRedo();
-				if (!command) {
-					return;
-				}
+	const redo = async () => {
+		const command = historyStore.popUndoableToRedo();
+		if (!command) {
+			return;
+		}
 
-				const timestamp = Date.now();
+		const timestamp = Date.now();
 
-				if (command instanceof BulkCommand) {
-					historyStore.bulkInProgress = true;
-					const commands = command.commands;
-					const reverseCommands = [];
-					for (let i = commands.length - 1; i >= 0; i--) {
-						await commands[i].revert();
-						reverseCommands.push(commands[i].getReverseCommand(timestamp));
-					}
-					historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
-					await nextTick();
-					historyStore.bulkInProgress = false;
-				}
-				if (command instanceof Command) {
-					await command.revert();
-					historyStore.pushCommandToUndo(command.getReverseCommand(timestamp), false);
-					uiStore.stateIsDirty = true;
-				}
-				trackCommand(command, 'redo');
-			},
-			{ debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL },
-		);
+		if (command instanceof BulkCommand) {
+			historyStore.bulkInProgress = true;
+			const commands = command.commands;
+			const reverseCommands = [];
+			for (let i = commands.length - 1; i >= 0; i--) {
+				await commands[i].revert();
+				reverseCommands.push(commands[i].getReverseCommand(timestamp));
+			}
+			historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
+			await nextTick();
+			historyStore.bulkInProgress = false;
+		}
+		if (command instanceof Command) {
+			await command.revert();
+			historyStore.pushCommandToUndo(command.getReverseCommand(timestamp), false);
+			uiStore.stateIsDirty = true;
+		}
+		trackCommand(command, 'redo');
+	};
 
 	function trackCommand(command: Undoable, type: 'undo' | 'redo'): void {
 		if (command instanceof Command) {

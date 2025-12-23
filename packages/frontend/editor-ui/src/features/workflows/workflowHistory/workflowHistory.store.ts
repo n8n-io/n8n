@@ -20,9 +20,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory.licensePruneTime);
+	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory?.licensePruneTime);
 	// pruneTime is already evaluated by backend (getWorkflowHistoryPruneTime)
-	const evaluatedPruneTime = computed(() => settingsStore.settings.workflowHistory.pruneTime);
+	const evaluatedPruneTime = computed(() => settingsStore.settings.workflowHistory?.pruneTime);
 
 	// Show retention message with upgrade link when license is the limiting factor
 	// (Don't show if user explicitly configured a shorter retention via config)

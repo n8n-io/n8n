@@ -612,4 +612,63 @@ describe('SupplyDataContext', () => {
 			expect(taskData.hints![0].location).toBe('outputPane');
 		});
 	});
+
+	describe('isToolExecution', () => {
+		it('should return true when connectionType is AiTool', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiTool,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(testContext.isToolExecution()).toBe(true);
+		});
+
+		it('should return false when connectionType is Main', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.Main,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(testContext.isToolExecution()).toBe(false);
+		});
+
+		it('should return false when connectionType is AiAgent', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiAgent,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(testContext.isToolExecution()).toBe(false);
+		});
+	});
 });

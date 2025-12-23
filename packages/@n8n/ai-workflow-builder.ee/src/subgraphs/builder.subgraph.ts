@@ -8,18 +8,20 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
 import { buildBuilderPrompt } from '@/prompts/agents/builder.prompt';
-import type { ChatPayload } from '@/workflow-builder-agent';
+import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
+import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createBuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
@@ -29,6 +31,7 @@ import {
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { cachedTemplatesReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
@@ -77,12 +80,19 @@ export const BuilderSubgraphState = Annotation.Root({
 		},
 		default: () => [],
 	}),
+
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
+	}),
 });
 
 export interface BuilderSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
 	logger?: Logger;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export class BuilderSubgraph extends BaseSubgraph<
@@ -94,14 +104,22 @@ export class BuilderSubgraph extends BaseSubgraph<
 	description = 'Constructs workflow structure: creating nodes and connections';
 
 	create(config: BuilderSubgraphConfig) {
-		// Create tools
-		const tools = [
+		// Check if template examples are enabled
+		const includeExamples = config.featureFlags?.templateExamples === true;
+
+		// Create base tools
+		const baseTools = [
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
 		];
+
+		// Conditionally add node connection examples tool if feature flag is enabled
+		const tools = includeExamples
+			? [...baseTools, createGetNodeConnectionExamplesTool(config.logger)]
+			: baseTools;
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
 		const systemPrompt = ChatPromptTemplate.fromMessages([
@@ -199,6 +217,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowContext: parentState.workflowContext,
 			discoveryContext: parentState.discoveryContext,
 			messages: [contextMessage], // Context already in messages
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -243,6 +262,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
+			cachedTemplates: subgraphOutput.cachedTemplates,
 		};
 	}
 }

@@ -158,6 +158,7 @@ export interface CategorizePromptOutput {
  * Description of a workflow example we have found
  */
 export interface WorkflowMetadata {
+	templateId: number;
 	name: string;
 	description?: string;
 	workflow: SimpleWorkflow;
@@ -188,5 +189,13 @@ export interface GetWorkflowExamplesOutput {
 		workflow: string;
 	}>;
 	totalResults: number;
-	nodeConfigurations: NodeConfigurationsMap;
+}
+
+/**
+ * Output type for get node configuration examples tool
+ */
+export interface GetNodeConfigurationExamplesOutput {
+	nodeType: string;
+	totalFound: number;
+	message: string;
 }

@@ -17,7 +17,7 @@ import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 
-const runQueries: QueriesRunner = jest.fn();
+const runQueries: QueriesRunner = jest.fn().mockResolvedValue([]);
 
 const node: INode = {
 	id: '1',
@@ -110,7 +110,6 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					values: ['public', 'my_table', 'id', '1'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -151,7 +150,6 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					values: ['public', 'my_table'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -189,7 +187,6 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					values: ['public', 'my_table'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -256,7 +253,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select * from $1:name;', values: ['my_table'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -278,7 +274,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select $1;', values: ['$1'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -302,7 +297,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: "select '$1';", values: ['my_table'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -327,7 +321,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select $2;', values: ['my_table', '$1'], options: { partial: true } }],
-			items,
 			nodeOptions,
 		);
 	});
@@ -395,7 +388,6 @@ describe('Test PostgresV2, executeQuery operation', () => {
 					options: { partial: true },
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -574,7 +566,6 @@ describe('Test PostgresV2, insert operation', () => {
 					values: ['public', 'my_table', { json: '{"test":15}', foo: 'select 5', id: '4' }],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -656,7 +647,6 @@ describe('Test PostgresV2, insert operation', () => {
 					values: ['public', 'my_table', { id: 3, json: { test: 5 }, foo: 'data 3' }],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
@@ -743,7 +733,6 @@ describe('Test PostgresV2, insert operation', () => {
 						values: ['public', 'my_table', value.expected],
 					},
 				],
-				inputItems,
 				nodeOptions,
 			);
 			expect(convertValuesToJsonWithPgpSpy).toHaveBeenCalledWith(pg, columnsInfo, valuePassedIn);
@@ -791,9 +780,73 @@ describe('Test PostgresV2, insert operation', () => {
 					values: ['public', 'my_table', {}],
 				},
 			],
-			items,
 			nodeOptions,
 		);
+	});
+
+	it('should handle type validation errors with continueOnFail=true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'insert',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				mode: 'list',
+				value: 'my_table',
+			},
+			'columns.mappingMode': 'defineBelow',
+			valuesToSend: {
+				values: [
+					{
+						column: 'id',
+						value: '1',
+					},
+				],
+			},
+			options: {
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		];
+		const error = new Error('Test error');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters);
+		fakeExecuteFunction.continueOnFail = () => true;
+		const originalGetNodeParameter = fakeExecuteFunction.getNodeParameter;
+		fakeExecuteFunction.getNodeParameter = ((
+			parameterName: string,
+			_itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) => {
+			if (parameterName === 'columns.value') {
+				throw error;
+			}
+
+			return originalGetNodeParameter(parameterName, _itemIndex, fallbackValue, options);
+		}) as typeof fakeExecuteFunction.getNodeParameter;
+
+		const result = await insert.execute.call(
+			fakeExecuteFunction,
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+			pgPromise(),
+		);
+
+		expect(result).toEqual([
+			{
+				json: { error },
+				pairedItem: { item: 0 },
+			},
+		]);
 	});
 });
 
@@ -835,7 +888,6 @@ describe('Test PostgresV2, select operation', () => {
 					values: ['public', 'my_table'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -897,7 +949,6 @@ describe('Test PostgresV2, select operation', () => {
 					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id'],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -1026,7 +1077,6 @@ describe('Test PostgresV2, update operation', () => {
 					],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -1112,9 +1162,73 @@ describe('Test PostgresV2, update operation', () => {
 					values: ['public', 'my_table', 'id', 3, 'json', { test: 5 }, 'foo', 'data 3'],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
+	});
+
+	it('should handle type validation errors with continueOnFail=true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'update',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				mode: 'list',
+				value: 'my_table',
+			},
+			columnToMatchOn: 'id',
+			'columns.mappingMode': 'defineBelow',
+			valuesToSend: {
+				values: [
+					{
+						column: 'id',
+						value: '1',
+					},
+				],
+			},
+			options: {
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		];
+		const error = new Error('Test error');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters);
+		fakeExecuteFunction.continueOnFail = () => true;
+		const originalGetNodeParameter = fakeExecuteFunction.getNodeParameter;
+		fakeExecuteFunction.getNodeParameter = ((
+			parameterName: string,
+			_itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) => {
+			if (parameterName === 'columns.value') {
+				throw error;
+			}
+
+			return originalGetNodeParameter(parameterName, _itemIndex, fallbackValue, options);
+		}) as typeof fakeExecuteFunction.getNodeParameter;
+
+		const result = await update.execute.call(
+			fakeExecuteFunction,
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(result).toEqual([
+			{
+				json: { error },
+				pairedItem: { item: 0 },
+			},
+		]);
 	});
 });
 
@@ -1186,7 +1300,6 @@ describe('Test PostgresV2, upsert operation', () => {
 					],
 				},
 			],
-			items,
 			nodeOptions,
 		);
 	});
@@ -1299,9 +1412,73 @@ describe('Test PostgresV2, upsert operation', () => {
 					],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
+	});
+
+	it('should handle type validation errors with continueOnFail=true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				mode: 'list',
+				value: 'my_table',
+			},
+			columnToMatchOn: 'id',
+			'columns.mappingMode': 'defineBelow',
+			valuesToSend: {
+				values: [
+					{
+						column: 'id',
+						value: '1',
+					},
+				],
+			},
+			options: {
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		];
+		const error = new Error('Test error');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters);
+		fakeExecuteFunction.continueOnFail = () => true;
+		const originalGetNodeParameter = fakeExecuteFunction.getNodeParameter;
+		fakeExecuteFunction.getNodeParameter = ((
+			parameterName: string,
+			_itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) => {
+			if (parameterName === 'columns.value') {
+				throw error;
+			}
+
+			return originalGetNodeParameter(parameterName, _itemIndex, fallbackValue, options);
+		}) as typeof fakeExecuteFunction.getNodeParameter;
+
+		const result = await upsert.execute.call(
+			fakeExecuteFunction,
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(result).toEqual([
+			{
+				json: { error },
+				pairedItem: { item: 0 },
+			},
+		]);
 	});
 });
 
@@ -1371,7 +1548,6 @@ describe('When matching on all columns', () => {
 					],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
@@ -1480,7 +1656,6 @@ describe('When matching on all columns', () => {
 					],
 				},
 			],
-			inputItems,
 			nodeOptions,
 		);
 	});
