@@ -25,10 +25,22 @@ function getNotionId(metadata: unknown): string | undefined {
 	return undefined;
 }
 
-/** Filter examples by notion_id or limit count */
+/** Extract categories from metadata if present */
+function getCategories(metadata: unknown): string[] | undefined {
+	if (typeof metadata === 'object' && metadata !== null && 'categories' in metadata) {
+		const categories = (metadata as { categories: unknown }).categories;
+		return Array.isArray(categories)
+			? categories.filter((c): c is string => typeof c === 'string')
+			: undefined;
+	}
+	return undefined;
+}
+
+/** Filter examples by notion_id, technique, or limit count */
 function filterExamples(
 	allExamples: Example[],
 	notionId: string | undefined,
+	technique: string | undefined,
 	maxExamples: number | undefined,
 	log: EvalLogger,
 ): Example[] {
@@ -45,6 +57,33 @@ function filterExamples(
 
 		log.success(`✅ Found ${filtered.length} example(s)`);
 		log.verbose(`Metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
+		return filtered;
+	}
+
+	if (technique) {
+		log.warn(`🔍 Filtering by technique: ${technique}`);
+		const filtered = allExamples.filter((e) => {
+			const categories = getCategories(e.metadata);
+			return categories?.includes(technique);
+		});
+
+		if (filtered.length === 0) {
+			const availableTechniques = new Set<string>();
+			for (const example of allExamples) {
+				const categories = getCategories(example.metadata);
+				if (categories) {
+					for (const category of categories) {
+						availableTechniques.add(category);
+					}
+				}
+			}
+			throw new Error(
+				`No examples found with technique: ${technique}. Available techniques: ${Array.from(availableTechniques).sort().join(', ')}`,
+			);
+		}
+
+		log.success(`✅ Found ${filtered.length} example(s) with technique "${technique}"`);
+		log.verbose(`First example metadata: ${JSON.stringify(filtered[0].metadata, null, 2)}`);
 		return filtered;
 	}
 
@@ -183,6 +222,7 @@ function displayLocalResults(
 export interface PairwiseEvaluationOptions {
 	repetitions?: number;
 	notionId?: string;
+	technique?: string;
 	numJudges?: number;
 	numGenerations?: number;
 	verbose?: boolean;
@@ -202,6 +242,7 @@ export async function runPairwiseLangsmithEvaluation(
 	const {
 		repetitions = DEFAULTS.REPETITIONS,
 		notionId,
+		technique,
 		numJudges = DEFAULTS.NUM_JUDGES,
 		numGenerations = DEFAULTS.NUM_GENERATIONS,
 		verbose = false,
@@ -256,7 +297,7 @@ export async function runPairwiseLangsmithEvaluation(
 		}
 		log.verbose(`📊 Total examples in dataset: ${allExamples.length}`);
 
-		const data = filterExamples(allExamples, notionId, maxExamples, log);
+		const data = filterExamples(allExamples, notionId, technique, maxExamples, log);
 		log.info(`➔ Running ${data.length} example(s) × ${repetitions} rep(s)`);
 
 		// Create target (does all work) and evaluator (extracts pre-computed metrics)
