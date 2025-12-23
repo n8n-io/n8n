@@ -137,7 +137,7 @@ onMounted(() => {
 const selectedOption = ref<'scratch' | 'import'>('scratch');
 
 const proceedFromSelect = async () => {
-	if (!selectedOption.value || !dataTableName.value) return;
+	if (!selectedOption.value || !dataTableName.value || isLoading.value) return;
 
 	if (selectedOption.value === 'scratch') {
 		await onSubmit();
