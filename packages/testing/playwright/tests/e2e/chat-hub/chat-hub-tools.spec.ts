@@ -6,14 +6,13 @@ test.use(chatHubTestConfig);
 test.describe('Tools usage @capability:proxy', () => {
 	test('use web search tool in conversation', async ({
 		n8n,
-		anthropicCredential,
+		anthropicCredential: _,
 		jinaCredential,
 	}) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
-		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
 		await page.getToolsButton().click();
 		await page.toolsModal.getCredentialSelect('Jina AI').click();

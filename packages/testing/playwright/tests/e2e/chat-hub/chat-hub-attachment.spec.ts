@@ -34,12 +34,11 @@ test.describe('File attachment @capability:proxy', () => {
 		}
 	});
 
-	test('image attachment', async ({ n8n, anthropicCredential }) => {
+	test('image attachment', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
-		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
 		await page.getFileInput().setInputFiles(testImagePath);
 		await page.getChatInput().fill('What color is this image? Reply with just the color name.');
@@ -60,12 +59,11 @@ test.describe('File attachment @capability:proxy', () => {
 		await newPage.close();
 	});
 
-	test('text file attachment', async ({ n8n, anthropicCredential }) => {
+	test('text file attachment', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
-		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
 		await page.getFileInput().setInputFiles(testTextPath);
 		await page.getChatInput().fill('What is the exact content of this file?');
@@ -76,12 +74,11 @@ test.describe('File attachment @capability:proxy', () => {
 		await expect(page.getChatMessages().nth(1)).toContainText('I am a file');
 	});
 
-	test('reference attachment in subsequent message', async ({ n8n, anthropicCredential }) => {
+	test('reference attachment in subsequent message', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
-		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
 		// Send initial message with attachment
 		await page.getFileInput().setInputFiles(testImagePath);

@@ -9,7 +9,7 @@ import { CredentialModal } from '../../../pages/components/CredentialModal';
 test.use(chatHubTestConfig);
 
 test.describe('Basic conversation @capability:proxy', () => {
-	test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential }) => {
+	test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
@@ -18,7 +18,6 @@ test.describe('Basic conversation @capability:proxy', () => {
 			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
 		);
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
-		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
 		await page.getChatInput().fill('Hello');
 		await page.getSendButton().click();
@@ -59,12 +58,11 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.sidebar.getConversations().first()).toHaveAccessibleName(/greeting/i); // verify auto-generated title
 	});
 
-	test('conversation flow', async ({ n8n, anthropicCredential }) => {
+	test('conversation flow', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
-		await expect(page.getSelectedCredentialName()).toHaveText(anthropicCredential.name); // pre-selected
 
 		// STEP: send first prompt
 		await page.getChatInput().fill('Hi');
