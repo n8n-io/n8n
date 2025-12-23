@@ -181,7 +181,7 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(data: CreateCsrfStateData): [string, string] {
+	createCsrfState(data: CreateCsrfStateData): [string, string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfState = {
@@ -189,8 +189,15 @@ export class OauthService {
 			createdAt: Date.now(),
 			...data,
 		};
+
+		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
 		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
-		return [csrfSecret, encryptedState];
+		return [csrfSecret, encryptedState, base64State];
+	}
+
+	encryptBase64EncodedState(base64EncodedState: string): string {
+		const state = Buffer.from(base64EncodedState, 'base64').toString();
+		return this.cipher.encrypt(state);
 	}
 
 	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
@@ -209,7 +216,8 @@ export class OauthService {
 			return decoded;
 		}
 
-		if (decoded.userId !== req.user?.id) {
+		// if we skip auth on oauth callback, we cannot validate user id
+		if (!skipAuthOnOAuthCallback && decoded.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
 
@@ -369,11 +377,11 @@ export class OauthService {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState(csrfData);
+		const [csrfSecret, _, base64State] = this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
-			state,
+			state: base64State,
 		};
 
 		if (oauthCredentials.authQueryParameters) {
@@ -381,6 +389,8 @@ export class OauthService {
 		}
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+
+		oAuthOptions.state = this.encryptBase64EncodedState(oAuthOptions.state);
 
 		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
@@ -576,6 +586,7 @@ export class OauthService {
 		credentialResolverId: string,
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(oauthTokenData, ['csrfSecret']);
 
 		const credentialStoreMetadata: CredentialStoreMetadata = {
 			id: credential.id,

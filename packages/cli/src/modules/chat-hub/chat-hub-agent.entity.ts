@@ -3,6 +3,21 @@ import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { INode } from 'n8n-workflow';
 
+export interface IChatHubAgent {
+	id: string;
+	createdAt: Date;
+	updatedAt: Date;
+	name: string;
+	description: string | null;
+	icon: AgentIconOrEmoji | null;
+	systemPrompt: string;
+	ownerId: string;
+	credentialId: string | null;
+	provider: ChatHubLLMProvider;
+	model: string;
+	tools: INode[];
+}
+
 @Entity({ name: 'chat_hub_agents' })
 export class ChatHubAgent extends WithTimestamps {
 	@PrimaryGeneratedColumn('uuid')

@@ -699,4 +699,68 @@ describe('useNodeHelpers()', () => {
 			expect(hints).toHaveLength(1);
 		});
 	});
+
+	describe('updateNodeParameterIssues()', () => {
+		it('should pass nodeTypeDescription to validation and respect @feature conditions', () => {
+			const nodeTypeWithFeatures: INodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				group: ['transform'],
+				version: [1, 2],
+				description: 'Test node',
+				defaults: { name: 'Test' },
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				features: {
+					testFeature: { '@version': [{ _cnd: { gte: 2 } }] },
+				},
+				properties: [
+					{
+						displayName: 'Field Hidden When Feature Enabled',
+						name: 'fieldHiddenWhenFeatureOn',
+						type: 'string',
+						default: '',
+						required: true,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'testFeature' } }],
+							},
+						},
+					},
+				],
+			};
+
+			const node: INodeUi = {
+				id: 'test-node-id',
+				name: 'Test Node',
+				type: 'testNode',
+				typeVersion: 2, // Feature enabled at version >= 2, so field should be hidden
+				position: [0, 0],
+				parameters: {
+					fieldHiddenWhenFeatureOn: '', // Empty required field, but should be hidden
+				},
+			};
+
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(nodeTypeWithFeatures);
+			const getNodeParametersIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
+
+			const workflowState = useWorkflowState();
+			const { updateNodeParameterIssues } = useNodeHelpers({ workflowState });
+
+			updateNodeParameterIssues(node);
+
+			expect(getNodeParametersIssuesSpy).toHaveBeenCalledWith(
+				nodeTypeWithFeatures.properties,
+				node,
+				nodeTypeWithFeatures,
+			);
+
+			const issues = getNodeParametersIssuesSpy.mock.results[0].value as ReturnType<
+				typeof NodeHelpers.getNodeParametersIssues
+			>;
+			expect(issues).toBeNull();
+
+			getNodeParametersIssuesSpy.mockRestore();
+		});
+	});
 });
