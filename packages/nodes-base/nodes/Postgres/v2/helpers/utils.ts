@@ -627,7 +627,6 @@ export const convertArraysToPostgresFormat = (
 	return newData;
 };
 
-
 // operations use 'equal' instead of '=' because of the way expressions are handled
 // manually add '=' to allow entering it instead of 'equal'
 const conditionSet = new Set(operatorOptions.map((option) => option.value)).add('=');
@@ -658,7 +657,7 @@ export const getWhereClauses = (ctx: IExecuteFunctions, itemIndex: number): Wher
 		});
 	}
 	return whereClausesValues as WhereClause[];
-}
+};
 
 export const runQueriesAndHandleErrors = async (
 	runQueries: QueriesRunner,
