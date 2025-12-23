@@ -171,6 +171,7 @@ describe('PruningService', () => {
 				instanceType: 'main',
 				isMultiMain: true,
 			});
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
 			instanceSettings.markAsFollower.mockImplementation(() => {
 				isLeader = false;
 			});
