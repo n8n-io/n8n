@@ -1169,6 +1169,8 @@
 	"expressionModalInput.pairedItemInvalidPinnedError": "Unpin node ‘{node}’ and execute",
 	"expressionModalInput.pairedItemError": "Can’t determine which item to use",
 	"expressionModalInput.pairedItemError.noRunData": "Can't determine which item to use - execute node for more info",
+	"expressionModalInput.dynamicArrayExpansion": "Dynamic value, will be resolved on execution",
+	"expressionModalInput.multipleArrayWildcards": "Only one [*] wildcard is allowed per expression",
 	"fixedCollectionParameter.addField": "Add Field",
 	"fixedCollectionParameter.choose": "Choose...",
 	"fixedCollectionParameter.currentlyNoItemsExist": "Currently no items exist",
