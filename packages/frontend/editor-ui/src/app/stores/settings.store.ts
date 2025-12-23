@@ -71,8 +71,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
-	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
-
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
@@ -344,7 +342,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		nodeJsVersion,
 		nodeEnv,
 		concurrency,
-		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,

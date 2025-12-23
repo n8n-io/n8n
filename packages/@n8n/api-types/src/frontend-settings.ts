@@ -91,7 +91,6 @@ export interface FrontendSettings {
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
 	concurrency: number;
-	isNativePythonRunnerEnabled: boolean;
 	authCookie: {
 		secure: boolean;
 	};

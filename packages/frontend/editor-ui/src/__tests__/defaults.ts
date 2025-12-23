@@ -105,7 +105,6 @@ export const defaultSettings: FrontendSettings = {
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
-	isNativePythonRunnerEnabled: false,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',

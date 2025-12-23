@@ -25,7 +25,6 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 Container.get(ExecutionsConfig).mode = 'queue';
 config.set('binaryDataManager.availableModes', 'filesystem');
 Container.get(TaskRunnersConfig).enabled = true;
-Container.get(TaskRunnersConfig).isNativePythonRunnerEnabled = false;
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const communityPackagesService = mockInstance(CommunityPackagesService);

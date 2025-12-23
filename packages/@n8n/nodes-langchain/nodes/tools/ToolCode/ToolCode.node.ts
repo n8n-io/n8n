@@ -4,9 +4,7 @@ import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
-import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import { PythonTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonTaskRunnerSandbox';
-import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
 	ExecutionError,
@@ -59,7 +57,6 @@ function getTool(
 
 	const runnersConfig = Container.get(TaskRunnersConfig);
 	const isJsRunnerEnabled = runnersConfig.enabled;
-	const isPyRunnerEnabled = runnersConfig.isNativePythonRunnerEnabled;
 
 	const { typeVersion } = node;
 	const name =
@@ -79,42 +76,34 @@ function getTool(
 		code = ctx.getNodeParameter('pythonCode', itemIndex) as string;
 	}
 
-	// @deprecated - TODO: Remove this after a new python runner is implemented
-	const getSandbox = (query: string | IDataObject, index = 0) => {
-		const context = getSandboxContext.call(ctx, index);
-		context.query = query;
-
-		let sandbox: Sandbox;
-		if (language === 'javaScript') {
-			sandbox = new JavaScriptSandbox(context, code, ctx.helpers);
-		} else {
-			sandbox = new PythonSandbox(context, code, ctx.helpers);
-		}
-
-		sandbox.on(
-			'output',
-			workflowMode === 'manual'
-				? ctx.sendMessageToUI.bind(ctx)
-				: (...args: unknown[]) =>
-						console.log(`[Workflow "${ctx.getWorkflow().id}"][Node "${node.name}"]`, ...args),
-		);
-		return sandbox;
-	};
-
 	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
-		if (language === 'javaScript' && isJsRunnerEnabled) {
-			const sandbox = new JsTaskRunnerSandbox(
-				code,
-				'runOnceForAllItems',
-				workflowMode,
-				ctx,
-				undefined,
-				{
-					query,
-				},
-			);
-			return await sandbox.runCodeForTool();
-		} else if (language === 'python' && isPyRunnerEnabled) {
+		if (language === 'javaScript') {
+			if (isJsRunnerEnabled) {
+				const sandbox = new JsTaskRunnerSandbox(
+					code,
+					'runOnceForAllItems',
+					workflowMode,
+					ctx,
+					undefined,
+					{
+						query,
+					},
+				);
+				return await sandbox.runCodeForTool();
+			} else {
+				const context = getSandboxContext.call(ctx, itemIndex);
+				context.query = query;
+				const sandbox = new JavaScriptSandbox(context, code, ctx.helpers);
+				sandbox.on(
+					'output',
+					workflowMode === 'manual'
+						? ctx.sendMessageToUI.bind(ctx)
+						: (...args: unknown[]) =>
+								console.log(`[Workflow "${ctx.getWorkflow().id}"][Node "${node.name}"]`, ...args),
+				);
+				return await sandbox.runCode<string>();
+			}
+		} else {
 			const sandbox = new PythonTaskRunnerSandbox(
 				code,
 				'runOnceForAllItems',
@@ -125,10 +114,6 @@ function getTool(
 				},
 			);
 			return await sandbox.runCodeForTool();
-		} else {
-			// use old vm2-based sandbox when runners disabled
-			const sandbox = getSandbox(query, itemIndex);
-			return await sandbox.runCode<string>();
 		}
 	};
 
