@@ -250,7 +250,7 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.getUsersSelect().click();
 
 			const sharingDropdown = n8n.credentials.credentialModal.getVisibleDropdown();
-			await expect(sharingDropdown.locator('li')).toHaveCount(5);
+			await expect(sharingDropdown.locator('li')).toHaveCount(6);
 			await expect(sharingDropdown.getByText('Development')).toBeVisible();
 
 			await sharingDropdown.getByText('Development').click();
