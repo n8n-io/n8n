@@ -4,6 +4,7 @@ import FixedCollectionParameterNew, { type Props } from './FixedCollectionParame
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 
@@ -535,6 +536,366 @@ describe('FixedCollectionParameterNew.vue', () => {
 			});
 
 			expect(getByTestId('fixed-collection-add-top-level-dropdown')).toBeInTheDocument();
+		});
+	});
+
+	describe('hideOptionalFields mode', () => {
+		const hideOptionalFieldsProps: Props = {
+			parameter: {
+				displayName: 'Form Fields',
+				name: 'formFields',
+				placeholder: 'Add Form Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+					hideOptionalFields: true,
+					addOptionalFieldButtonText: 'Add Attributes',
+				},
+				default: {},
+				options: [
+					{
+						name: 'values',
+						displayName: 'Values',
+						values: [
+							{
+								displayName: 'Label',
+								name: 'fieldLabel',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Field Type',
+								name: 'fieldType',
+								type: 'options',
+								default: 'text',
+								required: true,
+								options: [
+									{ name: 'Text', value: 'text' },
+									{ name: 'Number', value: 'number' },
+								],
+							},
+							{
+								displayName: 'Placeholder',
+								name: 'placeholder',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Required Field',
+								name: 'requiredField',
+								type: 'boolean',
+								default: false,
+							},
+							{
+								displayName: 'Date format notice',
+								name: 'dateNotice',
+								type: 'notice',
+								default: '',
+							},
+							{
+								displayName: 'Min Value',
+								name: 'minValue',
+								type: 'number',
+								default: 0,
+								typeOptions: {
+									showEvenWhenOptional: true,
+								},
+								displayOptions: {
+									show: {
+										fieldType: ['number'],
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+			path: 'parameters.formFields',
+			nodeValues: {
+				parameters: {
+					formFields: {
+						values: [{ fieldLabel: 'Name', fieldType: 'text' }],
+					},
+				},
+			},
+			values: {
+				values: [{ fieldLabel: 'Name', fieldType: 'text' }],
+			},
+			isReadOnly: false,
+			isNested: false,
+		};
+
+		const renderHideOptionalFields = createComponentRenderer(FixedCollectionParameterNew, {
+			props: hideOptionalFieldsProps,
+		});
+
+		it('renders the optional values picker when hideOptionalFields is true', () => {
+			const { getByTestId } = renderHideOptionalFields();
+			expect(getByTestId('fixed-collection-add-property')).toBeInTheDocument();
+		});
+
+		it('shows required values and notices by default', async () => {
+			const { container } = renderHideOptionalFields();
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(3);
+			});
+		});
+
+		it('shows optional values in the picker dropdown', async () => {
+			const { getByTestId } = renderHideOptionalFields();
+			const picker = getByTestId('fixed-collection-add-property');
+			expect(picker).toBeInTheDocument();
+
+			const button = picker.querySelector('button');
+			expect(button).toBeInTheDocument();
+
+			if (button) {
+				await userEvent.click(button);
+			}
+
+			await waitFor(() => {
+				// N8nActionDropdown renders items with data-test-id like "action-*"
+				const options = document.querySelectorAll('[class*="itemContainer"]');
+				expect(options.length).toBe(2);
+			});
+		});
+
+		it('emits valueChanged when toggling an optional value on', async () => {
+			const { getByTestId, emitted } = renderHideOptionalFields();
+			const picker = getByTestId('fixed-collection-add-property');
+			const button = picker.querySelector('button');
+
+			if (button) {
+				await userEvent.click(button);
+			}
+
+			await waitFor(async () => {
+				const options = document.querySelectorAll('[class*="itemContainer"]');
+				const placeholderOption = Array.from(options).find((opt) =>
+					opt.textContent?.includes('Placeholder'),
+				);
+				expect(placeholderOption).toBeDefined();
+
+				if (placeholderOption) {
+					await userEvent.click(placeholderOption);
+				}
+			});
+
+			await waitFor(() => {
+				const events = emitted('valueChanged');
+				expect(events).toBeDefined();
+				expect(events.length).toBeGreaterThan(0);
+			});
+		});
+
+		it('initializes with optional values visible when they have non-default data', async () => {
+			const propsWithSavedValue: Props = {
+				...hideOptionalFieldsProps,
+				nodeValues: {
+					parameters: {
+						formFields: {
+							values: [
+								{
+									fieldLabel: 'Name',
+									fieldType: 'text',
+									placeholder: 'Enter your name',
+								},
+							],
+						},
+					},
+				},
+				values: {
+					values: [
+						{
+							fieldLabel: 'Name',
+							fieldType: 'text',
+							placeholder: 'Enter your name',
+						},
+					],
+				},
+			};
+
+			const { container } = renderHideOptionalFields({ props: propsWithSavedValue });
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(4);
+			});
+		});
+
+		it('shows optional field when array value differs from array default (deep equality)', async () => {
+			const propsWithArrayField: Props = {
+				parameter: {
+					displayName: 'Config',
+					name: 'config',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+						hideOptionalFields: true,
+					},
+					default: {},
+					options: [
+						{
+							name: 'values',
+							displayName: 'Values',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									required: true,
+								},
+								{
+									displayName: 'Tags',
+									name: 'tags',
+									type: 'multiOptions',
+									default: [],
+									options: [
+										{ name: 'Tag A', value: 'a' },
+										{ name: 'Tag B', value: 'b' },
+									],
+								},
+							],
+						},
+					],
+				},
+				path: 'parameters.config',
+				nodeValues: {
+					parameters: {
+						config: {
+							values: [
+								{
+									name: 'Test',
+									tags: ['a', 'b'],
+								},
+							],
+						},
+					},
+				},
+				values: {
+					values: [
+						{
+							name: 'Test',
+							tags: ['a', 'b'],
+						},
+					],
+				},
+				isReadOnly: false,
+				isNested: false,
+			};
+
+			const renderWithArrayField = createComponentRenderer(FixedCollectionParameterNew, {
+				props: propsWithArrayField,
+			});
+
+			const { container } = renderWithArrayField();
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(2);
+			});
+		});
+
+		it('does not show optional field when array value equals array default (deep equality)', async () => {
+			const propsWithArrayFieldDefault: Props = {
+				parameter: {
+					displayName: 'Config',
+					name: 'config',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+						hideOptionalFields: true,
+					},
+					default: {},
+					options: [
+						{
+							name: 'values',
+							displayName: 'Values',
+							values: [
+								{
+									displayName: 'Name',
+									name: 'name',
+									type: 'string',
+									default: '',
+									required: true,
+								},
+								{
+									displayName: 'Tags',
+									name: 'tags',
+									type: 'multiOptions',
+									default: [],
+									options: [
+										{ name: 'Tag A', value: 'a' },
+										{ name: 'Tag B', value: 'b' },
+									],
+								},
+							],
+						},
+					],
+				},
+				path: 'parameters.config',
+				nodeValues: {
+					parameters: {
+						config: {
+							values: [
+								{
+									name: 'Test',
+									tags: [],
+								},
+							],
+						},
+					},
+				},
+				values: {
+					values: [
+						{
+							name: 'Test',
+							tags: [],
+						},
+					],
+				},
+				isReadOnly: false,
+				isNested: false,
+			};
+
+			const renderWithArrayFieldDefault = createComponentRenderer(FixedCollectionParameterNew, {
+				props: propsWithArrayFieldDefault,
+			});
+
+			const { container } = renderWithArrayFieldDefault();
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(1);
+			});
+		});
+
+		it('shows fields with showEvenWhenOptional when displayOptions conditions are met', async () => {
+			const propsWithAutoShow: Props = {
+				...hideOptionalFieldsProps,
+				nodeValues: {
+					parameters: {
+						formFields: {
+							values: [{ fieldLabel: 'Age', fieldType: 'number' }],
+						},
+					},
+				},
+				values: {
+					values: [{ fieldLabel: 'Age', fieldType: 'number' }],
+				},
+			};
+
+			const { container } = renderHideOptionalFields({ props: propsWithAutoShow });
+
+			await waitFor(() => {
+				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
+				expect(parameterItems.length).toBe(4);
+			});
 		});
 	});
 });
