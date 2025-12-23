@@ -9,7 +9,7 @@ import { nanoid } from 'nanoid';
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
-interface CredentialResponse {
+export interface CredentialResponse {
 	id: string;
 	name: string;
 	type: string;

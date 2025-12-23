@@ -372,6 +372,7 @@ const unsafeObjectProperties = new Set([
 	'mainModule',
 	'binding',
 	'_load',
+	'prepareStackTrace',
 ]);
 
 /**
