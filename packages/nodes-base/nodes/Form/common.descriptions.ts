@@ -578,6 +578,10 @@ export const formFieldsDynamic: INodeProperties = {
 		sortable: true,
 		hideOptionalFields: true,
 		addOptionalFieldButtonText: 'Add Attributes',
+		fixedCollection: {
+			itemTitle:
+				'={{ $collection.item.properties.find(p => p.name === "fieldType").options.find(o => o.value === $collection.item.value.fieldType).name }}',
+		},
 	},
 	options: formOptions,
 };
