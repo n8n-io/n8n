@@ -3112,6 +3112,7 @@ export type FieldTypeMap = {
 	url: string;
 	jwt: string;
 	'form-fields': FormFieldsParameter;
+	binary: string;
 };
 
 export type FieldType = keyof FieldTypeMap;
