@@ -36,7 +36,7 @@ const emojiRanges = [
 type Props = {
 	buttonTooltip: string;
 	buttonSize?: 'small' | 'large';
-	isReadOnly: boolean;
+	isReadOnly?: boolean;
 };
 
 const { t } = useI18n();
