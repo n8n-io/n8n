@@ -1487,7 +1487,7 @@ export class ChatHubService {
 
 	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
 		const agent = session.workflow
-			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow)
+			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow, [])
 			: session.agent
 				? this.chatHubAgentService.convertAgentEntityToModel(session.agent)
 				: undefined;

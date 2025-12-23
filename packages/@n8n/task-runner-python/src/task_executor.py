@@ -6,6 +6,7 @@ import io
 import os
 import sys
 import logging
+from typing import cast
 
 from src.errors import (
     TaskCancelledError,
@@ -143,13 +144,15 @@ class TaskExecutor:
             returned = pipe_reader.pipe_message
 
             if "error" in returned:
-                raise TaskRuntimeError(returned["error"])
+                error_msg = cast(PipeErrorMessage, returned)
+                raise TaskRuntimeError(error_msg["error"])
 
             if "result" not in returned:
                 raise TaskResultMissingError()
 
-            result = returned["result"]
-            print_args = returned.get("print_args", [])
+            result_msg = cast(PipeResultMessage, returned)
+            result = result_msg["result"]
+            print_args = result_msg.get("print_args", [])
             assert pipe_reader.message_size is not None
             result_size_bytes = pipe_reader.message_size
 
@@ -209,7 +212,7 @@ class TaskExecutor:
 
             exec(compiled_code, globals)
 
-            result = globals[EXECUTOR_USER_OUTPUT_KEY]
+            result = cast(Items, globals[EXECUTOR_USER_OUTPUT_KEY])
             TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
         except BaseException as e:

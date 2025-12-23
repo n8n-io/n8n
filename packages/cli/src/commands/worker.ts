@@ -138,7 +138,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
 	}
 
