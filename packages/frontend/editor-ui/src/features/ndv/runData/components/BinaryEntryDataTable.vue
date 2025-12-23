@@ -32,7 +32,7 @@ const fileName = computed(() => {
 	const { fileName, fileExtension } = props.value;
 	const name = fileName ?? 'file';
 	if (name?.includes('.')) return name;
-	return `${name}.${fileExtension}`;
+	return fileExtension ? `${name}.${fileExtension}` : name;
 });
 
 const fileUrl = computed(() => {
@@ -187,7 +187,7 @@ const fileIcon = computed(() => {
 	color: var(--color--text--shade-2);
 	overflow: hidden;
 	text-overflow: ellipsis;
-	white-space: wrap;
+	white-space: normal;
 }
 
 .download {

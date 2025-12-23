@@ -41,7 +41,7 @@ async function downloadBinaryData() {
 		const { id, fileName, mimeType, fileExtension } = props.binaryData;
 		const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
 		let name = fileName ?? 'file';
-		if (!name.includes('.')) {
+		if (!name.includes('.') && fileExtension) {
 			name = [name, fileExtension].join('.');
 		}
 		const response = await fetch(url);
