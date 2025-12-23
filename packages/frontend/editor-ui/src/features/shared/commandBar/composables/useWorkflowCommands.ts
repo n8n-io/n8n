@@ -77,7 +77,7 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value) ||
-		workflowsStore.isNewWorkflow;
+		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(

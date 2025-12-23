@@ -42,10 +42,17 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
-import type { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
@@ -57,6 +64,7 @@ import {
 	PROVIDER_NODE_TYPE_MAP,
 	TOOLS_AGENT_NODE_MIN_VERSION,
 } from './chat-hub.constants';
+import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
@@ -68,14 +76,6 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
-
-import { ActiveExecutions } from '@/active-executions';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { ChatHubModelsService } from './chat-hub.models.service';
 
 @Service()
 export class ChatHubService {
@@ -467,17 +467,13 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
-			model.provider,
-			credentials,
-			trx,
-		);
+		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return await this.chatHubWorkflowService.createChatWorkflow(
 			user.id,
 			sessionId,
-			credential.projectId,
+			projectId,
 			history,
 			message,
 			attachments,
@@ -668,12 +664,9 @@ export class ChatHubService {
 	}
 
 	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
-		const session = await this.getChatSession(user, sessionId);
-		if (!session) {
-			throw new NotFoundError('Chat session not found');
-		}
+		await this.ensureConversation(user.id, sessionId);
 
-		const message = await this.getChatMessage(session.id, messageId, [
+		const message = await this.getChatMessage(sessionId, messageId, [
 			'execution',
 			'execution.workflow',
 		]);
@@ -945,7 +938,7 @@ export class ChatHubService {
 		try {
 			const title = await this.runTitleWorkflowAndGetTitle(user, workflowData, executionData);
 			if (title) {
-				await this.sessionRepository.updateChatTitle(sessionId, title);
+				await this.sessionRepository.updateChatSession(sessionId, { title });
 			}
 		} catch (error: unknown) {
 			if (error instanceof Error) {
@@ -966,7 +959,7 @@ export class ChatHubService {
 		incomingModel: ChatHubConversationModel,
 	) {
 		return await this.messageRepository.manager.transaction(async (trx) => {
-			const { resolvedCredentials, resolvedModel, credential } =
+			const { resolvedCredentials, resolvedModel, credentialId, projectId } =
 				await this.resolveCredentialsAndModelForTitle(
 					user,
 					incomingModel,
@@ -974,18 +967,18 @@ export class ChatHubService {
 					trx,
 				);
 
-			if (!credential) {
+			if (!credentialId || !projectId) {
 				throw new BadRequestError('Could not determine credentials for title generation');
 			}
 
 			this.logger.debug(
-				`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${jsonStringify(resolvedModel)}`,
+				`Using credential ID ${credentialId} for title generation in project ${projectId}, model ${jsonStringify(resolvedModel)}`,
 			);
 
 			return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
 				user.id,
 				sessionId,
-				credential.projectId,
+				projectId,
 				humanMessage,
 				attachments,
 				resolvedCredentials,
@@ -1003,7 +996,8 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		if (model.provider === 'n8n') {
 			return await this.resolveFromN8nWorkflow(user, model, trx);
@@ -1013,17 +1007,18 @@ export class ChatHubService {
 			return await this.resolveFromCustomAgent(user, model, trx);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credentialId = this.chatHubCredentialsService.findProviderCredential(
 			model.provider,
 			credentials,
-			trx,
 		);
+
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return {
 			resolvedCredentials: credentials,
 			resolvedModel: model,
-			credential,
+			credentialId,
+			projectId,
 		};
 	}
 
@@ -1034,7 +1029,8 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -1077,11 +1073,12 @@ export class ChatHubService {
 			);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureWorkflowCredentials(
-			modelNode.provider,
-			llmCredentials,
-			workflowId,
-		);
+		const { credentialId, projectId } =
+			await this.chatHubCredentialsService.findWorkflowCredentialAndProject(
+				modelNode.provider,
+				llmCredentials,
+				workflowId,
+			);
 
 		const resolvedModel: ChatHubConversationModel = {
 			provider: modelNode.provider,
@@ -1090,12 +1087,12 @@ export class ChatHubService {
 
 		const resolvedCredentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[modelNode.provider]]: {
-				id: credential.id,
+				id: credentialId,
 				name: '',
 			},
 		};
 
-		return { resolvedCredentials, resolvedModel, credential };
+		return { resolvedCredentials, resolvedModel, credentialId, projectId };
 	}
 
 	private findSupportedLLMNodes(nodes: INode[]) {
@@ -1118,15 +1115,15 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
 		}
 
-		const credentialId = agent.credentialId;
-		if (!credentialId) {
+		if (!agent.credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
@@ -1137,19 +1134,19 @@ export class ChatHubService {
 
 		const resolvedCredentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
-				id: credentialId,
+				id: agent.credentialId,
 				name: '',
 			},
 		};
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credentialId = this.chatHubCredentialsService.findProviderCredential(
 			agent.provider,
 			resolvedCredentials,
-			trx,
 		);
 
-		return { resolvedCredentials, resolvedModel, credential };
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+
+		return { resolvedCredentials, resolvedModel, credentialId, projectId };
 	}
 
 	private async runTitleWorkflowAndGetTitle(
@@ -1272,6 +1269,7 @@ export class ChatHubService {
 				id: sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
+				lastMessageAt: new Date(),
 				agentName,
 				tools,
 				credentialId,
@@ -1316,6 +1314,16 @@ export class ChatHubService {
 	}
 
 	/**
+	 * Ensures conversation exists and belongs to the user, throws otherwise
+	 * */
+	async ensureConversation(userId: string, sessionId: string, trx?: EntityManager): Promise<void> {
+		const sessionExists = await this.sessionRepository.existsById(sessionId, userId, trx);
+		if (!sessionExists) {
+			throw new NotFoundError('Chat session not found');
+		}
+	}
+
+	/**
 	 * Get a single conversation with messages and ready to render timeline of latest messages
 	 * */
 	async getConversation(userId: string, sessionId: string): Promise<ChatHubConversationResponse> {
@@ -1324,7 +1332,7 @@ export class ChatHubService {
 			throw new NotFoundError('Chat session not found');
 		}
 
-		const messages = await this.messageRepository.getManyBySessionId(sessionId);
+		const messages = session.messages ?? [];
 
 		return {
 			session: this.convertSessionEntityToDto(session),
@@ -1392,19 +1400,6 @@ export class ChatHubService {
 	}
 
 	/**
-	 * Updates the title of a session
-	 */
-	async updateSessionTitle(userId: string, sessionId: ChatSessionId, title: string) {
-		const session = await this.sessionRepository.getOneById(sessionId, userId);
-
-		if (!session) {
-			throw new NotFoundError('Session not found');
-		}
-
-		return await this.sessionRepository.updateChatTitle(sessionId, title);
-	}
-
-	/**
 	 * Updates a session with the provided fields
 	 */
 	async updateSession(
@@ -1412,14 +1407,10 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		updates: ChatHubUpdateConversationRequest,
 	) {
-		const session = await this.sessionRepository.getOneById(sessionId, user.id);
-
-		if (!session) {
-			throw new NotFoundError('Session not found');
-		}
+		await this.ensureConversation(user.id, sessionId);
 
 		// Prepare the actual updates to be sent to the repository
-		const sessionUpdates: Partial<ChatHubSession> = {};
+		const sessionUpdates: Partial<IChatHubSession> = {};
 
 		if (updates.agent) {
 			const model = updates.agent.model;
@@ -1453,14 +1444,11 @@ export class ChatHubService {
 	 * Deletes a session
 	 */
 	async deleteSession(userId: string, sessionId: ChatSessionId) {
-		const session = await this.sessionRepository.getOneById(sessionId, userId);
-
-		if (!session) {
-			throw new NotFoundError('Session not found');
-		}
-
-		await this.chatHubAttachmentService.deleteAllBySessionId(sessionId);
-		await this.sessionRepository.deleteChatHubSession(sessionId);
+		await this.messageRepository.manager.transaction(async (trx) => {
+			await this.ensureConversation(userId, sessionId, trx);
+			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
+			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
+		});
 	}
 
 	private async ensureValidModel(user: User, model: ChatHubConversationModel) {
@@ -1499,7 +1487,7 @@ export class ChatHubService {
 
 	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
 		const agent = session.workflow
-			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow)
+			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow, [])
 			: session.agent
 				? this.chatHubAgentService.convertAgentEntityToModel(session.agent)
 				: undefined;

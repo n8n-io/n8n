@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -885,6 +885,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
+    "@thednp/dommatrix": "^2.0.12",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",

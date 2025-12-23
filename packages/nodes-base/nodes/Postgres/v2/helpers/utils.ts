@@ -13,6 +13,8 @@ import type {
 	EnumInfo,
 	PgpClient,
 	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
 	QueryMode,
 	QueryValues,
 	QueryWithValues,
@@ -57,13 +59,9 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 	}));
 }
 
-export function prepareErrorItem(
-	items: INodeExecutionData[],
-	error: IDataObject | NodeOperationError | Error,
-	index: number,
-) {
+export function prepareErrorItem(error: IDataObject | NodeOperationError | Error, index: number) {
 	return {
-		json: { message: error.message, item: { ...items[index].json }, error: { ...error } },
+		json: { error: { ...error } },
 		pairedItem: { item: index },
 	} as INodeExecutionData;
 }
@@ -244,7 +242,7 @@ export function configureQueryRunner(
 	pgp: PgpClient,
 	db: PgpDatabase,
 ) {
-	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
+	return async (queries: QueryWithValues[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 		const emptyReturnData: INodeExecutionData[] =
 			options.operation === 'select' ? [] : [{ json: { success: true } }];
@@ -322,7 +320,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
-						result.push(prepareErrorItem(items, error, i));
+						result.push(prepareErrorItem(error, i));
 						return result;
 					}
 				}
@@ -362,7 +360,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
-						result.push(prepareErrorItem(items, error, i));
+						result.push(prepareErrorItem(error, i));
 					}
 				}
 				return result;
@@ -626,4 +624,34 @@ export const convertArraysToPostgresFormat = (
 	}
 
 	return newData;
+};
+
+export const runQueriesAndHandleErrors = async (
+	runQueries: QueriesRunner,
+	queries: QueryWithValues[],
+	nodeOptions: PostgresNodeOptions,
+	errorItemsMap: Map<number, INodeExecutionData>,
+) => {
+	// if we have any errors and we are not running the queries independently
+	// (i.e. `transaction` or `single` mode), we don't want to execute any
+	// queries that didn't error, since the operation should be atomic
+	if (errorItemsMap.size > 0 && nodeOptions.queryBatching !== 'independently') {
+		return Array.from(errorItemsMap.values());
+	}
+
+	const returnData = await runQueries(queries, nodeOptions);
+
+	const total = returnData.length + errorItemsMap.size;
+	const result = new Array<INodeExecutionData>(total);
+	let returnDataIndex = 0;
+	for (let i = 0; i < total; i++) {
+		const errorItem = errorItemsMap.get(i);
+		if (errorItem) {
+			result[i] = errorItem;
+		} else if (returnDataIndex < returnData.length) {
+			result[i] = returnData[returnDataIndex++];
+		}
+	}
+
+	return result;
 };

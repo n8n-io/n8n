@@ -18,6 +18,7 @@ export {
 	type ChatHubN8nModel,
 	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
+	type ChatHubModuleSettings,
 	chatHubProviderSchema,
 	chatHubLLMProviderSchema,
 	type ChatHubProvider,

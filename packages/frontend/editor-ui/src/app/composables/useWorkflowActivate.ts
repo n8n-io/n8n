@@ -3,7 +3,6 @@ import { useStorage } from '@/app/composables/useStorage';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -49,7 +48,9 @@ export function useWorkflowActivate() {
 		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
 
 		let currWorkflowId: string | undefined = workflowId;
-		if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Check if workflow needs to be saved (doesn't exist in store yet)
+		const existingWorkflow = currWorkflowId ? workflowsStore.workflowsById[currWorkflowId] : null;
+		if (!currWorkflowId || !existingWorkflow?.id) {
 			const saved = await workflowSaving.saveCurrentWorkflow();
 			if (!saved) {
 				updatingWorkflowActivation.value = false;
