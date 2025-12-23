@@ -204,6 +204,7 @@ describe('BinaryEntryDataTable.vue', () => {
 			vi.stubGlobal(
 				'fetch',
 				vi.fn().mockResolvedValue({
+					ok: true,
 					blob: vi.fn().mockResolvedValue(mockBlob),
 				}),
 			);
