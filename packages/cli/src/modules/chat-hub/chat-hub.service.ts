@@ -788,44 +788,6 @@ export class ChatHubService {
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
 	) {
-		// Capture the streaming response as it's being generated to save
-		// partial messages in the database when generation gets cancelled.
-		// let executionId: string | undefined = undefined;
-
-		// const transform = (text: string) => {
-		// 	const trimmed = text.trim();
-		// 	if (!trimmed) return text;
-
-		// 	let chunk: StructuredChunk | null = null;
-		// 	try {
-		// 		chunk = jsonParse<StructuredChunk>(trimmed);
-		// 	} catch {
-		// 		return text;
-		// 	}
-
-		// 	const message = aggregator.ingest(chunk);
-		// 	const enriched: EnrichedStructuredChunk = {
-		// 		...chunk,
-		// 		metadata: {
-		// 			...chunk.metadata,
-		// 			messageId: message.id,
-		// 			previousMessageId: message.previousMessageId,
-		// 			retryOfMessageId: message.retryOfMessageId,
-		// 			executionId: executionId ? +executionId : null,
-		// 		},
-		// 	};
-
-		// 	return jsonStringify(enriched) + '\n';
-		// };
-
-		// const stream = interceptResponseWrites(res, transform);
-
-		// stream.on('finish', aggregator.finalizeAll);
-		// stream.on('close', aggregator.finalizeAll);
-
-		// stream.writeHead(200, JSONL_STREAM_HEADERS);
-		// stream.flushHeaders();
-
 		const running = await this.workflowExecutionService.executeChatWorkflow(
 			user,
 			workflowData,
@@ -842,17 +804,15 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
-		this.sendBeginResponse(res, executionId, messageId, previousMessageId, retryOfMessageId);
-		await this.saveAIMessage({
-			id: messageId,
-			content: '',
-			sessionId,
+		await this.beginResponse(
+			res,
 			executionId,
+			messageId,
+			sessionId,
 			model,
 			previousMessageId,
 			retryOfMessageId,
-			status: 'running',
-		});
+		);
 
 		await this.waitForExecutionCompletion(executionId);
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
@@ -867,25 +827,17 @@ export class ChatHubService {
 
 		const message = this.getMessage(execution);
 		const lastNode = getLastNodeExecuted(execution);
-
-		if (message === undefined) return;
-
 		const status = 'success';
 
-		this.sendResponseContent(
+		await this.endResponse(
 			res,
-			message,
+			message ?? '',
 			status,
 			executionId,
 			messageId,
 			previousMessageId,
 			retryOfMessageId,
 		);
-		this.sendEndResponse(res, executionId, messageId, previousMessageId, retryOfMessageId);
-		await this.messageRepository.updateChatMessage(messageId, {
-			content: message,
-			status: 'success',
-		});
 
 		if (execution.status === 'waiting') {
 			if (lastNode && shouldResumeImmediately(lastNode)) {
@@ -939,10 +891,12 @@ export class ChatHubService {
 		return undefined;
 	}
 
-	private sendBeginResponse(
+	private async beginResponse(
 		res: Response,
 		executionId: string | null,
 		messageId: string,
+		sessionId: string,
+		model: ChatHubConversationModel,
 		previousMessageId: string,
 		retryOfMessageId: string | null,
 	) {
@@ -966,9 +920,20 @@ export class ChatHubService {
 
 		res.write(jsonStringify(beginChunk) + '\n');
 		res.flush();
+
+		await this.saveAIMessage({
+			id: messageId,
+			content: '',
+			sessionId,
+			executionId: executionId ?? undefined,
+			model,
+			previousMessageId,
+			retryOfMessageId,
+			status: 'running',
+		});
 	}
 
-	private sendResponseContent(
+	private async endResponse(
 		res: Response,
 		content: string,
 		status: ChatHubMessageStatus,
@@ -995,15 +960,7 @@ export class ChatHubService {
 
 		res.write(jsonStringify(contentChunk) + '\n');
 		res.flush();
-	}
 
-	private sendEndResponse(
-		res: Response,
-		executionId: string | null,
-		messageId: string,
-		previousMessageId: string,
-		retryOfMessageId: string | null,
-	) {
 		const endChunk: EnrichedStructuredChunk = {
 			type: 'end',
 			metadata: {
@@ -1021,6 +978,11 @@ export class ChatHubService {
 
 		res.write(jsonStringify(endChunk) + '\n');
 		res.flush();
+
+		await this.messageRepository.updateChatMessage(messageId, {
+			content,
+			status,
+		});
 	}
 
 	private async executeWithStreaming(
