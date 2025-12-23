@@ -2,27 +2,24 @@ import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { useRouter } from 'vue-router';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/app/stores/roles.store';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
+const mockRouteQuery = reactive<Record<string, string>>({});
 vi.mock('vue-router', async (importOriginal) => {
-	const query = reactive({});
 	return {
 		...(await importOriginal()),
 		useRoute: () => ({
-			query,
+			query: mockRouteQuery,
 		}),
 	};
 });
@@ -37,14 +34,12 @@ vi.mock('@/app/composables/useMessage', () => ({
 		confirm: vi.fn().mockResolvedValue(true),
 	}),
 }));
-vi.mock('@/app/composables/useWorkflowSaving', () => {
-	const saveAsNewWorkflow = vi.fn().mockResolvedValue('abc123');
-	return {
-		useWorkflowSaving: () => ({
-			saveAsNewWorkflow,
-		}),
-	};
-});
+const saveAsNewWorkflowMock = vi.fn().mockResolvedValue('abc123');
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({
+		saveAsNewWorkflow: saveAsNewWorkflowMock,
+	}),
+}));
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({
 		workflow: { share: true },
@@ -73,7 +68,6 @@ let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsEEStore: MockedStore<typeof useWorkflowsEEStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let rolesStore: MockedStore<typeof useRolesStore>;
-let workflowSaving: ReturnType<typeof useWorkflowSaving>;
 
 describe('WorkflowShareModal.ee.vue', () => {
 	beforeEach(() => {
@@ -82,6 +76,9 @@ describe('WorkflowShareModal.ee.vue', () => {
 		workflowsEEStore = mockedStore(useWorkflowsEEStore);
 		projectsStore = mockedStore(useProjectsStore);
 		rolesStore = mockedStore(useRolesStore);
+
+		// Reset route query
+		Object.keys(mockRouteQuery).forEach((key) => delete mockRouteQuery[key]);
 
 		// Set up default store state
 		settingsStore.settings.enterprise = { sharing: true } as FrontendSettings['enterprise'];
@@ -108,12 +105,15 @@ describe('WorkflowShareModal.ee.vue', () => {
 			},
 		];
 
-		workflowSaving = useWorkflowSaving({ router: useRouter() });
+		saveAsNewWorkflowMock.mockClear();
 	});
 
 	it('should share new, unsaved workflow after saving it first', async () => {
+		// Set route query to indicate new workflow
+		mockRouteQuery.new = 'true';
+
 		workflowsStore.workflow = {
-			id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+			id: '',
 			name: 'My workflow',
 			active: false,
 			activeVersionId: null,
@@ -129,7 +129,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
 
 		const props = {
-			data: { id: PLACEHOLDER_EMPTY_WORKFLOW_ID },
+			data: { id: '' },
 		};
 		const { getByTestId, getByRole, getByText } = renderComponent({ props });
 
@@ -144,7 +144,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));
 		await waitFor(() => {
-			expect(workflowSaving.saveAsNewWorkflow).toHaveBeenCalled();
+			expect(saveAsNewWorkflowMock).toHaveBeenCalled();
 			expect(saveWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: 'abc123',
 				sharedWithProjects: [projectsStore.personalProjects[0]],
