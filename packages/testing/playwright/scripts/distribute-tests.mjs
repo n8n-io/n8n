@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 
 /**
  * Distributes Playwright specs across shards using greedy bin-packing.
@@ -16,12 +17,13 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '../../../..');
 const METRICS_PATH = path.join(ROOT_DIR, '.github/test-metrics/playwright.json');
+const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const DEFAULT_DURATION = 30000;
 
 const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrate = args.includes('--orchestrate');
-const shards = parseInt(args.find((a) => !a.startsWith('-')));
+const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
 
 if (!shards || shards < 1) {
 	console.error('Usage: node distribute-tests.mjs <shards> <index>');
@@ -29,13 +31,25 @@ if (!shards || shards < 1) {
 	process.exit(1);
 }
 
-// Distribute specs using greedy bin-packing
+/**
+ * Distribute specs using greedy bin-packing
+ * @param {number} numShards
+ */
 function distribute(numShards) {
 	const metrics = JSON.parse(fs.readFileSync(METRICS_PATH, 'utf-8'));
-	const specs = Object.entries(metrics.specs)
-		.map(([p, data]) => ({ path: p, duration: data.avgDuration || DEFAULT_DURATION }))
+	const pattern = path.join(PLAYWRIGHT_DIR, 'tests/**/*.spec.ts');
+	const allSpecs = fs.globSync(pattern).map((fullPath) => path.relative(PLAYWRIGHT_DIR, fullPath));
+
+	const specs = allSpecs
+		.map((specPath) => ({
+			path: specPath,
+			duration: metrics[specPath]?.avgDuration || DEFAULT_DURATION,
+		}))
 		.sort((a, b) => b.duration - a.duration);
 
+	/**
+	 * @type Array<{specs: string[]; total:number}>
+	 */
 	const buckets = Array.from({ length: numShards }, () => ({ specs: [], total: 0 }));
 	for (const spec of specs) {
 		const lightest = buckets.reduce((min, b) => (b.total < min.total ? b : min));
@@ -49,7 +63,7 @@ if (matrixMode) {
 	const buckets = orchestrate ? distribute(shards) : null;
 	const matrix = Array.from({ length: shards }, (_, i) => ({
 		shard: i + 1,
-		specs: orchestrate ? buckets[i].specs.join(' ') : '',
+		specs: orchestrate ? (buckets?.[i].specs.join(' ') ?? '') : '',
 	}));
 	console.log(JSON.stringify(matrix));
 } else {
