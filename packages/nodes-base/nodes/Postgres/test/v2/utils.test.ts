@@ -1,4 +1,5 @@
-import type { IDataObject, INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
@@ -18,6 +19,8 @@ import {
 	convertValuesToJsonWithPgp,
 	hasJsonDataTypeInSchema,
 	evaluateExpression,
+	isWhereClause,
+	getWhereClauses,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -569,5 +572,109 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			arr: '{1,2,3}',
 		});
 		expect(item).toEqual(referenceItem);
+	});
+
+	describe('where clause handling', () => {
+		const validOperations = [
+			'equal',
+			'=',
+			'!=',
+			'LIKE',
+			'>',
+			'<',
+			'>=',
+			'<=',
+			'IS NULL',
+			'IS NOT NULL',
+		];
+		const invalidOperations = ['=1 or 1--', '=>', ''];
+
+		test.each(validOperations)('isWhereClause returns true for "%s" operation', (operation) => {
+			expect(
+				isWhereClause({
+					column: 'id',
+					condition: operation,
+					value: '1',
+				}),
+			).toBe(true);
+		});
+
+		test.each(invalidOperations)('isWhereClause returns false for "%s" operation', (operation) => {
+			expect(
+				isWhereClause({
+					column: 'name',
+					condition: operation,
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test('isWhereClause returns false for when column is missing', () => {
+			expect(
+				isWhereClause({
+					condition: 'equal',
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test('isWhereClause returns false for when condition is missing', () => {
+			expect(
+				isWhereClause({
+					column: 'id',
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test.each(invalidOperations)(
+			'getWhereClauses throws an exception for "%s" operation',
+			(operation) => {
+				const getNodeParameterMock = jest.fn().mockReturnValue({
+					values: [
+						{
+							column: 'test',
+							condition: '=',
+							value: '3',
+						},
+						{
+							column: 'id',
+							condition: operation,
+							value: '1',
+						},
+					],
+				});
+				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
+				expect(() => getWhereClauses(ctx, 0)).toThrow();
+			},
+		);
+
+		test.each(validOperations)(
+			'getWhereClauses returns valid clauses for "%s" operation',
+			(operation) => {
+				const clauses = [
+					{
+						column: 'name',
+						condition: 'LIKE',
+						value: 'Wohn Jick',
+					},
+					{
+						column: 'id',
+						condition: operation,
+						value: '1',
+					},
+					{
+						column: 'condition',
+						condition: 'equal',
+						value: 'angry',
+					},
+				];
+				const getNodeParameterMock = jest.fn().mockReturnValue({
+					values: clauses,
+				});
+				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
+				expect(getWhereClauses(ctx, 0)).toBe(clauses);
+			},
+		);
 	});
 });

@@ -584,7 +584,12 @@ const conditionSet = new Set(operatorOptions.map((option) => option.value)).add(
 export const isWhereClause = (clause: unknown): clause is WhereClause => {
 	if (typeof clause !== 'object' || clause === null) return false;
 	if (!('column' in clause)) return false;
-	if (!('condition' in clause) || !conditionSet.has(clause.condition as string)) return false;
+	if (
+		!('condition' in clause) ||
+		typeof clause.condition !== 'string' ||
+		!conditionSet.has(clause.condition)
+	)
+		return false;
 	return true;
 };
 

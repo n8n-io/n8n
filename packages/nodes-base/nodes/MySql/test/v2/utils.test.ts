@@ -388,15 +388,6 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 			).toBe(false);
 		});
 
-		test('isWhereClause returns false for when condition is missing', () => {
-			expect(
-				utils.isWhereClause({
-					column: 'id',
-					value: 'ok',
-				}),
-			).toBe(false);
-		});
-
 		test.each(invalidOperations)(
 			'getWhereClauses throws an exception for "%s" operation',
 			(operation) => {
