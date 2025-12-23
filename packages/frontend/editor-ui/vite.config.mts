@@ -6,6 +6,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
@@ -180,6 +181,16 @@ const plugins: UserConfig['plugins'] = [
 					release: {
 						name: `n8n@${release}`,
 					},
+				}),
+			]
+		: []),
+	...(process.env.CODECOV_TOKEN
+		? [
+				codecovVitePlugin({
+					enableBundleAnalysis: true,
+					bundleName: 'editor-ui',
+					uploadToken: process.env.CODECOV_TOKEN,
+					debug: true,
 				}),
 			]
 		: []),

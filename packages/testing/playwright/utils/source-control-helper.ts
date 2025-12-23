@@ -1,13 +1,28 @@
+import { expect } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { addGiteaRepo, addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
 
 import type { n8nPage } from '../pages/n8nPage';
+
+/**
+ * Wait for source control to be fully disconnected.
+ * Polls the preferences endpoint until connected is false.
+ */
+const waitForDisconnected = async (n8n: n8nPage, timeout = 30000) => {
+	await expect(async () => {
+		const response = await n8n.page.request.get('/rest/source-control/preferences');
+		const preferences = await response.json();
+		expect(preferences.data?.connected).toBe(false);
+	}).toPass({ timeout });
+};
 
 const initSourceControlPreferences = async (n8n: n8nPage) => {
 	await n8n.page.request.post('/rest/source-control/preferences', {
 		data: {
 			connectionType: 'ssh',
 			keyGeneratorType: 'ed25519',
+			repositoryUrl: '', // Clear any existing repo URL to prevent auto-reconnection
+			initRepo: false, // Don't initialize repo - this would set connected=true
 		},
 	});
 };
@@ -40,6 +55,7 @@ export const initSourceControl = async ({
 	const preferences = await preferencesResponse.json();
 	if (preferences.data?.connected) {
 		await n8n.api.sourceControl.disconnect({ keepKeyPair: true });
+		await waitForDisconnected(n8n);
 	}
 
 	await initSourceControlPreferences(n8n);

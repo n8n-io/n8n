@@ -2,6 +2,14 @@ codecov:
   max_report_age: off
   require_ci_to_pass: true
 
+bundle_analysis:
+  status: warning
+  warning_threshold: 1%
+
+comment:
+  require_bundle_changes: bundle_increase
+  bundle_change_threshold: 100Kb
+
 coverage:
   status:
     patch: false
