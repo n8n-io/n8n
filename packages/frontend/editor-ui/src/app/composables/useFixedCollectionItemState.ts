@@ -125,27 +125,6 @@ export function useFixedCollectionItemState(
 		saveExpandedStableIndexes(expandedStableIndexes.value);
 	};
 
-	const renormalizeStableIndexes = (propertyName: string) => {
-		const items = itemMetadata.value[propertyName];
-		if (!items?.length) return;
-
-		// Track which positions are expanded, then renormalize indexes
-		const expandedPositions = items.map((item) =>
-			expandedStableIndexes.value.has(`${propertyName}:${item.stableIndex}`),
-		);
-
-		// Clear old expanded keys for this property and renormalize
-		items.forEach((item, idx) => {
-			expandedStableIndexes.value.delete(`${propertyName}:${item.stableIndex}`);
-			item.stableIndex = idx;
-			if (expandedPositions[idx]) {
-				expandedStableIndexes.value.add(`${propertyName}:${idx}`);
-			}
-		});
-
-		saveExpandedStableIndexes(expandedStableIndexes.value);
-	};
-
 	const initExpandedState = (propertyName: string, items: unknown[], multipleValues: boolean) => {
 		if (!itemMetadata.value[propertyName]) {
 			itemMetadata.value[propertyName] = [];
@@ -164,10 +143,10 @@ export function useFixedCollectionItemState(
 			itemMetadata.value[propertyName].splice(index, 1);
 
 			if (metadata?.stableIndex !== undefined) {
-				expandedStableIndexes.value.delete(`${propertyName}:${metadata.stableIndex}`);
+				const expandedKey = `${propertyName}:${metadata.stableIndex}`;
+				expandedStableIndexes.value.delete(expandedKey);
+				saveExpandedStableIndexes(expandedStableIndexes.value);
 			}
-
-			renormalizeStableIndexes(propertyName);
 
 			const allStableIndexes = loadStableIndexes();
 			allStableIndexes[propertyName] = itemMetadata.value[propertyName].map((m) => m.stableIndex);
