@@ -333,15 +333,15 @@ const onDragChange = (
 			reorderedItems.splice(event.moved.newIndex, 0, movedItem);
 			mutableValues.value[optionName] = reorderedItems;
 		}
+
+		const parameterData: ValueChangedEvent = {
+			name: getPropertyPath(optionName),
+			value: mutableValues.value[optionName],
+			type: 'optionsOrderChanged',
+		};
+
+		emit('valueChanged', parameterData);
 	}
-
-	const parameterData: ValueChangedEvent = {
-		name: getPropertyPath(optionName),
-		value: mutableValues.value[optionName],
-		type: 'optionsOrderChanged',
-	};
-
-	emit('valueChanged', parameterData);
 };
 
 const onHeaderAddClick = async () => {

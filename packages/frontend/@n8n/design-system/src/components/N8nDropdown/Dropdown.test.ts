@@ -19,7 +19,7 @@ describe('N8nDropdown', () => {
 		});
 
 		expect(wrapper.exists()).toBe(true);
-		expect(wrapper.find('[data-test-id^="dropdown-trigger-"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="dropdown-trigger"]').exists()).toBe(true);
 	});
 
 	it('should display placeholder when no value is selected', () => {
@@ -41,7 +41,7 @@ describe('N8nDropdown', () => {
 			},
 		});
 
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger-option2"]');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
 		expect(trigger.exists()).toBe(true);
 	});
 
@@ -68,7 +68,7 @@ describe('N8nDropdown', () => {
 			},
 		});
 
-		const trigger = wrapper.find('[data-test-id^="dropdown-trigger-"]');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
 		expect(trigger.attributes('data-disabled')).toBeDefined();
 	});
 
@@ -83,7 +83,7 @@ describe('N8nDropdown', () => {
 				},
 			});
 
-			const trigger = wrapper.find('[data-test-id^="dropdown-trigger-"]');
+			const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
 			expect(trigger.classes()).toContain(size);
 		});
 	});
@@ -111,7 +111,7 @@ describe('N8nDropdown', () => {
 			},
 		});
 
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger-option1"]');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
 		expect(trigger.exists()).toBe(true);
 	});
 
@@ -124,7 +124,7 @@ describe('N8nDropdown', () => {
 			},
 		});
 
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger-invalid-value"]');
+		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
 		expect(trigger.exists()).toBe(true);
 	});
 

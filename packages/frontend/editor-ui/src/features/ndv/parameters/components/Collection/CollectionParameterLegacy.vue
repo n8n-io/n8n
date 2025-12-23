@@ -175,8 +175,7 @@ function optionSelected(optionName: string) {
 					[] as Array<typeof defaultValue>,
 				);
 				if (Array.isArray(existingArray)) {
-					value = existingArray;
-					value.push(deepCopy(defaultValue));
+					value = [...existingArray, deepCopy(defaultValue)];
 				}
 			}
 		} else {

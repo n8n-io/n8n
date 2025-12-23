@@ -967,7 +967,7 @@ export function getNodeParameters(
 									itemNodeValues &&
 									Object.keys(itemNodeValues).some((key) => {
 										const field = tempNodePropertiesArray.find((f) => f.name === key);
-										return field && itemNodeValues[key] !== field.default;
+										return field && !isEqual(itemNodeValues[key], field.default);
 									});
 
 								if (!hasNonDefaultValues) {

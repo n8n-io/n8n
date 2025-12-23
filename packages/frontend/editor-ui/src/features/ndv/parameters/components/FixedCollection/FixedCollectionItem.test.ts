@@ -65,6 +65,7 @@ describe('FixedCollectionItem.vue', () => {
 		isExpanded: true,
 		sortable: true,
 		disableAnimation: false,
+		isDragging: false,
 	};
 
 	beforeEach(() => {

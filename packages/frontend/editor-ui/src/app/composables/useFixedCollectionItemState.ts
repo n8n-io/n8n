@@ -51,7 +51,8 @@ export function useFixedCollectionItemState(
 
 	const loadWrapperExpanded = () => {
 		const stored = sessionStorage.getItem(wrapperStorageKey);
-		return defaultWrapperExpanded || stored === 'true';
+		// If user has a stored preference, use it; otherwise use the default
+		return stored !== null ? stored === 'true' : defaultWrapperExpanded;
 	};
 
 	const saveWrapperExpanded = (value: boolean) => {

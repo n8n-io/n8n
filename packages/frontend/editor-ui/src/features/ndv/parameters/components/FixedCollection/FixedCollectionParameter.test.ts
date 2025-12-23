@@ -4,11 +4,11 @@ import FixedCollectionParameter, { type Props } from './FixedCollectionParameter
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/constants';
-import { usePostHog, type PosthogStore } from '@/stores/posthog.store';
+import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/app/constants';
+import { usePostHog, type PosthogStore } from '@/app/stores/posthog.store';
 
 const mockedGetVariant = vi.fn(() => 'control');
-vi.mock('@/stores/posthog.store', () => ({
+vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
 		getVariant: mockedGetVariant,
 	})),

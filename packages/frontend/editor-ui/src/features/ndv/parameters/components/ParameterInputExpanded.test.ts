@@ -155,6 +155,7 @@ describe('ParameterInputExpanded.vue', () => {
 			const button = getByTestId('fixed-collection-add');
 			await userEvent.click(button);
 			await nextTick();
+			await vi.dynamicImportSettled();
 
 			const inputsAfter = queryAllByTestId('parameter-input-field');
 			expect(inputsAfter.length).toBe(4);
