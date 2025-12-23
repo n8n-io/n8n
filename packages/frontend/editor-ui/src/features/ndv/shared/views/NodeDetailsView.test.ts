@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, fireEvent } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 
 import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
 import { VIEWS } from '@/app/constants';
@@ -179,39 +179,6 @@ describe('NodeDetailsView', () => {
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
 
 			removeEventListenerSpy.mockRestore();
-		});
-
-		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, workflowObject } = await createPiniaStore(true);
-
-			const renderComponent = createComponentRenderer(NodeDetailsView, {
-				props: {
-					workflowObject,
-				},
-				global: {
-					mocks: {
-						$route: {
-							name: VIEWS.WORKFLOW,
-						},
-					},
-				},
-			});
-
-			const { getByTestId, queryByTestId, emitted } = renderComponent({
-				pinia,
-			});
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-			await waitFor(() => expect(queryByTestId('ndv-modal')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeTruthy();
 		});
 	});
 });

@@ -19,10 +19,6 @@ const TEMPLATE_ID = '1';
 const TEST_CATEGORY = 'sales';
 const SALES_CATEGORY_ID = 3;
 
-const NOTIFICATIONS = {
-	SAVED: 'Saved',
-};
-
 const CATEGORIES = [
 	{ id: 1, name: 'Engineering' },
 	{ id: 2, name: 'Finance' },
@@ -232,10 +228,9 @@ test.describe('Workflow templates', () => {
 		test('should save template id with the workflow', async ({ n8n }) => {
 			await n8n.templatesComposer.importFirstTemplate();
 
-			const saveRequest = await n8n.workflowComposer.saveWorkflowAndWaitForRequest();
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText(NOTIFICATIONS.SAVED);
+			const saveResponse = await n8n.canvas.waitForSaveWorkflowCompleted();
 
-			const requestBody = saveRequest.postDataJSON();
+			const requestBody = saveResponse.request().postDataJSON();
 			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
 		});
 

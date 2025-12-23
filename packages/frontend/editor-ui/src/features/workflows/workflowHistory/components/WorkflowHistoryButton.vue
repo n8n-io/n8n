@@ -1,15 +1,39 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-
+import { useUIStore } from '@/app/stores/ui.store';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 const locale = useI18n();
 
 const props = defineProps<{
 	workflowId: string;
 	isNewWorkflow: boolean;
 }>();
+
+const uiStore = useUIStore();
+const isWorkflowSaving = ref(false);
+const { debounce } = useDebounce();
+
+const debouncedRemoveSaveIndicator = debounce(
+	() => {
+		isWorkflowSaving.value = false;
+	},
+	{ debounceTime: LOADING_ANIMATION_MIN_DURATION, trailing: true },
+);
+
+watch(
+	() => uiStore.isActionActive.workflowSaving,
+	(value) => {
+		if (value) {
+			isWorkflowSaving.value = true;
+		} else {
+			debouncedRemoveSaveIndicator();
+		}
+	},
+);
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => ({
 	name: VIEWS.WORKFLOW_HISTORY,
@@ -23,10 +47,11 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 	<N8nTooltip v-if="workflowId" placement="bottom">
 		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
-				:disabled="isNewWorkflow"
+				:class="{ [$style.saving]: isWorkflowSaving }"
+				:disabled="isNewWorkflow || isWorkflowSaving"
 				data-test-id="workflow-history-button"
 				type="highlight"
-				icon="history"
+				:icon="isWorkflowSaving ? 'rotate-left' : 'history'"
 				size="medium"
 			/>
 		</RouterLink>
@@ -38,3 +63,20 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 		</template>
 	</N8nTooltip>
 </template>
+
+<style lang="scss" module>
+.saving {
+	// Keep the button disabled while saving, but prevent the icon from taking the disabled color.
+	--button--color--text--disabled: var(--button--color--text--highlight);
+
+	:global(.n8n-icon) {
+		animation: loading-rotate 1s linear infinite;
+	}
+}
+
+@keyframes loading-rotate {
+	100% {
+		transform: rotate(-360deg);
+	}
+}
+</style>
