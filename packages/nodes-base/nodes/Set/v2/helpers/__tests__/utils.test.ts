@@ -239,7 +239,7 @@ describe('prepareReturnItem', () => {
 		});
 
 		describe('combined binary mode', () => {
-			it('should push binary to binaryValues when binary data has no id in combined mode', () => {
+			it('should place binary only in binary when id is missing', () => {
 				const mockBinaryData: IBinaryData = {
 					data: 'combineddata',
 					mimeType: 'text/plain',
@@ -254,7 +254,7 @@ describe('prepareReturnItem', () => {
 						{
 							id: '1',
 							name: 'textBinary',
-							value: mockBinaryData as any,
+							value: 'binaryProp',
 							type: 'binary',
 						},
 					],
@@ -263,9 +263,11 @@ describe('prepareReturnItem', () => {
 				const result = prepareReturnItem(mockContext, value, 0, baseItem, mockNode, baseOptions);
 
 				expect(result.binary).toHaveProperty('textBinary');
+				expect(result.binary?.textBinary).toEqual(mockBinaryData);
+				expect(result.json).not.toHaveProperty('textBinary');
 			});
 
-			it('should push binary to jsonValues when binary data has id in combined mode', () => {
+			it('should place binary in json when id is present', () => {
 				const mockBinaryDataWithId: IBinaryData = {
 					data: 'combineddata',
 					mimeType: 'image/jpeg',
@@ -273,6 +275,7 @@ describe('prepareReturnItem', () => {
 					id: 'binary-id-123',
 				};
 
+				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataWithId);
 				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
 
 				const value: AssignmentCollectionValue = {
@@ -280,7 +283,7 @@ describe('prepareReturnItem', () => {
 						{
 							id: '1',
 							name: 'photoField',
-							value: mockBinaryDataWithId as any,
+							value: 'binaryProp',
 							type: 'binary',
 						},
 					],
@@ -292,7 +295,7 @@ describe('prepareReturnItem', () => {
 				expect(result.json.photoField).toEqual(mockBinaryDataWithId);
 			});
 
-			it('should handle mixed binary assignments with and without id in combined mode', () => {
+			it('should handle mixed binary assignments (with and without id)', () => {
 				const mockBinaryDataNoId: IBinaryData = {
 					data: 'data1',
 					mimeType: 'text/plain',
@@ -306,7 +309,9 @@ describe('prepareReturnItem', () => {
 					id: 'binary-id-456',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataNoId);
+				(mockContext.helpers.assertBinaryData as jest.Mock)
+					.mockReturnValueOnce(mockBinaryDataNoId)
+					.mockReturnValueOnce(mockBinaryDataWithId);
 				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
 
 				const value: AssignmentCollectionValue = {
@@ -314,13 +319,13 @@ describe('prepareReturnItem', () => {
 						{
 							id: '1',
 							name: 'binaryNoId',
-							value: mockBinaryDataNoId as any,
+							value: 'binaryProp1',
 							type: 'binary',
 						},
 						{
 							id: '2',
 							name: 'binaryWithId',
-							value: mockBinaryDataWithId as any,
+							value: 'binaryProp2',
 							type: 'binary',
 						},
 					],
@@ -329,9 +334,40 @@ describe('prepareReturnItem', () => {
 				const result = prepareReturnItem(mockContext, value, 0, baseItem, mockNode, baseOptions);
 
 				expect(result.binary).toHaveProperty('binaryNoId');
+				expect(result.binary?.binaryNoId).toEqual(mockBinaryDataNoId);
+				expect(result.json).not.toHaveProperty('binaryNoId');
 
 				expect(result.json).toHaveProperty('binaryWithId');
 				expect(result.json.binaryWithId).toEqual(mockBinaryDataWithId);
+			});
+
+			it('should treat empty string id as missing id (place only in binary)', () => {
+				const mockBinaryDataEmptyId: IBinaryData = {
+					id: '',
+					data: 'emptyiddata',
+					mimeType: 'text/plain',
+					fileName: 'file.txt',
+				};
+
+				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataEmptyId);
+				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
+
+				const value: AssignmentCollectionValue = {
+					assignments: [
+						{
+							id: '1',
+							name: 'emptyIdBinary',
+							value: 'binaryProp',
+							type: 'binary',
+						},
+					],
+				};
+
+				const result = prepareReturnItem(mockContext, value, 0, baseItem, mockNode, baseOptions);
+
+				expect(result.binary).toHaveProperty('emptyIdBinary');
+				expect(result.binary?.emptyIdBinary).toEqual(mockBinaryDataEmptyId);
+				expect(result.json).not.toHaveProperty('emptyIdBinary');
 			});
 
 			it('should handle string reference in non-combined mode and resolve via assertBinaryData', () => {
@@ -413,6 +449,7 @@ describe('prepareReturnItem', () => {
 					id: 'video-id-789',
 				};
 
+				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataWithId);
 				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'combined' });
 
 				const value: AssignmentCollectionValue = {
@@ -426,7 +463,7 @@ describe('prepareReturnItem', () => {
 						{
 							id: '2',
 							name: 'videoData',
-							value: mockBinaryDataWithId as any,
+							value: 'binaryProp',
 							type: 'binary',
 						},
 						{

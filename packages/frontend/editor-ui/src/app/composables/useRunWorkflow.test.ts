@@ -358,7 +358,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(result).toBeUndefined();
 			expect(toast.showMessage).toHaveBeenCalledWith({
-				title: 'Unsuported Binary Mode',
+				title: 'Unsupported Binary Mode',
 				message:
 					'Binary mode "combined" is not supported when filesystem mode is "default". Please change the binary mode to "separate" in workflow settings and update expressions that are referencing binary data accordingly.',
 				type: 'error',
