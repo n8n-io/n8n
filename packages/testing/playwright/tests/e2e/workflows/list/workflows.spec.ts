@@ -32,7 +32,8 @@ test.describe('Workflows', () => {
 		const uniqueIdForCreate = nanoid(8);
 		const workflowName = `Test Workflow ${uniqueIdForCreate}`;
 		await n8n.canvas.setWorkflowName(workflowName);
-		await n8n.canvas.saveWorkflow();
+		await n8n.page.keyboard.press('Enter');
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});
@@ -111,8 +112,8 @@ test.describe('Workflows', () => {
 		// Create tagged workflow
 		const uniqueIdForTagged = nanoid(8);
 		await n8n.workflowComposer.createWorkflow(uniqueIdForTagged);
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		const tags = await n8n.canvas.addTags();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.goHome();
 		// Create untagged workflow
 		await n8n.workflowComposer.createWorkflow();
@@ -128,8 +129,8 @@ test.describe('Workflows', () => {
 		const uniqueIdForTagged = nanoid(8);
 
 		await n8n.workflowComposer.createWorkflow(`My Tagged Workflow ${uniqueIdForTagged}`);
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		const tags = await n8n.canvas.addTags(2);
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await n8n.goHome();
 		await n8n.workflows.search('Tagged');

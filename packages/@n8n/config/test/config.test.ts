@@ -412,6 +412,13 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 1_000,
+			batchSize: 1_000,
+			compactingMinimumAgeHours: 24,
+			compactingTimeWindowHours: 2,
+			compactOnStartUp: false,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
