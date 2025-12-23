@@ -156,7 +156,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 	describe('OAuth flow initiation', () => {
 		it('should return a valid auth URL when the auth flow is initiated', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const encryptSpy = jest.spyOn(oauthService, 'encryptBase64EncodedState').mockClear();
 
 			const response = await ownerAgent
 				.get('/oauth2-credential/auth')
@@ -167,8 +167,8 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			expect(authUrl.hostname).toBe('test.domain');
 			expect(authUrl.pathname).toBe('/oauth2/auth');
 
-			expect(csrfSpy).toHaveBeenCalled();
-			const [__, state] = csrfSpy.mock.results[0].value;
+			expect(encryptSpy).toHaveBeenCalled();
+			const state = encryptSpy.mock.results[0].value;
 			expect(parseQs(authUrl.search.slice(1))).toEqual({
 				access_type: 'offline',
 				client_id: 'client_id',

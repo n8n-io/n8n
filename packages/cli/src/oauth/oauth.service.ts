@@ -195,6 +195,11 @@ export class OauthService {
 		return [csrfSecret, encryptedState, base64State];
 	}
 
+	encryptBase64EncodedState(base64EncodedState: string): string {
+		const state = Buffer.from(base64EncodedState, 'base64').toString();
+		return this.cipher.encrypt(state);
+	}
+
 	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
 		const errorMessage = 'Invalid state format';
 		const decryptedState = this.cipher.decrypt(encodedState);
@@ -372,18 +377,20 @@ export class OauthService {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state, base64State] = this.createCsrfState(csrfData);
+		const [csrfSecret, _, base64State] = this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
-			state,
+			state: base64State,
 		};
 
 		if (oauthCredentials.authQueryParameters) {
 			oAuthOptions.query = qs.parse(oauthCredentials.authQueryParameters);
 		}
 
-		await this.externalHooks.run('oauth2.authenticate', [{ ...oAuthOptions, state: base64State }]);
+		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+
+		oAuthOptions.state = this.encryptBase64EncodedState(oAuthOptions.state);
 
 		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
