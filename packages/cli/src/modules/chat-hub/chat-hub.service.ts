@@ -843,6 +843,16 @@ export class ChatHubService {
 		}
 
 		this.sendBeginResponse(res, executionId, messageId, previousMessageId, retryOfMessageId);
+		await this.saveAIMessage({
+			id: messageId,
+			content: '',
+			sessionId,
+			executionId,
+			model,
+			previousMessageId,
+			retryOfMessageId,
+			status: 'running',
+		});
 
 		await this.waitForExecutionCompletion(executionId);
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
@@ -872,16 +882,9 @@ export class ChatHubService {
 			retryOfMessageId,
 		);
 		this.sendEndResponse(res, executionId, messageId, previousMessageId, retryOfMessageId);
-
-		await this.saveAIMessage({
-			id: messageId,
+		await this.messageRepository.updateChatMessage(messageId, {
 			content: message,
-			sessionId,
-			executionId,
-			model,
-			previousMessageId,
-			retryOfMessageId,
-			status,
+			status: 'success',
 		});
 
 		if (execution.status === 'waiting') {
@@ -905,6 +908,8 @@ export class ChatHubService {
 				// session.nodeWaitingForChatResponse = lastNode?.name;
 			}
 		}
+
+		res.end();
 	}
 
 	/**
@@ -960,6 +965,7 @@ export class ChatHubService {
 		res.flushHeaders();
 
 		res.write(jsonStringify(beginChunk) + '\n');
+		res.flush();
 	}
 
 	private sendResponseContent(
@@ -988,6 +994,7 @@ export class ChatHubService {
 		};
 
 		res.write(jsonStringify(contentChunk) + '\n');
+		res.flush();
 	}
 
 	private sendEndResponse(
@@ -1013,6 +1020,7 @@ export class ChatHubService {
 		};
 
 		res.write(jsonStringify(endChunk) + '\n');
+		res.flush();
 	}
 
 	private async executeWithStreaming(
