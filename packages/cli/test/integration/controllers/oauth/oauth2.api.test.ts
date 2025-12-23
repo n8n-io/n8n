@@ -53,9 +53,6 @@ describe('OAuth2 API', () => {
 	});
 
 	it('should return a valid auth URL when the auth flow is initiated', async () => {
-		const oauthService = Container.get(OauthService);
-		const encryptSpy = jest.spyOn(oauthService, 'encryptBase64EncodedState').mockClear();
-
 		const response = await ownerAgent
 			.get('/oauth2-credential/auth')
 			.query({ id: credential.id })
@@ -64,15 +61,22 @@ describe('OAuth2 API', () => {
 		expect(authUrl.hostname).toBe('test.domain');
 		expect(authUrl.pathname).toBe('/oauth2/auth');
 
-		expect(encryptSpy).toHaveBeenCalled();
-		const state = encryptSpy.mock.results[0].value;
-		expect(parseQs(authUrl.search.slice(1))).toEqual({
+		const queryParams = parseQs(authUrl.search.slice(1));
+		expect(queryParams).toMatchObject({
 			access_type: 'offline',
 			client_id: 'client_id',
 			redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
 			response_type: 'code',
-			state,
 			scope: 'openid',
+		});
+
+		// Verify state is base64-encoded and contains expected structure
+		expect(queryParams.state).toBeDefined();
+		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
+		expect(decodedState).toMatchObject({
+			token: expect.any(String),
+			createdAt: expect.any(Number),
+			data: expect.any(String), // Encrypted CSRF data
 		});
 	});
 
@@ -107,15 +111,21 @@ describe('OAuth2 API', () => {
 		// Verify redirectUri was modified
 		expect(queryParams.redirect_uri).toBe('https://custom.domain/callback');
 
-		// Verify the state was encrypted (should be different from the base64 input)
+		// Verify the state is base64-encoded
 		expect(queryParams.state).toBeDefined();
 		expect(typeof queryParams.state).toBe('string');
 
-		// Decrypt and verify the state contains the host property
-		const decryptedState = oauthService['cipher'].decrypt(queryParams.state as string);
-		const stateObject = JSON.parse(decryptedState);
-		expect(stateObject.host).toBe('custom.host.com');
-		expect(stateObject.cid).toBe(credential.id); // Original CSRF data should still be there
+		// Decode and verify the state contains the host property (plaintext in base64)
+		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
+		expect(decodedState.host).toBe('custom.host.com');
+		expect(decodedState.token).toBeDefined();
+		expect(decodedState.createdAt).toBeDefined();
+		expect(decodedState.data).toBeDefined();
+
+		// Decrypt the data field and verify original CSRF data is preserved
+		const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decodedState.data));
+		expect(decryptedData.cid).toBe(credential.id);
+		expect(decryptedData.userId).toBe(owner.id);
 	});
 
 	it('should fail on auth when callback is called as another user', async () => {

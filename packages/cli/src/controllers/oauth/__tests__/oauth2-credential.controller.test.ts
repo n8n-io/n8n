@@ -82,6 +82,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			}),
 		).toString('base64');
 
@@ -120,6 +121,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
@@ -183,6 +185,7 @@ describe('OAuth2CredentialController', () => {
 				credentialResolverId: 'resolver-id',
 				authorizationHeader: 'Bearer token123',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			oauthService.resolveCredential.mockResolvedValueOnce([
@@ -246,6 +249,7 @@ describe('OAuth2CredentialController', () => {
 				origin: 'dynamic-credential' as const,
 				authorizationHeader: 'Bearer token123',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			oauthService.resolveCredential.mockResolvedValueOnce([
@@ -304,6 +308,7 @@ describe('OAuth2CredentialController', () => {
 				origin: 'dynamic-credential' as const,
 				credentialResolverId: 'resolver-id',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			oauthService.resolveCredential.mockResolvedValueOnce([
@@ -363,6 +368,7 @@ describe('OAuth2CredentialController', () => {
 				credentialResolverId: 'resolver-id',
 				authorizationHeader: 'Invalid token123',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			oauthService.resolveCredential.mockResolvedValueOnce([
@@ -420,6 +426,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const undefinedOriginState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			oauthService.resolveCredential.mockResolvedValueOnce([
@@ -480,6 +487,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
@@ -538,6 +546,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
@@ -598,6 +607,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
@@ -661,6 +671,7 @@ describe('OAuth2CredentialController', () => {
 				userId: '123',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
