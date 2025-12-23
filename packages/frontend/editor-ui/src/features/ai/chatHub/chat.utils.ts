@@ -10,7 +10,7 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
@@ -426,7 +426,7 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 type StreamApi<T> = (
 	ctx: IRestApiContext,
 	payload: T,
-	onChunk: (data: EnrichedStructuredChunk) => void,
+	onChunk: (data: MessageChunk) => void,
 	onDone: () => void,
 	onError: (e: unknown) => void,
 ) => void;

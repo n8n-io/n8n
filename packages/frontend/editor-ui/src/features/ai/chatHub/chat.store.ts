@@ -36,7 +36,7 @@ import {
 	type ChatHubAgentDto,
 	type ChatHubCreateAgentRequest,
 	type ChatHubUpdateAgentRequest,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
 	type ChatHubLLMProvider,
@@ -432,7 +432,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function onStreamMessage(chunk: EnrichedStructuredChunk) {
+	function onStreamMessage(chunk: MessageChunk) {
 		if (!streaming.value) {
 			return;
 		}
