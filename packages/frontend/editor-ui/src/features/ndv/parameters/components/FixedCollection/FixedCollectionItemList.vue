@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { IUpdateInformation } from '@/Interface';
-import type { INodeParameters, INodePropertyCollection } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import Draggable from 'vuedraggable';
 import FixedCollectionItem from './FixedCollectionItem.vue';
@@ -16,6 +16,13 @@ export type Props = {
 	isReadOnly: boolean;
 	sortable: boolean;
 	titleTemplate?: string;
+	getVisiblePropertyValues: (
+		property: INodePropertyCollection,
+		index?: number,
+	) => INodeProperties[];
+	getPickerPropertyValues: (property: INodePropertyCollection, index?: number) => INodeProperties[];
+	isOptionalValueAdded: (propertyName: string, valueName: string, index?: number) => boolean;
+	addOptionalFieldButtonText: string;
 };
 
 const props = defineProps<Props>();
@@ -24,6 +31,7 @@ const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 	delete: [optionName: string, index: number];
 	dragChange: [optionName: string, event: { moved?: { oldIndex: number; newIndex: number } }];
+	toggleOptionalValue: [propertyName: string, valueName: string, index: number];
 }>();
 
 const isDragging = ref(false);
@@ -50,6 +58,12 @@ const onDragChange = (event: { moved?: { oldIndex: number; newIndex: number } })
 const onValueChanged = (parameterData: IUpdateInformation) => emit('valueChanged', parameterData);
 
 const onDelete = (index: number) => emit('delete', props.property.name, index);
+
+const onToggleOptionalValue = (index: number, valueName: string) =>
+	emit('toggleOptionalValue', props.property.name, valueName, index);
+
+const getIsOptionalValueAdded = (index: number) => (valueName: string) =>
+	props.isOptionalValueAdded(props.property.name, valueName, index);
 </script>
 
 <template>
@@ -79,9 +93,14 @@ const onDelete = (index: number) => emit('delete', props.property.name, index);
 				:sortable="sortable"
 				:disable-animation="disableAnimation"
 				:title-template="titleTemplate"
+				:visible-property-values="getVisiblePropertyValues(property, index)"
+				:picker-property-values="getPickerPropertyValues(property, index)"
+				:add-optional-field-button-text="addOptionalFieldButtonText"
+				:is-optional-value-added="getIsOptionalValueAdded(index)"
 				@update:is-expanded="itemState.setExpandedState(property.name, index, $event)"
 				@value-changed="onValueChanged"
 				@delete="onDelete(index)"
+				@toggle-optional-value="onToggleOptionalValue(index, $event)"
 			/>
 		</template>
 	</Draggable>

@@ -1,10 +1,16 @@
 <script lang="ts" setup>
-import type { INodeParameters, INodePropertyCollection } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCollapsiblePanel, N8nHeaderAction } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nCollapsiblePanel,
+	N8nHeaderAction,
+} from '@n8n/design-system';
 import ParameterInputList from '../ParameterInputList.vue';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
@@ -26,6 +32,10 @@ export type Props = {
 	disableAnimation: boolean;
 	isDragging: boolean;
 	titleTemplate?: string;
+	visiblePropertyValues: INodeProperties[];
+	pickerPropertyValues: INodeProperties[];
+	isOptionalValueAdded: (valueName: string) => boolean;
+	addOptionalFieldButtonText: string;
 };
 
 const props = defineProps<Props>();
@@ -34,7 +44,21 @@ const emit = defineEmits<{
 	'update:isExpanded': [value: boolean];
 	valueChanged: [value: IUpdateInformation];
 	delete: [];
+	toggleOptionalValue: [valueName: string];
 }>();
+
+const hasOptionalFieldsToAdd = computed(
+	() => props.pickerPropertyValues.length > 0 && !props.isReadOnly,
+);
+
+const pickerDropdownItems = computed(
+	(): Array<ActionDropdownItem<string>> =>
+		props.pickerPropertyValues.map((value) => ({
+			id: value.name,
+			label: value.displayName || value.name,
+			checked: props.isOptionalValueAdded(value.name),
+		})),
+);
 
 const defaultTitle = computed(() => `${props.property.displayName} ${props.stableIndex + 1}`);
 
@@ -98,7 +122,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 		<ParameterInputList
 			hide-delete
 			is-nested
-			:parameters="property.values"
+			:parameters="visiblePropertyValues"
 			:node-values="nodeValues"
 			:path="propertyPath"
 			:is-read-only="isReadOnly"
@@ -106,15 +130,31 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 			:remove-last-parameter-margin="isCollectionOverhaulEnabled"
 			@value-changed="handleValueChanged"
 		/>
+		<div
+			v-if="hasOptionalFieldsToAdd"
+			:class="$style.addOption"
+			data-test-id="fixed-collection-add-property"
+		>
+			<N8nActionDropdown :items="pickerDropdownItems" @select="emit('toggleOptionalValue', $event)">
+				<template #activator>
+					<N8nButton type="highlightFill" icon="plus" :label="addOptionalFieldButtonText" />
+				</template>
+			</N8nActionDropdown>
+		</div>
 	</N8nCollapsiblePanel>
 </template>
 
-<style lang="css" module>
+<style lang="scss" module>
 .dragHandle {
 	cursor: grab;
 }
 
 .dragging {
 	cursor: grabbing;
+}
+
+.addOption {
+	margin-bottom: var(--spacing--xs);
+	padding-left: var(--spacing--xs);
 }
 </style>
