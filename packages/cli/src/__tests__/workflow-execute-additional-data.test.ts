@@ -235,6 +235,97 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
 		});
+
+		/**
+		 * Tests for workflow version selection based on execution mode.
+		 *
+		 * Note: These tests verify that executeWorkflow accepts different execution modes.
+		 * The actual version selection logic (draft vs published) is tested in detail in the
+		 * getDraftWorkflowData and getPublishedWorkflowData test suites below.
+		 */
+		describe('workflow version selection based on execution mode', () => {
+			const mockWorkflowData = mock<IWorkflowBase>({
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+			});
+
+			it('should execute successfully with manual execution mode (uses draft version, includes test webhooks)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'manual',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with chat execution mode (uses draft version)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'chat',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with trigger execution mode (uses published version)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'trigger',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with webhook execution mode (uses published version for production webhooks)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'webhook',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with integrated execution mode (uses published version)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'integrated',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+		});
 	});
 
 	describe('getRunData', () => {

@@ -20,6 +20,8 @@ export function getWorkflowActiveStatusFromWorkflowData(workflowData: IWorkflowB
  * Manual and chat executions use draft sub-workflows to enable
  * iterating on sub-workflows without requiring them to be published.
  *
+ * Note: Test webhooks use 'manual' execution mode, so they also use draft versions.
+ * Production webhooks use 'webhook' execution mode and use published versions.
  */
 export function isManualOrChatExecution(executionMode?: string): boolean {
 	if (!executionMode) return false;
