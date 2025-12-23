@@ -238,7 +238,6 @@ onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
 	initExpandedState();
 
-	// Auto-expand first item if this collection has default (unedited) values
 	if (hasDefaultValues.value) {
 		const firstProperty = properties.value[0];
 		if (firstProperty && multipleValues.value) {

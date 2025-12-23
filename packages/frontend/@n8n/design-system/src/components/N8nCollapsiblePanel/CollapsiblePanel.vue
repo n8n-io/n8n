@@ -176,8 +176,8 @@ const isOpen = computed({
 	}
 }
 
-.collapsiblePanel:hover,
-.collapsiblePanel:focus-within {
+.collapsiblePanel:hover:not(:has(.collapsiblePanel:hover)),
+.collapsiblePanel[data-state='open']:focus-within:not(:has(.collapsiblePanel:focus-within)) {
 	.actions {
 		opacity: 1;
 	}
