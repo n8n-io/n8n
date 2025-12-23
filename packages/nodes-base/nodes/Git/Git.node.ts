@@ -1,3 +1,5 @@
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { access, mkdir } from 'fs/promises';
 import type {
 	IExecuteFunctions,
@@ -27,8 +29,7 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { Container } from '@n8n/di';
-import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { validateGitReference } from './GenericFunctions';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -561,6 +562,8 @@ export class Git implements INodeType {
 					let reference = 'HEAD';
 					if (options.reference !== undefined && options.reference !== '') {
 						assertParamIsString('reference', options.reference, this.getNode());
+						validateGitReference(reference, this.getNode());
+
 						reference = options.reference;
 					}
 
