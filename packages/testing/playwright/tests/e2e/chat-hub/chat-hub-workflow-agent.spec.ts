@@ -8,29 +8,18 @@ import { NodeDetailsViewPage } from '../../../pages/NodeDetailsViewPage';
 test.use(chatHubTestConfig);
 
 test.describe('Workflow agent @capability:proxy', () => {
-	test('manage workflow agents @auth:admin', async ({ n8n, anthropicCredential }) => {
+	test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {
 		const agentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
 		const chatPage = new ChatHubChatPage(n8n.page);
-
-		await n8n.api.workflows.importWorkflowFromFile('chat-hub-workflow-agent.json', {
-			makeUnique: false,
-			transform: (workflow) => {
-				const anthropicNode = workflow.nodes?.find((n) => n.type.includes('lmChatAnthropic'));
-
-				anthropicNode!.credentials!.anthropicApi = anthropicCredential;
-
-				return workflow;
-			},
-		});
 
 		// STEP: Navigate to workflow agents page and verify agent is listed
 		await n8n.navigate.toChatHubWorkflowAgents();
 		await expect(agentsPage.getAgentCards()).toHaveCount(1);
-		await expect(agentsPage.getAgentCards().nth(0)).toContainText('e2e workflow agent');
+		await expect(agentsPage.getAgentCards().nth(0)).toContainText(agentWorkflow.name);
 
 		// STEP: Click agent card to start conversation
 		await agentsPage.getAgentCards().nth(0).click();
-		await expect(chatPage.getModelSelectorButton()).toContainText('e2e workflow agent');
+		await expect(chatPage.getModelSelectorButton()).toContainText(agentWorkflow.name);
 
 		await chatPage.getChatInput().fill('Hello');
 		await chatPage.getSendButton().click();
@@ -52,7 +41,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await chatPage.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500);
 		await chatPage.getVisiblePopoverMenuItem('Workflow agents').hover({ force: true });
-		await chatPage.getVisiblePopoverMenuItem('e2e workflow agent', { exact: true }).click();
+		await chatPage.getVisiblePopoverMenuItem(agentWorkflow.name, { exact: true }).click();
 
 		// STEP: Send message again
 		await chatPage.getChatInput().fill('Hello');
@@ -73,28 +62,23 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await expect(agentsPage.getEmptyText()).toBeVisible();
 	});
 
-	test('sharing workflow agent with project chat user', async ({ n8n, anthropicCredential }) => {
+	test('sharing workflow agent with project chat user', async ({
+		n8n,
+		anthropicCredential,
+		agentWorkflow,
+		project,
+	}) => {
 		const memberN8n = await n8n.start.withUser(INSTANCE_MEMBER_CREDENTIALS[0]);
 		const memberEmail = INSTANCE_MEMBER_CREDENTIALS[0].email;
-		const projectResult = await n8n.api.projects.createProject('Sharing test');
 
-		await n8n.api.workflows.importWorkflowFromFile('chat-hub-workflow-agent.json', {
-			makeUnique: false,
-			transform: (workflow) => {
-				const anthropicNode = workflow.nodes?.find((n) => n.type.includes('lmChatAnthropic'));
-
-				anthropicNode!.credentials!.anthropicApi = anthropicCredential;
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(workflow as any).projectId = projectResult.id;
-				workflow.name = 'Sharing test';
-				return workflow;
-			},
-		});
+		// Transfer workflow and credential to it
+		await n8n.api.credentials.transferCredential(anthropicCredential.id, project.id);
+		await n8n.api.workflows.transfer(agentWorkflow.id, project.id);
 
 		// Verify that the agent is visible to owner
 		const ownerWorkflowAgentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
 		await n8n.navigate.toChatHubWorkflowAgents();
-		await expect(ownerWorkflowAgentsPage.getAgentCards()).toContainText(['Sharing test']);
+		await expect(ownerWorkflowAgentsPage.getAgentCards()).toContainText([agentWorkflow.name]);
 
 		// Verify that the agent is not visible to member before sharing
 		const memberWorkflowAgentsPage = new ChatHubWorkflowAgentsPage(memberN8n.page);
@@ -102,7 +86,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await expect(memberWorkflowAgentsPage.getEmptyText()).toBeVisible();
 
 		// Add member user to the project with project chat user role
-		await n8n.navigate.toProjectSettings(projectResult.id);
+		await n8n.navigate.toProjectSettings(project.id);
 		await n8n.projectSettings.getMembersSearchInput().click();
 		await n8n.projectSettings.getVisiblePopoverOption(memberEmail).click();
 		await expect(n8n.projectSettings.getMembersTable()).toContainText(memberEmail);
@@ -112,14 +96,12 @@ test.describe('Workflow agent @capability:proxy', () => {
 
 		// Verify that the agent is visible and usable to member after sharing
 		await memberN8n.page.reload();
-		await expect(memberWorkflowAgentsPage.getAgentCards()).toContainText(['Sharing test']);
+		await expect(memberWorkflowAgentsPage.getAgentCards()).toContainText([agentWorkflow.name]);
 		await memberWorkflowAgentsPage.getAgentCards().nth(0).click();
 
 		const memberChatPage = new ChatHubChatPage(memberN8n.page);
 		await memberChatPage.getChatInput().fill('Hello');
 		await memberChatPage.getSendButton().click();
 		await expect(memberChatPage.getChatMessages().last()).toContainText(/Bonjour/i);
-
-		await n8n.api.projects.deleteProject(projectResult.id);
 	});
 });

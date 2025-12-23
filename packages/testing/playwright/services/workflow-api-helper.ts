@@ -90,6 +90,32 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async archive(workflowId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/archive`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to archive workflow: ${await response.text()}`);
+		}
+	}
+
+	async delete(workflowId: string) {
+		const response = await this.api.request.delete(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete workflow: ${await response.text()}`);
+		}
+	}
+
+	async transfer(workflowId: string, destinationProjectId: string) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
+			data: { destinationProjectId },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to transfer workflow: ${await response.text()}`);
+		}
+	}
+
 	/** Makes workflow unique by updating name, IDs, and webhook paths. */
 	private makeWorkflowUnique(
 		workflow: Partial<IWorkflowBase>,
