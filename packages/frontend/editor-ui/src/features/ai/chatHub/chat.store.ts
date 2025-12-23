@@ -139,25 +139,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return chain;
 		}
 
-		let id: ChatMessageId | undefined;
-
 		// Find the most recent descendant message starting from messageId...
-		const stack = [messageId];
-		let latest: ChatMessageId | null = null;
+		let latest: ChatMessageId = messageId;
 
-		while ((id = stack.pop())) {
-			const message: ChatMessage = messages[id];
-			if (!latest || message.createdAt > messages[latest].createdAt) {
-				latest = id;
+		while (true) {
+			const responses: string[] = messages[latest].responses;
+
+			if (responses.length === 0) {
+				break;
 			}
 
-			for (const responseId of message.responses) {
-				stack.push(responseId);
-			}
-		}
-
-		if (!latest) {
-			return chain;
+			// Responses are sorted by create date, so the last item is the latest
+			latest = responses[responses.length - 1];
 		}
 
 		// ...and then walk back to the root following previousMessageId links
@@ -588,23 +581,45 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		content: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		keepAttachmentIndices: number[] = [],
+		newFiles: File[] = [],
 	) {
 		const promptId = uuidv4();
 
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[editId];
 		const previousMessageId = message?.previousMessageId ?? null;
+		const binaryData = await Promise.all(newFiles.map(convertFileToBinaryData));
 		const payload: ChatHubEditMessageRequest = {
 			model: agent.model,
 			messageId: promptId,
 			message: content,
 			credentials,
+			newAttachments: binaryData.map((attachment) => ({
+				fileName: attachment.fileName ?? 'unnamed file',
+				mimeType: attachment.mimeType,
+				data: attachment.data,
+			})),
+			keepAttachmentIndices,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 
 		if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
 		}
+
+		// Combine kept existing attachments with new attachments for optimistic UI
+		const keptExistingAttachments = keepAttachmentIndices.flatMap((index) => {
+			const attachment = message?.attachments[index];
+			if (!attachment) return [];
+			return [
+				{
+					fileName: attachment.fileName ?? 'unnamed file',
+					mimeType: attachment.mimeType ?? 'application/octet-stream',
+					data: '', // Binary data not needed for display (accessed via download URL)
+				},
+			];
+		});
 
 		streaming.value = {
 			promptPreviousMessageId: previousMessageId,
@@ -615,7 +630,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			retryOfMessageId: null,
 			revisionOfMessageId: editId,
 			tools: [],
-			attachments: [],
+			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
 		telemetry.track('User edited chat hub message', {

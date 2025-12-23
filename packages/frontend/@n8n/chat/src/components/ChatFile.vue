@@ -46,10 +46,15 @@ function onDelete() {
 </script>
 
 <template>
-	<div class="chat-file" @click="onClick">
+	<div class="chat-file" data-test-id="chat-file" @click="onClick">
 		<TypeIcon class="chat-icon" />
 		<p class="chat-file-name">{{ file.name }}</p>
-		<span v-if="isRemovable" class="chat-file-delete" @click.stop="onDelete">
+		<span
+			v-if="isRemovable"
+			class="chat-file-delete"
+			data-test-id="chat-file-remove"
+			@click.stop="onDelete"
+		>
 			<IconDelete />
 		</span>
 		<IconPreview v-else-if="isPreviewable || href" class="chat-file-preview" />

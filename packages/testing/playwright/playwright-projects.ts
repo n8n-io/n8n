@@ -77,9 +77,9 @@ export function getProjects(): Project[] {
 					use: { containerConfig: config },
 				},
 				{
-					name: `${name}:chaos`,
-					testDir: './tests/chaos',
-					grep: new RegExp(`@mode:${name}`),
+					name: `${name}:infrastructure`,
+					testDir: './tests/infrastructure',
+					grep: new RegExp(`@mode:${name}|@capability:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },

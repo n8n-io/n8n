@@ -204,6 +204,7 @@ export class ProxyServer {
 	 * @param options.raw - Save full original requests (true) or cleaned requests (false, default)
 	 *   - raw: false (default) - Saves only essential fields: method, path, queryStringParameters (GET), body (POST/PUT)
 	 *   - raw: true - Saves complete original request including all headers and metadata
+	 * @param options.transform - Transform function to modify expectation before saving
 	 */
 	async recordExpectations(
 		folderName: string,
@@ -212,6 +213,7 @@ export class ProxyServer {
 			host?: string;
 			dedupe?: boolean;
 			raw?: boolean;
+			transform?: (expectation: Expectation) => Expectation;
 		},
 	): Promise<void> {
 		try {
@@ -289,13 +291,18 @@ export class ProxyServer {
 				}
 
 				// Create expectation (cleaned or raw)
-				const processedExpectation: Expectation = {
+				let processedExpectation: Expectation = {
 					...expectation,
 					httpRequest: requestForProcessing,
 					times: {
 						unlimited: true,
 					},
 				};
+
+				// Apply transform if provided
+				if (options?.transform) {
+					processedExpectation = options.transform(processedExpectation);
+				}
 
 				// Generate unique filename based on request details
 				const hash = crypto
