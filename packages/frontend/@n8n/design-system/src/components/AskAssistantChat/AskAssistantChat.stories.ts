@@ -9,6 +9,9 @@ export default {
 	argTypes: {},
 };
 
+// Fixed timestamp for consistent storybook displays
+const BASE_TIMESTAMP = new Date('2024-12-20T00:33:00.000Z');
+
 function getMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
 	return messages;
 }
@@ -578,12 +581,12 @@ const SEARCH_FILES_TOOL_CALL_COMPLETED: ChatUI.AssistantMessage = {
 				pattern: '*.vue',
 				directory: '/src',
 			},
-			timestamp: new Date().toISOString(),
+			timestamp: BASE_TIMESTAMP.toISOString(),
 		},
 		{
 			type: 'progress',
 			data: { message: 'Searching for Vue files...' },
-			timestamp: new Date().toISOString(),
+			timestamp: BASE_TIMESTAMP.toISOString(),
 		},
 		{
 			type: 'output',
@@ -591,7 +594,7 @@ const SEARCH_FILES_TOOL_CALL_COMPLETED: ChatUI.AssistantMessage = {
 				files: ['/src/components/Button.vue', '/src/components/Modal.vue', '/src/views/Home.vue'],
 				count: 3,
 			},
-			timestamp: new Date().toISOString(),
+			timestamp: BASE_TIMESTAMP.toISOString(),
 		},
 	],
 	read: false,
@@ -701,17 +704,17 @@ MixedMessagesWithTools.args = {
 						workflowId: 'wf_123',
 						includeNodes: true,
 					},
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 				{
 					type: 'progress',
 					data: { message: 'Loading workflow configuration...' },
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 				{
 					type: 'progress',
 					data: { message: 'Analyzing node connections...' },
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 				{
 					type: 'output',
@@ -720,7 +723,7 @@ MixedMessagesWithTools.args = {
 						connections: 8,
 						issues: ['Missing error handling in HTTP node', 'Unused variable in Code node'],
 					},
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 			],
 			read: true,
@@ -938,7 +941,7 @@ UserMessageWithRestoreVersion.args = {
 				'Add an HTTP Request node to fetch data from the API and then transform the response using a Code node.',
 			revertVersion: {
 				id: 'version-abc123',
-				createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+				createdAt: new Date(BASE_TIMESTAMP.getTime() - 1000 * 60 * 30).toISOString(),
 			},
 			read: true,
 		},
@@ -968,7 +971,7 @@ MultipleRestoreVersionMessages.args = {
 			content: 'Create a basic workflow with a manual trigger',
 			revertVersion: {
 				id: 'version-001',
-				createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+				createdAt: new Date(BASE_TIMESTAMP.getTime() - 1000 * 60 * 60 * 2).toISOString(),
 			},
 			read: true,
 		},
@@ -986,7 +989,7 @@ MultipleRestoreVersionMessages.args = {
 			content: 'Now add a Slack node to send notifications',
 			revertVersion: {
 				id: 'version-002',
-				createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 minutes ago
+				createdAt: new Date(BASE_TIMESTAMP.getTime() - 1000 * 60 * 45).toISOString(),
 			},
 			read: true,
 		},
@@ -1004,7 +1007,7 @@ MultipleRestoreVersionMessages.args = {
 			content: 'Add error handling with an Error Trigger',
 			revertVersion: {
 				id: 'version-003',
-				createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10 minutes ago
+				createdAt: new Date(BASE_TIMESTAMP.getTime() - 1000 * 60 * 10).toISOString(),
 			},
 			read: true,
 		},
@@ -1034,7 +1037,7 @@ RestoreVersionWhileStreaming.args = {
 			content: 'Build a complex data pipeline with multiple transformations',
 			revertVersion: {
 				id: 'version-streaming',
-				createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
+				createdAt: new Date(BASE_TIMESTAMP.getTime() - 1000 * 60 * 5).toISOString(),
 			},
 			read: true,
 		},
@@ -1190,17 +1193,17 @@ Once configured, the trigger will activate whenever the specified event occurs.`
 						workflowId: 'slack-to-sheets',
 						checkType: 'error-handling',
 					},
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 				{
 					type: 'progress',
 					data: { message: 'Scanning workflow nodes...' },
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 				{
 					type: 'progress',
 					data: { message: 'Checking for Error Trigger nodes...' },
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 				{
 					type: 'output',
@@ -1212,7 +1215,7 @@ Once configured, the trigger will activate whenever the specified event occurs.`
 						],
 						currentErrorHandling: 'None detected',
 					},
-					timestamp: new Date().toISOString(),
+					timestamp: BASE_TIMESTAMP.toISOString(),
 				},
 			],
 			read: true,
