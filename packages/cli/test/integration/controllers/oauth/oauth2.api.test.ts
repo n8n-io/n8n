@@ -6,6 +6,7 @@ import nock from 'nock';
 import { parse as parseQs } from 'querystring';
 
 import { CredentialsHelper } from '@/credentials-helper';
+import { ExternalHooks } from '@/external-hooks';
 import { OauthService } from '@/oauth/oauth.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -73,6 +74,48 @@ describe('OAuth2 API', () => {
 			state,
 			scope: 'openid',
 		});
+	});
+
+	it('should allow external hook to modify oAuthOptions and state', async () => {
+		const externalHooks = Container.get(ExternalHooks);
+		const oauthService = Container.get(OauthService);
+
+		// Mock the external hook to modify both redirectUri and state
+		const hookSpy = jest.fn(async function (oAuthOptions) {
+			// Modify redirectUri directly in oAuthOptions
+			oAuthOptions.redirectUri = 'https://custom.domain/callback';
+
+			// Decode base64 state, add host property, and re-encode
+			const stateJson = JSON.parse(Buffer.from(oAuthOptions.state, 'base64').toString());
+			stateJson.host = 'custom.host.com';
+			oAuthOptions.state = Buffer.from(JSON.stringify(stateJson)).toString('base64');
+		});
+
+		externalHooks['registered']['oauth2.authenticate'] = [hookSpy];
+
+		const response = await ownerAgent
+			.get('/oauth2-credential/auth')
+			.query({ id: credential.id })
+			.expect(200);
+
+		const authUrl = new URL(response.body.data);
+		const queryParams = parseQs(authUrl.search.slice(1));
+
+		// Verify the hook was called
+		expect(hookSpy).toHaveBeenCalledTimes(1);
+
+		// Verify redirectUri was modified
+		expect(queryParams.redirect_uri).toBe('https://custom.domain/callback');
+
+		// Verify the state was encrypted (should be different from the base64 input)
+		expect(queryParams.state).toBeDefined();
+		expect(typeof queryParams.state).toBe('string');
+
+		// Decrypt and verify the state contains the host property
+		const decryptedState = oauthService['cipher'].decrypt(queryParams.state as string);
+		const stateObject = JSON.parse(decryptedState);
+		expect(stateObject.host).toBe('custom.host.com');
+		expect(stateObject.cid).toBe(credential.id); // Original CSRF data should still be there
 	});
 
 	it('should fail on auth when callback is called as another user', async () => {
