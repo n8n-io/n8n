@@ -498,17 +498,13 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
-			model.provider,
-			credentials,
-			trx,
-		);
+		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return await this.chatHubWorkflowService.createChatWorkflow(
 			user.id,
 			sessionId,
-			credential.projectId,
+			projectId,
 			history,
 			message,
 			attachments,
@@ -994,7 +990,7 @@ export class ChatHubService {
 		incomingModel: ChatHubConversationModel,
 	) {
 		return await this.messageRepository.manager.transaction(async (trx) => {
-			const { resolvedCredentials, resolvedModel, credential } =
+			const { resolvedCredentials, resolvedModel, credentialId, projectId } =
 				await this.resolveCredentialsAndModelForTitle(
 					user,
 					incomingModel,
@@ -1002,18 +998,18 @@ export class ChatHubService {
 					trx,
 				);
 
-			if (!credential) {
+			if (!credentialId || !projectId) {
 				throw new BadRequestError('Could not determine credentials for title generation');
 			}
 
 			this.logger.debug(
-				`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${jsonStringify(resolvedModel)}`,
+				`Using credential ID ${credentialId} for title generation in project ${projectId}, model ${jsonStringify(resolvedModel)}`,
 			);
 
 			return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
 				user.id,
 				sessionId,
-				credential.projectId,
+				projectId,
 				humanMessage,
 				attachments,
 				resolvedCredentials,
@@ -1031,7 +1027,8 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		if (model.provider === 'n8n') {
 			return await this.resolveFromN8nWorkflow(user, model, trx);
@@ -1041,17 +1038,18 @@ export class ChatHubService {
 			return await this.resolveFromCustomAgent(user, model, trx);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credentialId = this.chatHubCredentialsService.findProviderCredential(
 			model.provider,
 			credentials,
-			trx,
 		);
+
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return {
 			resolvedCredentials: credentials,
 			resolvedModel: model,
-			credential,
+			credentialId,
+			projectId,
 		};
 	}
 
@@ -1062,7 +1060,8 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -1105,11 +1104,12 @@ export class ChatHubService {
 			);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureWorkflowCredentials(
-			modelNode.provider,
-			llmCredentials,
-			workflowId,
-		);
+		const { credentialId, projectId } =
+			await this.chatHubCredentialsService.findWorkflowCredentialAndProject(
+				modelNode.provider,
+				llmCredentials,
+				workflowId,
+			);
 
 		const resolvedModel: ChatHubConversationModel = {
 			provider: modelNode.provider,
@@ -1118,12 +1118,12 @@ export class ChatHubService {
 
 		const resolvedCredentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[modelNode.provider]]: {
-				id: credential.id,
+				id: credentialId,
 				name: '',
 			},
 		};
 
-		return { resolvedCredentials, resolvedModel, credential };
+		return { resolvedCredentials, resolvedModel, credentialId, projectId };
 	}
 
 	private findSupportedLLMNodes(nodes: INode[]) {
@@ -1146,15 +1146,15 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
 		}
 
-		const credentialId = agent.credentialId;
-		if (!credentialId) {
+		if (!agent.credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
@@ -1165,19 +1165,19 @@ export class ChatHubService {
 
 		const resolvedCredentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
-				id: credentialId,
+				id: agent.credentialId,
 				name: '',
 			},
 		};
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credentialId = this.chatHubCredentialsService.findProviderCredential(
 			agent.provider,
 			resolvedCredentials,
-			trx,
 		);
 
-		return { resolvedCredentials, resolvedModel, credential };
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+
+		return { resolvedCredentials, resolvedModel, credentialId, projectId };
 	}
 
 	private async runTitleWorkflowAndGetTitle(

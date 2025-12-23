@@ -139,25 +139,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return chain;
 		}
 
-		let id: ChatMessageId | undefined;
-
 		// Find the most recent descendant message starting from messageId...
-		const stack = [messageId];
-		let latest: ChatMessageId | null = null;
+		let latest: ChatMessageId = messageId;
 
-		while ((id = stack.pop())) {
-			const message: ChatMessage = messages[id];
-			if (!latest || message.createdAt > messages[latest].createdAt) {
-				latest = id;
+		while (true) {
+			const responses: string[] = messages[latest].responses;
+
+			if (responses.length === 0) {
+				break;
 			}
 
-			for (const responseId of message.responses) {
-				stack.push(responseId);
-			}
-		}
-
-		if (!latest) {
-			return chain;
+			// Responses are sorted by create date, so the last item is the latest
+			latest = responses[responses.length - 1];
 		}
 
 		// ...and then walk back to the root following previousMessageId links
