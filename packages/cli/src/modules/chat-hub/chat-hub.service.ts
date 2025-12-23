@@ -278,6 +278,10 @@ export class ChatHubService {
 				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 				if (messageToEdit.type === 'ai') {
+					if (newStoredAttachments.length > 0) {
+						throw new BadRequestError('AI message cannot include attachments');
+					}
+
 					// AI edits just change the original message without revisioning or response generation
 					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
 					return null;
