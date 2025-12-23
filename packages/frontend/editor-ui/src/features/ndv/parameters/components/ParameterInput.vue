@@ -1359,6 +1359,7 @@ onUpdated(async () => {
 					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
 				"
 				button-size="large"
+				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
