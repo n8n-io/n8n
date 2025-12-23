@@ -1,4 +1,3 @@
-import { withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
@@ -14,42 +13,24 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 		agent: Partial<IChatHubAgent> & Pick<IChatHubAgent, 'id'>,
 		trx?: EntityManager,
 	) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				await em.insert(ChatHubAgent, agent);
-				return await em.findOneOrFail(ChatHubAgent, {
-					where: { id: agent.id },
-				});
-			},
-			false,
-		);
+		const em = trx ?? this.manager;
+		await em.insert(ChatHubAgent, agent);
+		return await em.findOneOrFail(ChatHubAgent, {
+			where: { id: agent.id },
+		});
 	}
 
 	async updateAgent(id: string, updates: Partial<IChatHubAgent>, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				await em.update(ChatHubAgent, { id }, updates);
-				return await em.findOneOrFail(ChatHubAgent, {
-					where: { id },
-				});
-			},
-			false,
-		);
+		const em = trx ?? this.manager;
+		await em.update(ChatHubAgent, { id }, updates);
+		return await em.findOneOrFail(ChatHubAgent, {
+			where: { id },
+		});
 	}
 
 	async deleteAgent(id: string, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				return await em.delete(ChatHubAgent, { id });
-			},
-			false,
-		);
+		const em = trx ?? this.manager;
+		return await em.delete(ChatHubAgent, { id });
 	}
 
 	async getManyByUserId(userId: string) {
@@ -60,15 +41,9 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				return await em.findOne(ChatHubAgent, {
-					where: { id, ownerId: userId },
-				});
-			},
-			false,
-		);
+		const em = trx ?? this.manager;
+		return await em.findOne(ChatHubAgent, {
+			where: { id, ownerId: userId },
+		});
 	}
 }

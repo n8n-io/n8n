@@ -162,10 +162,10 @@ export const test = base.extend<
 
 	// Reset the database for the new container
 	dbSetup: [
-		async ({ backendUrl, n8nContainer }, use) => {
+		async ({ n8nContainer }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: backendUrl });
+				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
 				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
 				await apiContext.dispose();

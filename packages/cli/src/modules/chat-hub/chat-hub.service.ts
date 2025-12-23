@@ -160,13 +160,7 @@ export class ChatHubService {
 
 		const credentialId = this.getModelCredential(model, credentials);
 
-		// Store attachments early to populate 'id' field via BinaryDataService
-		const processedAttachments = await this.chatHubAttachmentService.store(
-			sessionId,
-			messageId,
-			attachments,
-		);
-
+		let processedAttachments: IBinaryData[] = [];
 		let executionData: IRunExecutionData;
 		let workflowData: IWorkflowBase;
 		let responseMode: ChatTriggerResponseMode;
@@ -187,6 +181,13 @@ export class ChatHubService {
 				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 				const history = this.buildMessageHistory(messages, previousMessageId);
+
+				// Store attachments to populate 'id' field via BinaryDataService
+				processedAttachments = await this.chatHubAttachmentService.store(
+					sessionId,
+					messageId,
+					attachments,
+				);
 
 				await this.saveHumanMessage(
 					payload,
@@ -260,56 +261,92 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
-			const session = await this.getChatSession(user, sessionId, trx);
-			if (!session) {
-				throw new NotFoundError('Chat session not found');
+		let workflow;
+		let newStoredAttachments: IBinaryData[] = [];
+
+		try {
+			workflow = await this.messageRepository.manager.transaction(async (trx) => {
+				const session = await this.getChatSession(user, sessionId, trx);
+				if (!session) {
+					throw new NotFoundError('Chat session not found');
+				}
+
+				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
+
+				if (messageToEdit.type === 'ai') {
+					// AI edits just change the original message without revisioning or response generation
+					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
+					return null;
+				}
+
+				if (messageToEdit.type === 'human') {
+					const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+					const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
+
+					// If the message to edit isn't the original message, we want to point to the original message
+					const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
+
+					// Handle attachment changes
+					const originalAttachments = messageToEdit.attachments ?? [];
+
+					// Keep specified existing attachments
+					const keptAttachments = payload.keepAttachmentIndices.flatMap((index) => {
+						const attachment = originalAttachments[index];
+
+						return attachment ? [attachment] : [];
+					});
+
+					// Store new attachments to populate 'id' field via BinaryDataService
+					newStoredAttachments =
+						payload.newAttachments.length > 0
+							? await this.chatHubAttachmentService.store(
+									sessionId,
+									messageId,
+									payload.newAttachments,
+								)
+							: [];
+
+					// Combine kept + new attachments
+					const attachments = [...keptAttachments, ...newStoredAttachments];
+
+					await this.saveHumanMessage(
+						payload,
+						attachments,
+						user,
+						messageToEdit.previousMessageId,
+						model,
+						revisionOfMessageId,
+						trx,
+					);
+
+					return await this.prepareReplyWorkflow(
+						user,
+						sessionId,
+						credentials,
+						model,
+						history,
+						message,
+						session.tools,
+						attachments,
+						tz,
+						trx,
+					);
+				}
+
+				throw new BadRequestError('Only human and AI messages can be edited');
+			});
+		} catch (error) {
+			if (newStoredAttachments.length > 0) {
+				try {
+					// Rollback stored attachments if transaction fails
+					await this.chatHubAttachmentService.deleteAttachments(newStoredAttachments);
+				} catch (error) {
+					this.errorReporter.warn(`Could not clean up ${newStoredAttachments.length} files`);
+				}
 			}
 
-			const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
-
-			if (messageToEdit.type === 'ai') {
-				// AI edits just change the original message without revisioning or response generation
-				await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
-				return null;
-			}
-
-			if (messageToEdit.type === 'human') {
-				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
-				const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
-
-				// If the message to edit isn't the original message, we want to point to the original message
-				const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
-
-				// Attachments are already processed (from the original message)
-				const attachments = messageToEdit.attachments ?? [];
-
-				await this.saveHumanMessage(
-					payload,
-					attachments,
-					user,
-					messageToEdit.previousMessageId,
-					model,
-					revisionOfMessageId,
-					trx,
-				);
-
-				return await this.prepareReplyWorkflow(
-					user,
-					sessionId,
-					credentials,
-					model,
-					history,
-					message,
-					session.tools,
-					attachments,
-					tz,
-					trx,
-				);
-			}
-
-			throw new BadRequestError('Only human and AI messages can be edited');
-		});
+			throw error;
+		}
 
 		if (!workflow) {
 			return;
@@ -467,17 +504,13 @@ export class ChatHubService {
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
-			model.provider,
-			credentials,
-			trx,
-		);
+		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return await this.chatHubWorkflowService.createChatWorkflow(
 			user.id,
 			sessionId,
-			credential.projectId,
+			projectId,
 			history,
 			message,
 			attachments,
@@ -963,7 +996,7 @@ export class ChatHubService {
 		incomingModel: ChatHubConversationModel,
 	) {
 		return await this.messageRepository.manager.transaction(async (trx) => {
-			const { resolvedCredentials, resolvedModel, credential } =
+			const { resolvedCredentials, resolvedModel, credentialId, projectId } =
 				await this.resolveCredentialsAndModelForTitle(
 					user,
 					incomingModel,
@@ -971,18 +1004,18 @@ export class ChatHubService {
 					trx,
 				);
 
-			if (!credential) {
+			if (!credentialId || !projectId) {
 				throw new BadRequestError('Could not determine credentials for title generation');
 			}
 
 			this.logger.debug(
-				`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${jsonStringify(resolvedModel)}`,
+				`Using credential ID ${credentialId} for title generation in project ${projectId}, model ${jsonStringify(resolvedModel)}`,
 			);
 
 			return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
 				user.id,
 				sessionId,
-				credential.projectId,
+				projectId,
 				humanMessage,
 				attachments,
 				resolvedCredentials,
@@ -1000,7 +1033,8 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		if (model.provider === 'n8n') {
 			return await this.resolveFromN8nWorkflow(user, model, trx);
@@ -1010,17 +1044,18 @@ export class ChatHubService {
 			return await this.resolveFromCustomAgent(user, model, trx);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credentialId = this.chatHubCredentialsService.findProviderCredential(
 			model.provider,
 			credentials,
-			trx,
 		);
+
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return {
 			resolvedCredentials: credentials,
 			resolvedModel: model,
-			credential,
+			credentialId,
+			projectId,
 		};
 	}
 
@@ -1031,7 +1066,8 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -1074,11 +1110,12 @@ export class ChatHubService {
 			);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureWorkflowCredentials(
-			modelNode.provider,
-			llmCredentials,
-			workflowId,
-		);
+		const { credentialId, projectId } =
+			await this.chatHubCredentialsService.findWorkflowCredentialAndProject(
+				modelNode.provider,
+				llmCredentials,
+				workflowId,
+			);
 
 		const resolvedModel: ChatHubConversationModel = {
 			provider: modelNode.provider,
@@ -1087,12 +1124,12 @@ export class ChatHubService {
 
 		const resolvedCredentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[modelNode.provider]]: {
-				id: credential.id,
+				id: credentialId,
 				name: '',
 			},
 		};
 
-		return { resolvedCredentials, resolvedModel, credential };
+		return { resolvedCredentials, resolvedModel, credentialId, projectId };
 	}
 
 	private findSupportedLLMNodes(nodes: INode[]) {
@@ -1115,15 +1152,15 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: { id: string; projectId: string };
+		credentialId: string;
+		projectId: string;
 	}> {
 		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
 		}
 
-		const credentialId = agent.credentialId;
-		if (!credentialId) {
+		if (!agent.credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
 		}
 
@@ -1134,19 +1171,19 @@ export class ChatHubService {
 
 		const resolvedCredentials: INodeCredentials = {
 			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
-				id: credentialId,
+				id: agent.credentialId,
 				name: '',
 			},
 		};
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credentialId = this.chatHubCredentialsService.findProviderCredential(
 			agent.provider,
 			resolvedCredentials,
-			trx,
 		);
 
-		return { resolvedCredentials, resolvedModel, credential };
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+
+		return { resolvedCredentials, resolvedModel, credentialId, projectId };
 	}
 
 	private async runTitleWorkflowAndGetTitle(
