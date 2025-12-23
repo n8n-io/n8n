@@ -80,10 +80,14 @@ pnpm test:local --workers=2 $SPECS
 ```
 
 The distribute script:
-1. Reads committed metrics from `.github/test-metrics/playwright.json`
-2. Sorts specs by duration (descending)
-3. Assigns each spec to the lightest shard (greedy bin-packing)
-4. Outputs space-separated spec paths for the requested shard
+1. Runs `playwright test --list --project="multi-main:e2e"` to get valid specs
+2. Reads duration estimates from `.github/test-metrics/playwright.json`
+3. Uses 30s default for new specs not yet in metrics
+4. Sorts specs by duration (descending)
+5. Assigns each spec to the lightest shard (greedy bin-packing)
+6. Outputs space-separated spec paths for the requested shard
+
+**New specs are automatically discovered** via Playwright's own test discovery. This respects project configuration including `grep`/`grepInvert` patterns for `@serial`, `@isolated`, and `@db:reset` tags.
 
 ### Distribution Algorithm
 
@@ -130,9 +134,10 @@ Create a script that outputs the same JSON schema. The distribution only require
 
 ### When to Refresh
 
-- When new spec files are added (they get 30s default until refreshed)
-- When specs are deleted/renamed (stale entries are filtered out)
+- **Optional for new specs** - they're auto-discovered with 30s default, but refresh for accurate estimates
+- When specs are deleted/renamed (stale entries are cleaned up)
 - Periodically to capture duration changes (weekly recommended)
+- After significant test changes that affect execution time
 
 ## Maintenance
 
