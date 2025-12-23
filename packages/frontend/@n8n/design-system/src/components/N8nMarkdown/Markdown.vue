@@ -5,10 +5,10 @@ import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
 import { computed, ref } from 'vue';
-import xss, { friendlyAttrValue, whiteList } from 'xss';
+import xss, { whiteList } from 'xss';
 
 import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
-import { toggleCheckbox } from '../../utils/markdown';
+import { toggleCheckbox, serializeAttr } from '../../utils/markdown';
 import N8nLoading from '../N8nLoading';
 
 interface IImage {
@@ -76,16 +76,7 @@ const md = new Markdown(options.markdown)
 const xssWhiteList = {
 	...whiteList,
 	label: ['class', 'for'],
-	iframe: [
-		'width',
-		'height',
-		'src',
-		'title',
-		'frameborder',
-		'allow',
-		'referrerpolicy',
-		'allowfullscreen',
-	],
+	iframe: ['width', 'height', 'src', 'title', 'frameborder', 'allow', 'referrerpolicy'],
 };
 
 const htmlContent = computed(() => {
@@ -117,8 +108,11 @@ const htmlContent = computed(() => {
 			if (tag === 'img' && name === 'src') {
 				if (value.match(fileIdRegex)) {
 					const id = value.split('fileId:')[1];
-					const attributeValue = friendlyAttrValue(imageUrls[id]);
-					return attributeValue ? `src=${attributeValue}` : '';
+					const imageUrl = imageUrls[id];
+					if (!imageUrl) {
+						return '';
+					}
+					return serializeAttr(tag, name, imageUrl);
 				}
 				// Only allow http requests to supported image files from the `static` directory
 				const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -132,7 +126,7 @@ const htmlContent = computed(() => {
 				if (name === 'src') {
 					// Only allow YouTube as src for iframes embeds
 					if (YOUTUBE_EMBED_SRC_REGEX.test(value)) {
-						return `src=${friendlyAttrValue(value)}`;
+						return serializeAttr(tag, name, value);
 					} else {
 						return '';
 					}

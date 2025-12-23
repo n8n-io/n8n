@@ -1,7 +1,11 @@
 import type { Locator } from '@playwright/test';
 
-export class ChatHubPersonalAgentModal {
-	constructor(private root: Locator) {}
+import { BaseModal } from './BaseModal';
+
+export class ChatHubPersonalAgentModal extends BaseModal {
+	constructor(protected readonly root: Locator) {
+		super(root.page());
+	}
 
 	getRoot() {
 		return this.root;

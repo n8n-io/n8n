@@ -1176,6 +1176,7 @@
 	"fixedCollectionParameter.addItem": "Add item",
 	"fixedCollectionParameter.addParameter": "Add {parameter}",
 	"fixedCollectionParameter.allOptionsAdded": "All options have been added",
+	"fixedCollectionParameter.addField": "Add Field",
 	"fixedCollectionParameter.choose": "Choose...",
 	"fixedCollectionParameter.currentlyNoItemsExist": "Currently no items exist",
 	"fixedCollectionParameter.deleteItem": "Delete item",
