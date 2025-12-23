@@ -560,9 +560,9 @@ const updateTimeSavedPerExecution = (value: string) => {
 const onExecutionLogicModeChange = (value: string) => {
 	const currentBinaryMode = workflowSettings.value.binaryMode || 'separate';
 
-	if (['v0', 'v1'].includes(value)) {
+	if (value === 'v0' || value === 'v1') {
 		workflowSettings.value.binaryMode = 'separate';
-		workflowSettings.value.executionOrder = value as 'v0' | 'v1';
+		workflowSettings.value.executionOrder = value;
 	}
 
 	if (value === 'v2') {

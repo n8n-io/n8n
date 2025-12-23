@@ -48,6 +48,7 @@ const fileMeta = computed(() => {
 const downloadBinaryData = async () => {
 	try {
 		const response = await fetch(fileUrl.value);
+		if (!response.ok) throw new Error('Error downloading file');
 		const blob = await response.blob();
 		saveAs(blob, fileName.value);
 	} catch (error) {

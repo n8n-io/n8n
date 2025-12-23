@@ -45,6 +45,7 @@ async function downloadBinaryData() {
 			name = [name, fileExtension].join('.');
 		}
 		const response = await fetch(url);
+		if (!response.ok) throw new Error('Error downloading file');
 		const blob = await response.blob();
 		saveAs(blob, name);
 	} catch (error) {

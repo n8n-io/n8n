@@ -1536,7 +1536,7 @@ export class WorkflowDataProxy {
 					JSON_ACCESS_KEYS.push('$item');
 				}
 
-				if (JSON_ACCESS_KEYS.includes(name as string)) {
+				if (typeof name === 'string' && JSON_ACCESS_KEYS.includes(name)) {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
