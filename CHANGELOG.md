@@ -1,3 +1,13 @@
+## [1.123.9](https://github.com/n8n-io/n8n/compare/n8n@1.123.8...n8n@1.123.9) (2025-12-23)
+
+
+### Bug Fixes
+
+* Improve expression handling ([#23560](https://github.com/n8n-io/n8n/issues/23560)) ([8a5d4d5](https://github.com/n8n-io/n8n/commit/8a5d4d5746f55a2fbb1566508bccfa729a304b60))
+* Improve markdown rendering ([#23561](https://github.com/n8n-io/n8n/issues/23561)) ([e6313f6](https://github.com/n8n-io/n8n/commit/e6313f636412d7659e6ff9afb147bb02c9d12068))
+
+
+
 ## [1.123.8](https://github.com/n8n-io/n8n/compare/n8n@1.123.7...n8n@1.123.8) (2025-12-22)
 
 

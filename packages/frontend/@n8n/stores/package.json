@@ -1,7 +1,7 @@
 {
   "name": "@n8n/stores",
   "type": "module",
-  "version": "1.30.2",
+  "version": "1.30.3",
   "files": [
     "dist"
   ],
