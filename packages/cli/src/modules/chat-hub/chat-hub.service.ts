@@ -42,6 +42,7 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	sleep,
 	NodeConnectionTypes,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -82,6 +83,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
+import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 
 @Service()
 export class ChatHubService {
@@ -90,6 +92,7 @@ export class ChatHubService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionService: ExecutionService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionManager: ChatExecutionManager,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -640,9 +643,9 @@ export class ChatHubService {
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
 
-		if (chatResponseNodes.length > 0) {
+		if (chatResponseNodes.length > 0 && !['responseNode', 'responseNodes'].includes(responseMode)) {
 			throw new BadRequestError(
-				'Respond to Chat nodes are not supported in custom agent workflows',
+				'"Respond to Chat" nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or "Using \'Respond to Webhook\' Node." or remove the nodes from the workflow.',
 			);
 		}
 
@@ -750,7 +753,11 @@ export class ChatHubService {
 			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
 		}
 
-		if (responseMode === 'lastNode') {
+		if (
+			responseMode === 'lastNode' ||
+			responseMode === 'responseNodes' ||
+			responseMode === 'responseNode'
+		) {
 			return await this.executeLastNode(
 				res,
 				user,
@@ -761,6 +768,7 @@ export class ChatHubService {
 				previousMessageId,
 				retryOfMessageId,
 				executionMode,
+				responseMode,
 			);
 		} else if (responseMode === 'streaming') {
 			return await this.executeWithStreaming(
@@ -787,6 +795,7 @@ export class ChatHubService {
 		previousMessageId: string,
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
+		responseMode: ChatTriggerResponseMode,
 	) {
 		const running = await this.workflowExecutionService.executeChatWorkflow(
 			user,
@@ -797,7 +806,7 @@ export class ChatHubService {
 			executionMode,
 		);
 
-		const messageId = uuidv4();
+		let messageId = uuidv4();
 		const executionId = running.executionId;
 
 		if (!executionId) {
@@ -815,7 +824,7 @@ export class ChatHubService {
 		);
 
 		await this.waitForExecutionCompletion(executionId);
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		let execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -825,8 +834,7 @@ export class ChatHubService {
 			);
 		}
 
-		const message = this.getMessage(execution);
-		const lastNode = getLastNodeExecuted(execution);
+		const message = this.getMessage(execution, responseMode);
 		const status = 'success';
 
 		await this.endResponse(
@@ -839,20 +847,54 @@ export class ChatHubService {
 			retryOfMessageId,
 		);
 
-		if (execution.status === 'waiting') {
+		while (execution && execution.status === 'waiting') {
+			const lastNode = getLastNodeExecuted(execution);
+
 			if (lastNode && shouldResumeImmediately(lastNode)) {
 				this.logger.debug(
 					`Resuming execution ${execution.id} immediately after wait in node ${lastNode.name}`,
 				);
-				// const session
-				// session.connection.send(N8N_CONTINUE);
-				// const data: ChatMessage = {
-				// 	action: 'sendMessage',
-				// 	chatInput: '',
-				// 	sessionId: session.sessionId,
-				// };
-				// await this.resumeExecution(session.executionId, data, sessionKey);
-				// session.nodeWaitingForChatResponse = undefined;
+				await this.resumeExecution(sessionId, execution, '');
+
+				previousMessageId = messageId;
+				retryOfMessageId = null;
+				messageId = uuidv4();
+
+				await this.beginResponse(
+					res,
+					executionId,
+					messageId,
+					sessionId,
+					model,
+					previousMessageId,
+					retryOfMessageId,
+				);
+
+				await this.waitForExecutionCompletion(executionId);
+
+				execution = await this.executionRepository.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				if (!execution) {
+					throw new OperationalError(
+						'Chat execution not found after completion - make sure your instance is saving executions.',
+					);
+				}
+
+				const message = this.getMessage(execution, responseMode);
+				const status = 'success';
+
+				await this.endResponse(
+					res,
+					message ?? '',
+					status,
+					executionId,
+					messageId,
+					previousMessageId,
+					retryOfMessageId,
+				);
 			} else {
 				this.logger.debug(
 					`Execution ${execution.id} is waiting for user input at node ${lastNode?.name}`,
@@ -867,25 +909,51 @@ export class ChatHubService {
 	/**
 	 * Returns the message to be sent of the last executed node
 	 */
-	private getMessage(execution: IExecutionResponse) {
+	private getMessage(execution: IExecutionResponse, responseMode: ChatTriggerResponseMode) {
+		const nodeName = this.getLastNodeExecuted(execution);
+		if (!nodeName) return undefined;
+
+		const outputs = this.getNodeOutputs(execution, nodeName);
+		const entry = this.getFirstOutputEntry(outputs);
+		if (!entry) return undefined;
+
+		return this.extractMessage(entry, responseMode);
+	}
+
+	private getLastNodeExecuted(execution: IExecutionResponse): string | undefined {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
-		if (typeof lastNodeExecuted !== 'string') return undefined;
+		return typeof lastNodeExecuted === 'string' ? lastNodeExecuted : undefined;
+	}
 
-		const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-		const data = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data;
-		const outputs = data?.main ?? data?.[NodeConnectionTypes.AiTool];
+	private getNodeOutputs(execution: IExecutionResponse, nodeName: string) {
+		const runData = execution.data.resultData.runData[nodeName];
+		const runIndex = runData.length - 1;
+		const data = runData[runIndex]?.data;
 
-		// Check all main output branches for a message
-		if (outputs && Array.isArray(outputs)) {
-			for (const branch of outputs) {
-				if (branch && Array.isArray(branch) && branch.length > 0) {
-					for (const entry of branch) {
-						const response = entry.json;
-						const message = response.output ?? response.text ?? response.message ?? '';
-						return typeof message === 'string' ? message : jsonStringify(message);
-					}
-				}
-			}
+		return data?.main ?? data?.[NodeConnectionTypes.AiTool] ?? [];
+	}
+
+	private getFirstOutputEntry(
+		outputs: Array<INodeExecutionData[] | null>,
+	): INodeExecutionData | undefined {
+		for (const branch of outputs) {
+			if (!Array.isArray(branch) || branch.length === 0) continue;
+
+			return branch[0];
+		}
+
+		return undefined;
+	}
+
+	private extractMessage(entry: INodeExecutionData, responseMode: ChatTriggerResponseMode) {
+		if (responseMode === 'responseNode' || responseMode === 'responseNodes') {
+			return entry.sendMessage ?? '';
+		}
+
+		if (responseMode === 'lastNode') {
+			const response = (entry.json ?? {}) as Record<string, unknown>;
+			const message = response.output ?? response.text ?? response.message ?? '';
+			return typeof message === 'string' ? message : jsonStringify(message);
 		}
 
 		return undefined;
@@ -911,8 +979,10 @@ export class ChatHubService {
 			},
 		};
 
-		res.writeHead(200, JSONL_STREAM_HEADERS);
-		res.flushHeaders();
+		if (!res.headersSent) {
+			res.writeHead(200, JSONL_STREAM_HEADERS);
+			res.flushHeaders();
+		}
 
 		res.write(jsonStringify(beginChunk) + '\n');
 		res.flush();
@@ -970,6 +1040,18 @@ export class ChatHubService {
 		await this.messageRepository.updateChatMessage(messageId, {
 			content,
 			status,
+		});
+	}
+
+	private async resumeExecution(
+		sessionId: ChatSessionId,
+		execution: IExecutionResponse,
+		message: string,
+	) {
+		await this.executionManager.runWorkflow(execution, {
+			action: 'sendMessage',
+			chatInput: message,
+			sessionId,
 		});
 	}
 
