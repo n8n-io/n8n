@@ -215,11 +215,42 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(parentState.discoveryContext.bestPractices);
 		}
 
-		// 3. Full workflow JSON (nodes to configure)
+		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
+			if (entry.status !== 'error') return false;
+			if (entry.phase !== 'builder') return false;
+			return (
+				entry.metadata.phase === 'error' &&
+				'partialBuilderData' in entry.metadata &&
+				entry.metadata.partialBuilderData
+			);
+		});
+
+		if (
+			builderErrorEntry?.metadata.phase === 'error' &&
+			builderErrorEntry.metadata.partialBuilderData
+		) {
+			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
+
+			contextParts.push('=== CRITICAL: RECOVERY MODE ===');
+			contextParts.push(
+				`WORKFLOW RECOVERY SCENARIO:\n` +
+					`The builder created ${nodeCount} node${nodeCount === 1 ? '' : 's'} (${nodeNames.join(', ')}) before hitting a recursion limit.\n\n` +
+					`REQUIRED ACTIONS - DO NOT SKIP:\n` +
+					`1. Call update_node_parameters for EVERY node listed above to ensure proper configuration\n` +
+					`2. Call validate_configuration to check for issues\n` +
+					`3. Scan the workflow for placeholders (format: <__PLACEHOLDER_VALUE__*__>) and missing credentials\n` +
+					`4. List ALL placeholders and missing credentials in your final response\n\n` +
+					`DO NOT respond with "workflow already exists" or "no changes needed". ` +
+					`You MUST use tools to analyze this recovered workflow.`,
+			);
+		}
+
+		// 4. Full workflow JSON (nodes to configure)
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 4. Full execution context (data + schema for parameter values)
+		// 5. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 

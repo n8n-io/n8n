@@ -77,8 +77,16 @@ export class ResponderAgent {
 		}
 
 		// Check for errors - provide context-aware guidance (AI-1812)
+		// Skip errors that have been cleared (AI-1812)
 		const errorEntry = getErrorEntry(context.coordinationLog);
-		if (errorEntry) {
+		const errorsCleared = context.coordinationLog.some(
+			(entry) =>
+				entry.phase === 'state_management' &&
+				entry.summary.includes('Cleared') &&
+				entry.summary.includes('recursion'),
+		);
+
+		if (errorEntry && !errorsCleared) {
 			const hasWorkflow = context.workflowJSON.nodes.length > 0;
 			const errorMessage = errorEntry.summary.toLowerCase();
 			const isRecursionError =
