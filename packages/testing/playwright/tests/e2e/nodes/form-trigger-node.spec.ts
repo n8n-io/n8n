@@ -121,7 +121,7 @@ test.describe('Form Trigger', () => {
 		await formPage.close();
 	});
 
-	test('should submit a multi-page form with basic auth', async ({ n8n }) => {
+	test('should submit a multi-page form with basic auth', async ({ n8n, page }) => {
 		// Add Form Trigger node with basic auth enabled
 		await n8n.canvas.clickNodeCreatorPlusButton();
 		await n8n.canvas.nodeCreatorItemByName('On form submission').click();
@@ -156,16 +156,24 @@ test.describe('Form Trigger', () => {
 
 		// Get the form test URL from the NDV
 		await n8n.canvas.openNode('On form submission');
-		const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
+		const formUrlLocator = page.locator('text=/form-test\\/[a-f0-9-]+/');
 		const formUrl = await formUrlLocator.textContent();
 
-		// Open form URL in a new browser tab with basic auth credentials
-		const formPage = await n8n.page.context().newPage();
-		// Basic auth is handled through the browser's HTTP auth dialog
-		// Playwright will prompt for credentials when the page requires auth
-		await formPage.goto(formUrl!, {
-			waitUntil: 'networkidle',
-		});
+		// Create a new context with HTTP authentication
+		// This simulates a user who has already authenticated with Basic Auth
+		const context = await page
+			.context()
+			.browser()!
+			.newContext({
+				httpCredentials: {
+					username: 'test',
+					password: 'test',
+				},
+			});
+
+		// Open form URL in a new page with authentication
+		const formPage = await context.newPage();
+		await formPage.goto(formUrl!);
 
 		// Fill first page with email
 		const email = `test${Date.now()}@example.com`;
@@ -173,7 +181,7 @@ test.describe('Form Trigger', () => {
 		await formPage.getByRole('button', { name: 'Submit' }).click();
 
 		// Wait for the second page to load
-		await formPage.waitForLoadState('networkidle');
+		await formPage.waitForSelector('label:has-text("What is your phone number?")');
 
 		// Fill second page with phone number
 		const phone = `+1-555-${Date.now().toString().slice(-7)}`;
@@ -181,10 +189,11 @@ test.describe('Form Trigger', () => {
 		await formPage.getByRole('button', { name: 'Submit' }).click();
 
 		// Verify the form was submitted successfully
-		// This will fail if credentials are not properly passed with the fetch request
+		// This validates that POST requests work without requiring credentials
 		await expect(formPage.getByText('Your response has been recorded')).toBeVisible();
 
-		// Close the form page
+		// Close the form page and context
 		await formPage.close();
+		await context.close();
 	});
 });
