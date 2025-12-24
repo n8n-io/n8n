@@ -316,9 +316,7 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 				}
 
 				// If it succeeds, verify workflow was created
-				if (result.workflowJSON.nodes.length > 0) {
-					expect(result.workflowJSON.nodes.length).toBeGreaterThan(0);
-				}
+				expect(result.workflowJSON.nodes.length).toBeGreaterThan(0);
 			} catch (error) {
 				console.log('\n⚠️  Error occurred (expected with low recursion limit):', error);
 				// This is expected with low recursion limits - documents the error case
