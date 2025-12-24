@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures/base';
+import { capabilities } from '../../../fixtures/capabilities';
 
-test.use({ addContainerCapability: { email: true } });
+test.use({ addContainerCapability: capabilities.email });
 
 test('Password reset email is delivered @capability:email', async ({ api, chaos }) => {
 	const ownerEmail = 'nathan@n8n.io';

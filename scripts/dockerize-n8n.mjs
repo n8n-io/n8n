@@ -227,8 +227,9 @@ async function buildDockerImage({ name, dockerfilePath, fullImageName }) {
 				${config.buildContext}`;
 			echo(stdout);
 		} else {
-			// use docker command by default since most other engines have compatibility layers for it.
-			const { stdout } = await $`docker build \
+			// Use docker buildx build to leverage Blacksmith's layer caching when running in CI.
+			// The setup-docker-builder action creates a buildx builder with sticky disk cache.
+			const { stdout } = await $`docker buildx build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
 				-t ${fullImageName} \
