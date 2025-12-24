@@ -7,7 +7,7 @@ import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { BinaryMetadata } from '@/Interface';
+import type { BinaryMetadata } from '@n8n/design-system';
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -98,6 +98,7 @@ async function loadBinaryData() {
 				embedSource.value = binaryUrl;
 		}
 	} catch (e) {
+		console.error(e.message);
 		error.value = true;
 	}
 
@@ -107,7 +108,7 @@ async function loadBinaryData() {
 watch(
 	() => props.data.binaryData,
 	() => {
-		loadBinaryData().catch(() => {});
+		loadBinaryData().catch(() => {}); //error handled in loadBinaryData
 	},
 	{ immediate: true },
 );
@@ -144,7 +145,11 @@ onBeforeUnmount(() => {
 					</audio>
 
 					<!-- IMAGE -->
-					<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
+					<img
+						v-else-if="binaryData.fileType === 'image'"
+						:src="embedSource"
+						:alt="binaryData.fileName || 'Image preview'"
+					/>
 
 					<!-- JSON -->
 					<VueJsonPretty
@@ -212,7 +217,7 @@ onBeforeUnmount(() => {
 		overflow: auto;
 	}
 
-	image,
+	img,
 	video {
 		max-height: 100%;
 		max-width: 100%;

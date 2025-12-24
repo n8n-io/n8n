@@ -72,23 +72,24 @@ const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
-const executionOrderOptions = ref<Array<{ key: string; value: string; description: string }>>([
+const executionLogicAllOptions = ref<Array<{ key: string; value: string; description: string }>>([
 	{
 		key: 'v0',
-		value: 'Run branches in parallel (v0, legacy)',
+		value: 'v0 (legacy)',
 		description:
-			'Executes the first node of each branch, then the second node of each branch, and so on',
+			'Executes the first node of each branch, then the second node of each branch, and so on.',
 	},
 	{
 		key: 'v1',
-		value: 'Run each branch one at a time (v1, recommended)',
-		description: 'Executes each branch in turn, completing one branch before starting another',
+		value: 'v1 (recommended)',
+		description:
+			'Executes each branch in turn, from topmost to bottommost, completing one branch before starting another.',
 	},
 	{
 		key: 'v2',
-		value: 'Run each branch one at a time with optimized binaries & expressions (v2, beta)',
+		value: 'v2 (experimental)',
 		description:
-			"Not recommended to use in production! Uses v1 execution logic with combined binary mode where binaries included in the item's json data and expressions are simplified.",
+			'Executes each branch in turn, with binaries included directly in the item structure to simplify expressions.',
 	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
@@ -199,9 +200,9 @@ const timeSavedModeOptions = computed(() => [
 	},
 ]);
 
-const filteredExecutionOrderOptions = computed(() => {
+const executionLogicOptions = computed(() => {
 	if (workflowSettings.value.binaryMode === 'combined') {
-		return executionOrderOptions.value;
+		return executionLogicAllOptions.value;
 	}
 
 	const isV2Enabled = posthogStore.isVariantEnabled(
@@ -210,10 +211,10 @@ const filteredExecutionOrderOptions = computed(() => {
 	);
 
 	if (isV2Enabled) {
-		return executionOrderOptions.value;
+		return executionLogicAllOptions.value;
 	}
 
-	return executionOrderOptions.value.filter((option) => option.key !== 'v2');
+	return executionLogicAllOptions.value.filter((option) => option.key !== 'v2');
 });
 
 const onCallerIdsInput = (str: string) => {
@@ -559,9 +560,9 @@ const updateTimeSavedPerExecution = (value: string) => {
 const onExecutionLogicModeChange = (value: string) => {
 	const currentBinaryMode = workflowSettings.value.binaryMode || 'separate';
 
-	if (['v0', 'v1'].includes(value)) {
+	if (value === 'v0' || value === 'v1') {
 		workflowSettings.value.binaryMode = 'separate';
-		workflowSettings.value.executionOrder = value as 'v0' | 'v1';
+		workflowSettings.value.executionOrder = value;
 	}
 
 	if (value === 'v2') {
@@ -745,7 +746,7 @@ onBeforeUnmount(() => {
 							@update:model-value="onExecutionLogicModeChange"
 						>
 							<N8nOption
-								v-for="option in filteredExecutionOrderOptions"
+								v-for="option in executionLogicOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"

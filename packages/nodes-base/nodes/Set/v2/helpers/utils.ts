@@ -8,11 +8,11 @@ import {
 	getValueDescription,
 	jsonParse,
 	validateFieldType,
+	isBinaryValue,
 } from 'n8n-workflow';
 import type {
 	AssignmentCollectionValue,
 	FieldType,
-	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -233,12 +233,6 @@ export function resolveRawData(
 	return returnData;
 }
 
-function isBinaryData(obj: unknown): obj is IBinaryData {
-	return (
-		typeof obj === 'object' && obj !== null && ('data' in obj || 'id' in obj) && 'mimeType' in obj
-	);
-}
-
 export function prepareReturnItem(
 	context: IExecuteFunctions | ISupplyDataFunctions,
 	value: AssignmentCollectionValue,
@@ -249,23 +243,13 @@ export function prepareReturnItem(
 ) {
 	const jsonValues: AssignmentCollectionValue['assignments'] = [];
 	const binaryValues: AssignmentCollectionValue['assignments'] = [];
-	const { binaryMode } = context.getWorkflowSettings();
 
 	for (const assignment of value?.assignments ?? []) {
 		if (assignment.type === 'binary') {
-			// in not 'combined' mode push to binary assignments
-			if (binaryMode !== 'combined') {
-				binaryValues.push(assignment);
-				continue;
-			}
-			// if binary data has no id push to binary assignments so binary data be converted later
-			if (isBinaryData(assignment.value) && !assignment.value.id) {
-				binaryValues.push(assignment);
-				continue;
-			}
+			binaryValues.push(assignment);
+		} else {
+			jsonValues.push(assignment);
 		}
-
-		jsonValues.push(assignment);
 	}
 
 	const newData = Object.fromEntries(
@@ -297,19 +281,29 @@ export function prepareReturnItem(
 		if (!returnItem.binary) {
 			returnItem.binary = {};
 		}
+		const { binaryMode } = context.getWorkflowSettings();
+
+		const target = binaryMode === 'combined' ? 'json' : 'binary';
 
 		for (const assignment of binaryValues) {
 			const name = assignment.name;
 			const value = assignment.value as string;
 			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
-			if (!isBinaryData(binaryData)) {
+			if (!isBinaryValue(binaryData)) {
 				throw new NodeOperationError(
 					node,
 					`Could not find binary data specified in field ${name}`,
 					{ itemIndex },
 				);
 			}
-			returnItem.binary[name] = binaryData;
+			// Do not push binary data to json if entry contains raw data
+			if (target === 'json' && !binaryData.id) {
+				returnItem.binary[name] = binaryData;
+				continue;
+			}
+
+			// both json and binary keys are available
+			returnItem[target]![name] = binaryData;
 		}
 	}
 

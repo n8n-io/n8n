@@ -10,6 +10,7 @@ import type {
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -19,9 +20,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { storeToRefs } from 'pinia';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 import {
 	N8nButton,
+	N8nIcon,
 	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
@@ -29,6 +32,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 const locale = useI18n();
+const nodeHelpers = useNodeHelpers();
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -85,6 +89,7 @@ const getProperties = computed(() => {
 const multipleValues = computed(() => {
 	return !!props.parameter.typeOptions?.multipleValues;
 });
+const addedOptionalValues = ref(new Map<string, Set<string>>());
 const parameterOptions = computed(() => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return [];
 
@@ -101,6 +106,194 @@ const sortable = computed(() => {
 	return !!props.parameter.typeOptions?.sortable;
 });
 
+const hideOptionalFields = computed(() => {
+	return !!props.parameter.typeOptions?.hideOptionalFields;
+});
+
+const addOptionalFieldButtonText = computed(() => {
+	if (!props.parameter.typeOptions?.addOptionalFieldButtonText) {
+		return locale.baseText('fixedCollectionParameter.addField');
+	}
+	return locale.nodeText(activeNode.value?.type).addOptionalFieldButtonText(props.parameter);
+});
+
+const getOptionalValuesKey = (propertyName: string, index?: number): string => {
+	return index !== undefined ? `${propertyName}-${index}` : propertyName;
+};
+
+const hasNonDefaultValue = (
+	propertyDef: INodeProperties,
+	itemValues: INodeParameters | undefined,
+): boolean => {
+	if (!itemValues) return false;
+	const value = itemValues[propertyDef.name];
+	if (value === undefined || value === null) return false;
+	if (typeof value === 'string' && value === '') return false;
+	if (typeof value === 'object') {
+		return !isEqual(value, propertyDef.default);
+	}
+	return value !== propertyDef.default;
+};
+
+const initializeAddedOptionalValues = () => {
+	if (!hideOptionalFields.value) return;
+	if (!isINodePropertyCollectionList(props.parameter.options)) return;
+
+	addedOptionalValues.value.clear();
+
+	for (const property of props.parameter.options) {
+		const propertyPath = `${props.path}.${property.name}`;
+		const propertyValues = get(props.nodeValues, propertyPath) as
+			| INodeParameters[]
+			| INodeParameters
+			| undefined;
+
+		if (!propertyValues) continue;
+
+		const optionalValueDefs = property.values.filter(
+			(v) => v.required !== true && v.type !== 'notice',
+		);
+
+		if (multipleValues.value && Array.isArray(propertyValues)) {
+			propertyValues.forEach((itemValues, index) => {
+				const key = getOptionalValuesKey(property.name, index);
+				const addedValues = new Set<string>();
+
+				for (const valueDef of optionalValueDefs) {
+					if (hasNonDefaultValue(valueDef, itemValues)) {
+						addedValues.add(valueDef.name);
+					}
+				}
+
+				if (addedValues.size > 0) {
+					addedOptionalValues.value.set(key, addedValues);
+				}
+			});
+		} else if (typeof propertyValues === 'object' && !Array.isArray(propertyValues)) {
+			const key = getOptionalValuesKey(property.name);
+			const addedValues = new Set<string>();
+
+			for (const valueDef of optionalValueDefs) {
+				if (hasNonDefaultValue(valueDef, propertyValues)) {
+					addedValues.add(valueDef.name);
+				}
+			}
+
+			if (addedValues.size > 0) {
+				addedOptionalValues.value.set(key, addedValues);
+			}
+		}
+	}
+};
+
+const isOptionalValueAdded = (propertyName: string, valueName: string, index?: number): boolean => {
+	const key = getOptionalValuesKey(propertyName, index);
+	return addedOptionalValues.value.get(key)?.has(valueName) ?? false;
+};
+
+const getVisiblePropertyValues = (
+	property: INodePropertyCollection,
+	index?: number,
+): INodeProperties[] => {
+	if (!hideOptionalFields.value) {
+		return property.values;
+	}
+
+	const key = getOptionalValuesKey(property.name, index);
+	const addedValues = addedOptionalValues.value.get(key);
+
+	return property.values.filter((value) => {
+		// Always show required values
+		if (value.required === true) {
+			return true;
+		}
+
+		// Always show notice values - they're informational, not input properties
+		if (value.type === 'notice') {
+			return true;
+		}
+
+		// Show optional values if explicitly added via picker
+		if (addedValues?.has(value.name)) {
+			return true;
+		}
+
+		// Show fields marked with showEvenWhenOptional
+		if (value.typeOptions?.showEvenWhenOptional) {
+			return true;
+		}
+
+		return false;
+	});
+};
+
+const getPickerPropertyValues = (
+	property: INodePropertyCollection,
+	index?: number,
+): INodeProperties[] => {
+	if (!hideOptionalFields.value) {
+		return [];
+	}
+
+	const itemPath = getPropertyPath(property.name, index);
+
+	return property.values.filter((value) => {
+		// Only include non-required values
+		if (value.required === true) {
+			return false;
+		}
+
+		// Exclude notice types - they're just display messages, not input properties
+		if (value.type === 'notice') {
+			return false;
+		}
+
+		// Exclude fields with showEvenWhenOptional - they appear without the picker
+		if (value.typeOptions?.showEvenWhenOptional) {
+			return false;
+		}
+
+		// Use the existing displayParameter helper from node-helpers to check visibility
+		return nodeHelpers.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
+	});
+};
+
+const toggleOptionalValue = (
+	property: INodePropertyCollection,
+	valueName: string,
+	index?: number,
+) => {
+	const key = getOptionalValuesKey(property.name, index);
+	let valueSet = addedOptionalValues.value.get(key);
+
+	if (!valueSet) {
+		valueSet = new Set();
+		addedOptionalValues.value.set(key, valueSet);
+	}
+
+	const valueDef = property.values.find((v) => v.name === valueName);
+	if (!valueDef) return;
+
+	const isCurrentlyAdded = valueSet.has(valueName);
+
+	if (isCurrentlyAdded) {
+		// Remove the value - clear it
+		valueSet.delete(valueName);
+	} else {
+		// Add the value - set default
+		valueSet.add(valueName);
+	}
+
+	// Re-set Map entry to trigger Vue reactivity after Set mutation
+	addedOptionalValues.value.set(key, valueSet);
+
+	const path = getPropertyPath(property.name, index) + `.${valueName}`;
+	emit('valueChanged', {
+		name: path,
+		value: isCurrentlyAdded ? undefined : deepCopy(valueDef.default),
+	});
+};
+
 watch(
 	() => props.values,
 	(newValues: Record<string, INodeParameters[]>) => {
@@ -111,6 +304,7 @@ watch(
 
 onBeforeMount(() => {
 	mutableValues.value = deepCopy(props.values);
+	initializeAddedOptionalValues();
 });
 
 const deleteOption = (optionName: string, index?: number) => {
@@ -307,7 +501,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 								</div>
 								<Suspense>
 									<ParameterInputList
-										:parameters="property.values"
+										:parameters="getVisiblePropertyValues(property, index)"
 										:node-values="nodeValues"
 										:path="getPropertyPath(property.name, index)"
 										:hide-delete="true"
@@ -316,6 +510,37 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
+								<div
+									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
+									class="optional-values-picker add-option"
+									data-test-id="fixed-collection-add-property"
+								>
+									<N8nSelect
+										:placeholder="addOptionalFieldButtonText"
+										size="small"
+										filterable
+										:model-value="null"
+										@update:model-value="
+											(valueName: string) => toggleOptionalValue(property, valueName, index)
+										"
+									>
+										<N8nOption
+											v-for="value in getPickerPropertyValues(property, index)"
+											:key="value.name"
+											:label="value.displayName || value.name"
+											:value="value.name"
+										>
+											<div class="optional-value-item">
+												<span>{{ value.displayName || value.name }}</span>
+												<N8nIcon
+													v-if="isOptionalValueAdded(property.name, value.name, index)"
+													icon="check"
+													size="medium"
+												/>
+											</div>
+										</N8nOption>
+									</N8nSelect>
+								</div>
 							</div>
 						</div>
 					</template>
@@ -335,7 +560,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						></N8nIconButton>
 					</div>
 					<ParameterInputList
-						:parameters="property.values"
+						:parameters="getVisiblePropertyValues(property)"
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="isReadOnly"
@@ -344,6 +569,35 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
+					<div
+						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
+						class="optional-values-picker add-option"
+						data-test-id="fixed-collection-add-property"
+					>
+						<N8nSelect
+							:placeholder="addOptionalFieldButtonText"
+							size="small"
+							filterable
+							:model-value="null"
+							@update:model-value="(valueName: string) => toggleOptionalValue(property, valueName)"
+						>
+							<N8nOption
+								v-for="value in getPickerPropertyValues(property)"
+								:key="value.name"
+								:label="value.displayName || value.name"
+								:value="value.name"
+							>
+								<div class="optional-value-item">
+									<span>{{ value.displayName || value.name }}</span>
+									<N8nIcon
+										v-if="isOptionalValueAdded(property.name, value.name)"
+										icon="check"
+										size="medium"
+									/>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -386,6 +640,18 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 	.icon-button {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.optional-values-picker {
+		margin-top: var(--spacing--xs);
+		margin-bottom: var(--spacing--xs);
+	}
+
+	:global(.optional-value-item) {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
 	}
 
 	.controls {

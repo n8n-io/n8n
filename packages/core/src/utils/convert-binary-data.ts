@@ -64,12 +64,6 @@ export async function convertBinaryData(
 				const existingJsonBinaries = existingValue as IBinaryKeyData;
 				item.json[BINARY_IN_JSON_PROPERTY] = { ...existingJsonBinaries, ...jsonBinaries };
 			}
-			// if (Object.keys(jsonBinaries).length) {
-			// 	for (const [key, value] of Object.entries(jsonBinaries)) {
-			// 		const binaryPropertyName = item.json[key] ? `${key}|${value.fileName}` : key;
-			// 		item.json[binaryPropertyName] = value;
-			// 	}
-			// }
 
 			item.binary = Object.keys(embededBinaries).length ? embededBinaries : undefined;
 		}

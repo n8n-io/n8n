@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag } from '@n8n/design-system';
+import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -52,7 +52,6 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
-	BINARY_METADATA_KEYS,
 } from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/app/models/history';
@@ -809,17 +808,6 @@ export type SchemaType =
 	| 'null'
 	| 'undefined'
 	| 'binary';
-
-export type BinaryMetadata = {
-	[K in (typeof BINARY_METADATA_KEYS)[number] as K extends 'mimeType' | 'id' | 'data'
-		? K
-		: never]: K extends 'mimeType' | 'id' | 'data' ? string : never;
-} & {
-	[K in Exclude<
-		(typeof BINARY_METADATA_KEYS)[number],
-		'mimeType' | 'id' | 'data'
-	>]?: K extends 'bytes' ? number : string;
-};
 
 export type Schema = {
 	type: SchemaType;

@@ -5,6 +5,7 @@ import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
 
+import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
@@ -68,6 +69,7 @@ export const test = base.extend<
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
+	...consoleErrorFixtures,
 
 	// Add a container capability to the test e.g proxy server, task runner, etc
 	addContainerCapability: [
@@ -160,10 +162,10 @@ export const test = base.extend<
 
 	// Reset the database for the new container
 	dbSetup: [
-		async ({ backendUrl, n8nContainer }, use) => {
+		async ({ n8nContainer }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: backendUrl });
+				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
 				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
 				await apiContext.dispose();

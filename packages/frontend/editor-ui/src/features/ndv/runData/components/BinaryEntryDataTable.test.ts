@@ -201,9 +201,13 @@ describe('BinaryEntryDataTable.vue', () => {
 			const { saveAs } = await import('file-saver');
 
 			const mockBlob = new Blob(['file content'], { type: 'application/pdf' });
-			global.fetch = vi.fn().mockResolvedValue({
-				blob: vi.fn().mockResolvedValue(mockBlob),
-			});
+			vi.stubGlobal(
+				'fetch',
+				vi.fn().mockResolvedValue({
+					ok: true,
+					blob: vi.fn().mockResolvedValue(mockBlob),
+				}),
+			);
 
 			const binaryData = createBinaryMetadata();
 			const { container } = renderComponent({

@@ -1482,6 +1482,9 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	hideOptionalFields?: boolean; // Supported by: fixedCollection - hide non-required fields by default
+	addOptionalFieldButtonText?: string; // Supported by: fixedCollection with hideOptionalFields set to true
+	showEvenWhenOptional?: boolean; // Supported by: fixedCollection with hideOptionalFields
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
@@ -3112,6 +3115,7 @@ export type FieldTypeMap = {
 	url: string;
 	jwt: string;
 	'form-fields': FormFieldsParameter;
+	binary: string;
 };
 
 export type FieldType = keyof FieldTypeMap;
