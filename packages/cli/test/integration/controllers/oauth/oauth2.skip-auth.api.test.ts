@@ -155,9 +155,6 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 
 	describe('OAuth flow initiation', () => {
 		it('should return a valid auth URL when the auth flow is initiated', async () => {
-			const oauthService = Container.get(OauthService);
-			const encryptSpy = jest.spyOn(oauthService, 'encryptBase64EncodedState').mockClear();
-
 			const response = await ownerAgent
 				.get('/oauth2-credential/auth')
 				.query({ id: credential.id })
@@ -167,15 +164,24 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 			expect(authUrl.hostname).toBe('test.domain');
 			expect(authUrl.pathname).toBe('/oauth2/auth');
 
-			expect(encryptSpy).toHaveBeenCalled();
-			const state = encryptSpy.mock.results[0].value;
-			expect(parseQs(authUrl.search.slice(1))).toEqual({
+			const queryParams = parseQs(authUrl.search.slice(1));
+			expect(queryParams).toMatchObject({
 				access_type: 'offline',
 				client_id: 'client_id',
 				redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
 				response_type: 'code',
-				state,
 				scope: 'openid',
+			});
+
+			// Verify state is base64-encoded and contains expected structure
+			expect(queryParams.state).toBeDefined();
+			const decodedState = JSON.parse(
+				Buffer.from(queryParams.state as string, 'base64').toString(),
+			);
+			expect(decodedState).toMatchObject({
+				token: expect.any(String),
+				createdAt: expect.any(Number),
+				data: expect.any(String), // Encrypted CSRF data
 			});
 		});
 	});
