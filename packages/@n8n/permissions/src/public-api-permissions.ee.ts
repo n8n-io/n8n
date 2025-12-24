@@ -1,4 +1,10 @@
-import { isApiKeyScope, type ApiKeyScope, type AuthPrincipal, type GlobalRole } from './types.ee';
+import {
+	isApiKeyScope,
+	type ApiKeyScope,
+	type AuthPrincipal,
+	type GlobalRole,
+	type Scope,
+} from './types.ee';
 
 export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:read',
@@ -119,8 +125,7 @@ export const getApiKeyScopesForRole = (user: AuthPrincipal) => {
 
 	return [
 		...new Set(
-			user.role.scopes
-				.map((scope) => scope.slug)
+			(user.role.scopes.map((scope) => scope.slug) as Array<Scope | ApiKeyScope>)
 				.concat(API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT)
 				.filter(isApiKeyScope),
 		),

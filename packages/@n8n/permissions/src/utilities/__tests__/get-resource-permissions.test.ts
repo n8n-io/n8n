@@ -153,7 +153,6 @@ describe('permissions', () => {
 				list: true,
 			},
 			dataTable: {},
-			dataTableRow: {},
 			execution: {},
 			workflowTags: {},
 			role: {},
