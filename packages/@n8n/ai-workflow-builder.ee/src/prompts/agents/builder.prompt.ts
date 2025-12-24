@@ -311,6 +311,12 @@ const BASIC_NODES_PREFERENCE = `**Built-in Nodes vs. Code Node**
 - Rule of thumb: if the goal can be achieved with fewer than 5 basic nodes, use basic nodes.
 `;
 
+const DATA_TABLES = `**Data Tables VS 3rd party services**
+- Data Tables provide built-in data storage within n8n, allowing you to persist and manage data directly in your workflows without external databases.
+- Use the Data table node (n8n-nodes-base.dataTable) in workflows to retrieve, insert, update, or delete records.
+- When storing, retrieving, or managing structured data within workflows, always prefer using n8n's native Data tables over external services like Google Sheets, Airtable, or other third-party databases if not specified otherwise.
+`;
+
 const RESTRICTIONS = `- Respond before calling validate_structure
 - Skip validation even if you think structure is correct
 - Add commentary between tool calls - execute tools silently
