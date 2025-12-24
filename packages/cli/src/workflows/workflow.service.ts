@@ -27,8 +27,15 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
+
 import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
-import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	NodeApiError,
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -52,8 +59,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+import { WebhookService } from '@/webhooks/webhook.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 @Service()
 export class WorkflowService {
@@ -79,6 +89,7 @@ export class WorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	async getMany(
@@ -510,6 +521,38 @@ export class WorkflowService {
 		}
 	}
 
+	async findConflictingWebhooks(workflowEntity: WorkflowEntity) {
+		const workflow = new Workflow({
+			id: workflowEntity.id,
+			nodes: workflowEntity.nodes,
+			connections: workflowEntity.connections,
+			active: !!workflowEntity.activeVersion,
+			settings: workflowEntity.settings,
+			nodeTypes: this.nodeTypes,
+		});
+		const additionalData = await getWorkflowExecutionData({
+			workflowId: workflow.id,
+		});
+
+		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+	}
+
+	private async _detectWebhookConflicts(workflowEntity: WorkflowEntity) {
+		const conflicts = await this.findConflictingWebhooks(workflowEntity);
+
+		if (conflicts.length > 0) {
+			throw new ConflictError(
+				'There is a conflict with one of the webhooks.',
+				JSON.stringify(
+					conflicts.map(({ trigger, conflict }) => ({
+						trigger,
+						conflict,
+					})),
+				),
+			);
+		}
+	}
+
 	/**
 	 * Activates a workflow by setting its activeVersionId and adding it to the active workflow manager.
 	 * @param user - The user activating the workflow
@@ -569,6 +612,8 @@ export class WorkflowService {
 		if (options?.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
+
+		await this._detectWebhookConflicts(workflow);
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
 

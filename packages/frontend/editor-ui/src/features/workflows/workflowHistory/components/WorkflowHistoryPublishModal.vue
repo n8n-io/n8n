@@ -79,7 +79,7 @@ const handlePublish = async () => {
 	}
 
 	publishing.value = true;
-	const success = await workflowActivate.publishWorkflow(
+	const { success } = await workflowActivate.publishWorkflow(
 		props.data.workflowId,
 		props.data.versionId,
 		{

@@ -29,6 +29,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { WebhookService } from '@/webhooks/webhook.service';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
@@ -38,6 +39,7 @@ let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
+const webhookServiceMock = mockInstance(WebhookService);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -70,11 +72,13 @@ beforeAll(async () => {
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
+		webhookServiceMock,
 	);
 });
 
 beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
 
 afterEach(async () => {

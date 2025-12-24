@@ -179,6 +179,12 @@ export class WebhookService {
 		return path.startsWith(':') || path.includes('/:');
 	}
 
+	getWebhookPath(webhook: IWebhookData): string {
+		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
+			.filter((part) => !!part)
+			.join('/');
+	}
+
 	/**
 	 * Returns all the webhooks which should be created for the give node
 	 */
@@ -294,6 +300,85 @@ export class WebhookService {
 		}
 
 		return returnData;
+	}
+
+	private async _findWebhookConflicts(
+		workflow: Workflow,
+		checkEntries: Array<{
+			node: INode;
+			webhooks: IWebhookData[];
+		}>,
+	) {
+		const conflicts: Array<{
+			trigger: INode;
+			conflict: Partial<WebhookEntity>;
+		}> = [];
+
+		while (checkEntries.length > 0) {
+			const { node, webhooks } = checkEntries.pop()!;
+
+			// check if conflicts within the same workflow exist
+			const localConflict = checkEntries.find(
+				({ node: checkNode, webhooks: checkWebhooks }) =>
+					node.id !== checkNode.id &&
+					webhooks.some((webhook) =>
+						checkWebhooks.some(
+							(checkWebhook) =>
+								this.getWebhookPath(checkWebhook) === this.getWebhookPath(webhook) &&
+								checkWebhook.httpMethod === webhook.httpMethod,
+						),
+					),
+			);
+			if (localConflict) {
+				const firstConflict = localConflict.webhooks[0];
+				conflicts.push({
+					trigger: node,
+					conflict: {
+						workflowId: workflow.id,
+						webhookPath: firstConflict.path,
+						method: firstConflict.httpMethod,
+						node: node.id,
+						webhookId: firstConflict.webhookId,
+					},
+				});
+			} else {
+				// check if conflict with a published workflow exists
+				for (const webhook of webhooks) {
+					const path = this.getWebhookPath(webhook);
+					const potentialConflict = await this.findWebhook(webhook.httpMethod, path);
+
+					if (potentialConflict && potentialConflict.workflowId !== workflow.id) {
+						conflicts.push({
+							trigger: node,
+							conflict: potentialConflict,
+						});
+						break;
+					}
+				}
+			}
+		}
+
+		return conflicts;
+	}
+
+	/**
+	 * Analyzes all webhooks within the provided workflow. Returns all nodes that have a webhook conflict either
+	 * within the same workflow or with other published workflows.
+	 * @param workflow Workflow
+	 * @param additionalData Workflow execution data
+	 * @returns list of all nodes with existing webhook conflicts
+	 */
+	async findWebhookConflicts(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
+		const checkEntries = Object.values(workflow.nodes)
+			.map((node) => ({
+				node,
+				webhooks: this.getNodeWebhooks(workflow, node, additionalData)
+					// ignore webhooks without fixed path, for example thewait node
+					.filter(({ path, webhookId }) => path || webhookId),
+			}))
+			.filter(({ webhooks }) => webhooks.length !== 0);
+
+		return await this._findWebhookConflicts(workflow, checkEntries);
 	}
 
 	async createWebhookIfNotExists(
