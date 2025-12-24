@@ -108,6 +108,8 @@ defineExpose({
 					<ElSubMenu
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
+						trigger="click"
+						:teleported="true"
 						:popper-offset="-10"
 						data-test-id="navigation-submenu"
 					>
@@ -223,6 +225,7 @@ defineExpose({
 
 .submenu {
 	padding: 5px 0 !important;
+	margin-left: 10%;
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
