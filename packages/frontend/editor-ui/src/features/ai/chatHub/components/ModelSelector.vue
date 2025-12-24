@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { N8nDropdownMenu, N8nIcon, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconOrEmoji } from '@n8n/design-system';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
 	ChatHubLLMProvider,
@@ -13,9 +12,9 @@ import type {
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
-	providerDisplayNames,
+	MAX_AGENT_NAME_CHARS,
+	NEW_AGENT_MENU_ID,
 } from '@/features/ai/chatHub/constants';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useI18n } from '@n8n/i18n';
 
 import type { CredentialsMap } from '../chat.types';
@@ -23,24 +22,18 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
-	personalAgentDefaultIcon,
 	flattenModel,
 	fromStringToModel,
 	isLlmProviderModel,
-	stringifyModel,
-	workflowAgentDefaultIcon,
+	buildModelSelectorMenuItems,
+	applySearch,
 } from '@/features/ai/chatHub/chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
-
-type MenuItem = DropdownMenuItemProps<string, string>;
-
-const NEW_AGENT_MENU_ID = 'agent::new';
-const MAX_AGENT_NAME_CHARS = 30;
-const MAX_AGENT_NAME_CHARS_MENU = 45;
+import ChatProviderAvatar from './ChatProviderAvatar.vue';
 
 const {
 	selectedAgent,
@@ -82,6 +75,8 @@ const credentialsStore = useCredentialsStore();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
 
+const searchQuery = ref('');
+
 const credentialsName = computed(() =>
 	selectedAgent
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
@@ -97,187 +92,16 @@ const isCredentialsMissing = computed(
 		!credentials?.[selectedAgent?.model.provider],
 );
 
-const menu = computed(() => {
-	const menuItems: MenuItem[] = [];
+const menu = computed(() =>
+	buildModelSelectorMenuItems(agents, {
+		includeCustomAgents,
+		isLoading,
+		i18n,
+		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
+	}),
+);
 
-	if (includeCustomAgents) {
-		// Create submenu items for each project
-		const n8nAgentsSubmenu: MenuItem[] = [];
-
-		if (isLoading) {
-			n8nAgentsSubmenu.push({
-				id: 'loading',
-				label: i18n.baseText('generic.loadingEllipsis'),
-				disabled: true,
-			});
-		} else if (agents.n8n.models.length === 0) {
-			n8nAgentsSubmenu.push({
-				id: 'no-agents',
-				label: i18n.baseText('chatHub.workflowAgents.empty.noAgents'),
-				disabled: true,
-			});
-		} else {
-			n8nAgentsSubmenu.push(
-				...agents.n8n.models.map<MenuItem>((agent) => ({
-					id: stringifyModel(agent.model),
-					icon: (agent.icon ?? workflowAgentDefaultIcon) as IconOrEmoji,
-					label: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-					disabled: false,
-					data: agent.description ?? undefined,
-				})),
-			);
-		}
-
-		const customAgents = isLoading
-			? []
-			: agents['custom-agent'].models.map<MenuItem>((agent) => ({
-					id: stringifyModel(agent.model),
-					icon: (agent.icon ?? personalAgentDefaultIcon) as IconOrEmoji,
-					label: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-					disabled: false,
-					data: agent.description ?? undefined,
-				}));
-
-		menuItems.push({
-			id: 'custom-agents',
-			label: i18n.baseText('chatHub.agent.personalAgents'),
-			icon: personalAgentDefaultIcon as IconOrEmoji,
-			children: [
-				...(isLoading
-					? [
-							{
-								id: 'loading',
-								label: i18n.baseText('generic.loadingEllipsis'),
-								disabled: true,
-							},
-						]
-					: customAgents),
-				{
-					id: NEW_AGENT_MENU_ID,
-					icon: { type: 'icon' as const, value: 'plus' as const },
-					label: i18n.baseText('chatHub.agent.newAgent'),
-					disabled: false,
-					divided: isLoading || customAgents.length > 0,
-				},
-			],
-		});
-
-		menuItems.push({
-			id: 'n8n-agents',
-			label: i18n.baseText('chatHub.agent.workflowAgents'),
-			icon: { type: 'icon' as const, value: 'robot' as const },
-			children: n8nAgentsSubmenu,
-		});
-	}
-
-	for (let i = 0; i < chatHubLLMProviderSchema.options.length; i++) {
-		const provider = chatHubLLMProviderSchema.options[i];
-		const settings = settingStore.moduleSettings?.['chat-hub']?.providers[provider];
-
-		// Filter out disabled providers from the menu
-		if (settings && !settings.enabled) continue;
-		const configureMenu = {
-			id: `${provider}::configure`,
-			icon: { type: 'icon' as const, value: 'settings' as const },
-			label: i18n.baseText('chatHub.agent.configureCredentials'),
-			disabled: false,
-		};
-
-		if (isLoading) {
-			menuItems.push({
-				id: provider,
-				label: providerDisplayNames[provider],
-				divided: i === 0,
-				children: [
-					configureMenu,
-					{
-						id: `${provider}::loading`,
-						label: i18n.baseText('generic.loadingEllipsis'),
-						disabled: true,
-						divided: true,
-					},
-				],
-			});
-			continue;
-		}
-
-		const theAgents = [...agents[provider].models];
-
-		// Add any manually defined models in settings
-		for (const model of settings?.allowedModels ?? []) {
-			if (model.isManual) {
-				theAgents.push({
-					name: model.displayName,
-					description: '',
-					icon: null,
-					model: {
-						provider,
-						model: model.model,
-					},
-					createdAt: '',
-					updatedAt: null,
-					// Assume file attachment and tools are supported
-					metadata: {
-						inputModalities: ['text', 'image', 'audio', 'video', 'file'],
-						capabilities: {
-							functionCalling: true,
-						},
-						available: true,
-					},
-				});
-			}
-		}
-
-		const error = agents[provider].error;
-		const agentOptions =
-			theAgents.length > 0
-				? theAgents
-						.filter(
-							(agent) =>
-								agent.model.provider === 'n8n' ||
-								// Filter out models not allowed in settings
-								!settings ||
-								settings.allowedModels.length === 0 ||
-								settings.allowedModels.some(
-									(m) => 'model' in agent.model && m.model === agent.model.model,
-								),
-						)
-						.map<MenuItem>((agent) => ({
-							id: stringifyModel(agent.model),
-							label: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-							disabled: false,
-						}))
-						.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
-				: error
-					? [{ id: `${provider}::error`, disabled: true, label: error }]
-					: [];
-
-		const children = [
-			configureMenu,
-			...agentOptions.map((option, index) => (index === 0 ? { ...option, divided: true } : option)),
-			...(agentOptions.length > 0 && settings?.allowedModels.length === 0
-				? [
-						{
-							id: `${provider}::add-model`,
-							icon: { type: 'icon' as const, value: 'plus' as const },
-							label: i18n.baseText('chatHub.agent.addModel'),
-							disabled: false,
-							divided: true,
-						},
-					]
-				: []),
-		];
-
-		menuItems.push({
-			id: provider,
-			label: providerDisplayNames[provider],
-			divided: i === 0,
-			children,
-		});
-	}
-
-	return menuItems;
-});
+const filteredMenu = computed(() => applySearch(menu.value, searchQuery.value));
 
 const selectedLabel = computed(
 	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
@@ -348,6 +172,10 @@ function onSelect(id: string) {
 	emit('change', parsedModel);
 }
 
+function handleSearch(query: string) {
+	searchQuery.value = query.toLowerCase();
+}
+
 defineExpose({
 	open: () => dropdownRef.value?.open(),
 	openCredentialSelector: (provider: ChatHubLLMProvider) =>
@@ -358,10 +186,12 @@ defineExpose({
 <template>
 	<N8nDropdownMenu
 		ref="dropdownRef"
-		:items="menu"
+		:items="filteredMenu"
 		teleported
 		placement="bottom-start"
-		:extra-popper-class="$style.component"
+		:extra-popper-class="[$style.component, searchQuery ? $style.searching : ''].join(' ')"
+		searchable
+		@search="handleSearch"
 		@select="onSelect"
 	>
 		<template #trigger>
@@ -397,22 +227,22 @@ defineExpose({
 		</template>
 
 		<template #item-leading="{ item }">
-			<CredentialIcon
-				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubLLMProvider]"
-				:size="16"
+			<ChatProviderAvatar
+				v-if="item.data?.provider"
+				:provider="item.data?.provider"
+				:icon="item.icon"
 				:class="$style.menuIcon"
 			/>
 		</template>
 
 		<template #item-trailing="{ item, ui }">
 			<N8nTooltip
-				v-if="item.data"
-				:content="truncateBeforeLast(item.data, 200, 0)"
+				v-if="item.data?.description"
+				:content="truncateBeforeLast(item.data.description, 200, 0)"
 				:class="ui.class"
 				:popper-class="$style.tooltip"
 			>
-				<N8nIcon icon="info" size="small" color="text-light" />
+				<N8nIcon icon="info" size="small" color="text-light" :class="$style.menuIcon" />
 			</N8nTooltip>
 		</template>
 	</N8nDropdownMenu>
@@ -421,6 +251,10 @@ defineExpose({
 <style lang="scss" module>
 .component {
 	z-index: var(--floating-ui--z);
+
+	&.searching {
+		width: auto !important;
+	}
 }
 
 .dropdownButton {

@@ -9,6 +9,9 @@ export const CHAT_SETTINGS_VIEW = 'chat-settings';
 
 export const CHAT_STORE = 'chatStore';
 export const CHAT_SESSIONS_PAGE_SIZE = 18;
+export const MAX_AGENT_NAME_CHARS_MENU = 45;
+export const NEW_AGENT_MENU_ID = 'agent::new';
+export const MAX_AGENT_NAME_CHARS = 30;
 
 export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',
@@ -25,8 +28,8 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	deepSeek: 'DeepSeek',
 	cohere: 'Cohere',
 	mistralCloud: 'Mistral Cloud',
-	n8n: 'n8n',
-	'custom-agent': 'Custom Agent',
+	n8n: 'Workflow agent',
+	'custom-agent': 'Personal agent',
 };
 
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
