@@ -58,11 +58,6 @@ export class WorkflowDataProxy {
 
 	private timezone: string;
 
-	private returnExecutionData: (
-		data: INodeExecutionData | INodeExecutionData[],
-		fullItem?: boolean,
-	) => IDataObject[] | INodeExecutionData[] | IDataObject | INodeExecutionData;
-
 	// TODO: Clean that up at some point and move all the options into an options object
 	constructor(
 		private workflow: Workflow,
@@ -92,24 +87,26 @@ export class WorkflowDataProxy {
 
 		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
+	}
 
-		if (workflow.settings?.binaryMode === 'combined') {
-			this.returnExecutionData = ((
-				item: INodeExecutionData | INodeExecutionData[],
-				fullItem: boolean,
-			) => {
-				if (fullItem) {
-					return item;
-				}
-				if (Array.isArray(item)) {
-					return item.map((i) => i.json);
-				}
-				return item.json;
-			}) as typeof this.returnExecutionData;
-		} else {
-			this.returnExecutionData = ((item: INodeExecutionData | INodeExecutionData[]) =>
-				item) as typeof this.returnExecutionData;
+	/**
+	 * Returns execution data, conditionally extracting only 'json' from the item based on workflow 'binaryMode' setting.
+	 * When binary mode is 'combined', this method returns only the 'json' from the item unless 'fullItem' is true.
+	 *
+	 * @private
+	 * @param {INodeExecutionData | INodeExecutionData[]} data - The execution data to process
+	 * @param {boolean} fullItem - If true, always returns the complete item data
+	 * @returns The full execution data or only the json property, depending on workflow 'binaryMode' setting
+	 */
+	private returnExecutionData(data: INodeExecutionData | INodeExecutionData[], fullItem = false) {
+		if (fullItem) return data;
+		if (this.workflow.settings?.binaryMode !== 'combined') return data;
+
+		if (Array.isArray(data)) {
+			return data.map((i) => i.json);
 		}
+
+		return data.json;
 	}
 
 	/**
