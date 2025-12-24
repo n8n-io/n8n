@@ -71,16 +71,19 @@ env:
 
 jobs:
   matrix:
-    runs-on: ubuntu-slim
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          sparse-checkout: |
-            .github/test-metrics
-            packages/testing/playwright/scripts
-          sparse-checkout-cone-mode: false
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
 
       - name: Generate shard matrix
         id: generate
