@@ -245,7 +245,11 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
-	async waitForExecution(workflowId: string, timeoutMs = 10000): Promise<ExecutionListResponse> {
+	async waitForExecution(
+		workflowId: string,
+		timeoutMs = 10000,
+		mode: 'manual' | 'webhook' | 'trigger' | 'integrated' = 'webhook',
+	): Promise<ExecutionListResponse> {
 		const initialExecutions = await this.getExecutions(workflowId, 50);
 		const initialCount = initialExecutions.length;
 		const startTime = Date.now();
@@ -257,7 +261,8 @@ export class WorkflowApiHelper {
 				for (const execution of executions.slice(0, executions.length - initialCount)) {
 					const isCompleted = execution.status === 'success' || execution.status === 'error';
 					const isCorrectWorkflow = execution.workflowId === workflowId;
-					if (isCompleted && isCorrectWorkflow) {
+					const isCorrectMode = execution.mode === mode;
+					if (isCompleted && isCorrectWorkflow && isCorrectMode) {
 						return execution;
 					}
 				}
@@ -266,7 +271,8 @@ export class WorkflowApiHelper {
 			for (const execution of executions) {
 				const isCompleted = execution.status === 'success' || execution.status === 'error';
 				const isCorrectWorkflow = execution.workflowId === workflowId;
-				if (isCompleted && isCorrectWorkflow && execution.mode === 'webhook') {
+				const isCorrectMode = execution.mode === mode;
+				if (isCompleted && isCorrectWorkflow && isCorrectMode) {
 					const executionTime = new Date(
 						execution.startedAt ?? execution.createdAt ?? Date.now(),
 					).getTime();

@@ -21,7 +21,7 @@ jobs:
       branch: ${{ inputs.branch }}
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
-      shards: 13
+      shards: 14
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       use-custom-orchestration: true
