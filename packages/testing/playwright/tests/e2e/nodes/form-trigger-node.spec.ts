@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import { test, expect } from '../../../fixtures/base';
 
 test.describe('Form Trigger', () => {
@@ -121,7 +123,20 @@ test.describe('Form Trigger', () => {
 		await formPage.close();
 	});
 
-	test('should submit a multi-page form with basic auth', async ({ n8n, page }) => {
+	test('should submit a multi-page form with basic auth', async ({ n8n }) => {
+		// Create Basic Auth credentials
+		const credentialName = `test-${nanoid()}`;
+		const user = 'test';
+		const password = 'test';
+		await n8n.credentialsComposer.createFromApi({
+			type: 'httpBasicAuth',
+			name: credentialName,
+			data: {
+				user,
+				password,
+			},
+		});
+
 		// Add Form Trigger node with basic auth enabled
 		await n8n.canvas.clickNodeCreatorPlusButton();
 		await n8n.canvas.nodeCreatorItemByName('On form submission').click();
@@ -133,7 +148,7 @@ test.describe('Form Trigger', () => {
 		);
 
 		// Enable basic authentication
-		await n8n.ndv.selectOptionInParameterDropdown('Authentication', 'Basic Auth');
+		await n8n.ndv.selectOptionInParameterDropdown('authentication', 'Basic Auth');
 
 		// Add a single field to the Form Trigger node
 		await n8n.ndv.addFixedCollectionItem();
@@ -156,12 +171,19 @@ test.describe('Form Trigger', () => {
 
 		// Get the form test URL from the NDV
 		await n8n.canvas.openNode('On form submission');
-		const formUrlLocator = page.locator('text=/form-test\\/[a-f0-9-]+/');
-		const formUrl = await formUrlLocator.textContent();
+		// When basic auth is enabled, the full URL (http://...) is shown instead of just the path
+		// The URL may wrap across lines in the UI, so we get all text content and extract it
+		await n8n.page.waitForTimeout(1000); // Wait for the URL to render
+		const pageContent = await n8n.page.textContent('body');
+		// Remove line breaks and extra spaces from the wrapped URL
+		const cleanContent = pageContent?.replace(/\s+/g, ' ');
+		const urlMatch = cleanContent?.match(/http:\/\/localhost:\d+\/form-test\/[a-f0-9-]+/);
+		expect(urlMatch, 'Form URL should be found in the page').toBeTruthy();
+		const formUrl = urlMatch![0];
 
 		// Create a new context with HTTP authentication
 		// This simulates a user who has already authenticated with Basic Auth
-		const context = await page
+		const context = await n8n.page
 			.context()
 			.browser()!
 			.newContext({
@@ -174,6 +196,9 @@ test.describe('Form Trigger', () => {
 		// Open form URL in a new page with authentication
 		const formPage = await context.newPage();
 		await formPage.goto(formUrl!);
+
+		// Wait for the form to load
+		await formPage.waitForSelector('label:has-text("What is your email?")', { timeout: 10000 });
 
 		// Fill first page with email
 		const email = `test${Date.now()}@example.com`;
