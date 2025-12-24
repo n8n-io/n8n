@@ -444,6 +444,17 @@ defineExpose({
 	& :global(.el-popper) {
 		/* Enforce via text truncation instead */
 		max-width: unset !important;
+		/* Prevent dropdown from affecting parent layout */
+		contain: layout style paint;
+	}
+
+	& :global(.el-menu--popup) {
+		/* Prevent dropdown from extending past viewport and causing layout shifts */
+		max-height: calc(100vh - 200px);
+		overflow-y: auto;
+		overflow-x: hidden;
+		/* Ensure smooth scrolling without layout shifts */
+		overscroll-behavior: contain;
 	}
 }
 
