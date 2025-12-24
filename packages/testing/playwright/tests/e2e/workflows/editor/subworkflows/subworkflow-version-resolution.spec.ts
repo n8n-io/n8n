@@ -120,6 +120,9 @@ test.describe('Sub-workflow Version Resolution', () => {
 
 		const execution = await api.workflows.waitForExecution(parentWorkflowId, 10000, 'manual');
 		expect(execution.status).toBe('success');
+
+		const executionDetails = await api.workflows.getExecution(execution.id);
+		expect(executionDetails.data).toContain('draft-version');
 	});
 
 	test('production execution should use published version of sub-workflow', async ({ api }) => {
