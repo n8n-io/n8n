@@ -3,6 +3,7 @@ import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import type {
+	IConnections,
 	IHttpRequestMethods,
 	INode,
 	INodeType,
@@ -166,8 +167,8 @@ describe('LiveWebhooks', () => {
 				createWebhookNode('webhook-node-draft', 'Webhook'),
 				createSetNode('set-node-draft', 'Set Draft', 'draft-version'),
 			];
-			const draftConnections = {
-				Webhook: { main: [[{ node: 'Set Draft', type: 'main', index: 0 }]] },
+			const draftConnections: IConnections = {
+				Webhook: { main: [[{ node: 'Set Draft', type: 'main' as const, index: 0 }]] },
 			};
 
 			// Active version nodes
@@ -175,8 +176,8 @@ describe('LiveWebhooks', () => {
 				createWebhookNode('webhook-node-active', 'Webhook'),
 				createSetNode('set-node-active', 'Set Active', 'published-version'),
 			];
-			const activeConnections = {
-				Webhook: { main: [[{ node: 'Set Active', type: 'main', index: 0 }]] },
+			const activeConnections: IConnections = {
+				Webhook: { main: [[{ node: 'Set Active', type: 'main' as const, index: 0 }]] },
 			};
 
 			const activeVersion = mock<WorkflowHistory>({
@@ -193,7 +194,7 @@ describe('LiveWebhooks', () => {
 				id: workflowId,
 				name: 'Test Workflow',
 				active: true,
-				activeVersionId: activeVersion.versionId,
+				activeVersionId: 'v1',
 				nodes: draftNodes,
 				connections: draftConnections,
 				activeVersion,
@@ -223,7 +224,7 @@ describe('LiveWebhooks', () => {
 
 			webhookService.findWebhook.mockResolvedValue(webhookEntity);
 			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
-			workflowRepository.findOne.mockResolvedValue(workflowEntity);
+			workflowRepository.findOne.mockResolvedValue(workflowEntity as WorkflowEntity);
 			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
 			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
