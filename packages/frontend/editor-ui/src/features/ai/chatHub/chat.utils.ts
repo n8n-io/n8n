@@ -545,7 +545,7 @@ function buildPersonalAgentsMenuItem(
 				icon: (agent.icon ?? personalAgentDefaultIcon) as IconOrEmoji,
 				label: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
 				disabled: false,
-				data: { provider: 'custom-agent' },
+				data: { provider: 'custom-agent', description: agent.description ?? undefined },
 			}));
 
 	return {
@@ -603,7 +603,7 @@ function buildN8nAgentsMenuItem(
 				icon: (agent.icon ?? workflowAgentDefaultIcon) as IconOrEmoji,
 				label: truncateBeforeLast(agent.name, 200),
 				disabled: false,
-				data: { provider: agent.model.provider },
+				data: { provider: agent.model.provider, description: agent.description ?? undefined },
 			})),
 		);
 	}
