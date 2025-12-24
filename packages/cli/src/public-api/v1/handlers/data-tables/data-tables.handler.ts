@@ -8,6 +8,23 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 
+const handleError = (error: unknown, res: express.Response): express.Response => {
+	if (error instanceof DataTableNotFoundError) {
+		return res.status(404).json({ message: error.message });
+	}
+	if (error instanceof DataTableValidationError) {
+		return res.status(400).json({ message: error.message });
+	}
+	if (error instanceof Error) {
+		return res.status(400).json({ message: error.message });
+	}
+	throw error;
+};
+
+const getUserProject = async (userId: string) => {
+	return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+};
+
 export = {
 	getDataTableRows: [
 		apiKeyHasScope('dataTableRow:read'),
@@ -18,9 +35,7 @@ export = {
 				const filterString = req.query.filter as string | undefined;
 				const filter = filterString ? JSON.parse(filterString) : undefined;
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
+				const project = await getUserProject(req.user.id);
 
 				const result = await Container.get(DataTableService).getManyRowsAndCount(
 					dataTableId,
@@ -33,16 +48,7 @@ export = {
 					count: result.count,
 				});
 			} catch (error) {
-				if (error instanceof DataTableNotFoundError) {
-					return res.status(404).json({ message: error.message });
-				}
-				if (error instanceof DataTableValidationError) {
-					return res.status(400).json({ message: error.message });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error, res);
 			}
 		},
 	],
@@ -54,9 +60,7 @@ export = {
 				const { dataTableId } = req.params;
 				const { data, returnType } = req.body;
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
+				const project = await getUserProject(req.user.id);
 
 				const result = await Container.get(DataTableService).insertRows(
 					dataTableId,
@@ -67,16 +71,7 @@ export = {
 
 				return res.json(result);
 			} catch (error) {
-				if (error instanceof DataTableNotFoundError) {
-					return res.status(404).json({ message: error.message });
-				}
-				if (error instanceof DataTableValidationError) {
-					return res.status(400).json({ message: error.message });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error, res);
 			}
 		},
 	],
@@ -88,49 +83,19 @@ export = {
 				const { dataTableId } = req.params;
 				const { filter, data, returnData = false, dryRun = false } = req.body;
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
+				const project = await getUserProject(req.user.id);
 
-				let result;
-				if (dryRun) {
-					result = await Container.get(DataTableService).updateRows(
-						dataTableId,
-						project.id,
-						{ filter, data },
-						returnData,
-						true,
-					);
-				} else if (returnData) {
-					result = await Container.get(DataTableService).updateRows(
-						dataTableId,
-						project.id,
-						{ filter, data },
-						true,
-						false,
-					);
-				} else {
-					result = await Container.get(DataTableService).updateRows(
-						dataTableId,
-						project.id,
-						{ filter, data },
-						false,
-						false,
-					);
-				}
+				const result = await Container.get(DataTableService).updateRows(
+					dataTableId,
+					project.id,
+					{ filter, data },
+					returnData,
+					dryRun,
+				);
 
 				return res.json(result);
 			} catch (error) {
-				if (error instanceof DataTableNotFoundError) {
-					return res.status(404).json({ message: error.message });
-				}
-				if (error instanceof DataTableValidationError) {
-					return res.status(400).json({ message: error.message });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error, res);
 			}
 		},
 	],
@@ -142,49 +107,19 @@ export = {
 				const { dataTableId } = req.params;
 				const { filter, data, returnData = false, dryRun = false } = req.body;
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
+				const project = await getUserProject(req.user.id);
 
-				let result;
-				if (dryRun) {
-					result = await Container.get(DataTableService).upsertRow(
-						dataTableId,
-						project.id,
-						{ filter, data },
-						returnData,
-						true,
-					);
-				} else if (returnData) {
-					result = await Container.get(DataTableService).upsertRow(
-						dataTableId,
-						project.id,
-						{ filter, data },
-						true,
-						false,
-					);
-				} else {
-					result = await Container.get(DataTableService).upsertRow(
-						dataTableId,
-						project.id,
-						{ filter, data },
-						false,
-						false,
-					);
-				}
+				const result = await Container.get(DataTableService).upsertRow(
+					dataTableId,
+					project.id,
+					{ filter, data },
+					returnData,
+					dryRun,
+				);
 
 				return res.json(result);
 			} catch (error) {
-				if (error instanceof DataTableNotFoundError) {
-					return res.status(404).json({ message: error.message });
-				}
-				if (error instanceof DataTableValidationError) {
-					return res.status(400).json({ message: error.message });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error, res);
 			}
 		},
 	],
@@ -205,52 +140,22 @@ export = {
 
 				const filter = JSON.parse(filterString);
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
+				const project = await getUserProject(req.user.id);
 
 				const returnDataBool = returnData === 'true' || returnData === true;
 				const dryRunBool = dryRun === 'true' || dryRun === true;
 
-				let result;
-				if (dryRunBool) {
-					result = await Container.get(DataTableService).deleteRows(
-						dataTableId,
-						project.id,
-						{ filter },
-						returnDataBool,
-						true,
-					);
-				} else if (returnDataBool) {
-					result = await Container.get(DataTableService).deleteRows(
-						dataTableId,
-						project.id,
-						{ filter },
-						true,
-						false,
-					);
-				} else {
-					result = await Container.get(DataTableService).deleteRows(
-						dataTableId,
-						project.id,
-						{ filter },
-						false,
-						false,
-					);
-				}
+				const result = await Container.get(DataTableService).deleteRows(
+					dataTableId,
+					project.id,
+					{ filter },
+					returnDataBool,
+					dryRunBool,
+				);
 
 				return res.json(result);
 			} catch (error) {
-				if (error instanceof DataTableNotFoundError) {
-					return res.status(404).json({ message: error.message });
-				}
-				if (error instanceof DataTableValidationError) {
-					return res.status(400).json({ message: error.message });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error, res);
 			}
 		},
 	],
