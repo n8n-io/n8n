@@ -48,7 +48,6 @@ export type FormTriggerData = {
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	dangerousCustomCss?: string;
-	requiresAuth?: boolean;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';
