@@ -6,11 +6,10 @@ import {
 } from 'n8n-containers';
 
 import { test, expect } from '../../../fixtures/base';
+import { capabilities } from '../../../fixtures/capabilities';
 
 test.use({
-	addContainerCapability: {
-		oidc: true,
-	},
+	addContainerCapability: capabilities.oidc,
 	ignoreHTTPSErrors: true, // Keycloak uses self-signed certs
 });
 
