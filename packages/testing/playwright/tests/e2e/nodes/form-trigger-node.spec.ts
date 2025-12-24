@@ -120,4 +120,71 @@ test.describe('Form Trigger', () => {
 		// Close the form page
 		await formPage.close();
 	});
+
+	test('should submit a multi-page form with basic auth', async ({ n8n }) => {
+		// Add Form Trigger node with basic auth enabled
+		await n8n.canvas.clickNodeCreatorPlusButton();
+		await n8n.canvas.nodeCreatorItemByName('On form submission').click();
+
+		await n8n.ndv.fillParameterInput('Form Title', 'Authenticated Multi-Page Form');
+		await n8n.ndv.fillParameterInput(
+			'Form Description',
+			'A form with basic auth and multiple pages',
+		);
+
+		// Enable basic authentication
+		await n8n.ndv.selectOptionInParameterDropdown('Authentication', 'Basic Auth');
+
+		// Add a single field to the Form Trigger node
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldLabel', 'What is your email?');
+
+		await n8n.ndv.clickBackToCanvasButton();
+
+		// Add Form node (next page) by selecting the "Next Form Page" action
+		await n8n.canvas.addNode('n8n Form', { closeNDV: false, action: 'Next Form Page' });
+
+		// Add a single field to the Form node
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldLabel', 'What is your phone number?');
+
+		await n8n.ndv.clickBackToCanvasButton();
+
+		// Start the workflow execution so it's waiting for form submissions
+		await n8n.canvas.clickExecuteWorkflowButton();
+		await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
+
+		// Get the form test URL from the NDV
+		await n8n.canvas.openNode('On form submission');
+		const formUrlLocator = n8n.page.locator('text=/form-test\\/[a-f0-9-]+/');
+		const formUrl = await formUrlLocator.textContent();
+
+		// Open form URL in a new browser tab with basic auth credentials
+		const formPage = await n8n.page.context().newPage();
+		// Basic auth is handled through the browser's HTTP auth dialog
+		// Playwright will prompt for credentials when the page requires auth
+		await formPage.goto(formUrl!, {
+			waitUntil: 'networkidle',
+		});
+
+		// Fill first page with email
+		const email = `test${Date.now()}@example.com`;
+		await formPage.getByLabel('What is your email?').fill(email);
+		await formPage.getByRole('button', { name: 'Submit' }).click();
+
+		// Wait for the second page to load
+		await formPage.waitForLoadState('networkidle');
+
+		// Fill second page with phone number
+		const phone = `+1-555-${Date.now().toString().slice(-7)}`;
+		await formPage.getByLabel('What is your phone number?').fill(phone);
+		await formPage.getByRole('button', { name: 'Submit' }).click();
+
+		// Verify the form was submitted successfully
+		// This will fail if credentials are not properly passed with the fetch request
+		await expect(formPage.getByText('Your response has been recorded')).toBeVisible();
+
+		// Close the form page
+		await formPage.close();
+	});
 });
