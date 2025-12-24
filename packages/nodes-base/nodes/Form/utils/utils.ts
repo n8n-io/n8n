@@ -185,6 +185,7 @@ export function prepareFormData({
 	buttonLabel,
 	customCss,
 	nodeVersion,
+	requiresAuth = false,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -200,6 +201,7 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 	nodeVersion?: number;
+	requiresAuth?: boolean;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -221,6 +223,7 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		requiresAuth,
 	};
 
 	if (redirectUrl) {
@@ -477,6 +480,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	requiresAuth = false,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -490,6 +494,7 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	requiresAuth?: boolean;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -532,6 +537,7 @@ export function renderForm({
 		buttonLabel,
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
+		requiresAuth,
 	});
 
 	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
@@ -597,6 +603,10 @@ export async function formWebhook(
 		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
 		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
+		// Check if authentication is required
+		const authentication = context.getNodeParameter(authProperty, 'none') as string;
+		const requiresAuth = authentication === 'basicAuth';
+
 		let formSubmittedText;
 		let redirectUrl;
 		let appendAttribution = true;
@@ -646,6 +656,7 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			requiresAuth,
 		});
 
 		return {
