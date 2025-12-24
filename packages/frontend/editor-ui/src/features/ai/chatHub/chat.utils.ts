@@ -509,12 +509,12 @@ function matchesSearch(text: string, query: string) {
 /**
  * Helper function to filter menu items with children based on search
  */
-function filterMenuItem(item: MenuItem, query: string): MenuItem | null {
-	if (!query) return item;
+function filterMenuItem(item: MenuItem, query: string, parentMatched = false): MenuItem | null {
+	if (!query || parentMatched) return item;
 
 	const labelMatches = matchesSearch((item.label || '').toLowerCase(), query);
 	const filteredChildren = (item.children ?? []).flatMap((child) => {
-		const matched = filterMenuItem(child, query);
+		const matched = filterMenuItem(child, query, labelMatches);
 
 		return matched ? [matched] : [];
 	});
