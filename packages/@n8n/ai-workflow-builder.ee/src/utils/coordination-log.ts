@@ -113,6 +113,19 @@ export function getErrorEntry(log: CoordinationLogEntry[]): CoordinationLogEntry
 }
 
 /**
+ * Check if recursion errors have been cleared (AI-1812)
+ * Returns true if there's a state_management entry that cleared recursion errors
+ */
+export function hasRecursionErrorsCleared(log: CoordinationLogEntry[]): boolean {
+	return log.some(
+		(entry) =>
+			entry.phase === 'state_management' &&
+			entry.summary.includes('Cleared') &&
+			entry.summary.includes('recursion'),
+	);
+}
+
+/**
  * Deterministic routing based on coordination log.
  * Called AFTER a subgraph completes to determine next phase.
  */
@@ -122,19 +135,19 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 	const hasErrors = hasErrorInLog(log);
 
 	if (hasErrors) {
-		// Find the last clear marker (if any)
+		// Check if recursion errors were cleared
+		if (!hasRecursionErrorsCleared(log)) {
+			// No clear marker - route to responder
+			return 'responder';
+		}
+
+		// Find the last clear marker to check for errors after it
 		const lastClearIndex = log.findLastIndex(
 			(entry) =>
 				entry.phase === 'state_management' &&
 				entry.summary.includes('Cleared') &&
 				entry.summary.includes('recursion'),
 		);
-
-		// If there are errors AFTER the last clear, route to responder
-		// If no clear marker exists, route to responder
-		if (lastClearIndex === -1) {
-			return 'responder';
-		}
 
 		// Check if any errors exist after the clear marker
 		const hasErrorsAfterClear = log

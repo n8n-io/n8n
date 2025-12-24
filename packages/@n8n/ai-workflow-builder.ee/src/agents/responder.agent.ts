@@ -3,12 +3,22 @@ import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
-import { buildResponderPrompt } from '@/prompts/agents/responder.prompt';
+import {
+	buildResponderPrompt,
+	buildRecursionErrorWithWorkflowGuidance,
+	buildRecursionErrorNoWorkflowGuidance,
+	buildGeneralErrorGuidance,
+} from '@/prompts/agents/responder.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow } from '../types/workflow';
-import { getErrorEntry, getBuilderOutput, getConfiguratorOutput } from '../utils/coordination-log';
+import {
+	getErrorEntry,
+	getBuilderOutput,
+	getConfiguratorOutput,
+	hasRecursionErrorsCleared,
+} from '../utils/coordination-log';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -79,12 +89,7 @@ export class ResponderAgent {
 		// Check for errors - provide context-aware guidance (AI-1812)
 		// Skip errors that have been cleared (AI-1812)
 		const errorEntry = getErrorEntry(context.coordinationLog);
-		const errorsCleared = context.coordinationLog.some(
-			(entry) =>
-				entry.phase === 'state_management' &&
-				entry.summary.includes('Cleared') &&
-				entry.summary.includes('recursion'),
-		);
+		const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
 
 		if (errorEntry && !errorsCleared) {
 			const hasWorkflow = context.workflowJSON.nodes.length > 0;
@@ -101,30 +106,15 @@ export class ResponderAgent {
 			// AI-1812: Provide better guidance based on workflow state and error type
 			if (isRecursionError && hasWorkflow) {
 				// Recursion error but workflow was created
-				contextParts.push(
-					`**Workflow Status:** ${context.workflowJSON.nodes.length} nodes were created before the complexity limit was reached.`,
-				);
-				contextParts.push(
-					"Tell the user that you've created their workflow but reached a complexity limit while fine-tuning. " +
-						'The workflow should work and they can test it. ' +
-						'If they need adjustments or want to continue building, they can ask you to make specific changes.',
-				);
+				const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
+				contextParts.push(...guidance);
 			} else if (isRecursionError && !hasWorkflow) {
 				// Recursion error and no workflow created
-				contextParts.push(
-					'**Workflow Status:** No nodes were created - the request was too complex to process automatically.',
-				);
-				contextParts.push(
-					'Explain that the workflow design became too complex for automatic generation. ' +
-						'Suggest options: (1) Break the request into smaller steps, (2) Simplify the workflow, ' +
-						'or (3) Start with a basic version and iteratively add complexity.',
-				);
+				const guidance = buildRecursionErrorNoWorkflowGuidance();
+				contextParts.push(...guidance);
 			} else {
 				// Other errors (not recursion-related)
-				contextParts.push(
-					'Apologize and explain that a technical error occurred. ' +
-						'Ask if they would like to try again or approach the problem differently.',
-				);
+				contextParts.push(buildGeneralErrorGuidance());
 			}
 		}
 

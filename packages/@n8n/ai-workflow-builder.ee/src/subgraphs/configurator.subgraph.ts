@@ -8,7 +8,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from '@/prompts/agents/configurator.prompt';
+import {
+	buildConfiguratorPrompt,
+	buildRecoveryModeContext,
+	INSTANCE_URL_PROMPT,
+} from '@/prompts/agents/configurator.prompt';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -231,19 +235,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			builderErrorEntry.metadata.partialBuilderData
 		) {
 			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
-
-			contextParts.push('=== CRITICAL: RECOVERY MODE ===');
-			contextParts.push(
-				`WORKFLOW RECOVERY SCENARIO:\n` +
-					`The builder created ${nodeCount} node${nodeCount === 1 ? '' : 's'} (${nodeNames.join(', ')}) before hitting a recursion limit.\n\n` +
-					`REQUIRED ACTIONS - DO NOT SKIP:\n` +
-					`1. Call update_node_parameters for EVERY node listed above to ensure proper configuration\n` +
-					`2. Call validate_configuration to check for issues\n` +
-					`3. Scan the workflow for placeholders (format: <__PLACEHOLDER_VALUE__*__>) and missing credentials\n` +
-					`4. List ALL placeholders and missing credentials in your final response\n\n` +
-					`DO NOT respond with "workflow already exists" or "no changes needed". ` +
-					`You MUST use tools to analyze this recovered workflow.`,
-			);
+			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
 
 		// 4. Full workflow JSON (nodes to configure)
