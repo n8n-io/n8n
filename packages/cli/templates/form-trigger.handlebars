@@ -688,8 +688,8 @@
 				{{#if redirectUrl}}
 					<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 				{{/if}}
-				<input id="useResponseData" style="display: none;" value={{useResponseData}} />
-				<input id="requiresAuth" style="display: none;" value={{requiresAuth}} />
+				<input id="useResponseData" style="display: none;" value="{{useResponseData}}" />
+				<input id="requiresAuth" style="display: none;" value="{{requiresAuth}}" />
 			</section>
 		</div>
 		<script>
@@ -899,12 +899,7 @@
 				if (!interval) return;
 
 				try {
-					const requiresAuth = document.getElementById("requiresAuth").value === "true";
-					const fetchOptions = {};
-					if (requiresAuth) {
-						fetchOptions.credentials = 'include';
-					}
-					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`, fetchOptions);
+					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
 					const text = (await response.text()).trim();
 
 					if (text === "form-waiting") {
@@ -999,16 +994,10 @@
 						postUrl = window.location.search;
 					}
 
-					const requiresAuth = document.getElementById("requiresAuth").value === "true";
-					const fetchOptions = {
+					fetch(postUrl, {
 						method: 'POST',
 						body: formData,
-					};
-					if (requiresAuth) {
-						fetchOptions.credentials = 'include';
-					}
-
-					fetch(postUrl, fetchOptions)
+					})
 						.then(async function (response) {
 							const useResponseData = document.getElementById("useResponseData").value;
 
