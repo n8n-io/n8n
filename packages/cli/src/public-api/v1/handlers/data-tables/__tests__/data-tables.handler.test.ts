@@ -115,7 +115,7 @@ describe('DataTable Handler', () => {
 				{
 					skip: 10,
 					take: 50,
-					filter: filterStr,
+					filter: JSON.parse(filterStr),
 					sortBy: 'createdAt:desc',
 					search: 'test',
 				},
@@ -496,26 +496,6 @@ describe('DataTable Handler', () => {
 			});
 		});
 
-		it('should return 400 when filter is invalid JSON', async () => {
-			// Arrange
-			const req = {
-				params: { dataTableId },
-				query: {
-					filter: 'invalid-json',
-				},
-				user: { id: userId },
-			} as unknown as DataTableRequest.DeleteRows;
-
-			// Act
-			await handler.deleteDataTableRows[1](req, mockResponse as Response);
-
-			// Assert
-			expect(mockResponse.status).toHaveBeenCalledWith(400);
-			expect(mockResponse.json).toHaveBeenCalledWith({
-				message: 'Invalid filter format',
-			});
-		});
-
 		it('should support dry run mode', async () => {
 			// Arrange
 			const filterStr = JSON.stringify({
@@ -546,6 +526,203 @@ describe('DataTable Handler', () => {
 				true,
 				true,
 			);
+		});
+	});
+
+	describe('Security - Cross-Project Access', () => {
+		const otherUserDataTableId = 'other-user-data-table-id';
+
+		it('should return 404 when trying to get rows from another users data table', async () => {
+			// Arrange
+			const req = {
+				params: { dataTableId: otherUserDataTableId },
+				query: {},
+				user: { id: userId },
+			} as unknown as DataTableRequest.GetRows;
+
+			// User's personal project is returned
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as any);
+
+			// But the data table belongs to another project, so service throws DataTableNotFoundError
+			mockDataTableService.getManyRowsAndCount.mockRejectedValue(
+				new DataTableNotFoundError(otherUserDataTableId),
+			);
+
+			// Act
+			await handler.getDataTableRows[1](req, mockResponse as Response);
+
+			// Assert
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(userId);
+			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
+				otherUserDataTableId,
+				projectId, // User's own project ID
+				{},
+			);
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				message: expect.stringContaining(otherUserDataTableId),
+			});
+		});
+
+		it('should return 404 when trying to insert rows into another users data table', async () => {
+			// Arrange
+			const req = {
+				params: { dataTableId: otherUserDataTableId },
+				body: {
+					data: [{ name: 'Malicious Row' }],
+					returnType: 'count',
+				},
+				user: { id: userId },
+			} as unknown as DataTableRequest.InsertRows;
+
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as any);
+
+			mockDataTableService.insertRows.mockRejectedValue(
+				new DataTableNotFoundError(otherUserDataTableId),
+			);
+
+			// Act
+			await handler.insertDataTableRows[1](req, mockResponse as Response);
+
+			// Assert
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				message: expect.stringContaining(otherUserDataTableId),
+			});
+		});
+
+		it('should return 404 when trying to update rows in another users data table', async () => {
+			// Arrange
+			const req = {
+				params: { dataTableId: otherUserDataTableId },
+				body: {
+					filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] },
+					data: { status: 'hacked' },
+					returnData: false,
+					dryRun: false,
+				},
+				user: { id: userId },
+			} as unknown as DataTableRequest.UpdateRows;
+
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as any);
+
+			mockDataTableService.updateRows.mockRejectedValue(
+				new DataTableNotFoundError(otherUserDataTableId),
+			);
+
+			// Act
+			await handler.updateDataTableRows[1](req, mockResponse as Response);
+
+			// Assert
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				message: expect.stringContaining(otherUserDataTableId),
+			});
+		});
+
+		it('should return 404 when trying to upsert row in another users data table', async () => {
+			// Arrange
+			const req = {
+				params: { dataTableId: otherUserDataTableId },
+				body: {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'email', condition: 'eq', value: 'malicious@example.com' }],
+					},
+					data: { email: 'malicious@example.com', name: 'Hacker' },
+					returnData: false,
+					dryRun: false,
+				},
+				user: { id: userId },
+			} as unknown as DataTableRequest.UpsertRow;
+
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as any);
+
+			mockDataTableService.upsertRow.mockRejectedValue(
+				new DataTableNotFoundError(otherUserDataTableId),
+			);
+
+			// Act
+			await handler.upsertDataTableRow[1](req, mockResponse as Response);
+
+			// Assert
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				message: expect.stringContaining(otherUserDataTableId),
+			});
+		});
+
+		it('should return 404 when trying to delete rows from another users data table', async () => {
+			// Arrange
+			const filterStr = JSON.stringify({
+				type: 'and',
+				filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+			});
+			const req = {
+				params: { dataTableId: otherUserDataTableId },
+				query: {
+					filter: filterStr,
+					returnData: 'false',
+					dryRun: 'false',
+				},
+				user: { id: userId },
+			} as unknown as DataTableRequest.DeleteRows;
+
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as any);
+
+			mockDataTableService.deleteRows.mockRejectedValue(
+				new DataTableNotFoundError(otherUserDataTableId),
+			);
+
+			// Act
+			await handler.deleteDataTableRows[1](req, mockResponse as Response);
+
+			// Assert
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				message: expect.stringContaining(otherUserDataTableId),
+			});
+		});
+
+		it('should not leak information about data table existence in error messages', async () => {
+			// Arrange
+			const nonExistentDataTableId = 'non-existent-table-id';
+			const req = {
+				params: { dataTableId: nonExistentDataTableId },
+				query: {},
+				user: { id: userId },
+			} as unknown as DataTableRequest.GetRows;
+
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as any);
+
+			mockDataTableService.getManyRowsAndCount.mockRejectedValue(
+				new DataTableNotFoundError(nonExistentDataTableId),
+			);
+
+			// Act
+			await handler.getDataTableRows[1](req, mockResponse as Response);
+
+			// Assert
+			// The error message should be the same whether:
+			// 1. The table doesn't exist at all
+			// 2. The table exists but belongs to another user's project
+			// This prevents information leakage
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				message: expect.stringContaining(nonExistentDataTableId),
+			});
 		});
 	});
 });

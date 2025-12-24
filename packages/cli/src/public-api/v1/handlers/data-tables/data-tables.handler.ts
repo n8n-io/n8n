@@ -14,7 +14,9 @@ export = {
 		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
 			try {
 				const { dataTableId } = req.params;
-				const { skip, take, filter, sortBy, search } = req.query;
+				const { skip, take, sortBy, search } = req.query;
+				const filterString = req.query.filter as string | undefined;
+				const filter = filterString ? JSON.parse(filterString) : undefined;
 
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					req.user.id,
@@ -201,13 +203,7 @@ export = {
 					});
 				}
 
-				// Parse filter JSON string
-				let filter;
-				try {
-					filter = JSON.parse(filterString);
-				} catch {
-					return res.status(400).json({ message: 'Invalid filter format' });
-				}
+				const filter = JSON.parse(filterString);
 
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					req.user.id,

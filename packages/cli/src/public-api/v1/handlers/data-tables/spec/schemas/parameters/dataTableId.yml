@@ -4,4 +4,4 @@ description: The ID of the data table
 required: true
 schema:
   type: string
-  format: uuid
+  format: nanoid

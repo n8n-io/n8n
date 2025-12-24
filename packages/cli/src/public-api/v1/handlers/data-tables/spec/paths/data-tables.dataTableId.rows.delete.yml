@@ -14,6 +14,7 @@ delete:
       description: JSON string of filter conditions. Required to prevent accidental deletion of all data.
       schema:
         type: string
+        format: jsonString
       example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"archived"}]}'
     - name: returnData
       in: query

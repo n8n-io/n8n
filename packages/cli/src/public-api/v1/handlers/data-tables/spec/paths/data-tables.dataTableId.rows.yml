@@ -28,6 +28,7 @@ get:
       description: JSON string of filter conditions
       schema:
         type: string
+        format: jsonString
       example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"active"}]}'
     - name: sortBy
       in: query

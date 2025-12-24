@@ -17,12 +17,7 @@ properties:
             condition:
               type: string
               enum: [eq, neq, like, ilike, gt, gte, lt, lte]
-            value:
-              oneOf:
-                - type: string
-                - type: number
-                - type: boolean
-                - type: 'null'
+            value: {}
           required:
             - columnName
             - condition

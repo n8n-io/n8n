@@ -79,6 +79,13 @@ async function createApiRouter(
 						}
 					},
 				},
+				nanoid: {
+					type: 'string',
+					validate: (id: string) => {
+						// Nanoids in n8n are 16 characters long and use alphanumeric characters
+						return /^[A-Za-z0-9]{16}$/.test(id);
+					},
+				},
 			},
 			validateSecurity: {
 				handlers: {
