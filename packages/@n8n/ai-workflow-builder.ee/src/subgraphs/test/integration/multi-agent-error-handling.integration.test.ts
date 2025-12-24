@@ -10,22 +10,22 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
-import { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { ResponderAgent } from '@/agents/responder.agent';
 import {
 	setupIntegrationLLM,
 	shouldRunIntegrationTests,
 } from '@/chains/test/integration/test-helpers';
-import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
 import { createMultiAgentWorkflowWithSubgraphs } from '@/multi-agent-workflow-subgraphs';
-import { ResponderAgent } from '@/agents/responder.agent';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import { createErrorMetadata } from '@/types/coordination';
 import type { SimpleWorkflow } from '@/types/workflow';
 import { determineStateAction, handleClearErrorState } from '@/utils/state-modifier';
+
+import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
 
 describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 	let llm: BaseChatModel;
@@ -128,7 +128,10 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 			// Verify responder generated a message
 			expect(result.messages.length).toBeGreaterThan(0);
 			const lastMessage = result.messages[result.messages.length - 1];
-			const messageContent = String(lastMessage.content).toLowerCase();
+			const messageContent =
+				typeof lastMessage.content === 'string'
+					? lastMessage.content.toLowerCase()
+					: JSON.stringify(lastMessage.content).toLowerCase();
 
 			console.log('\n📨 Responder message:', lastMessage.content);
 			console.log('\n📊 Workflow state:', {
@@ -186,7 +189,10 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 				workflowJSON: emptyWorkflow,
 			});
 
-			const messageContent = String(response.content).toLowerCase();
+			const messageContent =
+				typeof response.content === 'string'
+					? response.content.toLowerCase()
+					: JSON.stringify(response.content).toLowerCase();
 
 			console.log('\n📨 Responder message:', response.content);
 			console.log('\n📊 Workflow state:', {
