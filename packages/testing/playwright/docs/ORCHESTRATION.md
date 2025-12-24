@@ -1,190 +1,102 @@
 # Custom Test Orchestration
 
-Duration-based test distribution across CI shards, using committed metrics for deterministic runs.
+Capability-aware test distribution across CI shards.
 
-## Overview
+## How It Works
 
-Instead of Playwright's built-in sharding (which distributes by file count), this approach distributes specs by **estimated duration** using a greedy bin-packing algorithm. This results in more balanced shard execution times.
+| Step | What Happens |
+|------|--------------|
+| 1. Discovery | `pnpm playwright test --list --project="multi-main:e2e"` |
+| 2. Metrics | Get `avgDuration` per spec from Currents (last 30 days) |
+| 3. Default | Missing specs get **60s** default (accounts for container startup) |
+| 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
+| 5. Effective Duration | Calculate actual time accounting for container reuse within groups |
+| 6. Split | If a group exceeds **5 min**, split into sub-groups |
+| 7. Bin Pack | Greedy assign groups + standard specs to lightest shard |
 
-**Key properties:**
-- **Deterministic** - Same commit always produces same distribution
-- **Re-run safe** - Failed jobs re-run the same specs (no full suite re-run)
-- **Community PR friendly** - No secrets needed at runtime
-- **Source agnostic** - Metrics can come from any test analytics provider
+### Why Group by Capability?
 
-## Scripts
+Tests requiring containers (proxy, email, etc.) include ~20s startup overhead. When grouped on the same shard, only the first test pays this cost - the rest reuse the worker.
 
-Located in `packages/testing/playwright/scripts/`:
+**Example:** 15 proxy tests across 8 shards = 8 container starts (160s). Grouped on 2 shards = 2 starts (40s). **Saves 120s.**
 
-| Script | Purpose |
-|--------|---------|
-| `distribute-tests.mjs` | Assigns specs to shards using bin-packing |
-| `fetch-currents-metrics.mjs` | Fetches duration data from Currents API |
+### Self-Balancing
 
-## Metrics File
+Metrics auto-correct over time. As grouped tests run, they report actual execution time (not startup overhead), so future distributions become more accurate.
 
-Committed at `.github/test-metrics/playwright.json`
+## Writing Tests with Capabilities
 
-### Schema
+### 1. Import shared capabilities (required for worker reuse)
 
-```json
-{
-  "updatedAt": "2025-01-15T00:00:00.000Z",
-  "source": "currents | playwright | manual | <provider>",
-  "specs": {
-    "tests/e2e/path/to/spec.ts": {
-      "avgDuration": 45000,
-      "testCount": 5,
-      "flakyRate": 0.02
-    }
-  }
-}
+```typescript
+// fixtures/capabilities.ts has shared objects
+import { capabilities } from '../../../fixtures/capabilities';
+
+// CORRECT - same object reference enables worker reuse
+test.use({ addContainerCapability: capabilities.proxy });
+
+// WRONG - inline object breaks worker reuse
+test.use({ addContainerCapability: { proxyServerEnabled: true } });
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `updatedAt` | ISO 8601 | When metrics were last refreshed |
-| `source` | string | Where metrics originated |
-| `specs` | object | Map of spec path to metrics |
-| `specs[path].avgDuration` | number | Average duration in milliseconds |
-| `specs[path].testCount` | number | Number of tests in spec |
-| `specs[path].flakyRate` | number | Flakiness rate (0-1) |
+### 2. Add @capability tag (required for orchestration grouping)
 
-Only `avgDuration` is required for distribution. Other fields are informational.
+```typescript
+test('My feature @capability:proxy', async ({ page }) => {
+  // This test will be grouped with other proxy tests
+});
 
-## CI Usage
-
-### Enabling Custom Orchestration
-
-In the workflow call to `playwright-test-reusable.yml`:
-
-```yaml
-jobs:
-  e2e-tests:
-    uses: ./.github/workflows/playwright-test-reusable.yml
-    with:
-      test-command: pnpm --filter=n8n-playwright test:local
-      shards: 8
-      use-custom-orchestration: true  # Enable duration-based distribution
-    secrets: inherit
+// Or at describe level:
+test.describe('Feature @capability:email', () => {
+  // All tests inherit the tag
+});
 ```
 
-### How It Works
+### Available Capabilities
 
-When `use-custom-orchestration: true`:
-
-```bash
-# Each shard runs:
-SPECS=$(node packages/testing/playwright/scripts/distribute-tests.mjs $TOTAL_SHARDS $SHARD_INDEX)
-pnpm test:local --workers=2 $SPECS
-```
-
-The distribute script:
-1. Reads committed metrics from `.github/test-metrics/playwright.json`
-2. Sorts specs by duration (descending)
-3. Assigns each spec to the lightest shard (greedy bin-packing)
-4. Outputs space-separated spec paths for the requested shard
-
-### Distribution Algorithm
-
-```
-Input: specs sorted by duration [100s, 80s, 60s, 40s, 30s, 20s]
-Shards: 3
-
-Step 1: 100s → Shard 0 (lightest)  → [100, 0, 0]
-Step 2: 80s  → Shard 1 (lightest)  → [100, 80, 0]
-Step 3: 60s  → Shard 2 (lightest)  → [100, 80, 60]
-Step 4: 40s  → Shard 2 (lightest)  → [100, 80, 100]
-Step 5: 30s  → Shard 1 (lightest)  → [100, 110, 100]
-Step 6: 20s  → Shard 0 (lightest)  → [120, 110, 100]
-
-Result: Balanced ~110s per shard instead of uneven distribution
-```
+| Import | Tag | Container |
+|--------|-----|-----------|
+| `capabilities.proxy` | `@capability:proxy` | Proxy server |
+| `capabilities.email` | `@capability:email` | Mailpit |
+| `capabilities.sourceControl` | `@capability:source-control` | Git server |
+| `capabilities.taskRunner` | `@capability:task-runner` | Task runner |
+| `capabilities.oidc` | `@capability:oidc` | OIDC provider |
+| `capabilities.observability` | `@capability:observability` | VictoriaLogs |
 
 ## Refreshing Metrics
-
-### Using Currents API
 
 ```bash
 CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=<id>
 ```
 
-The script:
-1. Fetches test durations from Currents API (last 30 days)
-2. Aggregates by spec file
-3. Validates against `pnpm playwright test --list --project="standard:e2e"`
-4. Reports drift (stale specs removed, new specs added with 30s default)
-5. Writes to `.github/test-metrics/playwright.json`
+This fetches the last 30 days of test durations from Currents, aggregates by spec, and writes to `.github/test-metrics/playwright.json`.
 
-### Using Other Sources
+**When to refresh:**
+- Weekly (recommended)
+- After significant test changes
+- When adding new specs (optional - they get 60s default)
 
-Create a script that outputs the same JSON schema. The distribution only requires:
+## Scripts
 
-```json
-{
-  "specs": {
-    "tests/e2e/example.spec.ts": { "avgDuration": 45000 }
-  }
-}
+| Script | Purpose |
+|--------|---------|
+| `scripts/distribute-tests.mjs` | Distributes specs across shards |
+| `scripts/fetch-currents-metrics.mjs` | Fetches metrics from Currents API |
+
+### Testing Locally
+
+```bash
+# See distribution for 14 shards
+node scripts/distribute-tests.mjs --matrix 14 --orchestrate
+
+# Get specs for shard 0
+node scripts/distribute-tests.mjs 14 0
 ```
-
-### When to Refresh
-
-- When new spec files are added (they get 30s default until refreshed)
-- When specs are deleted/renamed (stale entries are filtered out)
-- Periodically to capture duration changes (weekly recommended)
-
-## Maintenance
-
-### Detecting Drift
-
-Run the fetch script - it reports mismatches:
-
-```
-Stale specs (in metrics but not Playwright):
-  - tests/e2e/deleted/old.spec.ts
-
-New specs (in Playwright but not metrics, using 30s default):
-  - tests/e2e/new/feature.spec.ts
-```
-
-### Manual Metrics Entry
-
-For new specs before CI data exists:
-
-```json
-{
-  "specs": {
-    "tests/e2e/new/feature.spec.ts": {
-      "avgDuration": 45000,
-      "testCount": 3,
-      "flakyRate": 0
-    }
-  }
-}
-```
-
-Estimate duration based on similar specs, or use 30000 (30s) as default.
 
 ## Troubleshooting
 
-### Specs not running
-
-Check that the spec path in `playwright.json` matches exactly what Playwright outputs:
-```bash
-pnpm --filter=n8n-playwright playwright test --list --project="standard:e2e"
-```
-
-### Unbalanced shards
-
-Refresh metrics - durations may have changed significantly since last update.
-
-### Script errors
-
-```bash
-# Test distribution locally
-node packages/testing/playwright/scripts/distribute-tests.mjs 8 0
-
-# Validate metrics file
-cat .github/test-metrics/playwright.json | jq '.specs | length'
-```
+| Problem | Solution |
+|---------|----------|
+| Specs not running | Check path matches `playwright test --list` output |
+| Unbalanced shards | Refresh metrics - durations may have drifted |
+| Worker not reused | Use imported `capabilities.xxx`, not inline objects |
