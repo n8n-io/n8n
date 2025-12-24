@@ -39,6 +39,11 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:create',
 	'credential:move',
 	'credential:delete',
+	'dataTableRow:create',
+	'dataTableRow:read',
+	'dataTableRow:update',
+	'dataTableRow:delete',
+	'dataTableRow:upsert',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
@@ -65,6 +70,11 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:create',
 	'credential:move',
 	'credential:delete',
+	'dataTableRow:create',
+	'dataTableRow:read',
+	'dataTableRow:update',
+	'dataTableRow:delete',
+	'dataTableRow:upsert',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];

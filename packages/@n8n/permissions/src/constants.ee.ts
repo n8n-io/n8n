@@ -37,7 +37,17 @@ export const RESOURCES = {
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
-	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
+	dataTable: [
+		...DEFAULT_OPERATIONS,
+		'readRow',
+		'insertRow',
+		'updateRow',
+		'upsertRow',
+		'deleteRow',
+		'writeRow',
+		'listProject',
+	] as const,
+	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert', 'list'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
@@ -61,6 +71,7 @@ export const API_KEY_RESOURCES = {
 	credential: ['create', 'move', 'delete'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
+	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';

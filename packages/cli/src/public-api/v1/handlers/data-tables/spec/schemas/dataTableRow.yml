@@ -1,0 +1,15 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: The row ID (auto-generated)
+  createdAt:
+    type: string
+    format: date-time
+    description: The date and time the row was created
+  updatedAt:
+    type: string
+    format: date-time
+    description: The date and time the row was last updated
+additionalProperties: true
+description: A data table row with system columns (id, createdAt, updatedAt) and user-defined columns

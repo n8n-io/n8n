@@ -1,5 +1,11 @@
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type {
+	AddDataTableRowsDto,
+	ListDataTableContentQueryDto,
+	UpdateDataTableRowDto,
+	UpsertDataTableRowDto,
+} from '@n8n/api-types';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -177,6 +183,36 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+// ----------------------------------
+//           /data-tables
+// ----------------------------------
+
+export declare namespace DataTableRequest {
+	type GetRows = AuthenticatedRequest<
+		{ dataTableId: string },
+		{},
+		{},
+		Partial<ListDataTableContentQueryDto>
+	>;
+
+	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
+
+	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
+
+	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
+
+	type DeleteRows = AuthenticatedRequest<
+		{ dataTableId: string },
+		{},
+		{},
+		{
+			filter?: string;
+			returnData?: string | boolean;
+			dryRun?: string | boolean;
+		}
+	>;
 }
 
 // ----------------------------------
