@@ -78,7 +78,7 @@ test.describe('Projects', () => {
 
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-			await n8n.canvas.saveWorkflow();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			const { projectId, projectName } = await n8n.projectComposer.createProject('Project 1');
 
@@ -134,10 +134,10 @@ test.describe('Projects', () => {
 			const { projectName } = await n8n.projectComposer.createProject();
 			await n8n.sideBar.addWorkflowFromUniversalAdd(projectName);
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.saveWorkflow();
-			await expect(
-				n8n.notifications.getNotificationByTitleOrContent('Workflow successfully created'),
-			).toBeVisible();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.notifications.waitForNotification(
+				`Workflow successfully created in ${projectName}`,
+			);
 
 			await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
@@ -154,7 +154,7 @@ test.describe('Projects', () => {
 			});
 
 			await subn8n.ndv.clickBackToCanvasButton();
-			await subn8n.canvas.saveWorkflow();
+			await subn8n.canvas.waitForSaveWorkflowCompleted();
 
 			await subn8n.navigate.toWorkflows();
 			await subn8n.sideBar.clickProjectMenuItem(projectName);
@@ -180,12 +180,12 @@ test.describe('Projects', () => {
 
 			await n8n.workflows.clickNewWorkflowCard();
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.saveWorkflow();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			// Wait for save notification to confirm workflow is saved
-			await expect(
-				n8n.notifications.getNotificationByTitleOrContent('Workflow successfully created'),
-			).toBeVisible();
+			await n8n.notifications.waitForNotification(
+				`Workflow successfully created in ${projectName}`,
+			);
 			// Wait for URL to update with workflow ID after save
 			await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
 
@@ -197,7 +197,7 @@ test.describe('Projects', () => {
 				apiKey: NOTION_API_KEY,
 			});
 			await n8n.ndv.close();
-			await n8n.canvas.saveWorkflow();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.sideBar.clickProjectMenuItem(projectName);
 			await n8n.navigate.toCredentials();
@@ -239,10 +239,10 @@ test.describe('Projects', () => {
 			await n8n.navigate.toWorkflow('new');
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.saveWorkflow();
-			await expect(
-				n8n.notifications.getNotificationByTitleOrContent('Workflow successfully created'),
-			).toBeVisible();
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.notifications.waitForNotification(
+				'Workflow successfully created inside your personal space',
+			);
 
 			const savedWorkflowUrl = n8n.page.url();
 

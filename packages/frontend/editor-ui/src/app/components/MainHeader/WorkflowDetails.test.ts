@@ -70,9 +70,11 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
+const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
-		saveCurrentWorkflow: vi.fn().mockResolvedValue(true),
+		saveCurrentWorkflow: mockSaveCurrentWorkflow,
 	}),
 }));
 
@@ -147,7 +149,8 @@ describe('WorkflowDetails', () => {
 		projectsStore = mockedStore(useProjectsStore);
 
 		// Set up default mocks
-		workflowsStore.saveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+		mockSaveCurrentWorkflow.mockClear();
+		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		workflowsStore.workflowsById = {
 			'1': workflow as unknown as IWorkflowDb,
 			'123': workflow as unknown as IWorkflowDb,
@@ -181,24 +184,6 @@ describe('WorkflowDetails', () => {
 		expect(workflowNameInput).toHaveValue('Test Workflow');
 		expect(getByText('tag1')).toBeInTheDocument();
 		expect(getByText('tag2')).toBeInTheDocument();
-	});
-
-	it('calls save function on save button click', async () => {
-		const onSaveButtonClick = vi.fn();
-		const { getByTestId } = renderComponent({
-			props: {
-				...workflow,
-				readOnly: false,
-			},
-			global: {
-				mocks: {
-					onSaveButtonClick,
-				},
-			},
-		});
-
-		await userEvent.click(getByTestId('workflow-save-button'));
-		expect(onSaveButtonClick).toHaveBeenCalled();
 	});
 
 	it('opens share modal on share button click', async () => {
@@ -666,8 +651,12 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			// Edit workflow name to trigger autosave
+			const nameInput = getByTestId('workflow-name-input');
+			await userEvent.type(nameInput, 'Updated');
+			await userEvent.keyboard('{Enter}');
 
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'success',
@@ -704,8 +693,12 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			// Edit workflow name to trigger autosave
+			const nameInput = getByTestId('workflow-name-input');
+			await userEvent.type(nameInput, 'Updated');
+			await userEvent.keyboard('{Enter}');
 
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'success',
@@ -744,8 +737,12 @@ describe('WorkflowDetails', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			// Edit workflow name to trigger autosave
+			const nameInput = getByTestId('workflow-name-input');
+			await userEvent.type(nameInput, 'Updated');
+			await userEvent.keyboard('{Enter}');
 
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'success',
@@ -769,11 +766,16 @@ describe('WorkflowDetails', () => {
 					...workflow,
 					id: '123',
 					readOnly: false,
+					scopes: ['workflow:update'],
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-save-button'));
+			// Edit workflow name to trigger autosave
+			const nameInput = getByTestId('workflow-name-input');
+			await userEvent.type(nameInput, 'Updated');
+			await userEvent.keyboard('{Enter}');
 
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});

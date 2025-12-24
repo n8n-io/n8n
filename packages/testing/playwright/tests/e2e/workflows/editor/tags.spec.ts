@@ -131,7 +131,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
 	});
 
@@ -158,7 +157,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
 	});
 
@@ -180,7 +178,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvas.clickWorkflowTagsArea();
 

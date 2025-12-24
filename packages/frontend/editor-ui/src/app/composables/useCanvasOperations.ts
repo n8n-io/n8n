@@ -2239,13 +2239,14 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 			viewport,
+			keepPristine: true,
 		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
-			{ trackBulk: false, trackHistory },
+			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
 
 		if (trackBulk && trackHistory) {
