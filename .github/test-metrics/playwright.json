@@ -1,645 +1,670 @@
 {
-  "updatedAt": "2025-12-22T14:46:56.990Z",
+  "updatedAt": "2025-12-23T17:51:26.730Z",
   "source": "currents",
   "projectId": "I0yzoc",
   "specs": {
     "tests/e2e/workflows/list/workflows.spec.ts": {
-      "avgDuration": 111282,
+      "avgDuration": 113599,
       "testCount": 9,
-      "flakyRate": 0.0024
+      "flakyRate": 0.0066
     },
     "tests/e2e/workflows/templates/templates.spec.ts": {
-      "avgDuration": 17326,
-      "testCount": 8,
+      "avgDuration": 19603,
+      "testCount": 9,
       "flakyRate": 0.0016
     },
     "tests/e2e/workflows/editor/tags.spec.ts": {
-      "avgDuration": 38949,
+      "avgDuration": 38592,
       "testCount": 7,
-      "flakyRate": 0.0015
+      "flakyRate": 0.0014
+    },
+    "tests/e2e/chat-hub/chat-hub-workflow-agent.spec.ts": {
+      "avgDuration": 45555,
+      "testCount": 2,
+      "flakyRate": 0.0814
     },
     "tests/e2e/workflows/editor/workflow-actions/settings.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/subworkflows/workflow-selector.spec.ts": {
-      "avgDuration": 28402,
+      "avgDuration": 28137,
       "testCount": 5,
-      "flakyRate": 0.0011
+      "flakyRate": 0.0012
     },
     "tests/e2e/workflows/editor/workflow-actions/save.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/workflow-actions/run.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/workflow-actions/publish.spec.ts": {
-      "avgDuration": 30000,
-      "testCount": 1,
+      "avgDuration": 22021,
+      "testCount": 8,
       "flakyRate": 0
     },
     "tests/e2e/workflows/checklist/production-checklist.spec.ts": {
-      "avgDuration": 26868,
+      "avgDuration": 27187,
       "testCount": 7,
       "flakyRate": 0.0013
     },
     "tests/e2e/workflows/executions/list.spec.ts": {
-      "avgDuration": 53211,
-      "testCount": 12,
-      "flakyRate": 0.0022
+      "avgDuration": 61008,
+      "testCount": 11,
+      "flakyRate": 0.0042
     },
     "tests/e2e/workflows/editor/workflow-actions/duplicate.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/workflow-actions/copy-paste.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/ai/workflow-builder.spec.ts": {
-      "avgDuration": 30233,
+      "avgDuration": 32211,
       "testCount": 5,
-      "flakyRate": 0.0072
+      "flakyRate": 0.0096
     },
     "tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/settings/workers/workers.spec.ts": {
-      "avgDuration": 5554,
+      "avgDuration": 5662,
       "testCount": 4,
-      "flakyRate": 0.001
+      "flakyRate": 0.0011
     },
     "tests/e2e/nodes/webhook.spec.ts": {
-      "avgDuration": 54803,
+      "avgDuration": 55672,
       "testCount": 9,
-      "flakyRate": 0.0019
+      "flakyRate": 0.0021
     },
     "tests/e2e/api/webhook-isolation.spec.ts": {
-      "avgDuration": 4609,
+      "avgDuration": 5058,
       "testCount": 15,
-      "flakyRate": 0.0002
+      "flakyRate": 0.0005
     },
     "tests/e2e/app-config/versions.spec.ts": {
-      "avgDuration": 5872,
+      "avgDuration": 5875,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/settings/environments/variables.spec.ts": {
-      "avgDuration": 15454,
+      "avgDuration": 15854,
       "testCount": 7,
-      "flakyRate": 0.0001
+      "flakyRate": 0.0002
     },
     "tests/e2e/settings/users/users.spec.ts": {
-      "avgDuration": 13556,
-      "testCount": 5,
-      "flakyRate": 0.0093
+      "avgDuration": 11978,
+      "testCount": 4,
+      "flakyRate": 0.015
     },
     "tests/e2e/building-blocks/user-service.spec.ts": {
-      "avgDuration": 5468,
+      "avgDuration": 6400,
       "testCount": 4,
-      "flakyRate": 0.0002
+      "flakyRate": 0.0005
     },
     "tests/e2e/workflows/editor/canvas/undo-redo.spec.ts": {
-      "avgDuration": 70056,
-      "testCount": 14,
-      "flakyRate": 0.0192
+      "avgDuration": 65670,
+      "testCount": 13,
+      "flakyRate": 0.0193
     },
     "tests/e2e/building-blocks/workflow-entry-points.spec.ts": {
-      "avgDuration": 11814,
+      "avgDuration": 13573,
       "testCount": 5,
-      "flakyRate": 0.0003
+      "flakyRate": 0.0006
+    },
+    "tests/e2e/chat-hub/chat-hub-tools.spec.ts": {
+      "avgDuration": 11472,
+      "testCount": 1,
+      "flakyRate": 0.0233
     },
     "tests/e2e/capabilities/task-runner.spec.ts": {
-      "avgDuration": 53189,
+      "avgDuration": 52322,
       "testCount": 3,
-      "flakyRate": 0.1399
+      "flakyRate": 0.1299
     },
     "tests/e2e/workflows/editor/subworkflows/debugging.spec.ts": {
-      "avgDuration": 12969,
-      "testCount": 4,
-      "flakyRate": 0.0004
+      "avgDuration": 9686,
+      "testCount": 3,
+      "flakyRate": 0.0007
     },
     "tests/e2e/workflows/editor/subworkflows/extraction.spec.ts": {
-      "avgDuration": 35363,
+      "avgDuration": 35747,
       "testCount": 2,
-      "flakyRate": 0.0012
+      "flakyRate": 0.0011
     },
     "tests/e2e/settings/environments/source-control.spec.ts": {
-      "avgDuration": 149562,
+      "avgDuration": 142866,
       "testCount": 5,
-      "flakyRate": 0.072
+      "flakyRate": 0.1412
     },
     "tests/e2e/auth/signin.spec.ts": {
-      "avgDuration": 89898,
+      "avgDuration": 90584,
       "testCount": 3,
       "flakyRate": 0
     },
+    "tests/e2e/chat-hub/chat-hub-settings.spec.ts": {
+      "avgDuration": 29402,
+      "testCount": 2,
+      "flakyRate": 0.0674
+    },
     "tests/e2e/app-config/security-notifications.spec.ts": {
-      "avgDuration": 13663,
+      "avgDuration": 14479,
       "testCount": 5,
-      "flakyRate": 0.0002
-    },
-    "tests/e2e/workflows/editor/ndv/schema-preview.spec.ts": {
-      "avgDuration": 4888,
-      "testCount": 1,
-      "flakyRate": 0.0012
-    },
-    "tests/e2e/nodes/schedule-trigger-node.spec.ts": {
-      "avgDuration": 3451,
-      "testCount": 1,
-      "flakyRate": 0.0008
-    },
-    "tests/e2e/regression/SUG-38-inline-expression-preview.spec.ts": {
-      "avgDuration": 4726,
-      "testCount": 1,
-      "flakyRate": 0.0008
-    },
-    "tests/e2e/regression/SUG-121-fields-reset-after-closing-ndv.spec.ts": {
-      "avgDuration": 4118,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/workflows/editor/routing.spec.ts": {
-      "avgDuration": 27704,
-      "testCount": 6,
-      "flakyRate": 0.0043
-    },
-    "tests/e2e/workflows/editor/ndv/resource-mapper.spec.ts": {
-      "avgDuration": 17622,
-      "testCount": 4,
       "flakyRate": 0.0004
     },
+    "tests/e2e/workflows/editor/ndv/schema-preview.spec.ts": {
+      "avgDuration": 5002,
+      "testCount": 1,
+      "flakyRate": 0.0021
+    },
+    "tests/e2e/nodes/schedule-trigger-node.spec.ts": {
+      "avgDuration": 3494,
+      "testCount": 1,
+      "flakyRate": 0.0007
+    },
+    "tests/e2e/regression/SUG-38-inline-expression-preview.spec.ts": {
+      "avgDuration": 4768,
+      "testCount": 1,
+      "flakyRate": 0.0007
+    },
+    "tests/e2e/regression/SUG-121-fields-reset-after-closing-ndv.spec.ts": {
+      "avgDuration": 4232,
+      "testCount": 1,
+      "flakyRate": 0.0007
+    },
+    "tests/e2e/workflows/editor/routing.spec.ts": {
+      "avgDuration": 28147,
+      "testCount": 6,
+      "flakyRate": 0.0042
+    },
+    "tests/e2e/workflows/editor/ndv/resource-mapper.spec.ts": {
+      "avgDuration": 17808,
+      "testCount": 4,
+      "flakyRate": 0.0005
+    },
     "tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": {
-      "avgDuration": 36071,
+      "avgDuration": 36783,
       "testCount": 7,
       "flakyRate": 0.0007
     },
     "tests/e2e/ai/rag-callout.spec.ts": {
-      "avgDuration": 6828,
+      "avgDuration": 7145,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/source-control/push.spec.ts": {
-      "avgDuration": 149821,
+      "avgDuration": 161130,
       "testCount": 4,
-      "flakyRate": 0.7013
+      "flakyRate": 0.4348
     },
     "tests/e2e/source-control/pull.spec.ts": {
-      "avgDuration": 71354,
+      "avgDuration": 63320,
       "testCount": 2,
-      "flakyRate": 0.4884
+      "flakyRate": 0.2028
     },
     "tests/e2e/capabilities/proxy-server.spec.ts": {
-      "avgDuration": 26812,
+      "avgDuration": 27599,
       "testCount": 4,
-      "flakyRate": 0.003
+      "flakyRate": 0.0028
     },
     "tests/e2e/projects/project-settings.spec.ts": {
-      "avgDuration": 49124,
+      "avgDuration": 48766,
       "testCount": 8,
-      "flakyRate": 0.0004
+      "flakyRate": 0.0005
     },
     "tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": {
-      "avgDuration": 117328,
+      "avgDuration": 114815,
       "testCount": 4,
-      "flakyRate": 0.0638
+      "flakyRate": 0.0448
     },
     "tests/e2e/settings/personal/personal.spec.ts": {
-      "avgDuration": 40901,
+      "avgDuration": 40996,
       "testCount": 9,
       "flakyRate": 0.0003
     },
     "tests/e2e/auth/password-reset.spec.ts": {
-      "avgDuration": 17863,
+      "avgDuration": 18625,
       "testCount": 1,
-      "flakyRate": 0.0008
+      "flakyRate": 0.0007
     },
     "tests/e2e/workflows/editor/subworkflows/wait.spec.ts": {
-      "avgDuration": 53816,
-      "testCount": 5,
-      "flakyRate": 0.2889
+      "avgDuration": 40569,
+      "testCount": 4,
+      "flakyRate": 0.2677
     },
     "tests/e2e/nodes/pdf-node.spec.ts": {
-      "avgDuration": 5411,
+      "avgDuration": 5500,
       "testCount": 1,
-      "flakyRate": 0.0032
+      "flakyRate": 0.003
     },
     "tests/e2e/auth/oidc.spec.ts": {
-      "avgDuration": 43909,
+      "avgDuration": 46170,
       "testCount": 1,
-      "flakyRate": 0.004
+      "flakyRate": 0.0033
     },
     "tests/e2e/credentials/oauth.spec.ts": {
-      "avgDuration": 4171,
+      "avgDuration": 4270,
       "testCount": 1,
-      "flakyRate": 0
+      "flakyRate": 0.0007
     },
     "tests/e2e/workflows/editor/ndv/io-filter.spec.ts": {
-      "avgDuration": 12837,
+      "avgDuration": 12720,
       "testCount": 2,
-      "flakyRate": 0.004
+      "flakyRate": 0.0037
     },
     "tests/e2e/building-blocks/node-details-configuration.spec.ts": {
-      "avgDuration": 32781,
+      "avgDuration": 33860,
       "testCount": 7,
-      "flakyRate": 0.0001
+      "flakyRate": 0.0003
     },
     "tests/e2e/node-creator/workflows.spec.ts": {
-      "avgDuration": 6382,
+      "avgDuration": 6428,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/node-creator/vector-stores.spec.ts": {
-      "avgDuration": 8933,
+      "avgDuration": 9088,
       "testCount": 3,
-      "flakyRate": 0.0008
-    },
-    "tests/e2e/node-creator/special-nodes.spec.ts": {
-      "avgDuration": 13528,
-      "testCount": 3,
-      "flakyRate": 0.0008
-    },
-    "tests/e2e/node-creator/navigation.spec.ts": {
-      "avgDuration": 16049,
-      "testCount": 4,
-      "flakyRate": 0
-    },
-    "tests/e2e/node-creator/categories.spec.ts": {
-      "avgDuration": 16761,
-      "testCount": 5,
-      "flakyRate": 0.0026
-    },
-    "tests/e2e/node-creator/actions.spec.ts": {
-      "avgDuration": 12847,
-      "testCount": 4,
-      "flakyRate": 0
-    },
-    "tests/e2e/app-config/nps-survey.spec.ts": {
-      "avgDuration": 35241,
-      "testCount": 2,
-      "flakyRate": 0.0027
-    },
-    "tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts": {
-      "avgDuration": 53626,
-      "testCount": 10,
       "flakyRate": 0.001
     },
-    "tests/e2e/workflows/editor/ndv/paired-item.spec.ts": {
-      "avgDuration": 30544,
-      "testCount": 5,
-      "flakyRate": 0.0003
+    "tests/e2e/node-creator/special-nodes.spec.ts": {
+      "avgDuration": 13503,
+      "testCount": 3,
+      "flakyRate": 0.0012
     },
-    "tests/e2e/workflows/editor/ndv/ndv-floating-nodes.spec.ts": {
-      "avgDuration": 24869,
+    "tests/e2e/node-creator/navigation.spec.ts": {
+      "avgDuration": 15911,
       "testCount": 4,
-      "flakyRate": 0.0045
-    },
-    "tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": {
-      "avgDuration": 69364,
-      "testCount": 11,
-      "flakyRate": 0.0044
-    },
-    "tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": {
-      "avgDuration": 57624,
-      "testCount": 16,
       "flakyRate": 0.0002
     },
+    "tests/e2e/node-creator/categories.spec.ts": {
+      "avgDuration": 17552,
+      "testCount": 5,
+      "flakyRate": 0.0027
+    },
+    "tests/e2e/node-creator/actions.spec.ts": {
+      "avgDuration": 12991,
+      "testCount": 4,
+      "flakyRate": 0.0004
+    },
+    "tests/e2e/app-config/nps-survey.spec.ts": {
+      "avgDuration": 37040,
+      "testCount": 2,
+      "flakyRate": 0.0025
+    },
+    "tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts": {
+      "avgDuration": 48876,
+      "testCount": 9,
+      "flakyRate": 0.0012
+    },
+    "tests/e2e/workflows/editor/ndv/paired-item.spec.ts": {
+      "avgDuration": 30863,
+      "testCount": 5,
+      "flakyRate": 0.0006
+    },
+    "tests/e2e/workflows/editor/ndv/ndv-floating-nodes.spec.ts": {
+      "avgDuration": 25025,
+      "testCount": 4,
+      "flakyRate": 0.0042
+    },
+    "tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": {
+      "avgDuration": 63163,
+      "testCount": 10,
+      "flakyRate": 0.0047
+    },
+    "tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": {
+      "avgDuration": 59650,
+      "testCount": 16,
+      "flakyRate": 0.0003
+    },
     "tests/e2e/workflows/editor/execution/partial.spec.ts": {
-      "avgDuration": 8226,
+      "avgDuration": 8298,
       "testCount": 2,
       "flakyRate": 0.0004
     },
     "tests/e2e/workflows/editor/execution/logs.spec.ts": {
-      "avgDuration": 35288,
-      "testCount": 8,
-      "flakyRate": 0.0003
+      "avgDuration": 39950,
+      "testCount": 9,
+      "flakyRate": 0.0002
     },
     "tests/e2e/settings/log-streaming/log-streaming-observability.spec.ts": {
-      "avgDuration": 41746,
+      "avgDuration": 41907,
       "testCount": 2,
-      "flakyRate": 0.0029
+      "flakyRate": 0.0019
     },
     "tests/e2e/settings/log-streaming/log-streaming-ui-e2e.spec.ts": {
-      "avgDuration": 29825,
+      "avgDuration": 30182,
       "testCount": 1,
-      "flakyRate": 0.0059
+      "flakyRate": 0.0039
     },
     "tests/e2e/settings/log-streaming/log-streaming.spec.ts": {
-      "avgDuration": 13003,
+      "avgDuration": 14143,
       "testCount": 5,
-      "flakyRate": 0
+      "flakyRate": 0.0003
     },
     "tests/e2e/ai/langchain-agents.spec.ts": {
-      "avgDuration": 69209,
+      "avgDuration": 69954,
       "testCount": 7,
       "flakyRate": 0.0017
     },
     "tests/e2e/ai/langchain-tools.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/ai/langchain-memory.spec.ts": {
-      "avgDuration": 30000,
-      "testCount": 2,
+      "avgDuration": 60000,
+      "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/ai/langchain-chains.spec.ts": {
-      "avgDuration": 41017,
+      "avgDuration": 41803,
       "testCount": 4,
-      "flakyRate": 0.0015
+      "flakyRate": 0.0014
     },
     "tests/e2e/ai/langchain-vectorstores.spec.ts": {
-      "avgDuration": 33667,
+      "avgDuration": 36841,
       "testCount": 2,
-      "flakyRate": 0.0035
+      "flakyRate": 0.0153
     },
     "tests/e2e/workflows/editor/expressions/inline.spec.ts": {
-      "avgDuration": 30405,
-      "testCount": 7,
-      "flakyRate": 0.0002
+      "avgDuration": 36109,
+      "testCount": 8,
+      "flakyRate": 0.0003
     },
     "tests/e2e/workflows/editor/execution/inject-previous.spec.ts": {
-      "avgDuration": 12583,
+      "avgDuration": 12687,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/workflows/list/import.spec.ts": {
-      "avgDuration": 15010,
+      "avgDuration": 15225,
       "testCount": 5,
-      "flakyRate": 0.0002
+      "flakyRate": 0.0003
     },
     "tests/e2e/nodes/if-node.spec.ts": {
-      "avgDuration": 7297,
+      "avgDuration": 7492,
       "testCount": 2,
       "flakyRate": 0.0004
     },
     "tests/e2e/nodes/http-request-node.spec.ts": {
-      "avgDuration": 8948,
+      "avgDuration": 9072,
       "testCount": 2,
-      "flakyRate": 0.0004
+      "flakyRate": 0.0011
     },
     "tests/e2e/regression/GHC-5776-ai-sessions-metadata-license-error.spec.ts": {
-      "avgDuration": 2589,
+      "avgDuration": 2602,
       "testCount": 1,
-      "flakyRate": 0
+      "flakyRate": 0.0007
     },
     "tests/e2e/nodes/form-trigger-node.spec.ts": {
-      "avgDuration": 11639,
-      "testCount": 2,
-      "flakyRate": 0
+      "avgDuration": 27007,
+      "testCount": 3,
+      "flakyRate": 0.0004
     },
     "tests/e2e/projects/folders-operations.spec.ts": {
-      "avgDuration": 50221,
-      "testCount": 14,
-      "flakyRate": 0.0005
+      "avgDuration": 46752,
+      "testCount": 13,
+      "flakyRate": 0.0006
     },
     "tests/e2e/projects/folders-basic.spec.ts": {
-      "avgDuration": 24510,
-      "testCount": 10,
-      "flakyRate": 0.0003
-    },
-    "tests/e2e/projects/folders-advanced.spec.ts": {
-      "avgDuration": 22155,
-      "testCount": 6,
-      "flakyRate": 0.0003
-    },
-    "tests/e2e/workflows/editor/canvas/focus-panel.spec.ts": {
-      "avgDuration": 4090,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/api/webhook-external.spec.ts": {
-      "avgDuration": 8903,
-      "testCount": 2,
-      "flakyRate": 0.0643
-    },
-    "tests/e2e/workflows/editor/expressions/modal.spec.ts": {
-      "avgDuration": 41513,
-      "testCount": 6,
+      "avgDuration": 28139,
+      "testCount": 11,
       "flakyRate": 0.0005
     },
+    "tests/e2e/projects/folders-advanced.spec.ts": {
+      "avgDuration": 20134,
+      "testCount": 5,
+      "flakyRate": 0.0004
+    },
+    "tests/e2e/workflows/editor/canvas/focus-panel.spec.ts": {
+      "avgDuration": 4056,
+      "testCount": 1,
+      "flakyRate": 0.0007
+    },
+    "tests/e2e/chat-hub/chat-hub-attachment.spec.ts": {
+      "avgDuration": 44171,
+      "testCount": 3,
+      "flakyRate": 0.0147
+    },
+    "tests/e2e/api/webhook-external.spec.ts": {
+      "avgDuration": 9425,
+      "testCount": 2,
+      "flakyRate": 0.0594
+    },
+    "tests/e2e/workflows/editor/expressions/modal.spec.ts": {
+      "avgDuration": 41609,
+      "testCount": 6,
+      "flakyRate": 0.0006
+    },
     "tests/e2e/workflows/editor/execution/execution.spec.ts": {
-      "avgDuration": 47249,
+      "avgDuration": 47322,
       "testCount": 14,
-      "flakyRate": 0
+      "flakyRate": 0.0001
     },
     "tests/e2e/workflows/editor/execution/previous-nodes.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/ai/evaluations.spec.ts": {
-      "avgDuration": 30000,
+      "avgDuration": 60000,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/app-config/env-feature-flags.spec.ts": {
-      "avgDuration": 1148,
+      "avgDuration": 1359,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/nodes/email-send-node.spec.ts": {
-      "avgDuration": 21579,
+      "avgDuration": 22418,
       "testCount": 1,
-      "flakyRate": 0.0058
+      "flakyRate": 0.0054
     },
     "tests/e2e/workflows/editor/code/editors.spec.ts": {
-      "avgDuration": 48793,
+      "avgDuration": 49237,
       "testCount": 11,
-      "flakyRate": 0.0001
+      "flakyRate": 0.0003
     },
     "tests/e2e/workflows/editor/editor-after-route-changes.spec.ts": {
-      "avgDuration": 15941,
+      "avgDuration": 16091,
       "testCount": 1,
-      "flakyRate": 0.0229
+      "flakyRate": 0.0211
     },
     "tests/e2e/app-config/demo.spec.ts": {
-      "avgDuration": 14563,
+      "avgDuration": 14718,
       "testCount": 4,
-      "flakyRate": 0.0167
+      "flakyRate": 0.0176
     },
     "tests/e2e/workflows/editor/execution/debug.spec.ts": {
-      "avgDuration": 46347,
-      "testCount": 4,
-      "flakyRate": 0.0038
+      "avgDuration": 34255,
+      "testCount": 3,
+      "flakyRate": 0.0037
     },
     "tests/e2e/workflows/editor/expressions/transformation.spec.ts": {
-      "avgDuration": 25043,
-      "testCount": 5,
-      "flakyRate": 0.0002
+      "avgDuration": 30134,
+      "testCount": 6,
+      "flakyRate": 0.0001
     },
     "tests/e2e/workflows/editor/ndv/pinning.spec.ts": {
-      "avgDuration": 36248,
+      "avgDuration": 36652,
       "testCount": 10,
       "flakyRate": 0.0004
     },
     "tests/e2e/data-tables/tables.spec.ts": {
-      "avgDuration": 70760,
+      "avgDuration": 71055,
       "testCount": 7,
-      "flakyRate": 0.0006
+      "flakyRate": 0.0011
     },
     "tests/e2e/data-tables/details.spec.ts": {
-      "avgDuration": 71609,
+      "avgDuration": 72323,
       "testCount": 11,
-      "flakyRate": 0.0001
-    },
-    "tests/e2e/workflows/editor/expressions/mapping.spec.ts": {
-      "avgDuration": 42611,
-      "testCount": 10,
-      "flakyRate": 0.005
-    },
-    "tests/e2e/credentials/crud.spec.ts": {
-      "avgDuration": 73865,
-      "testCount": 14,
       "flakyRate": 0.0007
     },
+    "tests/e2e/workflows/editor/expressions/mapping.spec.ts": {
+      "avgDuration": 42523,
+      "testCount": 10,
+      "flakyRate": 0.0047
+    },
+    "tests/e2e/credentials/crud.spec.ts": {
+      "avgDuration": 80126,
+      "testCount": 15,
+      "flakyRate": 0.0009
+    },
     "tests/e2e/building-blocks/credentials.spec.ts": {
-      "avgDuration": 28596,
+      "avgDuration": 28608,
       "testCount": 6,
-      "flakyRate": 0.0006
-    },
-    "tests/e2e/credentials/api-operations.spec.ts": {
-      "avgDuration": 1628,
-      "testCount": 5,
-      "flakyRate": 0
-    },
-    "tests/e2e/settings/community-nodes/community-nodes.spec.ts": {
-      "avgDuration": 4058,
-      "testCount": 1,
       "flakyRate": 0.0008
     },
+    "tests/e2e/credentials/api-operations.spec.ts": {
+      "avgDuration": 1602,
+      "testCount": 5,
+      "flakyRate": 0.0003
+    },
+    "tests/e2e/settings/community-nodes/community-nodes.spec.ts": {
+      "avgDuration": 4091,
+      "testCount": 1,
+      "flakyRate": 0.0007
+    },
     "tests/e2e/nodes/community-nodes.spec.ts": {
-      "avgDuration": 13865,
+      "avgDuration": 13999,
       "testCount": 3,
       "flakyRate": 0.0005
     },
     "tests/e2e/workflows/editor/code/code-node.spec.ts": {
-      "avgDuration": 73038,
+      "avgDuration": 74990,
       "testCount": 12,
-      "flakyRate": 0.0224
+      "flakyRate": 0.0226
+    },
+    "tests/e2e/chat-hub/chat-hub-chat-user.spec.ts": {
+      "avgDuration": 9556,
+      "testCount": 1,
+      "flakyRate": 0
     },
     "tests/e2e/ai/chat-session.spec.ts": {
-      "avgDuration": 5264,
+      "avgDuration": 6490,
       "testCount": 1,
-      "flakyRate": 0.0077
+      "flakyRate": 0.01
     },
     "tests/e2e/workflows/editor/canvas/canvas-zoom.spec.ts": {
-      "avgDuration": 54125,
+      "avgDuration": 54599,
       "testCount": 12,
-      "flakyRate": 0.0003
+      "flakyRate": 0.0005
     },
     "tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": {
-      "avgDuration": 53821,
-      "testCount": 7,
-      "flakyRate": 0.0036
+      "avgDuration": 65556,
+      "testCount": 8,
+      "flakyRate": 0.0042
     },
     "tests/e2e/building-blocks/canvas-actions.spec.ts": {
-      "avgDuration": 31661,
+      "avgDuration": 31578,
       "testCount": 9,
-      "flakyRate": 0.0003
+      "flakyRate": 0.0006
     },
     "tests/e2e/workflows/editor/canvas/actions.spec.ts": {
-      "avgDuration": 78851,
-      "testCount": 21,
-      "flakyRate": 0.0004
+      "avgDuration": 80903,
+      "testCount": 20,
+      "flakyRate": 0.0005
     },
     "tests/e2e/workflows/editor/canvas/stickies.spec.ts": {
-      "avgDuration": 2919,
+      "avgDuration": 2962,
       "testCount": 1,
-      "flakyRate": 0.0008
+      "flakyRate": 0.0015
     },
     "tests/e2e/regression/CAT-726-canvas-node-connectors-not-rendered-when-nodes-inserted.spec.ts": {
-      "avgDuration": 4896,
+      "avgDuration": 4951,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/app-config/become-creator.spec.ts": {
-      "avgDuration": 4615,
+      "avgDuration": 5583,
       "testCount": 2,
       "flakyRate": 0.0004
     },
     "tests/e2e/chat-hub/chat-hub-basic.spec.ts": {
-      "avgDuration": 104021,
+      "avgDuration": 99260,
       "testCount": 4,
-      "flakyRate": 0.0351
+      "flakyRate": 0.0319
     },
     "tests/e2e/auth/authenticated.spec.ts": {
-      "avgDuration": 14158,
+      "avgDuration": 13964,
       "testCount": 5,
       "flakyRate": 0
     },
     "tests/e2e/auth/admin-smoke.spec.ts": {
-      "avgDuration": 2227,
+      "avgDuration": 2237,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/regression/AI-812-partial-execs-broken-when-using-chat-trigger.spec.ts": {
-      "avgDuration": 8134,
+      "avgDuration": 8215,
       "testCount": 2,
-      "flakyRate": 0.0004
+      "flakyRate": 0.0011
     },
     "tests/e2e/regression/AI-716-correctly-set-up-agent-model-shows-error.spec.ts": {
-      "avgDuration": 4593,
+      "avgDuration": 4666,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts": {
-      "avgDuration": 4871,
+      "avgDuration": 4941,
       "testCount": 1,
-      "flakyRate": 0
+      "flakyRate": 0.0007
     },
     "tests/e2e/ai/assistant-basic.spec.ts": {
-      "avgDuration": 54391,
+      "avgDuration": 55527,
       "testCount": 11,
-      "flakyRate": 0.0001
-    },
-    "tests/e2e/ai/assistant-support-chat.spec.ts": {
-      "avgDuration": 11897,
-      "testCount": 3,
       "flakyRate": 0.0003
     },
+    "tests/e2e/ai/assistant-support-chat.spec.ts": {
+      "avgDuration": 13201,
+      "testCount": 3,
+      "flakyRate": 0.0002
+    },
     "tests/e2e/ai/assistant-credential-help.spec.ts": {
-      "avgDuration": 17717,
+      "avgDuration": 18891,
       "testCount": 4,
-      "flakyRate": 0.0008
+      "flakyRate": 0.0007
     },
     "tests/e2e/ai/assistant-code-help.spec.ts": {
-      "avgDuration": 10551,
+      "avgDuration": 12021,
       "testCount": 2,
       "flakyRate": 0.0004
     },
     "tests/e2e/regression/ADO-2929-can-load-old-switch-node-workflows.spec.ts": {
-      "avgDuration": 4492,
+      "avgDuration": 4430,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts": {
-      "avgDuration": 8223,
+      "avgDuration": 8217,
       "testCount": 2,
       "flakyRate": 0.0004
     },
     "tests/e2e/regression/ADO-2270-opening-webhook-ndv-marks-workflow-as-unsaved.spec.ts": {
-      "avgDuration": 3757,
+      "avgDuration": 3801,
       "testCount": 1,
-      "flakyRate": 0
+      "flakyRate": 0.0015
     },
     "tests/e2e/regression/ADO-2230-ndv-reset-data-pagination.spec.ts": {
-      "avgDuration": 3744,
+      "avgDuration": 3794,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/regression/ADO-1338-ndv-missing-input-panel.spec.ts": {
-      "avgDuration": 9737,
+      "avgDuration": 9604,
       "testCount": 1,
       "flakyRate": 0
     }
