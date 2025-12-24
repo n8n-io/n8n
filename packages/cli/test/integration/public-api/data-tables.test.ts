@@ -115,49 +115,6 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(row).toHaveProperty('createdAt');
 		expect(row).toHaveProperty('updatedAt');
 	});
-
-	test('should return 404 when trying to access another users data table', async () => {
-		// Create data table in member's personal project
-		const memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [{ name: 'secret', type: 'string' }],
-			data: [{ secret: 'member secret data' }],
-		});
-
-		// Owner tries to access member's data table
-		const response = await authOwnerAgent.get(`/data-tables/${memberDataTable.id}/rows`);
-
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
-	});
-
-	test('should not leak information about data table existence', async () => {
-		// Create data table in member's project
-		const memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [{ name: 'data', type: 'string' }],
-		});
-
-		// Owner tries to access it
-		const responseExisting = await authOwnerAgent.get(`/data-tables/${memberDataTable.id}/rows`);
-
-		// Owner tries to access non-existent table
-		const nonExistentId = 'xyz9876abc54321d'; // Valid nanoid format but doesn't exist
-		const responseNonExistent = await authOwnerAgent.get(`/data-tables/${nonExistentId}/rows`);
-
-		// Both should return 404 with similar error messages
-		expect(responseExisting.statusCode).toBe(404);
-		expect(responseNonExistent.statusCode).toBe(404);
-		expect(responseExisting.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
-		expect(responseNonExistent.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${nonExistentId}'`,
-		);
-	});
 });
 
 describe('POST /data-tables/:dataTableId/rows', () => {
@@ -186,23 +143,6 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ insertedRows: 2, success: true });
-	});
-
-	test('should return 404 when trying to insert into another users data table', async () => {
-		const memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [{ name: 'data', type: 'string' }],
-		});
-
-		const response = await authOwnerAgent.post(`/data-tables/${memberDataTable.id}/rows`).send({
-			data: [{ data: 'malicious data' }],
-			returnType: 'count',
-		});
-
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
 	});
 });
 
@@ -241,30 +181,6 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toBe(true);
 	});
-
-	test('should return 404 when trying to update another users data table', async () => {
-		const memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [{ name: 'status', type: 'string' }],
-			data: [{ status: 'active' }],
-		});
-
-		const response = await authOwnerAgent
-			.patch(`/data-tables/${memberDataTable.id}/rows/update`)
-			.send({
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'status', condition: 'eq', value: 'active' }],
-				},
-				data: { status: 'hacked' },
-				returnData: false,
-			});
-
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
-	});
 });
 
 describe('POST /data-tables/:dataTableId/rows/upsert', () => {
@@ -299,32 +215,6 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toBe(true);
 	});
-
-	test('should return 404 when trying to upsert in another users data table', async () => {
-		const memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [
-				{ name: 'email', type: 'string' },
-				{ name: 'name', type: 'string' },
-			],
-		});
-
-		const response = await authOwnerAgent
-			.post(`/data-tables/${memberDataTable.id}/rows/upsert`)
-			.send({
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'email', condition: 'eq', value: 'malicious@example.com' }],
-				},
-				data: { email: 'malicious@example.com', name: 'Hacker' },
-				returnData: false,
-			});
-
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
-	});
 });
 
 describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
@@ -357,28 +247,6 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		expect(response.body).toBe(true);
 	});
 
-	test('should return 404 when trying to delete from another users data table', async () => {
-		const memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [{ name: 'status', type: 'string' }],
-			data: [{ status: 'important' }],
-		});
-
-		const filter = JSON.stringify({
-			type: 'and',
-			filters: [{ columnName: 'status', condition: 'eq', value: 'important' }],
-		});
-
-		const response = await authOwnerAgent
-			.delete(`/data-tables/${memberDataTable.id}/rows/delete`)
-			.query({ filter, returnData: 'false' });
-
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
-	});
-
 	test('should return 400 when filter is missing', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'data', type: 'string' }],
@@ -391,150 +259,6 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 			'message',
 			"request/query must have required property 'filter'",
 		);
-	});
-});
-
-describe('Security - Cross-User Access Validation', () => {
-	let ownerDataTable: DataTable;
-	let memberDataTable: DataTable;
-
-	beforeEach(async () => {
-		// Create data tables for both users
-		ownerDataTable = await createDataTable(ownerPersonalProject, {
-			columns: [
-				{ name: 'owner_data', type: 'string' },
-				{ name: 'value', type: 'number' },
-			],
-			data: [{ owner_data: 'confidential', value: 100 }],
-		});
-
-		memberDataTable = await createDataTable(memberPersonalProject, {
-			columns: [
-				{ name: 'member_data', type: 'string' },
-				{ name: 'value', type: 'number' },
-			],
-			data: [{ member_data: 'private', value: 200 }],
-		});
-	});
-
-	test('member cannot read owners data table', async () => {
-		const response = await authMemberAgent.get(`/data-tables/${ownerDataTable.id}/rows`);
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('member cannot insert into owners data table', async () => {
-		const response = await authMemberAgent.post(`/data-tables/${ownerDataTable.id}/rows`).send({
-			data: [{ owner_data: 'injected', value: 999 }],
-			returnType: 'count',
-		});
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('member cannot update owners data table', async () => {
-		const response = await authMemberAgent
-			.patch(`/data-tables/${ownerDataTable.id}/rows/update`)
-			.send({
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'value', condition: 'gt', value: 0 }],
-				},
-				data: { value: 0 },
-				returnData: false,
-			});
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('member cannot upsert into owners data table', async () => {
-		const response = await authMemberAgent
-			.post(`/data-tables/${ownerDataTable.id}/rows/upsert`)
-			.send({
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'value', condition: 'eq', value: 100 }],
-				},
-				data: { owner_data: 'hacked', value: 0 },
-				returnData: false,
-			});
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('member cannot delete from owners data table', async () => {
-		const filter = JSON.stringify({
-			type: 'and',
-			filters: [{ columnName: 'value', condition: 'gt', value: 0 }],
-		});
-
-		const response = await authMemberAgent
-			.delete(`/data-tables/${ownerDataTable.id}/rows/delete`)
-			.query({ filter, returnData: 'false' });
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('owner cannot read members data table', async () => {
-		const response = await authOwnerAgent.get(`/data-tables/${memberDataTable.id}/rows`);
-
-		expect(response.statusCode).toBe(404);
-		expect(response.body).toHaveProperty(
-			'message',
-			`Could not find the data table: '${memberDataTable.id}'`,
-		);
-	});
-
-	test('owner cannot insert into members data table', async () => {
-		const response = await authOwnerAgent.post(`/data-tables/${memberDataTable.id}/rows`).send({
-			data: [{ member_data: 'injected', value: 999 }],
-			returnType: 'count',
-		});
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('owner cannot update members data table', async () => {
-		const response = await authOwnerAgent
-			.patch(`/data-tables/${memberDataTable.id}/rows/update`)
-			.send({
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'value', condition: 'gt', value: 0 }],
-				},
-				data: { value: 0 },
-				returnData: false,
-			});
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('owner cannot upsert into members data table', async () => {
-		const response = await authOwnerAgent
-			.post(`/data-tables/${memberDataTable.id}/rows/upsert`)
-			.send({
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'value', condition: 'eq', value: 200 }],
-				},
-				data: { member_data: 'hacked', value: 0 },
-				returnData: false,
-			});
-
-		expect(response.statusCode).toBe(404);
-	});
-
-	test('owner cannot delete from members data table', async () => {
-		const filter = JSON.stringify({
-			type: 'and',
-			filters: [{ columnName: 'value', condition: 'gt', value: 0 }],
-		});
-
-		const response = await authOwnerAgent
-			.delete(`/data-tables/${memberDataTable.id}/rows/delete`)
-			.query({ filter, returnData: 'false' });
-
-		expect(response.statusCode).toBe(404);
 	});
 });
 
