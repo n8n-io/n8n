@@ -37,6 +37,7 @@ export const RESOURCES = {
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
+	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
