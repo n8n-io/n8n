@@ -181,47 +181,54 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(data: CreateCsrfStateData): [string, string, string] {
+	createCsrfState(data: CreateCsrfStateData): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfState = {
 			token: token.create(csrfSecret),
 			createdAt: Date.now(),
-			...data,
+			data: this.cipher.encrypt(JSON.stringify(data)),
 		};
 
 		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
-		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
-		return [csrfSecret, encryptedState, base64State];
+		return [csrfSecret, base64State];
 	}
 
-	encryptBase64EncodedState(base64EncodedState: string): string {
-		const state = Buffer.from(base64EncodedState, 'base64').toString();
-		return this.cipher.encrypt(state);
-	}
-
-	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
+	protected decodeCsrfState(
+		encodedState: string,
+		req: AuthenticatedRequest,
+	): CsrfState & CreateCsrfStateData {
 		const errorMessage = 'Invalid state format';
-		const decryptedState = this.cipher.decrypt(encodedState);
-		const decoded = jsonParse<CsrfState>(decryptedState, {
+		const decodedState = Buffer.from(encodedState, 'base64').toString();
+		const decoded = jsonParse<CsrfState>(decodedState, {
 			errorMessage,
 		});
 
-		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
+		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
+			errorMessage,
+		});
+
+		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
 		}
 
 		// user validation not required for dynamic credentials
-		if (decoded.origin === 'dynamic-credential') {
-			return decoded;
+		if (decryptedState.origin === 'dynamic-credential') {
+			return {
+				...decoded,
+				...decryptedState,
+			};
 		}
 
 		// if we skip auth on oauth callback, we cannot validate user id
-		if (!skipAuthOnOAuthCallback && decoded.userId !== req.user?.id) {
+		if (!skipAuthOnOAuthCallback && decryptedState.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return decoded;
+		return {
+			...decoded,
+			...decryptedState,
+		};
 	}
 
 	protected verifyCsrfState(
@@ -239,7 +246,9 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState]> {
+	): Promise<
+		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
+	> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -377,11 +386,11 @@ export class OauthService {
 		}
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, _, base64State] = this.createCsrfState(csrfData);
+		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
-			state: base64State,
+			state,
 		};
 
 		if (oauthCredentials.authQueryParameters) {
@@ -389,8 +398,6 @@ export class OauthService {
 		}
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
-
-		oAuthOptions.state = this.encryptBase64EncodedState(oAuthOptions.state);
 
 		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
