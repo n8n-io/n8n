@@ -228,6 +228,12 @@ const CONNECTION_TYPES = `**Main Connections** (regular data flow):
 **AI Vector Store in retrieve-as-tool mode** (ai_tool):
 - Vector Store → AI Agent`;
 
+const BASIC_NODES_PREFERENCE = `**Built-in Nodes vs. Code Node**
+- For data transformation, filtering, mapping, etc., prefer basic n8n nodes like Edit Fields (Set), Filter, Split Out, and Aggregate.
+- Resort to the Code node only when complex data processing is required OR when explicitly requested.
+- Rule of thumb: if the goal can be achieved with fewer than 5 basic nodes, use basic nodes.
+`;
+
 const RESTRICTIONS = `- Respond before calling validate_structure
 - Skip validation even if you think structure is correct
 - Add commentary between tool calls - execute tools silently
@@ -259,6 +265,7 @@ export function buildBuilderPrompt(): string {
 		.section('rag_workflow_pattern', RAG_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('connection_type_examples', CONNECTION_TYPES)
+		.section('basic_nodes_preference', BASIC_NODES_PREFERENCE)
 		.section('do_not', RESTRICTIONS)
 		.section('response_format', RESPONSE_FORMAT)
 		.build();
