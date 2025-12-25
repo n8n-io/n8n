@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures/base';
+import { capabilities } from '../../../fixtures/capabilities';
 
-test.use({ addContainerCapability: { email: true } });
+test.use({ addContainerCapability: capabilities.email });
 
 test('EmailSend node sends via SMTP @capability:email', async ({ api, n8n, chaos }) => {
 	// Sign in to use internal APIs for creating credentials and workflows
