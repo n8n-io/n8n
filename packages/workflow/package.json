@@ -47,6 +47,7 @@
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
+    "axios": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
