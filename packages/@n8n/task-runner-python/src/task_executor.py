@@ -39,12 +39,16 @@ from src.constants import (
     PIPE_MSG_PREFIX_LENGTH,
 )
 
-from multiprocessing.context import ForkServerProcess
 from multiprocessing.connection import Connection
+from multiprocessing.process import BaseProcess
 
 logger = logging.getLogger(__name__)
 
-MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
+# Use 'forkserver' on Unix (faster process creation) and 'spawn' on Windows
+# Windows only supports 'spawn' context
+MULTIPROCESSING_CONTEXT = multiprocessing.get_context(
+    "forkserver" if sys.platform != "win32" else "spawn"
+)
 MAX_PRINT_ARGS_ALLOWED = 100
 
 type PipeConnection = Connection
@@ -60,7 +64,7 @@ class TaskExecutor:
         items: Items,
         security_config: SecurityConfig,
         query: Query = None,
-    ) -> tuple[ForkServerProcess, PipeConnection, PipeConnection]:
+    ) -> tuple[BaseProcess, PipeConnection, PipeConnection]:
         """Create a subprocess for executing a Python code task and a pipe for communication."""
 
         fn = (
@@ -87,7 +91,7 @@ class TaskExecutor:
 
     @staticmethod
     def execute_process(
-        process: ForkServerProcess,
+        process: BaseProcess,
         read_conn: PipeConnection,
         write_conn: PipeConnection,
         task_timeout: int,
@@ -164,7 +168,7 @@ class TaskExecutor:
             raise
 
     @staticmethod
-    def stop_process(process: ForkServerProcess | None):
+    def stop_process(process: BaseProcess | None):
         """Stop a running subprocess, gracefully else force-killing."""
 
         if process is None or not process.is_alive():
