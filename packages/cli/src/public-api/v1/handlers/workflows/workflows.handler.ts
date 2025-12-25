@@ -26,6 +26,11 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { executeWorkflow } from './workflow.exec';
+import { ActiveExecutions } from '@/active-executions';
+import { WorkflowRunner } from '@/workflow-runner';
+import { UserCalledMCPToolEventPayload } from '@/modules/mcp/mcp.types';
+import { jsonStringify } from 'n8n-workflow';
 
 export = {
 	createWorkflow: [
@@ -331,6 +336,57 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { versionId, name, description } = req.body;
+
+			try {
+				const workflow = await Container.get(WorkflowService).activateWorkflow(
+					req.user,
+					id,
+					{ versionId, name, description },
+					true,
+				);
+
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				throw error;
+			}
+		},
+	],
+	executeWorkflow: [
+		apiKeyHasScope('workflow:activate'),
+		projectScope('workflow:update', 'workflow'),
+		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			const { versionId, name, description } = req.body;
+
+			const output = await executeWorkflow(
+				req.user,
+				Container.get(WorkflowFinderService),
+				Container.get(ActiveExecutions),
+				Container.get(WorkflowRunner),
+				id,
+				req.body,
+			);
+			// 		const telemetryPayload: UserCalledMCPToolEventPayload = {
+			// 			user_id: req.user.id,
+			// 			tool_name: 'execute_workflow',
+			// 			parameters: { workflowId: id, inputs: getInputMetaData(req.body) },
+			// 		};
+
+			// telemetryPayload.results = {
+			// 	success: output.success,
+			// 	data: {
+			// 		executionId: output.executionId,
+			// 	},
+			// };
+			// telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+			return res.json(output);
 
 			try {
 				const workflow = await Container.get(WorkflowService).activateWorkflow(

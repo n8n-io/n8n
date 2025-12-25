@@ -144,6 +144,12 @@ export declare namespace CredentialRequest {
 		{ type: string; name: string; data: ICredentialDataDecryptedObject },
 		{}
 	>;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{}
+	>;
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 

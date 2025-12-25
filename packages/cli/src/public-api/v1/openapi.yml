@@ -64,6 +64,8 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/activate:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
+  /workflows/{id}/execute:
+    $ref: './handlers/workflows/spec/paths/workflows.id.execute.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
   /workflows/{id}/transfer:

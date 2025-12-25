@@ -470,7 +470,20 @@ onBeforeUnmount(() => {
 			data-test-id="canvas-breadcrumbs"
 		>
 			<template #default="{ bp }">
-				<FolderBreadcrumbs
+				<N8nInlineTextEdit
+					ref="renameInput"
+					:key="id"
+					placeholder="Workflow name"
+					data-test-id="workflow-name-input"
+					class="name"
+					:model-value="name"
+					:max-length="MAX_WORKFLOW_NAME_LENGTH"
+					:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
+					:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+					:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+					@update:model-value="onNameSubmit"
+				/>
+				<!-- <FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbsItemSelected"
@@ -495,7 +508,7 @@ onBeforeUnmount(() => {
 							@update:model-value="onNameSubmit"
 						/>
 					</template>
-				</FolderBreadcrumbs>
+				</FolderBreadcrumbs> -->
 			</template>
 		</BreakpointsObserver>
 		<span class="tags" data-test-id="workflow-tags-container">
@@ -551,7 +564,7 @@ onBeforeUnmount(() => {
 		</span>
 
 		<PushConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
+			<!-- <WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" /> -->
 			<WorkflowHeaderDraftPublishActions
 				v-if="IS_DRAFT_PUBLISH_ENABLED"
 				:id="id"

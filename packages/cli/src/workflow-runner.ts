@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
@@ -45,7 +46,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { EventService } from './events/event.service';
-
+import { S98Service } from './s98/s98.service';
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -63,6 +64,7 @@ export class WorkflowRunner {
 		private readonly executionDataService: ExecutionDataService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly s98Service: S98Service,
 	) {}
 
 	/** The process did error */
@@ -197,7 +199,7 @@ export class WorkflowRunner {
 				});
 			});
 		}
-
+		// console.log('Execution started with ID:', executionId, workflowId, Container.get(GlobalConfig).endpoints);
 		return executionId;
 	}
 
@@ -341,6 +343,7 @@ export class WorkflowRunner {
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
+					this.s98Service.call('', { executionId, workflowId, mode: data.executionMode });
 				})
 				.catch(
 					async (error) =>

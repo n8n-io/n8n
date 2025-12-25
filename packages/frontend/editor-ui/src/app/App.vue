@@ -133,6 +133,15 @@ watch(
 	{ immediate: true },
 );
 
+function isInIframe() {
+	try {
+		return window.self !== window.top;
+	} catch (e) {
+		// Cross origin access denied → definitely in iframe
+		return true;
+	}
+}
+
 useExposeCssVar('--toast--offset', toastBottomOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
@@ -154,7 +163,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 			<div id="header" :class="$style.header">
 				<RouterView name="header" />
 			</div>
-			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
+			<div v-if="usersStore.currentUser && !isInIframe()" id="sidebar" :class="$style.sidebar">
 				<RouterView name="sidebar" />
 			</div>
 			<div id="content" :class="$style.content">

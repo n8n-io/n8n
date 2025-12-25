@@ -47,6 +47,32 @@ export = {
 			}
 		},
 	],
+	updateCredential: [
+		validCredentialType,
+		validCredentialsProperties,
+		apiKeyHasScope('credential:create'),
+		async (
+			req: CredentialRequest.Update,
+			res: express.Response,
+		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+			const { id } = req.params;
+			try {
+				const newCredential = await createCredential(req.body);
+
+				const encryptedData = await encryptCredential(newCredential);
+
+				Object.assign(newCredential, encryptedData);
+				newCredential.id = id;
+
+				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
+
+				return res.json(sanitizeCredentials(savedCredential));
+			} catch ({ message, httpStatusCode }) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				return res.status(httpStatusCode ?? 500).json({ message });
+			}
+		},
+	],
 	transferCredential: [
 		apiKeyHasScope('credential:move'),
 		projectScope('credential:move', 'credential'),

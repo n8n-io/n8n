@@ -99,6 +99,10 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 	await login(form);
 };
 
+setTimeout(async () => {
+	await login({ emailOrLdapLoginId: 'sarmad@studio98.com', password: '1Studio98!' });
+}, 1000);
+
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
 

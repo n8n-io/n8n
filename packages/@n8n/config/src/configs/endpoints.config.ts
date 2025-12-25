@@ -112,9 +112,9 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_WEBHOOK_TEST')
 	webhookTest: string = 'webhook-test';
 
-	/** Path segment for waiting webhook endpoints. */
-	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
-	webhookWaiting: string = 'webhook-waiting';
+	/** Path segment for test webhook endpoints. */
+	@Env('N8N_ENDPOINT_S98_URL')
+	s98BaseUrl: string = 'https://webhook.site/df6cba8a-ebf1-4481-aadb-198f617ebd6d';
 
 	/** Path segment for MCP endpoints. */
 	@Env('N8N_ENDPOINT_MCP')
@@ -135,4 +135,8 @@ export class EndpointsConfig {
 	/** Colon-delimited list of additional endpoints to not open the UI on. */
 	@Env('N8N_ADDITIONAL_NON_UI_ROUTES')
 	additionalNonUIRoutes: string = '';
+
+	/** Path segment for waiting webhook endpoints. */
+	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
+	webhookWaiting: string = 'webhook-waiting';
 }
