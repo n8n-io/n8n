@@ -142,12 +142,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		logger,
 		featureFlags,
 	});
-	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
+	const compiledBuilder = builderSubgraph.create({
+		parsedNodeTypes,
+		llm: llmComplexTask,
+		logger,
+		featureFlags,
+	});
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
 		llm: llmComplexTask,
 		logger,
 		instanceUrl,
+		featureFlags,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference

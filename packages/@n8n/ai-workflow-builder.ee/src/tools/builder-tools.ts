@@ -51,7 +51,7 @@ export function getBuilderTools({
 	// Add remaining tools
 	tools.push(
 		createNodeSearchTool(parsedNodeTypes),
-		createNodeDetailsTool(parsedNodeTypes),
+		createNodeDetailsTool(parsedNodeTypes, logger),
 		createAddNodeTool(parsedNodeTypes),
 		createConnectNodesTool(parsedNodeTypes, logger),
 		createRemoveConnectionTool(logger),

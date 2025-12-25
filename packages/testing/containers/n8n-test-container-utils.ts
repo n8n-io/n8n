@@ -16,7 +16,12 @@ export function createElapsedLogger(prefix: string) {
 
 /**
  * Create a log consumer that does not log to the console
- * @returns A tuple containing the log consumer and a function to throw an error with logs
+ *
+ * Logs are collected in memory and can be output on error.
+ * When observability is enabled, Vector handles log collection
+ * from the Docker socket independently.
+ *
+ * @returns An object with log consumer and error throwing utilities
  */
 export function createSilentLogConsumer() {
 	const logs: string[] = [];

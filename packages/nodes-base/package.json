@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
