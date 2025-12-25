@@ -6,6 +6,7 @@ import {
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -15,6 +16,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	Middleware,
 	Param,
 	Patch,
 	Post,
@@ -22,8 +24,10 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { NextFunction, Response } from 'express';
 import { DataTableRowReturn } from 'n8n-workflow';
 
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -31,18 +35,57 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
-import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import { ProjectService } from '@/services/project.service.ee';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
-	constructor(private readonly dataTableService: DataTableService) {}
+	constructor(
+		private readonly dataTableService: DataTableService,
+		private readonly projectService: ProjectService,
+	) {}
+
+	private handleDataTableColumnOperationError(e: unknown): never {
+		if (
+			e instanceof DataTableColumnNameConflictError ||
+			e instanceof DataTableSystemColumnNameConflictError ||
+			e instanceof DataTableNameConflictError
+		) {
+			throw new ConflictError(e.message);
+		}
+		if (e instanceof DataTableValidationError) {
+			throw new BadRequestError(e.message);
+		}
+		if (e instanceof ResponseError) {
+			throw e;
+		}
+		if (e instanceof Error) {
+			throw new InternalServerError(e.message, e);
+		}
+		throw e;
+	}
+
+	@Middleware()
+	async validateProjectExists(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		try {
+			const { projectId } = req.params;
+			await this.projectService.getProject(projectId);
+			next();
+		} catch (e) {
+			res.status(404).send('Project not found');
+			return;
+		}
+	}
 
 	@Post('/')
-	@ProjectScope('dataStore:create')
+	@ProjectScope('dataTable:create')
 	async createDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -62,7 +105,7 @@ export class DataTableController {
 	}
 
 	@Get('/')
-	@ProjectScope('dataStore:listProject')
+	@ProjectScope('dataTable:listProject')
 	async listProjectDataTables(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -76,7 +119,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async updateDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -99,7 +142,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId')
-	@ProjectScope('dataStore:delete')
+	@ProjectScope('dataTable:delete')
 	async deleteDataTable(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -119,7 +162,7 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/columns')
-	@ProjectScope('dataStore:read')
+	@ProjectScope('dataTable:read')
 	async getColumns(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -139,7 +182,7 @@ export class DataTableController {
 	}
 
 	@Post('/:dataTableId/columns')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async addColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -149,23 +192,12 @@ export class DataTableController {
 		try {
 			return await this.dataTableService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (
-				e instanceof DataTableColumnNameConflictError ||
-				e instanceof DataTableSystemColumnNameConflictError
-			) {
-				throw new ConflictError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
 	@Delete('/:dataTableId/columns/:columnId')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async deleteColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -175,18 +207,12 @@ export class DataTableController {
 		try {
 			return await this.dataTableService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
 	@Patch('/:dataTableId/columns/:columnId/move')
-	@ProjectScope('dataStore:update')
+	@ProjectScope('dataTable:update')
 	async moveColumn(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -202,20 +228,33 @@ export class DataTableController {
 				dto,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof DataTableValidationError) {
-				throw new BadRequestError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Patch('/:dataTableId/columns/:columnId/rename')
+	@ProjectScope('dataTable:update')
+	async renameColumn(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('columnId') columnId: string,
+		@Body dto: RenameDataTableColumnDto,
+	) {
+		try {
+			return await this.dataTableService.renameColumn(
+				dataTableId,
+				req.params.projectId,
+				columnId,
+				dto,
+			);
+		} catch (e: unknown) {
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
 	@Get('/:dataTableId/rows')
-	@ProjectScope('dataStore:readRow')
+	@ProjectScope('dataTable:readRow')
 	async getDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -239,6 +278,36 @@ export class DataTableController {
 		}
 	}
 
+	@Get('/:dataTableId/download-csv')
+	@ProjectScope('dataTable:read')
+	async downloadDataTableCsv(
+		req: AuthenticatedRequest<{ projectId: string; dataTableId: string }>,
+		_res: Response,
+	) {
+		try {
+			const { projectId, dataTableId } = req.params;
+
+			// Generate CSV content - this will validate that the table exists
+			const { csvContent, dataTableName } = await this.dataTableService.generateDataTableCsv(
+				dataTableId,
+				projectId,
+			);
+
+			return {
+				csvContent,
+				dataTableName,
+			};
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
@@ -249,7 +318,7 @@ export class DataTableController {
 		dto: AddDataTableRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataTableRowReturn : Pick<DataTableRowReturn, 'id'>>>;
 	@Post('/:dataTableId/insert')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async appendDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -277,7 +346,7 @@ export class DataTableController {
 	}
 
 	@Post('/:dataTableId/upsert')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async upsertDataTableRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -329,7 +398,7 @@ export class DataTableController {
 	}
 
 	@Patch('/:dataTableId/rows')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async updateDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -381,7 +450,7 @@ export class DataTableController {
 	}
 
 	@Delete('/:dataTableId/rows')
-	@ProjectScope('dataStore:writeRow')
+	@ProjectScope('dataTable:writeRow')
 	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,

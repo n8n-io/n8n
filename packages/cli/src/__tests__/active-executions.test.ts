@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { captor, mock } from 'jest-mock-extended';
@@ -11,6 +12,7 @@ import type {
 	StructuredChunk,
 } from 'n8n-workflow';
 import {
+	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
 	randomInt,
 	sleep,
@@ -21,7 +23,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -38,6 +39,10 @@ const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	isEnabled: false,
 });
 
+const executionsConfig = mockInstance(ExecutionsConfig, {
+	mode: 'regular',
+});
+
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 	let responsePromise: IDeferredPromise<IExecuteResponsePromiseData>;
@@ -45,11 +50,7 @@ describe('ActiveExecutions', () => {
 	let postExecutePromise: Promise<IRun | undefined>;
 
 	const fullRunData: IRun = {
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 		mode: 'manual',
 		startedAt: new Date(),
 		status: 'new',
@@ -61,6 +62,7 @@ describe('ActiveExecutions', () => {
 			id: '123',
 			name: 'Test workflow 1',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -76,9 +78,11 @@ describe('ActiveExecutions', () => {
 			executionRepository,
 			concurrencyControl,
 			mock(),
+			executionsConfig,
 		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
+		executionRepository.updateExistingExecution.mockResolvedValue(true);
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
 		workflowExecution.cancel = jest.fn();
@@ -109,6 +113,18 @@ describe('ActiveExecutions', () => {
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+
+	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
+		// Mock updateExistingExecution to return false (status check failed)
+		executionRepository.updateExistingExecution.mockResolvedValue(false);
+
+		await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
+			'Execution is already being resumed by another process',
+		);
+
+		// Verify execution was NOT added to active executions
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 	});
 
 	describe('attachWorkflowExecution', () => {
@@ -207,6 +223,7 @@ describe('ActiveExecutions', () => {
 				executionRepository,
 				concurrencyControl,
 				mock(),
+				executionsConfig,
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -305,8 +322,6 @@ describe('ActiveExecutions', () => {
 		let waitingExecutionId1: string, waitingExecutionId2: string;
 
 		beforeEach(async () => {
-			config.set('executions.mode', 'regular');
-
 			executionRepository.createNewExecution.mockImplementation(async () =>
 				randomInt(1000, 2000).toString(),
 			);

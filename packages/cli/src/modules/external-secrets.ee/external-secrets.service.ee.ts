@@ -1,4 +1,4 @@
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
@@ -9,9 +9,10 @@ import type { ExternalSecretsRequest, SecretsProvider } from './types';
 
 @Service()
 export class ExternalSecretsService {
+	constructor(private readonly externalSecretsManager: ExternalSecretsManager) {}
+
 	getProvider(providerName: string): ExternalSecretsRequest.GetProviderResponse | null {
-		const providerAndSettings =
-			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
+		const providerAndSettings = this.externalSecretsManager.getProviderWithSettings(providerName);
 		const { provider, settings } = providerAndSettings;
 		return {
 			displayName: provider.displayName,
@@ -25,18 +26,16 @@ export class ExternalSecretsService {
 		};
 	}
 
-	async getProviders() {
-		return Container.get(ExternalSecretsManager)
-			.getProvidersWithSettings()
-			.map(({ provider, settings }) => ({
-				displayName: provider.displayName,
-				name: provider.name,
-				icon: provider.name,
-				state: provider.state,
-				connected: !!settings.connected,
-				connectedAt: settings.connectedAt,
-				data: this.redact(settings.settings, provider),
-			}));
+	getProviders() {
+		return this.externalSecretsManager.getProvidersWithSettings().map(({ provider, settings }) => ({
+			displayName: provider.displayName,
+			name: provider.name,
+			icon: provider.name,
+			state: provider.state,
+			connected: !!settings.connected,
+			connectedAt: settings.connectedAt,
+			data: this.redact(settings.settings, provider),
+		}));
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
@@ -99,31 +98,29 @@ export class ExternalSecretsService {
 	}
 
 	async saveProviderSettings(providerName: string, data: IDataObject, userId: string) {
-		const providerAndSettings =
-			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
+		const providerAndSettings = this.externalSecretsManager.getProviderWithSettings(providerName);
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
-		await Container.get(ExternalSecretsManager).setProviderSettings(providerName, newData, userId);
+		await this.externalSecretsManager.setProviderSettings(providerName, newData, userId);
 	}
 
 	async saveProviderConnected(providerName: string, connected: boolean) {
-		await Container.get(ExternalSecretsManager).setProviderConnected(providerName, connected);
+		await this.externalSecretsManager.setProviderConnected(providerName, connected);
 		return this.getProvider(providerName);
 	}
 
 	getAllSecrets(): Record<string, string[]> {
-		return Container.get(ExternalSecretsManager).getAllSecretNames();
+		return this.externalSecretsManager.getAllSecretNames();
 	}
 
 	async testProviderSettings(providerName: string, data: IDataObject) {
-		const providerAndSettings =
-			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
+		const providerAndSettings = this.externalSecretsManager.getProviderWithSettings(providerName);
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
-		return await Container.get(ExternalSecretsManager).testProviderSettings(providerName, newData);
+		return await this.externalSecretsManager.testProviderSettings(providerName, newData);
 	}
 
 	async updateProvider(providerName: string) {
-		return await Container.get(ExternalSecretsManager).updateProvider(providerName);
+		return await this.externalSecretsManager.updateProvider(providerName);
 	}
 }

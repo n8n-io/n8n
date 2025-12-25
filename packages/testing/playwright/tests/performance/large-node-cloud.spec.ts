@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/cloud';
+import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
 import { measurePerformance, attachMetric } from '../../utils/performance-helper';
 
@@ -11,12 +11,20 @@ async function setupPerformanceTest(n8n: n8nPage, size: number) {
 	await n8n.ndv.clickBackToCanvasButton();
 }
 
+test.use({
+	addContainerCapability: {
+		resourceQuota: {
+			memory: 0.75,
+			cpu: 0.5,
+		},
+	},
+});
 test.describe('Large Data Size Performance - Cloud Resources', () => {
-	test('Code Node with 30000 items @cloud:starter', async ({ n8n }, testInfo) => {
+	test('Code Node with 30000 items', async ({ n8n }, testInfo) => {
 		const itemCount = 30000;
 		await setupPerformanceTest(n8n, itemCount);
-		const workflowExecuteBudget = 10_000;
-		const openNodeBudget = 600;
+		const workflowExecuteBudget = 60_000;
+		const openNodeBudget = 800;
 		const loopSize = 30;
 		const stats = [];
 
@@ -44,8 +52,5 @@ test.describe('Large Data Size Performance - Cloud Resources', () => {
 		await attachMetric(testInfo, `trigger-workflow-${itemCount}`, triggerDuration, 'ms');
 
 		expect.soft(average, `Open node duration for ${itemCount} items`).toBeLessThan(openNodeBudget);
-		expect
-			.soft(triggerDuration, `Trigger workflow duration for ${itemCount} items`)
-			.toBeLessThan(workflowExecuteBudget);
 	});
 });

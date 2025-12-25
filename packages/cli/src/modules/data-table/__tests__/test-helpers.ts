@@ -6,7 +6,7 @@ export function mockDataTableSizeValidator() {
 	const sizeValidator = Container.get(DataTableSizeValidator);
 	jest.spyOn(sizeValidator, 'validateSize').mockResolvedValue();
 	jest.spyOn(sizeValidator, 'getCachedSizeData').mockResolvedValue({
-		totalBytes: 50 * 1024 * 1024, // 50MB - under the default limit
+		totalBytes: 0, // Start with 0 bytes to allow uploads
 		dataTables: {},
 	});
 	return sizeValidator;

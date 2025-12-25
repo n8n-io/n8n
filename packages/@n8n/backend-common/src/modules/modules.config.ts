@@ -8,6 +8,9 @@ export const MODULE_NAMES = [
 	'community-packages',
 	'data-table',
 	'mcp',
+	'provisioning',
+	'breaking-changes',
+	'dynamic-credentials',
 	'chat-hub',
 ] as const;
 

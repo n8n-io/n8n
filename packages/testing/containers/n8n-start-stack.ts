@@ -1,9 +1,16 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
+import {
+	KEYCLOAK_TEST_CLIENT_ID,
+	KEYCLOAK_TEST_CLIENT_SECRET,
+	KEYCLOAK_TEST_USER_EMAIL,
+	KEYCLOAK_TEST_USER_PASSWORD,
+} from './n8n-test-container-keycloak';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 
 // ANSI colors for terminal output
@@ -37,7 +44,11 @@ ${colors.yellow}Usage:${colors.reset}
 ${colors.yellow}Options:${colors.reset}
   --postgres        Use PostgreSQL instead of SQLite
   --queue           Enable queue mode (requires PostgreSQL)
-  --task-runner     Enable external task runner container
+  --no-task-runner  Disable external task runner (enabled by default)
+  --source-control  Enable source control (Git) container for testing
+  --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
+  --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
+  --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -66,8 +77,20 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Queue mode (automatically uses PostgreSQL)${colors.reset}
   npm run stack --queue
 
-  ${colors.bright}# With external task runner${colors.reset}
-  npm run stack --postgres --task-runner
+  ${colors.bright}# Without task runner (task runner is enabled by default)${colors.reset}
+  npm run stack --no-task-runner
+
+  ${colors.bright}# With source control (Git) testing${colors.reset}
+  npm run stack --postgres --source-control
+
+  ${colors.bright}# With OIDC (Keycloak) for SSO testing${colors.reset}
+  npm run stack --postgres --oidc
+
+  ${colors.bright}# With observability stack (logs + metrics persist even after terminal closes)${colors.reset}
+  npm run stack --observability
+
+  ${colors.bright}# With tracing stack (Jaeger UI for workflow execution visualization)${colors.reset}
+  npm run stack --queue --tracing
 
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
@@ -86,6 +109,7 @@ ${Object.keys(BASE_PERFORMANCE_PLANS)
 
 ${colors.yellow}Notes:${colors.reset}
   • SQLite is the default database (no external dependencies)
+  • Task runner is enabled by default (mirrors production)
   • Queue mode requires PostgreSQL and enables horizontal scaling
   • Use --name for running multiple instances in parallel
   • Performance plans simulate cloud constraints (SQLite only, resource-limited)
@@ -100,7 +124,11 @@ async function main() {
 			help: { type: 'boolean', short: 'h' },
 			postgres: { type: 'boolean' },
 			queue: { type: 'boolean' },
-			'task-runner': { type: 'boolean' },
+			'no-task-runner': { type: 'boolean' },
+			'source-control': { type: 'boolean' },
+			oidc: { type: 'boolean' },
+			observability: { type: 'boolean' },
+			tracing: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -117,9 +145,14 @@ async function main() {
 	}
 
 	// Build configuration
+	// Task runner is enabled by default; use --no-task-runner to disable
 	const config: N8NConfig = {
 		postgres: values.postgres ?? false,
-		taskRunner: values['task-runner'] ?? false,
+		taskRunner: values['no-task-runner'] ? false : undefined, // Default true, only set false if explicitly disabled
+		sourceControl: values['source-control'] ?? false,
+		oidc: values.oidc ?? false,
+		observability: values.observability ?? false,
+		tracing: values.tracing ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -203,6 +236,45 @@ async function main() {
 		log.success('All containers started successfully!');
 		console.log('');
 		log.info(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
+
+		// Display OIDC configuration if enabled
+		if (stack.oidc) {
+			console.log('');
+			log.header('OIDC Configuration (Keycloak)');
+			log.info(`Discovery URL: ${colors.cyan}${stack.oidc.discoveryUrl}${colors.reset}`);
+			log.info(`Client ID: ${colors.cyan}${KEYCLOAK_TEST_CLIENT_ID}${colors.reset}`);
+			log.info(`Client Secret: ${colors.cyan}${KEYCLOAK_TEST_CLIENT_SECRET}${colors.reset}`);
+			console.log('');
+			log.header('Test User Credentials');
+			log.info(`Email: ${colors.cyan}${KEYCLOAK_TEST_USER_EMAIL}${colors.reset}`);
+			log.info(`Password: ${colors.cyan}${KEYCLOAK_TEST_USER_PASSWORD}${colors.reset}`);
+		}
+
+		// Display observability configuration if enabled
+		if (stack.observability) {
+			console.log('');
+			log.header('Observability Stack (VictoriaObs)');
+			log.info(
+				`VictoriaLogs UI: ${colors.cyan}${stack.observability.victoriaLogs.queryEndpoint}/select/vmui${colors.reset}`,
+			);
+			log.info(
+				`VictoriaMetrics UI: ${colors.cyan}${stack.observability.victoriaMetrics.queryEndpoint}/vmui${colors.reset}`,
+			);
+			if (stack.observability.vector) {
+				log.success('Container logs collected by Vector (runs in background)');
+			}
+		}
+
+		if (stack.tracing) {
+			console.log('');
+			log.header('Tracing Stack (n8n-tracer + Jaeger)');
+			log.info(`Jaeger UI: ${colors.cyan}${stack.tracing.jaeger.uiUrl}${colors.reset}`);
+		}
+
+		console.log('');
+		log.info('Containers are running in the background');
+		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
+		console.log('');
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
 		process.exit(1);
@@ -210,12 +282,12 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
+	const dockerImage = getDockerImageFromEnv();
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	const usePostgres = config.postgres || config.queueMode;
+	const usePostgres = config.postgres || config.queueMode || config.oidc;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
 	if (config.queueMode) {
@@ -231,14 +303,41 @@ function displayConfig(config: N8NConfig) {
 		log.info('Queue mode: disabled');
 	}
 
-	// Display task runner status
-	if (config.taskRunner) {
-		log.info('Task runner: enabled (external container)');
-		if (!usePostgres) {
-			log.warn('Task runner recommended with PostgreSQL for better performance');
+	// Display task runner status (enabled by default)
+	const taskRunnerEnabled = config.taskRunner ?? true;
+	log.info(`Task runner: ${taskRunnerEnabled ? 'enabled (default)' : 'disabled'}`);
+
+	// Display source control status
+	if (config.sourceControl) {
+		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
+		log.info('  Admin: giteaadmin / giteapassword');
+		log.info('  Repository: n8n-test-repo');
+	} else {
+		log.info('Source Control: disabled');
+	}
+
+	// Display OIDC status
+	if (config.oidc) {
+		log.info('OIDC: enabled (Keycloak)');
+		if (!config.postgres && !config.queueMode) {
+			log.info('(PostgreSQL automatically enabled for OIDC)');
 		}
 	} else {
-		log.info('Task runner: disabled');
+		log.info('OIDC: disabled');
+	}
+
+	// Display observability status
+	if (config.observability) {
+		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics + Vector)');
+	} else {
+		log.info('Observability: disabled');
+	}
+
+	// Display tracing status
+	if (config.tracing) {
+		log.info('Tracing: enabled (n8n-tracer + Jaeger)');
+	} else {
+		log.info('Tracing: disabled');
 	}
 
 	if (config.resourceQuota) {

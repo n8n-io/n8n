@@ -382,6 +382,8 @@ export class SlackTrigger implements INodeType {
 						this,
 						req.body.event.item_user,
 					);
+				} else if (req.body.event.type === 'team_join') {
+					req.body.event.user_resolved = req.body.event.user.name;
 				} else {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}

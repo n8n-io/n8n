@@ -7,6 +7,7 @@ import {
 	type Project,
 	type User,
 	PROJECT_ADMIN_ROLE,
+	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -133,6 +134,29 @@ describe('dataTableAggregate', () => {
 			// ASSERT
 			expect(result.data).toEqual([]);
 			expect(result.count).toBe(0);
+		});
+
+		it('should list all tables for owners and admins', async () => {
+			// ARRANGE
+			const currentUser = await createUser({ role: GLOBAL_ADMIN_ROLE });
+
+			const dt1 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable1',
+				columns: [],
+			});
+			projectRelationRepository.find.mockResolvedValueOnce([]);
+
+			// ACT
+			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
+				skip: 0,
+				take: 10,
+			});
+
+			// ASSERT
+			expect(result.data).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: dt1.id, name: dt1.name })]),
+			);
+			expect(result.count).toBe(1);
 		});
 
 		it('should return only the data table matching the given data table id filter', async () => {

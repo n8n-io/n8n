@@ -1,9 +1,11 @@
+import { getDockerImageFromEnv } from './docker-image';
+
 // Custom error class for when the Docker image is not found locally/remotely
 // This can happen when using the "n8nio/n8n:local" image, which is not available on Docker Hub
 // This image is available after running `pnpm build:docker` at the root of the repository
 export class DockerImageNotFoundError extends Error {
 	constructor(containerName: string, originalError?: Error) {
-		const dockerImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
+		const dockerImage = getDockerImageFromEnv();
 
 		const message = `Failed to start container ${containerName}: Docker image '${dockerImage}' not found locally!
 

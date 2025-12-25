@@ -142,7 +142,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		const streamingEnabled = this.additionalData.streamingEnabled === true;
 
 		// Check current execution mode supports streaming
-		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated'];
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
 		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
 
 		return hasHandlers && isStreamingMode && streamingEnabled;
@@ -236,5 +236,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
+	}
+
+	/** Returns true if the node is being executed as an AI Agent tool */
+	isToolExecution(): boolean {
+		return false;
 	}
 }

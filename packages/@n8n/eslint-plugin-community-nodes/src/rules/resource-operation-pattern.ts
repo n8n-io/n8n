@@ -1,13 +1,17 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+
 import {
 	isNodeTypeClass,
 	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
+	createRule,
 } from '../utils/index.js';
 
-export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs({
+export const ResourceOperationPatternRule = createRule({
+	name: 'resource-operation-pattern',
 	meta: {
 		type: 'problem',
 		docs: {
@@ -26,12 +30,15 @@ export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs(
 		}
 
 		const analyzeNodeDescription = (descriptionValue: TSESTree.Expression | null): void => {
-			if (!descriptionValue || descriptionValue.type !== 'ObjectExpression') {
+			if (!descriptionValue || descriptionValue.type !== AST_NODE_TYPES.ObjectExpression) {
 				return;
 			}
 
 			const propertiesProperty = findObjectProperty(descriptionValue, 'properties');
-			if (!propertiesProperty?.value || propertiesProperty.value.type !== 'ArrayExpression') {
+			if (
+				!propertiesProperty?.value ||
+				propertiesProperty.value.type !== AST_NODE_TYPES.ArrayExpression
+			) {
 				return;
 			}
 
@@ -41,7 +48,7 @@ export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs(
 			let operationNode: TSESTree.Node | null = null;
 
 			for (const property of propertiesArray.elements) {
-				if (!property || property.type !== 'ObjectExpression') {
+				if (!property || property.type !== AST_NODE_TYPES.ObjectExpression) {
 					continue;
 				}
 
@@ -62,7 +69,7 @@ export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs(
 				if (name === 'operation' && type === 'options') {
 					operationNode = property;
 					const optionsProperty = findObjectProperty(property, 'options');
-					if (optionsProperty?.value?.type === 'ArrayExpression') {
+					if (optionsProperty?.value?.type === AST_NODE_TYPES.ArrayExpression) {
 						operationCount = optionsProperty.value.elements.length;
 					}
 				}

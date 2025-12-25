@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflowResponse } from '@n8n/rest-api-client';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
 import { useRouter } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
-import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/constants';
-import NodeIcon from '@/components/NodeIcon.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/app/constants';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
@@ -118,12 +118,12 @@ const handleUseTemplate = async () => {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 
 .remainingNodes {
-	color: var(--color-text-base);
-	border-color: var(--color-background-light);
+	color: var(--color--text);
+	border-color: var(--color--background--light-2);
 }
 
 .description {
@@ -132,8 +132,8 @@ const handleUseTemplate = async () => {
 	-webkit-line-clamp: 2;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	line-height: var(--font-line-height-regular);
-	color: var(--color-text-light);
+	line-height: var(--line-height--md);
+	color: var(--color--text--tint-1);
 }
 
 .suggestion {
@@ -141,12 +141,12 @@ const handleUseTemplate = async () => {
 	flex-direction: column;
 	justify-content: space-between;
 	min-width: 200px;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 	cursor: pointer;
 	transition: all 0.2s ease;
 
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	}

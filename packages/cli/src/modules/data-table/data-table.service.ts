@@ -4,6 +4,7 @@ import type {
 	DeleteDataTableRowsDto,
 	ListDataTableContentQueryDto,
 	MoveDataTableColumnDto,
+	RenameDataTableColumnDto,
 	DataTableListOptions,
 	UpsertDataTableRowDto,
 	UpdateDataTableDto,
@@ -28,19 +29,22 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { RoleService } from '@/services/role.service';
-
+import { CsvParserService } from './csv-parser.service';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
+import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
+import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -52,6 +56,8 @@ export class DataTableService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly csvParserService: CsvParserService,
+		private readonly fileCleanupService: DataTableFileCleanupService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -64,9 +70,59 @@ export class DataTableService {
 
 		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
 
+		if (dto.fileId) {
+			try {
+				await this.importDataFromFile(projectId, result.id, dto.fileId, dto.hasHeaders ?? true);
+				await this.fileCleanupService.deleteFile(dto.fileId);
+			} catch (error) {
+				await this.deleteDataTable(result.id, projectId);
+				throw error;
+			}
+		}
+
 		this.dataTableSizeValidator.reset();
 
 		return result;
+	}
+
+	private async importDataFromFile(
+		projectId: string,
+		dataTableId: string,
+		fileId: string,
+		hasHeaders: boolean,
+	) {
+		try {
+			const tableColumns = await this.getColumns(dataTableId, projectId);
+
+			const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
+
+			const columnMapping = new Map<string, string>();
+			csvMetadata.columns.forEach((csvColumn, index) => {
+				if (tableColumns[index]) {
+					columnMapping.set(csvColumn.name, tableColumns[index].name);
+				}
+			});
+
+			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
+
+			const transformedRows = csvRows.map((csvRow) => {
+				const transformedRow: DataTableRow = {};
+				for (const [csvColName, value] of Object.entries(csvRow)) {
+					const tableColName = columnMapping.get(csvColName);
+					if (tableColName) {
+						transformedRow[tableColName] = value;
+					}
+				}
+				return transformedRow;
+			});
+
+			if (transformedRows.length > 0) {
+				await this.insertRows(dataTableId, projectId, transformedRows);
+			}
+		} catch (error) {
+			this.logger.error('Failed to import data from CSV file', { error, fileId, dataTableId });
+			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
+		}
 	}
 
 	// Updates data table properties (currently limited to renaming)
@@ -116,7 +172,11 @@ export class DataTableService {
 	async addColumn(dataTableId: string, projectId: string, dto: AddDataTableColumnDto) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+		const result = await this.dataTableColumnRepository.addColumn(dataTableId, dto);
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
+		return result;
 	}
 
 	async moveColumn(
@@ -139,7 +199,21 @@ export class DataTableService {
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
+
 		return true;
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		dto: RenameDataTableColumnDto,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+
+		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {
@@ -155,12 +229,12 @@ export class DataTableService {
 
 		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
-			if (dto.filter) {
-				this.validateAndTransformFilters(dto.filter, columns);
-			}
+			const transformedDto = dto.filter
+				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
+				: dto;
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
-				dto,
+				transformedDto,
 				columns,
 				em,
 			);
@@ -194,11 +268,11 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			this.validateRowsWithColumns(rows, columns);
+			const transformedRows = this.validateAndTransformRows(rows, columns);
 
 			return await this.dataTableRowsRepository.insertRows(
 				dataTableId,
-				rows,
+				transformedRows,
 				columns,
 				returnType,
 				trx,
@@ -206,6 +280,8 @@ export class DataTableService {
 		});
 
 		this.dataTableSizeValidator.reset();
+
+		await this.dataTableRepository.touchUpdatedAt(dataTableId);
 
 		return result;
 	}
@@ -243,13 +319,13 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			this.validateUpdateParams(dto, columns);
+			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
 				return await this.dataTableRowsRepository.dryRunUpsertRow(
 					dataTableId,
-					dto.data,
-					dto.filter,
+					data,
+					filter,
 					columns,
 					trx,
 				);
@@ -257,8 +333,8 @@ export class DataTableService {
 
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
-				dto.data,
-				dto.filter,
+				data,
+				filter,
 				columns,
 				true,
 				trx,
@@ -271,7 +347,7 @@ export class DataTableService {
 			// No rows were updated, so insert a new one
 			const inserted = await this.dataTableRowsRepository.insertRows(
 				dataTableId,
-				[dto.data],
+				[data],
 				columns,
 				returnData ? 'all' : 'id',
 				trx,
@@ -281,15 +357,17 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
 	}
 
-	validateUpdateParams(
+	validateAndTransformUpdateParams(
 		{ filter, data }: Pick<UpdateDataTableRowDto, 'filter' | 'data'>,
 		columns: DataTableColumn[],
-	) {
+	): { data: DataTableRow; filter: DataTableFilter } {
 		if (columns.length === 0) {
 			throw new DataTableValidationError(
 				'No columns found for this data table or data table not found',
@@ -303,8 +381,10 @@ export class DataTableService {
 			throw new DataTableValidationError('Data columns must not be empty');
 		}
 
-		this.validateRowsWithColumns([data], columns, false);
-		this.validateAndTransformFilters(filter, columns);
+		const [transformedData] = this.validateAndTransformRows([data], columns, false);
+		const transformedFilter = this.validateAndTransformFilters(filter, columns);
+
+		return { data: transformedData, filter: transformedFilter };
 	}
 
 	async updateRows<T extends boolean | undefined>(
@@ -340,13 +420,13 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			this.validateUpdateParams(dto, columns);
+			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
 
 			if (dryRun) {
 				return await this.dataTableRowsRepository.dryRunUpdateRows(
 					dataTableId,
-					dto.data,
-					dto.filter,
+					data,
+					filter,
 					columns,
 					trx,
 				);
@@ -354,8 +434,8 @@ export class DataTableService {
 
 			return await this.dataTableRowsRepository.updateRows(
 				dataTableId,
-				dto.data,
-				dto.filter,
+				data,
+				filter,
 				columns,
 				returnData,
 				trx,
@@ -364,6 +444,8 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
@@ -408,12 +490,12 @@ export class DataTableService {
 				);
 			}
 
-			this.validateAndTransformFilters(dto.filter, columns);
+			const transformedFilter = this.validateAndTransformFilters(dto.filter, columns);
 
 			return await this.dataTableRowsRepository.deleteRows(
 				dataTableId,
 				columns,
-				dto.filter,
+				transformedFilter,
 				returnData,
 				dryRun,
 				trx,
@@ -422,16 +504,19 @@ export class DataTableService {
 
 		if (!dryRun) {
 			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
 		return result;
 	}
 
-	private validateRowsWithColumns(
+	private validateAndTransformRows(
 		rows: DataTableRows,
 		columns: Array<{ name: string; type: DataTableColumnType }>,
 		includeSystemColumns = false,
-	): void {
+		skipDateTransform = false,
+	): DataTableRows {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
 			? [
@@ -444,26 +529,38 @@ export class DataTableService {
 			: columns;
 		const columnNames = new Set(allColumns.map((x) => x.name));
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
-		for (const row of rows) {
+
+		return rows.map((row) => {
+			const transformedRow: DataTableRow = {};
 			const keys = Object.keys(row);
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
 					throw new DataTableValidationError(`unknown column name '${key}'`);
 				}
-				this.validateCell(row, key, columnTypeMap);
+				transformedRow[key] = this.validateAndTransformCell(
+					row[key],
+					key,
+					columnTypeMap,
+					skipDateTransform,
+				);
 			}
-		}
+			return transformedRow;
+		});
 	}
 
-	private validateCell(row: DataTableRow, key: string, columnTypeMap: Map<string, string>) {
-		const cell = row[key];
-		if (cell === null) return;
+	private validateAndTransformCell(
+		cell: DataTableColumnJsType,
+		key: string,
+		columnTypeMap: Map<string, string>,
+		skipDateTransform = false,
+	): DataTableColumnJsType {
+		if (cell === null) return null;
 
 		const columnType = columnTypeMap.get(key);
-		if (!columnType) return;
+		if (!columnType) return cell;
 
 		const fieldType = columnTypeToFieldType[columnType];
-		if (!fieldType) return;
+		if (!fieldType) return cell;
 
 		const validationResult = validateFieldType(key, cell, fieldType, {
 			strict: false, // Allow type coercion (e.g., string numbers to numbers)
@@ -476,12 +573,14 @@ export class DataTableService {
 			);
 		}
 
-		// Special handling for date type to convert from luxon DateTime to ISO string
 		if (columnType === 'date') {
+			if (skipDateTransform && cell instanceof Date) {
+				return cell;
+			}
 			try {
-				const dateInISO = (validationResult.newValue as DateTime).toISO();
-				row[key] = dateInISO;
-				return;
+				// Convert to UTC to ensure consistent timezone handling
+				const dateInISO = (validationResult.newValue as DateTime).toUTC().toISO();
+				return dateInISO;
 			} catch {
 				throw new DataTableValidationError(
 					`value '${String(cell)}' does not match column type 'date'`,
@@ -489,7 +588,7 @@ export class DataTableService {
 			}
 		}
 
-		row[key] = validationResult.newValue as DataTableColumnJsType;
+		return validationResult.newValue as DataTableColumnJsType;
 	}
 
 	private async validateDataTableExists(dataTableId: string, projectId: string) {
@@ -534,8 +633,9 @@ export class DataTableService {
 	private validateAndTransformFilters(
 		filterObject: DataTableFilter,
 		columns: DataTableColumn[],
-	): void {
-		this.validateRowsWithColumns(
+	): DataTableFilter {
+		// Skip date transformation for filters - TypeORM needs Date objects for parameterized queries
+		const transformedRows = this.validateAndTransformRows(
 			filterObject.filters.map((f) => {
 				return {
 					[f.columnName]: f.value,
@@ -543,34 +643,43 @@ export class DataTableService {
 			}),
 			columns,
 			true,
+			true,
 		);
 
-		for (const filter of filterObject.filters) {
+		const transformedFilters = filterObject.filters.map((filter, index) => {
+			const transformedValue = transformedRows[index][filter.columnName];
+
 			if (['like', 'ilike'].includes(filter.condition)) {
-				if (filter.value === null || filter.value === undefined) {
+				if (transformedValue === null || transformedValue === undefined) {
 					throw new DataTableValidationError(
 						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
 					);
 				}
-				if (typeof filter.value !== 'string') {
+				if (typeof transformedValue !== 'string') {
 					throw new DataTableValidationError(
 						`${filter.condition.toUpperCase()} filter value must be a string`,
 					);
 				}
 
-				if (!filter.value.includes('%')) {
-					filter.value = `%${filter.value}%`;
-				}
+				const valueWithWildcards = transformedValue.includes('%')
+					? transformedValue
+					: `%${transformedValue}%`;
+
+				return { ...filter, value: valueWithWildcards };
 			}
 
 			if (['gt', 'gte', 'lt', 'lte'].includes(filter.condition)) {
-				if (filter.value === null || filter.value === undefined) {
+				if (transformedValue === null || transformedValue === undefined) {
 					throw new DataTableValidationError(
 						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
 					);
 				}
 			}
-		}
+
+			return { ...filter, value: transformedValue };
+		});
+
+		return { ...filterObject, filters: transformedFilters };
 	}
 
 	private async validateDataTableSize() {
@@ -584,7 +693,7 @@ export class DataTableService {
 			async () => await this.dataTableRepository.findDataTablesSize(),
 		);
 
-		const roles = await this.roleService.rolesWithScope('project', ['dataStore:listProject']);
+		const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
 
 		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
 			user.id,
@@ -605,5 +714,110 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables: accessibleDataTables,
 		};
+	}
+
+	async generateDataTableCsv(
+		dataTableId: string,
+		projectId: string,
+	): Promise<{ csvContent: string; dataTableName: string }> {
+		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
+
+		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
+
+		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(
+			dataTableId,
+			{
+				skip: 0,
+			},
+			columns,
+		);
+
+		const csvContent = this.buildCsvContent(rows, columns);
+
+		return {
+			csvContent,
+			dataTableName: dataTable.name,
+		};
+	}
+
+	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
+
+		const userHeaders = sortedColumns.map((col) => col.name);
+		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
+
+		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
+
+		for (const row of rows) {
+			const values: string[] = [];
+
+			values.push(this.escapeCsvValue(row.id));
+
+			for (const column of sortedColumns) {
+				const value = row[column.name];
+				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
+			}
+
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+
+			csvRows.push(values.join(','));
+		}
+
+		return csvRows.join('\n');
+	}
+
+	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
+		if (value === null || value === undefined) {
+			return '';
+		}
+
+		if (columnType === 'date') {
+			if (value instanceof Date || typeof value === 'string') {
+				return this.formatDateForCsv(value);
+			}
+		}
+
+		if (columnType === 'boolean') {
+			return String(value);
+		}
+
+		if (columnType === 'number') {
+			return String(value);
+		}
+
+		return String(value);
+	}
+
+	private formatDateForCsv(date: Date | string): string {
+		if (date instanceof Date) {
+			return date.toISOString();
+		}
+		// If it's already a string, try to parse and format
+		const parsed = new Date(date);
+		return !isNaN(parsed.getTime()) ? parsed.toISOString() : String(date);
+	}
+
+	private escapeCsvValue(value: unknown): string {
+		const str = String(value);
+
+		// RFC 4180 compliant escaping:
+		// - If value contains comma, quote, or newline, wrap in quotes
+		// - Also wrap if value has leading/trailing spaces to prevent trimming
+		// - Escape quotes by doubling them
+		const hasLeadingOrTrailingSpace =
+			str.length > 0 && (str[0] === ' ' || str[str.length - 1] === ' ');
+
+		if (
+			str.includes(',') ||
+			str.includes('"') ||
+			str.includes('\n') ||
+			str.includes('\r') ||
+			hasLeadingOrTrailingSpace
+		) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+
+		return str;
 	}
 }

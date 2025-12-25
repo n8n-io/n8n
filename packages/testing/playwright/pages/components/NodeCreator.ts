@@ -74,7 +74,7 @@ export class NodeCreator {
 
 	// Actions
 	async open(): Promise<void> {
-		await this.page.getByTestId('canvas-plus-button').click();
+		await this.page.getByTestId('node-creator-plus-button').click();
 		await expect(this.getRoot()).toBeVisible();
 	}
 

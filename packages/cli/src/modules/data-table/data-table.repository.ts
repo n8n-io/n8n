@@ -3,6 +3,7 @@ import {
 	type DataTableCreateColumnSchema,
 	type ListDataTableQueryDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,7 +12,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableRowsRepository } from './data-table-rows.repository';
+import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -22,10 +23,26 @@ import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 export class DataTableRepository extends Repository<DataTable> {
 	constructor(
 		dataSource: DataSource,
-		private dataTableRowsRepository: DataTableRowsRepository,
+		private ddlService: DataTableDDLService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
 	) {
 		super(DataTable, dataSource.manager);
+	}
+
+	/**
+	 * Updates the updatedAt timestamp for a data table without modifying any other fields.
+	 * This is used to track when the table's content (rows/columns) has changed.
+	 *
+	 * Note: This method logs but does not throw errors to ensure that timestamp
+	 * update failures don't affect the primary data operations.
+	 */
+	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
+		await withTransaction(this.manager, trx, async (em) => {
+			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
+		}).catch((error) => {
+			this.logger.warn('Failed to update DataTable timestamp', { dataTableId, error });
+		});
 	}
 
 	async createDataTable(
@@ -41,7 +58,6 @@ export class DataTableRepository extends Repository<DataTable> {
 
 			const dataTable = em.create(DataTable, { name, columns, projectId });
 
-			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTable, dataTable);
 			const dataTableId = dataTable.id;
 
@@ -56,12 +72,11 @@ export class DataTableRepository extends Repository<DataTable> {
 			);
 
 			if (columnEntities.length > 0) {
-				// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 				await em.insert(DataTableColumn, columnEntities);
 			}
 
 			// create user table (will create empty table with just id column if no columns)
-			await this.dataTableRowsRepository.createTableWithColumns(dataTableId, columnEntities, em);
+			await this.ddlService.createTableWithColumns(dataTableId, columnEntities, em);
 
 			if (!dataTableId) {
 				throw new UnexpectedError('Data table creation failed');
@@ -79,7 +94,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.delete(DataTable, { id: dataTableId });
-			await this.dataTableRowsRepository.dropTable(dataTableId, em);
+			await this.ddlService.dropTable(dataTableId, em);
 			return true;
 		});
 	}
@@ -147,7 +162,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataTable, { id: match.id });
-				await this.dataTableRowsRepository.dropTable(match.id, em);
+				await this.ddlService.dropTable(match.id, em);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 

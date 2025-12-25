@@ -21,7 +21,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 
@@ -98,19 +98,19 @@ const AllSizesTemplate: StoryFn = () => ({
 		<div style="display: flex; flex-direction: column; gap: 20px;">
 			<div style="display: flex; align-items: center; gap: 20px;">
 				<n8n-send-stop-button size="mini" @send="onSend" />
-				<span style="color: var(--color-text-base)">Mini</span>
+				<span style="color: var(--color--text)">Mini</span>
 			</div>
 			<div style="display: flex; align-items: center; gap: 20px;">
 				<n8n-send-stop-button size="small" @send="onSend" />
-				<span style="color: var(--color-text-base)">Small</span>
+				<span style="color: var(--color--text)">Small</span>
 			</div>
 			<div style="display: flex; align-items: center; gap: 20px;">
 				<n8n-send-stop-button size="medium" @send="onSend" />
-				<span style="color: var(--color-text-base)">Medium</span>
+				<span style="color: var(--color--text)">Medium</span>
 			</div>
 			<div style="display: flex; align-items: center; gap: 20px;">
 				<n8n-send-stop-button size="large" @send="onSend" />
-				<span style="color: var(--color-text-base)">Large</span>
+				<span style="color: var(--color--text)">Large</span>
 			</div>
 		</div>
 	`,
@@ -126,7 +126,7 @@ const InteractiveTemplate: StoryFn = () => ({
 	template: `
 		<div style="display: flex; flex-direction: column; gap: 30px;">
 			<div>
-				<h3 style="margin-bottom: 15px; color: var(--color-text-dark);">Interactive Demo</h3>
+				<h3 style="margin-bottom: 15px; color: var(--color--text--shade-1);">Interactive Demo</h3>
 				<div style="display: flex; align-items: center; gap: 20px;">
 					<n8n-send-stop-button
 						:streaming="streaming"
@@ -135,22 +135,22 @@ const InteractiveTemplate: StoryFn = () => ({
 						@send="handleSend"
 						@stop="handleStop"
 					/>
-					<span style="color: var(--color-text-base)">
+					<span style="color: var(--color--text)">
 						{{ streaming ? 'Click to stop' : 'Click to send' }}
 					</span>
 				</div>
 			</div>
 
 			<div style="display: flex; flex-direction: column; gap: 10px;">
-				<label style="color: var(--color-text-base);">
+				<label style="color: var(--color--text);">
 					<input type="checkbox" v-model="streaming" />
 					Streaming ({{ streaming ? 'ON' : 'OFF' }})
 				</label>
-				<label style="color: var(--color-text-base);">
+				<label style="color: var(--color--text);">
 					<input type="checkbox" v-model="disabled" />
 					Disabled ({{ disabled ? 'ON' : 'OFF' }})
 				</label>
-				<label style="color: var(--color-text-base);">
+				<label style="color: var(--color--text);">
 					Size:
 					<select v-model="size" style="margin-left: 10px;">
 						<option value="mini">Mini</option>
@@ -161,8 +161,8 @@ const InteractiveTemplate: StoryFn = () => ({
 				</label>
 			</div>
 
-			<div style="padding: 10px; background: var(--color-background-xlight); border-radius: 4px;">
-				<p style="color: var(--color-text-base); margin: 0;">Last action: {{ lastAction }}</p>
+			<div style="padding: 10px; background: var(--color--background--light-3); border-radius: 4px;">
+				<p style="color: var(--color--text); margin: 0;">Last action: {{ lastAction }}</p>
 			</div>
 		</div>
 	`,
@@ -202,21 +202,21 @@ const StatesTemplate: StoryFn = () => ({
 		<div style="display: grid; grid-template-columns: repeat(2, 200px); gap: 20px;">
 			<div style="text-align: center;">
 				<n8n-send-stop-button :streaming="false" :disabled="false" />
-				<p style="color: var(--color-text-base); margin-top: 10px;">Send (Enabled)</p>
+				<p style="color: var(--color--text); margin-top: 10px;">Send (Enabled)</p>
 			</div>
 			<div style="text-align: center;">
 				<n8n-send-stop-button :streaming="false" :disabled="true" />
-				<p style="color: var(--color-text-base); margin-top: 10px;">Send (Disabled)</p>
+				<p style="color: var(--color--text); margin-top: 10px;">Send (Disabled)</p>
 			</div>
 			<div style="text-align: center;">
 				<n8n-send-stop-button :streaming="true" :disabled="false" />
-				<p style="color: var(--color-text-base); margin-top: 10px;">Stop (Streaming)</p>
+				<p style="color: var(--color--text); margin-top: 10px;">Stop (Streaming)</p>
 			</div>
 			<div style="text-align: center;">
-				<div style="background: var(--color-background-dark); padding: 20px; border-radius: 4px;">
+				<div style="background: var(--color--background--shade-2); padding: 20px; border-radius: 4px;">
 					<n8n-send-stop-button :streaming="false" :disabled="false" />
 				</div>
-				<p style="color: var(--color-text-base); margin-top: 10px;">On Dark Background</p>
+				<p style="color: var(--color--text); margin-top: 10px;">On Dark Background</p>
 			</div>
 		</div>
 	`,
@@ -230,15 +230,15 @@ const UsageExampleTemplate: StoryFn = () => ({
 	},
 	template: `
 		<div style="width: 400px;">
-			<h3 style="margin-bottom: 15px; color: var(--color-text-dark);">Chat Input Example</h3>
+			<h3 style="margin-bottom: 15px; color: var(--color--text--shade-1);">Chat Input Example</h3>
 			<div style="
 				display: flex;
 				align-items: center;
 				gap: 8px;
 				padding: 8px;
-				background: var(--color-background-xlight);
-				border: 1px solid var(--color-foreground-base);
-				border-radius: var(--border-radius-large);
+				background: var(--color--background--light-3);
+				border: 1px solid var(--color--foreground);
+				border-radius: var(--radius--lg);
 			">
 				<input
 					v-model="message"
@@ -262,8 +262,8 @@ const UsageExampleTemplate: StoryFn = () => ({
 					@stop="handleStop"
 				/>
 			</div>
-			<div v-if="response" style="margin-top: 15px; padding: 10px; background: var(--color-background-light); border-radius: 4px;">
-				<p style="color: var(--color-text-base); margin: 0;">{{ response }}</p>
+			<div v-if="response" style="margin-top: 15px; padding: 10px; background: var(--color--background--light-2); border-radius: 4px;">
+				<p style="color: var(--color--text); margin: 0;">{{ response }}</p>
 			</div>
 		</div>
 	`,

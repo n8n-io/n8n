@@ -2,7 +2,9 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import type { SimpleWorkflow, WorkflowMetadata, WorkflowOperation } from './types';
+import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
+import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -79,10 +81,38 @@ export const WorkflowState = Annotation.Root({
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,
 	}),
+	// Results of last workflow validation
+	workflowValidation: Annotation<ProgrammaticEvaluationResult | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+	// Compacted programmatic validations history for telemetry
+	validationHistory: Annotation<TelemetryValidationStatus[]>({
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
+		default: () => [],
+	}),
+	// Technique categories identified from categorize_prompt tool for telemetry
+	techniqueCategories: Annotation<string[]>({
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
+		default: () => [],
+	}),
 
 	// Previous conversation summary (used for compressing long conversations)
 	previousSummary: Annotation<string>({
 		reducer: (x, y) => y ?? x, // Overwrite with the latest summary
 		default: () => 'EMPTY',
+	}),
+
+	// Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: appendArrayReducer,
+		default: () => [],
+	}),
+
+	// Cached workflow templates from template API
+	// Shared across tools to reduce API calls
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
 	}),
 });

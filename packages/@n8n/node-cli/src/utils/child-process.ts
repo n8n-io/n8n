@@ -21,6 +21,7 @@ export async function runCommand(
 		stdio?: StdioOptions;
 		context?: 'local' | 'global';
 		printOutput?: (options: { stdout: Buffer[]; stderr: Buffer[] }) => void;
+		alwaysPrintOutput?: boolean;
 	} = {},
 ): Promise<void> {
 	const packageManager = (await detectPackageManager()) ?? 'npm';
@@ -67,6 +68,10 @@ export async function runCommand(
 
 		child.on('close', (code, signal) => {
 			if (code === 0) {
+				// Only print output on success if alwaysPrintOutput is true
+				if (opts.alwaysPrintOutput) {
+					printOutput();
+				}
 				resolve();
 			} else {
 				printOutput();

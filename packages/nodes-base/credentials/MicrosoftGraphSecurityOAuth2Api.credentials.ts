@@ -14,7 +14,7 @@ export class MicrosoftGraphSecurityOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'SecurityEvents.ReadWrite.All',
+			default: 'SecurityEvents.ReadWrite.All offline_access',
 		},
 	];
 }

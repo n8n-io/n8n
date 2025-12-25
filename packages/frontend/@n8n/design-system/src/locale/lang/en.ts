@@ -25,7 +25,7 @@ export default {
 	'formInput.validator.defaultPasswordRequirements':
 		'8+ characters, at least 1 number and 1 capital letter',
 	'sticky.markdownHint':
-		'You can style with <a href="https://docs.n8n.io/workflows/sticky-notes/" target="_blank">Markdown</a>',
+		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
 	'datatable.pageSize': 'Page size',
 	'codeDiff.couldNotReplace': 'Could not replace code',
@@ -54,9 +54,9 @@ export default {
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'n8n AI',
 	'assistantChat.aiAssistantBetaLabel': 'Beta',
-	'assistantChat.aiAssistantName': 'Assistant',
+	'assistantChat.aiAssistantName': 'n8n AI',
 	'assistantChat.sessionEndMessage.1':
-		'This Assistant session has ended. To start a new session with the Assistant, click an',
+		'This n8n AI session has ended. To start a new session with n8n AI, click a',
 	'assistantChat.sessionEndMessage.2': 'button in n8n',
 	'assistantChat.you': 'You',
 	'assistantChat.quickRepliesTitle': 'Quick reply 👇',
@@ -86,7 +86,19 @@ export default {
 	'promptInput.askAdminToUpgrade': 'Ask your admin to upgrade the instance to get more credits',
 	'promptInput.characterLimitReached': "You've reached the {limit} character limit",
 	'promptInput.remainingCredits': 'Remaining builder AI credits: <b>{count}</b>',
-	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b>',
+	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'aiAssistant.textMessage.restoreVersion': 'Restore version',
+	'aiAssistant.versionCard.restoreModal.title': 'Restore to this version?',
+	'aiAssistant.versionCard.restoreModal.description':
+		'This will replace your current version. Existing version will be saved for {pruneTime} in version history.',
+	'aiAssistant.versionCard.restoreModal.descriptionNoLimit':
+		'This will replace your current version. Existing version will be saved in version history.',
+	'aiAssistant.versionCard.restoreModal.hour': '{count} hour',
+	'aiAssistant.versionCard.restoreModal.hours': '{count} hours',
+	'aiAssistant.versionCard.restoreModal.day': '{count} day',
+	'aiAssistant.versionCard.restoreModal.days': '{count} days',
+	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
+	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
 } as N8nLocale;

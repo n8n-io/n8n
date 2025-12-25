@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 
 const ruleTester = new RuleTester();

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,11 +21,11 @@ import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import config from './config';
 import { EventService } from './events/event.service';
 
 @Service()
@@ -41,6 +42,7 @@ export class ActiveExecutions {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	has(executionId: string) {
@@ -75,7 +77,7 @@ export class ActiveExecutions {
 			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
 			assert(executionId);
 
-			if (config.getEnv('executions.mode') === 'regular') {
+			if (this.executionsConfig.mode === 'regular') {
 				await this.concurrencyControl.throttle({ mode, executionId });
 				await this.executionRepository.setRunning(executionId);
 			}
@@ -93,7 +95,16 @@ export class ActiveExecutions {
 				// this is resuming, so keep `startedAt` as it was
 			};
 
-			await this.executionRepository.updateExistingExecution(executionId, execution);
+			const updateSucceeded = await this.executionRepository.updateExistingExecution(
+				executionId,
+				execution,
+				'waiting', // Only update if status is 'waiting'
+			);
+
+			if (!updateSucceeded) {
+				// Another process is already resuming this execution
+				throw new ExecutionAlreadyResumingError(executionId);
+			}
 		}
 
 		const resumingExecution = this.activeExecutions[executionId];
@@ -167,7 +178,14 @@ export class ActiveExecutions {
 			// There is no execution running with that id
 			return;
 		}
-		this.eventService.emit('execution-cancelled', { executionId });
+
+		const workflowData = execution.executionData.workflowData;
+		this.eventService.emit('execution-cancelled', {
+			executionId,
+			workflowId: workflowData?.id,
+			workflowName: workflowData?.name,
+			reason: cancellationError.reason,
+		});
 		execution.responsePromise?.reject(cancellationError);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
@@ -258,7 +276,7 @@ export class ActiveExecutions {
 
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
-		const isRegularMode = config.getEnv('executions.mode') === 'regular';
+		const isRegularMode = this.executionsConfig.mode === 'regular';
 		if (isRegularMode) {
 			// removal of active executions will no longer release capacity back,
 			// so that throttled executions cannot resume during shutdown

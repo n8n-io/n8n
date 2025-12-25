@@ -10,7 +10,7 @@ export class OpenWeatherMapApi implements ICredentialType {
 
 	displayName = 'OpenWeatherMap API';
 
-	documentationUrl = 'openWeatherMap';
+	documentationUrl = 'openweathermap';
 
 	properties: INodeProperties[] = [
 		{

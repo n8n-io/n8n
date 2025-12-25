@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 
 const ruleTester = new RuleTester();

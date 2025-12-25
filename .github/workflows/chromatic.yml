@@ -30,12 +30,14 @@ jobs:
   chromatic:
     needs: [changeset]
     if: |
+      github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'pull_request_review' &&
         needs.changeset.outputs.has_changes == 'true' &&
         github.event.review.state == 'approved' &&
-        !contains(github.event.pull_request.labels.*.name, 'community')
+        !startsWith(github.event.pull_request.head.ref, 'release/') &&
+        !startsWith(github.event.pull_request.head.ref, 'release-pr/')
       )
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
@@ -44,7 +46,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 
@@ -54,6 +56,8 @@ jobs:
         continue-on-error: true
         with:
           workingDir: packages/frontend/@n8n/design-system
+          autoAcceptChanges: 'master'
+          skip: 'release/**'
           onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: false

@@ -11,7 +11,7 @@ type PythonSandboxContext = {
 
 type PyodideError = Error & { type: string };
 
-const envAccessBlocked = process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true';
+const envAccessBlocked = process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE !== 'false';
 
 export class PythonSandbox extends Sandbox {
 	private readonly context: PythonSandboxContext;

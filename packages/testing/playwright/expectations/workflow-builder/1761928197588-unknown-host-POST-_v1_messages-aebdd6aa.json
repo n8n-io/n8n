@@ -1,0 +1,84 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["3251"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["49"],
+			"request-id": ["req_011CUfbLYuiVRUKhtKCroBQN"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:29:15Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15492000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:29:16Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:29:15Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["14992000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:29:16 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["997487a94efb3477-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01A6No3bBoUT6WjQHkC9bbVy",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_011t5AozFQDwtWfCNTGaaNsi",
+						"name": "extract",
+						"input": {
+							"parameters": {
+								"resource": "video",
+								"operation": "update",
+								"videoId": "={{ $json.videoId }}",
+								"title": "={{ $json.title }}",
+								"regionCode": "={{ $json.regionCode }}",
+								"categoryId": "={{ $json.categoryId }}",
+								"updateFields": {
+									"description": "={{ $json.description }}"
+								}
+							}
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1204,
+					"cache_creation_input_tokens": 18473,
+					"cache_read_input_tokens": 1810,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 18473,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 131,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFBNk5vM2JCb1VUNldqUUhrQzliYlZ5IiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTF0NUFvekZRRHd0V2ZDTlRHYWFOc2kiLCJuYW1lIjoiZXh0cmFjdCIsImlucHV0Ijp7InBhcmFtZXRlcnMiOnsicmVzb3VyY2UiOiJ2aWRlbyIsIm9wZXJhdGlvbiI6InVwZGF0ZSIsInZpZGVvSWQiOiI9e3sgJGpzb24udmlkZW9JZCB9fSIsInRpdGxlIjoiPXt7ICRqc29uLnRpdGxlIH19IiwicmVnaW9uQ29kZSI6Ij17eyAkanNvbi5yZWdpb25Db2RlIH19IiwiY2F0ZWdvcnlJZCI6Ij17eyAkanNvbi5jYXRlZ29yeUlkIH19IiwidXBkYXRlRmllbGRzIjp7ImRlc2NyaXB0aW9uIjoiPXt7ICRqc29uLmRlc2NyaXB0aW9uIH19In19fX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjA0LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjE4NDczLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTgxMCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MTg0NzMsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMzEsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIn19"
+		}
+	},
+	"id": "1761928197588-unknown-host-POST-_v1_messages-aebdd6aa.json",
+	"priority": 9,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

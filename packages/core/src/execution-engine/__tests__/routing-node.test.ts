@@ -19,7 +19,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
@@ -720,7 +720,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const path = '';
 		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -2069,7 +2069,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
@@ -2256,7 +2256,7 @@ describe('RoutingNode', () => {
 
 		const runIndex = 0;
 		const itemIndex = 0;
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = mock<INodeType>();
 
 		const inputData: ITaskDataConnections = {

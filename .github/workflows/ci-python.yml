@@ -35,7 +35,7 @@ jobs:
         run: just sync-all
 
       - name: Format check
-        run: just format check
+        run: just format-check
 
       - name: Typecheck
         run: just typecheck

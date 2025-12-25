@@ -2,6 +2,7 @@ import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
+import { jsonrepair } from 'jsonrepair';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
@@ -16,6 +17,21 @@ const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 BigInt.prototype.toJSON = function () {
 	return this.toString();
 };
+
+/**
+ * Type guard for plain objects suitable for key-based traversal/serialization.
+ *
+ * Returns `true` for objects whose prototype is `Object.prototype` (object literals)
+ * or `null` (`Object.create(null)`), and `false` for arrays and non-plain objects
+ * such as `Date`, `Map`, `Set`, and class instances.
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
+	if (value === null || typeof value !== 'object') return false;
+	if (Array.isArray(value)) return false;
+	if (Object.prototype.toString.call(value) !== '[object Object]') return false;
+
+	return Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null;
+}
 
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
@@ -86,6 +102,13 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 			return expression.value;
 		case Syntax.ArrayExpression:
 			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		case Syntax.UnaryExpression: {
+			const value = syntaxNodeToValue(expression.argument);
+			if (typeof value === 'number' && expression.operator === '-') {
+				return -value;
+			}
+			return value;
+		}
 		default:
 			return undefined;
 	}
@@ -109,7 +132,7 @@ type MutuallyExclusive<T, U> =
 	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
 	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
 
-type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
+type JSONParseOptions<T> = { acceptJSObject?: boolean; repairJSON?: boolean } & MutuallyExclusive<
 	{ errorMessage?: string },
 	{ fallbackValue?: T }
 >;
@@ -120,6 +143,7 @@ type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
  * @param {string} jsonString - The JSON string to parse.
  * @param {Object} [options] - Optional settings for parsing the JSON string. Either `fallbackValue` or `errorMessage` can be set, but not both.
  * @param {boolean} [options.acceptJSObject=false] - If true, attempts to recover from common JSON format errors by parsing the JSON string as a JavaScript Object.
+ * @param {boolean} [options.repairJSON=false] - If true, attempts to repair common JSON format errors by repairing the JSON string.
  * @param {string} [options.errorMessage] - A custom error message to throw if the JSON string cannot be parsed.
  * @param {*} [options.fallbackValue] - A fallback value to return if the JSON string cannot be parsed.
  * @returns {Object} - The parsed object, or the fallback value if parsing fails and `fallbackValue` is set.
@@ -132,6 +156,14 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 			try {
 				const jsonStringCleaned = parseJSObject(jsonString);
 				return jsonStringCleaned as T;
+			} catch (e) {
+				// Ignore this error and return the original error or the fallback value
+			}
+		}
+		if (options?.repairJSON) {
+			try {
+				const jsonStringCleaned = jsonrepair(jsonString);
+				return JSON.parse(jsonStringCleaned) as T;
 			} catch (e) {
 				// Ignore this error and return the original error or the fallback value
 			}
@@ -332,7 +364,16 @@ export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is 
 	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
 }
 
-const unsafeObjectProperties = new Set(['__proto__', 'prototype', 'constructor', 'getPrototypeOf']);
+const unsafeObjectProperties = new Set([
+	'__proto__',
+	'prototype',
+	'constructor',
+	'getPrototypeOf',
+	'mainModule',
+	'binding',
+	'_load',
+	'prepareStackTrace',
+]);
 
 /**
  * Checks if a property key is safe to use on an object, preventing prototype pollution.
@@ -371,18 +412,30 @@ export function isDomainAllowed(
 
 	try {
 		const url = new URL(urlString);
-		const hostname = url.hostname;
+
+		// Normalize hostname: lowercase and remove trailing dot
+		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+
+		// Reject empty hostnames
+		if (!hostname) {
+			return false;
+		}
 
 		const allowedDomainsList = options.allowedDomains
 			.split(',')
-			.map((domain) => domain.trim())
+			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
 			.filter(Boolean);
 
 		for (const allowedDomain of allowedDomainsList) {
 			// Handle wildcard domains (*.example.com)
 			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2); // Remove the *. part
-				if (hostname.endsWith(domainSuffix)) {
+				const domainSuffix = allowedDomain.substring(2);
+				// Ensure the suffix itself is valid
+				if (!domainSuffix) continue;
+
+				// Wildcard matches only subdomains, not the base domain itself
+				// *.example.com matches sub.example.com but NOT example.com
+				if (hostname.endsWith('.' + domainSuffix)) {
 					return true;
 				}
 			}
@@ -397,4 +450,18 @@ export function isDomainAllowed(
 		// If URL parsing fails, deny access to be safe
 		return false;
 	}
+}
+
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
+}
+
+export function dedupe<T>(arr: T[]): T[] {
+	return [...new Set(arr)];
 }

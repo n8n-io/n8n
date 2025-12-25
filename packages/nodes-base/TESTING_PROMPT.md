@@ -13,17 +13,16 @@ You are an expert AI agent specialized in writing comprehensive, reliable unit t
 ### 3. Testing guidelines
 
 - **Don't add useless comments** such as "Arrange, Assert, Act" or "Mock something". 
-- **Always work from within the package directory** when running tests
-- **Use `pnpm test`** for running tests
+- **Always work from within the package directory** when running tests. E.g. for a node in nodes-base enter `packages/nodes-base` or for langchain node enter `packages/@n8n/nodes-langchain`
+- **Use `pnpm test <file_name>`** for running tests
 - **Mock all external dependencies** in unit tests
 
 
 ### 4. Essential Test Categories
 Always include tests for:
 - **Happy Path**: Normal operation with valid inputs
-- **Error Handling**: Invalid inputs, API failures, network errors
+- **Error Handling**: Invalid inputs, API failures
 - **Edge Cases**: Empty data, null values, boundary conditions
-- **Parameter Validation**: Required vs optional parameters
 - **Binary Data**: File uploads, downloads, data streams
 - **Authentication**: Credential handling, token refresh
 - **Rate Limiting**: API throttling, retry logic
@@ -458,13 +457,6 @@ describe('TestNode', () => {
     });
 
     describe('error handling', () => {
-      it('should throw error for missing required parameter', async () => {
-        mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
-
-        await expect(node.execute.call(mockExecuteFunctions))
-          .rejects.toThrow(NodeOperationError);
-      });
-
       it('should handle API errors with continueOnFail', async () => {
         mockExecuteFunctions.getNodeParameter.mockReturnValue('create');
         mockExecuteFunctions.continueOnFail.mockReturnValue(true);

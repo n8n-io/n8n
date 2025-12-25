@@ -10,7 +10,9 @@ import {
 	PROJECT_EDITOR_ROLE,
 	PROJECT_OWNER_ROLE,
 	PROJECT_VIEWER_ROLE,
+	RoleRepository,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
@@ -32,6 +34,10 @@ describe('RoleController - Integration Tests', () => {
 
 	afterEach(async () => {
 		await cleanupRolesAndScopes();
+		// Clear custom roles
+		await Container.get(RoleRepository).delete({
+			systemRole: false,
+		});
 	});
 
 	afterAll(async () => {
