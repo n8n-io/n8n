@@ -21,6 +21,36 @@ export const escapeCode = (text: string): string => {
 	return text.replace('\\}}', '}}');
 };
 
+/**
+ * Checks if a position in a string is inside a quoted string.
+ * Handles single quotes, double quotes, and backticks, with escape sequence support.
+ */
+const isInsideString = (text: string, position: number): boolean => {
+	let inSingleQuote = false;
+	let inDoubleQuote = false;
+	let inBacktick = false;
+
+	for (let i = 0; i < position; i++) {
+		const char = text[i];
+		const prevChar = i > 0 ? text[i - 1] : '';
+
+		// Skip escaped characters
+		if (prevChar === '\\') {
+			continue;
+		}
+
+		if (char === "'" && !inDoubleQuote && !inBacktick) {
+			inSingleQuote = !inSingleQuote;
+		} else if (char === '"' && !inSingleQuote && !inBacktick) {
+			inDoubleQuote = !inDoubleQuote;
+		} else if (char === '`' && !inSingleQuote && !inDoubleQuote) {
+			inBacktick = !inBacktick;
+		}
+	}
+
+	return inSingleQuote || inDoubleQuote || inBacktick;
+};
+
 export const splitExpression = (expression: string): ExpressionChunk[] => {
 	const chunks: ExpressionChunk[] = [];
 	let searchingFor: 'open' | 'close' = 'open';
@@ -56,6 +86,17 @@ export const splitExpression = (expression: string): ExpressionChunk[] => {
 			buffer += expr.slice(0, res.index + 3);
 			index += res.index + 3;
 		} else {
+			// When searching for close bracket, check if it's inside a string
+			if (
+				searchingFor === 'close' &&
+				isInsideString(buffer + expr.slice(0, res.index), res.index + buffer.length)
+			) {
+				// The }} is inside a string, skip it and continue searching
+				buffer += expr.slice(0, res.index + 2);
+				index += res.index + 2;
+				continue;
+			}
+
 			buffer += expr.slice(0, res.index);
 
 			if (searchingFor === 'open') {
@@ -83,9 +124,26 @@ export const splitExpression = (expression: string): ExpressionChunk[] => {
 	return chunks;
 };
 
-// Expressions only have closing brackets escaped
+// Expressions only have closing brackets escaped, but not those inside strings
 const escapeTmplExpression = (part: string) => {
-	return part.replace('}}', '\\}}');
+	let result = '';
+	let i = 0;
+
+	while (i < part.length) {
+		// Check for }}
+		if (part[i] === '}' && part[i + 1] === '}') {
+			// Only escape if not inside a string
+			if (!isInsideString(part, i)) {
+				result += '\\}}';
+				i += 2;
+				continue;
+			}
+		}
+		result += part[i];
+		i++;
+	}
+
+	return result;
 };
 
 export const joinExpression = (parts: ExpressionChunk[]): string => {
