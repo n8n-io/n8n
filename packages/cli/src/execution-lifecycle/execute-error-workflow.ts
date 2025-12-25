@@ -31,7 +31,7 @@ export function executeErrorWorkflow(
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${
+		pastExecutionUrl = `${Container.get(UrlService).getInstanceBaseUrl()}/workflow/${
 			workflowData.id
 		}/executions/${executionId}`;
 	}
