@@ -220,6 +220,85 @@ describe('buildSteps', () => {
 			expect(result[0].action.toolInput).toEqual({});
 		});
 
+		it('should handle primitive string input by wrapping it in an object (issue #23501)', () => {
+			// When tools like Calculator receive a simple string input like "5*343",
+			// the input structure is { id: 'call_123', input: '5*343' } where input is a string
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator1',
+							input: {
+								id: 'call_9yHJCyXEEWxsRmU7xM56JX2m',
+								input: '5*343', // String primitive, not an object
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_9yHJCyXEEWxsRmU7xM56JX2m',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '1715' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// String input should be wrapped as { input: '5*343' }
+			expect(result[0].action.toolInput).toEqual({ input: '5*343' });
+			expect(result[0].action.toolCallId).toBe('call_9yHJCyXEEWxsRmU7xM56JX2m');
+		});
+
+		it('should handle primitive number input by wrapping it in an object', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'NumberTool',
+							input: {
+								id: 'call_456',
+								input: 42, // Number primitive
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_456',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'processed' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Number input should be wrapped as { input: 42 }
+			expect(result[0].action.toolInput).toEqual({ input: 42 });
+		});
+
 		describe('Previous requests handling', () => {
 			it('should include previous requests from metadata', () => {
 				const previousRequests = [
