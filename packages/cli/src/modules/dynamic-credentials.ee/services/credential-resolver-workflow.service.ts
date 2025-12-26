@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 
 type CredentialStatus = {
 	credentialId: string;
+	credentialName: string;
 	resolverId: string;
 	credentialType: string;
 	status: 'missing' | 'configured';
@@ -167,6 +168,7 @@ export class CredentialResolverWorkflowService {
 				return {
 					credentialId: credential.id,
 					resolverId: credentialResolverId,
+					credentialName: credential.name,
 					status: 'configured',
 					credentialType: credential.type,
 				};
@@ -175,6 +177,7 @@ export class CredentialResolverWorkflowService {
 				return {
 					credentialId: credential.id,
 					resolverId: credentialResolverId,
+					credentialName: credential.name,
 					status: 'missing',
 					credentialType: credential.type,
 				};

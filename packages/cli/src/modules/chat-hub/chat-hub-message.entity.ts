@@ -5,7 +5,6 @@ import {
 	Entity,
 	ManyToOne,
 	JoinColumn,
-	OneToMany,
 	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
@@ -104,64 +103,15 @@ export class ChatHubMessage extends WithTimestamps {
 	previousMessageId: string | null;
 
 	/**
-	 * The previous message this message is a response to, NULL on the initial message.
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.responses, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'previousMessageId' })
-	previousMessage?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * Messages that are responses to this message. This could branch out to multiple threads.
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.previousMessage)
-	responses?: Array<Relation<ChatHubMessage>>;
-
-	/**
 	 * ID of the message that this message is a retry of (if applicable).
 	 */
 	@Column({ type: String, nullable: true })
 	retryOfMessageId: string | null;
-
-	/**
-	 * The message that this message is a retry of (if applicable).
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.retries, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'retryOfMessageId' })
-	retryOfMessage?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * All messages that are retries of this message (if applicable).
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.retryOfMessage)
-	retries?: Array<Relation<ChatHubMessage>>;
-
 	/**
 	 * ID of the message that this message is a revision/edit of (if applicable).
 	 */
 	@Column({ type: String, nullable: true })
 	revisionOfMessageId: string | null;
-
-	/**
-	 * The message that this message is a revision/edit of (if applicable).
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.revisions, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'revisionOfMessageId' })
-	revisionOfMessage?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * All messages that are revisions/edits of this message (if applicable).
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.revisionOfMessage)
-	revisions?: Array<Relation<ChatHubMessage>>;
 
 	/**
 	 * Status of the message, e.g. 'running', 'success', 'error', 'cancelled'.

@@ -381,6 +381,172 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 	});
 
+	describe('error data format for addOutputData', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should pass error data in INodeExecutionData format to addOutputData', async () => {
+			// This test ensures that when tool execution fails, the error is wrapped
+			// in the correct format for addOutputData, not passed as raw ExecutionError
+			const executeWorkflowMock = jest
+				.fn()
+				.mockRejectedValue(new Error('Workflow execution failed'));
+			const addOutputDataMock = jest.fn();
+
+			const contextWithError = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: false,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: addOutputDataMock,
+			});
+			contextWithError.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithError, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithError.getNodeParameter,
+				addOutputData: addOutputDataMock,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithError);
+			const tool = await service.createTool({
+				ctx: contextWithError,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			await tool.func('test query');
+
+			expect(addOutputDataMock).toHaveBeenCalled();
+			const [connectionType, _runIndex, outputData] = addOutputDataMock.mock.calls[0];
+
+			// The output data should be in INodeExecutionData[][] format, not raw Error
+			// This is critical for the agent to receive proper execution data
+			expect(connectionType).toBe('ai_tool');
+			expect(Array.isArray(outputData)).toBe(true);
+			// Structure is [[{json: {error: ...}}]] - outer array for runs, inner for items
+			expect(Array.isArray(outputData[0])).toBe(true);
+			expect(outputData[0][0]).toHaveProperty('json');
+			expect(outputData[0][0].json).toHaveProperty('error');
+		});
+
+		it('should include error message in the wrapped output data', async () => {
+			const errorMessage = 'Sub-workflow failed with validation error';
+			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error(errorMessage));
+			const addOutputDataMock = jest.fn();
+
+			const contextWithError = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: false,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: addOutputDataMock,
+			});
+			contextWithError.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithError, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithError.getNodeParameter,
+				addOutputData: addOutputDataMock,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithError);
+			const tool = await service.createTool({
+				ctx: contextWithError,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			await tool.func('test query');
+
+			expect(addOutputDataMock).toHaveBeenCalled();
+			const [, , outputData] = addOutputDataMock.mock.calls[0];
+
+			// The error message should be preserved in the output data
+			// Structure is [[{json: {error: ...}}]]
+			expect(Array.isArray(outputData)).toBe(true);
+			expect(Array.isArray(outputData[0])).toBe(true);
+			const errorJson = outputData[0][0]?.json?.error;
+			expect(errorJson).toContain(errorMessage);
+		});
+
+		it('should call addOutputData with correct arguments on error', async () => {
+			// Test that addOutputData is called with all expected arguments
+			const executeWorkflowMock = jest.fn().mockRejectedValue(new Error('Execution failed'));
+			const addOutputDataMock = jest.fn();
+
+			const contextWithError = createMockContext({
+				getNode: jest.fn().mockReturnValue({
+					name: 'Test Tool',
+					parameters: { workflowInputs: { schema: [] } },
+					retryOnFail: false,
+				}),
+				getNodeParameter: jest.fn().mockImplementation((name) => {
+					if (name === 'source') return 'database';
+					if (name === 'workflowId') return { value: 'test-workflow-id' };
+					if (name === 'fields.values') return [];
+					return {};
+				}),
+				executeWorkflow: executeWorkflowMock,
+				addOutputData: addOutputDataMock,
+			});
+			contextWithError.cloneWith = jest.fn().mockImplementation((cloneOverrides) => ({
+				...createMockClonedContext(contextWithError, executeWorkflowMock),
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: { id: 'exec-id' },
+					$workflow: { id: 'workflow-id' },
+				}),
+				getNodeParameter: contextWithError.getNodeParameter,
+				addOutputData: addOutputDataMock,
+				...cloneOverrides,
+			}));
+
+			service = new WorkflowToolService(contextWithError);
+			const tool = await service.createTool({
+				ctx: contextWithError,
+				name: 'Test Tool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			await tool.func('test query');
+
+			expect(addOutputDataMock).toHaveBeenCalled();
+			// Should be called with 4 arguments: connectionType, runIndex, data, metadata
+			expect(addOutputDataMock.mock.calls[0]).toHaveLength(4);
+			const [connectionType, runIndex, outputData, _metadata] = addOutputDataMock.mock.calls[0];
+			expect(connectionType).toBe('ai_tool');
+			expect(typeof runIndex).toBe('number');
+			expect(Array.isArray(outputData)).toBe(true);
+			// metadata may be undefined if parseErrorMetadata returns nothing, that's ok
+		});
+	});
+
 	describe('retry functionality', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();

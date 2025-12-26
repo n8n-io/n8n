@@ -34,8 +34,8 @@ Run your Playwright tests with coverage collection enabled:
 # From the playwright package directory
 cd packages/testing/playwright
 
-# Run UI tests
-pnpm test:ui
+# Run E2E tests
+pnpm test:e2e
 
 ```
 
@@ -89,8 +89,8 @@ If you see "No coverage files found":
 1. Build with coverage: `BUILD_WITH_COVERAGE=true pnpm build` or `pnpm build:docker:coverage`
 2. Run tests with coverage enabled: `BUILD_WITH_COVERAGE=true pnpm test:container:standard`
 3. Check that coverage files exist in `.nyc_output/{projectName}/` directories
-   - For local mode: `.nyc_output/ui/`
-   - For container mode: `.nyc_output/standard:ui/`, `.nyc_output/standard:ui:isolated/`, etc.
+   - For local mode: `.nyc_output/e2e/`
+   - For container mode: `.nyc_output/standard:e2e/`, `.nyc_output/standard:e2e:isolated/`, etc.
 
 ### Low Coverage Percentage
 
@@ -160,9 +160,9 @@ packages/testing/playwright/
 │   ├── base.css             # Report styling
 │   └── ...                  # Individual file reports
 ├── .nyc_output/             # Raw coverage data (per project)
-│   ├── ui/                  # Local mode coverage
-│   ├── standard:ui/         # Container mode coverage
-│   ├── standard:ui:isolated/
+│   ├── e2e/                  # Local mode coverage
+│   ├── standard:e2e/         # Container mode coverage
+│   ├── standard:e2e:isolated/
 │   └── out.json            # Merged coverage data
 ├── nyc.config.ts           # NYC configuration
 └── scripts/

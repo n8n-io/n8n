@@ -165,6 +165,12 @@ export async function extractDataFromPDF(
 		buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
+	// Polyfill DOMMatrix for pdfjs-dist in Node.js environments without canvas
+	if (typeof globalThis.DOMMatrix === 'undefined') {
+		const { default: DOMMatrix } = await import('@thednp/dommatrix');
+		globalThis.DOMMatrix = DOMMatrix as unknown as typeof globalThis.DOMMatrix;
+	}
+
 	const { getDocument: readPDF, version: pdfJsVersion } = await import(
 		'pdfjs-dist/legacy/build/pdf.mjs'
 	);
