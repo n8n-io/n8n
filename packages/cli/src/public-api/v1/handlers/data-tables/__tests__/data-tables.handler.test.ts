@@ -11,8 +11,9 @@ import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 // Mock middleware before requiring handler
-jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(jest.fn((_req, _res, next) => next()));
-jest.spyOn(middlewares, 'projectScope').mockReturnValue(jest.fn((_req, _res, next) => next()));
+const mockMiddleware = jest.fn(async (_req, _res, next) => next());
+jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(mockMiddleware);
+jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
 
 const handler = require('../data-tables.handler');
 

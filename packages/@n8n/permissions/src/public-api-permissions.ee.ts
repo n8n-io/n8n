@@ -109,6 +109,11 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'credential:create',
 	'credential:move',
 	'credential:delete',
+	'dataTableRow:create',
+	'dataTableRow:read',
+	'dataTableRow:update',
+	'dataTableRow:delete',
+	'dataTableRow:upsert',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
