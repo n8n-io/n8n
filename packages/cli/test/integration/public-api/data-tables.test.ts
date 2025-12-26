@@ -6,12 +6,11 @@ import { Container } from '@n8n/di';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { createDataTable } from '../shared/db/data-tables';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 let owner: User;
-let member: User;
 let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
@@ -22,11 +21,9 @@ const testServer = utils.setupTestServer({
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
-	member = await createMemberWithApiKey();
 
 	const projectRepository = Container.get(ProjectRepository);
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 });
 
 beforeEach(async () => {
@@ -58,14 +55,13 @@ beforeEach(async () => {
 	};
 
 	ownerPersonalProject = await createPersonalProject(owner);
-	memberPersonalProject = await createPersonalProject(member);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
 const testWithAPIKey =
-	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
+	(method: 'get' | 'post' | 'put' | 'patch' | 'delete', url: string, apiKey: string | null) =>
+	async () => {
 		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
