@@ -1,0 +1,179 @@
+# ============================================================================
+# Render.com Blueprint pour n8n avec Supabase PostgreSQL
+# ============================================================================
+#
+# Ce fichier définit l'infrastructure pour déployer n8n sur Render.com
+# Documentation: https://render.com/docs/blueprint-spec
+#
+# IMPORTANT: Configurez les variables d'environnement dans le Dashboard Render
+# avant le premier déploiement !
+# ============================================================================
+
+services:
+  # ======================================
+  # Service Web n8n
+  # ======================================
+  - type: web
+    name: n8n-server
+    runtime: docker
+    region: oregon  # Changez selon votre région préférée (oregon, frankfurt, singapore, etc.)
+    plan: starter  # Plans: free, starter, standard, pro, pro plus, pro max, pro ultra
+
+    # Configuration Docker (Hardened version)
+    dockerfilePath: ./docker/images/n8n/Dockerfile.hardened
+    dockerContext: .
+
+    # Build
+    buildCommand: pnpm build:deploy
+
+    # Démarrage
+    startCommand: n8n start
+
+    # Configuration réseau
+    healthCheckPath: /healthz
+
+    # Auto-deploy depuis la branche principale
+    branch: master
+
+    # ======================================
+    # Variables d'environnement
+    # ======================================
+    # IMPORTANT: NE PAS mettre de valeurs sensibles ici !
+    # Utilisez le Dashboard Render > Environment pour les secrets
+    # ======================================
+    envVars:
+      # ----- Configuration Node.js -----
+      - key: NODE_ENV
+        value: production
+
+      # ----- Configuration n8n -----
+      - key: N8N_HOST
+        value: PLACEHOLDER_YOUR_APP_NAME.onrender.com  # Remplacez par votre URL Render
+
+      - key: N8N_PROTOCOL
+        value: https
+
+      - key: N8N_PORT
+        value: 5678
+
+      # ----- Timezone -----
+      - key: GENERIC_TIMEZONE
+        value: Europe/Paris  # Changez selon votre timezone
+
+      - key: TZ
+        value: Europe/Paris
+
+      # ----- Base de données PostgreSQL (Supabase) -----
+      - key: DB_TYPE
+        value: postgresdb
+
+      - key: DB_POSTGRESDB_HOST
+        sync: false  # À définir dans Dashboard Render (depuis Supabase)
+
+      - key: DB_POSTGRESDB_PORT
+        value: 5432
+
+      - key: DB_POSTGRESDB_DATABASE
+        value: postgres  # Database par défaut Supabase
+
+      - key: DB_POSTGRESDB_USER
+        value: postgres  # User par défaut Supabase
+
+      - key: DB_POSTGRESDB_PASSWORD
+        sync: false  # À définir dans Dashboard Render (SENSIBLE!)
+
+      - key: DB_POSTGRESDB_SCHEMA
+        value: public
+
+      - key: DB_POSTGRESDB_POOL_SIZE
+        value: 5
+
+      # ----- SSL pour Supabase -----
+      - key: DB_POSTGRESDB_SSL_ENABLED
+        value: true
+
+      - key: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED
+        value: false  # Nécessaire pour Supabase
+
+      # ----- Clé de chiffrement (CRITIQUE!) -----
+      # GÉNÉREZ UNE CLÉ ALÉATOIRE SÉCURISÉE !
+      # Exemple: openssl rand -hex 32
+      - key: N8N_ENCRYPTION_KEY
+        sync: false  # À définir dans Dashboard Render (TRÈS SENSIBLE!)
+
+      # ----- Webhook Configuration -----
+      - key: WEBHOOK_URL
+        value: https://PLACEHOLDER_YOUR_APP_NAME.onrender.com/
+
+      # ----- Performance & Scalabilité -----
+      - key: EXECUTIONS_PROCESS
+        value: main  # Utilise le processus principal (simple pour démarrer)
+
+      # ----- Sécurité -----
+      - key: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+        value: false  # Désactivé pour Docker
+
+      # ----- Optionnel: Authentification basique -----
+      # Décommentez et configurez dans le Dashboard Render si nécessaire
+      # - key: N8N_BASIC_AUTH_ACTIVE
+      #   value: true
+      #
+      # - key: N8N_BASIC_AUTH_USER
+      #   sync: false
+      #
+      # - key: N8N_BASIC_AUTH_PASSWORD
+      #   sync: false
+
+# ============================================================================
+# INSTRUCTIONS DE DÉPLOIEMENT
+# ============================================================================
+#
+# 1. Prérequis Supabase:
+#    - Créez un projet sur Supabase (https://supabase.com)
+#    - Notez: Host, Port, Database, User, Password
+#    - Activez SSL dans les paramètres Supabase
+#
+# 2. Générez une clé de chiffrement:
+#    Exécutez: openssl rand -hex 32
+#    Sauvegardez cette clé en sécurité !
+#
+# 3. Dans Render Dashboard:
+#    a. Créez un nouveau "Web Service"
+#    b. Connectez votre repo GitHub
+#    c. Sélectionnez "Blueprint" et pointez vers ce fichier
+#    d. Ajoutez les variables sensibles dans Environment:
+#       - DB_POSTGRESDB_HOST
+#       - DB_POSTGRESDB_PASSWORD
+#       - N8N_ENCRYPTION_KEY
+#
+# 4. Modifiez ce fichier:
+#    - Remplacez PLACEHOLDER_YOUR_APP_NAME par le nom de votre app
+#    - Ajustez la région et le plan selon vos besoins
+#
+# 5. Déployez:
+#    - Render construira et déploiera automatiquement
+#    - Vérifiez les logs pour confirmer la connexion DB
+#
+# 6. Premier accès:
+#    - Allez sur https://votre-app.onrender.com
+#    - Créez votre compte admin
+#
+# ============================================================================
+# IMPORTANT - SÉCURITÉ
+# ============================================================================
+#
+# ⚠️  NE JAMAIS committer dans Git:
+#    - DB_POSTGRESDB_PASSWORD
+#    - N8N_ENCRYPTION_KEY
+#    - Credentials d'authentification
+#
+# ⚠️  La clé N8N_ENCRYPTION_KEY est CRITIQUE:
+#    - Si vous la perdez, vous perdez TOUTES vos credentials chiffrées
+#    - Sauvegardez-la dans un gestionnaire de mots de passe
+#    - Ne la changez JAMAIS après le premier déploiement
+#
+# ⚠️  Backup régulier:
+#    - Sauvegardez votre base Supabase régulièrement
+#    - Exportez vos workflows depuis l'interface n8n
+#
+# ============================================================================

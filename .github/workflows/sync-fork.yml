@@ -1,9 +1,10 @@
-name: Sync Fork with Upstream
+name: Sync Fork with Upstream n8n
 
 on:
   schedule:
-    # Runs every day at 2 AM UTC
-    - cron: '0 2 * * *'
+    # Runs twice a day at midnight and noon UTC
+    - cron: '0 0 * * *'   # Minuit UTC
+    - cron: '0 12 * * *'  # Midi UTC
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -11,9 +12,56 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: Sync fork with upstream
-        run: gh repo sync $REPOSITORY -b master --force
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
+      - name: Checkout fork repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/n8n-io/n8n.git || true
+          git remote -v
+
+      - name: Fetch upstream changes
+        run: |
+          echo "Fetching latest changes from n8n-io/n8n..."
+          git fetch upstream master
+          git fetch upstream --tags
+
+      - name: Merge upstream changes
+        run: |
+          echo "Merging upstream/master into local master..."
+          git checkout master
+
+          if git merge upstream/master --no-edit -m "chore: sync fork with upstream n8n"; then
+            echo "Merge successful!"
+          else
+            echo "Merge conflicts detected. Auto-resolving by accepting upstream changes..."
+            git merge --abort
+            git merge upstream/master -X theirs --no-edit -m "chore: sync fork with upstream n8n (auto-resolved)"
+            echo "Conflicts auto-resolved"
+          fi
+
+      - name: Push changes to fork
+        run: |
+          echo "Pushing changes to fork..."
+          git push origin master --force-with-lease
+          git push origin --tags --force
+          echo "Fork successfully synced with upstream!"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Sync Summary:"
+          echo "  Fork: ${{ github.repository }}"
+          echo "  Upstream: n8n-io/n8n"
+          echo "  Branch: master"
+          echo "  Status: ${{ job.status }}"

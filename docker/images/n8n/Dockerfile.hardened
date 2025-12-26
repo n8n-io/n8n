@@ -1,0 +1,79 @@
+ARG NODE_VERSION=22.21.1
+ARG N8N_VERSION=snapshot
+
+# ==============================================================================
+# STAGE 1: System Dependencies
+# ==============================================================================
+FROM n8nio/base:${NODE_VERSION} AS system-deps
+
+RUN apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache ca-certificates tzdata && \
+    rm -rf /var/cache/apk/* /tmp/* && \
+    apk del --no-cache apk-tools
+
+# ==============================================================================
+# STAGE 2: Runtime Image
+# ==============================================================================
+FROM system-deps AS runtime
+
+ARG N8N_VERSION
+ARG N8N_RELEASE_TYPE=dev
+
+ENV NODE_ENV=production \
+    N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
+    NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu \
+    SHELL=/bin/sh \
+    NODE_OPTIONS="--max-old-space-size=2048" \
+    NPM_CONFIG_UPDATE_NOTIFIER=false \
+    NPM_CONFIG_FUND=false \
+    NPM_CONFIG_AUDIT=false
+
+WORKDIR /home/node
+
+COPY ./compiled /usr/local/lib/node_modules/n8n
+COPY docker/images/n8n/docker-entrypoint.sh /
+
+RUN npm install -g npm@11.6.4 --no-fund --no-audit
+
+RUN cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    mkdir -p /home/node/.n8n && \
+    chmod 700 /home/node/.n8n && \
+    chown -R node:node /home/node && \
+    rm -rf /tmp/* /root/.npm /root/.cache /var/cache
+
+RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && \
+    npm install @napi-rs/canvas --no-save --no-fund --no-audit && \
+    rm -rf /tmp/*
+
+RUN echo '#!/bin/sh' > /usr/local/bin/healthcheck && \
+    echo 'wget --quiet --tries=1 --spider http://localhost:5678/healthz || exit 1' >> /usr/local/bin/healthcheck && \
+    chmod +x /usr/local/bin/healthcheck
+
+RUN find /home/node -type f -exec chmod 600 {} \; && \
+    find /home/node -type d -exec chmod 700 {} \; && \
+    chmod 755 /home/node
+
+RUN rm -f /usr/bin/wget /usr/bin/curl || true
+
+RUN echo "* hard core 0" >> /etc/security/limits.conf && \
+    echo "* soft core 0" >> /etc/security/limits.conf
+
+RUN chmod 755 /bin /sbin /usr/bin /usr/sbin /lib /usr/lib 2>/dev/null || true
+
+EXPOSE 5678/tcp
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["/usr/local/bin/healthcheck"]
+
+USER node
+
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+LABEL org.opencontainers.image.title="n8n" \
+      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
+      org.opencontainers.image.url="https://n8n.io" \
+      org.opencontainers.image.version="${N8N_VERSION}"
