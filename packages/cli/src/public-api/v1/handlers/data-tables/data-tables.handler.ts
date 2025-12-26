@@ -100,33 +100,14 @@ export = {
 				const { filter, data, returnData = false, dryRun = false } = req.body;
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
+				const service = Container.get(DataTableService);
+				const params = { filter, data };
 
-				let result;
-				if (dryRun) {
-					result = await Container.get(DataTableService).updateRows(
-						dataTableId,
-						projectId,
-						{ filter, data },
-						returnData,
-						true,
-					);
-				} else if (returnData) {
-					result = await Container.get(DataTableService).updateRows(
-						dataTableId,
-						projectId,
-						{ filter, data },
-						true,
-						false,
-					);
-				} else {
-					result = await Container.get(DataTableService).updateRows(
-						dataTableId,
-						projectId,
-						{ filter, data },
-						false,
-						false,
-					);
-				}
+				const result = dryRun
+					? await service.updateRows(dataTableId, projectId, params, returnData, true)
+					: returnData
+						? await service.updateRows(dataTableId, projectId, params, true, false)
+						: await service.updateRows(dataTableId, projectId, params, false, false);
 
 				return res.json(result);
 			} catch (error) {
@@ -144,33 +125,14 @@ export = {
 				const { filter, data, returnData = false, dryRun = false } = req.body;
 
 				const projectId = await getProjectIdForDataTable(dataTableId);
+				const service = Container.get(DataTableService);
+				const params = { filter, data };
 
-				let result;
-				if (dryRun) {
-					result = await Container.get(DataTableService).upsertRow(
-						dataTableId,
-						projectId,
-						{ filter, data },
-						returnData,
-						true,
-					);
-				} else if (returnData) {
-					result = await Container.get(DataTableService).upsertRow(
-						dataTableId,
-						projectId,
-						{ filter, data },
-						true,
-						false,
-					);
-				} else {
-					result = await Container.get(DataTableService).upsertRow(
-						dataTableId,
-						projectId,
-						{ filter, data },
-						false,
-						false,
-					);
-				}
+				const result = dryRun
+					? await service.upsertRow(dataTableId, projectId, params, returnData, true)
+					: returnData
+						? await service.upsertRow(dataTableId, projectId, params, true, false)
+						: await service.upsertRow(dataTableId, projectId, params, false, false);
 
 				return res.json(result);
 			} catch (error) {
@@ -195,38 +157,19 @@ export = {
 				}
 
 				const filter = JSON.parse(filterString);
-
 				const projectId = await getProjectIdForDataTable(dataTableId);
 
 				const returnDataBool = returnData === 'true' || returnData === true;
 				const dryRunBool = dryRun === 'true' || dryRun === true;
 
-				let result;
-				if (dryRunBool) {
-					result = await Container.get(DataTableService).deleteRows(
-						dataTableId,
-						projectId,
-						{ filter },
-						returnDataBool,
-						true,
-					);
-				} else if (returnDataBool) {
-					result = await Container.get(DataTableService).deleteRows(
-						dataTableId,
-						projectId,
-						{ filter },
-						true,
-						false,
-					);
-				} else {
-					result = await Container.get(DataTableService).deleteRows(
-						dataTableId,
-						projectId,
-						{ filter },
-						false,
-						false,
-					);
-				}
+				const service = Container.get(DataTableService);
+				const params = { filter };
+
+				const result = dryRunBool
+					? await service.deleteRows(dataTableId, projectId, params, returnDataBool, true)
+					: returnDataBool
+						? await service.deleteRows(dataTableId, projectId, params, true, false)
+						: await service.deleteRows(dataTableId, projectId, params, false, false);
 
 				return res.json(result);
 			} catch (error) {
