@@ -8,12 +8,12 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export class ChatHubAgentService {
@@ -57,8 +57,8 @@ export class ChatHubAgentService {
 	}
 
 	async createAgent(user: User, data: ChatHubCreateAgentRequest): Promise<ChatHubAgent> {
-		// Ensure user has access to credentials if provided
-		await this.chatHubCredentialsService.ensureCredentialById(user, data.credentialId);
+		// Ensure user has access to the credential being saved
+		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
 		const id = uuidv4();
 
@@ -90,9 +90,9 @@ export class ChatHubAgentService {
 			throw new NotFoundError('Chat agent not found');
 		}
 
-		// Ensure user has access to credentials if provided
+		// Ensure user has access to the credential if provided
 		if (updates.credentialId !== undefined && updates.credentialId !== null) {
-			await this.chatHubCredentialsService.ensureCredentialById(user, updates.credentialId);
+			await this.chatHubCredentialsService.ensureCredentialAccess(user, updates.credentialId);
 		}
 
 		const updateData: Partial<IChatHubAgent> = {};

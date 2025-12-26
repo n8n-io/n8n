@@ -101,6 +101,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
 		roleType: 'project',
@@ -1056,6 +1057,7 @@ describe('GET /workflows', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -1072,6 +1074,7 @@ describe('GET /workflows', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -2223,6 +2226,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
@@ -2239,6 +2243,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute-chat',
 					'workflow:list',
 					'workflow:move',
+					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:update',
