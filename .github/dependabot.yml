@@ -1,0 +1,157 @@
+# ============================================================================
+# GitHub Dependabot Configuration - Automated Dependency Updates
+# ============================================================================
+#
+# Dependabot scans your dependencies for vulnerabilities and outdated packages
+# then automatically creates pull requests to update them.
+#
+# Documentation: https://docs.github.com/en/code-security/dependabot
+# ============================================================================
+
+version: 2
+updates:
+  # ===================================
+  # NPM Dependencies (Main repository)
+  # ===================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+      timezone: "UTC"
+
+    # PR Configuration
+    open-pull-requests-limit: 10
+    pull-request-branch-name:
+      separator: "-"
+
+    # Commit Configuration
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+    # Labels
+    labels:
+      - "dependencies"
+      - "security"
+      - "automated"
+
+    # Reviewers
+    reviewers:
+      - "ThePhoenixAgency"
+
+    # Version Strategy
+    versioning-strategy: increase
+
+    # Grouping
+    groups:
+      security-patches:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+        dependency-type: "production"
+
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Ignore specific dependencies (if needed)
+    # ignore:
+    #   - dependency-name: "package-name"
+    #     versions: ["x.x.x"]
+
+  # ===================================
+  # GitHub Actions
+  # ===================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+
+  # ===================================
+  # Docker (if using Docker in workflows)
+  # ===================================
+  - package-ecosystem: "docker"
+    directory: "/docker/images/n8n"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "06:00"
+      timezone: "UTC"
+
+    labels:
+      - "dependencies"
+      - "docker"
+      - "automated"
+
+    commit-message:
+      prefix: "chore(docker)"
+
+# ============================================================================
+# HOW IT WORKS
+# ============================================================================
+#
+# 1. Dependabot runs daily at 6:00 UTC for npm dependencies
+# 2. It checks for:
+#    - Security vulnerabilities (CVEs)
+#    - Outdated packages
+#    - New versions
+#
+# 3. Creates Pull Requests automatically with:
+#    - Clear description of changes
+#    - Changelog links
+#    - Release notes
+#    - Security advisory information (if applicable)
+#
+# 4. PRs are labeled for easy filtering:
+#    - "security" = Contains security fixes
+#    - "dependencies" = Dependency update
+#    - "automated" = Auto-generated
+#
+# 5. You can:
+#    - Review and merge manually (recommended)
+#    - Enable auto-merge for specific types (see below)
+#    - Close PRs you don't want
+#
+# ============================================================================
+# ENABLING AUTO-MERGE (Optional - NOT RECOMMENDED FOR PRODUCTION)
+# ============================================================================
+#
+# To auto-merge security patches only:
+#
+# 1. Go to Settings > General > Pull Requests
+# 2. Enable "Allow auto-merge"
+#
+# 3. Create .github/workflows/dependabot-auto-merge.yml:
+#
+# name: Dependabot Auto-Merge
+# on: pull_request
+# jobs:
+#   auto-merge:
+#     if: github.actor == 'dependabot[bot]'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Enable auto-merge for security patches
+#         if: contains(github.event.pull_request.labels.*.name, 'security')
+#         run: gh pr merge --auto --squash "$PR_URL"
+#         env:
+#           PR_URL: ${{github.event.pull_request.html_url}}
+#           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+#
+# ============================================================================

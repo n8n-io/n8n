@@ -1,0 +1,189 @@
+# ============================================================================
+# Daily Trivy Security Scan - Docker Container & OS Vulnerability Detection
+# ============================================================================
+#
+# This workflow scans the n8n Docker image for:
+# - OS package vulnerabilities (Alpine Linux)
+# - Application library vulnerabilities (npm packages)
+# - CRITICAL, HIGH, and MEDIUM severity CVEs
+#
+# Runs: Daily at 6:00 UTC + on Docker file changes + manual trigger
+# Results: Published to GitHub Security tab
+# ============================================================================
+
+name: Security - Daily Trivy Scan
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Every day at 6:00 UTC
+
+  push:
+    branches:
+      - master
+      - claude/**
+    paths:
+      - 'docker/**'
+      - 'Dockerfile*'
+      - '.github/workflows/security-trivy-daily.yml'
+
+  pull_request:
+    paths:
+      - 'docker/**'
+      - 'Dockerfile*'
+
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  contents: read
+  security-events: write  # Required for uploading to GitHub Security
+  actions: read
+
+jobs:
+  # ===================================
+  # Trivy Scan Job
+  # ===================================
+  trivy-scan:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ----- Checkout -----
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ----- Setup Node.js & pnpm -----
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'pnpm'
+
+      # ----- Install Dependencies -----
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ----- Build n8n Application -----
+      - name: Build n8n application
+        run: pnpm build:deploy
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # ----- Build Docker Image -----
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f docker/images/n8n/Dockerfile.hardened \
+            -t n8n:security-scan \
+            --build-arg N8N_VERSION=$(cat package.json | jq -r .version) \
+            .
+
+      # ----- Run Trivy Scan (SARIF Format for GitHub) -----
+      - name: Run Trivy vulnerability scanner (SARIF)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'n8n:security-scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          vuln-type: 'os,library'
+          ignore-unfixed: false
+          timeout: 10m
+
+      # ----- Upload to GitHub Security -----
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-container-scan'
+
+      # ----- Run Trivy Scan (Table Format for Logs) -----
+      - name: Run Trivy vulnerability scanner (Table)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'n8n:security-scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          vuln-type: 'os,library'
+          ignore-unfixed: false
+
+      # ----- Fail on Critical Vulnerabilities -----
+      - name: Fail build on CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'n8n:security-scan'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL'
+          vuln-type: 'os,library'
+          ignore-unfixed: false
+
+# ============================================================================
+# VIEWING SCAN RESULTS
+# ============================================================================
+#
+# After the scan runs, view results in:
+#
+# 1. GitHub Security Tab:
+#    - Repository > Security > Code scanning alerts
+#    - Filter by "trivy-container-scan"
+#    - See detailed CVE information
+#
+# 2. Workflow Logs:
+#    - Actions > Security - Daily Trivy Scan
+#    - Expand "Run Trivy vulnerability scanner (Table)"
+#    - See formatted table of vulnerabilities
+#
+# 3. Email Notifications:
+#    - Configure in Settings > Notifications
+#    - Get alerts for new CRITICAL/HIGH CVEs
+#
+# ============================================================================
+# UNDERSTANDING THE SCAN
+# ============================================================================
+#
+# Trivy scans TWO types of vulnerabilities:
+#
+# 1. OS Packages (Alpine Linux):
+#    - apk packages
+#    - System libraries
+#    - Example: CVE in openssl, musl, etc.
+#
+# 2. Application Libraries (npm):
+#    - node_modules
+#    - Direct and transitive dependencies
+#    - Example: CVE in express, axios, etc.
+#
+# SEVERITY LEVELS:
+# - CRITICAL (CVSS 9.0-10.0): Immediate action required
+# - HIGH (CVSS 7.0-8.9): Action required soon
+# - MEDIUM (CVSS 4.0-6.9): Action recommended
+# - LOW (CVSS 0.1-3.9): Informational
+#
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+#
+# If scan fails:
+#
+# 1. "Failed to build Docker image"
+#    - Check if pnpm build:deploy succeeded
+#    - Check if compiled/ directory exists
+#    - Increase NODE_OPTIONS memory if needed
+#
+# 2. "Trivy timeout"
+#    - Increase timeout in scan step
+#    - Check Trivy database availability
+#
+# 3. "Too many vulnerabilities"
+#    - This is expected if you haven't synced upstream
+#    - Run: git fetch upstream && git merge upstream/master
+#    - Rebuild and rescan
+#
+# ============================================================================
