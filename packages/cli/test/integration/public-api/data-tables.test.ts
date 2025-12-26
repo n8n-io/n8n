@@ -1,7 +1,9 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { DataTable, Project, User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { createDataTable } from '../shared/db/data-tables';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -11,9 +13,7 @@ import * as utils from '../shared/utils/';
 let owner: User;
 let member: User;
 let ownerPersonalProject: Project;
-let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['publicApi'],
