@@ -3,6 +3,7 @@ import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
@@ -11,11 +12,13 @@ import * as middlewares from '@/public-api/v1/shared/middlewares/global.middlewa
 
 // Mock middleware before requiring handler
 jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(jest.fn((_req, _res, next) => next()));
+jest.spyOn(middlewares, 'projectScope').mockReturnValue(jest.fn((_req, _res, next) => next()));
 
 const handler = require('../data-tables.handler');
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: jest.Mocked<DataTableService>;
+	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
 	let mockProjectRepository: jest.Mocked<ProjectRepository>;
 	let mockResponse: Partial<Response>;
 
@@ -25,17 +28,26 @@ describe('DataTable Handler', () => {
 
 	beforeEach(() => {
 		mockDataTableService = mockInstance(DataTableService);
+		mockDataTableRepository = mockInstance(DataTableRepository);
 		mockProjectRepository = mockInstance(ProjectRepository);
 
 		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
 				return mockDataTableService as any;
 			}
+			if (serviceClass === DataTableRepository) {
+				return mockDataTableRepository as any;
+			}
 			if (serviceClass === ProjectRepository) {
 				return mockProjectRepository as any;
 			}
 			return {} as any;
 		});
+
+		mockDataTableRepository.findOne.mockResolvedValue({
+			id: dataTableId,
+			project: { id: projectId },
+		} as any);
 
 		mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
 			id: projectId,
@@ -69,10 +81,13 @@ describe('DataTable Handler', () => {
 			});
 
 			// Act
-			await handler.getDataTableRows[1](req, mockResponse as Response);
+			await handler.getDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
-			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(userId);
+			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
+				where: { id: dataTableId },
+				relations: ['project'],
+			});
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
 				dataTableId,
 				projectId,
@@ -106,7 +121,7 @@ describe('DataTable Handler', () => {
 			});
 
 			// Act
-			await handler.getDataTableRows[1](req, mockResponse as Response);
+			await handler.getDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
@@ -135,7 +150,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.getDataTableRows[1](req, mockResponse as Response);
+			await handler.getDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -157,7 +172,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.getDataTableRows[1](req, mockResponse as Response);
+			await handler.getDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -182,7 +197,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.insertRows.mockResolvedValue({ count: 1 } as any);
 
 			// Act
-			await handler.insertDataTableRows[1](req, mockResponse as Response);
+			await handler.insertDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.insertRows).toHaveBeenCalledWith(
@@ -208,7 +223,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.insertRows.mockResolvedValue([1, 2] as any);
 
 			// Act
-			await handler.insertDataTableRows[1](req, mockResponse as Response);
+			await handler.insertDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.insertRows).toHaveBeenCalledWith(
@@ -235,7 +250,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.insertRows.mockResolvedValue([mockRow]);
 
 			// Act
-			await handler.insertDataTableRows[1](req, mockResponse as Response);
+			await handler.insertDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.json).toHaveBeenCalledWith([mockRow]);
@@ -252,7 +267,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.insertRows.mockRejectedValue(new DataTableNotFoundError(dataTableId));
 
 			// Act
-			await handler.insertDataTableRows[1](req, mockResponse as Response);
+			await handler.insertDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -276,7 +291,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.updateRows.mockResolvedValue(true);
 
 			// Act
-			await handler.updateDataTableRows[1](req, mockResponse as Response);
+			await handler.updateDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.updateRows).toHaveBeenCalledWith(
@@ -309,7 +324,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.updateRows.mockResolvedValue([mockRow] as any);
 
 			// Act
-			await handler.updateDataTableRows[1](req, mockResponse as Response);
+			await handler.updateDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.json).toHaveBeenCalledWith([mockRow]);
@@ -335,7 +350,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.updateRows.mockResolvedValue(mockDryRunResult as any);
 
 			// Act
-			await handler.updateDataTableRows[1](req, mockResponse as Response);
+			await handler.updateDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.updateRows).toHaveBeenCalledWith(
@@ -368,7 +383,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.upsertRow.mockResolvedValue(true);
 
 			// Act
-			await handler.upsertDataTableRow[1](req, mockResponse as Response);
+			await handler.upsertDataTableRow[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.upsertRow).toHaveBeenCalledWith(
@@ -410,7 +425,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.upsertRow.mockResolvedValue(mockRow as any);
 
 			// Act
-			await handler.upsertDataTableRow[1](req, mockResponse as Response);
+			await handler.upsertDataTableRow[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.json).toHaveBeenCalledWith(mockRow);
@@ -437,7 +452,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.deleteRows.mockResolvedValue(true);
 
 			// Act
-			await handler.deleteDataTableRows[1](req, mockResponse as Response);
+			await handler.deleteDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.deleteRows).toHaveBeenCalledWith(
@@ -472,7 +487,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.deleteRows.mockResolvedValue([mockRow] as any);
 
 			// Act
-			await handler.deleteDataTableRows[1](req, mockResponse as Response);
+			await handler.deleteDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.json).toHaveBeenCalledWith([mockRow]);
@@ -487,7 +502,7 @@ describe('DataTable Handler', () => {
 			} as unknown as DataTableRequest.DeleteRows;
 
 			// Act
-			await handler.deleteDataTableRows[1](req, mockResponse as Response);
+			await handler.deleteDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -516,7 +531,7 @@ describe('DataTable Handler', () => {
 			mockDataTableService.deleteRows.mockResolvedValue(mockRows as any);
 
 			// Act
-			await handler.deleteDataTableRows[1](req, mockResponse as Response);
+			await handler.deleteDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockDataTableService.deleteRows).toHaveBeenCalledWith(
@@ -551,10 +566,13 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.getDataTableRows[1](req, mockResponse as Response);
+			await handler.getDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
-			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(userId);
+			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
+				where: { id: otherUserDataTableId },
+				relations: ['project'],
+			});
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
 				otherUserDataTableId,
 				projectId, // User's own project ID
@@ -586,7 +604,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.insertDataTableRows[1](req, mockResponse as Response);
+			await handler.insertDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -617,7 +635,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.updateDataTableRows[1](req, mockResponse as Response);
+			await handler.updateDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -651,7 +669,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.upsertDataTableRow[1](req, mockResponse as Response);
+			await handler.upsertDataTableRow[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -685,7 +703,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.deleteDataTableRows[1](req, mockResponse as Response);
+			await handler.deleteDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
@@ -712,7 +730,7 @@ describe('DataTable Handler', () => {
 			);
 
 			// Act
-			await handler.getDataTableRows[1](req, mockResponse as Response);
+			await handler.getDataTableRows[2](req, mockResponse as Response);
 
 			// Assert
 			// The error message should be the same whether:
