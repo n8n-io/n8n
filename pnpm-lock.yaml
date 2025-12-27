@@ -1096,7 +1096,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)
+        version: 0.3.50(d4f855290f49a20cecb54f31fbc6dad1)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1187,6 +1187,9 @@ importers:
       cheerio:
         specifier: 1.0.0
         version: 1.0.0
+      chromadb:
+        specifier: ^3.0.15
+        version: 3.2.0
       cohere-ai:
         specifier: 7.14.0
         version: 7.14.0(encoding@0.1.13)
@@ -9921,6 +9924,43 @@ packages:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
     engines: {node: '>=10'}
 
+  chromadb-js-bindings-darwin-arm64@1.2.0:
+    resolution: {integrity: sha512-CZ44yAQ5ny6sn279jeOBMGseVHg9/GNNA6kAiEl6g0MqD3MhaauuROkiF2Rw6FSoup1MzuIeBvzg3yLoojFXSQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  chromadb-js-bindings-darwin-x64@1.2.0:
+    resolution: {integrity: sha512-QGH9aP3EtmozRZHtzPU650Ta6+QJdJUUsM0x781i9zWASMZzmtleu+57FuDLpXNch0OV9AkmPVlLzBYOPw3N2Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  chromadb-js-bindings-linux-arm64-gnu@1.2.0:
+    resolution: {integrity: sha512-dIKKXN0vW7JNg0da/oueLooxZkc7rd6rcN5eb/Fx8K2Tx9r8SM+8vmqm2weF3DzgJkGGiwU8QyE68KU564o/7Q==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  chromadb-js-bindings-linux-x64-gnu@1.2.0:
+    resolution: {integrity: sha512-0E65eSuWICoD2jhQ+ZLi5Me08+VxICG0f5lZ4ceiMPXTemc60QmkmhtKQVK5lEhqRWu2CLSYXqlusnD5qEoa1Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  chromadb-js-bindings-win32-x64-msvc@1.2.0:
+    resolution: {integrity: sha512-1gmVdgw/spSSYvbc7Ogms9FXf+Zad41Cp7Enqfvrp7m9qQ+Nz4NqZINfOEX5OVzPHEj6cfXA11NdGeNHTPPHOg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  chromadb@3.2.0:
+    resolution: {integrity: sha512-PtyHAWgtKVuD2YQ0/tFZU/q0vzmAdngDJNJPZJpB3tlwD8PZJNB4Lms3KGEDvq09cGQiMwZc7fo91MR/GLN4OA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   chromatic@11.27.0:
     resolution: {integrity: sha512-jQ2ufjS+ePpg+NtcPI9B2eOi+pAzlRd2nhd1LgNMsVCC9Bzf5t8mJtyd8v2AUuJS0LdX0QVBgkOnlNv9xviHzA==}
     hasBin: true
@@ -17660,8 +17700,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.1.5:
-    resolution: {integrity: sha512-7V3yJuNWW7/1jxCcI1CswnpDsvs02Qcx/N43LkV+ZqhLj2PKj50slUflHAroNkN4UWiYfzMUUUXiNuv9khmSpQ==}
+  vue-component-type-helpers@3.2.1:
+    resolution: {integrity: sha512-gKV7XOkQl4urSuLHNY1tnVQf7wVgtb/mKbRyxSLWGZUY9RK7aDPhBenTjm+i8ZFe0zC2PZeHMPtOZXZfyaFOzQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -21724,7 +21764,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)':
+  '@langchain/community@0.3.50(d4f855290f49a20cecb54f31fbc6dad1)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -21767,6 +21807,7 @@ snapshots:
       '@xata.io/client': 0.28.4(typescript@5.9.2)
       '@zilliz/milvus2-sdk-node': 2.5.7
       cheerio: 1.0.0
+      chromadb: 3.2.0
       cohere-ai: 7.14.0(encoding@0.1.13)
       crypto-js: 4.2.0
       d3-dsv: 2.0.0
@@ -24075,7 +24116,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.1.5
+      vue-component-type-helpers: 3.2.1
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -26531,6 +26572,31 @@ snapshots:
   chownr@1.1.4: {}
 
   chownr@2.0.0: {}
+
+  chromadb-js-bindings-darwin-arm64@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-darwin-x64@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-linux-arm64-gnu@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-linux-x64-gnu@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-win32-x64-msvc@1.2.0:
+    optional: true
+
+  chromadb@3.2.0:
+    dependencies:
+      semver: 7.7.3
+    optionalDependencies:
+      chromadb-js-bindings-darwin-arm64: 1.2.0
+      chromadb-js-bindings-darwin-x64: 1.2.0
+      chromadb-js-bindings-linux-arm64-gnu: 1.2.0
+      chromadb-js-bindings-linux-x64-gnu: 1.2.0
+      chromadb-js-bindings-win32-x64-msvc: 1.2.0
 
   chromatic@11.27.0: {}
 
@@ -36072,7 +36138,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.1.5: {}
+  vue-component-type-helpers@3.2.1: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
