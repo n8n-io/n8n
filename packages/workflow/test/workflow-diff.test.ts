@@ -13,6 +13,7 @@ import {
 	type DiffableNode,
 	type DiffRule,
 } from '../src/workflow-diff';
+import { compareConnections } from '../src/connections-diff';
 
 describe('NodeDiffStatus', () => {
 	it('should have correct enum values', () => {
@@ -292,7 +293,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, node2] },
 				{ id: '1', nodes: [node1, node2] },
 			]);
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -309,7 +310,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, node2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -326,7 +327,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -345,7 +346,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1, modifiedNode2] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -365,7 +366,7 @@ describe('groupWorkflows', () => {
 				{ id: '1', nodes: [node1] },
 			]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -382,7 +383,7 @@ describe('groupWorkflows', () => {
 		});
 
 		it('should handle empty workflows array', () => {
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(0);
 		});
@@ -390,12 +391,13 @@ describe('groupWorkflows', () => {
 		it('should handle single workflow', () => {
 			const workflows = mock<IWorkflowBase[]>([{ id: '1', nodes: [node1] }]);
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
 			expect(grouped[0].to).toEqual(workflows[0]);
-			expect(grouped[0].workflowChangeSet.nodes.size).toBe(0);
+			expect(grouped[0].workflowChangeSet.nodes.size).toEqual(1);
+			expect(grouped[0].workflowChangeSet.nodes.get(node1.id)?.status).toEqual(NodeDiffStatus.Eq);
 			expect(grouped[0].groupedWorkflows).toEqual([]);
 		});
 	});
@@ -410,7 +412,7 @@ describe('groupWorkflows', () => {
 			const alwaysMergeRule: DiffRule = (_l, _r) => false;
 			const rules = [alwaysMergeRule];
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(2);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -430,7 +432,7 @@ describe('groupWorkflows', () => {
 			const alwaysMergeRule: DiffRule = (_l, _r) => true;
 			const rules = [alwaysMergeRule];
 
-			const grouped = groupWorkflows(workflows, rules);
+			const grouped = groupWorkflows(workflows, rules, []);
 
 			expect(grouped.length).toBe(1);
 			expect(grouped[0].from).toEqual(workflows[0]);
@@ -444,6 +446,7 @@ describe('groupWorkflows', () => {
 				return {
 					id,
 					nodes,
+					connections: {},
 				} as IWorkflowBase;
 			};
 
@@ -499,19 +502,70 @@ describe('groupWorkflows', () => {
 						from: baseWorkflow,
 						to: baseWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(baseWorkflow, baseWorkflow),
 					},
 					{
 						from: nextWorkflow,
 						to: nextWorkflow,
 						groupedWorkflows: [],
-						workflowChangeSet: new WorkflowChangeSet(),
+						workflowChangeSet: new WorkflowChangeSet(nextWorkflow, nextWorkflow),
 					},
-					compareWorkflowsNodes(baseWorkflow.nodes, nextWorkflow.nodes),
+					new WorkflowChangeSet(baseWorkflow, nextWorkflow),
 				);
 
 				expect(result).toEqual(expected);
 			});
+		});
+	});
+	describe('groupWorkflows - skipRules', () => {
+		const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
+		const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
+
+		let workflows: IWorkflowBase[];
+		beforeEach(() => {
+			workflows = [];
+		});
+
+		it('should skip merging workflows when skipRules apply', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+			]);
+
+			const trueRule: DiffRule = (_l, _r) => true;
+			const grouped = groupWorkflows(workflows, [trueRule], [trueRule]);
+
+			expect(grouped.length).toBe(3);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
+			expect(grouped[2].from).toEqual(workflows[2]);
+			expect(grouped[2].to).toEqual(workflows[3]);
+			expect(grouped[2].groupedWorkflows).toEqual([]);
+		});
+
+		it('should not skip merging workflows when skipRules do not apply', () => {
+			workflows = mock<IWorkflowBase[]>([
+				{ id: '1', nodes: [node1] },
+				{ id: '1', nodes: [node1, node2] },
+				{ id: '1', nodes: [node1] },
+			]);
+
+			const skipRule: DiffRule = (_l, _r) => false; // Never skip merging
+			const grouped = groupWorkflows(workflows, [], [skipRule]);
+
+			expect(grouped.length).toBe(2);
+			expect(grouped[0].from).toEqual(workflows[0]);
+			expect(grouped[0].to).toEqual(workflows[1]);
+			expect(grouped[0].groupedWorkflows).toEqual([]);
+			expect(grouped[1].from).toEqual(workflows[1]);
+			expect(grouped[1].to).toEqual(workflows[2]);
+			expect(grouped[1].groupedWorkflows).toEqual([]);
 		});
 	});
 });

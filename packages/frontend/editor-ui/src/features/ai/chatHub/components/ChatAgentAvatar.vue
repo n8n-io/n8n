@@ -28,30 +28,42 @@ const i18n = useI18n();
 		<template #content>{{
 			agent?.name || i18n.baseText('chatHub.agent.unavailableAgent')
 		}}</template>
-		<span v-if="agent?.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
-			{{ agent.icon.value }}
-		</span>
-		<N8nIcon
-			v-else-if="!agent || !isLlmProviderModel(agent.model)"
-			:color="size === 'sm' ? 'text-base' : 'text-light'"
-			:class="[$style.n8nIcon, $style[size]]"
-			:icon="
-				(agent?.icon?.value ??
-					(agent?.model.provider === 'n8n' ? workflowAgentDefaultIcon : personalAgentDefaultIcon)
-						.value) as IconName
-			"
-			:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
-		/>
-		<CredentialIcon
-			v-else
-			:class="[$style.credentialsIcon, { [$style.isReady]: isCredentialsIconReady }]"
-			:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[agent.model.provider]"
-			:size="size === 'sm' ? 16 : size === 'lg' ? 40 : 20"
-		/>
+		<div :class="$style.container">
+			<span v-if="agent?.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
+				{{ agent.icon.value }}
+			</span>
+			<N8nIcon
+				v-else-if="!agent || !isLlmProviderModel(agent.model)"
+				:color="size === 'sm' ? 'text-base' : 'text-light'"
+				:class="[$style.n8nIcon, $style[size]]"
+				:icon="
+					(agent?.icon?.value ??
+						(agent?.model.provider === 'n8n' ? workflowAgentDefaultIcon : personalAgentDefaultIcon)
+							.value) as IconName
+				"
+				:size="size === 'lg' ? 'xxlarge' : size === 'sm' ? 'large' : 'xlarge'"
+			/>
+			<CredentialIcon
+				v-else
+				:class="[$style.credentialsIcon, { [$style.isReady]: isCredentialsIconReady }]"
+				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[agent.model.provider]"
+				:size="size === 'sm' ? 16 : size === 'lg' ? 40 : 20"
+			/>
+		</div>
 	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
+.container {
+	position: relative;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	min-width: var(--spacing--lg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 .n8nIcon {
 	outline: none;
 

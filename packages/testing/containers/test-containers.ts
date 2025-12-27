@@ -26,4 +26,12 @@ export const TEST_CONTAINER_IMAGES = {
 	mockserver: 'mockserver/mockserver:5.15.0',
 	gitea: 'gitea/gitea:1.25.1',
 	keycloak: 'keycloak/keycloak:26.4',
+	// VictoriaObs stack for test observability
+	victoriaLogs: 'victoriametrics/victoria-logs:v1.21.0-victorialogs',
+	victoriaMetrics: 'victoriametrics/victoria-metrics:v1.115.0',
+	// Log collector for container logs
+	vector: 'timberio/vector:0.52.0-alpine',
+	// Tracing stack for workflow execution visualization
+	n8nTracer: 'ghcr.io/ivov/n8n-tracer:0.1.0',
+	jaeger: 'jaegertracing/all-in-one:1.76.0',
 } as const;

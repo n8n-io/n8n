@@ -181,6 +181,15 @@ export type RelayEventMap = {
 		fieldsChanged: string[];
 	};
 
+	'user-mfa-enabled': {
+		user: UserLike;
+	};
+
+	'user-mfa-disabled': {
+		user: UserLike;
+		disableMethod: 'mfaCode' | 'recoveryCode';
+	};
+
 	'user-signed-up': {
 		user: UserLike;
 		userType: AuthProviderType;
@@ -493,10 +502,23 @@ export type RelayEventMap = {
 	// #region Variable
 
 	'variable-created': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
 		projectId?: string;
 	};
 
 	'variable-updated': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
+		projectId?: string;
+	};
+
+	'variable-deleted': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
 		projectId?: string;
 	};
 

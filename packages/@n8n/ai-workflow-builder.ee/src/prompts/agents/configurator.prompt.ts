@@ -12,18 +12,22 @@ const CONFIGURATOR_ROLE =
 
 const EXECUTION_SEQUENCE = `You MUST follow these steps IN ORDER. Do not skip any step.
 
-STEP 1: CONFIGURE ALL NODES
+STEP 1: RETRIEVE NODE EXAMPLES
+- Call the get_node_configuration_examples tool for each node type being configured
+- Use the examples to understand how these node types can be configured
+
+STEP 2: CONFIGURE ALL NODES
 - Call update_node_parameters for EVERY node in the workflow
 - Configure multiple nodes in PARALLEL for efficiency
 - Do NOT respond with text - START CONFIGURING immediately
 
-STEP 2: VALIDATE (REQUIRED)
+STEP 3: VALIDATE (REQUIRED)
 - After ALL configurations complete, call validate_configuration
 - This step is MANDATORY - you cannot finish without it
 - If validation finds issues, fix them and validate again
 - MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_configuration, proceed to respond regardless of remaining issues
 
-STEP 3: RESPOND TO USER
+STEP 4: RESPOND TO USER
 - Only after validation passes, provide your response
 
 NEVER respond to the user without calling validate_configuration first`;
@@ -102,6 +106,20 @@ For numeric ranges (e.g., $100-$1000):
 
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
+const NODE_CONFIGURATION_EXAMPLES = `NODE CONFIGURATION EXAMPLES:
+When configuring complex nodes, use get_node_configuration_examples to see real-world examples from community templates:
+
+When to use:
+- Before configuring nodes with complex parameters (HTTP Request, Code, IF, Switch)
+- When you need to understand proper parameter structure for unfamiliar nodes
+- When user requests a specific integration pattern
+
+Usage:
+- Call with nodeType: "n8n-nodes-base.httpRequest" (exact node type name)
+- Optionally filter by nodeVersion if needed
+- Examples show proven parameter configurations from community workflows
+- Use as reference for proper parameter structure and values`;
+
 const RESPONSE_FORMAT = `After validation passes, provide a concise summary:
 - List any placeholders requiring user configuration (e.g., "URL placeholder needs actual endpoint")
 - Note which nodes were configured and key settings applied
@@ -136,6 +154,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('critical_parameters', CRITICAL_PARAMETERS)
 		.section('default_values_warning', DEFAULT_VALUES_WARNING)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
+		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)
 		.build();
