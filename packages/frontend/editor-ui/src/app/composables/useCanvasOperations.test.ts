@@ -49,7 +49,8 @@ import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { nextTick, reactive, ref } from 'vue';
+import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { mount } from '@vue/test-utils';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -57,6 +58,7 @@ import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import {
 	injectWorkflowState,
 	useWorkflowState,
+	workflowStateEventBus,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
 
@@ -3003,6 +3005,134 @@ describe('useCanvasOperations', () => {
 			await nextTick();
 
 			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateNodeProperties event listener', () => {
+		it('should register event listener for node parameter updates on mount', async () => {
+			const eventBusSpy = vi.spyOn(workflowStateEventBus, 'on');
+
+			const TestComponent = defineComponent({
+				setup() {
+					useCanvasOperations();
+					return () => h('div');
+				},
+			});
+
+			const wrapper = mount(TestComponent);
+			await wrapper.vm.$nextTick();
+			await nextTick();
+
+			expect(eventBusSpy).toHaveBeenCalledWith('updateNodeProperties', expect.any(Function));
+			expect(eventBusSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle missing node when parameter update event is emitted', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.getNodeByName.mockReturnValue(null);
+
+			const TestComponent = defineComponent({
+				setup() {
+					useCanvasOperations();
+					return () => h('div');
+				},
+			});
+
+			mount(TestComponent);
+			await nextTick();
+
+			workflowStateEventBus.emit('updateNodeProperties', [
+				{} as WorkflowState,
+				{ name: 'NonExistentNode', properties: { parameters: { value: 'test' } } },
+			]);
+
+			await nextTick();
+
+			expect(workflowsStore.getNodeByName).toHaveBeenCalledWith('NonExistentNode');
+		});
+
+		it('should revalidate connections when node parameters are updated', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNode = createTestNode({
+				id: 'target',
+				name: 'Target',
+				type: SET_NODE_TYPE,
+			});
+
+			const sourceNode = createTestNode({
+				id: 'source',
+				name: 'Source',
+				type: AGENT_NODE_TYPE,
+			});
+
+			const targetNodeType = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+			});
+
+			const sourceNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				outputs: [NodeConnectionTypes.AiTool],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeByName.mockReturnValue(targetNode);
+			workflowsStore.getNodeById.mockImplementation((id) => {
+				if (id === targetNode.id) return targetNode;
+				if (id === sourceNode.id) return sourceNode;
+				return undefined;
+			});
+
+			nodeTypesStore.getNodeType = vi.fn().mockImplementation((name) => {
+				if (name === targetNodeType.name) return targetNodeType;
+				if (name === sourceNodeType.name) return sourceNodeType;
+				return null;
+			});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+
+			const TestComponent = defineComponent({
+				setup() {
+					useCanvasOperations();
+					return () => h('div');
+				},
+			});
+
+			const wrapper = mount(TestComponent);
+			await wrapper.vm.$nextTick();
+			await nextTick();
+
+			workflowStateEventBus.emit('updateNodeProperties', [
+				{} as WorkflowState,
+				{
+					name: targetNode.name,
+					properties: { parameters: { value: 'updated' } },
+				},
+			]);
+
+			await wrapper.vm.$nextTick();
+			await nextTick();
+
+			expect(workflowsStore.getNodeByName).toHaveBeenCalledWith(targetNode.name);
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionTypes.AiTool, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+				],
+			});
 		});
 	});
 

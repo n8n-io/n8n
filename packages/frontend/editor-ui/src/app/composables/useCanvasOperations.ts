@@ -111,10 +111,14 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 } from 'n8n-workflow';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	injectWorkflowState,
+	type WorkflowStateBusEvents,
+	workflowStateEventBus,
+} from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -2789,6 +2793,26 @@ export function useCanvasOperations() {
 	function fitView() {
 		setTimeout(() => canvasEventBus.emit('fitView'));
 	}
+
+	function onUpdateNodeProperties(event: WorkflowStateBusEvents['updateNodeProperties']) {
+		const updateInformation = event[1];
+		const nodeName = updateInformation.name;
+
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		revalidateNodeInputConnections(node.id);
+	}
+
+	onMounted(() => {
+		workflowStateEventBus.on('updateNodeProperties', onUpdateNodeProperties);
+	});
+
+	onUnmounted(() => {
+		workflowStateEventBus.off('updateNodeProperties', onUpdateNodeProperties);
+	});
 
 	function trackOpenWorkflowTemplate(templateId: string) {
 		telemetry.track('User inserted workflow template', {
