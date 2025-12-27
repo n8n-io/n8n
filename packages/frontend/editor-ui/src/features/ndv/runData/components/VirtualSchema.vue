@@ -286,6 +286,12 @@ const nodeSchema = asyncComputed(async () => {
 
 async function getSchemaPreview(node: INodeUi | null) {
 	if (!node) return createResultError(new Error());
+
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (nodeType?.group.includes('trigger')) {
+		return createResultError(new Error('Trigger nodes do not have schema previews'));
+	}
+
 	const {
 		type,
 		typeVersion,

@@ -10,6 +10,7 @@ import {
 	rotateApiKey,
 	fetchOAuthClients,
 	deleteOAuthClient,
+	fetchMcpEligibleWorkflows,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -23,6 +24,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 
@@ -117,6 +119,22 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response;
 	}
 
+	async function getMcpEligibleWorkflows(options?: {
+		take?: number;
+		skip?: number;
+		query?: string;
+	}): Promise<{ count: number; data: WorkflowListItem[] }> {
+		return await fetchMcpEligibleWorkflows(rootStore.restApiContext, options);
+	}
+
+	function openConnectPopover(): void {
+		connectPopoverOpen.value = true;
+	}
+
+	function closeConnectPopover(): void {
+		connectPopoverOpen.value = false;
+	}
+
 	return {
 		mcpAccessEnabled,
 		fetchWorkflowsAvailableForMCP,
@@ -129,5 +147,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		oauthClients,
 		getAllOAuthClients,
 		removeOAuthClient,
+		getMcpEligibleWorkflows,
+		connectPopoverOpen,
+		openConnectPopover,
+		closeConnectPopover,
 	};
 });

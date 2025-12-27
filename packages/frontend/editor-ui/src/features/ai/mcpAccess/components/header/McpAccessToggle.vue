@@ -28,7 +28,7 @@ const onUpdateMCPEnabled = () => {
 <template>
 	<div :class="$style['main-toggle-container']">
 		<div :class="$style['main-toggle-info']">
-			<N8nText :bold="true" :color="modelValue ? `success` : `text-light`">
+			<N8nText :bold="true" :color="modelValue ? `success` : `text-light`" size="small">
 				{{
 					modelValue
 						? i18n.baseText('settings.mcp.header.toggle.enabled')

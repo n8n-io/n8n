@@ -96,7 +96,12 @@ export class WorkflowsController {
 
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
-		delete req.body.id; // delete if sent
+		if (req.body.id) {
+			const workflowExists = await this.workflowRepository.existsBy({ id: req.body.id });
+			if (workflowExists) {
+				throw new BadRequestError(`Workflow with id ${req.body.id} exists already.`);
+			}
+		}
 		// @ts-expect-error: We shouldn't accept this because it can
 		// mess with relations of other workflows
 		delete req.body.shared;
@@ -109,9 +114,13 @@ export class WorkflowsController {
 			);
 
 			// @ts-expect-error: We shouldn't accept this
-			req.body.activeVersionId = undefined;
+			delete req.body.activeVersionId;
+			// @ts-expect-error: We shouldn't accept this
+			delete req.body.activeVersion;
 			req.body.active = false;
 		}
+
+		const { autosaved = false } = req.body;
 
 		const newWorkflow = new WorkflowEntity();
 
@@ -208,14 +217,9 @@ export class WorkflowsController {
 				req.user,
 				workflow,
 				workflow.id,
+				autosaved,
 				transactionManager,
 			);
-
-			const shouldActivate = req.body.active === true;
-			if (shouldActivate) {
-				workflow.activeVersionId = workflow.versionId;
-				await transactionManager.save(workflow);
-			}
 
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
@@ -422,6 +426,18 @@ export class WorkflowsController {
 		return { ...workflow, scopes, checksum };
 	}
 
+	/**
+	 * Checks whether a workflow with the given ID exists.
+	 *
+	 * @note We cannot use @ProjectScope here because we want to check for the id's existence
+	 *       Adding a scope would disable the route if the user didn't have access to the workflow
+	 */
+	@Get('/:workflowId/exists')
+	async exists(req: WorkflowRequest.Get) {
+		const exists = await this.workflowRepository.existsBy({ id: req.params.workflowId });
+		return { exists };
+	}
+
 	@Patch('/:workflowId')
 	@ProjectScope('workflow:update')
 	async update(req: WorkflowRequest.Update) {
@@ -429,7 +445,8 @@ export class WorkflowsController {
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
-		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, ...rest } = req.body;
+		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } =
+			req.body;
 
 		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
 		if (
@@ -456,6 +473,7 @@ export class WorkflowsController {
 			forceSave: isSharingEnabled ? forceSave : true,
 			expectedChecksum,
 			aiBuilderAssisted,
+			autosaved,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -528,7 +546,7 @@ export class WorkflowsController {
 	}
 
 	@Post('/:workflowId/activate')
-	@ProjectScope('workflow:update')
+	@ProjectScope('workflow:publish')
 	async activate(
 		req: WorkflowRequest.Activate,
 		_res: unknown,
@@ -551,7 +569,7 @@ export class WorkflowsController {
 	}
 
 	@Post('/:workflowId/deactivate')
-	@ProjectScope('workflow:update')
+	@ProjectScope('workflow:publish')
 	async deactivate(req: WorkflowRequest.Deactivate) {
 		const { workflowId } = req.params;
 

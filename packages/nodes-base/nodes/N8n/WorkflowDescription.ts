@@ -280,7 +280,7 @@ const getAllOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Only Active Workflows',
+				displayName: 'Return Only Published Workflows',
 				name: 'activeWorkflows',
 				type: 'boolean',
 				default: true,

@@ -358,21 +358,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 		);
 		let decryptedDataOriginal = credentials.getData();
 
-		// Resolve dynamic credentials if configured (EE feature)
-		decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
-			{
-				id: credentialsEntity.id,
-				name: credentialsEntity.name,
-				isResolvable: false,
-				// TODO: use the actual values from the entity once they are added
-				// isResolvable: credentialsEntity.isResolvable,
-				// resolverId: (credentialsEntity as any).resolverId,
-				// resolvableAllowFallback: (credentialsEntity as any).resolvableAllowFallback,
-			},
-			decryptedDataOriginal,
-			additionalData.executionContext,
-			additionalData.workflowSettings,
-		);
+		/**
+		 * We skip dynamic credentials resolution when no credentials context is present.
+		 * This helps workflow developers to run workflows with static credentials.
+		 */
+		if (additionalData.executionContext?.credentials !== undefined) {
+			// Resolve dynamic credentials if configured (EE feature)
+			decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId: credentialsEntity.resolverId ?? undefined,
+					resolvableAllowFallback: credentialsEntity.resolvableAllowFallback,
+				},
+				decryptedDataOriginal,
+				additionalData.executionContext,
+				additionalData.workflowSettings,
+			);
+		}
 
 		if (raw === true) {
 			return decryptedDataOriginal;
@@ -529,7 +534,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		const resolverId =
+			credentialsEntity.resolverId ?? additionalData.workflowSettings?.credentialResolverId;
+
+		if (credentialsEntity.isResolvable && resolverId) {
+			const credentials = await this.getCredentials(nodeCredentials, type);
+			const staticData = credentials.getData();
+
+			await this.dynamicCredentialsProxy.storeOAuthTokenDataIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId,
+				},
+				data.oauthTokenData as IDataObject,
+				additionalData.executionContext,
+				staticData,
+				additionalData.workflowSettings,
+			);
+			return;
+		}
+
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });

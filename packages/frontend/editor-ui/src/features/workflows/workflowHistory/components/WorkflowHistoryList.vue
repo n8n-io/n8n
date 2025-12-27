@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -11,9 +11,12 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { N8nLoading } from '@n8n/design-system';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
+import { N8nLoading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import {
+	computeTimelineEntries,
+	type TimelineEntry,
+} from '@/features/workflows/workflowHistory/utils';
 
 const props = defineProps<{
 	items: WorkflowHistory[];
@@ -36,14 +39,42 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const listElement = ref<Element | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
 const shouldAutoScroll = ref(true);
+const expandedGroups = reactive<Set<string>>(new Set());
+
+const timelineEntries = computed<TimelineEntry[]>(() => {
+	return computeTimelineEntries(props.items);
+});
+
+const toggleGroup = (groupId: string) => {
+	if (expandedGroups.has(groupId)) {
+		expandedGroups.delete(groupId);
+	} else {
+		expandedGroups.add(groupId);
+	}
+};
+
+const hasMoreItems = computed(() => props.lastReceivedItemsLength === props.requestNumberOfItems);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: listElement,
 	threshold: 0.01,
-	onIntersect: () =>
-		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
+	onIntersect: () => {
+		shouldAutoScroll.value = false;
+		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length });
+	},
 });
+
+watch(
+	[loadMoreSentinel, hasMoreItems, () => props.items.length],
+	([sentinel, canLoadMore]) => {
+		if (sentinel && canLoadMore) {
+			observeForLoadMore(sentinel);
+		}
+	},
+	{ immediate: true },
+);
 
 const getActions = (item: WorkflowHistory, index: number) => {
 	let filteredActions = props.actions;
@@ -52,16 +83,10 @@ const getActions = (item: WorkflowHistory, index: number) => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (IS_DRAFT_PUBLISH_ENABLED) {
-		if (item.versionId === props.activeVersionId) {
-			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
-		} else {
-			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
-		}
+	if (item.versionId === props.activeVersionId) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
-		filteredActions = filteredActions.filter(
-			(action) => action.value !== 'publish' && action.value !== 'unpublish',
-		);
+		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
 	return filteredActions;
@@ -78,7 +103,6 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 };
 
 const onItemMounted = ({
-	index,
 	offsetTop,
 	isSelected,
 }: {
@@ -90,35 +114,75 @@ const onItemMounted = ({
 		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
-
-	if (
-		index === props.items.length - 1 &&
-		props.lastReceivedItemsLength === props.requestNumberOfItems
-	) {
-		observeForLoadMore(listElement.value?.children[index]);
-	}
 };
 </script>
 
 <template>
 	<ul ref="listElement" :class="$style.list" data-test-id="workflow-history-list">
-		<WorkflowHistoryListItem
-			v-for="(item, index) in props.items"
-			:key="item.versionId"
-			:index="index"
-			:item="item"
-			:is-selected="item.versionId === props.selectedItem?.versionId"
-			:is-version-active="item.versionId === props.activeVersionId"
-			:actions="getActions(item, index)"
-			@action="onAction"
-			@preview="onPreview"
-			@mounted="onItemMounted"
+		<template
+			v-for="entry in timelineEntries"
+			:key="entry.type === 'version' ? entry.item.versionId : entry.groupId"
+		>
+			<!-- Group header for collapsed unnamed versions -->
+			<li
+				v-if="entry.type === 'group-header'"
+				:class="$style.groupHeader"
+				:aria-expanded="expandedGroups.has(entry.groupId)"
+				role="button"
+				data-test-id="workflow-history-group-header"
+				@click="toggleGroup(entry.groupId)"
+			>
+				<N8nIcon
+					:class="[$style.groupTimelineColumn, $style.groupChevron]"
+					:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
+					size="small"
+				/>
+				<N8nText color="text-base" size="small">
+					{{
+						i18n.baseText('workflowHistory.group.unnamedVersions', {
+							adjustToNumber: entry.count,
+							interpolate: { count: String(entry.count) },
+						})
+					}}
+				</N8nText>
+			</li>
+
+			<!-- Expanded group versions -->
+			<template v-if="entry.type === 'group-header' && expandedGroups.has(entry.groupId)">
+				<WorkflowHistoryListItem
+					v-for="versionEntry in entry.versions"
+					:key="versionEntry.item.versionId"
+					:index="versionEntry.originalIndex"
+					:item="versionEntry.item"
+					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
+					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
+					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
+					:is-grouped="true"
+					@action="onAction"
+					@preview="onPreview"
+					@mounted="onItemMounted"
+				/>
+			</template>
+
+			<!-- Regular version entry -->
+			<WorkflowHistoryListItem
+				v-if="entry.type === 'version'"
+				:index="entry.originalIndex"
+				:item="entry.item"
+				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
+				:is-version-active="entry.item.versionId === props.activeVersionId"
+				:actions="getActions(entry.item, entry.originalIndex)"
+				@action="onAction"
+				@preview="onPreview"
+				@mounted="onItemMounted"
+			/>
+		</template>
+		<li
+			v-if="props.items.length && hasMoreItems"
+			ref="loadMoreSentinel"
+			:class="$style.sentinel"
+			aria-hidden="true"
 		/>
-		<li v-if="!props.items.length && !props.isListLoading" :class="$style.empty">
-			{{ i18n.baseText('workflowHistory.empty') }}
-			<br />
-			{{ i18n.baseText('workflowHistory.hint') }}
-		</li>
 		<li
 			v-if="props.isListLoading"
 			:class="$style.loader"
@@ -151,6 +215,8 @@ const onItemMounted = ({
 </template>
 
 <style module lang="scss">
+@use './timeline' as *;
+
 .list {
 	position: absolute;
 	left: 0;
@@ -158,23 +224,15 @@ const onItemMounted = ({
 	width: 100%;
 	height: 100%;
 	overflow: auto;
-}
-
-.empty {
-	display: flex;
-	position: absolute;
-	height: 100%;
-	padding: 0 25%;
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
+	padding: var(--spacing--sm) var(--spacing--2xs);
 }
 
 .loader {
 	padding: 0 var(--spacing--sm);
+}
+
+.sentinel {
+	height: 1px;
 }
 
 .retention {
@@ -183,5 +241,28 @@ const onItemMounted = ({
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--lg);
 	text-align: center;
+}
+
+.groupHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--3xs);
+	margin-top: var(--spacing--lg);
+	cursor: pointer;
+	position: relative;
+
+	// Line segment in the gap above this item (not for first item)
+	&:not(:first-child)::before {
+		@include timeline-gap-line;
+	}
+}
+
+.groupTimelineColumn {
+	min-width: var(--spacing--lg);
+}
+
+.groupChevron {
+	color: var(--color--text--tint-1);
 }
 </style>

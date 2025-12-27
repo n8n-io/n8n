@@ -1,27 +1,47 @@
-export { ParameterUpdatePromptBuilder } from './prompt-builder';
+// Registry system
+export { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry';
+export type {
+	NodeTypeGuide,
+	NodeTypeExamples,
+	NodeTypePattern,
+	PromptContext,
+} from './types';
+
+// Utilities
+export { hasResourceLocatorParameters } from './utils';
 export { instanceUrlPrompt } from './instance-url';
-export {
-	DEFAULT_PROMPT_CONFIG,
-	getNodeTypeCategory,
-	mentionsResourceKeywords,
-	mentionsTextKeywords,
-} from './prompt-config';
 
 // Base prompts
-export { CORE_INSTRUCTIONS } from './base/core-instructions';
-export { EXPRESSION_RULES } from './base/expression-rules';
-export { COMMON_PATTERNS } from './base/common-patterns';
-export { OUTPUT_FORMAT } from './base/output-format';
+export {
+	CORE_INSTRUCTIONS,
+	EXPRESSION_RULES,
+	COMMON_PATTERNS,
+	OUTPUT_FORMAT,
+} from './parameter-updater.prompt';
 
 // Node type guides
-export { SET_NODE_GUIDE } from './node-types/set-node';
-export { IF_NODE_GUIDE } from './node-types/if-node';
-export { SWITCH_NODE_GUIDE } from './node-types/switch-node';
-export { HTTP_REQUEST_GUIDE } from './node-types/http-request';
-export { GMAIL_GUIDE } from './node-types/gmail';
-export { TOOL_NODES_GUIDE } from './node-types/tool-nodes';
+export {
+	SET_NODE_GUIDE,
+	IF_NODE_GUIDE,
+	SWITCH_NODE_GUIDE,
+	HTTP_REQUEST_GUIDE,
+	TOOL_NODES_GUIDE,
+	GMAIL_GUIDE,
+} from './guides';
 
 // Parameter type guides
-export { RESOURCE_LOCATOR_GUIDE } from './parameter-types/resource-locator';
-export { SYSTEM_MESSAGE_GUIDE } from './parameter-types/system-message';
-export { TEXT_FIELDS_GUIDE } from './parameter-types/text-fields';
+export {
+	RESOURCE_LOCATOR_GUIDE,
+	SYSTEM_MESSAGE_GUIDE,
+	TEXT_FIELDS_GUIDE,
+} from './guides';
+
+// Examples
+export {
+	SET_NODE_EXAMPLES,
+	IF_NODE_EXAMPLES,
+	SWITCH_NODE_EXAMPLES,
+	SIMPLE_UPDATE_EXAMPLES,
+	TOOL_NODE_EXAMPLES,
+	RESOURCE_LOCATOR_EXAMPLES,
+} from './examples';

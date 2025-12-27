@@ -21,6 +21,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		clientId: 'test-client',
 		clientSecret: 'test-secret',
 		subjectClaim: 'sub',
+		validation: 'oauth2-introspection',
 	};
 
 	const validMetadata = {

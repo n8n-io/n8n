@@ -5,14 +5,17 @@ export type CsrfStateRequired = {
 	token: string;
 	/** Creation timestamp of the CSRF state. Used for expiration.  */
 	createdAt: number;
+	/** Encrypted stringified CSRF state data */
+	data: string;
 };
 
 export type CreateCsrfStateData = {
 	cid: string;
+	origin: 'static-credential' | 'dynamic-credential';
 	[key: string]: unknown;
 };
 
-export type CsrfState = CsrfStateRequired & CreateCsrfStateData;
+export type CsrfState = CsrfStateRequired;
 
 export const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
 

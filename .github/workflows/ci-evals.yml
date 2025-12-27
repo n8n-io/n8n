@@ -45,7 +45,7 @@ jobs:
           echo "LANGSMITH_DATASET_NAME=$DATASET" >> "$GITHUB_ENV"
 
       - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
 
       - name: Install uv
         uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0

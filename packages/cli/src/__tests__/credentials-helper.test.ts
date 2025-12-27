@@ -12,6 +12,7 @@ import type {
 	INodeProperties,
 	INodeTypes,
 	INodeCredentialsDetails,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 
@@ -340,6 +341,7 @@ describe('CredentialsHelper', () => {
 				nodeCredentials,
 				'oAuth2Api',
 				newOauthTokenData,
+				{} as IWorkflowExecuteAdditionalData,
 			);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
@@ -417,6 +419,8 @@ describe('CredentialsHelper', () => {
 			name: 'Test Credentials',
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
+			isResolvable: false,
+			resolvableAllowFallback: false,
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -431,6 +435,7 @@ describe('CredentialsHelper', () => {
 
 			const resolvedData = { apiKey: 'dynamic-key' };
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue(resolvedData);
+			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 
 			const result = await credentialsHelper.getDecrypted(
 				mockAdditionalData,
@@ -446,6 +451,9 @@ describe('CredentialsHelper', () => {
 					id: mockCredentialEntity.id,
 					name: mockCredentialEntity.name,
 					isResolvable: false,
+					type: 'testApi',
+					resolverId: undefined,
+					resolvableAllowFallback: false,
 				},
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
@@ -532,7 +540,7 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should handle missing executionContext gracefully', async () => {
+		test('should skip resolution when executionContext is missing', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
 
@@ -541,7 +549,7 @@ describe('CredentialsHelper', () => {
 				executionContext: undefined,
 			};
 
-			await credentialsHelper.getDecrypted(
+			const result = await credentialsHelper.getDecrypted(
 				additionalDataWithoutContext,
 				nodeCredentials,
 				credentialType,
@@ -550,8 +558,39 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
-			expect(call[2]).toBeUndefined();
+			// Resolution should not happen when executionContext is missing
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should skip resolution when credentials context is missing', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+
+			const additionalDataWithoutCredentials = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual' as const,
+					// credentials is undefined
+				},
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithoutCredentials,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Resolution should not happen when credentials context is missing
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
 		test('should handle missing workflowSettings gracefully', async () => {

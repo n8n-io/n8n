@@ -149,6 +149,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 }
 
 export interface ICredentialsEncrypted {
@@ -239,6 +240,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void>;
 
 	abstract getCredentialsProperties(type: string): INodeProperties[];
@@ -950,7 +952,7 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
-
+	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
 
 	/** @deprecated */
@@ -1006,6 +1008,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			options?: {
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
+				executionMode?: WorkflowExecuteMode;
 			},
 		): Promise<ExecuteWorkflowData>;
 		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
@@ -1022,6 +1025,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendResponse(response: IExecuteResponsePromiseData): void;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
+		/** Returns true if the node is being executed as an AI Agent tool */
+		isToolExecution(): boolean;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -1103,6 +1108,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'startJob'
 		| 'helpers'
+		| 'isToolExecution'
 	> & {
 		getNextRunIndex(): number;
 		continueOnFail(): boolean;
@@ -1475,6 +1481,9 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	hideOptionalFields?: boolean; // Supported by: fixedCollection - hide non-required fields by default
+	addOptionalFieldButtonText?: string; // Supported by: fixedCollection with hideOptionalFields set to true
+	showEvenWhenOptional?: boolean; // Supported by: fixedCollection with hideOptionalFields
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
@@ -1548,12 +1557,17 @@ export type DisplayCondition =
 	| { _cnd: { regex: string } }
 	| { _cnd: { exists: true } };
 
+export type NodeFeatures = Record<string, boolean>;
+export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
+export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@feature'?: Array<string | DisplayCondition>;
 		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
@@ -1603,6 +1617,8 @@ export interface INodeProperties {
 	ignoreValidationDuringExecution?: boolean;
 	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
 	allowArbitraryValues?: boolean;
+	// This field indicates that the field is a resolvable field that should be resolved in dynamic credential setup
+	resolvableField?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -2238,6 +2254,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	features?: NodeFeaturesDefinition;
 }
 
 export type TriggerPanelDefinition = {
@@ -2673,6 +2690,7 @@ export interface ExecuteWorkflowOptions {
 	parentCallbackManager?: CallbackManager;
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
+	executionMode?: WorkflowExecuteMode;
 }
 
 export type AiEvent =

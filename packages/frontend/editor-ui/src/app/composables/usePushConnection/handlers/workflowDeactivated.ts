@@ -1,17 +1,21 @@
 import type { WorkflowDeactivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export async function workflowDeactivated({ data }: WorkflowDeactivated) {
+	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
-	workflowsStore.setWorkflowInactive(data.workflowId);
-
 	if (workflowsStore.workflowId === data.workflowId) {
-		// Only update checksum if there are no unsaved changes
+		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {
-			await workflowsStore.updateWorkflowChecksum();
+			const updatedWorkflow = await workflowsStore.fetchWorkflow(data.workflowId);
+			if (!updatedWorkflow.checksum) {
+				throw new Error('Failed to fetch workflow');
+			}
+			await initializeWorkspace(updatedWorkflow);
 		}
 	}
 }

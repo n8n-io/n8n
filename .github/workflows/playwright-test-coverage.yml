@@ -6,10 +6,10 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 env:
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
   NODE_OPTIONS: --max-old-space-size=16384
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: 4
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
 
 jobs:
   coverage:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs-blacksmith
+        uses: ./.github/actions/setup-nodejs
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
 
@@ -31,7 +31,7 @@ jobs:
           INCLUDE_TEST_CONTROLLER: 'true'
 
       - name: Install Browsers
-        run: pnpm turbo install-browsers:ci
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
 
       - name: Run Container Coverage Tests
         id: coverage-tests

@@ -726,8 +726,12 @@ onMounted(async () => {
 							<N8nIcon icon="search" />
 						</template>
 					</N8nInput>
-					<N8nPopover trigger="click" width="304" style="align-self: normal">
-						<template #reference>
+					<N8nPopover
+						width="304px"
+						:content-class="$style['popover-content']"
+						style="align-self: normal"
+					>
+						<template #trigger>
 							<N8nButton
 								icon="funnel"
 								type="tertiary"
@@ -740,44 +744,46 @@ onMounted(async () => {
 								</N8nBadge>
 							</N8nButton>
 						</template>
-						<N8nInputLabel
-							:label="i18n.baseText('workflows.filters.status')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs"
-						/>
-						<N8nSelect
-							v-model="filters.status"
-							data-test-id="source-control-status-filter"
-							clearable
-						>
-							<N8nOption
-								v-for="option in statusFilterOptions"
-								:key="option.label"
-								data-test-id="source-control-status-filter-option"
-								v-bind="option"
+						<template #content>
+							<N8nInputLabel
+								:label="i18n.baseText('workflows.filters.status')"
+								:bold="false"
+								size="small"
+								color="text-base"
+								class="mb-3xs"
 							/>
-						</N8nSelect>
-						<N8nInputLabel
-							:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs mt-3xs"
-						/>
-						<ProjectSharing
-							v-model="filters.project"
-							data-test-id="source-control-push-modal-project-search"
-							:projects="projectsForFilters"
-							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
-							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
-						/>
-						<div v-if="filterCount" class="mt-s">
-							<N8nLink @click="resetFilters">
-								{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
-							</N8nLink>
-						</div>
+							<N8nSelect
+								v-model="filters.status"
+								data-test-id="source-control-status-filter"
+								clearable
+							>
+								<N8nOption
+									v-for="option in statusFilterOptions"
+									:key="option.label"
+									data-test-id="source-control-status-filter-option"
+									v-bind="option"
+								/>
+							</N8nSelect>
+							<N8nInputLabel
+								:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
+								:bold="false"
+								size="small"
+								color="text-base"
+								class="mb-3xs mt-3xs"
+							/>
+							<ProjectSharing
+								v-model="filters.project"
+								data-test-id="source-control-push-modal-project-search"
+								:projects="projectsForFilters"
+								:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+								:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+							/>
+							<div v-if="filterCount" class="mt-s">
+								<N8nLink @click="resetFilters">
+									{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
+								</N8nLink>
+							</div>
+						</template>
 					</N8nPopover>
 				</div>
 			</div>
@@ -809,7 +815,7 @@ onMounted(async () => {
 						<button
 							type="button"
 							:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
-							data-test-id="source-control-push-modal-tab"
+							:data-test-id="`source-control-push-modal-tab-${tab.value}`"
 							@click="activeTab = tab.value"
 						>
 							<div>{{ tab.label }}</div>
@@ -872,6 +878,7 @@ onMounted(async () => {
 										:active="active"
 										:size-dependencies="[file.name, file.id]"
 										:data-index="index"
+										data-test-id="push-modal-item"
 									>
 										<N8nCheckbox
 											:class="[$style.listItem]"
@@ -947,7 +954,12 @@ onMounted(async () => {
 		</template>
 
 		<template #footer>
-			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
+			<N8nNotice
+				v-if="userNotices.length"
+				:compact="false"
+				class="mt-0"
+				id="source-control-push-modal-notice"
+			>
 				<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
@@ -1122,5 +1134,9 @@ onMounted(async () => {
 .tabActive {
 	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
+}
+
+.popover-content {
+	padding: var(--spacing--sm);
 }
 </style>

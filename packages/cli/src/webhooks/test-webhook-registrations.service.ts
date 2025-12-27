@@ -113,10 +113,6 @@ export class TestWebhookRegistrationsService {
 		return val;
 	}
 
-	async deregisterAll() {
-		await this.cacheService.delete(this.cacheKey);
-	}
-
 	toKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {
 		const { webhookId, httpMethod, path: webhookPath } = webhook;
 

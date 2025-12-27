@@ -7,7 +7,6 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
@@ -40,10 +39,7 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { getCredentialResolvers } from '@n8n/rest-api-client';
-import type { CredentialResolver } from '@n8n/api-types';
-import { useUIStore } from '@/app/stores/ui.store';
-import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
+import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -64,7 +60,6 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
-const uiStore = useUIStore();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -79,8 +74,14 @@ const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
-const credentialResolvers = ref<CredentialResolver[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
+
+const {
+	resolvers: credentialResolvers,
+	fetchResolvers: loadCredentialResolvers,
+	openCreateModal,
+	openEditModal,
+} = useCredentialResolvers();
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
@@ -348,7 +349,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	const workflowsData = (await workflowsStore.searchWorkflows({
 		query: searchTerm,
 		isArchived: false,
-		triggerNodeType: 'n8n-nodes-base.errorTrigger',
+		triggerNodeTypes: ['n8n-nodes-base.errorTrigger'],
 	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
@@ -368,30 +369,15 @@ const loadWorkflows = async (searchTerm?: string) => {
 	workflows.value = workflowsData;
 };
 
-const loadCredentialResolvers = async () => {
-	try {
-		const resolvers = await getCredentialResolvers(rootStore.restApiContext);
-		credentialResolvers.value = resolvers;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('workflowSettings.showError.fetchSettings.title'));
-	}
-};
-
 const handleCreateNewResolver = async () => {
 	// Close the dropdown first
 	credentialResolverSelectRef.value?.blur();
 	await nextTick();
 
-	// Open modal with callback
-	uiStore.openModalWithData({
-		name: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-		data: {
-			onSave: async (resolverId: string) => {
-				// Reload resolvers list
-				await loadCredentialResolvers();
-				// Set the newly created resolver
-				workflowSettings.value.credentialResolverId = resolverId;
-			},
+	openCreateModal({
+		onSave: async (resolverId: string) => {
+			await loadCredentialResolvers();
+			workflowSettings.value.credentialResolverId = resolverId;
 		},
 	});
 };
@@ -399,23 +385,13 @@ const handleCreateNewResolver = async () => {
 const handleEditResolver = async () => {
 	if (!workflowSettings.value.credentialResolverId) return;
 
-	// Open modal in edit mode
-	uiStore.openModalWithData({
-		name: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-		data: {
-			resolverId: workflowSettings.value.credentialResolverId,
-			onSave: async () => {
-				// Reload resolvers list after editing
-				await loadCredentialResolvers();
-			},
-			onDelete: async (deletedResolverId: string) => {
-				// Reload resolvers list after deletion
-				await loadCredentialResolvers();
-				// If the deleted resolver was selected, reset to None
-				if (workflowSettings.value.credentialResolverId === deletedResolverId) {
-					workflowSettings.value.credentialResolverId = undefined;
-				}
-			},
+	openEditModal(workflowSettings.value.credentialResolverId, {
+		onSave: loadCredentialResolvers,
+		onDelete: async (deletedResolverId: string) => {
+			await loadCredentialResolvers();
+			if (workflowSettings.value.credentialResolverId === deletedResolverId) {
+				workflowSettings.value.credentialResolverId = undefined;
+			}
 		},
 	});
 };
@@ -481,11 +457,7 @@ const saveSettings = async () => {
 	data.expectedChecksum = workflowsStore.workflowChecksum;
 
 	try {
-		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
-		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		if (workflowData.checksum) {
-			workflowsStore.setWorkflowChecksum(workflowData.checksum);
-		}
+		await workflowsStore.updateWorkflow(String(route.params.name), data);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
@@ -544,7 +516,7 @@ onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
-	if (!workflowId.value || workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+	if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 		toast.showMessage({
 			title: 'No workflow active',
 			message: 'No workflow active to display settings of.',

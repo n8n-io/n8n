@@ -965,6 +965,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-handle-plus');
 	}
 
+	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus-wrapper"]`,
+			)
+			.first();
+	}
+
 	stopExecutionWaitingForWebhookButton(): Locator {
 		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
 	}
@@ -979,10 +987,16 @@ export class CanvasPage extends BasePage {
 
 	async hitUndo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+z');
+		// Wait for canvas to redraw after undo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+		// Wait for canvas to redraw after redo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

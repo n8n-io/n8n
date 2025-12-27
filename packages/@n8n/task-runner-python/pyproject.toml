@@ -16,8 +16,8 @@ constraint-dependencies = ["urllib3>=2.6.0"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12.8",
-    "ty>=0.0.1a17",
+    "ruff>=0.14.10",
+    "ty>=0.0.5",
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
     "pytest-asyncio>=0.24.0",
