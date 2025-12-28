@@ -696,20 +696,6 @@ export class Gitlab implements INodeType {
 			//         release:get/delete
 			// ----------------------------------
 			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['delete', 'get'],
-						resource: ['release'],
-					},
-				},
-				description: 'The ID or URL-encoded path of the project',
-			},
-			{
 				displayName: 'Tag Name',
 				name: 'tag_name',
 				type: 'string',
@@ -727,20 +713,6 @@ export class Gitlab implements INodeType {
 			// ----------------------------------
 			//         release:getAll
 			// ----------------------------------
-			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['getAll'],
-						resource: ['release'],
-					},
-				},
-				description: 'The ID or URL-encoded path of the project',
-			},
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
@@ -827,20 +799,7 @@ export class Gitlab implements INodeType {
 			// ----------------------------------
 			//         release:update
 			// ----------------------------------
-			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['update'],
-						resource: ['release'],
-					},
-				},
-				description: 'The ID or URL-encoded path of the project',
-			},
+
 			{
 				displayName: 'Tag Name',
 				name: 'tag_name',
@@ -1327,23 +1286,6 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		// let _credentials;
-
-		// const authenticationMethod = this.getNodeParameter('authentication', 0);
-
-		// try {
-		// 	if (authenticationMethod === 'accessToken') {
-		// 		_credentials = await this.getCredentials('gitlabApi');
-		// 	} else {
-		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
-		// 	}
-		// } catch (error) {
-		// 	if (this.continueOnFail()) {
-		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
-		// 	}
-		// 	throw new NodeOperationError(this.getNode(), error as Error);
-		// }
-
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
 			'file:get',
@@ -1394,15 +1336,38 @@ export class Gitlab implements INodeType {
 				// Request the parameters which almost all operations need
 				let owner = this.getNodeParameter('owner', i) as string;
 
-				// Replace all slashes to work with subgroups
-				owner = owner.replace(new RegExp(/\//g), '%2F');
-
 				let repository = '';
 				if (fullOperation !== 'user:getRepositories') {
 					repository = this.getNodeParameter('repository', i) as string;
 				}
 
-				const baseEndpoint = `/projects/${owner}%2F${repository}`;
+				// On GitLab API v4, using /projects/${owner}/${respository} as base path does not work anymore.
+				// So, we look up for projectId with namespace + project name, and set it as base path.
+
+				qs.search = `${owner}/${repository}`;
+				qs.search_namespaces = 'true';
+				responseData = await gitlabApiRequest.call(this, 'GET', '/projects', {}, qs);
+
+				if (Array.isArray(responseData) && responseData.length === 0) {
+					throw new NodeOperationError(this.getNode(), 'Project does not exists.', {
+						itemIndex: i,
+					});
+				}
+
+				const results = responseData.filter(
+					(e: any) => e.path_with_namespace === `${owner}/${repository}`,
+				);
+
+				if (results.length === 0) {
+					throw new NodeOperationError(this.getNode(), 'Project does not exists.', {
+						itemIndex: i,
+					});
+				}
+
+				// Reset qs
+				qs = {};
+
+				const baseEndpoint = `/projects/${results[0].id}`;
 
 				if (resource === 'issue') {
 					if (operation === 'create') {
@@ -1497,11 +1462,9 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						const id = this.getNodeParameter('projectId', i) as string;
-
 						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-						endpoint = `/projects/${id}/releases/${tagName}`;
+						endpoint = `${baseEndpoint}/releases/${tagName}`;
 					}
 					if (operation === 'get') {
 						// ----------------------------------
@@ -1510,11 +1473,9 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'GET';
 
-						const id = this.getNodeParameter('projectId', i) as string;
-
 						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-						endpoint = `/projects/${id}/releases/${tagName}`;
+						endpoint = `${baseEndpoint}/releases/${tagName}`;
 					}
 					if (operation === 'getAll') {
 						// ----------------------------------
@@ -1522,8 +1483,6 @@ export class Gitlab implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-
-						const id = this.getNodeParameter('projectId', i) as string;
 
 						qs = this.getNodeParameter('additionalFields', i, {});
 
@@ -1533,7 +1492,7 @@ export class Gitlab implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
-						endpoint = `/projects/${id}/releases`;
+						endpoint = `${baseEndpoint}/releases`;
 					}
 					if (operation === 'update') {
 						// ----------------------------------
@@ -1542,8 +1501,6 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const id = this.getNodeParameter('projectId', i) as string;
-
 						const tagName = this.getNodeParameter('tag_name', i) as string;
 
 						body = this.getNodeParameter('additionalFields', i, {});
@@ -1551,7 +1508,7 @@ export class Gitlab implements INodeType {
 							body.milestones = (body.milestones as string).split(',');
 						}
 
-						endpoint = `/projects/${id}/releases/${tagName}`;
+						endpoint = `${baseEndpoint}/releases/${tagName}`;
 					}
 				} else if (resource === 'repository') {
 					if (operation === 'get') {
