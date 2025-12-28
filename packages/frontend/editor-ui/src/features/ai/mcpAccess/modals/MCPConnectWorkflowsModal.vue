@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import {
+	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+	MCP_DOCS_PAGE_URL,
+	ELIGIBLE_WORKFLOWS_DOCS_SECTION,
+} from '@/features/ai/mcpAccess/mcp.constants';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { N8nButton, N8nNotice } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -24,6 +28,7 @@ const selectedWorkflowId = ref<string>();
 const selectRef = ref<SelectRef | null>(null);
 const modalBus = createEventBus();
 const closedByAction = ref(false);
+const docsLink = `${MCP_DOCS_PAGE_URL}#${ELIGIBLE_WORKFLOWS_DOCS_SECTION}`;
 
 const canSave = computed(() => !!selectedWorkflowId.value);
 
@@ -59,6 +64,12 @@ function onSelectReady() {
 	selectRef.value?.focusOnInput();
 }
 
+function onConfirm() {
+	if (!isSaving.value) {
+		void save(() => modalBus.emit('close'));
+	}
+}
+
 onMounted(() => {
 	modalBus.on('closed', onModalClosed);
 });
@@ -81,7 +92,10 @@ onBeforeUnmount(() => {
 				<N8nNotice
 					data-test-id="mcp-connect-workflows-info-notice"
 					theme="info"
-					:content="i18n.baseText('settings.mcp.connectWorkflows.notice')"
+					:content="
+						i18n.baseText('settings.mcp.connectWorkflows.notice', { interpolate: { docsLink } })
+					"
+					:class="$style.notice"
 				/>
 				<MCPWorkflowsSelect
 					ref="selectRef"
@@ -89,6 +103,7 @@ onBeforeUnmount(() => {
 					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
 					:disabled="isSaving"
 					@ready="onSelectReady"
+					@confirm="onConfirm"
 				/>
 			</div>
 		</template>
@@ -122,8 +137,16 @@ onBeforeUnmount(() => {
 }
 
 .content {
-	ul {
-		margin: var(--spacing--3xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+
+	.notice {
+		margin: 0;
+
+		a {
+			font-weight: normal;
+		}
 	}
 }
 

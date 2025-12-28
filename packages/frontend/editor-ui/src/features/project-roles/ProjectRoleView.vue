@@ -92,7 +92,7 @@ const project = (['read', 'update', 'delete'] as const).map(
 const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 	(action) => `folder:${action}` as const,
 );
-const workflow = (['read', 'update', 'create', 'move', 'delete'] as const).map(
+const workflow = (['read', 'update', 'create', 'publish', 'move', 'delete'] as const).map(
 	(action) => `workflow:${action}` as const,
 );
 const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(

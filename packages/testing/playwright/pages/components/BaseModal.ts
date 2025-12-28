@@ -1,13 +1,21 @@
 import type { Page } from '@playwright/test';
 
+import { FloatingUiHelper } from './FloatingUiHelper';
+
 /**
  * Base modal component for handling modal dialogs.
  */
-export class BaseModal {
-	constructor(private page: Page) {}
+export class BaseModal extends FloatingUiHelper {
+	constructor(protected readonly page: Page) {
+		super(page);
+	}
 
 	get container() {
 		return this.page.getByRole('dialog');
+	}
+
+	getCloseButton() {
+		return this.container.getByRole('button', { name: /close/i });
 	}
 
 	async waitForModal() {

@@ -453,6 +453,182 @@ describe('buildSteps', () => {
 		});
 	});
 
+	describe('Error handling', () => {
+		it('should handle tool responses with error data structure', () => {
+			// When a tool fails, the data structure contains error information
+			// instead of the normal ai_tool data structure
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Call n8n Workflow Tool',
+							input: {
+								id: 'call_123',
+								input: { test: {} },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							// Error data structure - no ai_tool property
+							error: {
+								message: 'Workflow execution failed',
+								name: 'NodeOperationError',
+							} as any, // Cast to satisfy ExecutionError type
+							executionStatus: 'error',
+							executionTime: 100,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			// Should still produce a step with error information in the observation
+			expect(result).toHaveLength(1);
+			expect(result[0].observation).toContain('error');
+			expect(result[0].observation).not.toBe('""');
+		});
+
+		it('should handle tool responses with executionError passed directly', () => {
+			// This simulates when WorkflowToolService passes ExecutionError directly
+			// to addOutputData instead of wrapping it in the expected format
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Call n8n Workflow Tool',
+							input: {
+								id: 'call_456',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_456',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						// When error is passed, data might have different structure
+						data: {
+							data: {
+								// ai_tool might be missing or empty when there's an error
+							},
+							error: {
+								message: 'Sub-workflow execution failed',
+								name: 'NodeOperationError',
+							} as any, // Cast to satisfy ExecutionError type
+							executionStatus: 'error',
+							executionTime: 50,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			// Should handle missing ai_tool gracefully and include error info
+			expect(result).toHaveLength(1);
+			// The observation should contain meaningful error information, not just empty string
+			expect(result[0].observation).not.toBe('""');
+		});
+
+		it('should preserve error information when building observation from error response', () => {
+			const errorMessage = 'Received tool input did not match expected schema';
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Call n8n Workflow Tool',
+							input: {
+								id: 'call_789',
+								input: { test: 'invalid' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_789',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {},
+							error: {
+								message: errorMessage,
+								name: 'ToolInputParsingException',
+							} as any, // Cast to satisfy ExecutionError type
+							executionStatus: 'error',
+							executionTime: 10,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// The observation should include the error message so the agent knows what went wrong
+			expect(result[0].observation).toContain(errorMessage);
+		});
+
+		it('should handle error responses with ai_tool containing error wrapper', () => {
+			// When WorkflowToolService correctly wraps error in INodeExecutionData format
+			const errorMessage = 'Workflow execution failed';
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Call n8n Workflow Tool',
+							input: {
+								id: 'call_error',
+								input: { test: {} },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_error',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { error: `There was an error: "${errorMessage}"` } }]],
+							},
+							executionStatus: 'error',
+							executionTime: 100,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// This test passes when error is properly wrapped - validates the expected format
+			expect(result[0].observation).toContain(errorMessage);
+		});
+	});
+
 	describe('Observation formatting', () => {
 		it('should stringify tool result data correctly', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
