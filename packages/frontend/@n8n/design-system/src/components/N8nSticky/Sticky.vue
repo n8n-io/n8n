@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { defaultStickyProps } from './constants';
 import type { StickyProps } from './types';
 import { useI18n } from '../../composables/useI18n';
+import { isValidHexColor, adjustColorLightness } from '../../utils/colorUtils';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
@@ -36,6 +37,30 @@ const styles = computed((): { height: string; width: string } => ({
 }));
 
 const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
+
+const getCustomColorStyles = (hexColor: string) => {
+	if (!isValidHexColor(hexColor)) {
+		return {};
+	}
+
+	// Create lighter border for dark mode (80% lighter)
+	const lighterBorder = adjustColorLightness(hexColor, 80);
+	// Create darker border for light mode (20% darker)
+	const darkerBorder = adjustColorLightness(hexColor, -20);
+
+	return {
+		'--sticky--color--background': hexColor,
+		'--sticky--border-color--custom-light': darkerBorder,
+		'--sticky--border-color--custom-dark': lighterBorder,
+	};
+};
+
+const customColorStyles = computed(() => {
+	if (typeof props.backgroundColor === 'string') {
+		return getCustomColorStyles(props.backgroundColor);
+	}
+	return {};
+});
 
 watch(
 	() => props.editMode,
@@ -81,9 +106,10 @@ const onInputScroll = (event: WheelEvent) => {
 			'n8n-sticky': true,
 			[$style.sticky]: true,
 			[$style.clickable]: !isResizing,
-			[$style[`color-${backgroundColor}`]]: true,
+			[$style[`color-${backgroundColor}`]]: typeof backgroundColor === 'number',
+			[$style.customColor]: typeof backgroundColor === 'string' && isValidHexColor(backgroundColor),
 		}"
-		:style="styles"
+		:style="{ ...styles, ...customColorStyles }"
 		@keydown.prevent
 	>
 		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
@@ -130,6 +156,24 @@ const onInputScroll = (event: WheelEvent) => {
 
 	background-color: var(--sticky--color--background);
 	border: 1px solid var(--sticky--border-color);
+}
+
+// Custom color borders - only apply to custom colors
+.customColor {
+	// Default to darker border (for light mode)
+	--sticky--border-color: var(--sticky--border-color--custom-light);
+}
+
+// Dark mode: use lighter borders for custom colors
+:global(body[data-theme='dark']) .customColor {
+	--sticky--border-color: var(--sticky--border-color--custom-dark);
+}
+
+// System dark mode (when theme is 'system')
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme='light'])) .customColor {
+		--sticky--border-color: var(--sticky--border-color--custom-dark);
+	}
 }
 
 .clickable {
