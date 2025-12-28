@@ -72,8 +72,19 @@ export class SplitInBatchesV1 implements INodeType {
 
 		const options = this.getNodeParameter('options', 0, {});
 
-		if (nodeContext.items === undefined || options.reset === true) {
-			// Is the first time the node runs
+		// Check if we're receiving new input data after the loop completed
+		// This happens in nested loops when the outer loop provides new data to the inner loop
+		// If stored items are empty but we have new items, it's a new batch from parent loop
+		const storedItemsEmpty = Array.isArray(nodeContext.items) && nodeContext.items.length === 0;
+		const hasNewItems = items.length > 0;
+
+		const shouldReset =
+			nodeContext.items === undefined ||
+			options.reset === true ||
+			(storedItemsEmpty && hasNewItems);
+
+		if (shouldReset) {
+			// Is the first time the node runs or receiving new batch from parent loop
 
 			const sourceData = this.getInputSourceData();
 
