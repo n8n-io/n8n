@@ -1341,33 +1341,39 @@ export class Gitlab implements INodeType {
 					repository = this.getNodeParameter('repository', i) as string;
 				}
 
-				// On GitLab API v4, using /projects/${owner}/${respository} as base path does not work anymore.
+				// On GitLab API v4, using /projects/${owner}/${repository} as base path does not work anymore.
 				// So, we look up for projectId with namespace + project name, and set it as base path.
+				// We do not do it on user:getRepositories as it does not have repository param
+				let projectId = 0;
 
-				qs.search = `${owner}/${repository}`;
-				qs.search_namespaces = 'true';
-				responseData = await gitlabApiRequest.call(this, 'GET', '/projects', {}, qs);
+				if (fullOperation !== 'user:getRepositories') {
+					qs.search = `${owner}/${repository}`;
+					qs.search_namespaces = 'true';
+					responseData = await gitlabApiRequest.call(this, 'GET', '/projects', {}, qs);
 
-				if (Array.isArray(responseData) && responseData.length === 0) {
-					throw new NodeOperationError(this.getNode(), 'Project does not exist.', {
-						itemIndex: i,
-					});
+					if (Array.isArray(responseData) && responseData.length === 0) {
+						throw new NodeOperationError(this.getNode(), 'Project does not exist.', {
+							itemIndex: i,
+						});
+					}
+
+					const results = responseData.filter(
+						(e: any) => e.path_with_namespace === `${owner}/${repository}`,
+					);
+
+					if (results.length === 0) {
+						throw new NodeOperationError(this.getNode(), 'Project does not exists.', {
+							itemIndex: i,
+						});
+					}
+
+					projectId = results[0].id;
+
+					// Reset qs
+					qs = {};
 				}
 
-				const results = responseData.filter(
-					(e: any) => e.path_with_namespace === `${owner}/${repository}`,
-				);
-
-				if (results.length === 0) {
-					throw new NodeOperationError(this.getNode(), 'Project does not exists.', {
-						itemIndex: i,
-					});
-				}
-
-				// Reset qs
-				qs = {};
-
-				const baseEndpoint = `/projects/${results[0].id}`;
+				const baseEndpoint = `/projects/${projectId}`;
 
 				if (resource === 'issue') {
 					if (operation === 'create') {
