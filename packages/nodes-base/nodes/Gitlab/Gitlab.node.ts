@@ -1349,7 +1349,7 @@ export class Gitlab implements INodeType {
 				responseData = await gitlabApiRequest.call(this, 'GET', '/projects', {}, qs);
 
 				if (Array.isArray(responseData) && responseData.length === 0) {
-					throw new NodeOperationError(this.getNode(), 'Project does not exists.', {
+					throw new NodeOperationError(this.getNode(), 'Project does not exist.', {
 						itemIndex: i,
 					});
 				}
