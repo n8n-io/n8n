@@ -28,7 +28,6 @@ function isDateLike(v: unknown): v is DateLike {
 async function resolveDataTableId(
 	ctx: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceLocator: { mode: 'list' | 'id' | 'name'; value: string },
-	index?: number,
 ): Promise<string> {
 	if (resourceLocator.mode === 'name') {
 		// Look up table by name
@@ -47,10 +46,8 @@ async function resolveDataTableId(
 
 		return response.data[0].id;
 	} else {
-		// For 'list' and 'id' modes, extract the value directly
-		return ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
-			extractValue: true,
-		}) as string;
+		// For 'list' and 'id' modes, the value is already the data table ID
+		return resourceLocator.value;
 	}
 }
 
@@ -71,7 +68,7 @@ export async function getDataTableProxyExecute(
 		value: string;
 	};
 
-	const dataTableId = await resolveDataTableId(ctx, resourceLocator, index);
+	const dataTableId = await resolveDataTableId(ctx, resourceLocator);
 
 	return await ctx.helpers.getDataTableProxy(dataTableId);
 }
