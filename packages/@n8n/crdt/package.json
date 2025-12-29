@@ -23,12 +23,13 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "yjs": "^13.6.20",
-    "@automerge/automerge": "^2.2.8"
+    "@automerge/automerge": "^2.2.8",
+    "yjs": "^13.6.20"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-websocket-mock": "^0.5.0"
   }
 }
