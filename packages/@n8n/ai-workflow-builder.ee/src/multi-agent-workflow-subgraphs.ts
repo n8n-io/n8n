@@ -28,7 +28,7 @@ import {
 	handleCreateWorkflowName,
 	handleDeleteMessages,
 } from './utils/state-modifier';
-import type { BuilderFeatureFlags } from './workflow-builder-agent';
+import type { BuilderFeatureFlags, ModelOverrides } from './workflow-builder-agent';
 
 /**
  * Maps routing decisions to graph node names.
@@ -46,8 +46,10 @@ function routeToNode(next: string): string {
 
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
-	llmSimpleTask: BaseChatModel;
-	llmComplexTask: BaseChatModel;
+	/** Default LLM model used for all components unless overridden */
+	defaultModel: BaseChatModel;
+	/** Optional per-component model overrides */
+	modelOverrides?: ModelOverrides;
 	logger?: Logger;
 	instanceUrl?: string;
 	checkpointer?: MemorySaver;
@@ -119,7 +121,8 @@ function createSubgraphNodeHandler<
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
 	const {
 		parsedNodeTypes,
-		llmComplexTask,
+		defaultModel,
+		modelOverrides,
 		logger,
 		instanceUrl,
 		checkpointer,
@@ -127,8 +130,12 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		featureFlags,
 	} = config;
 
-	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
-	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
+	// Helper to get model for a component with fallback to defaultModel
+	const getModel = (component: keyof ModelOverrides): BaseChatModel =>
+		modelOverrides?.[component] ?? defaultModel;
+
+	const supervisorAgent = new SupervisorAgent({ llm: getModel('supervisor') });
+	const responderAgent = new ResponderAgent({ llm: getModel('responder') });
 
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
@@ -138,19 +145,19 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	// Compile subgraphs
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: getModel('discovery'),
 		logger,
 		featureFlags,
 	});
 	const compiledBuilder = builderSubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: getModel('builder'),
 		logger,
 		featureFlags,
 	});
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: getModel('configurator'),
 		logger,
 		instanceUrl,
 		featureFlags,
@@ -206,7 +213,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				return await handleCompactMessages(
 					state.messages,
 					state.previousSummary ?? '',
-					llmComplexTask,
+					getModel('conversationCompact'),
 					isAutoCompact,
 				);
 			})
@@ -217,7 +224,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					await handleCreateWorkflowName(
 						state.messages,
 						state.workflowJSON,
-						llmComplexTask,
+						getModel('workflowName'),
 						logger,
 					),
 			)
