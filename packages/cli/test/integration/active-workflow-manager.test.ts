@@ -204,19 +204,24 @@ describe('init()', () => {
 
 		expect(addSpy).toHaveBeenCalled();
 
-		// Verify the workflow was created without the Start node
+		// Verify the workflow was modified and activated
 		const [workflowId, activationMode, existingWorkflow] = addSpy.mock.calls[0];
 		expect(workflowId).toBe(dbWorkflow.id);
 		expect(activationMode).toBe('init');
 
-		// The workflow should have been modified to exclude Start node
+		// After filtering, the workflow should only have the Schedule Trigger (Start was removed)
 		if (existingWorkflow) {
-			expect(existingWorkflow.nodes).toHaveLength(2); // Both nodes initially
-			// After filtering, Start should be removed (verified by successful activation)
+			expect(existingWorkflow.nodes).toHaveLength(1);
+			expect(existingWorkflow.nodes[0].type).toBe('n8n-nodes-base.scheduleTrigger');
+			// Connections from Start should also be removed
+			expect(existingWorkflow.connections.Start).toBeUndefined();
 		}
+
+		// Workflow should be active in memory
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
 
-	it('should not filter disabled Start nodes', async () => {
+	it('should not filter disabled Start nodes from nodes array', async () => {
 		const dbWorkflow = await createActiveWorkflow({
 			nodes: [
 				{
@@ -239,11 +244,19 @@ describe('init()', () => {
 			],
 		});
 
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
+
 		await activeWorkflowManager.init();
 
-		// Workflow should still activate with disabled Start node
-		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
-		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
+		// Verify disabled Start node was NOT filtered out
+		const [, , existingWorkflow] = addSpy.mock.calls[0];
+		if (existingWorkflow) {
+			// Both nodes should still be in the array (disabled Start is not filtered)
+			expect(existingWorkflow.nodes).toHaveLength(2);
+			const startNode = existingWorkflow.nodes.find((n) => n.name === 'Start');
+			expect(startNode).toBeDefined();
+			expect(startNode?.disabled).toBe(true);
+		}
 	});
 });
 
