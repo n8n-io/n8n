@@ -74,9 +74,9 @@ export async function createEngineRequests(
 									thinkingType = 'redacted_thinking';
 								}
 							}
-						} else if (message && 'reasoning_content' in message) {
+						} else if (message && 'reasoning_content' in message && typeof message.reasoning_content === 'string') {
 							// DeepSeek reasoning_content field
-							reasoningContent = message.reasoning_content as string;
+							reasoningContent = message.reasoning_content;
 						}
 						if (thoughtSignature || thinkingContent || reasoningContent) break;
 					}
