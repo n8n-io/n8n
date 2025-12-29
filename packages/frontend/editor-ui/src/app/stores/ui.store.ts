@@ -266,6 +266,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
@@ -607,6 +608,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const markStateDirty = () => {
+		dirtyStateSetCount.value++;
 		stateIsDirty.value = true;
 	};
 
@@ -672,6 +674,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isActionActive,
 		activeActions,
 		headerHeight,
+		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
 		stateIsDirty: computed(() => stateIsDirty.value),
 		isBlankRedirect,
 		activeCredentialType,

@@ -1880,17 +1880,15 @@ watch(
 	},
 );
 
-// Acquire write access when user makes first edit, and trigger auto-save
+// Acquire write access and trigger auto-save each time the workflow is marked dirty
 watch(
-	() => uiStore.stateIsDirty,
-	(isDirty) => {
-		if (isDirty) {
-			collaborationStore.requestWriteAccess();
+	() => uiStore.dirtyStateSetCount,
+	() => {
+		collaborationStore.requestWriteAccess();
 
-			// Trigger auto-save (debounced) for writers only
-			if (!collaborationStore.shouldBeReadOnly) {
-				void workflowSaving.autoSaveWorkflow();
-			}
+		// Trigger auto-save (debounced) for writers only
+		if (!collaborationStore.shouldBeReadOnly) {
+			void workflowSaving.autoSaveWorkflow();
 		}
 	},
 );
