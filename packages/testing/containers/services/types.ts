@@ -1,6 +1,24 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
 /**
+ * Content to inject into n8n containers (e.g., certificates, config files).
+ * Services can include this in their meta to have content copied to n8n containers.
+ */
+export interface ContentInjection {
+	content: string;
+	target: string;
+}
+
+/**
+ * Base meta interface that services can extend.
+ * Includes optional n8n content injection.
+ */
+export interface ServiceMeta {
+	/** Content to inject into n8n containers */
+	n8nContentInjection?: ContentInjection[];
+}
+
+/**
  * Result from starting a service container.
  */
 export interface ServiceResult<TMeta = unknown> {
@@ -51,24 +69,27 @@ export interface StartContext {
 }
 
 /**
- * Stack configuration - imported from stack.ts to avoid circular deps.
- * This mirrors N8NConfig but is defined here for service use.
+ * Stack configuration.
+ * Services are enabled via the `services` array using their registry key names.
  */
 export interface StackConfig {
 	/** Number of main instances (default: 1). >1 enables multi-main mode. */
 	mains?: number;
 	/** Number of worker instances (default: 0). >0 enables queue mode. */
 	workers?: number;
+	/** Use PostgreSQL instead of SQLite (auto-enabled for queue mode) */
 	postgres?: boolean;
+	/** Environment variables to pass to n8n */
 	env?: Record<string, string>;
+	/** Custom project name for container naming */
 	projectName?: string;
+	/** Resource limits for n8n containers */
 	resourceQuota?: { memory?: number; cpu?: number };
-	email?: boolean;
-	sourceControl?: boolean;
-	oidc?: boolean;
-	observability?: boolean;
-	tracing?: boolean;
-	proxyServerEnabled?: boolean;
+	/**
+	 * Services to enable by their registry key name.
+	 * E.g., ['mailpit', 'gitea', 'keycloak', 'observability', 'tracing', 'proxy']
+	 */
+	services?: string[];
 }
 
 /**

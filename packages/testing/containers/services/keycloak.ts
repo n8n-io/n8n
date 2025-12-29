@@ -6,7 +6,7 @@ import { Agent } from 'undici';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { HelperContext, Service, ServiceResult } from './types';
+import type { ContentInjection, HelperContext, Service, ServiceResult } from './types';
 
 // Constants
 const HOSTNAME = 'keycloak';
@@ -24,11 +24,11 @@ const KEYCLOAK_TEST_USER_LASTNAME = 'User';
 const KEYCLOAK_ADMIN_USER = 'admin';
 const KEYCLOAK_ADMIN_PASSWORD = 'admin';
 
-/** Path where the CA certificate is exported in PEM format inside the container */
+/** Path where the CA certificate is exported in PEM format inside the keycloak container */
 const KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
 
 /** Path where the CA certificate will be mounted in n8n containers */
-export const N8N_KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
+const N8N_KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
 
 // Types
 export interface KeycloakConfig {
@@ -50,6 +50,8 @@ export interface KeycloakMeta {
 		firstName: string;
 		lastName: string;
 	};
+	/** Content to inject into n8n containers (CA certificate) */
+	n8nContentInjection: ContentInjection[];
 }
 
 export type KeycloakResult = ServiceResult<KeycloakMeta>;
@@ -298,6 +300,7 @@ export const keycloak: Service<KeycloakResult> = {
 						firstName: KEYCLOAK_TEST_USER_FIRSTNAME,
 						lastName: KEYCLOAK_TEST_USER_LASTNAME,
 					},
+					n8nContentInjection: [{ content: certPem, target: N8N_KEYCLOAK_CERT_PATH }],
 				},
 			};
 		} catch (error) {

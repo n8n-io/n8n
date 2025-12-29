@@ -11,22 +11,16 @@
 
 import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
-import { GenericContainer, Network, Wait } from 'testcontainers';
+import { Network } from 'testcontainers';
 
-import { getDockerImageFromEnv } from './docker-image';
-import { DockerImageNotFoundError } from './docker-image-not-found-error';
-import { createHelperContext } from './helpers/context';
-import {
-	createElapsedLogger,
-	createSilentLogConsumer,
-	pollContainerHttpEndpoint,
-} from './helpers/utils';
-import { N8nImagePullPolicy } from './n8n-image-pull-policy';
+import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
-import { N8N_KEYCLOAK_CERT_PATH, type KeycloakResult } from './services/keycloak';
 import type { LoadBalancerResult } from './services/load-balancer';
+import { createN8NInstances } from './services/n8n';
 import { helperFactories, services } from './services/registry';
 import type {
+	ContentInjection,
+	HelperContext,
 	HelperFactories,
 	MultiContainerResult,
 	Service,
@@ -35,7 +29,6 @@ import type {
 	StackConfig,
 	StartContext,
 } from './services/types';
-import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 /**
  * Type guard to check if a service result has multiple containers.
@@ -55,36 +48,6 @@ function extractContainers(result: ServiceResult | MultiContainerResult): Starte
 	}
 	return [result.container];
 }
-
-// Default n8n image
-const N8N_IMAGE = getDockerImageFromEnv(TEST_CONTAINER_IMAGES.n8n);
-
-// Base environment for all n8n instances
-const BASE_ENV: Record<string, string> = {
-	N8N_LOG_LEVEL: 'debug',
-	N8N_ENCRYPTION_KEY: process.env.N8N_ENCRYPTION_KEY ?? 'test-encryption-key',
-	E2E_TESTS: 'false',
-	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
-	N8N_DIAGNOSTICS_ENABLED: 'false',
-	N8N_METRICS: 'true',
-	NODE_ENV: 'development',
-	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
-	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
-	N8N_LICENSE_CERT: process.env.N8N_LICENSE_CERT ?? '',
-	N8N_DYNAMIC_BANNERS_ENABLED: 'false',
-};
-
-// Wait strategies
-const N8N_MAIN_WAIT_STRATEGY = Wait.forAll([
-	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
-	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(30000),
-]);
-
-const N8N_WORKER_WAIT_STRATEGY = Wait.forAll([
-	Wait.forListeningPorts(),
-	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(30000),
-]);
 
 // ============================================================================
 // Service Registry
@@ -256,7 +219,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	// State
 	const containers: StartedTestContainer[] = [];
 	const serviceResults: Record<string, ServiceResult> = {};
-	let environment: Record<string, string> = { ...BASE_ENV, ...env };
+	// Environment accumulated from services (BASE_ENV is added by n8n service)
+	let environment: Record<string, string> = {};
 
 	log(`Starting stack creation: ${uniqueProjectName}`);
 
@@ -324,63 +288,36 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		log(`${service.description} ready`);
 	}
 
-	// Handle SQLite fallback
-	if (!usePostgres) {
-		environment.DB_TYPE = 'sqlite';
-	}
-
-	// Queue mode additional config
-	if (isQueueMode) {
-		environment = {
-			...environment,
-			EXECUTIONS_MODE: 'queue',
-			OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: 'true',
-		};
-
-		if (mains > 1) {
-			if (!process.env.N8N_LICENSE_ACTIVATION_KEY) {
-				throw new Error('N8N_LICENSE_ACTIVATION_KEY is required for multi-main instances');
-			}
-			environment.N8N_MULTI_MAIN_SETUP_ENABLED = 'true';
-		}
-	}
-
-	// Task runner environment (always enabled)
-	environment = {
-		...environment,
-		N8N_RUNNERS_ENABLED: 'true',
-		N8N_RUNNERS_MODE: 'external',
-		N8N_RUNNERS_AUTH_TOKEN: 'test',
-		N8N_RUNNERS_BROKER_LISTEN_ADDRESS: '0.0.0.0',
-	};
-
 	// ========================================================================
 	// Phase 2: n8n Instances
 	// ========================================================================
 
-	const keycloakResult = serviceResults.keycloak as KeycloakResult | undefined;
 	const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
 
 	// Determine baseUrl from load balancer or direct port
 	const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
 
-	// For single instance mode, set WEBHOOK_URL and N8N_PORT
-	if (!needsLoadBalancer) {
-		environment = { ...environment, WEBHOOK_URL: baseUrl, N8N_PORT: '5678' };
-	}
+	// Collect content injections from all services (e.g., Keycloak CA cert)
+	const contentToInject: ContentInjection[] = Object.values(serviceResults).flatMap((result) => {
+		const meta = result.meta as { n8nContentInjection?: ContentInjection[] } | undefined;
+		return meta?.n8nContentInjection ?? [];
+	});
 
 	log(`Starting n8n instances (${mains} mains, ${workers} workers)...`);
-	const instances = await createN8NInstances({
-		mainCount: mains,
-		workerCount: workers,
-		uniqueProjectName,
-		environment,
+	const n8nResult = await createN8NInstances({
+		mains,
+		workers,
+		projectName: uniqueProjectName,
 		network,
-		directPort: needsLoadBalancer ? undefined : allocatedMainPort,
+		serviceEnvironment: environment,
+		userEnvironment: env,
+		usePostgres,
+		baseUrl: needsLoadBalancer ? undefined : baseUrl,
+		allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 		resourceQuota,
-		keycloakCertPem: keycloakResult?.meta.certPem,
+		contentToInject,
 	});
-	containers.push(...instances);
+	containers.push(...n8nResult.containers);
 	log('All n8n instances started');
 
 	// Wait for load balancer to see healthy backends
@@ -436,7 +373,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	await waitForNetworkQuiet();
 
 	// Build service helpers (Proxy-based for lazy instantiation and caching)
-	const helperCtx = createHelperContext(containers, serviceResults);
+	const helperCtx: HelperContext = {
+		containers,
+		findContainer: (pattern: RegExp) => containers.find((c) => pattern.test(c.getName())),
+		serviceResults,
+	};
 	const helperCache: Partial<ServiceHelpers> = {};
 
 	const servicesProxy = new Proxy({} as ServiceHelpers, {
@@ -528,175 +469,3 @@ async function stopN8NStack(
 		throw error;
 	}
 }
-
-// ============================================================================
-// n8n Instance Creation
-// ============================================================================
-
-interface CreateInstancesOptions {
-	mainCount: number;
-	workerCount: number;
-	uniqueProjectName: string;
-	environment: Record<string, string>;
-	network: StartedNetwork;
-	directPort?: number;
-	resourceQuota?: { memory?: number; cpu?: number };
-	keycloakCertPem?: string;
-}
-
-async function createN8NInstances({
-	mainCount,
-	workerCount,
-	uniqueProjectName,
-	environment,
-	network,
-	directPort,
-	resourceQuota,
-	keycloakCertPem,
-}: CreateInstancesOptions): Promise<StartedTestContainer[]> {
-	const instances: StartedTestContainer[] = [];
-	const log = createElapsedLogger('n8n-instances');
-
-	for (let i = 1; i <= mainCount; i++) {
-		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
-		log(`Starting main ${i}/${mainCount}: ${name}`);
-		const container = await createN8NContainer({
-			name,
-			uniqueProjectName,
-			environment,
-			network,
-			isWorker: false,
-			instanceNumber: i,
-			networkAlias: name,
-			directPort: i === 1 ? directPort : undefined,
-			resourceQuota,
-			keycloakCertPem,
-		});
-		instances.push(container);
-		log(`Main ${i}/${mainCount} ready`);
-	}
-
-	for (let i = 1; i <= workerCount; i++) {
-		const name = `${uniqueProjectName}-n8n-worker-${i}`;
-		log(`Starting worker ${i}/${workerCount}: ${name}`);
-		const container = await createN8NContainer({
-			name,
-			uniqueProjectName,
-			environment,
-			network,
-			isWorker: true,
-			instanceNumber: i,
-			resourceQuota,
-			keycloakCertPem,
-		});
-		instances.push(container);
-		log(`Worker ${i}/${workerCount} ready`);
-	}
-
-	return instances;
-}
-
-interface CreateContainerOptions {
-	name: string;
-	uniqueProjectName: string;
-	environment: Record<string, string>;
-	network: StartedNetwork;
-	isWorker: boolean;
-	instanceNumber: number;
-	networkAlias?: string;
-	directPort?: number;
-	resourceQuota?: { memory?: number; cpu?: number };
-	keycloakCertPem?: string;
-}
-
-async function createN8NContainer({
-	name,
-	uniqueProjectName,
-	environment,
-	network,
-	isWorker,
-	instanceNumber,
-	networkAlias,
-	directPort,
-	resourceQuota,
-	keycloakCertPem,
-}: CreateContainerOptions): Promise<StartedTestContainer> {
-	const { consumer, throwWithLogs } = createSilentLogConsumer();
-
-	let container = new GenericContainer(N8N_IMAGE);
-
-	container = container
-		.withEnvironment(environment)
-		.withLabels({
-			'com.docker.compose.project': uniqueProjectName,
-			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
-			instance: instanceNumber.toString(),
-		})
-		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
-		.withName(name)
-		.withLogConsumer(consumer)
-		.withReuse();
-
-	if (keycloakCertPem) {
-		container = container.withCopyContentToContainer([
-			{ content: keycloakCertPem, target: N8N_KEYCLOAK_CERT_PATH },
-		]);
-	}
-
-	if (resourceQuota) {
-		container = container.withResourcesQuota({
-			memory: resourceQuota.memory,
-			cpu: resourceQuota.cpu,
-		});
-	}
-
-	container = container.withNetwork(network);
-	if (networkAlias) {
-		container = container.withNetworkAliases(networkAlias);
-	}
-
-	// Task runner is always enabled, so always expose both ports (5678 for n8n, 5679 for task broker)
-	if (isWorker) {
-		container = container
-			.withCommand(['worker'])
-			.withExposedPorts(5678, 5679)
-			.withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
-	} else {
-		if (directPort) {
-			container = container
-				.withExposedPorts({ container: 5678, host: directPort }, 5679)
-				.withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
-		} else {
-			container = container.withExposedPorts(5678, 5679).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
-		}
-	}
-
-	try {
-		return await container.start();
-	} catch (error: unknown) {
-		if (
-			error instanceof Error &&
-			'statusCode' in error &&
-			(error as Error & { statusCode: number }).statusCode === 404
-		) {
-			throw new DockerImageNotFoundError(name, error);
-		}
-
-		console.error(`Container "${name}" failed to start!`);
-		console.error('Original error:', error instanceof Error ? error.message : String(error));
-
-		return throwWithLogs(error);
-	}
-}
-
-// Re-export service types for convenience
-export type { PostgresResult } from './services/postgres';
-export type { RedisResult } from './services/redis';
-export type { MailpitResult } from './services/mailpit';
-export type { GiteaResult } from './services/gitea';
-export type { KeycloakResult } from './services/keycloak';
-export type { ObservabilityResult, ScrapeTarget } from './services/observability';
-export type { TracingResult } from './services/tracing';
-export type { ProxyResult } from './services/proxy';
-export type { TaskRunnerResult } from './services/task-runner';
-export type { LoadBalancerResult } from './services/load-balancer';

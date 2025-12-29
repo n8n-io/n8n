@@ -46,25 +46,3 @@ export const helperFactories: Partial<HelperFactories> = {
 	observability: createObservabilityHelper,
 	tracing: createTracingHelper,
 };
-
-// Re-export all services for direct import
-export { postgres } from './postgres';
-export { redis } from './redis';
-export { mailpit, MailpitHelper, createMailpitHelper } from './mailpit';
-export { gitea, GiteaHelper, createGiteaHelper } from './gitea';
-export { keycloak, KeycloakHelper, createKeycloakHelper } from './keycloak';
-export { observability, ObservabilityHelper, createObservabilityHelper } from './observability';
-export { tracing, TracingHelper, createTracingHelper } from './tracing';
-export { proxy } from './proxy';
-export { taskRunner } from './task-runner';
-export { loadBalancer } from './load-balancer';
-
-// Re-export types
-export type {
-	Service,
-	ServiceResult,
-	ServiceHelpers,
-	HelperContext,
-	HelperFactory,
-	HelperFactories,
-} from './types';
