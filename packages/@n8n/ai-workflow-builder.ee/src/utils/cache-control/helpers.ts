@@ -1,5 +1,29 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
+
+/**
+ * Checks if the given LLM is an Anthropic model.
+ * Used to determine whether to apply Anthropic-specific cache control markers.
+ *
+ * @param llm - The LangChain chat model to check
+ * @returns true if the model is from Anthropic, false otherwise
+ */
+export function isAnthropicModel(llm: BaseChatModel): boolean {
+	// Check _llmType() which returns 'anthropic' for ChatAnthropic
+	const llmType = llm._llmType?.();
+	if (typeof llmType === 'string' && llmType.toLowerCase().includes('anthropic')) {
+		return true;
+	}
+
+	// Fallback: check constructor name
+	const constructorName = llm.constructor?.name;
+	if (constructorName === 'ChatAnthropic') {
+		return true;
+	}
+
+	return false;
+}
 
 /**
  * Type guard to check if a content block is a text block that can have cache_control.
@@ -91,7 +115,7 @@ export function cleanStaleWorkflowContext(
 /**
  * Applies Anthropic's prompt caching optimization by:
  * 1. Adding the current workflow context to the last user/tool message
- * 2. Marking the last two user/tool messages with cache_control markers
+ * 2. Marking the last two user/tool messages with cache_control markers (Anthropic only)
  *
  * This strategy leverages Anthropic's prompt caching by caching:
  * - The conversation history (second-to-last message)
@@ -100,24 +124,35 @@ export function cleanStaleWorkflowContext(
  * Anthropic caches content blocks marked with { cache_control: { type: 'ephemeral' } },
  * allowing subsequent API calls to reuse cached prompts and reduce token costs.
  *
+ * For non-Anthropic models, workflow context is still appended but cache markers are skipped.
+ *
  * @param messages - Array of LangChain messages to modify
  * @param userToolIndices - Indices of user/tool messages (from findUserToolMessageIndices)
  * @param workflowContext - Current workflow JSON and execution data to append
+ * @param llm - The LLM being used (to check if cache control should be applied)
  */
 export function applyCacheControlMarkers(
 	messages: BaseMessage[],
 	userToolIndices: number[],
 	workflowContext: string,
+	llm: BaseChatModel,
 ): void {
 	if (userToolIndices.length === 0) {
 		return;
 	}
+
+	const shouldApplyCacheControl = isAnthropicModel(llm);
 
 	// Add current workflow context to the last user/tool message
 	const lastIdx = userToolIndices[userToolIndices.length - 1];
 	const lastMessage = messages[lastIdx];
 	if (typeof lastMessage.content === 'string') {
 		lastMessage.content = lastMessage.content + workflowContext;
+	}
+
+	// Skip cache markers for non-Anthropic models
+	if (!shouldApplyCacheControl) {
+		return;
 	}
 
 	// Mark second-to-last message for caching (conversation history)
@@ -169,23 +204,29 @@ export function applyCacheControlMarkers(
  * - Then marks the last user/tool message (no workflow context appending)
  * - Ensures we stay within the 4 breakpoint limit
  *
+ * Only applies markers if the LLM is an Anthropic model (cache_control is Anthropic-specific).
+ *
  * @param messages - Array of LangChain messages to modify
+ * @param llm - The LLM being used (to check if cache control should be applied)
  */
-export function applySubgraphCacheMarkers(messages: BaseMessage[]): void {
+export function applySubgraphCacheMarkers(messages: BaseMessage[], llm: BaseChatModel): void {
+	// Only apply cache control for Anthropic models
+	if (!isAnthropicModel(llm)) {
+		return;
+	}
+
 	const userToolIndices = findUserToolMessageIndices(messages);
 	if (userToolIndices.length === 0) {
 		return;
 	}
 
 	// First, remove ALL existing cache_control markers from messages
-	let removedCount = 0;
 	for (const idx of userToolIndices) {
 		const message = messages[idx];
 		if (Array.isArray(message.content)) {
 			for (const block of message.content) {
 				if (hasCacheControl(block) && block.cache_control) {
 					delete block.cache_control;
-					removedCount++;
 				}
 			}
 		}
