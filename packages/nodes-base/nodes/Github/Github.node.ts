@@ -2448,8 +2448,8 @@ export class Github implements INodeType {
 							// If that ever changes the data has to get converted here.
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-								body.content = buffer.toString('base64');
+							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							body.content = buffer.toString('base64');
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 							if (isBase64(fileContent)) {
