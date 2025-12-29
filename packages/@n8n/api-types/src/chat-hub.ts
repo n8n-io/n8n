@@ -19,14 +19,14 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureOpenAi',
 	'azureEntraId',
 	'ollama',
-	'awsBedrock',
-	'vercelAiGateway',
 	'xAiGrok',
 	'groq',
-	'openRouter',
 	'deepSeek',
 	'cohere',
 	'mistralCloud',
+	'awsBedrock',
+	'vercelAiGateway',
+	'openRouter',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
@@ -243,6 +243,8 @@ export interface ChatModelDto {
 	updatedAt: string | null;
 	createdAt: string | null;
 	metadata: ChatModelMetadataDto;
+	groupName: string | null;
+	groupIcon: AgentIconOrEmoji | null;
 }
 
 /**
