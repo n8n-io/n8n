@@ -19,6 +19,18 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./src/browser.ts",
+      "default": "./dist/browser.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],

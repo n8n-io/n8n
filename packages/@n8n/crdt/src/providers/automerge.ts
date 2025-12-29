@@ -3,6 +3,7 @@ import * as Automerge from '@automerge/automerge';
 import type {
 	ArrayChangeEvent,
 	ArrayDelta,
+	ChangeOrigin,
 	CRDTArray,
 	CRDTDoc,
 	CRDTMap,
@@ -11,10 +12,114 @@ import type {
 	DeepChangeEvent,
 	Unsubscribe,
 } from '../types';
-import { ChangeAction, CRDTEngine } from '../types';
+import { ChangeAction, ChangeOrigin as ChangeOriginConst, CRDTEngine } from '../types';
 
 type AutomergeDoc = Automerge.Doc<Record<string, unknown>>;
-type ChangeHandler = (changes: DeepChange[]) => void;
+type ChangeHandler = (changes: DeepChange[], origin: ChangeOrigin) => void;
+
+/**
+ * Extract plain data from a value, unwrapping detached CRDT types.
+ */
+function extractPlainValue(value: unknown): unknown {
+	if (value instanceof DetachedAutomergeMap) {
+		return value.toJSON();
+	}
+	if (value instanceof DetachedAutomergeArray) {
+		return value.toJSON();
+	}
+	return value;
+}
+
+/**
+ * Detached (standalone) map that stores data in memory until attached to a document.
+ * This allows createMap() to work in Automerge by storing data locally.
+ */
+class DetachedAutomergeMap<T = unknown> implements CRDTMap<T> {
+	private data: Record<string, unknown> = {};
+
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+		return this.data[key] as T | undefined;
+	}
+
+	set(key: string, value: T | CRDTMap<unknown> | CRDTArray<unknown>): void {
+		this.data[key] = extractPlainValue(value);
+	}
+
+	delete(key: string): void {
+		delete this.data[key];
+	}
+
+	has(key: string): boolean {
+		return key in this.data;
+	}
+
+	keys(): IterableIterator<string> {
+		return Object.keys(this.data)[Symbol.iterator]();
+	}
+
+	*values(): IterableIterator<T | CRDTMap<unknown> | CRDTArray<unknown>> {
+		for (const value of Object.values(this.data)) {
+			yield value as T;
+		}
+	}
+
+	*entries(): IterableIterator<[string, T | CRDTMap<unknown> | CRDTArray<unknown>]> {
+		for (const [key, value] of Object.entries(this.data)) {
+			yield [key, value as T];
+		}
+	}
+
+	toJSON(): Record<string, T> {
+		return { ...this.data } as Record<string, T>;
+	}
+
+	onDeepChange(_handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
+		// Detached maps don't emit change events - they're not connected to a document
+		return () => {};
+	}
+}
+
+/**
+ * Detached (standalone) array that stores data in memory until attached to a document.
+ * This allows createArray() to work in Automerge by storing data locally.
+ */
+class DetachedAutomergeArray<T = unknown> implements CRDTArray<T> {
+	private data: unknown[] = [];
+
+	get length(): number {
+		return this.data.length;
+	}
+
+	get(index: number): T | undefined {
+		if (index < 0 || index >= this.data.length) return undefined;
+		return this.data[index] as T | undefined;
+	}
+
+	push(...items: T[]): void {
+		this.data.push(...items.map(extractPlainValue));
+	}
+
+	insert(index: number, ...items: T[]): void {
+		this.data.splice(index, 0, ...items.map(extractPlainValue));
+	}
+
+	delete(index: number, count = 1): void {
+		this.data.splice(index, count);
+	}
+
+	toArray(): T[] {
+		return [...this.data] as T[];
+	}
+
+	toJSON(): T[] {
+		return this.toArray();
+	}
+
+	onDeepChange(_handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
+		// Detached arrays don't emit change events - they're not connected to a document
+		return () => {};
+	}
+}
 
 /**
  * Automerge implementation of CRDTMap.
@@ -31,15 +136,16 @@ class AutomergeMap<T = unknown> implements CRDTMap<T> {
 		return (doc[this.mapName] as Record<string, unknown>) ?? {};
 	}
 
-	get(key: string): T | undefined {
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
 		const mapData = this.getMapData();
+		// Automerge stores plain objects, not CRDT types
 		return mapData[key] as T | undefined;
 	}
 
-	set(key: string, value: T): void {
+	set(key: string, value: T | CRDTMap<unknown> | CRDTArray<unknown>): void {
 		this.docHolder.change((doc) => {
 			doc[this.mapName] ??= {};
-			(doc[this.mapName] as Record<string, unknown>)[key] = value;
+			(doc[this.mapName] as Record<string, unknown>)[key] = extractPlainValue(value);
 		});
 	}
 
@@ -61,16 +167,18 @@ class AutomergeMap<T = unknown> implements CRDTMap<T> {
 		return Object.keys(mapData)[Symbol.iterator]();
 	}
 
-	*values(): IterableIterator<T> {
+	*values(): IterableIterator<T | CRDTMap<unknown> | CRDTArray<unknown>> {
 		const mapData = this.getMapData();
 		for (const value of Object.values(mapData)) {
+			// Automerge stores plain objects, not CRDT types
 			yield value as T;
 		}
 	}
 
-	*entries(): IterableIterator<[string, T]> {
+	*entries(): IterableIterator<[string, T | CRDTMap<unknown> | CRDTArray<unknown>]> {
 		const mapData = this.getMapData();
 		for (const [key, value] of Object.entries(mapData)) {
+			// Automerge stores plain objects, not CRDT types
 			yield [key, value as T];
 		}
 	}
@@ -79,7 +187,7 @@ class AutomergeMap<T = unknown> implements CRDTMap<T> {
 		return { ...this.getMapData() } as Record<string, T>;
 	}
 
-	onDeepChange(handler: ChangeHandler): Unsubscribe {
+	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
 		this.docHolder.addChangeHandler(this.mapName, handler);
 		return () => {
 			this.docHolder.removeChangeHandler(this.mapName, handler);
@@ -115,7 +223,7 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 		this.docHolder.change((doc) => {
 			doc[this.arrayName] ??= [];
 			const arr = doc[this.arrayName] as unknown[];
-			arr.push(...items);
+			arr.push(...items.map(extractPlainValue));
 		});
 	}
 
@@ -123,7 +231,7 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 		this.docHolder.change((doc) => {
 			doc[this.arrayName] ??= [];
 			const arr = doc[this.arrayName] as unknown[];
-			arr.splice(index, 0, ...items);
+			arr.splice(index, 0, ...items.map(extractPlainValue));
 		});
 	}
 
@@ -144,7 +252,7 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 		return this.toArray();
 	}
 
-	onDeepChange(handler: ChangeHandler): Unsubscribe {
+	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
 		this.docHolder.addChangeHandler(this.arrayName, handler);
 		return () => {
 			this.docHolder.removeChangeHandler(this.arrayName, handler);
@@ -152,7 +260,7 @@ class AutomergeArray<T = unknown> implements CRDTArray<T> {
 	}
 }
 
-type UpdateHandler = (update: Uint8Array) => void;
+type UpdateHandler = (update: Uint8Array, origin: ChangeOrigin) => void;
 
 /**
  * Holds the Automerge document and manages change handlers.
@@ -191,8 +299,8 @@ class AutomergeDocHolder {
 		// Not in transaction - apply immediately
 		const beforeHeads = this.getHeads();
 		this.doc = Automerge.change(this.doc, fn);
-		this.notifyHandlers(beforeHeads);
-		this.notifyUpdateHandlers();
+		this.notifyHandlers(beforeHeads, ChangeOriginConst.local);
+		this.notifyUpdateHandlers(ChangeOriginConst.local);
 	}
 
 	startTransaction(): void {
@@ -221,14 +329,14 @@ class AutomergeDocHolder {
 
 			// Notify with all changes at once
 			if (this.transactionBeforeHeads) {
-				this.notifyHandlers(this.transactionBeforeHeads);
-				this.notifyUpdateHandlers();
+				this.notifyHandlers(this.transactionBeforeHeads, ChangeOriginConst.local);
+				this.notifyUpdateHandlers(ChangeOriginConst.local);
 				this.transactionBeforeHeads = null;
 			}
 		}
 	}
 
-	private notifyUpdateHandlers(): void {
+	private notifyUpdateHandlers(origin: ChangeOrigin): void {
 		if (this.updateHandlers.size === 0) return;
 
 		// Use saveSince for incremental updates instead of full save
@@ -240,7 +348,7 @@ class AutomergeDocHolder {
 		if (update.byteLength === 0) return;
 
 		for (const handler of this.updateHandlers) {
-			handler(update);
+			handler(update, origin);
 		}
 	}
 
@@ -252,7 +360,7 @@ class AutomergeDocHolder {
 		this.updateHandlers.delete(handler);
 	}
 
-	private notifyHandlers(beforeHeads: Automerge.Heads): void {
+	private notifyHandlers(beforeHeads: Automerge.Heads, origin: ChangeOrigin): void {
 		const afterHeads = this.getHeads();
 		const patches = Automerge.diff(this.doc, beforeHeads, afterHeads);
 
@@ -279,7 +387,7 @@ class AutomergeDocHolder {
 
 			if (changes.length > 0) {
 				for (const handler of handlers) {
-					handler(changes);
+					handler(changes, origin);
 				}
 			}
 		}
@@ -536,12 +644,12 @@ class AutomergeDocHolder {
 			beforeHeads.some((head, index) => head !== afterHeads[index]);
 
 		if (headsChanged) {
-			this.notifyHandlers(beforeHeads);
+			this.notifyHandlers(beforeHeads, ChangeOriginConst.remote);
 			// Notify update handlers so changes propagate through sync chains (hub topology).
 			// Automerge's saveSince() handles deduplication - it only returns changes
 			// newer than lastSyncedHeads, so re-broadcasting the same data is prevented
 			// at the serialization level, not here.
-			this.notifyUpdateHandlers();
+			this.notifyUpdateHandlers(ChangeOriginConst.remote);
 		}
 	}
 
@@ -572,6 +680,16 @@ class AutomergeDocImpl implements CRDTDoc {
 		return new AutomergeArray<T>(this.docHolder, name);
 	}
 
+	createMap<T = unknown>(): CRDTMap<T> {
+		// Return a detached map that stores data locally until attached to a document
+		return new DetachedAutomergeMap<T>();
+	}
+
+	createArray<T = unknown>(): CRDTArray<T> {
+		// Return a detached array that stores data locally until attached to a document
+		return new DetachedAutomergeArray<T>();
+	}
+
 	transact(fn: () => void): void {
 		this.docHolder.startTransaction();
 		try {
@@ -589,7 +707,7 @@ class AutomergeDocImpl implements CRDTDoc {
 		this.docHolder.applyUpdate(update);
 	}
 
-	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe {
+	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe {
 		this.docHolder.addUpdateHandler(handler);
 		return () => {
 			this.docHolder.removeUpdateHandler(handler);

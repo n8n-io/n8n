@@ -10,10 +10,11 @@ import type {
 	DeepChangeEvent,
 	Unsubscribe,
 } from '../types';
-import { ChangeAction, CRDTEngine } from '../types';
+import { ChangeAction, ChangeOrigin, CRDTEngine } from '../types';
 
 /**
  * Convert a value to JSON if it's a Yjs type, otherwise return as-is.
+ * Used for toJSON() methods to get plain objects.
  */
 function toJSONValue(value: unknown): unknown {
 	if (value instanceof Y.Map || value instanceof Y.Array || value instanceof Y.Text) {
@@ -22,11 +23,41 @@ function toJSONValue(value: unknown): unknown {
 	return value;
 }
 
+/** Symbol to store wrapper reference directly on Y types */
+const WRAPPER = Symbol('crdt-wrapper');
+
+/**
+ * Wrap a Yjs type in the appropriate CRDT wrapper, or return primitive as-is.
+ * Stores wrapper on the Y type itself to return the same instance on every get().
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+function wrapYjsValue(value: unknown): unknown {
+	if (value instanceof Y.Map) {
+		// Store wrapper on the Y.Map itself for identity preservation
+		const yMap = value as any;
+		yMap[WRAPPER] ??= new YjsMap(value);
+		return yMap[WRAPPER];
+	}
+	if (value instanceof Y.Array) {
+		// Store wrapper on the Y.Array itself for identity preservation
+		const yArray = value as any;
+		yArray[WRAPPER] ??= new YjsArray(value);
+		return yArray[WRAPPER];
+	}
+	return value;
+}
+/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+
 /**
  * Yjs implementation of CRDTArray.
  */
 class YjsArray<T = unknown> implements CRDTArray<T> {
 	constructor(private readonly yArray: Y.Array<unknown>) {}
+
+	/** Get the underlying Y.Array (for internal use) */
+	getYArray(): Y.Array<unknown> {
+		return this.yArray;
+	}
 
 	get length(): number {
 		return this.yArray.length;
@@ -34,15 +65,27 @@ class YjsArray<T = unknown> implements CRDTArray<T> {
 
 	get(index: number): T | undefined {
 		const value = this.yArray.get(index);
-		return toJSONValue(value) as T | undefined;
+		return wrapYjsValue(value) as T | undefined;
 	}
 
 	push(...items: T[]): void {
-		this.yArray.push(items);
+		// Convert wrappers to their underlying Y types
+		const unwrapped = items.map((item) => {
+			if (item instanceof YjsMap) return item.getYMap();
+			if (item instanceof YjsArray) return item.getYArray();
+			return item;
+		});
+		this.yArray.push(unwrapped);
 	}
 
 	insert(index: number, ...items: T[]): void {
-		this.yArray.insert(index, items);
+		// Convert wrappers to their underlying Y types
+		const unwrapped = items.map((item) => {
+			if (item instanceof YjsMap) return item.getYMap();
+			if (item instanceof YjsArray) return item.getYArray();
+			return item;
+		});
+		this.yArray.insert(index, unwrapped);
 	}
 
 	delete(index: number, count = 1): void {
@@ -57,8 +100,9 @@ class YjsArray<T = unknown> implements CRDTArray<T> {
 		return this.toArray();
 	}
 
-	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe {
-		const observer = (events: Array<Y.YEvent<Y.Array<unknown>>>) => {
+	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const observer = (events: Array<Y.YEvent<Y.Array<unknown>>>, transaction: any) => {
 			const changes: DeepChange[] = [];
 
 			for (const event of events) {
@@ -71,7 +115,9 @@ class YjsArray<T = unknown> implements CRDTArray<T> {
 			}
 
 			if (changes.length > 0) {
-				handler(changes);
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				const origin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
+				handler(changes, origin);
 			}
 		};
 
@@ -115,13 +161,25 @@ function mapEventToChanges(event: Y.YMapEvent<unknown>): DeepChangeEvent[] {
 class YjsMap<T = unknown> implements CRDTMap<T> {
 	constructor(private readonly yMap: Y.Map<unknown>) {}
 
-	get(key: string): T | undefined {
-		const value = this.yMap.get(key);
-		return toJSONValue(value) as T | undefined;
+	/** Get the underlying Y.Map (for internal use) */
+	getYMap(): Y.Map<unknown> {
+		return this.yMap;
 	}
 
-	set(key: string, value: T): void {
-		this.yMap.set(key, value);
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined {
+		const value = this.yMap.get(key);
+		return wrapYjsValue(value) as T | CRDTMap<unknown> | CRDTArray<unknown> | undefined;
+	}
+
+	set(key: string, value: T | CRDTMap<unknown> | CRDTArray<unknown>): void {
+		// Convert wrappers to their underlying Y types
+		if (value instanceof YjsMap) {
+			this.yMap.set(key, value.getYMap());
+		} else if (value instanceof YjsArray) {
+			this.yMap.set(key, value.getYArray());
+		} else {
+			this.yMap.set(key, value);
+		}
 	}
 
 	delete(key: string): void {
@@ -136,15 +194,15 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 		return this.yMap.keys();
 	}
 
-	*values(): IterableIterator<T> {
+	*values(): IterableIterator<T | CRDTMap<unknown> | CRDTArray<unknown>> {
 		for (const value of this.yMap.values()) {
-			yield toJSONValue(value) as T;
+			yield wrapYjsValue(value) as T | CRDTMap<unknown> | CRDTArray<unknown>;
 		}
 	}
 
-	*entries(): IterableIterator<[string, T]> {
+	*entries(): IterableIterator<[string, T | CRDTMap<unknown> | CRDTArray<unknown>]> {
 		for (const [key, value] of this.yMap.entries()) {
-			yield [key, toJSONValue(value) as T];
+			yield [key, wrapYjsValue(value) as T | CRDTMap<unknown> | CRDTArray<unknown>];
 		}
 	}
 
@@ -152,8 +210,9 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 		return this.yMap.toJSON() as Record<string, T>;
 	}
 
-	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe {
-		const observer = (events: Array<Y.YEvent<Y.Map<unknown>>>) => {
+	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const observer = (events: Array<Y.YEvent<Y.Map<unknown>>>, transaction: any) => {
 			const changes: DeepChange[] = [];
 
 			for (const event of events) {
@@ -165,7 +224,9 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 			}
 
 			if (changes.length > 0) {
-				handler(changes);
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				const origin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
+				handler(changes, origin);
 			}
 		};
 
@@ -188,11 +249,21 @@ class YjsDoc implements CRDTDoc {
 	}
 
 	getMap<T = unknown>(name: string): CRDTMap<T> {
-		return new YjsMap<T>(this.yDoc.getMap(name));
+		return wrapYjsValue(this.yDoc.getMap(name)) as CRDTMap<T>;
 	}
 
 	getArray<T = unknown>(name: string): CRDTArray<T> {
-		return new YjsArray<T>(this.yDoc.getArray(name));
+		return wrapYjsValue(this.yDoc.getArray(name)) as CRDTArray<T>;
+	}
+
+	createMap<T = unknown>(): CRDTMap<T> {
+		// Return a wrapped standalone Y.Map - Yjs buffers writes internally until attached
+		return new YjsMap<T>(new Y.Map<unknown>());
+	}
+
+	createArray<T = unknown>(): CRDTArray<T> {
+		// Return a wrapped standalone Y.Array - Yjs buffers writes internally until attached
+		return new YjsArray<T>(new Y.Array<unknown>());
 	}
 
 	transact(fn: () => void): void {
@@ -207,10 +278,16 @@ class YjsDoc implements CRDTDoc {
 		Y.applyUpdate(this.yDoc, update);
 	}
 
-	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe {
-		this.yDoc.on('update', handler);
+	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const wrappedHandler = (update: Uint8Array, _origin: any, _doc: any, transaction: any) => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const changeOrigin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
+			handler(update, changeOrigin);
+		};
+		this.yDoc.on('update', wrappedHandler);
 		return () => {
-			this.yDoc.off('update', handler);
+			this.yDoc.off('update', wrappedHandler);
 		};
 	}
 
