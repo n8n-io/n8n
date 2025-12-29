@@ -940,7 +940,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (targetWorkflowId === workflow.value.id) {
 			if (clearDirtyState) {
-				uiStore.stateIsDirty = false;
+				uiStore.markStateClean();
 			}
 			workflow.value.active = true;
 			workflow.value.activeVersionId = activeVersion.versionId;
@@ -1138,7 +1138,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.pinData[nodeName] = storedPinData;
 		workflowObject.value.setPinData(workflow.value.pinData);
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 	}
@@ -1158,7 +1158,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		dataPinningEventBus.emit('unpin-data', {
 			nodeNames: [nodeName],
@@ -1251,7 +1251,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		const connections =
 			workflow.value.connections[sourceData.node][sourceData.type][sourceData.index];
@@ -1277,7 +1277,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
 	): void {
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		// Remove all source connections
 		if (!preserveOutputConnections) {
@@ -1319,7 +1319,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		// If node has any WorkflowResultData rename also that one that the data
 		// does still get displayed also after node got renamed
@@ -1447,7 +1447,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					...workflow.value.nodes.slice(i + 1),
 				];
 				workflowObject.value.setNodes(workflow.value.nodes);
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 				return;
 			}
 		}

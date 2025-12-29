@@ -315,7 +315,7 @@ async function handleArchiveWorkflow() {
 		return;
 	}
 
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
 			interpolate: { workflowName: props.name },
@@ -376,7 +376,7 @@ async function handleDeleteWorkflow() {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
 	}
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 	// Reset tab title since workflow is deleted.
 	documentTitle.reset();
 	toast.showMessage({

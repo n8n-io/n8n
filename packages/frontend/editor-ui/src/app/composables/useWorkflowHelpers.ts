@@ -850,7 +850,7 @@ export function useWorkflowHelpers() {
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 		}
 
 		if (workflow.activeVersion) {
