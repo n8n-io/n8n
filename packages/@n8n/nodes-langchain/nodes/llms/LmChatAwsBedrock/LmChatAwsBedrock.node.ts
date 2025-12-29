@@ -1,6 +1,6 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
-import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import type { AwsCredentialIdentityProvider } from '@aws-sdk/types';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent } from '@utils/httpProxyAgent';
@@ -16,6 +16,43 @@ import {
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
+/**
+ * Type for AWS IAM credentials (access key based)
+ */
+interface AwsIamCredentials {
+	region: string;
+	accessKeyId: string;
+	secretAccessKey: string;
+	sessionToken?: string;
+}
+
+/**
+ * Type for AWS Profile credentials (profile/instance based)
+ */
+interface AwsProfileCredentials {
+	region: string;
+	credentialSource: 'profile' | 'instanceMetadata' | 'containerMetadata' | 'tokenFile' | 'chain';
+	profileName?: string;
+}
+
+/**
+ * Dynamically imports the profile credentials utility to avoid circular dependencies
+ * and only load when needed
+ */
+async function getProfileCredentialProvider(
+	credentials: AwsProfileCredentials,
+): Promise<AwsCredentialIdentityProvider> {
+	// Dynamic import to avoid loading AWS SDK credential providers when not needed
+	const { createCredentialProvider } = await import(
+		'n8n-nodes-base/credentials/common/aws/profile-credentials-utils'
+	);
+	return createCredentialProvider({
+		source: credentials.credentialSource,
+		region: credentials.region,
+		profile: credentials.profileName,
+	});
+}
+
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Bedrock Chat Model',
@@ -23,7 +60,7 @@ export class LmChatAwsBedrock implements INodeType {
 		name: 'lmChatAwsBedrock',
 		icon: 'file:bedrock.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Language Model AWS Bedrock',
 		defaults: {
 			name: 'AWS Bedrock Chat Model',
@@ -51,6 +88,30 @@ export class LmChatAwsBedrock implements INodeType {
 			{
 				name: 'aws',
 				required: true,
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1],
+					},
+				},
+			},
+			{
+				// For version 1.2+, allow choosing between IAM and Profile credentials
+				name: 'aws',
+				displayOptions: {
+					show: {
+						'@version': [1.2],
+						credentialType: ['iam'],
+					},
+				},
+			},
+			{
+				name: 'awsProfile',
+				displayOptions: {
+					show: {
+						'@version': [1.2],
+						credentialType: ['profile'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
@@ -59,6 +120,30 @@ export class LmChatAwsBedrock implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
+			{
+				displayName: 'Credential Type',
+				name: 'credentialType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				options: [
+					{
+						name: 'IAM Access Keys',
+						value: 'iam',
+						description: 'Use AWS Access Key ID and Secret Access Key',
+					},
+					{
+						name: 'Profile / Instance',
+						value: 'profile',
+						description: 'Use AWS profile, EC2 instance role, ECS task role, or EKS pod identity',
+					},
+				],
+				default: 'iam',
+				description: 'Choose how to authenticate with AWS',
+			},
 			{
 				displayName: 'Model Source',
 				name: 'modelSource',
@@ -225,14 +310,7 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			authenticationType?: 'accessKey' | 'profile';
-			secretAccessKey?: string;
-			accessKeyId?: string;
-			sessionToken?: string;
-			awsProfile?: string;
-		}>('aws');
+		const nodeVersion = this.getNode().typeVersion;
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
@@ -241,49 +319,47 @@ export class LmChatAwsBedrock implements INodeType {
 
 		// We set-up client manually to pass httpAgent and httpsAgent
 		const proxyAgent = getNodeProxyAgent();
-		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
-		};
+		let clientConfig: BedrockRuntimeClientConfig;
+		let region: string;
 
-		// Handle authentication based on type
-		if (credentials.authenticationType === 'profile' && credentials.awsProfile) {
-			// Use AWS profile authentication
-			const profileName = credentials.awsProfile || 'default';
+		// Determine credential type based on node version
+		if (nodeVersion >= 1.2) {
+			const credentialType = this.getNodeParameter('credentialType', itemIndex, 'iam') as string;
 
-			// Set up environment variables for the profile
-			const previousEnv = {
-				AWS_PROFILE: process.env.AWS_PROFILE,
-				AWS_REGION: process.env.AWS_REGION,
-			};
+			if (credentialType === 'profile') {
+				// Use profile-based credentials
+				const profileCredentials = await this.getCredentials<AwsProfileCredentials>('awsProfile');
+				const credentialProvider = await getProfileCredentialProvider(profileCredentials);
+				region = profileCredentials.region;
 
-			try {
-				process.env.AWS_PROFILE = profileName;
-				process.env.AWS_REGION = credentials.region;
-
-				// Use credential provider from AWS SDK
-				clientConfig.credentials = fromNodeProviderChain({
-					profile: profileName,
-					ignoreCache: true,
-				});
-			} finally {
-				// Restore previous environment variables
-				if (previousEnv.AWS_PROFILE !== undefined) {
-					process.env.AWS_PROFILE = previousEnv.AWS_PROFILE;
-				} else {
-					delete process.env.AWS_PROFILE;
-				}
-				if (previousEnv.AWS_REGION !== undefined) {
-					process.env.AWS_REGION = previousEnv.AWS_REGION;
-				} else {
-					delete process.env.AWS_REGION;
-				}
+				clientConfig = {
+					region,
+					credentials: credentialProvider,
+				};
+			} else {
+				// Use IAM credentials (access key based)
+				const iamCredentials = await this.getCredentials<AwsIamCredentials>('aws');
+				region = iamCredentials.region;
+				clientConfig = {
+					region,
+					credentials: {
+						secretAccessKey: iamCredentials.secretAccessKey,
+						accessKeyId: iamCredentials.accessKeyId,
+						...(iamCredentials.sessionToken && { sessionToken: iamCredentials.sessionToken }),
+					},
+				};
 			}
 		} else {
-			// Use access key authentication (default, backwards compatible)
-			clientConfig.credentials = {
-				secretAccessKey: credentials.secretAccessKey!,
-				accessKeyId: credentials.accessKeyId!,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+			// Legacy behavior for older node versions - always use IAM credentials
+			const credentials = await this.getCredentials<AwsIamCredentials>('aws');
+			region = credentials.region;
+			clientConfig = {
+				region,
+				credentials: {
+					secretAccessKey: credentials.secretAccessKey,
+					accessKeyId: credentials.accessKeyId,
+					...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+				},
 			};
 		}
 
@@ -300,7 +376,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const model = new ChatBedrockConverse({
 			client,
 			model: modelName,
-			region: credentials.region,
+			region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],

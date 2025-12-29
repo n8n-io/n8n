@@ -232,3 +232,47 @@ export type AwsSecurityHeaders = {
 	secretAccessKey: string;
 	sessionToken: string | undefined;
 };
+
+/**
+ * Credential source types for AWS Profile credentials
+ */
+export type AwsProfileCredentialSource =
+	| 'profile' // Named profile from ~/.aws/credentials or ~/.aws/config
+	| 'instanceMetadata' // EC2 Instance Metadata Service (IMDS)
+	| 'containerMetadata' // ECS Task Role or EKS Pod Identity
+	| 'tokenFile' // Web Identity Token File (IRSA)
+	| 'chain'; // Auto-detect using default credential provider chain
+
+/**
+ * AWS Profile credentials type - uses system credentials or named profiles
+ * instead of explicit access keys. This is the recommended approach for
+ * production deployments on AWS infrastructure.
+ */
+export type AwsProfileCredentialsType = AwsCredentialsTypeBase & {
+	/**
+	 * The credential source to use
+	 */
+	credentialSource: AwsProfileCredentialSource;
+
+	/**
+	 * AWS profile name (only used when credentialSource is 'profile')
+	 * If not specified, uses the 'default' profile
+	 */
+	profileName?: string;
+
+	/**
+	 * Optional role ARN to assume after obtaining initial credentials
+	 * Works with all credential sources
+	 */
+	roleArn?: string;
+
+	/**
+	 * External ID for role assumption (optional security measure)
+	 */
+	externalId?: string;
+
+	/**
+	 * Session name for assumed role (defaults to 'n8n-session')
+	 */
+	roleSessionName?: string;
+};

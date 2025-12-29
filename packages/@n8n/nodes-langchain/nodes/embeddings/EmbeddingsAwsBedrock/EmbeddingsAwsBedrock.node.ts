@@ -1,5 +1,6 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import type { AwsCredentialIdentityProvider } from '@aws-sdk/types';
 import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent } from '@utils/httpProxyAgent';
@@ -13,6 +14,43 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+/**
+ * Type for AWS IAM credentials (access key based)
+ */
+interface AwsIamCredentials {
+	region: string;
+	accessKeyId: string;
+	secretAccessKey: string;
+	sessionToken?: string;
+}
+
+/**
+ * Type for AWS Profile credentials (profile/instance based)
+ */
+interface AwsProfileCredentials {
+	region: string;
+	credentialSource: 'profile' | 'instanceMetadata' | 'containerMetadata' | 'tokenFile' | 'chain';
+	profileName?: string;
+}
+
+/**
+ * Dynamically imports the profile credentials utility to avoid circular dependencies
+ * and only load when needed
+ */
+async function getProfileCredentialProvider(
+	credentials: AwsProfileCredentials,
+): Promise<AwsCredentialIdentityProvider> {
+	// Dynamic import to avoid loading AWS SDK credential providers when not needed
+	const { createCredentialProvider } = await import(
+		'n8n-nodes-base/credentials/common/aws/profile-credentials-utils'
+	);
+	return createCredentialProvider({
+		source: credentials.credentialSource,
+		region: credentials.region,
+		profile: credentials.profileName,
+	});
+}
+
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings AWS Bedrock',
@@ -22,10 +60,34 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			{
 				name: 'aws',
 				required: true,
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				// For version 2+, allow choosing between IAM and Profile credentials
+				name: 'aws',
+				displayOptions: {
+					show: {
+						'@version': [2],
+						credentialType: ['iam'],
+					},
+				},
+			},
+			{
+				name: 'awsProfile',
+				displayOptions: {
+					show: {
+						'@version': [2],
+						credentialType: ['profile'],
+					},
+				},
 			},
 		],
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		description: 'Use Embeddings AWS Bedrock',
 		defaults: {
 			name: 'Embeddings AWS Bedrock',
@@ -55,6 +117,30 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
+			{
+				displayName: 'Credential Type',
+				name: 'credentialType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2 } }],
+					},
+				},
+				options: [
+					{
+						name: 'IAM Access Keys',
+						value: 'iam',
+						description: 'Use AWS Access Key ID and Secret Access Key',
+					},
+					{
+						name: 'Profile / Instance',
+						value: 'profile',
+						description: 'Use AWS profile, EC2 instance role, ECS task role, or EKS pod identity',
+					},
+				],
+				default: 'iam',
+				description: 'Choose how to authenticate with AWS',
+			},
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -107,24 +193,54 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		const nodeVersion = this.getNode().typeVersion;
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				sessionToken: credentials.sessionToken,
-			},
-		};
-
 		const proxyAgent = getNodeProxyAgent();
+		let clientConfig: BedrockRuntimeClientConfig;
+		let region: string;
+
+		// Determine credential type based on node version
+		if (nodeVersion >= 2) {
+			const credentialType = this.getNodeParameter('credentialType', itemIndex, 'iam') as string;
+
+			if (credentialType === 'profile') {
+				// Use profile-based credentials
+				const profileCredentials = await this.getCredentials<AwsProfileCredentials>('awsProfile');
+				const credentialProvider = await getProfileCredentialProvider(profileCredentials);
+				region = profileCredentials.region;
+
+				clientConfig = {
+					region,
+					credentials: credentialProvider,
+				};
+			} else {
+				// Use IAM credentials (access key based)
+				const iamCredentials = await this.getCredentials<AwsIamCredentials>('aws');
+				region = iamCredentials.region;
+				clientConfig = {
+					region,
+					credentials: {
+						secretAccessKey: iamCredentials.secretAccessKey,
+						accessKeyId: iamCredentials.accessKeyId,
+						...(iamCredentials.sessionToken && { sessionToken: iamCredentials.sessionToken }),
+					},
+				};
+			}
+		} else {
+			// Legacy behavior for older node versions - always use IAM credentials
+			const credentials = await this.getCredentials<AwsIamCredentials>('aws');
+			region = credentials.region;
+			clientConfig = {
+				region,
+				credentials: {
+					secretAccessKey: credentials.secretAccessKey,
+					accessKeyId: credentials.accessKeyId,
+					...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+				},
+			};
+		}
+
 		if (proxyAgent) {
 			clientConfig.requestHandler = new NodeHttpHandler({
 				httpAgent: proxyAgent,
@@ -137,7 +253,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			client,
 			model: modelName,
 			maxRetries: 3,
-			region: credentials.region,
+			region,
 		});
 
 		return {
