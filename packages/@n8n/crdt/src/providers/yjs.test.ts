@@ -1,5 +1,12 @@
-import type { CRDTArray, CRDTDoc, CRDTMap, DeepChange, DeepChangeEvent } from '../types';
-import { ChangeAction } from '../types';
+import type {
+	ChangeOrigin,
+	CRDTArray,
+	CRDTDoc,
+	CRDTMap,
+	DeepChange,
+	DeepChangeEvent,
+} from '../types';
+import { ChangeAction, ChangeOrigin as ChangeOriginConst } from '../types';
 import { YjsProvider } from './yjs';
 
 describe('YjsProvider', () => {
@@ -86,6 +93,25 @@ describe('YjsProvider', () => {
 			expect(map2.get('key')).toBe('value');
 		});
 
+		it('should return the same wrapper instance for the same map', () => {
+			const map1 = doc.getMap('test-map');
+			const map2 = doc.getMap('test-map');
+
+			expect(map1).toBe(map2);
+		});
+
+		it('should return the same wrapper for nested maps on multiple get() calls', () => {
+			const nodesMap = doc.getMap('nodes');
+			const nodeMap = doc.createMap();
+			nodeMap.set('name', 'test');
+			nodesMap.set('node1', nodeMap);
+
+			const retrieved1 = nodesMap.get('node1');
+			const retrieved2 = nodesMap.get('node1');
+
+			expect(retrieved1).toBe(retrieved2);
+		});
+
 		it('should batch changes in transact()', () => {
 			doc.transact(() => {
 				map.set('a', '1');
@@ -126,7 +152,11 @@ describe('YjsProvider', () => {
 
 		it('should emit add event when adding a key', () => {
 			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			let lastOrigin: ChangeOrigin | undefined;
+			map.onDeepChange((c, origin) => {
+				changes.push(...c);
+				lastOrigin = origin;
+			});
 
 			map.set('key1', 'value1');
 
@@ -136,13 +166,14 @@ describe('YjsProvider', () => {
 				action: ChangeAction.add,
 				value: 'value1',
 			});
+			expect(lastOrigin).toBe(ChangeOriginConst.local);
 		});
 
 		it('should emit update event when updating a key', () => {
 			map.set('key1', 'value1');
 
 			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			map.onDeepChange((c) => changes.push(...c));
 
 			map.set('key1', 'value2');
 
@@ -159,7 +190,7 @@ describe('YjsProvider', () => {
 			map.set('key1', 'value1');
 
 			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			map.onDeepChange((c) => changes.push(...c));
 
 			map.delete('key1');
 
@@ -173,7 +204,7 @@ describe('YjsProvider', () => {
 
 		it('should emit multiple changes in a single batch for transact', () => {
 			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			map.onDeepChange((c) => changes.push(...c));
 
 			doc.transact(() => {
 				map.set('a', '1');
@@ -195,7 +226,7 @@ describe('YjsProvider', () => {
 
 		it('should stop emitting events after unsubscribe', () => {
 			const changes: DeepChange[] = [];
-			const unsubscribe = map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			const unsubscribe = map.onDeepChange((c) => changes.push(...c));
 
 			map.set('key1', 'value1');
 			expect(changes).toHaveLength(1);
@@ -210,7 +241,7 @@ describe('YjsProvider', () => {
 			map.set('node-1', { position: { x: 100, y: 200 } });
 
 			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			map.onDeepChange((c) => changes.push(...c));
 
 			// Update the entire node (top-level change)
 			map.set('node-1', { position: { x: 150, y: 200 } });
@@ -244,7 +275,7 @@ describe('YjsProvider', () => {
 			map.set('node-1', { position: { x: 100, y: 200 } });
 
 			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			map.onDeepChange((c) => changes.push(...c));
 
 			// Replace the whole object to modify nested data
 			map.set('node-1', { position: { x: 150, y: 200 } });
@@ -365,6 +396,123 @@ describe('YjsProvider', () => {
 		});
 	});
 
+	describe('createMap and createArray', () => {
+		let doc: CRDTDoc;
+
+		beforeEach(() => {
+			const provider = new YjsProvider();
+			doc = provider.createDoc('test');
+		});
+
+		afterEach(() => {
+			doc.destroy();
+		});
+
+		it('should create a map that can be populated before attaching', () => {
+			const nodesMap = doc.getMap('nodes');
+			const nodeMap = doc.createMap<string>();
+
+			// Populate before attaching (Yjs buffers writes internally)
+			nodeMap.set('name', 'test-node');
+			nodeMap.set('type', 'action');
+
+			// Attach to document
+			nodesMap.set('node_1', nodeMap);
+
+			// Data is preserved after attachment
+			expect(nodesMap.toJSON()).toEqual({
+				node_1: { name: 'test-node', type: 'action' },
+			});
+		});
+
+		it('should create an array that can be populated before attaching', () => {
+			const dataMap = doc.getMap('data');
+			const items = doc.createArray<string>();
+
+			// Populate before attaching (Yjs buffers writes internally)
+			items.push('a', 'b');
+			items.insert(1, 'x');
+
+			// Attach to document
+			dataMap.set('items', items);
+
+			// Data is preserved after attachment
+			expect(dataMap.toJSON()).toEqual({ items: ['a', 'x', 'b'] });
+		});
+
+		it('should store standalone map in document map', () => {
+			const nodesMap = doc.getMap('nodes');
+			const nodeMap = doc.createMap<unknown>();
+
+			// Populate the standalone map
+			nodeMap.set('name', 'test-node');
+			nodeMap.set('position', { x: 100, y: 200 });
+
+			// Attach to document
+			nodesMap.set('node_1', nodeMap);
+
+			expect(nodesMap.toJSON()).toEqual({
+				node_1: {
+					name: 'test-node',
+					position: { x: 100, y: 200 },
+				},
+			});
+		});
+
+		it('should store standalone array in document map', () => {
+			const dataMap = doc.getMap('data');
+			const items = doc.createArray<string>();
+
+			// Populate the standalone array
+			items.push('a', 'b', 'c');
+
+			// Attach to document
+			dataMap.set('items', items);
+
+			expect(dataMap.toJSON()).toEqual({ items: ['a', 'b', 'c'] });
+		});
+
+		it('should store nested standalone structures', () => {
+			const nodesMap = doc.getMap('nodes');
+
+			const nodeMap = doc.createMap<unknown>();
+			const connections = doc.createArray<string>();
+
+			// Populate the nested array
+			connections.push('conn_1', 'conn_2');
+
+			// Attach the nested array to the standalone map
+			nodeMap.set('name', 'test');
+			nodeMap.set('connections', connections);
+
+			// Attach the map to the document
+			nodesMap.set('node_1', nodeMap);
+
+			expect(nodesMap.toJSON()).toEqual({
+				node_1: {
+					name: 'test',
+					connections: ['conn_1', 'conn_2'],
+				},
+			});
+		});
+
+		it('should push standalone maps to document array', () => {
+			const nodesArray = doc.getArray('nodes');
+
+			const node1 = doc.createMap<string>();
+			const node2 = doc.createMap<string>();
+
+			// Populate before attaching
+			node1.set('name', 'first');
+			node2.set('name', 'second');
+
+			// Attach to document
+			nodesArray.push(node1, node2);
+
+			expect(nodesArray.toJSON()).toEqual([{ name: 'first' }, { name: 'second' }]);
+		});
+	});
+
 	describe('CRDTArray onDeepChange', () => {
 		let doc: CRDTDoc;
 		let arr: CRDTArray<string>;
@@ -381,7 +529,7 @@ describe('YjsProvider', () => {
 
 		it('should emit insert delta when pushing items', () => {
 			const changes: DeepChange[] = [];
-			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			arr.onDeepChange((c) => changes.push(...c));
 
 			arr.push('a', 'b');
 
@@ -396,7 +544,7 @@ describe('YjsProvider', () => {
 			arr.push('a', 'c');
 
 			const changes: DeepChange[] = [];
-			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			arr.onDeepChange((c) => changes.push(...c));
 
 			arr.insert(1, 'b');
 
@@ -411,7 +559,7 @@ describe('YjsProvider', () => {
 			arr.push('a', 'b', 'c');
 
 			const changes: DeepChange[] = [];
-			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			arr.onDeepChange((c) => changes.push(...c));
 
 			arr.delete(1, 1);
 
@@ -424,7 +572,7 @@ describe('YjsProvider', () => {
 
 		it('should emit multiple deltas in a transaction', () => {
 			const changes: DeepChange[] = [];
-			arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			arr.onDeepChange((c) => changes.push(...c));
 
 			doc.transact(() => {
 				arr.push('a', 'b', 'c');
@@ -440,7 +588,7 @@ describe('YjsProvider', () => {
 
 		it('should stop emitting events after unsubscribe', () => {
 			const changes: DeepChange[] = [];
-			const unsubscribe = arr.onDeepChange((changeEvents) => changes.push(...changeEvents));
+			const unsubscribe = arr.onDeepChange((c) => changes.push(...c));
 
 			arr.push('a');
 			expect(changes).toHaveLength(1);

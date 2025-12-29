@@ -60,6 +60,18 @@ export interface ArrayChangeEvent {
 export type DeepChange = ArrayChangeEvent | DeepChangeEvent;
 
 /**
+ * Origin constants for identifying the source of CRDT changes.
+ */
+export const ChangeOrigin = {
+	/** Change originated from local user action */
+	local: 'local',
+	/** Change originated from remote peer (network sync) */
+	remote: 'remote',
+} as const;
+
+export type ChangeOrigin = (typeof ChangeOrigin)[keyof typeof ChangeOrigin];
+
+/**
  * Type guard to check if a DeepChange is a DeepChangeEvent (map change).
  */
 export function isMapChange(change: DeepChange): change is DeepChangeEvent {
@@ -100,34 +112,35 @@ export interface CRDTArray<T = unknown> {
 	/** Convert to JSON (alias for toArray) */
 	toJSON(): T[];
 	/** Subscribe to deep changes (this array and all nested structures) */
-	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe;
+	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe;
 }
 
 /**
  * CRDT Map data structure - a key-value store with deep change observation.
  *
- * Note on nested values: Plain JS objects/arrays stored in the map are returned as-is.
- * For collaborative editing of nested structures, use doc.getMap()/getArray() with explicit paths.
+ * Supports nested CRDT structures: get() returns CRDTMap/CRDTArray if that's
+ * what was stored, otherwise returns plain values. Use toJSON() to convert
+ * the entire structure to plain objects.
  */
 export interface CRDTMap<T = unknown> {
-	/** Get value by key. Returns the value as stored (plain objects stay plain). */
-	get(key: string): T | undefined;
+	/** Get value by key. Returns CRDTMap/CRDTArray if stored, otherwise plain value. */
+	get(key: string): T | CRDTMap<unknown> | CRDTArray<unknown> | undefined;
 	/** Set value for key */
-	set(key: string, value: T): void;
+	set(key: string, value: T | CRDTMap<unknown> | CRDTArray<unknown>): void;
 	/** Delete key */
 	delete(key: string): void;
 	/** Check if key exists */
 	has(key: string): boolean;
 	/** Get all keys */
 	keys(): IterableIterator<string>;
-	/** Get all values */
-	values(): IterableIterator<T>;
-	/** Get all entries */
-	entries(): IterableIterator<[string, T]>;
-	/** Convert to plain JSON object */
+	/** Get all values (includes CRDTMap/CRDTArray instances) */
+	values(): IterableIterator<T | CRDTMap<unknown> | CRDTArray<unknown>>;
+	/** Get all entries (includes CRDTMap/CRDTArray instances) */
+	entries(): IterableIterator<[string, T | CRDTMap<unknown> | CRDTArray<unknown>]>;
+	/** Convert to plain JSON object (recursively converts nested CRDT types) */
 	toJSON(): Record<string, T>;
 	/** Subscribe to deep changes (this map and all nested structures) */
-	onDeepChange(handler: (changes: DeepChange[]) => void): Unsubscribe;
+	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe;
 }
 
 /**
@@ -136,18 +149,22 @@ export interface CRDTMap<T = unknown> {
 export interface CRDTDoc {
 	/** Unique document identifier */
 	readonly id: string;
-	/** Get or create a named Map */
+	/** Get or create a named Map at the document root */
 	getMap<T = unknown>(name: string): CRDTMap<T>;
-	/** Get or create a named Array */
+	/** Get or create a named Array at the document root */
 	getArray<T = unknown>(name: string): CRDTArray<T>;
+	/** Create a standalone CRDTMap that can be stored in other maps/arrays */
+	createMap<T = unknown>(): CRDTMap<T>;
+	/** Create a standalone CRDTArray that can be stored in other maps/arrays */
+	createArray<T = unknown>(): CRDTArray<T>;
 	/** Execute changes in a transaction (batched, atomic) */
 	transact(fn: () => void): void;
 	/** Encode the full document state as a binary update */
 	encodeState(): Uint8Array;
 	/** Apply an update (or full state) from another document */
 	applyUpdate(update: Uint8Array): void;
-	/** Subscribe to outgoing updates (for sending to peers) */
-	onUpdate(handler: (update: Uint8Array) => void): Unsubscribe;
+	/** Subscribe to outgoing updates. Only fires for local changes (origin='local'). */
+	onUpdate(handler: (update: Uint8Array, origin: ChangeOrigin) => void): Unsubscribe;
 	/** Clean up resources */
 	destroy(): void;
 }

@@ -373,6 +373,116 @@ describe('AutomergeProvider', () => {
 		});
 	});
 
+	describe('createMap and createArray', () => {
+		let doc: CRDTDoc;
+
+		beforeEach(() => {
+			const provider = new AutomergeProvider();
+			doc = provider.createDoc('test');
+		});
+
+		afterEach(() => {
+			doc.destroy();
+		});
+
+		it('should create a detached map that can be populated', () => {
+			const nodeMap = doc.createMap<string>();
+			nodeMap.set('name', 'test-node');
+			nodeMap.set('type', 'action');
+
+			expect(nodeMap.get('name')).toBe('test-node');
+			expect(nodeMap.get('type')).toBe('action');
+			expect(nodeMap.toJSON()).toEqual({ name: 'test-node', type: 'action' });
+		});
+
+		it('should create a detached array that can be populated', () => {
+			const items = doc.createArray<string>();
+			items.push('a', 'b');
+			items.insert(1, 'x');
+
+			expect(items.get(0)).toBe('a');
+			expect(items.get(1)).toBe('x');
+			expect(items.get(2)).toBe('b');
+			expect(items.toArray()).toEqual(['a', 'x', 'b']);
+		});
+
+		it('should store detached map in document map', () => {
+			const nodesMap = doc.getMap('nodes');
+			const nodeMap = doc.createMap<unknown>();
+			nodeMap.set('name', 'test-node');
+			nodeMap.set('position', { x: 100, y: 200 });
+
+			nodesMap.set('node-1', nodeMap);
+
+			// Data should be stored as plain object in Automerge
+			expect(nodesMap.get('node-1')).toEqual({
+				name: 'test-node',
+				position: { x: 100, y: 200 },
+			});
+		});
+
+		it('should store detached array in document map', () => {
+			const dataMap = doc.getMap('data');
+			const items = doc.createArray<string>();
+			items.push('a', 'b', 'c');
+
+			dataMap.set('items', items);
+
+			// Data should be stored as plain array in Automerge
+			expect(dataMap.get('items')).toEqual(['a', 'b', 'c']);
+		});
+
+		it('should store nested detached structures', () => {
+			const nodesMap = doc.getMap('nodes');
+
+			const nodeMap = doc.createMap<unknown>();
+			nodeMap.set('name', 'test');
+
+			const connections = doc.createArray<string>();
+			connections.push('conn-1', 'conn-2');
+			nodeMap.set('connections', connections);
+
+			nodesMap.set('node-1', nodeMap);
+
+			expect(nodesMap.get('node-1')).toEqual({
+				name: 'test',
+				connections: ['conn-1', 'conn-2'],
+			});
+		});
+
+		it('should push detached map to document array', () => {
+			const nodesArray = doc.getArray('nodes');
+
+			const node1 = doc.createMap<string>();
+			node1.set('name', 'first');
+
+			const node2 = doc.createMap<string>();
+			node2.set('name', 'second');
+
+			nodesArray.push(node1, node2);
+
+			expect(nodesArray.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
+		});
+
+		it('detached map onDeepChange should return noop unsubscribe', () => {
+			const nodeMap = doc.createMap<string>();
+			const unsubscribe = nodeMap.onDeepChange(() => {});
+
+			// Should not throw
+			expect(typeof unsubscribe).toBe('function');
+			unsubscribe();
+		});
+
+		it('detached array onDeepChange should return noop unsubscribe', () => {
+			const items = doc.createArray<string>();
+			const unsubscribe = items.onDeepChange(() => {});
+
+			// Should not throw
+			expect(typeof unsubscribe).toBe('function');
+			unsubscribe();
+		});
+	});
+
 	describe('CRDTArray onDeepChange', () => {
 		let doc: CRDTDoc;
 		let arr: CRDTArray<string>;

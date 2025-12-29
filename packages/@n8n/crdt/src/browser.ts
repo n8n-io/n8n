@@ -1,9 +1,15 @@
-import { AutomergeProvider } from './providers/automerge';
+/**
+ * Browser-safe exports that don't include Automerge (which requires WASM).
+ *
+ * Use this entry point in frontend code:
+ * import { createCRDTProvider, CRDTEngine, ... } from '@n8n/crdt/browser';
+ */
+
 import { YjsProvider } from './providers/yjs';
 import { CRDTEngine } from './types';
 import type { CRDTConfig, CRDTProvider } from './types';
 
-// Types
+// Types (same as main)
 export type {
 	Unsubscribe,
 	ArrayDelta,
@@ -17,15 +23,14 @@ export type {
 	CRDTConfig,
 } from './types';
 
-// Constants (also exports corresponding types via declaration merging)
+// Constants
 export { ChangeAction, ChangeOrigin, CRDTEngine } from './types';
 
 // Type guards
 export { isMapChange, isArrayChange } from './types';
 
-// Providers
+// Yjs Provider only (no Automerge)
 export { YjsProvider } from './providers/yjs';
-export { AutomergeProvider } from './providers/automerge';
 
 // Transports
 export type { SyncTransport } from './transports';
@@ -42,19 +47,15 @@ export type { SyncProvider, CreateSyncProvider } from './sync';
 export { BaseSyncProvider, createSyncProvider } from './sync';
 
 /**
- * Creates a CRDT provider based on the given configuration.
+ * Creates a CRDT provider for browser environments (Yjs only).
  * @param config - Configuration specifying which CRDT engine to use
- * @returns A CRDTProvider instance for the specified engine
+ * @returns A CRDTProvider instance (only Yjs is supported in browser)
  */
 export function createCRDTProvider(config: CRDTConfig): CRDTProvider {
-	switch (config.engine) {
-		case CRDTEngine.yjs:
-			return new YjsProvider();
-		case CRDTEngine.automerge:
-			return new AutomergeProvider();
-		default: {
-			const exhaustiveCheck: never = config.engine;
-			throw new Error(`Unknown CRDT engine: ${String(exhaustiveCheck)}`);
-		}
+	if (config.engine !== CRDTEngine.yjs) {
+		throw new Error(
+			`Engine "${config.engine}" is not supported in browser. Use CRDTEngine.yjs or import from '@n8n/crdt' for full support.`,
+		);
 	}
+	return new YjsProvider();
 }
