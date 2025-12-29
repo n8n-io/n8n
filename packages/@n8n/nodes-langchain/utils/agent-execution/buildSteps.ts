@@ -22,6 +22,8 @@ interface ProviderMetadata {
 	thinkingType?: 'thinking' | 'redacted_thinking';
 	/** Anthropic thinking signature */
 	thinkingSignature?: string;
+	/** DeepSeek reasoning_content */
+	reasoningContent?: string;
 }
 
 /**
@@ -57,11 +59,17 @@ function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMe
 			? metadata.anthropic.thinkingSignature
 			: undefined;
 
+	const reasoningContent =
+		typeof metadata.deepseek?.reasoningContent === 'string'
+			? metadata.deepseek.reasoningContent
+			: undefined;
+
 	return {
 		thoughtSignature,
 		thinkingContent,
 		thinkingType,
 		thinkingSignature,
+		reasoningContent,
 	};
 }
 
@@ -197,11 +205,11 @@ export function buildSteps(
 			// Extract provider-specific metadata (Gemini, Anthropic, etc.)
 			const providerMetadata = extractProviderMetadata(tool.action.metadata);
 
-			// Build tool ID and name for reuse
+		// Build tool ID and name for reuse
 			const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
 			const toolName = nodeNameToToolName(tool.action.nodeName);
 
-			// Build the tool call object with thought_signature if present (for Gemini)
+		// Build tool call object with thought_signature (for Gemini) and reasoning_content (for DeepSeek)
 			const toolCall = {
 				id: toolId,
 				name: toolName,
@@ -210,6 +218,9 @@ export function buildSteps(
 				additional_kwargs: {
 					...(providerMetadata.thoughtSignature && {
 						thought_signature: providerMetadata.thoughtSignature,
+					}),
+					...(providerMetadata.reasoningContent && {
+						reasoning_content: providerMetadata.reasoningContent,
 					}),
 				},
 			};
