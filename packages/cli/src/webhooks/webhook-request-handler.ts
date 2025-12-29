@@ -153,6 +153,10 @@ class WebhookRequestHandler {
 			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 		}
 
+		if (res.getHeader('Access-Control-Allow-Origin')) {
+			return;
+		}
+
 		const origin = res.req?.headers?.origin;
 
 		if (!origin || origin === 'null') {

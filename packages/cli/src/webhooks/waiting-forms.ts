@@ -76,6 +76,10 @@ export class WaitingForms extends WaitingWebhooks {
 		const { path: executionId, suffix } = req.params;
 
 		function applyCors(req: express.Request, res: express.Response) {
+			if (res.getHeader('Access-Control-Allow-Origin')) {
+				return;
+			}
+
 			const origin = req.headers.origin;
 
 			if (!origin || origin === 'null') {
