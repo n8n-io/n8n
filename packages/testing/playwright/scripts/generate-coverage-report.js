@@ -15,15 +15,15 @@ const NYC_CONFIG = path.join(__dirname, '..', 'nyc.config.ts');
 // Coverage directories to look for - Currents writes to .nyc_output/{projectName}/
 // Project names come from playwright-projects.ts
 const COVERAGE_PROJECT_PATTERNS = [
-	'ui', // Local mode project
-	'standard:ui', // Container mode projects
-	'standard:ui:isolated',
-	'postgres:ui',
-	'postgres:ui:isolated',
-	'queue:ui',
-	'queue:ui:isolated',
-	'multi-main:ui',
-	'multi-main:ui:isolated',
+	'e2e', // Local mode project
+	'standard:e2e', // Container mode projects
+	'standard:e2e:isolated',
+	'postgres:e2e',
+	'postgres:e2e:isolated',
+	'queue:e2e',
+	'queue:e2e:isolated',
+	'multi-main:e2e',
+	'multi-main:e2e:isolated',
 ];
 
 /**

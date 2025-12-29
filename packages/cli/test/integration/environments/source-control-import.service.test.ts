@@ -91,6 +91,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			credentialsRepository,
 			projectRepository,
+			mock(),
 			tagRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
@@ -1509,7 +1510,7 @@ describe('SourceControlImportService', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [250, 300] as [number, number],
 						parameters: {},
@@ -1568,7 +1569,7 @@ describe('SourceControlImportService', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [250, 300] as [number, number],
 						parameters: {},
@@ -1626,7 +1627,7 @@ describe('SourceControlImportService', () => {
 					{
 						id: 'node-1',
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [250, 300] as [number, number],
 						parameters: {},
