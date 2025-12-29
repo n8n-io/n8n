@@ -21,6 +21,7 @@ const VALID_FLAGS = [
 	'--prompts-csv',
 	'--repetitions',
 	'--notion-id',
+	'--technique',
 	'--judges',
 	'--generations',
 	'--concurrency',
@@ -73,6 +74,7 @@ function parseCliArgs() {
 		promptsCsvPath: getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE,
 		repetitions: getIntFlag('--repetitions', 1),
 		notionId: getFlagValue('--notion-id'),
+		technique: getFlagValue('--technique'),
 		numJudges: getIntFlag('--judges', 3),
 		numGenerations: getIntFlag('--generations', 1, 10),
 		concurrency: getIntFlag('--concurrency', 5),
@@ -120,6 +122,7 @@ async function main(): Promise<void> {
 			await runPairwiseLangsmithEvaluation({
 				repetitions: args.repetitions,
 				notionId: args.notionId,
+				technique: args.technique,
 				numJudges: args.numJudges,
 				numGenerations: args.numGenerations,
 				verbose: args.verbose,
