@@ -214,45 +214,36 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 		});
 	});
 
-	describe('Nested Map Access', () => {
-		it('should return CRDTMap for nested objects', () => {
+	describe('Nested Data Access', () => {
+		it('should return plain objects as-is (no CRDT wrapping)', () => {
 			map.set('node', { position: { x: 100, y: 200 } });
 
-			const nodeMap = map.get('node');
-			expect(nodeMap).toBeDefined();
-			expect(typeof (nodeMap as CRDTMap<unknown>).get).toBe('function');
-
-			const positionMap = (nodeMap as CRDTMap<unknown>).get('position');
-			expect(positionMap).toBeDefined();
-			expect(typeof (positionMap as CRDTMap<unknown>).get).toBe('function');
+			const node = map.get('node');
+			expect(node).toBeDefined();
+			// Plain objects are returned as-is, not wrapped in CRDTMap
+			expect(node).toEqual({ position: { x: 100, y: 200 } });
+			expect(typeof (node as Record<string, unknown>).position).toBe('object');
 		});
 
-		it('should allow modifying nested maps', () => {
+		it('should return plain arrays as-is (no CRDT wrapping)', () => {
+			map.set('items', [1, 2, 3]);
+
+			const items = map.get('items');
+			expect(items).toBeDefined();
+			// Plain arrays are returned as-is, not wrapped in CRDTArray
+			expect(items).toEqual([1, 2, 3]);
+			expect(Array.isArray(items)).toBe(true);
+		});
+
+		it('should replace entire nested object to modify it', () => {
 			map.set('node', { position: { x: 100, y: 200 } });
 
-			const nodeMap = map.get('node') as CRDTMap<unknown>;
-			const positionMap = nodeMap.get('position') as CRDTMap<unknown>;
-			positionMap.set('x', 150);
+			// To modify nested data, replace the whole object
+			const node = map.get('node') as { position: { x: number; y: number } };
+			map.set('node', { position: { x: 150, y: node.position.y } });
 
 			const result = map.toJSON();
 			expect((result.node as { position: { x: number } }).position.x).toBe(150);
-		});
-
-		it('should allow building nested structures incrementally', () => {
-			map.set('node', {});
-			const nodeMap = map.get('node') as CRDTMap<unknown>;
-
-			nodeMap.set('parameters', {});
-			const params = nodeMap.get('parameters') as CRDTMap<unknown>;
-
-			params.set('url', 'https://example.com');
-			params.set('method', 'POST');
-
-			const result = map.toJSON();
-			expect((result.node as { parameters: { url: string; method: string } }).parameters).toEqual({
-				url: 'https://example.com',
-				method: 'POST',
-			});
 		});
 	});
 
@@ -302,22 +293,20 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			expect(change.oldValue).toBe('value');
 		});
 
-		it('should emit deep path for nested modifications', () => {
+		it('should emit event when replacing nested object', () => {
 			map.set('node', { position: { x: 100, y: 200 } });
 
 			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
-			const nodeMap = map.get('node') as CRDTMap<unknown>;
-			const positionMap = nodeMap.get('position') as CRDTMap<unknown>;
-			positionMap.set('x', 150);
+			// With no-magic API, you replace the whole object to modify nested data
+			map.set('node', { position: { x: 150, y: 200 } });
 
 			expect(changes).toHaveLength(1);
 			const change = changes[0] as DeepChangeEvent;
-			expect(change.path).toEqual(['node', 'position', 'x']);
+			expect(change.path).toEqual(['node']);
 			expect(change.action).toBe(ChangeAction.update);
-			expect(change.value).toBe(150);
-			expect(change.oldValue).toBe(100);
+			expect(change.value).toEqual({ position: { x: 150, y: 200 } });
 		});
 
 		it('should emit single event for full object replacement', () => {
@@ -369,39 +358,30 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			expect(Object.keys(result.workflow.nodes as Record<string, unknown>).length).toBe(50);
 		});
 
-		it('should edit deep nested leaf value', () => {
+		it('should retrieve deep nested data as plain objects', () => {
 			const deepData = createNestedObject(4, 2);
 			map.set('deep', deepData);
 
-			// Navigate to a deep leaf and modify it
-			const deep = map.get('deep') as CRDTMap<unknown>;
-			const child0 = deep.get('child0') as CRDTMap<unknown>;
-			const child0_0 = child0.get('child0') as CRDTMap<unknown>;
-			const child0_0_0 = child0_0.get('child0') as CRDTMap<unknown>;
-			const leaf = child0_0_0.get('child0') as CRDTMap<unknown>;
-
-			leaf.set('value', 'MODIFIED');
-
-			const result = map.toJSON() as {
-				deep: {
-					child0: { child0: { child0: { child0: { value: string } } } };
-				};
-			};
-			expect(result.deep.child0.child0.child0.child0.value).toBe('MODIFIED');
+			// Plain objects are returned as-is
+			const deep = map.get('deep') as Record<string, unknown>;
+			expect(deep).toEqual(deepData);
+			expect((deep.child0 as Record<string, unknown>).child0).toBeDefined();
 		});
 
-		it('should edit node position in workflow structure', () => {
+		it('should modify workflow by replacing node data', () => {
 			const workflow = createWorkflowData(10);
 			map.set('workflow', workflow);
 
-			// Navigate to a specific node and modify its position
-			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
-			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
-			const node5 = nodes.get('node-5') as CRDTMap<unknown>;
-			const position = node5.get('position') as CRDTMap<unknown>;
+			// Create a fresh modified version (for Automerge compatibility, don't spread from get())
+			const updatedWorkflow = createWorkflowData(10);
+			(updatedWorkflow.nodes as Record<string, { position: { x: number; y: number } }>)[
+				'node-5'
+			].position = {
+				x: 9999,
+				y: 8888,
+			};
 
-			position.set('x', 9999);
-			position.set('y', 8888);
+			map.set('workflow', updatedWorkflow);
 
 			const result = map.toJSON() as {
 				workflow: { nodes: Record<string, { position: { x: number; y: number } }> };
@@ -410,122 +390,21 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			expect(result.workflow.nodes['node-5'].position.y).toBe(8888);
 		});
 
-		it('should add new nested parameter to existing node', () => {
-			const workflow = createWorkflowData(5);
-			map.set('workflow', workflow);
-
-			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
-			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
-			const node2 = nodes.get('node-2') as CRDTMap<unknown>;
-			const parameters = node2.get('parameters') as CRDTMap<unknown>;
-
-			parameters.set('newParam', { deeply: { nested: { value: 'added' } } });
-
-			const result = map.toJSON() as {
-				workflow: {
-					nodes: Record<
-						string,
-						{ parameters: { newParam: { deeply: { nested: { value: string } } } } }
-					>;
-				};
-			};
-			expect(result.workflow.nodes['node-2'].parameters.newParam.deeply.nested.value).toBe('added');
-		});
-
-		it('should delete deeply nested property', () => {
-			const workflow = createWorkflowData(5);
-			map.set('workflow', workflow);
-
-			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
-			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
-			const node0 = nodes.get('node-0') as CRDTMap<unknown>;
-			const parameters = node0.get('parameters') as CRDTMap<unknown>;
-			const nested = parameters.get('nested') as CRDTMap<unknown>;
-
-			nested.delete('deep');
-
-			const result = map.toJSON() as {
-				workflow: { nodes: Record<string, { parameters: { nested: Record<string, unknown> } }> };
-			};
-			expect(result.workflow.nodes['node-0'].parameters.nested.deep).toBeUndefined();
-		});
-
-		it('should emit change events for deep edits', () => {
+		it('should emit change event when replacing workflow data', () => {
 			const workflow = createWorkflowData(3);
 			map.set('workflow', workflow);
 
 			const changes: DeepChange[] = [];
 			map.onDeepChange((events) => changes.push(...events));
 
-			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
-			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
-			const node1 = nodes.get('node-1') as CRDTMap<unknown>;
-			node1.set('name', 'Renamed Node');
+			// Modify by replacing with fresh workflow (for Automerge compatibility)
+			const newWorkflow = createWorkflowData(3);
+			newWorkflow.name = 'Renamed Workflow';
+			map.set('workflow', newWorkflow);
 
 			expect(changes.length).toBeGreaterThan(0);
-			const nameChange = changes
-				.filter(isMapChange)
-				.find((c) => c.path.includes('name') && c.value === 'Renamed Node');
-			expect(nameChange).toBeDefined();
-		});
-
-		it('should handle multiple rapid edits to different nested paths', () => {
-			const workflow = createWorkflowData(10);
-			map.set('workflow', workflow);
-
-			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
-			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
-
-			// Rapid edits to different nodes
-			for (let i = 0; i < 10; i++) {
-				const node = nodes.get(`node-${i}`) as CRDTMap<unknown>;
-				node.set('name', `Updated Node ${i}`);
-				const position = node.get('position') as CRDTMap<unknown>;
-				position.set('x', i * 100);
-			}
-
-			const result = map.toJSON() as {
-				workflow: { nodes: Record<string, { name: string; position: { x: number } }> };
-			};
-
-			for (let i = 0; i < 10; i++) {
-				expect(result.workflow.nodes[`node-${i}`].name).toBe(`Updated Node ${i}`);
-				expect(result.workflow.nodes[`node-${i}`].position.x).toBe(i * 100);
-			}
-		});
-
-		it('should replace entire nested subtree', () => {
-			const workflow = createWorkflowData(5);
-			map.set('workflow', workflow);
-
-			const workflowMap = map.get('workflow') as CRDTMap<unknown>;
-			const nodes = workflowMap.get('nodes') as CRDTMap<unknown>;
-			const node3 = nodes.get('node-3') as CRDTMap<unknown>;
-
-			// Replace entire parameters object
-			node3.set('parameters', {
-				completelyNew: true,
-				differentStructure: {
-					foo: 'bar',
-					count: 42,
-				},
-			});
-
-			const result = map.toJSON() as {
-				workflow: {
-					nodes: Record<
-						string,
-						{
-							parameters: {
-								completelyNew: boolean;
-								differentStructure: { foo: string; count: number };
-							};
-						}
-					>;
-				};
-			};
-			expect(result.workflow.nodes['node-3'].parameters.completelyNew).toBe(true);
-			expect(result.workflow.nodes['node-3'].parameters.differentStructure.foo).toBe('bar');
+			const workflowChange = changes.filter(isMapChange).find((c) => c.path[0] === 'workflow');
+			expect(workflowChange).toBeDefined();
 		});
 	});
 
@@ -576,17 +455,18 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 			expect(arr.toJSON()).toEqual(['a', 'b', 'c']);
 		});
 
-		it('should handle nested objects', () => {
+		it('should handle nested objects as plain values', () => {
 			const objArr = doc.getArray<{ name: string }>('obj-array');
 			objArr.push({ name: 'first' }, { name: 'second' });
 
 			expect(objArr.toArray()).toEqual([{ name: 'first' }, { name: 'second' }]);
 
-			const first = objArr.get(0) as CRDTMap<string>;
-			expect(first.get('name')).toBe('first');
+			// Plain objects are returned as-is, not wrapped
+			const first = objArr.get(0) as { name: string };
+			expect(first.name).toBe('first');
 		});
 
-		it('should handle nested arrays', () => {
+		it('should handle nested arrays as plain values', () => {
 			const nestedArr = doc.getArray<string[]>('nested-array');
 			nestedArr.push(['a', 'b'], ['c', 'd']);
 
@@ -595,8 +475,9 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 				['c', 'd'],
 			]);
 
-			const inner = nestedArr.get(0) as CRDTArray<string>;
-			expect(inner.get(0)).toBe('a');
+			// Plain arrays are returned as-is, not wrapped
+			const inner = nestedArr.get(0) as string[];
+			expect(inner[0]).toBe('a');
 			expect(inner.length).toBe(2);
 		});
 	});
@@ -663,46 +544,44 @@ describe.each([CRDTEngine.yjs, CRDTEngine.automerge])('CRDT Conformance: %s', (e
 		});
 	});
 
-	describe('Nested Arrays in Maps', () => {
-		it('should return CRDTArray when getting array value from map', () => {
+	describe('Plain Arrays in Maps', () => {
+		it('should return plain array when getting array value from map', () => {
 			map.set('items', ['a', 'b', 'c']);
 
-			const items = map.get('items') as CRDTArray<string>;
+			// Plain arrays are returned as-is, not wrapped in CRDTArray
+			const items = map.get('items') as string[];
 			expect(items.length).toBe(3);
-			expect(items.get(0)).toBe('a');
-			expect(items.toArray()).toEqual(['a', 'b', 'c']);
+			expect(items[0]).toBe('a');
+			expect(items).toEqual(['a', 'b', 'c']);
 		});
 
-		it('should emit ArrayChangeEvent when nested array is modified', () => {
+		it('should emit event when replacing array in map', () => {
 			map.set('items', ['a', 'b']);
 
 			const changes: DeepChange[] = [];
 			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
 
-			const items = map.get('items') as CRDTArray<string>;
-			items.push('c');
+			// To modify, replace the whole array
+			map.set('items', ['a', 'b', 'c']);
 
-			expect(changes).toHaveLength(1);
-			expect(isArrayChange(changes[0])).toBe(true);
-			const change = changes[0] as ArrayChangeEvent;
-			expect(change.path).toEqual(['items']);
-			expect(change.delta).toEqual([{ retain: 2 }, { insert: ['c'] }]);
+			// Should have at least 1 change (number varies by engine)
+			expect(changes.length).toBeGreaterThanOrEqual(1);
+
+			// Find the map change for 'items'
+			const itemsChange = changes.filter(isMapChange).find((c) => c.path[0] === 'items');
+			expect(itemsChange).toBeDefined();
+
+			// Result should reflect the new array
+			expect(map.get('items')).toEqual(['a', 'b', 'c']);
 		});
 
-		it('should emit ArrayChangeEvent with correct path for deeply nested array', () => {
+		it('should return plain nested object with array', () => {
 			map.set('node-1', { connections: ['conn-a'] });
 
-			const changes: DeepChange[] = [];
-			map.onDeepChange((changeEvents) => changes.push(...changeEvents));
-
-			const node = map.get('node-1') as CRDTMap<unknown>;
-			const connections = node.get('connections') as CRDTArray<string>;
-			connections.push('conn-b');
-
-			expect(changes).toHaveLength(1);
-			const change = changes[0] as ArrayChangeEvent;
-			expect(change.path).toEqual(['node-1', 'connections']);
-			expect(change.delta).toEqual([{ retain: 1 }, { insert: ['conn-b'] }]);
+			// Plain objects are returned as-is
+			const node = map.get('node-1') as { connections: string[] };
+			expect(node.connections).toEqual(['conn-a']);
+			expect(Array.isArray(node.connections)).toBe(true);
 		});
 	});
 });
