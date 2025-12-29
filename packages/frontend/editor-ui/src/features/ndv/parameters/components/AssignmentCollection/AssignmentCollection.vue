@@ -2,6 +2,7 @@
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
@@ -87,9 +88,11 @@ const actions = computed(() => {
 });
 
 watch(
-	() => props.node?.name,
+	() => props.node,
 	() => {
-		state.paramValue = createParamValue(props.value);
+		const newParamValue = createParamValue(props.value);
+		if (isEqual(state.paramValue, newParamValue)) return;
+		state.paramValue = newParamValue;
 	},
 );
 
