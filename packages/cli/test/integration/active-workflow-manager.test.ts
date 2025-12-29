@@ -140,6 +140,36 @@ describe('init()', () => {
 
 		expect(validateWorkflowHasTriggerLikeNodeSpy).toHaveBeenCalledTimes(2);
 	});
+
+	it('should activate workflow with deprecated Start node during init', async () => {
+		// Create a workflow with a deprecated Start node and a trigger
+		const dbWorkflow = await createActiveWorkflow({
+			nodes: [
+				{
+					id: 'uuid-start',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+				},
+				{
+					id: 'uuid-trigger',
+					parameters: {},
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		});
+
+		await activeWorkflowManager.init();
+
+		// Workflow should be activated despite having a Start node
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
+	});
 });
 
 describe('add()', () => {
