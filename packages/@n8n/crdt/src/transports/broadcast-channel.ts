@@ -45,8 +45,12 @@ export class BroadcastChannelTransport implements SyncTransport {
 	private readonly senderId: string;
 
 	constructor(private readonly channelName: string) {
-		// Generate unique ID for this instance to filter self-sent messages
-		this.senderId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+		// Generate unique ID for this instance to filter self-sent messages.
+		// crypto.randomUUID() is available in all modern browsers and Node.js 14.17+
+		this.senderId =
+			typeof crypto !== 'undefined' && crypto.randomUUID
+				? crypto.randomUUID()
+				: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 	}
 
 	get connected(): boolean {

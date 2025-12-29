@@ -57,11 +57,14 @@ export class MessagePortTransport implements SyncTransport {
 			throw new Error('Transport not connected');
 		}
 
-		const message: SyncMessage = { type: 'sync', data };
+		// Copy the data to avoid transferring ownership of the original buffer.
+		// This is necessary because the caller may send the same data to multiple
+		// transports (e.g., hub-and-spoke topology in SharedWorker).
+		const copy = new Uint8Array(data);
+		const message: SyncMessage = { type: 'sync', data: copy };
 
-		// Transfer the ArrayBuffer for zero-copy performance
-		// Note: This transfers ownership, so `data` becomes unusable after this call
-		this.port.postMessage(message, [data.buffer]);
+		// Transfer the copy's ArrayBuffer for zero-copy delivery to the receiver
+		this.port.postMessage(message, [copy.buffer]);
 	}
 
 	onReceive(handler: ReceiveHandler): Unsubscribe {

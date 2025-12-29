@@ -13,14 +13,14 @@
 | **SyncProvider** | ✅ Complete | Engine-agnostic `BaseSyncProvider` |
 | **SyncTransport** | ✅ Complete | Interface + `MockTransport` for testing |
 | **Error handling** | ✅ Complete | `SyncProvider.onError()` for malformed updates |
-| **Reconnection handling** | 🔜 Phase 2 | To be implemented with real transports |
+| **WebSocket Transport** | ✅ Complete | Auto-reconnect with exponential backoff |
+| **MessagePort Transport** | ✅ Complete | SharedWorker/Worker communication |
+| **BroadcastChannel Transport** | ✅ Complete | Cross-tab sync (Safari fallback) |
 | **Awareness** | ❌ Not started | User presence, cursors |
 | **UndoManager** | ❌ Not started | |
 | **Persistence** | ❌ Not started | IndexedDB, filesystem adapters |
-| **WebSocket Transport** | ❌ Not started | Includes reconnection + exponential backoff |
-| **SharedWorker Transport** | ❌ Not started | Includes worker crash recovery |
 
-**Summary:** Phase 0 and Phase 1 complete. Core data structures (Map, Array) and sync infrastructure are functional with 304 passing conformance tests. Ready for Phase 2 (real transports with reconnection, awareness) or additional data types (Text, Counter).
+**Summary:** Phase 1 complete. Core data structures (Map, Array), sync infrastructure, and all transports are functional with 362 passing tests. Ready for Phase 2 (awareness, undo/redo) or additional data types (Text, Counter).
 
 ---
 
