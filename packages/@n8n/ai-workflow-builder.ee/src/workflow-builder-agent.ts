@@ -139,8 +139,10 @@ function getWorkflowContext(state: typeof WorkflowState.State) {
 
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
-	llmSimpleTask: BaseChatModel;
-	llmComplexTask: BaseChatModel;
+	/** Default LLM model used for all components unless overridden */
+	defaultModel: BaseChatModel;
+	/** Optional per-component model overrides */
+	modelOverrides?: ModelOverrides;
 	logger?: Logger;
 	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
@@ -164,6 +166,31 @@ export interface BuilderFeatureFlags {
 	multiAgent?: boolean;
 }
 
+/**
+ * Configuration for per-component LLM model overrides.
+ * Allows specifying different models for each component in the workflow builder.
+ * Useful for evaluations comparing model performance across components.
+ */
+export interface ModelOverrides {
+	// Multi-agent subgraphs
+	supervisor?: BaseChatModel;
+	responder?: BaseChatModel;
+	discovery?: BaseChatModel;
+	builder?: BaseChatModel;
+	configurator?: BaseChatModel;
+
+	// Utility chains
+	workflowName?: BaseChatModel;
+	conversationCompact?: BaseChatModel;
+
+	// Legacy single-agent mode
+	legacyAgent?: BaseChatModel;
+
+	// Tools
+	categorizePrompt?: BaseChatModel;
+	parameterUpdater?: BaseChatModel;
+}
+
 export interface ChatPayload {
 	id: string;
 	message: string;
@@ -181,8 +208,8 @@ export interface ChatPayload {
 export class WorkflowBuilderAgent {
 	private checkpointer: MemorySaver;
 	private parsedNodeTypes: INodeTypeDescription[];
-	private llmSimpleTask: BaseChatModel;
-	private llmComplexTask: BaseChatModel;
+	private defaultModel: BaseChatModel;
+	private modelOverrides?: ModelOverrides;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
@@ -192,8 +219,8 @@ export class WorkflowBuilderAgent {
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
-		this.llmSimpleTask = config.llmSimpleTask;
-		this.llmComplexTask = config.llmComplexTask;
+		this.defaultModel = config.defaultModel;
+		this.modelOverrides = config.modelOverrides;
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
@@ -204,11 +231,16 @@ export class WorkflowBuilderAgent {
 		this.runMetadata = config.runMetadata;
 	}
 
+	/** Get the LLM for a specific component, with fallback to defaultModel */
+	private getModel(component: keyof ModelOverrides): BaseChatModel {
+		return this.modelOverrides?.[component] ?? this.defaultModel;
+	}
+
 	private getBuilderTools(featureFlags?: BuilderFeatureFlags): BuilderTool[] {
 		return getBuilderTools({
 			parsedNodeTypes: this.parsedNodeTypes,
 			instanceUrl: this.instanceUrl,
-			llmComplexTask: this.llmComplexTask,
+			getModel: (component) => this.getModel(component),
 			logger: this.logger,
 			featureFlags,
 		});
@@ -221,8 +253,8 @@ export class WorkflowBuilderAgent {
 	private createMultiAgentGraph(featureFlags?: BuilderFeatureFlags) {
 		return createMultiAgentWorkflowWithSubgraphs({
 			parsedNodeTypes: this.parsedNodeTypes,
-			llmSimpleTask: this.llmSimpleTask,
-			llmComplexTask: this.llmComplexTask,
+			defaultModel: this.defaultModel,
+			modelOverrides: this.modelOverrides,
 			logger: this.logger,
 			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,
@@ -243,17 +275,18 @@ export class WorkflowBuilderAgent {
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
 
 		// Create the prompt with feature flag options
+		// Pass LLM to determine if cache_control should be applied (Anthropic only)
+		const legacyAgentLlm = this.getModel('legacyAgent');
 		const mainAgentPrompt = createMainAgentPrompt({
 			includeExamplesPhase: featureFlags?.templateExamples === true,
+			llm: legacyAgentLlm,
 		});
 
 		const callModel = async (state: typeof WorkflowState.State) => {
-			if (!this.llmSimpleTask) {
-				throw new LLMServiceError('LLM not setup');
-			}
-			if (typeof this.llmSimpleTask.bindTools !== 'function') {
+			const legacyAgentModel = this.getModel('legacyAgent');
+			if (typeof legacyAgentModel.bindTools !== 'function') {
 				throw new LLMServiceError('LLM does not support tools', {
-					llmModel: this.llmSimpleTask._llmType(),
+					llmModel: legacyAgentModel._llmType(),
 				});
 			}
 
@@ -277,7 +310,7 @@ export class WorkflowBuilderAgent {
 			// 3. Adding current workflow context and cache markers to recent messages
 			const userToolIndices = findUserToolMessageIndices(prompt.messages);
 			cleanStaleWorkflowContext(prompt.messages, userToolIndices);
-			applyCacheControlMarkers(prompt.messages, userToolIndices, workflowContext);
+			applyCacheControlMarkers(prompt.messages, userToolIndices, workflowContext, legacyAgentModel);
 
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
@@ -285,7 +318,7 @@ export class WorkflowBuilderAgent {
 				throw new WorkflowStateError(PROMPT_IS_TOO_LARGE_ERROR);
 			}
 
-			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
+			const response = await legacyAgentModel.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
 		};
@@ -340,16 +373,12 @@ export class WorkflowBuilderAgent {
 		 * when the conversation history exceeds a certain token limit.
 		 */
 		const compactSession = async (state: typeof WorkflowState.State) => {
-			if (!this.llmSimpleTask) {
-				throw new LLMServiceError('LLM not setup');
-			}
-
 			const { messages, previousSummary } = state;
 			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
 			const compactedMessages = await conversationCompactChain(
-				this.llmSimpleTask,
+				this.getModel('conversationCompact'),
 				messages,
 				previousSummary,
 			);
@@ -374,10 +403,6 @@ export class WorkflowBuilderAgent {
 		 * Creates a workflow name based on the initial user message.
 		 */
 		const createWorkflowName = async (state: typeof WorkflowState.State) => {
-			if (!this.llmSimpleTask) {
-				throw new LLMServiceError('LLM not setup');
-			}
-
 			const { workflowJSON, messages } = state;
 
 			if (messages.length === 1 && messages[0] instanceof HumanMessage) {
@@ -391,7 +416,10 @@ export class WorkflowBuilderAgent {
 				}
 
 				this.logger?.debug('Generating workflow name');
-				const { name } = await workflowNameChain(this.llmSimpleTask, initialMessage.content);
+				const { name } = await workflowNameChain(
+					this.getModel('workflowName'),
+					initialMessage.content,
+				);
 
 				return {
 					workflowJSON: {
