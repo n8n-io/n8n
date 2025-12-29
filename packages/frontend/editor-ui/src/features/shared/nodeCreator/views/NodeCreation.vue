@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent, nextTick } from 'vue';
+import { computed, defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -25,6 +25,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useBannersStore } from '../../banners/banners.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -55,8 +56,24 @@ const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
 const { isEnabled: isCommandBarEnabled } = useCommandBar();
-
+const bannersStore = useBannersStore();
 const { getAddedNodesAndConnections } = useActions();
+
+const nodeCreatorInlineStyle = computed(() => {
+	const rightPosition = getRightOffset();
+	return {
+		top: `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
+		right: `${rightPosition}px`,
+	};
+});
+
+function getRightOffset() {
+	if (chatPanelStore.isOpen) {
+		return chatPanelStore.width;
+	}
+
+	return 0;
+}
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -212,6 +229,7 @@ function openCommandBar(event: MouseEvent) {
 	<Suspense>
 		<LazyNodeCreator
 			:active="createNodeActive"
+			:style="nodeCreatorInlineStyle"
 			@node-type-selected="nodeTypeSelected"
 			@close-node-creator="closeNodeCreator"
 		/>

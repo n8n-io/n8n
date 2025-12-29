@@ -26,8 +26,6 @@ import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useUIStore } from '@/app/stores/ui.store';
-import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const props = defineProps<{
 	modalName: string;
@@ -43,7 +41,6 @@ const chatStore = useChatStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
-const uiStore = useUIStore();
 
 const modalBus = ref(createEventBus());
 const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
@@ -252,18 +249,6 @@ async function onDelete() {
 		isDeleting.value = false;
 	}
 }
-
-function onSelectTools() {
-	uiStore.openModalWithData({
-		name: TOOLS_SELECTOR_MODAL_KEY,
-		data: {
-			selected: tools.value,
-			onConfirm: (newTools: INode[]) => {
-				tools.value = newTools;
-			},
-		},
-	});
-}
 </script>
 
 <template>
@@ -376,7 +361,7 @@ function onSelectTools() {
 										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
 								"
 								:selected="tools"
-								@click="onSelectTools"
+								@change="tools = $event"
 							/>
 						</div>
 					</N8nInputLabel>

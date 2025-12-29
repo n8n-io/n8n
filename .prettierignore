@@ -13,7 +13,6 @@ CHANGELOG.md
 # Ignored for now
 **/*.md
 # Handled by biome
-**/*.ts
 **/*.js
 **/*.json
 **/*.jsonc

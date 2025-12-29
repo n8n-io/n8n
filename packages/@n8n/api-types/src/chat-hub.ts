@@ -1,11 +1,5 @@
 import type { Scope } from '@n8n/permissions';
-import {
-	type StructuredChunk,
-	type JINA_AI_TOOL_NODE_TYPE,
-	type SERP_API_TOOL_NODE_TYPE,
-	type INode,
-	INodeSchema,
-} from 'n8n-workflow';
+import { type StructuredChunk, type INode, INodeSchema } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -75,8 +69,6 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
-
-export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SERP_API_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
