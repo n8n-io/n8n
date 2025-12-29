@@ -61,7 +61,7 @@ const defaultWorkflowProps = {
 
 const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishActions, {
 	props: defaultWorkflowProps,
-	pinia: createTestingPinia({ initialState }),
+	pinia: createTestingPinia({ initialState, stubActions: false }),
 	global: {
 		stubs: {
 			ActionsMenu: {
