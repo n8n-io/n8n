@@ -196,12 +196,12 @@ Step 4 - Validate workflow:
 </parallel_node_creation_example>
 </workflow_creation_sequence>
 
-<connection_parameters_rules>
+<initial_parameters_rules>
 Every node addition requires both reasoning and parameters. Each add_nodes call adds a single node.
-This two-step process ensures proper connections:
+This two-step process ensures proper configuration:
 
 <reasoning_first>
-Always determine connectionParametersReasoning before setting connectionParameters. Ask yourself:
+Always determine initialParametersReasoning before setting initialParameters. Ask yourself:
 - Does this node have dynamic inputs/outputs?
 - Which parameters affect the connection structure?
 - What mode or operation changes the available connections?
@@ -219,7 +219,7 @@ Dynamic nodes (parameter-dependent connections):
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Document Loader binary: reasoning="Binary mode for processing files instead of JSON", parameters={{ dataType: "binary" }}
 </parameter_examples>
-</connection_parameters_rules>
+</initial_parameters_rules>
 
 <node_connections_understanding>
 n8n connections flow from SOURCE (output) to TARGET (input).

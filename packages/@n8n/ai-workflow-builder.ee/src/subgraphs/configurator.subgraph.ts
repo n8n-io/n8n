@@ -224,6 +224,8 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		}
 
 		// 3. Full workflow JSON (nodes to configure)
+		// Note: resource/operation are already set by Builder via initialParameters
+		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
