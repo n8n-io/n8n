@@ -10,7 +10,16 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import {
+	anthropicClaudeSonnet45,
+	gemini3Flash,
+	gemini3Pro,
+	glm47,
+	gpt52ReasoningHigh,
+	gpt52ReasoningOff,
+	gptOss20b,
+	grokCodeFast1,
+} from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import {
 	BuilderFeatureFlags,
@@ -162,10 +171,9 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
-			user,
-			userMessageId,
-		);
+		const { tracingClient, authHeaders } = await this.setupModels(user, userMessageId);
+
+		const defaultModel = await gemini3Pro({ apiKey: process.env.N8N_OPEN_ROUTER_API_KEY ?? '' });
 
 		// Flatten feature flags for better Langsmith filtering (e.g., feature_myFlag: true)
 		const flattenedFeatureFlags = Object.fromEntries(
@@ -174,9 +182,7 @@ export class AiWorkflowBuilderService {
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: anthropicClaude,
-			llmComplexTask: anthropicClaude,
+			defaultModel,
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
