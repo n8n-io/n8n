@@ -25,7 +25,7 @@ test.describe('Task Runner Capability @capability:task-runner', () => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(CODE_NODE_NAME, {
-			action: 'Code in Python (Native)',
+			action: 'Code in Python',
 			closeNDV: true,
 		});
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
