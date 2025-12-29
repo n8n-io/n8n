@@ -380,12 +380,14 @@ export class SlackV2 implements INodeType {
 				'/chat.postMessage',
 				createSendAndWaitMessageBody(this),
 			);
-			this.runExecutionData.metadata = { ...(this.runExecutionData.metadata || {}), slackMessage }
 			
 			const waitTill = configureWaitTillDate(this);
 
 			await this.putExecutionToWait(waitTill);
-			return [this.getInputData()];
+			return [this.getInputData().map(item => ({
+				...item,
+				json: { ...item.json, slackMessage }
+			}))];
 		}
 
 		for (let i = 0; i < length; i++) {
