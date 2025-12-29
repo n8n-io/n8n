@@ -194,9 +194,6 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled &&
-				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
