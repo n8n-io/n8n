@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class ChangeWorkflowStatisticsFKToNoAction1764669632000 implements ReversibleMigration {
+export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// Step 1: Drop existing foreign key constraint and primary key
 		await queryRunner.query(

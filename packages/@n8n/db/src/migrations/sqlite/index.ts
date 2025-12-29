@@ -47,10 +47,10 @@ import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddPro
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
 import { AddCreatorIdToProjectTable1764276827837 } from './1764276827837-AddCreatorIdToProjectTable';
-import { ChangeWorkflowStatisticsFKToNoAction1764669632000 } from './1764669632000-ChangeWorkflowStatisticsFKToNoAction';
 import { AddResolvableFieldsToCredentials1764689448000 } from './1764689448000-AddResolvableFieldsToCredentials';
 import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdForeignKeys';
 import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
+import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -258,7 +258,7 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowVersionIdToExecutionData1765892199653,
 	AddWorkflowPublishScopeToProjectRoles1766064542000,
 	AddChatMessageIndices1766068346315,
-	ChangeWorkflowStatisticsFKToNoAction1764669632000,
+	ChangeWorkflowStatisticsFKToNoAction1767018516000,
 ];
 
 export { sqliteMigrations };

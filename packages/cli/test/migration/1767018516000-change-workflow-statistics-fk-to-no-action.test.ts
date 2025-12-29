@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
-const MIGRATION_NAME = 'ChangeWorkflowStatisticsFKToNoAction1764669632000';
+const MIGRATION_NAME = 'ChangeWorkflowStatisticsFKToNoAction1767018516000';
 
 /**
  * Generate parameter placeholders for a given context and count.

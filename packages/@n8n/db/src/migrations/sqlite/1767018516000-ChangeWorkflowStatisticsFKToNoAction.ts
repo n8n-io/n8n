@@ -7,7 +7,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * - Make workflowId nullable for SET NULL to work
  * - Add unique index on (workflowId, name)
  */
-export class ChangeWorkflowStatisticsFKToNoAction1764669632000 implements ReversibleMigration {
+export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// Create new table with id primary key, workflowName column, and SET NULL foreign key
 		await queryRunner.query(`
