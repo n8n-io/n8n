@@ -143,7 +143,7 @@ describe('init()', () => {
 
 	it('should activate workflow with deprecated Start node during init', async () => {
 		// Create a workflow with a deprecated Start node and a trigger
-		const dbWorkflow = await createActiveWorkflow({
+		await createActiveWorkflow({
 			nodes: [
 				{
 					id: 'uuid-start',
@@ -222,7 +222,7 @@ describe('init()', () => {
 	});
 
 	it('should not filter disabled Start nodes from nodes array', async () => {
-		const dbWorkflow = await createActiveWorkflow({
+		await createActiveWorkflow({
 			nodes: [
 				{
 					id: 'uuid-start',
