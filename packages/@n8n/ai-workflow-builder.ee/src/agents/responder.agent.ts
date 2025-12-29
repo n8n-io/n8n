@@ -4,25 +4,27 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
 import { buildResponderPrompt } from '@/prompts/agents/responder.prompt';
+import { isAnthropicModel } from '@/utils/cache-control';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow } from '../types/workflow';
 import { getErrorEntry, getBuilderOutput, getConfiguratorOutput } from '../utils/coordination-log';
 
-const systemPrompt = ChatPromptTemplate.fromMessages([
-	[
-		'system',
-		[
-			{
-				type: 'text',
-				text: buildResponderPrompt(),
-				cache_control: { type: 'ephemeral' },
-			},
-		],
-	],
-	['placeholder', '{messages}'],
-]);
+function createSystemPrompt(llm: BaseChatModel) {
+	const systemMessageBlock: { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } } =
+		{
+			type: 'text',
+			text: buildResponderPrompt(),
+		};
+	if (isAnthropicModel(llm)) {
+		systemMessageBlock.cache_control = { type: 'ephemeral' };
+	}
+	return ChatPromptTemplate.fromMessages([
+		['system', [systemMessageBlock]],
+		['placeholder', '{messages}'],
+	]);
+}
 
 export interface ResponderAgentConfig {
 	llm: BaseChatModel;
@@ -121,7 +123,7 @@ export class ResponderAgent {
 	 * Invoke the responder agent with the given context
 	 */
 	async invoke(context: ResponderContext): Promise<AIMessage> {
-		const agent = systemPrompt.pipe(this.llm);
+		const agent = createSystemPrompt(this.llm).pipe(this.llm);
 
 		const contextMessage = this.buildContextMessage(context);
 		const messagesToSend = contextMessage
