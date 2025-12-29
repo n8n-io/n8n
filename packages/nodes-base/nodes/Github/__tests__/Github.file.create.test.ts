@@ -101,7 +101,6 @@ describe('Github Node - File Create/Edit Operations', () => {
 		});
 	});
 
-
 	describe('File Create - Text Content', () => {
 		it('should use base64 content as-is when fileContent is already base64', async () => {
 			const base64Content = 'dGVzdCBjb250ZW50';
