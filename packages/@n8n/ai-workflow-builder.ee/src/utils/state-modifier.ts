@@ -28,6 +28,44 @@ export interface StateModifierInput {
 }
 
 /**
+ * Checks if there's an uncleared recursion error in the coordination log.
+ * Returns true if there's a recursion error that hasn't been cleared yet.
+ */
+function hasUnclearedRecursionError(coordinationLog: CoordinationLogEntry[]): boolean {
+	// Find the index of the last recursion error
+	let lastRecursionErrorIndex = -1;
+	for (let i = coordinationLog.length - 1; i >= 0; i--) {
+		const entry = coordinationLog[i];
+		if (entry.status !== 'error') continue;
+		const errorMessage = entry.summary.toLowerCase();
+		if (
+			errorMessage.includes('recursion') ||
+			errorMessage.includes('maximum number of steps') ||
+			errorMessage.includes('iteration limit')
+		) {
+			lastRecursionErrorIndex = i;
+			break;
+		}
+	}
+
+	// If we found a recursion error, check if there's a clear entry after it
+	if (lastRecursionErrorIndex >= 0) {
+		const hasAlreadyCleared = coordinationLog
+			.slice(lastRecursionErrorIndex + 1)
+			.some(
+				(entry) =>
+					entry.phase === 'state_management' &&
+					entry.summary.includes('Cleared') &&
+					entry.summary.includes('recursion'),
+			);
+
+		return !hasAlreadyCleared;
+	}
+
+	return false;
+}
+
+/**
  * Determines if state modifications are needed before agent processing.
  * Pure function - no side effects, easily testable.
  */
@@ -49,28 +87,9 @@ export function determineStateAction(
 	// Check if there are RECURSION error entries in coordination log from previous turn
 	// If user sent a new message, clear old recursion errors to allow continuation (AI-1812)
 	// Only recursion errors - other errors should still block continuation
-	// But only do this once - check if we've already added a clear_error_state entry
-	if (coordinationLog) {
-		const hasRecursionErrors = coordinationLog.some((entry) => {
-			if (entry.status !== 'error') return false;
-			const errorMessage = entry.summary.toLowerCase();
-			return (
-				errorMessage.includes('recursion') ||
-				errorMessage.includes('maximum number of steps') ||
-				errorMessage.includes('iteration limit')
-			);
-		});
-
-		const hasAlreadyCleared = coordinationLog.some(
-			(entry) =>
-				entry.phase === 'state_management' &&
-				entry.summary.includes('Cleared') &&
-				entry.summary.includes('recursion'),
-		);
-
-		if (hasRecursionErrors && !hasAlreadyCleared) {
-			return 'clear_error_state';
-		}
+	// But only do this once - check if we've already added a clear_error_state entry AFTER the last recursion error
+	if (coordinationLog && hasUnclearedRecursionError(coordinationLog)) {
+		return 'clear_error_state';
 	}
 
 	// Manual /compact command
