@@ -765,6 +765,465 @@ describe('OutputParserStructured', () => {
 				});
 			});
 		});
+		describe('Markdown Code Fence Handling', () => {
+			beforeEach(() => {
+				thisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.2 }));
+				thisArg.getNodeParameter.calledWith('schemaType', 0).mockReturnValueOnce('manual');
+			});
+
+			it('should parse JSON with single backtick block inside (not in fence)', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"message": { "type": "string" },
+						"status": { "type": "string" }
+					},
+					"required": ["message", "status"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						message: '## Example\n```bash\n--set globals.enable=false\n```\n',
+						status: 'completed',
+					},
+				};
+
+				const parsersOutput = await response.parse(JSON.stringify(outputObject));
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse JSON with multiple backtick blocks inside (not in fence)', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"message": { "type": "string" },
+						"tokens_used": { "type": "number" }
+					},
+					"required": ["message", "tokens_used"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						message:
+							'## Example 1\n```bash\ncommand1\n```\n## Example 2\n```bash\ncommand2\n```\n',
+						tokens_used: 2850,
+					},
+				};
+
+				const parsersOutput = await response.parse(JSON.stringify(outputObject));
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse JSON wrapped in code fence', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"name": { "type": "string" },
+						"age": { "type": "number" }
+					},
+					"required": ["name", "age"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						name: 'Alice',
+						age: 30,
+					},
+				};
+
+				const parsersOutput = await response.parse(`\`\`\`json
+${JSON.stringify(outputObject)}
+\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse JSON wrapped in code fence (no json marker)', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"result": { "type": "string" }
+					},
+					"required": ["result"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						result: 'success',
+					},
+				};
+
+				const parsersOutput = await response.parse(`\`\`\`
+${JSON.stringify(outputObject)}
+\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse JSON in code fence WITH backticks inside', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"message": { "type": "string" },
+						"status": { "type": "string" },
+						"tokens_used": { "type": "number" }
+					},
+					"required": ["message", "status", "tokens_used"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						message: '## Example\n```bash\n--set globals.enable=false\n```\n',
+						status: 'completed',
+						tokens_used: 2850,
+					},
+				};
+
+				const parsersOutput = await response.parse(`\`\`\`json
+${JSON.stringify(outputObject)}
+\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse JSON in code fence WITH MULTIPLE backticks inside', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"documentation": { "type": "string" },
+						"examples_count": { "type": "number" }
+					},
+					"required": ["documentation", "examples_count"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						documentation:
+							'# Usage\n```python\nprint("hello")\n```\n\n```javascript\nconsole.log("world")\n```\n',
+						examples_count: 2,
+					},
+				};
+
+				const parsersOutput = await response.parse(`\`\`\`json
+${JSON.stringify(outputObject)}
+\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse plain JSON without code fence', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"id": { "type": "number" },
+						"value": { "type": "string" }
+					},
+					"required": ["id", "value"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						id: 42,
+						value: 'test',
+					},
+				};
+
+				const parsersOutput = await response.parse(JSON.stringify(outputObject));
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should parse JSON with escaped quotes and backticks', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"command": { "type": "string" },
+						"description": { "type": "string" }
+					},
+					"required": ["command", "description"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						command: 'echo "Hello \`World\`"',
+						description: 'Prints: Hello `World`',
+					},
+				};
+
+				const parsersOutput = await response.parse(JSON.stringify(outputObject));
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should NOT extract from backticks that appear mid-text', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"note": { "type": "string" }
+					},
+					"required": ["note"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						note: 'Some text before ```json\n{"fake": "fence"}\n``` more text after',
+					},
+				};
+
+				// This is NOT wrapped in a fence, so should parse as-is
+				const parsersOutput = await response.parse(JSON.stringify(outputObject));
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should handle whitespace variations in code fence', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"data": { "type": "string" }
+					},
+					"required": ["data"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						data: 'test',
+					},
+				};
+
+				// Test with extra whitespace
+				const parsersOutput = await response.parse(`\`\`\`json
+
+${JSON.stringify(outputObject)}
+
+\`\`\`  `);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should fail when code fence is unclosed (no closing backticks)', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"key": { "type": "string" }
+					},
+					"required": ["key"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						key: 'value',
+					},
+				};
+
+				// Missing closing ``` - fence pattern won't match, tries to parse whole string including ```json prefix
+				await expect(
+					response.parse(`\`\`\`json\n${JSON.stringify(outputObject)}`, undefined, (e) => e),
+				).rejects.toThrow();
+			});
+
+			it('should fail gracefully with invalid JSON in code fence', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"test": { "type": "string" }
+					},
+					"required": ["test"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				await expect(
+					response.parse(
+						`\`\`\`json
+{invalid json}
+\`\`\``,
+						undefined,
+						(e) => e,
+					),
+				).rejects.toThrow();
+			});
+
+			it('should fail gracefully when fence contains only opening bracket', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"items": { "type": "array" }
+					},
+					"required": ["items"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				// This should extract '[' which passes startsWith check but fails JSON.parse
+				await expect(
+					response.parse(
+						`\`\`\`json
+[
+\`\`\``,
+						undefined,
+						(e) => e,
+					),
+				).rejects.toThrow();
+			});
+
+			it('should NOT match code fence with non-json/non-empty language marker', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"result": { "type": "string" }
+					},
+					"required": ["result"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						result: 'success',
+					},
+				};
+
+				// Regex only matches ```json or ```, not ```python - fence won't match, parse fails
+				await expect(
+					response.parse(
+						`\`\`\`python
+${JSON.stringify(outputObject)}
+\`\`\``,
+						undefined,
+						(e) => e,
+					),
+				).rejects.toThrow();
+			});
+
+			it('should parse array wrapped in code fence', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"items": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": { "type": "number" }
+								}
+							}
+						}
+					},
+					"required": ["items"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						items: [{ id: 1 }, { id: 2 }],
+					},
+				};
+
+				// Top-level array inside output object in a fence
+				const parsersOutput = await response.parse(`\`\`\`json
+${JSON.stringify(outputObject)}
+\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+
+			it('should match fence with closing backticks on same line as content (inline fence)', async () => {
+				const schema = `{
+					"type": "object",
+					"properties": {
+						"val": { "type": "string" }
+					},
+					"required": ["val"]
+				}`;
+				thisArg.getNodeParameter.calledWith('inputSchema', 0).mockReturnValueOnce(schema);
+
+				const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
+					response: N8nStructuredOutputParser;
+				};
+
+				const outputObject = {
+					output: {
+						val: 'test',
+					},
+				};
+
+				// With optional newlines, inline fences should now parse successfully
+				const parsersOutput = await response.parse(`\`\`\`json\n${JSON.stringify(outputObject)}\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
+			});
+		});
 	});
 
 	describe('Auto-Fix', () => {
