@@ -9,6 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import NodeCreator from '@/features/shared/nodeCreator/components/NodeCreator.vue';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { AI_UNCATEGORIZED_CATEGORY } from '@/app/constants';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -34,6 +35,7 @@ const bannersStore = useBannersStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
+const { gotoCompatibleConnectionView } = useViewStacks();
 
 const toolCount = computed(() => selected.length);
 
@@ -60,14 +62,20 @@ const nodeCreatorInlineStyle = computed(() => {
 
 const isNodeCreatorOpen = ref(false);
 
-function toggleNodeCreatorOpen() {
-	isNodeCreatorOpen.value = !isNodeCreatorOpen.value;
+function toggleNodeCreatorOpen(open?: boolean) {
+	const newValue = open ?? !isNodeCreatorOpen.value;
 
-	nodeCreatorStore.setNodeCreatorState({
-		createNodeActive: !nodeCreatorStore.isCreateNodeActive,
-		nodeCreatorView: AI_UNCATEGORIZED_CATEGORY,
-		connectionType: NodeConnectionTypes.AiTool,
-	});
+	isNodeCreatorOpen.value = newValue;
+
+	if (newValue) {
+		nodeCreatorStore.setNodeCreatorState({
+			createNodeActive: true,
+			nodeCreatorView: AI_UNCATEGORIZED_CATEGORY,
+			connectionType: NodeConnectionTypes.AiTool,
+		});
+
+		gotoCompatibleConnectionView(NodeConnectionTypes.AiTool).catch(() => {});
+	}
 }
 
 function handleSelectNodeType(value: NodeTypeSelectedPayload[]) {
@@ -130,7 +138,7 @@ function handleSelect(id: string) {
 	const [command, target] = id.split('::');
 
 	if (command === 'add') {
-		toggleNodeCreatorOpen();
+		toggleNodeCreatorOpen(true);
 		return;
 	}
 
@@ -215,7 +223,7 @@ onMounted(async () => {
 			<NodeCreator
 				:active="isNodeCreatorOpen"
 				:style="nodeCreatorInlineStyle"
-				@close-node-creator="toggleNodeCreatorOpen"
+				@close-node-creator="toggleNodeCreatorOpen(false)"
 				@node-type-selected="handleSelectNodeType"
 			/>
 		</Teleport>
