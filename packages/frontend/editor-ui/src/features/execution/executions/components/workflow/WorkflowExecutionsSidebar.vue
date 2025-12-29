@@ -16,11 +16,12 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
+import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
@@ -65,10 +66,6 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 	threshold: 0.01,
 	onIntersect: () => emit('loadMore', 20),
 });
-
-const hasCancellableExecution = computed(() =>
-	props.executions.find((x) => ['new', 'running', 'waiting'].includes(x.status)),
-);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
@@ -208,13 +205,7 @@ const goToUpgrade = () => {
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
 			/>
-			<N8nButton
-				v-if="hasCancellableExecution"
-				icon="filled-square"
-				square
-				aria-label="Stop Execution"
-				@click="onStopManyExecutions"
-			/>
+			<ExecutionStopAllText :executions="props.executions" />
 		</div>
 		<div :class="$style.controls">
 			<ElCheckbox

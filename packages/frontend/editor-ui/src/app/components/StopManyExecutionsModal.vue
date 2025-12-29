@@ -6,7 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton, N8nFormInput, N8nCallout } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nCallout, N8nText } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { ElRow } from 'element-plus';
 import { useTelemetry } from '../composables/useTelemetry';
@@ -19,9 +19,9 @@ const executionsStore = useExecutionsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-const checkRunning = ref(false);
-const checkQueued = ref(false);
-const checkWaiting = ref(false);
+const checkRunning = ref(true);
+const checkQueued = ref(true);
+const checkWaiting = ref(true);
 
 const activeFilterHint = computed(() => {
 	const { startedBefore, startedAfter } = executionsStore.executionsFilters;
@@ -37,6 +37,14 @@ const activeFilterHint = computed(() => {
 		return i18n.baseText('executionStopManyModal.dateHint.endOnly', {
 			interpolate: { startedBefore },
 		});
+	}
+
+	return '';
+});
+
+const allWorkflowsHint = computed(() => {
+	if (executionsStore.filters.workflowId === 'all') {
+		return i18n.baseText('executionStopManyModal.allWorkflowsHint');
 	}
 
 	return '';
@@ -90,6 +98,11 @@ function closeModal() {
 		:close-on-click-modal="false"
 	>
 		<template #content>
+			<ElRow :class="$style.description">
+				<N8nText color="text-base">
+					{{ i18n.baseText('executionStopManyModal.description') }}
+				</N8nText>
+			</ElRow>
 			<ElRow>
 				<N8nFormInput
 					v-model="checkQueued"
@@ -116,19 +129,24 @@ function closeModal() {
 					{{ activeFilterHint }}
 				</N8nCallout>
 			</ElRow>
+			<ElRow v-if="allWorkflowsHint">
+				<N8nCallout theme="warning">
+					{{ allWorkflowsHint }}
+				</N8nCallout>
+			</ElRow>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
 					type="tertiary"
 					label="Close"
-					data-test-id="variable-modal-cancel-button"
+					data-test-id="stop-executions-close-button"
 					@click="closeModal"
 				/>
 				<N8nButton
 					:disabled="!checkWaiting && !checkRunning && !checkQueued"
 					label="Stop Executions"
-					data-test-id="variable-modal-save-button"
+					data-test-id="stop-executions-submit-button"
 					@click="onSubmit"
 				/>
 			</div>
@@ -149,5 +167,9 @@ function closeModal() {
 	justify-content: flex-end;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+.description {
+	padding-bottom: var(--spacing--sm);
 }
 </style>

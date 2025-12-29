@@ -116,7 +116,7 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
-import StopManyExecutions from './StopManyExecutions.vue';
+import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
@@ -385,7 +385,7 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 
 		<ModalRoot :name="STOP_MANY_EXECUTIONS_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<StopManyExecutions :modal-name="modalName" :data="data" />
+				<StopManyExecutionsModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

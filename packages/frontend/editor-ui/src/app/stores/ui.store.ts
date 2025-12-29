@@ -235,9 +235,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		},
 		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
 			open: false,
-			data: {
-				workflowId: '',
-			},
+			data: {},
 		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,

@@ -1226,9 +1226,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async findByStopExecutionsFilter(query: ExecutionSummaries.StopExecutionFilterQuery) {
 		const findBy: FindOptionsWhere<ExecutionEntity> = {
-			workflowId: query.workflowId,
 			status: In(query.status ?? []),
 		};
+
+		if (query.workflowId !== 'all') {
+			findBy.workflowId = query.workflowId;
+		}
 
 		const startedAtConditions = [
 			query.startedAfter
