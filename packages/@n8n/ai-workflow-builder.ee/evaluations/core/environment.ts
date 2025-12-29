@@ -85,8 +85,7 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
-		llmSimpleTask: llm,
-		llmComplexTask: llm,
+		defaultModel: llm,
 		checkpointer: new MemorySaver(),
 		tracer,
 		featureFlags,
